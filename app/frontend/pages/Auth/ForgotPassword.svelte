@@ -1,0 +1,27 @@
+<script lang="ts">
+  import { Form, Link } from '@inertiajs/svelte'
+
+  import Button from '@/lib/components/Button.svelte'
+  import TextField from '@/lib/components/TextField.svelte'
+  import { usersPasswords, usersSessions } from '@/routes'
+
+  let { email = '' }: { email?: string } = $props()
+</script>
+
+<svelte:head><title>Reset your password · WISP</title></svelte:head>
+
+<div>
+  <h1 class="text-xl font-semibold">Reset your password</h1>
+  <p class="mt-1 text-sm text-ink-muted">We'll email you a link to choose a new password.</p>
+</div>
+
+<Form action={usersPasswords.create()} class="space-y-4">
+  {#snippet children({ errors, processing })}
+    <TextField label="Email" name="user[email]" type="email" autocomplete="email" required value={email} error={errors.email} />
+    <Button type="submit" class="w-full" disabled={processing}>Send reset link</Button>
+  {/snippet}
+</Form>
+
+<p class="border-t border-line pt-4 text-center text-sm">
+  <Link href={usersSessions.new()} class="text-brand-600 hover:underline">Back to sign in</Link>
+</p>

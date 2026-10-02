@@ -1,0 +1,31 @@
+# Ruby / Rails
+/.bundle
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/tmp/pids/*
+!/tmp/pids/.keep
+/storage/*
+!/storage/.keep
+/coverage
+
+# Secrets: credentials keys and server env files are never committed
+/config/master.key
+/config/credentials/*.key
+/.env*
+!/.env.example
+
+# Frontend
+/node_modules
+/public/vite*
+
+# Editors / OS
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Ignore key files for decrypting credentials and more.
+/config/credentials/*.key
+

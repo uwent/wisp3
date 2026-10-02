@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="application-name" content="WISP">
+    <meta name="description" content="Wisconsin Irrigation Scheduling Program: daily soil water balance and forecast-driven irrigation scheduling.">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+
+    <%= vite_stylesheet_tag "application" %>
+    <%= vite_client_tag %>
+    <%= vite_typescript_tag "inertia" %>
+    <%= inertia_ssr_head %>
+  </head>
+
+  <body class="min-h-dvh bg-surface text-ink antialiased">
+    <%= yield %>
+  </body>
+</html>

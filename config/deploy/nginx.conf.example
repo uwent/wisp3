@@ -1,0 +1,42 @@
+# nginx site for WISP 3 (staging shown). Puma listens on 127.0.0.1:3100 (config/deploy/<stage>.rb).
+# Keep the existing TLS certificate lines from the current dev.wisp.cals.wisc.edu site.
+upstream wisp3 {
+  server 127.0.0.1:3100 fail_timeout=0;
+}
+
+server {
+  listen 443 ssl;
+  server_name dev.wisp.cals.wisc.edu;
+  # ssl_certificate     ...;
+  # ssl_certificate_key ...;
+
+  root /home/deploy/wisp3/current/public;
+
+  # Fingerprinted Vite assets
+  location /vite/ {
+    expires max;
+    add_header Cache-Control "public, immutable";
+    try_files $uri =404;
+  }
+
+  location / {
+    try_files $uri @app;
+  }
+
+  location @app {
+    proxy_pass http://wisp3;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_redirect off;
+  }
+
+  client_max_body_size 10m;
+}
+
+server {
+  listen 80;
+  server_name dev.wisp.cals.wisc.edu;
+  return 301 https://$host$request_uri;
+}

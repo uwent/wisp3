@@ -1,0 +1,16 @@
+# Installed by `cap <stage> systemd:install` as ~/.config/systemd/user/<%= fetch(:application) %>-jobs.service
+[Unit]
+Description=WISP 3 background jobs (Solid Queue, <%= fetch(:rails_env) %>)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=<%= current_path %>
+Environment=RAILS_ENV=<%= fetch(:rails_env) %>
+Environment=APP_HOST=<%= fetch(:app_host) %>
+ExecStart=%h/.rbenv/bin/rbenv exec bundle exec bin/jobs
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

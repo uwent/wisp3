@@ -1,0 +1,7 @@
+<p>Hello <%= @user.display_name %>,</p>
+
+<p>Use this link to sign in to WISP. It works once and expires in <%= @ttl_minutes %> minutes.</p>
+
+<p><a href="<%= @url %>">Sign in to WISP</a></p>
+
+<p>If you didn't ask for this, you can ignore this email; nobody can sign in without the link.</p>

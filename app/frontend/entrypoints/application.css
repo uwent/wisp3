@@ -1,0 +1,63 @@
+@import 'tailwindcss';
+
+@plugin '@tailwindcss/typography';
+@plugin '@tailwindcss/forms';
+
+/*
+ * Design tokens. Components use these names (bg-surface, text-ink, bg-status-irrigate, ...)
+ * rather than raw palette colors, so light/dark and status colors are defined once.
+ */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Brand: water blue */
+  --color-brand-50: oklch(97% 0.02 230);
+  --color-brand-100: oklch(93% 0.04 230);
+  --color-brand-500: oklch(60% 0.13 235);
+  --color-brand-600: oklch(52% 0.13 238);
+  --color-brand-700: oklch(45% 0.12 240);
+
+  /* Field water status (see plan §5.5) */
+  --color-status-full: oklch(55% 0.15 245);
+  --color-status-ok: oklch(58% 0.14 155);
+  --color-status-caution: oklch(75% 0.15 75);
+  --color-status-irrigate: oklch(55% 0.2 27);
+
+  /* Surfaces and text, switched for dark mode below */
+  --color-surface: oklch(98.5% 0.003 240);
+  --color-surface-raised: oklch(100% 0 0);
+  --color-ink: oklch(22% 0.02 250);
+  --color-ink-muted: oklch(48% 0.02 250);
+  --color-line: oklch(90% 0.01 250);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface: oklch(18% 0.015 250);
+    --color-surface-raised: oklch(23% 0.015 250);
+    --color-ink: oklch(94% 0.01 250);
+    --color-ink-muted: oklch(72% 0.015 250);
+    --color-line: oklch(32% 0.015 250);
+    --color-brand-50: oklch(28% 0.05 235);
+    --color-brand-100: oklch(33% 0.06 235);
+    --color-brand-500: oklch(70% 0.12 232);
+    --color-brand-600: oklch(74% 0.11 230);
+    --color-brand-700: oklch(80% 0.09 228);
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+    accent-color: var(--color-brand-600);
+  }
+
+  /* @tailwindcss/forms resets inputs to white; follow the theme instead */
+  input,
+  select,
+  textarea {
+    background-color: var(--color-surface-raised);
+    color: var(--color-ink);
+    border-color: var(--color-line);
+  }
+}

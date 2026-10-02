@@ -1,0 +1,7 @@
+Hello <%= @user.display_name %>,
+
+Use this link to sign in to WISP. It works once and expires in <%= @ttl_minutes %> minutes.
+
+<%= @url %>
+
+If you didn't ask for this, you can ignore this email; nobody can sign in without the link.

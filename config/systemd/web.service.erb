@@ -1,0 +1,18 @@
+# Installed by `cap <stage> systemd:install` as ~/.config/systemd/user/<%= fetch(:application) %>-web.service
+[Unit]
+Description=WISP 3 web server (Puma, <%= fetch(:rails_env) %>)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=<%= current_path %>
+Environment=RAILS_ENV=<%= fetch(:rails_env) %>
+Environment=APP_HOST=<%= fetch(:app_host) %>
+Environment=PUMA_BIND=tcp://127.0.0.1:<%= fetch(:puma_port) %>
+Environment=RAILS_MAX_THREADS=5
+ExecStart=%h/.rbenv/bin/rbenv exec bundle exec puma -C config/puma.rb
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
