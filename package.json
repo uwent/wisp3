@@ -28,6 +28,8 @@
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.3",
     "bits-ui": "^2.19.4",
+    "echarts": "^6.1.0",
+    "maplibre-gl": "^6.11.2",
     "svelte": "^5.57.1",
     "tailwindcss": "^4.3.3"
   }

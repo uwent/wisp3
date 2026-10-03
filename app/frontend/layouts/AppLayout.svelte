@@ -3,9 +3,10 @@
   import { Link, page, router } from '@inertiajs/svelte'
   import { DropdownMenu } from 'bits-ui'
 
+  import BrandBar from '@/lib/components/BrandBar.svelte'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
-  import { adminWeather, currentGroups, dashboard, settings, usersSessions } from '@/routes'
+  import { adminWeather, currentGroups, dailyEntries, dashboard, fieldGroups, settings, setup, usersSessions } from '@/routes'
 
   let { children }: { children: Snippet } = $props()
 
@@ -13,10 +14,13 @@
 
   const nav = $derived([
     { label: 'Dashboard', route: dashboard.show() },
+    { label: 'Daily entry', route: dailyEntries.show() },
+    { label: 'Setup', route: setup.show(), also: [fieldGroups.index().url, '/pivots', '/setup'] },
     ...(auth.user?.admin ? [{ label: 'Weather', route: adminWeather.show() }] : []),
   ])
 
-  const isCurrent = (url: string) => page.url === url || page.url.startsWith(`${url}?`)
+  const isCurrent = (url: string, also: string[] = []) =>
+    page.url === url || page.url.startsWith(`${url}?`) || also.some((prefix) => page.url.startsWith(prefix))
 
   function switchGroup(groupId: number) {
     const { url, method } = currentGroups.update()
@@ -30,17 +34,18 @@
 </script>
 
 <div class="flex min-h-dvh flex-col">
+  <BrandBar />
   <header class="border-b border-line bg-surface-raised">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
       <Link href={dashboard.show()} class="text-ink"><Logo /></Link>
 
-      <nav aria-label="Main" class="flex gap-1">
+      <nav aria-label="Main" class="-mx-1 flex gap-1 overflow-x-auto">
         {#each nav as item (item.label)}
           <Link
             href={item.route}
-            class="rounded-md px-3 py-1.5 text-sm font-medium
-              {isCurrent(item.route.url) ? 'bg-brand-50 text-brand-700' : 'text-ink-muted hover:text-ink'}"
-            aria-current={isCurrent(item.route.url) ? 'page' : undefined}
+            class="shrink-0 rounded-md px-3 py-1.5 text-sm font-medium
+              {isCurrent(item.route.url, item.also) ? 'bg-brand-50 text-brand-700' : 'text-ink-muted hover:text-ink'}"
+            aria-current={isCurrent(item.route.url, item.also) ? 'page' : undefined}
           >
             {item.label}
           </Link>
@@ -102,6 +107,6 @@
   </main>
 
   <footer class="border-t border-line py-4 text-center text-xs text-ink-muted">
-    Wisconsin Irrigation Scheduling Program · University of Wisconsin–Madison
+    Wisconsin Irrigation Scheduling Program
   </footer>
 </div>

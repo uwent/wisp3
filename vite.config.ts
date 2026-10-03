@@ -11,4 +11,6 @@ export default defineConfig({
     inertia(),
     svelte(),
   ],
+  // MapLibre's worker is an ES module (lib/components/PivotMap.svelte)
+  worker: { format: 'es' },
 })

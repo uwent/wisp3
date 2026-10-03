@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte'
   import type { HTMLButtonAttributes } from 'svelte/elements'
 
-  type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
+  type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'danger-ghost'
 
   let {
     variant = 'primary',
@@ -17,6 +17,7 @@
     secondary: 'border border-line bg-surface-raised text-ink hover:bg-surface',
     danger: 'bg-status-irrigate text-white hover:opacity-90',
     ghost: 'text-brand-600 hover:bg-brand-50',
+    'danger-ghost': 'text-status-irrigate hover:bg-status-irrigate/10',
   }
 </script>
 
