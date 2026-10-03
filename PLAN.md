@@ -495,17 +495,18 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 
 ### Phase 4: Core UI
 
-- [ ] Setup pages (farms/pivots/fields/plantings), "copy last season", and a guided first-run setup (target: two-field pivot in under 5 minutes, §13).
-- [ ] Pivot location picker (MapLibre, click center, drag radius) used in pivot creation; location required.
-- [ ] Editable daily grid component; field status page with the summary box.
-- [ ] ECharts chart: observed AD, inputs, thresholds, zoom.
-- [ ] Weather panels on the field page from `weather_days` and the forecast (Ben's request): modeled soil moisture by depth (against the field's FC/PWP) and soil temperature, GDD since emergence, temperature, humidity/VPD, wind and cloud cover.
-- [ ] Dashboard (field cards, status), bulk daily entry, field groups.
-- [ ] Pivot irrigation entry (inches or run hours, which fields it applied to) with "from pivot" badges and per-field overrides in field grids.
-- [ ] CSV export (parity with legacy columns).
-- [ ] Settings menu with the unit toggle (Q3) and the `units.ts` formatters and parsers used by every display and input.
-- [ ] Modeled rain shown next to entered corrections in the grid, chart and season summary (Q7).
-- **Exit:** the main legacy features are all available; an internal user can manage a season end to end.
+- [x] Setup pages (farms/pivots/fields/plantings), "copy last season", and a guided first-run setup (target: two-field pivot in under 5 minutes, §13). `/setup` (nested list, dialogs for fields and crops, season picker, the group's rainfall setting), `/setup/start` (`QuickSetup`: farm, pivot on the map, fields with crops, all or nothing), `SeasonCopy`.
+- [x] Pivot location picker (MapLibre, click center, drag radius) used in pivot creation; location required. `PivotMap`: USGS imagery or OpenFreeMap streets, draggable center and radius handle, arcs, "use my location", the group's other pivots outlined.
+- [x] Editable daily grid component; field status page with the summary box. `EditableCell` (click or type to edit, Enter saves and moves down, arrow keys, Escape); `FieldDaysController` saves a day's entry and canopy reading together.
+- [x] ECharts chart: observed AD, inputs, thresholds, zoom. AD (or % moisture) above, rain and irrigation below on the same date axis (no dual axis), threshold lines, reading days marked, last 30 days by default.
+- [x] Weather panels on the field page from `weather_days` and the forecast (Ben's request): modeled soil moisture by depth (against the field's FC/PWP) and soil temperature, GDD since emergence, temperature, humidity/VPD, wind and cloud cover. `WeatherPanel`; one measure per chart, forecast shaded.
+- [x] Dashboard (field cards, status), bulk daily entry, field groups. Cards show status, AD, a 21-day sparkline, last rain and irrigation; days-until-crossing waits for the Phase 5 projection.
+- [x] Pivot irrigation entry (inches or run hours, which fields it applied to) with "from pivot" badges and per-field overrides in field grids. On the pivot's irrigation page and in daily entry; the grid shows the pivot amount under a field's override.
+- [x] CSV export (parity with legacy columns), plus each input's source and the modeled rain. Depths in inches whatever the user's units (`PlantingCsv`).
+- [x] Settings menu with the unit toggle (Q3) and the `units.ts` formatters and parsers used by every display and input. `NumberField` shows and parses in the user's units and submits stored units.
+- [x] Modeled rain shown next to entered corrections in the grid, chart and season summary (Q7).
+- [ ] Playwright smoke tests in CI (§10). A local script covered every page this phase (desktop, and phone in dark mode); not yet in the repo or CI.
+- **Exit:** the main legacy features are all available; an internal user can manage a season end to end. *(Verified locally in a headless browser on the demo data and a fresh metric-units account, 2026-10-03; not yet deployed to staging.)*
 
 ### Phase 5: Forecast projection
 

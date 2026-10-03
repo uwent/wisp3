@@ -1,4 +1,4 @@
-# Handoff: WISP 3, end of Phase 3 (2026-10-03)
+# Handoff: WISP 3, end of Phase 4 (2026-10-03)
 
 Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phases §14, open questions §15) and [CLAUDE.md](CLAUDE.md) (conventions) first. Ben's own action items are in [TODO.md](TODO.md).
 
@@ -8,8 +8,25 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
 - **Phase 0 (legacy `../wisp`):** done and deployed; precipitation backfill run.
 - **Phase 1 (foundation):** done. Staging live at https://dev.wisp.cals.wisc.edu (Puma on `127.0.0.1:3100`, nginx `sites-available/wisp3`, systemd user units `wisp3-web` / `wisp3-jobs`). Redeploy: `bundle exec cap staging deploy` from pushed `main`.
 - **Phase 2 (domain + engine):** done. Golden tests against 30 legacy production fields passed, then were retired with the legacy data; `spec/support/legacy_engine.rb` and its synthetic spec remain as the record of each fix (C2, C3, C4, C7, C8, C19).
-- **Phase 3 (weather):** done locally on the free API (see below). Not yet on staging: Phase 2 and 3 need a push and `cap staging deploy`, plus the API key in staging credentials (TODO.md).
-- **Next: Phase 4, core UI** (PLAN.md §14): setup pages with the pivot map picker, the field status page (chart, daily grid, weather panels), dashboard, pivot irrigation entry, units. Nothing in the UI shows farms or weather yet.
+- **Phase 3 (weather):** done, and deployed to staging with the API key (TODO.md).
+- **Phase 4 (core UI):** done locally and verified in a headless browser; **uncommitted** at the end of this session, and not yet on staging. See the summary below.
+- **Next: Phase 5, forecast projection** (PLAN.md §14): run the balance through the 16-day forecast, then the ensemble spike. The field chart (`lib/charts/fieldChart.ts`) and dashboard cards are where the projection shows; `PlantingStatus` is the place to add it on the server. Also still open from Phase 4: Playwright smoke tests in CI.
+
+## Phase 4 summary (core UI)
+
+- Pages (`app/frontend/pages`): `Dashboard/Show` (field cards), `Setup/Show` (farms → pivots → fields → crops, season picker, rainfall setting, "copy last season"), `Setup/Start` (guided first run), `Pivots/Form` (map picker), `Pivots/Show` (pivot irrigation log), `Fields/Show` (summary, chart, editable daily grid, weather panels, CSV), `DailyEntries/Show` (one date, whole operation), `FieldGroups/Index|Show`. Nav: Dashboard, Daily entry, Setup.
+- Controllers: one per resource, all scoped through `Current.group`; `spec/requests/tenant_isolation_spec.rb` covers every new route. `FieldDaysController` and `FieldGroupDaysController` save one day; `DailyEntriesController` saves a whole date in one transaction (errors keyed `pivots.<id>.<attr>` / `fields.<id>.<attr>`); `QuickSetupsController` errors are keyed by input path (`fields.1.area_acres`).
+- Services: `PlantingStatus` (a planting's season so far, status, last rain and irrigation, totals with entered vs modeled rain), `WeatherPanel`, `QuickSetup`, `SeasonCopy`, `PlantingCsv`.
+- Frontend library: `lib/units.ts`, `lib/dates.ts`, `lib/geo.ts` (pivot circles and arcs), `lib/save.ts`, `lib/charts/*`, components `EditableCell`, `NumberField`, `SelectField`, `Dialog`, `PivotMap`, `Sparkline`, `StatusBadge`, `FieldPicker`; `lib/setup/FieldForm|PlantingForm`. Conventions are in CLAUDE.md.
+- New dependencies: `echarts`, `maplibre-gl` (npm), `csv` (gem; no longer a default gem in Ruby 4).
+- Choices worth knowing:
+  - CSV export is always in inches, whatever the user's units (conversion stays in the frontend, CLAUDE.md).
+  - Any member of a group can change its name and rainfall setting (membership admin isn't checked yet).
+  - The field chart opens on the last 30 days; there's no forecast region until Phase 5.
+  - Light/dark: the system setting, unless the toggle in the red UW bar picked the other one (`lib/theme.ts`, `data-theme` on `<html>`, remembered per browser in localStorage; an inline script in `application.html.erb` applies it before paint). Dark token values are listed twice in `application.css` (system and explicit).
+  - The pivot map's place search calls OpenStreetMap's Nominatim from the browser, only on Enter/Go (its usage policy forbids search-as-you-type), biased to the current view. If usage grows, proxy it or switch providers.
+  - `confirmUnsavedChanges` (`lib/unsaved.svelte.ts`) guards the pivot form and guided setup; the guided setup allows a pivot with no fields after a confirm.
+  - `spec/rails_helper.rb` now clears `OPEN_METEO_API_KEY`, so specs don't depend on a developer's `.env` (the admin weather spec failed once the key was in `.env`).
 
 ## Phase 3 summary (weather)
 
@@ -34,9 +51,21 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
 - Types and route helpers: Typelizer generates `app/frontend/types/serializers` and `app/frontend/routes` from Alba serializers and the Rails routes. They are committed, and CI checks they're current.
 - Domain and engine (Phase 2): models for farms, pivots, fields, plantings, canopy observations, field/group entries and pivot irrigations; plain-Ruby engine in `app/services` (`WaterBalance`, `CropEt`, `Canopy`, `DailyInputs`, `PlantingBalance`); reference data in `db/reference/*.yml` (loaded on seed and every deploy); `bin/rails demo:seed`.
 - Weather (Phase 3): see the summary above.
+- Core UI (Phase 4): see the summary above.
 - Deploy: `Capfile`, `config/deploy*.rb`, `config/systemd/*.service.erb`, `lib/capistrano/tasks/systemd.rake`, `config/deploy/nginx.conf.example`, `docs/deployment.md`. Production stage needs `PRODUCTION_HOST` (new server, D11).
 
 ## Gotchas learned this session
+
+- **Tailwind v4 only emits theme variables some class uses.** The chart colors are read from JavaScript, so they're in an `@theme static` block in `application.css`; without it they're missing from `:root` and charts fall back to gray.
+- **MapLibre** sets `position: relative` on its container, so size the container (`h-full w-full`) rather than positioning it absolutely. Its worker URL is computed at run time, which breaks under Vite; `PivotMap` imports `maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url` and calls `setWorkerUrl` (`worker.format: 'es'` in `vite.config.ts`).
+- **ECharts can't parse `oklch()`.** `lib/charts/palette.ts` converts the design tokens to rgb by painting them on a canvas.
+- **Svelte trims whitespace at the start of `{#if}` blocks**, so "Pivot{#if x} · Crop{/if}" renders "Pivot· Crop". Put the separator in an expression: ``{` · ${crop}`}``.
+- **`Object#blank?` calls `empty?`** when it exists, so don't define `empty?` on a model (`DailyEntry#nothing_entered?`).
+- **Checkbox lists:** a form with every box unchecked sends nothing, which Rails can't tell from "not sent". The field checkboxes send a blank sentinel (`name="…[field_ids][]" value=""`), and `PivotIrrigation.normalize_field_ids` treats `[]` as invalid and "not sent" as all fields.
+- **Inertia `<Form>` errors** come back keyed exactly as the server sends them, so nested forms read `errors['fields.0.name']`.
+- **Playwright smoke script:** the one used this session signed in as the demo user, switched to "Demo farms" (the demo user's default group is their empty personal one), and walked every page. It lived in the session scratchpad; a version of it belongs in `spec/` or `e2e/` with CI.
+
+## Earlier gotchas
 
 - **Inertia v3** is newer than training data. Check `node_modules/@inertiajs/svelte/dist/*.d.ts` and `@inertiajs/core/types/types.d.ts` instead of guessing:
   - `createInertiaApp({ pages, layout })` sets the pages path and layout.

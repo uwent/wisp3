@@ -28,9 +28,9 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
     api_key: <your key>
   ```
   (Without it staging uses the free API, which also works.)
-- [ ] Push `main` and `bundle exec cap staging deploy` to get Phases 2 and 3 onto staging. The deploy loads plants and soil types; the jobs service then refreshes weather at 5am, 11am and 5pm Central. (The plantings migration enables `btree_gist`; checked that `wisp3` may do that on staging.)
-- [ ] Make yourself an admin on staging, to see `/admin/weather`: `ssh -p 216 deploy@dev.agweather.cals.wisc.edu`, then `cd ~/wisp3/current && RAILS_ENV=staging bin/rails runner 'User.find_by!(email: "you@…").update!(admin: true)'`.
-- [ ] Optional: `RAILS_ENV=staging bin/rails demo:seed EMAIL=you@… PASSWORD=…` in the same place, then `RAILS_ENV=staging bin/rails weather:refresh`, for a demo account with farms, fields and a season of weather (nothing in the UI shows them until Phase 4).
+- [x] Push `main` and `bundle exec cap staging deploy` to get Phases 2 and 3 onto staging. The deploy loads plants and soil types; the jobs service then refreshes weather at 5am, 11am and 5pm Central. (The plantings migration enables `btree_gist`; checked that `wisp3` may do that on staging.)
+- [x] Make yourself an admin on staging, to see `/admin/weather`: `ssh -p 216 deploy@dev.agweather.cals.wisc.edu`, then `cd ~/wisp3/current && RAILS_ENV=staging bin/rails runner 'User.find_by!(email: "you@…").update!(admin: true)'`.
+- [x] Optional: `RAILS_ENV=staging bin/rails demo:seed EMAIL=you@… PASSWORD=…` in the same place, then `RAILS_ENV=staging bin/rails weather:refresh`, for a demo account with farms, fields and a season of weather.
 
 ## Weather (Phase 3 follow-ups)
 

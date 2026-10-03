@@ -26,6 +26,10 @@ bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weath
 - Shared props (`auth.user`, `auth.group`, `auth.groups`) come from `InertiaController`; `page.flash` carries `notice` and `alert`.
 - Page props are built with Alba serializers in `app/serializers`; Typelizer generates their TypeScript types (`@/types/serializers`) and typed route helpers (`@/routes`, returning `{url, method}` for `<Form action>` and `<Link href>`).
 - Forms: use Inertia's `<Form>` component with Rails-style input names (`user[email]`). On validation failure, controllers redirect back with `redirect_with_errors(path, record)`.
+- Units: format and parse every quantity through `app/frontend/lib/units.ts` (`units(user.unit_system)`); form inputs in user units use `NumberField`, which submits the stored unit in a hidden input. Dates from Rails are ISO strings; use `lib/dates.ts`.
+- Grids: `EditableCell` saves one value through `lib/save.ts` (an Inertia visit that keeps scroll and state, resolving with an error message or null). Daily entries are written with `FieldEntry.record` / `FieldGroupEntry.record` (blank clears a value; an empty entry is deleted).
+- Charts: ECharts through `lib/charts/Chart.svelte`, given a `build(palette)` function; option builders are pure (`fieldChart.ts`, `weatherCharts.ts`) and unit tested. Colors come from the `--color-chart-*` tokens (validated for color blindness, light and dark). No dual-axis charts: stack grids or use small multiples.
+- Map: `PivotMap.svelte` (MapLibre, loaded on demand; its worker is bundled by Vite and set with `setWorkerUrl`).
 - Devise controllers live in `app/controllers/users/` and render Inertia pages through `InertiaDeviseResponses`. Passwordless sign-in (`MagicLinksController`) emails a one-time link (`User.generates_token_for(:magic_login)`) and a six-digit code (`User#generate_sign_in_code!`). Wrap links in emails with `email_link_to` (adds `ses:no-track`).
 
 ## Rules
