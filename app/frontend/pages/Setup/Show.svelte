@@ -82,10 +82,13 @@
 {#each farms as farm (farm.id)}
   <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-4 sm:p-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-lg font-medium">{farm.name}</h2>
+      <div class="min-w-0">
+        <h2 class="text-lg font-medium">{farm.name}</h2>
+        {#if farm.notes}<p class="text-sm whitespace-pre-line text-ink-muted">{farm.notes}</p>{/if}
+      </div>
       <div class="flex gap-1 text-sm">
         <Link href={pivots.new({ query: { farm_id: farm.id } })} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50">Add pivot</Link>
-        <Button variant="ghost" class="px-3 py-1.5" onclick={() => open({ kind: 'farm', farm })}>Rename</Button>
+        <Button variant="ghost" class="px-3 py-1.5" onclick={() => open({ kind: 'farm', farm })}>Edit</Button>
         <Button variant="danger-ghost" class="px-3 py-1.5" onclick={() => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its pivots and fields`)}>
           Delete
         </Button>
@@ -214,6 +217,10 @@
           error={errors.name}
           required
         />
+        <div class="space-y-1">
+          <label for="farm-notes" class="block text-sm font-medium">Notes</label>
+          <textarea id="farm-notes" name="farm[notes]" rows="2" class="block w-full rounded-md text-sm">{dialog?.kind === 'farm' ? (dialog.farm?.notes ?? '') : ''}</textarea>
+        </div>
         <Button type="submit" disabled={processing}>Save</Button>
       {/snippet}
     </Form>
