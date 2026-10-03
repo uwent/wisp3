@@ -10,7 +10,8 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
   2. On the server: `CREATE ROLE wisp3 LOGIN CREATEDB PASSWORD '<that password>';`
 - [x] **First `cap staging deploy`** (2026-10-03). Puma is answering on `127.0.0.1:3100`.
 - [x] **Switch the nginx site** for `dev.wisp.cals.wisc.edu` to Puma on `127.0.0.1:3100` (new `sites-available/wisp3`; the legacy site's config is kept).
-- [ ] Sign up on staging and check that the confirmation and sign-in-link emails arrive (sent with the host's `sendmail`).
+- [x] Sign up on staging and check that the confirmation and sign-in-link emails arrive (sent with the host's `sendmail`). Confirmation arrives; scanners using up the link is fixed.
+- [ ] **Turn off SES click/open tracking.** Postfix on the staging host relays through Amazon SES (`email-smtp.us-west-2.amazonaws.com`), which rewrites every link through `awstrack.me`. Ad blockers flag that, and it affects ag-weather's daily emails too. In the SES configuration set the mail uses (likely the identity's default), remove the **Click** and **Open** event types from its event destination; keep Bounce, Complaint and Delivery. Bounce handling and the suppression list don't depend on tracking.
 
 ## Legacy WISP
 
