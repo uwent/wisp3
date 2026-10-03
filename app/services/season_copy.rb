@@ -6,15 +6,18 @@ class SeasonCopy
     @group, @year = group, year
   end
 
-  # The plantings created
+  # copied: the plantings created; failed: the copies that didn't save (check their errors)
+  Result = Data.define(:copied, :failed)
+
   def run
-    fields = @group.fields.includes(:plantings)
-    Planting.transaction do
+    fields = @group.fields.includes(:soil_type, plantings: :plant)
+    copies = Planting.transaction do
       fields.flat_map do |field|
         next [] if field.plantings.any? { |planting| planting.season_year == @year }
-        field.plantings.select { |planting| planting.season_year == @year - 1 }.filter_map { |planting| copy(planting) }
+        field.plantings.select { |planting| planting.season_year == @year - 1 }.map { |planting| copy(planting) }
       end
     end
+    Result.new(copied: copies.select(&:persisted?), failed: copies.reject(&:persisted?))
   end
 
   private
@@ -23,7 +26,6 @@ class SeasonCopy
     attributes = planting.attributes.slice(*%w[field_id plant_id variety max_root_zone_depth mad_frac et_method
       target_ad_pct initial_moisture_pct notes])
     dates = %w[season_start emergence_date end_date].to_h { |column| [column, planting[column].next_year] }
-    copy = Planting.new(attributes.merge(dates))
-    copy if copy.save
+    Planting.new(attributes.merge(dates)).tap(&:save)
   end
 end
