@@ -2,7 +2,8 @@ require "csv"
 
 # A planting's season as CSV: a header block describing the farm, field and crop, one row per day
 # through today, and season totals. Columns follow the legacy export, plus the source of each
-# input. Depths are in inches, as stored.
+# input. Depths are in inches, as stored. Names typed by the grower are escaped so a spreadsheet
+# doesn't run them as formulas.
 class PlantingCsv
   def initialize(status)
     @status = status
@@ -17,12 +18,13 @@ class PlantingCsv
       csv << ["WISP daily report, #{planting.season_year} season"]
       csv << []
       csv << ["Farm", "Pivot", "Equipment", "Field", "Area (acres)"]
-      csv << [field.pivot.farm.name, field.pivot.name, field.pivot.equipment, field.name, field.area_acres]
+      csv << [text(field.pivot.farm.name), text(field.pivot.name), text(field.pivot.equipment), text(field.name),
+        field.area_acres]
       csv << ["Soil type", "Field capacity (%)", "Wilting point (%)", "Target AD (%)"]
       csv << [field.soil_type.name, pct(params.field_capacity), pct(params.perm_wilting_pt), planting.target_ad_pct]
       csv << ["Crop", "Variety", "Root zone depth (in)", "MAD (%)", "Initial moisture (%)", "Emergence",
         "AD at field capacity (in)", "Season start", "Harvest or kill"]
-      csv << [planting.plant.name, planting.variety, planting.max_root_zone_depth, pct(planting.mad_frac),
+      csv << [planting.plant.name, text(planting.variety), planting.max_root_zone_depth, pct(planting.mad_frac),
         planting.initial_moisture_pct || pct(params.field_capacity), planting.emergence_date, num(params.ad_max),
         planting.season_start, planting.end_date]
       csv << []
@@ -46,5 +48,8 @@ class PlantingCsv
   private
 
   def num(value) = value && format("%.4f", value)
+
+  # Text a spreadsheet would read as a formula (=, +, -, @, or a leading tab or return) gets a quote
+  def text(value) = (value.is_a?(String) && value.match?(/\A[=+\-@\t\r]/)) ? "'#{value}" : value
   def pct(fraction) = (fraction * 100).round(2)
 end
