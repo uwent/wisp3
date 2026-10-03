@@ -39,7 +39,8 @@
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
       <Link href={dashboard.show()} class="text-ink"><Logo /></Link>
 
-      <nav aria-label="Main" class="-mx-1 flex gap-1 overflow-x-auto">
+      <!-- On phones: logo and account menu on one row, the nav below; the group switch moves into the account menu -->
+      <nav aria-label="Main" class="order-3 -mx-1 flex w-full gap-1 overflow-x-auto sm:order-2 sm:w-auto">
         {#each nav as item (item.label)}
           <Link
             href={item.route}
@@ -52,25 +53,27 @@
         {/each}
       </nav>
 
-      <div class="ml-auto flex items-center gap-2">
+      <div class="order-2 ml-auto flex items-center gap-2 sm:order-3">
         {#if auth.groups.length > 1}
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger
-              class="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-surface"
-              aria-label="Switch farm operation"
-            >
-              {auth.group?.name} ▾
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
-                {#each auth.groups as group (group.id)}
-                  <DropdownMenu.Item class={menuItem} onSelect={() => switchGroup(group.id)}>
-                    <span class="w-5">{group.id === auth.group?.id ? '✓' : ''}</span>{group.name}
-                  </DropdownMenu.Item>
-                {/each}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
+          <div class="hidden sm:block">
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger
+                class="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-surface"
+                aria-label="Switch farm operation"
+              >
+                {auth.group?.name} ▾
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
+                  {#each auth.groups as group (group.id)}
+                    <DropdownMenu.Item class={menuItem} onSelect={() => switchGroup(group.id)}>
+                      <span class="w-5">{group.id === auth.group?.id ? '✓' : ''}</span>{group.name}
+                    </DropdownMenu.Item>
+                  {/each}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          </div>
         {:else if auth.group}
           <span class="hidden text-sm text-ink-muted sm:inline">{auth.group.name}</span>
         {/if}
@@ -84,6 +87,17 @@
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
+              {#if auth.groups.length > 1}
+                <DropdownMenu.Group class="sm:hidden" aria-label="Farm operation">
+                  <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted">Farm operation</DropdownMenu.GroupHeading>
+                  {#each auth.groups as group (group.id)}
+                    <DropdownMenu.Item class={menuItem} onSelect={() => switchGroup(group.id)}>
+                      <span class="w-5">{group.id === auth.group?.id ? '✓' : ''}</span>{group.name}
+                    </DropdownMenu.Item>
+                  {/each}
+                  <DropdownMenu.Separator class="my-1 h-px bg-line" />
+                </DropdownMenu.Group>
+              {/if}
               <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(settings.show().url)}>
                 Settings
               </DropdownMenu.Item>

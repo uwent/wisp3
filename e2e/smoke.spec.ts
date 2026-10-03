@@ -25,13 +25,13 @@ async function signIn(page: Page) {
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible()
 
-  // The demo farms are a second group; the user's own (empty) group is the default
+  // The demo farms are a second group; the user's own (empty) group is the default. The switcher
+  // is its own menu on wider screens, and part of the account menu on phones.
+  if ((await page.getByRole('heading', { name: 'Dashboard' }).locator('..').textContent())?.includes('Demo farms')) return
   const switcher = page.getByRole('button', { name: 'Switch farm operation' })
-  if (!(await switcher.textContent())?.includes('Demo farms')) {
-    await switcher.click()
-    await page.getByRole('menuitem', { name: 'Demo farms' }).click()
-    await expect(switcher).toContainText('Demo farms')
-  }
+  await ((await switcher.isVisible()) ? switcher : page.getByRole('button', { name: 'Account menu' })).click()
+  await page.getByRole('menuitem', { name: 'Demo farms' }).click()
+  await expect(page.getByRole('heading', { name: 'Dashboard' }).locator('..')).toContainText('Demo farms')
 }
 
 async function firstFieldPath(page: Page): Promise<string> {
