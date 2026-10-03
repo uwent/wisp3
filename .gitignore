@@ -29,3 +29,6 @@
 # Ignore key files for decrypting credentials and more.
 /config/credentials/*.key
 
+
+# Legacy golden fixtures: grower data, kept local until cleared for the public repo (TODO.md)
+/spec/fixtures/legacy/*.json

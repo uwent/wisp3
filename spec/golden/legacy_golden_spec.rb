@@ -5,8 +5,8 @@ require "rails_helper"
 #
 # 1. LegacyEngine, given legacy's own canopy series, reproduces legacy's AD. This checks that
 #    spec/support/legacy_engine.rb really is the legacy model.
-# 2. WaterBalance differs from legacy's AD only on days that a listed fix explains: removing that
-#    fix from LegacyEngine (or, for C3/C4, using legacy's canopy) changes the day.
+# 2. WaterBalance differs from legacy's AD only on days that listed fixes explain: undoing a fix,
+#    or a pair of fixes, in LegacyEngine (for C3/C4, using legacy's canopy) changes the day.
 #
 # Both start from legacy's AD on the first day: legacy recomputed day 1 on top of its own stored
 # value, so its first day isn't reproducible from the inputs.
@@ -46,7 +46,7 @@ RSpec.describe "Golden tests against legacy WISP" do
       inputs = ->(canopies) do
         run_days.zip(canopies).map do |day, canopy|
           {date: day[:date], et0: day[:ref_et], rain: day[:rain], irrigation: day[:irrigation],
-           moisture: day[:entered_pct_moisture], canopy:}
+           moisture: day[:entered_pct_moisture], canopy:, stored_adj_et: day[:adj_et]}
         end
       end
       legacy = ->(canopies, fixes) do
@@ -72,21 +72,30 @@ RSpec.describe "Golden tests against legacy WISP" do
         fixed = legacy.call(new_canopy, all_fixes)
         expect(actual.zip(fixed)).to all(satisfy { |a, b| (a - b).abs < tolerance })
 
-        without = all_fixes.to_h { |fix| [fix, legacy.call(new_canopy, all_fixes - [fix])] }
-        without[lai ? :c4 : :c3] = legacy.call(legacy_canopy, all_fixes)
+        # Legacy with a set of fixes undone. A day is explained by the smallest sets whose undoing
+        # changes it (fixes can interact: e.g. C4 zeroes ET, so C7's gap fill only shows with both)
+        canopy_fix = lai ? :c4 : :c3
+        undo = ->(set) do
+          canopies = set.include?(canopy_fix) ? legacy_canopy : new_canopy
+          legacy.call(canopies, all_fixes - set)
+        end
+        candidates = (1..2).flat_map { |n| (all_fixes + [canopy_fix]).combination(n).to_a }
+        undone = candidates.to_h { |set| [set, undo.call(set)] }
 
         tally = Hash.new(0)
         unexplained = expected.each_index.select do |i|
           next false if (actual[i] - expected[i]).abs < tolerance
-          causes = without.select { |_, ads| (ads[i] - fixed[i]).abs >= 1e-6 }.keys
-          causes.each { |fix| tally[fix] += 1 }
+          changing = undone.select { |_, ads| (ads[i] - fixed[i]).abs >= 1e-6 }.keys
+          smallest = changing.map(&:size).min
+          causes = changing.select { |set| set.size == smallest }.map { |set| set.map(&:upcase).join("+") }
+          causes.each { |cause| tally[cause] += 1 }
           causes.empty?
         end
 
         differing = expected.each_index.count { |i| (actual[i] - expected[i]).abs >= tolerance }
         RSpec.configuration.reporter.message(
           "  #{path.basename(".json")}: #{differing}/#{expected.size} days differ" +
-          (tally.any? ? " (#{tally.map { |fix, n| "#{fix.upcase} #{n}" }.join(", ")})" : "")
+          (tally.any? ? " (#{tally.map { |cause, n| "#{cause} #{n}" }.join(", ")})" : "")
         )
         expect(unexplained).to be_empty,
           -> { "#{unexplained.size} differing days with no listed fix, first #{run_days[unexplained.first][:date]}" }

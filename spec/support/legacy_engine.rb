@@ -10,7 +10,8 @@ module LegacyEngine
   FIXES = {
     c2: "moisture reading capped at AD_max (not TAW) and floored at the wilting point",
     c7: "gap fill from computed days only, within the previous 7 days",
-    c8: "percent-cover ET: half-open bare-soil steps, cover clamped to 0–100, never negative"
+    c8: "percent-cover ET: half-open bare-soil steps, cover clamped to 0–100, never negative",
+    c19: "ET recomputed on soil moisture reading days (legacy kept a stale stored value, which fed gap fill)"
   }.freeze
 
   # Fixes that change the canopy series rather than the balance; the golden tests check them by
@@ -22,7 +23,8 @@ module LegacyEngine
 
   module_function
 
-  # days: [{date:, et0:, rain:, irrigation:, moisture:, canopy:}]; returns AD per day
+  # days: [{date:, et0:, rain:, irrigation:, moisture:, canopy:, stored_adj_et:}]; returns AD per
+  # day. stored_adj_et is the adj_et legacy had saved for the day, which it kept on reading days.
   def run(field_capacity:, perm_wilting_pt:, max_root_zone_depth:, mad_frac:, days:, et_method: "pct_cover", fixes: [],
     initial_ad: nil)
     mrzd = max_root_zone_depth
@@ -38,7 +40,10 @@ module LegacyEngine
       ref_et = day[:et0] || 0.0
       adj_et = (et_method == "lai") ? lai_et(ref_et, day[:canopy]) : pct_cover_et(ref_et, day[:canopy], fixes.include?(:c8))
       filled = ref_et < 0.00001
-      if filled
+      if day[:moisture] && day.key?(:stored_adj_et) && !fixes.include?(:c19)
+        adj_et = day[:stored_adj_et] || 0.0
+        filled = false
+      elsif filled
         adj_et = if fixes.include?(:c7)
           recent = computed.filter_map { |date, et| et if date >= day[:date] - 7 }
           recent.empty? ? 0.0 : recent.max(3).sum / recent.max(3).size
@@ -46,9 +51,8 @@ module LegacyEngine
           top = ring.last(7).sort.reverse[0...3]
           top.empty? ? 0.0 : top.sum / top.length
         end
-      else
-        computed << [day[:date], adj_et]
       end
+      computed << [day[:date], adj_et] unless filled
 
       if day[:moisture]
         raw = mrzd * (day[:moisture] - pct_at_ad_min) / 100

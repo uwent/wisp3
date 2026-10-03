@@ -116,7 +116,7 @@ AlertDelivery (dedupe log), MagicLinkToken (if not using stateless tokens), Anno
 - **farms**: no `year` column. Farms persist across seasons.
 - **pivots**: `name, latitude, longitude, radius_ft, arc_start_deg, arc_end_deg (nullable = full circle), equipment, pump_capacity_gpm, notes`.
   - **Location is required and has no default.** In legacy production, 215 of 443 pivots (49%) were still at the default 43, −89, so half of all fields got weather for the wrong place.
-  - Pivot creation therefore starts with a map picker (click the pivot center, drag the radius) or typed coordinates, validated to fall within a Wisconsin-and-neighbors bounding box.
+  - Pivot creation therefore starts with a map picker (click the pivot center, drag the radius) or typed coordinates, validated to fall within a US-and-Canada bounding box (latitude 18–84, longitude −180 to −52). Weather coverage is global, so this can widen later.
 - **fields**: `name, area_acres, soil_type_id, field_capacity, perm_wilting_pt` (nullable, so NULL means "use the soil type default"; the legacy code used 0.0 for that), `notes`, optional `boundary` (GeoJSON jsonb) for non-pivot or partial areas.
 - **plantings**: `field_id, plant_id, variety, season_start (default Apr 1), emergence_date, end_date (harvest/kill, default Nov 30), max_root_zone_depth, mad_frac, et_method (pct_cover | lai), target_ad_pct, initial_moisture_pct (nullable, NULL = start at field capacity), notes`. The season year is `season_start.year` (no separate column to disagree with it). Plantings on the same field can't overlap in time (model validation plus a Postgres exclusion constraint). This supports double-cropping properly (replacing the legacy `current_crop` "latest emergence" hack). Emergence may precede `season_start` (perennials).
 - **canopy_observations**: `planting_id, date, pct_cover (0–100) | lai (≥0)`. These are anchor points for interpolation (§5.3).
@@ -341,6 +341,7 @@ Every ported method is checked against this list. Items marked **Hotfix** should
 | C15 | `Crop#initial_soil_moisture` shadows the column (always FC) | `crop.rb` | `initial_moisture_pct`, nullable, meaningful |
 | C16 | `max_adj_et_in_past_week` calls `size(-1)` (would raise) | `field.rb` | Dead code; not ported |
 | C17 | Server-local `Date.today` / `Time.now` | throughout | `config.time_zone = "Central Time (US & Canada)"`, `Date.current` |
+| C19 | On a soil moisture reading day, adjusted ET isn't recomputed: the value stored by an earlier run (often from older canopy or weather) is kept and fed into the gap-fill buffer. Found by the golden tests (2 of 12 active fixture fields) | `old_update_balances` | ET computed fresh every day |
 
 ### Architecture and performance
 
@@ -476,7 +477,9 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [x] `WaterBalance`, `Canopy`/`CanopyModel`, `CropEt` (`app/services`) with the §5 fixes and unit tests; property tests for AD bounds and water conservation.
 - [x] `DailyInputs` resolver (precedence and provenance, including pivot irrigation and run hours); `PlantingBalance` runs a planting's season from the database.
 - [x] Golden test harness: `spec/support/legacy_engine.rb` reproduces legacy with each fix switchable (with all fixes it equals `WaterBalance`); `spec/golden` checks each fixture field and attributes every differing day to a fix. Export script `script/legacy/export_golden_fixtures.rb` (checked against the local legacy dev DB, whose 2026 fields have no weather).
-- [ ] Run the export on legacy production, `bin/rails golden:import FILE=…`, and make the golden tests pass (Ben runs the export).
+- [x] Golden tests pass on 30 fields exported from legacy production (2026-10-03). 12 have weather; 18 never received reference ET (AD flat all season) and pass trivially. Every differing day traces to C2, C3, C4, C7, C19, or C7+C4 together. Findings:
+  - **C19** (new): stale ET on moisture-reading days.
+  - **C7 dominates**: active fields are missing reference ET on 80–200 of 243 days, so legacy ran much of the season on self-fed gap fill. Open-Meteo (Phase 3) should make gaps rare; the new engine stops gap-filling after 7 days instead.
 - [x] `bin/rails demo:seed`: a demo account with 3 farms, 13 fields (a pivot with 8 fields, a double crop), both ET methods, pivot irrigation in inches, run hours and for a subset, a soil moisture reading and a field group.
 - **Exit:** golden tests pass for every fixture field, and each difference traces to a listed fix.
 

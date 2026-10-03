@@ -15,16 +15,17 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Legacy WISP
 
-- [ ] If not done yet, run the rainfall backfill on production: `DRY_RUN=1 bundle exec rake precip:backfill`, review the output, then run it without `DRY_RUN`.
-- [ ] Optional: tell the one sweet corn + LAI grower their 2026 water balance was wrong (PLAN.md C18).
-- [ ] **Export golden-test fixtures** from legacy production (any time now; the 2026 season is over). Read-only:
-  ```bash
-  scp -P 216 script/legacy/export_golden_fixtures.rb deploy@<legacy host>:/tmp/
-  # on the server:
-  cd ~/wisp/current && RAILS_ENV=production bundle exec rails runner /tmp/export_golden_fixtures.rb > /tmp/wisp_golden.json
-  ```
-  Copy `wisp_golden.json` back and tell the next session; it runs `bin/rails golden:import FILE=wisp_golden.json` and works through any differences.
+- [x] If not done yet, run the rainfall backfill on production: `DRY_RUN=1 bundle exec rake precip:backfill`, review the output, then run it without `DRY_RUN`.
+- [x] Optional: tell the one sweet corn + LAI grower their 2026 water balance was wrong (PLAN.md C18).
+- [x] **Export golden-test fixtures** from legacy production (done 2026-10-03; 30 fields, all tests pass).
+- [ ] **Decide whether the golden fixtures can go in the public repo.** `spec/fixtures/legacy/*.json` (2.9 MB, local only for now) holds no names, locations or IDs, but does hold real per-field daily rain, irrigation, soil parameters and crop. They are gitignored until then (remove the line in `.gitignore` to commit them). If they can't be public, they stay local, and CI on GitHub skips the golden tests (`bin/ci` runs them on any machine that has them).
+- [ ] Optional: re-run the export for better coverage. 18 of the 30 exported fields never received reference ET, so they only test a flat line; the script now picks only fields with at least 60 days of reference ET. Same commands as before (`scp -P 216 script/legacy/export_golden_fixtures.rb deploy@wisp.cals.wisc.edu:/tmp/`, then `rails runner` on the server), then `bin/rails golden:import FILE=tmp/wisp_golden.json` (delete the old `spec/fixtures/legacy/*.json` first).
 - [ ] **After Nov 30, and before Feb 15:** take an archive `pg_dump` of legacy production. The AgWeather comparison export (PLAN.md §8.4) is still to be written, in Phase 3.
+
+## Staging (non-blocking)
+
+- [ ] Push `main` and `bundle exec cap staging deploy` to get Phase 2 onto staging. The deploy now also loads plants and soil types. (The plantings migration enables `btree_gist`; checked that `wisp3` may do that on staging.)
+- [ ] Optional: `cd ~/wisp3/current && RAILS_ENV=staging bin/rails demo:seed EMAIL=you@… PASSWORD=…` on the server, for a demo account with farms and fields there (nothing shows them until Phase 4).
 
 ## Waiting on other people (start early)
 

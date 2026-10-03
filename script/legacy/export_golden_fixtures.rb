@@ -16,7 +16,8 @@ ActiveRecord::Base.transaction do
   ActiveRecord::Base.connection.execute("SET TRANSACTION READ ONLY")
 
   fields = Field.joins(:pivot).where(pivots: {cropping_year: year})
-    .where(id: FieldDailyWeather.where.not(ad: nil).group(:field_id).having("count(*) >= 60").select(:field_id))
+    # Fields in real use: at least 60 days with reference ET (many have none and never change)
+    .where(id: FieldDailyWeather.where.not(ad: nil).where("ref_et > 0").group(:field_id).having("count(*) >= 60").select(:field_id))
     .to_a.select { |field| field.current_crop&.plant }
   in_groups = MultiEditLink.distinct.pluck(:field_id).to_set
   fdw = ->(field) { field.field_daily_weather.sort_by(&:date) }

@@ -50,10 +50,13 @@ RSpec.describe "Domain models" do
   end
 
   describe Pivot do
-    it "needs a location in or near Wisconsin" do
+    it "needs a location in the US or Canada" do
       expect(build(:pivot, latitude: nil)).not_to be_valid
       expect(build(:pivot, longitude: 89.5)).not_to be_valid # sign dropped
-      expect(build(:pivot, latitude: 44.5, longitude: -89.5)).to be_valid
+      expect(build(:pivot, latitude: -89.5, longitude: 44.5)).not_to be_valid # swapped
+      expect(build(:pivot, latitude: 44.5, longitude: -89.5)).to be_valid # Wisconsin
+      expect(build(:pivot, latitude: 36.7, longitude: -119.8)).to be_valid # California
+      expect(build(:pivot, latitude: 50.4, longitude: -104.6)).to be_valid # Saskatchewan
     end
   end
 
