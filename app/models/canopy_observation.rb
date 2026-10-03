@@ -3,7 +3,7 @@ class CanopyObservation < ApplicationRecord
   belongs_to :planting
 
   validates :date, presence: true, uniqueness: {scope: :planting_id}
-  validates :pct_cover, numericality: {in: 0..100}, allow_nil: true
+  validates :pct_cover, numericality: {in: 0..100, message: "must be between 0 and 100"}, allow_nil: true
   validates :lai, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
   validate :exactly_one_value
 

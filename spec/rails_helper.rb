@@ -22,6 +22,10 @@ end
 # Outbound HTTP is never allowed in specs (Vite's dev server check uses localhost)
 WebMock.disable_net_connect!(allow_localhost: true)
 
+# Specs use the free Open-Meteo API whatever a developer's .env holds; specs of the commercial
+# API pass api_key: explicitly
+ENV.delete("OPEN_METEO_API_KEY")
+
 RSpec.configure do |config|
   config.fixture_paths = [Rails.root.join("spec/fixtures")]
   config.use_transactional_fixtures = true

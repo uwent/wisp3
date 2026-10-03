@@ -29,6 +29,25 @@ Rails.application.routes.draw do
 
   resource :settings, only: [:show, :update]
 
+  # Setup: farms → pivots → fields → plantings, the guided first run, and copying last season
+  resource :setup, only: [:show, :update], controller: "setup"
+  resource :quick_setup, only: [:new, :create], path: "setup/start", path_names: {new: ""}
+  resource :season_copy, only: :create, path: "setup/copy_season"
+  resources :farms, only: [:create, :update, :destroy]
+  resources :pivots, only: [:show, :new, :create, :edit, :update, :destroy] do
+    resources :irrigations, only: [:create, :update, :destroy], controller: "pivot_irrigations"
+  end
+  resources :fields, only: [:show, :create, :update, :destroy] do
+    resources :days, only: :update, controller: "field_days", param: :date
+  end
+  resources :plantings, only: [:create, :update, :destroy] do
+    get :export, on: :member, defaults: {format: :csv}
+  end
+  resources :field_groups, only: [:index, :show, :create, :update, :destroy] do
+    resources :days, only: :update, controller: "field_group_days", param: :date
+  end
+  resource :daily_entry, only: [:show, :update], path: "daily"
+
   namespace :admin do
     resource :weather, only: :show, controller: "weather" do
       post :refresh

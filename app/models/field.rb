@@ -2,7 +2,7 @@ class Field < ApplicationRecord
   belongs_to :pivot
   belongs_to :soil_type
   has_one :farm, through: :pivot
-  has_many :plantings, dependent: :destroy
+  has_many :plantings, -> { order(:season_start) }, dependent: :destroy
   has_many :field_entries, dependent: :destroy
   has_many :field_group_members, dependent: :destroy
   has_many :field_groups, through: :field_group_members
@@ -11,6 +11,8 @@ class Field < ApplicationRecord
   validates :area_acres, numericality: {greater_than: 0}, allow_nil: true
   validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}, allow_nil: true
   validate :wilting_point_below_capacity
+
+  normalizes :notes, with: ->(text) { text.strip.presence }
 
   # NULL means "use the soil type's value" (C14)
   def effective_field_capacity = field_capacity || soil_type.field_capacity

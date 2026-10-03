@@ -13,9 +13,11 @@ class InertiaController < ApplicationController
 
   private
 
-  # Inertia expects validation errors as {field => [messages]} on a redirect back to the form
+  # Inertia expects validation errors as {field => [messages]} on a redirect back to the form.
+  # Takes a record, its ActiveModel::Errors, or a hash already in that shape.
   def redirect_with_errors(path, record_or_errors)
     errors = record_or_errors.respond_to?(:errors) ? record_or_errors.errors : record_or_errors
-    redirect_to path, inertia: {errors: errors.to_hash(true)}
+    errors = errors.to_hash(true) if errors.is_a?(ActiveModel::Errors)
+    redirect_to path, inertia: {errors:}
   end
 end

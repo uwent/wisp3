@@ -10,11 +10,14 @@ class Planting < ApplicationRecord
 
   validates :season_start, :emergence_date, :end_date, presence: true
   validates :max_root_zone_depth, numericality: {greater_than: 0}
-  validates :mad_frac, numericality: {in: 0.05..0.95}
+  validates :mad_frac, numericality: {in: 0.05..0.95, message: "must be between 5% and 95%"}
   validates :et_method, inclusion: {in: ET_METHODS}
-  validates :target_ad_pct, :initial_moisture_pct, numericality: {in: 0..100}, allow_nil: true
+  validates :target_ad_pct, :initial_moisture_pct, numericality: {in: 0..100, message: "must be between 0 and 100"},
+    allow_nil: true
   validate :dates_in_order
   validate :no_overlap, if: -> { field && season_start && end_date }
+
+  normalizes :variety, :notes, with: ->(text) { text.strip.presence }
 
   scope :in_season, ->(year) { where(season_start: Date.new(year).all_year) }
 

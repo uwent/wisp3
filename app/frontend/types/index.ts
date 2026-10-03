@@ -1,4 +1,5 @@
 import type { Group, User } from './serializers'
+export type * from './serializers'
 
 export type FlashData = {
   notice?: string

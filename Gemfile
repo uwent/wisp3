@@ -15,6 +15,7 @@ gem "vite_rails" # builds the Svelte/TS/Tailwind frontend
 gem "alba" # JSON serializers for page props
 gem "typelizer" # generates TypeScript types (serializers) and route helpers for the frontend
 gem "rack-attack" # rate limiting
+gem "csv" # field CSV export (a bundled gem since Ruby 3.4)
 
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"

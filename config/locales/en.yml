@@ -1,31 +1,37 @@
-# Files in the config/locales directory are used for internationalization and
-# are automatically loaded by Rails. If you want to use locales other than
-# English, add the necessary files in this directory.
-#
-# To use the locales, use `I18n.t`:
-#
-#     I18n.t "hello"
-#
-# In views, this is aliased to just `t`:
-#
-#     <%= t("hello") %>
-#
-# To use a different locale, set it with `I18n.locale`:
-#
-#     I18n.locale = :es
-#
-# This would use the information in config/locales/es.yml.
-#
-# To learn more about the API, please read the Rails Internationalization guide
-# at https://guides.rubyonrails.org/i18n.html.
-#
-# Be aware that YAML interprets the following case-insensitive strings as
-# booleans: `true`, `false`, `on`, `off`, `yes`, `no`. Therefore, these strings
-# must be quoted to be interpreted as strings. For example:
-#
-#     en:
-#       "yes": yup
-#       enabled: "ON"
-
+# Attribute names as growers see them in validation messages ("Soil moisture must be between 0
+# and 100", not "Soil moisture pct must be in 0..100")
 en:
-  hello: "Hello world"
+  activerecord:
+    attributes:
+      field_entry: &daily_entry
+        rain_in: Rain
+        irrigation_in: Irrigation
+        soil_moisture_pct: Soil moisture
+      field_group_entry: *daily_entry
+      canopy_observation:
+        pct_cover: Percent cover
+        lai: LAI
+      planting:
+        plant: Crop
+        max_root_zone_depth: Root zone depth
+        mad_frac: MAD
+        et_method: Canopy method
+        target_ad_pct: Target AD
+        initial_moisture_pct: Starting soil moisture
+        season_start: Season start
+        emergence_date: Emergence
+        end_date: Harvest or kill date
+      field:
+        area_acres: Area
+        soil_type: Soil
+        field_capacity: Field capacity
+        perm_wilting_pt: Wilting point
+      pivot:
+        radius_ft: Radius
+        pump_capacity_gpm: Pump capacity
+        arc_start_deg: Arc start
+        arc_end_deg: Arc end
+      pivot_irrigation:
+        inches: Amount
+        run_hours: Run hours
+        field_ids: Fields

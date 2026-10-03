@@ -6,15 +6,17 @@ class Pivot < ApplicationRecord
 
   belongs_to :farm
   belongs_to :weather_cell, optional: true
-  has_many :fields, dependent: :destroy
+  has_many :fields, -> { order(:name) }, dependent: :destroy
   has_many :pivot_irrigations, dependent: :destroy
 
   validates :name, presence: true, length: {maximum: 100}
   validates :latitude, presence: true, numericality: {in: LATITUDES, message: "must be in the US or Canada"}
   validates :longitude, presence: true, numericality: {in: LONGITUDES, message: "must be in the US or Canada"}
   validates :radius_ft, :pump_capacity_gpm, numericality: {greater_than: 0}, allow_nil: true
-  validates :arc_start_deg, :arc_end_deg, numericality: {in: 0..360}, allow_nil: true
+  validates :arc_start_deg, :arc_end_deg, numericality: {in: 0..360, message: "must be between 0 and 360"}, allow_nil: true
   validate :arc_complete
+
+  normalizes :equipment, :notes, with: ->(text) { text.strip.presence }
 
   before_save :assign_weather_cell, if: -> { will_save_change_to_latitude? || will_save_change_to_longitude? }
   after_commit :backfill_weather, if: -> { saved_change_to_weather_cell_id? && weather_cell_id }

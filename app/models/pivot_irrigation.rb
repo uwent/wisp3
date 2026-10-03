@@ -11,6 +11,14 @@ class PivotIrrigation < ApplicationRecord
   validate :fields_under_pivot
   validate :run_hours_convertible, if: -> { inches.nil? && run_hours }
 
+  # Field IDs as submitted by a form, as stored: not sent, or every field under the pivot, means all
+  # (NULL). Forms send a blank entry with the checkboxes, so unchecking every one leaves [] (invalid).
+  def self.normalize_field_ids(pivot, ids)
+    return if ids.nil?
+    ids = Array(ids).compact_blank.map(&:to_i)
+    (ids.sort == pivot.field_ids.sort) ? nil : ids
+  end
+
   def applies_to?(field) = field.pivot_id == pivot_id && (field_ids.nil? || field_ids.include?(field.id))
 
   def irrigated_fields
