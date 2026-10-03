@@ -34,8 +34,10 @@ class User < ApplicationRecord
     code
   end
 
+  # The resend cooldown; signing in (by any means) ends it
   def sign_in_code_recently_sent?
-    sign_in_code_sent_at.present? && sign_in_code_sent_at > SIGN_IN_CODE_RESEND_AFTER.ago
+    sign_in_code_sent_at.present? && sign_in_code_sent_at > SIGN_IN_CODE_RESEND_AFTER.ago &&
+      (current_sign_in_at.nil? || sign_in_code_sent_at > current_sign_in_at)
   end
 
   # True if the code matches the live one, which is then spent. Every try counts toward the

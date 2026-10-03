@@ -1,9 +1,9 @@
 # Request throttling and blocking, carried over from the legacy app with paths updated.
-# Per-account limits on sign-in links live in MagicLinksController (Rails rate_limit).
+# Per-address limits on sign-in emails live in MagicLinksController (WindowLimit).
 class Rack::Attack
   Rack::Attack.cache.store = Rails.cache
 
-  AUTH_POSTS = %r{\A/account(/sign_in|/sign_in_link|/password|/confirmation)?\z}
+  AUTH_POSTS = %r{\A/account(/sign_in|/sign_in_link|/sign_in_code|/password|/confirmation)?\z}
 
   safelist("allow from localhost") do |req|
     ["127.0.0.1", "::1"].include?(req.ip)
@@ -17,7 +17,7 @@ class Rack::Attack
     req.ip if %w[POST PUT PATCH DELETE].include?(req.request_method)
   end
 
-  # Sign-in, sign-up (POST /account), sign-in links, password resets, confirmation resends
+  # Sign-in, sign-up (POST /account), sign-in links and codes, password resets, confirmation resends
   throttle("auth/ip", limit: 5, period: 20.seconds) do |req|
     req.ip if req.post? && req.path.match?(AUTH_POSTS)
   end

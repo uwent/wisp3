@@ -82,10 +82,41 @@ RSpec.describe "Sign-in links and codes", type: :request do
       expect(ActionMailer::Base.deliveries.size).to eq(1)
     end
 
-    it "limits requests per address" do
-      5.times { |i| travel(i.minutes) { post magic_links_path, params: {email: user.email} } }
-      post magic_links_path, params: {email: user.email}
-      expect(flash[:alert]).to match(/Too many sign-in emails/)
+    it "limits requests per address, saying when to try again" do
+      start = Time.zone.parse("2026-10-03 13:20")
+      5.times { |i| travel_to(start + i.minutes) { request_email } }
+      travel_to(start + 5.minutes) { request_email }
+      expect(flash[:alert]).to eq("Too many sign-in emails requested. Please try again in 35 minutes.")
+    end
+
+    it "lifts the per-address limit when the user signs in" do
+      5.times { |i| travel(i.minutes) { request_email } }
+      sign_in user
+      get root_path
+      delete destroy_user_session_path
+
+      travel(5.minutes) { request_email }
+      expect(response).to redirect_to(sign_in_code_path)
+      expect(ActionMailer::Base.deliveries.size).to eq(6)
+    end
+
+    it "sends a new code straight away after signing in with one" do
+      request_email
+      post sign_in_code_path, params: {code: emailed_code}
+      delete destroy_user_session_path
+
+      request_email
+      expect(ActionMailer::Base.deliveries.size).to eq(2)
+    end
+
+    it "sends a new code straight away after signing in with a password" do
+      request_email
+      reset!
+      post user_session_path, params: {user: {email: user.email, password: user.password}}
+      delete destroy_user_session_path
+
+      request_email
+      expect(ActionMailer::Base.deliveries.size).to eq(2)
     end
   end
 
@@ -163,6 +194,13 @@ RSpec.describe "Sign-in links and codes", type: :request do
       expect(response).to redirect_to(sign_in_code_path)
       follow_redirect!
       expect(inertia.props[:errors]).to include("code")
+    end
+
+    it "limits tries per IP" do
+      request_email
+      20.times { post sign_in_code_path, params: {code: wrong_code} }
+      post sign_in_code_path, params: {code: emailed_code}
+      expect(flash[:alert]).to match(/Too many sign-in attempts. Please try again in \d+ minutes?\./)
     end
 
     it "stops working after 5 wrong tries" do
