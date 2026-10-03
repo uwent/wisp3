@@ -47,6 +47,17 @@ describe('EditableCell', () => {
     expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
+  it("doesn't save on the blur that follows Escape (Chromium blurs the input as it's removed)", async () => {
+    const onsave = vi.fn()
+    render(EditableCell, props(onsave))
+    await fireEvent.click(screen.getByRole('button'))
+    const input = screen.getByRole('textbox')
+    await fireEvent.input(input, { target: { value: '3' } })
+    await fireEvent.keyDown(input, { key: 'Escape' })
+    await fireEvent.blur(input)
+    expect(onsave).not.toHaveBeenCalled()
+  })
+
   it('keeps the input open and shows the error when saving fails', async () => {
     render(EditableCell, props(vi.fn().mockResolvedValue('Enter a number')))
     await fireEvent.click(screen.getByRole('button'))

@@ -46,7 +46,8 @@
   }
 
   async function commit(move?: 'down') {
-    if (saving) return
+    // Chromium blurs an input as it's removed, so a cancelled or finished edit can arrive here too
+    if (saving || !editing) return
     if (draft.trim() === text.trim()) {
       editing = false
       if (move) cellAt(row + 1, col)?.click()

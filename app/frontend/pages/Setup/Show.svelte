@@ -37,8 +37,11 @@
   }
   const close = () => (dialogOpen = false)
 
-  function destroy(route: { url: string }, what: string) {
-    if (confirm(`Delete ${what}? This can't be undone.`)) router.delete(route.url, { preserveScroll: true })
+  /** Asks first; true if the delete was sent */
+  function destroy(route: { url: string }, what: string): boolean {
+    if (!confirm(`Delete ${what}? This can't be undone.`)) return false
+    router.delete(route.url, { preserveScroll: true })
+    return true
   }
 
   const dialogTitle = $derived.by(() => {
@@ -223,8 +226,8 @@
         type="button"
         class="mt-4 text-sm text-status-irrigate hover:underline"
         onclick={() => {
-          if (dialog?.kind === 'planting' && dialog.planting) destroy(plantings.destroy(dialog.planting.id), `this ${dialog.planting.plant_name} crop and its canopy readings`)
-          close()
+          if (dialog?.kind !== 'planting' || !dialog.planting) return
+          if (destroy(plantings.destroy(dialog.planting.id), `this ${dialog.planting.plant_name} crop and its canopy readings`)) close()
         }}
       >
         Delete this crop
