@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## Project
 
-WISP 3: a rewrite of the Wisconsin Irrigation Scheduling Program (legacy app in `../wisp`). The design, decisions (D1–D11) and phases are in `plan.md`; check it before starting a phase, and update its checklists as work lands.
+WISP 3: a rewrite of the Wisconsin Irrigation Scheduling Program (legacy app in `../wisp`). The design, decisions (D1–D11) and phases are in `PLAN.md`; check it before starting a phase, and update its checklists as work lands.
 
 ## Commands
 
@@ -30,5 +30,5 @@ bin/rails typelizer:generate     # after changing serializers or routes; commit 
 - **Tenancy:** every signed-in controller inherits `AuthenticatedController`. Load group-owned records only through `Current.group` (e.g. `Current.group.farms.find(params[:id])`), never `Model.find(params[:id])`. The legacy app's worst bug was unscoped lookups. Add a cross-tenant request spec for every new controller.
 - **Units:** store water depths in inches. Unit conversion (Q3: `users.unit_system`) happens only at the display and input edge in the frontend.
 - **Missing data is NULL, never 0.** A value the user entered as zero is 0.0.
-- **Legacy code:** when porting from `../wisp`, check each method against the audit in `plan.md` §9 before reusing it.
+- **Legacy code:** when porting from `../wisp`, check each method against the audit in `PLAN.md` §9 before reusing it.
 - Ruby style is Standard; prefer small, plain-Ruby service objects for domain math (no ActiveRecord callbacks cascading recalculation).

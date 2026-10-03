@@ -440,7 +440,7 @@ Users start fresh in WISP 3. That removes the riskiest part of the project (the 
 
 Calendar assumes one primary developer, Oct 2026 → Mar 2027. Each phase ends deployed to staging.
 
-### Phase 0: Legacy housekeeping (week of Oct 5)
+### Phase 0: Legacy housekeeping
 
 Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs passing). Push, deploy and the backfill remain.
 
@@ -453,7 +453,7 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [x] Usage query run on production (results in Q2). Only 1 sweet corn + LAI field and the season is over, so no C18 legacy hotfix.
 - [ ] After Nov 30: archive `pg_dump` of legacy production; export golden-test fixtures (§10) and AgWeather ET/precip for 2025–2026 at the ~228 real pivot locations (§8.4).
 
-### Phase 1: Foundation (Oct)
+### Phase 1: Foundation
 
 - [x] `rails new` (Rails 8.1, Postgres, no Hotwire/importmap/asset pipeline) in `wisp3`; git; public GitHub repo `uwent/wisp3`; CI (`bin/ci`, run by GitHub Actions).
 - [x] `vite_rails`, `inertia_rails` (Inertia v3), Svelte 5 + TS, Tailwind v4 (`@tailwindcss/vite`), `bits-ui`, Alba + Typelizer (types and route helpers).
@@ -461,11 +461,11 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [x] Devise + Inertia auth pages (sign up, sign in, confirmation, password reset, settings with email/password change and account deletion), **sign-in links**, rate limits (Rails `rate_limit` + Rack::Attack).
 - [x] Group / membership / `Current.group` tenancy, with cross-tenant request specs.
 - [x] Capistrano config, systemd user units, nginx example, staging credentials; first-time setup steps in `docs/deployment.md`.
-- [ ] First deploy to staging (needs the server-side steps in `docs/deployment.md`: Postgres role, credentials key, Node 24 on PATH, nginx site).
+- [x] First deploy to staging (2026-10-03): Puma answers on 127.0.0.1:3100 and both services are enabled. nginx serves it at https://dev.wisp.cals.wisc.edu.
 - [ ] Send the §12 server requirements to the sysadmin so the new production box is ready by February.
-- **Exit:** a user can sign up, confirm, sign in by password or link, and see an empty dashboard on staging. *(Verified locally in a headless browser, desktop and phone/dark; staging pending the first deploy.)*
+- **Exit:** a user can sign up, confirm, sign in by password or link, and see an empty dashboard on staging. *(Verified locally in a headless browser, desktop and phone/dark; staging live 2026-10-03; sign-up and email delivery on staging still to check.)*
 
-### Phase 2: Domain and engine (Oct–Nov)
+### Phase 2: Domain and engine
 
 - [ ] Migrations and models for §4; seeds for plants and soil types (ported YAML).
 - [ ] `WaterBalance`, `Canopy`, `CropEt` modules with the §5 fixes and full unit tests.
@@ -474,7 +474,7 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [ ] Dev seed task that builds a realistic demo group (several farms, multi-field pivots, both ET methods) for development, staging and the beta.
 - **Exit:** golden tests pass for every fixture field, and each difference traces to a listed fix.
 
-### Phase 3: Weather (Nov)
+### Phase 3: Weather
 
 - [ ] `Weather::OpenMeteo` client (free / customer endpoints, key optional), rate limiter, unit conversion.
 - [ ] Cells, `weather_days`, `weather_forecasts`; refresh, finalize, backfill and prune jobs.
@@ -483,7 +483,7 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [ ] **AgWeather vs Open-Meteo comparison report** (§8.4); choose the model (best_match vs NBM).
 - **Exit:** every pivot in the demo seed data has season-to-date data and a current forecast; comparison report written and decision recorded.
 
-### Phase 4: Core UI (Dec–Jan)
+### Phase 4: Core UI
 
 - [ ] Setup pages (farms/pivots/fields/plantings), "copy last season", and a guided first-run setup (target: two-field pivot in under 5 minutes, §13).
 - [ ] Pivot location picker (MapLibre, click center, drag radius) used in pivot creation; location required.
@@ -496,28 +496,28 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [ ] Modeled rain shown next to entered corrections in the grid, chart and season summary (Q7).
 - **Exit:** the main legacy features are all available; an internal user can manage a season end to end.
 
-### Phase 5: Forecast projection (Jan)
+### Phase 5: Forecast projection
 
 - [ ] Deterministic projection through the 16-day forecast.
 - [ ] Ensemble spike (et0 per member?), then the ensemble runner, P10/P50/P90 band, crossing probability.
 - [ ] Planned irrigation (what-if) and recommended irrigation amount and timing.
 - **Exit:** the chart shows observed → forecast → band; adding a planned irrigation updates the projection in under 300 ms.
 
-### Phase 6: Alerts (Feb)
+### Phase 6: Alerts
 
 - [ ] Alert preferences UI; `AlertEvaluatorJob` after each ensemble refresh; daily digest email at the user's chosen hour.
 - [ ] Dedupe (`alert_deliveries`), unsubscribe link, `List-Unsubscribe` header, SPF/DKIM check.
 - [ ] Admin preview: "what would be sent today".
 - **Exit:** staging sends correct digests for test fields across simulated scenarios (rain refill, sudden heat, planned irrigation suppressing an alert).
 
-### Phase 7: Map (Feb)
+### Phase 7: Map
 
 - [ ] MapLibre map, USGS imagery + OpenFreeMap streets, pivot circles and arcs colored by status.
 - [ ] Map as a dashboard view (the setup picker shipped in Phase 4), status coloring, popovers, farm filter.
 - [ ] Moving a pivot (or changing its cell) triggers a backfill and recalculation.
 - **Exit:** every pivot in the demo seed data is visible, and editing a location updates its weather within one job cycle.
 
-### Phase 8: Polish, beta, launch (Mar)
+### Phase 8: Polish, beta, launch
 
 - [ ] Accessibility pass (keyboard grid, contrast, chart table alternative), performance pass, empty states, onboarding tour.
 - [ ] Methods/help pages from the architecture doc; updated user guide.

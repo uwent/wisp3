@@ -72,7 +72,7 @@ cap staging deploy
 
 ### 5. Point nginx at Puma (needs sudo)
 
-Replace the existing `dev.wisp.cals.wisc.edu` site (currently the legacy app) with a reverse proxy to `127.0.0.1:3100`, keeping its TLS certificate lines. See [config/deploy/nginx.conf.example](../config/deploy/nginx.conf.example). Then run `sudo nginx -t && sudo systemctl reload nginx`.
+Add a `wisp3` site in `/etc/nginx/sites-available` (enabled in `sites-enabled`) that reverse-proxies `dev.wisp.cals.wisc.edu` to `127.0.0.1:3100`, reusing the legacy site's TLS certificate lines. Staging keeps the legacy site's config file but no longer enables it for that hostname. See [config/deploy/nginx.conf.example](../config/deploy/nginx.conf.example). Then run `sudo nginx -t && sudo systemctl reload nginx`.
 
 ### 6. Verify
 

@@ -2,7 +2,7 @@
 
 The Wisconsin Irrigation Scheduling Program (WISP) helps growers schedule irrigation by tracking the daily root-zone water balance of each field (the "checkbook" method), now driven by Open-Meteo weather forecasts. It was developed by the Departments of Biological Systems Engineering and Soil Science at the University of Wisconsin–Madison.
 
-WISP 3 is a rewrite of the [original WISP](https://github.com/uwent/wisp). See [plan.md](plan.md) for the design and the phased rollout.
+WISP 3 is a rewrite of the [original WISP](https://github.com/uwent/wisp). See [PLAN.md](PLAN.md) for the design and the phased rollout.
 
 ## Stack
 
