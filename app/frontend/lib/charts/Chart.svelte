@@ -36,6 +36,8 @@
       if (dz) zoom = { start: dz.start, end: dz.end }
     })
     const offTheme = onThemeChange(() => (palette = readPalette()))
+    // Canvas text uses whatever font is loaded when it's drawn; redraw once the web fonts are in
+    document.fonts?.ready.then(() => chart && (palette = readPalette()))
     const observer = new ResizeObserver(() => chart?.resize())
     observer.observe(element)
     return () => {

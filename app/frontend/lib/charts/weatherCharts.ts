@@ -3,6 +3,7 @@ import type { WeatherPanelDay } from '@/types/serializers'
 import { formatDate } from '../dates'
 import type { Quantity, Units } from '../units'
 import type { EChartsCoreOption } from './echarts'
+import { DEFAULT_WINDOW_DAYS } from './fieldChart'
 import { baseOption, type Palette } from './palette'
 
 // The weather panels on a field's page: small multiples, one measure each, sharing the date axis,
@@ -112,6 +113,9 @@ export function weatherChartOption(panel: WeatherPanel, days: WeatherPanelDay[],
   const base = baseOption(palette)
   const dates = days.map((day) => day.date)
   const firstForecast = days.find((day) => day.forecast)?.date
+  // Open on the same window as the soil-water chart: the last observed days, then the forecast
+  const observed = days.filter((day) => !day.forecast).length
+  const startValue = dates[Math.max(0, observed - DEFAULT_WINDOW_DAYS)]
   const digits = (value: number | null) => (value === null ? null : Number(value.toFixed(2)))
   const unit = panel.unit(units)
 
@@ -126,6 +130,7 @@ export function weatherChartOption(panel: WeatherPanel, days: WeatherPanelDay[],
     grid: { left: 40, right: 16, top: panel.series.length > 1 ? 32 : 12, bottom: 24 },
     xAxis: { type: 'category', data: dates, axisLabel: { ...base.axisLabel, formatter: (iso: string) => formatDate(iso) }, axisLine: base.axisLine },
     yAxis: { type: 'value', scale: true, axisLabel: base.axisLabel, splitLine: base.splitLine },
+    dataZoom: [{ type: 'inside', startValue }],
     series: panel.series.map((series, i) => ({
       name: series.name,
       type: 'line',

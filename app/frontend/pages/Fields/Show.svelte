@@ -37,7 +37,8 @@
   const lai = $derived(planting?.et_method === 'lai')
   const rows = $derived([...days].reverse())
   let chartMode = $state<FieldChartMode>('ad')
-  let showWeather = $state(true)
+  // The weather panels are long on a phone, so they start collapsed there
+  let showWeather = $state(typeof matchMedia === 'undefined' || matchMedia('(min-width: 768px)').matches)
 
   const panels = $derived(
     weatherPanels(units, { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt }),
@@ -333,7 +334,8 @@
       </div>
       {#if showWeather}
         <p class="text-xs text-ink-muted">
-          Modeled by Open-Meteo for the pivot's grid cell, with the forecast shaded. Soil moisture is the weather model's own
+          Modeled by Open-Meteo for the pivot's grid cell, with the forecast shaded. Scroll or pinch a chart to see more of
+          the season. Soil moisture is the weather model's own
           estimate, not this field's balance; it's shown against the field's capacity and wilting point for comparison.
         </p>
         <div class="grid gap-3 md:grid-cols-2">
