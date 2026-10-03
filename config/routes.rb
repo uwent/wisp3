@@ -12,6 +12,11 @@ Rails.application.routes.draw do
     confirmations: "users/confirmations"
   }
 
+  # The emailed confirmation link (GET) only shows a button, for the same reason as sign-in links
+  devise_scope :user do
+    post "account/confirmation/confirm", to: "users/confirmations#confirm", as: :confirm_user_confirmation
+  end
+
   # One-time sign-in links. GET only shows a confirm button, so link scanners can't use them up.
   scope "account" do
     post "sign_in_link", to: "magic_links#create", as: :magic_links

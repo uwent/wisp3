@@ -1,6 +1,3 @@
-# Staging mirrors production (dev.wisp.cals.wisc.edu) with more verbose logs.
+# Staging mirrors production (dev.wisp.cals.wisc.edu). Logs stay at info by default: at debug,
+# Action Mailer logs whole emails, including confirmation and sign-in-link tokens.
 require_relative "production"
-
-Rails.application.configure do
-  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "debug")
-end

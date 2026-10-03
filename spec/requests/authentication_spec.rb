@@ -31,7 +31,13 @@ RSpec.describe "Authentication", type: :request do
       expect(mail.to).to eq(["pat@example.com"])
       token = mail.body.encoded[/confirmation_token=([^"&\s]+)/, 1]
 
+      # Opening the link (as an email link scanner would) doesn't confirm; the button's POST does
       get user_confirmation_path(confirmation_token: token)
+      expect_inertia.to render_component("Auth/ConfirmEmail")
+      expect(inertia.props).to include(token:, status: "pending")
+      expect(User.find_by(email: "pat@example.com")).not_to be_confirmed
+
+      post confirm_user_confirmation_path, params: {confirmation_token: token}
       expect(response).to redirect_to(new_user_session_path)
       expect(User.find_by(email: "pat@example.com")).to be_confirmed
 
@@ -50,8 +56,24 @@ RSpec.describe "Authentication", type: :request do
 
     it "explains an invalid confirmation link" do
       get user_confirmation_path(confirmation_token: "bogus")
+      expect(inertia.props[:status]).to eq("invalid")
+
+      post confirm_user_confirmation_path, params: {confirmation_token: "bogus"}
       expect(response).to redirect_to(new_user_confirmation_path)
-      expect(flash[:alert]).to match(/invalid or has already been used/)
+      expect(flash[:alert]).to match(/invalid/)
+    end
+
+    it "tells someone using a link a second time that they can sign in" do
+      user = create(:user, :unconfirmed)
+      token = user.confirmation_token
+      user.confirm
+
+      get user_confirmation_path(confirmation_token: token)
+      expect(inertia.props[:status]).to eq("confirmed")
+
+      post confirm_user_confirmation_path, params: {confirmation_token: token}
+      expect(response).to redirect_to(new_user_session_path)
+      expect(flash[:notice]).to match(/already confirmed/)
     end
   end
 

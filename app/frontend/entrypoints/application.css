@@ -52,10 +52,10 @@
     accent-color: var(--color-brand-600);
   }
 
-  /* @tailwindcss/forms resets inputs to white; follow the theme instead */
-  input,
-  select,
-  textarea {
+  /* @tailwindcss/forms resets inputs to white, in rules that come after this one with the same
+     specificity; the :not() outranks them (but not their :focus or :checked styles) so inputs
+     follow the theme */
+  :is(input, select, textarea):not([type='checkbox'], [type='radio']) {
     background-color: var(--color-surface-raised);
     color: var(--color-ink);
     border-color: var(--color-line);
