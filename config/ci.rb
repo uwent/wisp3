@@ -8,4 +8,5 @@ CI.run do
 
   step "Tests: frontend", "npm test"
   step "Tests: Rails", "bundle exec rspec"
+  step "Tests: browser", "bin/e2e"
 end

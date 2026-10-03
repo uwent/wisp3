@@ -13,7 +13,8 @@ development:
 
 test:
   <<: *default
-  database: wisp3_test
+  # bin/e2e runs the browser smoke tests on their own database
+  database: <%= ENV["E2E"] ? "wisp3_e2e" : "wisp3_test" %>
 
 # Staging and production run on hosts with a local Postgres; the app connects as "wisp3" with
 # the password from that environment's Rails credentials (database.password).

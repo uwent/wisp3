@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Browser smoke tests (e2e/*.spec.ts) against a Rails server in the test environment, on its own
+# database (wisp3_e2e) so it never touches the RSpec one. Extra arguments go to `playwright test`.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+export RAILS_ENV=test E2E=1
+bin/rails db:prepare
+bin/rails runner e2e/seed.rb
+bin/vite build --mode test > /dev/null
+npx playwright test "$@"
