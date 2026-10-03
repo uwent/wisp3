@@ -9,8 +9,8 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
 - **Phase 1 (foundation):** done. Staging live at https://dev.wisp.cals.wisc.edu (Puma on `127.0.0.1:3100`, nginx `sites-available/wisp3`, systemd user units `wisp3-web` / `wisp3-jobs`). Redeploy: `bundle exec cap staging deploy` from pushed `main`.
 - **Phase 2 (domain + engine):** done. Golden tests against 30 legacy production fields passed, then were retired with the legacy data; `spec/support/legacy_engine.rb` and its synthetic spec remain as the record of each fix (C2, C3, C4, C7, C8, C19).
 - **Phase 3 (weather):** done, and deployed to staging with the API key (TODO.md).
-- **Phase 4 (core UI):** done locally and verified in a headless browser; **uncommitted** at the end of this session, and not yet on staging. See the summary below.
-- **Next: Phase 5, forecast projection** (PLAN.md §14): run the balance through the 16-day forecast, then the ensemble spike. The field chart (`lib/charts/fieldChart.ts`) and dashboard cards are where the projection shows; `PlantingStatus` is the place to add it on the server. Also still open from Phase 4: Playwright smoke tests in CI.
+- **Phase 4 (core UI):** done locally, verified in a headless browser and committed; not yet on staging. See the summary below. UI fonts are Red Hat Text with Red Hat Display for headings (self-hosted, `@fontsource-variable/*`); the UW bar is `--color-uw-red`, `--color-uw-red-dark` in dark mode.
+- **Next: Phase 4.5, review fixes and polish** (PLAN.md §14): a confirmed EditableCell bug (Escape saves), field-group percent cover, Playwright in CI, staging deploy, and a polish list. Then **Phase 5, forecast projection**: run the balance through the 16-day forecast, then the ensemble spike. The field chart (`lib/charts/fieldChart.ts`) and dashboard cards are where the projection shows; `PlantingStatus` is the place to add it on the server. Also still open from Phase 4: Playwright smoke tests in CI.
 
 ## Phase 4 summary (core UI)
 
