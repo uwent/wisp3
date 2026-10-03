@@ -133,3 +133,21 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
   await page.getByRole('button', { name: 'Previous day' }).click()
   await expect(page.getByLabel('Date', { exact: true })).not.toHaveValue(date)
 })
+
+test('adding a pivot irrigation on a date that has one offers to edit it instead', async ({ page }) => {
+  await page.goto(await firstFieldPath(page))
+  await page.locator('main a[href*="/pivots/"]').first().click()
+
+  // Add one for today; the form resets to today, which now has an irrigation
+  await page.getByLabel('Amount').fill('0.4')
+  await page.getByRole('button', { name: 'Save irrigation' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'saving replaces it' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Edit that one instead' }).click()
+  await expect(page.getByRole('heading', { name: /^Edit / })).toBeVisible()
+  await expect(page.getByLabel('Amount')).toHaveValue('0.4')
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.locator('main table tbody tr').first().getByRole('button', { name: 'Delete' }).click()
+  await expect(page.getByText(/No irrigation entered/)).toBeVisible()
+})

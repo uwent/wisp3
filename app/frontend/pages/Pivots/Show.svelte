@@ -23,9 +23,14 @@
   let editing = $state<PivotIrrigation | null>(null)
   let byHours = $state(false)
   let formKey = $state(0)
+  // Adding one on a date that already has an irrigation replaces it (the controller), so say so
+  let date = $state(today)
+  const existing = $derived(editing ? undefined : irrigations.find((irrigation) => irrigation.date === date))
+
   function edit(irrigation: PivotIrrigation | null) {
     editing = irrigation
     byHours = irrigation !== null && irrigation.inches === null
+    date = irrigation?.date ?? today
     formKey++
   }
 
@@ -68,8 +73,14 @@
         <div class="grid gap-4 sm:grid-cols-3">
           <div class="space-y-1">
             <label for="irrigation-date" class="block text-sm font-medium">Date</label>
-            <input id="irrigation-date" type="date" name="pivot_irrigation[date]" value={editing?.date ?? today} required class="block w-full rounded-md text-sm" />
+            <input id="irrigation-date" type="date" name="pivot_irrigation[date]" bind:value={date} required class="block w-full rounded-md text-sm" />
             {#if errors.date}<p class="text-sm text-status-irrigate">{errors.date}</p>{/if}
+            {#if existing}
+              <p class="text-sm" role="status">
+                ⚠ {formatDate(existing.date)} already has {units.format('depth', existing.applied_inches)}; saving replaces it.
+                <button type="button" class="text-brand-600 underline" onclick={() => edit(existing)}>Edit that one instead</button>
+              </p>
+            {/if}
           </div>
           {#if byHours}
             <NumberField label="Run hours" name="pivot_irrigation[run_hours]" unitLabel="h" value={editing?.run_hours ?? null} error={errors.run_hours} />
