@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_205832) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_03_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,6 +52,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_205832) do
     t.string "unit_system", default: "imperial", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "sign_in_code_digest"
+    t.datetime "sign_in_code_sent_at"
+    t.integer "sign_in_code_attempts", default: 0, null: false
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true

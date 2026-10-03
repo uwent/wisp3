@@ -4,6 +4,8 @@ class User < ApplicationRecord
 
   UNIT_SYSTEMS = %w[imperial metric].freeze
   MAGIC_LINK_TTL = 15.minutes
+  SIGN_IN_CODE_ATTEMPTS = 5
+  SIGN_IN_CODE_RESEND_AFTER = 60.seconds
 
   has_many :memberships, dependent: :destroy
   has_many :groups, through: :memberships
@@ -19,6 +21,35 @@ class User < ApplicationRecord
   # before it, so each link works once.
   generates_token_for :magic_login, expires_in: MAGIC_LINK_TTL do
     current_sign_in_at
+  end
+
+  # A six-digit code sent with each sign-in link, for typing in on the device that asked for it
+  # (e.g. the email is read on a phone). It shares the link's lifetime, works once, dies after
+  # SIGN_IN_CODE_ATTEMPTS wrong guesses, and, like the link, stops working after any sign-in.
+  # Requesting a new one replaces it. Returns the code; the caller emails it.
+  def generate_sign_in_code!
+    code = format("%06d", SecureRandom.random_number(1_000_000))
+    update_columns(sign_in_code_digest: sign_in_code_digest_for(code), sign_in_code_sent_at: Time.current,
+      sign_in_code_attempts: 0)
+    code
+  end
+
+  def sign_in_code_recently_sent?
+    sign_in_code_sent_at.present? && sign_in_code_sent_at > SIGN_IN_CODE_RESEND_AFTER.ago
+  end
+
+  # True if the code matches the live one, which is then spent. Every try counts toward the
+  # attempt limit; both updates are atomic so parallel guesses can't get past it.
+  def redeem_sign_in_code!(code)
+    return false unless sign_in_code_live?
+
+    live = self.class.where(id:, sign_in_code_digest:)
+    return false unless live.where(sign_in_code_attempts: ...SIGN_IN_CODE_ATTEMPTS)
+      .update_all("sign_in_code_attempts = sign_in_code_attempts + 1") == 1
+
+    given = sign_in_code_digest_for(code.to_s.gsub(/\D/, ""))
+    ActiveSupport::SecurityUtils.secure_compare(given, sign_in_code_digest) &&
+      live.update_all(sign_in_code_digest: nil) == 1
   end
 
   def name
@@ -37,6 +68,17 @@ class User < ApplicationRecord
   end
 
   private
+
+  def sign_in_code_live?
+    sign_in_code_digest.present? && sign_in_code_sent_at > MAGIC_LINK_TTL.ago &&
+      sign_in_code_attempts < SIGN_IN_CODE_ATTEMPTS &&
+      (current_sign_in_at.nil? || sign_in_code_sent_at > current_sign_in_at)
+  end
+
+  def sign_in_code_digest_for(code)
+    key = Rails.application.key_generator.generate_key("user sign-in code")
+    OpenSSL::HMAC.hexdigest("SHA256", key, "#{id}:#{code}")
+  end
 
   # Carried over from the legacy app, which saw spam sign-ups from these domains
   def email_domain_allowed

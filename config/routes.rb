@@ -17,9 +17,12 @@ Rails.application.routes.draw do
     post "account/confirmation/confirm", to: "users/confirmations#confirm", as: :confirm_user_confirmation
   end
 
-  # One-time sign-in links. GET only shows a confirm button, so link scanners can't use them up.
+  # Passwordless sign-in: each request emails a one-time link and a six-digit code. The link's
+  # GET only shows a confirm button, so link scanners can't use them up.
   scope "account" do
     post "sign_in_link", to: "magic_links#create", as: :magic_links
+    get "sign_in_code", to: "magic_links#code", as: :sign_in_code
+    post "sign_in_code", to: "magic_links#verify"
     get "sign_in_link/:token", to: "magic_links#show", as: :magic_link
     post "sign_in_link/:token", to: "magic_links#redeem", as: :redeem_magic_link
   end

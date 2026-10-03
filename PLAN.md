@@ -247,12 +247,14 @@ Past days use `weather_days` (final or provisional), future days use forecasts, 
 ## 7. Authentication
 
 - **Devise**, as in legacy: confirmable, recoverable, rememberable, trackable, timeoutable. Keep the existing `.ru` block, but enforce it as a proper `validate` method (it was in a `before_validation` callback). Keep the resend-confirmation flow from the last legacy commit.
-- **One-time login links**:
-  - "Email me a sign-in link" on the login page; the response is always neutral, so it never reveals whether an account exists.
+- **One-time login links and codes**:
+  - "Email me a code" on the login page sends a sign-in link and a six-digit code, then shows a "Check your email" page with a code box. The response is always neutral, so it never reveals whether an account exists. The code is for signing in on the device that asked when the email is read on another (as on AgWeather).
   - Token: `User.generates_token_for(:magic_login, expires_in: 15.minutes) { current_sign_in_at }`. Signing in changes `current_sign_in_at` (trackable), so each link works **once**, with no token table.
   - The link opens a confirmation page with a "Sign in" button (POST), so email link scanners that pre-fetch URLs can't use up the token.
-  - Using a link confirms an unconfirmed email (it proves the user controls the inbox).
-  - Rate limiting: 5 requests per email per hour and 20 per IP per hour (Rails `rate_limit` + rack-attack).
+  - Code: stored as an HMAC on `users` (`sign_in_code_digest`, `_sent_at`, `_attempts`). It shares the link's 15-minute lifetime, works once, is replaced by a newer request, dies after 5 wrong tries, and stops working after any sign-in. Only the address this browser asked about (kept in the session) can be checked.
+  - Using a link or code confirms an unconfirmed email (it proves the user controls the inbox).
+  - Rate limiting: 5 requests per email per hour and 20 per IP per hour, a 60-second resend cooldown (shown as a countdown, enforced per browser and per account), and 20 code tries per IP per 15 minutes (Rails `rate_limit` + rack-attack).
+  - Email links carry `ses:no-track`, because the servers relay mail through Amazon SES, whose click tracking rewrites links.
 - Devise controllers are subclassed to render Inertia pages (`Auth/SignIn`, `Auth/SignUp`, …). Mail templates are rewritten in plain HTML with a text version.
 - **Authorization**: every query goes through `Current.group` (set from the session and checked against `current_user.groups`). Controllers never call `Model.find(params[:id])` unscoped; they use `Current.group.fields.find(...)`. Request specs check that requests for another tenant's records return 404 (§9, item S1).
 - Admins: `users.admin` flag kept; admin area for the user list, CSV export, announcements, and impersonation (useful for support).
@@ -458,7 +460,7 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [x] `rails new` (Rails 8.1, Postgres, no Hotwire/importmap/asset pipeline) in `wisp3`; git; public GitHub repo `uwent/wisp3`; CI (`bin/ci`, run by GitHub Actions).
 - [x] `vite_rails`, `inertia_rails` (Inertia v3), Svelte 5 + TS, Tailwind v4 (`@tailwindcss/vite`), `bits-ui`, Alba + Typelizer (types and route helpers).
 - [x] App shell: layout, navigation, user menu, group switcher, status color tokens, light/dark (follows system), responsive at phone widths.
-- [x] Devise + Inertia auth pages (sign up, sign in, confirmation, password reset, settings with email/password change and account deletion), **sign-in links**, rate limits (Rails `rate_limit` + Rack::Attack).
+- [x] Devise + Inertia auth pages (sign up, sign in, confirmation, password reset, settings with email/password change and account deletion), **sign-in links and codes**, rate limits (Rails `rate_limit` + Rack::Attack).
 - [x] Group / membership / `Current.group` tenancy, with cross-tenant request specs.
 - [x] Capistrano config, systemd user units, nginx example, staging credentials; first-time setup steps in `docs/deployment.md`.
 - [x] First deploy to staging (2026-10-03): Puma answers on 127.0.0.1:3100 and both services are enabled. nginx serves it at https://dev.wisp.cals.wisc.edu.

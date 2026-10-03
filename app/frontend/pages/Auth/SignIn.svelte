@@ -18,7 +18,7 @@
 <h1 class="text-xl font-semibold">Sign in</h1>
 
 <div class="grid grid-cols-2 rounded-md border border-line p-1 text-sm" role="tablist">
-  {#each [['password', 'Password'], ['link', 'Email me a link']] as [value, label] (value)}
+  {#each [['password', 'Password'], ['link', 'Email me a code']] as [value, label] (value)}
     <button
       type="button"
       role="tab"
@@ -55,9 +55,9 @@
         required
         bind:value={emailValue}
         error={errors.email}
-        hint="We'll email you a link that signs you in once. No password needed."
+        hint="We'll email you a 6-digit code and a one-click sign-in link. No password needed."
       />
-      <Button type="submit" class="w-full" disabled={processing}>Email me a sign-in link</Button>
+      <Button type="submit" class="w-full" disabled={processing}>Email me a code</Button>
     {/snippet}
   </Form>
 {/if}

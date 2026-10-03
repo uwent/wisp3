@@ -1,7 +1,13 @@
 Hello <%= @user.display_name %>,
 
-Use this link to sign in to WISP. It works once and expires in <%= @ttl_minutes %> minutes.
+Enter this code on the WISP sign-in page:
+
+    <%= @code %>
+
+Or, on the device where you read this email, use this link:
 
 <%= @url %>
 
-If you didn't ask for this, you can ignore this email; nobody can sign in without the link.
+The code and the link work once and expire in <%= @ttl_minutes %> minutes.
+
+If you didn't ask for this, you can ignore this email; nobody can sign in without the code or the link.

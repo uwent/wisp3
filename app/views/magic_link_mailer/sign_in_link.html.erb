@@ -1,7 +1,13 @@
 <p>Hello <%= @user.display_name %>,</p>
 
-<p>Use this link to sign in to WISP. It works once and expires in <%= @ttl_minutes %> minutes.</p>
+<p>Enter this code on the WISP sign-in page:</p>
 
-<p><a href="<%= @url %>">Sign in to WISP</a></p>
+<p style="font-size: 28px; font-weight: bold; letter-spacing: 6px; font-family: monospace;"><%= @code %></p>
 
-<p>If you didn't ask for this, you can ignore this email; nobody can sign in without the link.</p>
+<p>Or, on the device where you read this email, use this link:</p>
+
+<p><%= email_link_to "Sign in to WISP", @url %></p>
+
+<p>The code and the link work once and expire in <%= @ttl_minutes %> minutes.</p>
+
+<p>If you didn't ask for this, you can ignore this email; nobody can sign in without the code or the link.</p>

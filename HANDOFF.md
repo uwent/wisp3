@@ -16,7 +16,7 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
 
 - Auth:
   - Devise controllers in `app/controllers/users/` render Inertia pages via `InertiaDeviseResponses`.
-  - `MagicLinksController` handles one-time links (`User.generates_token_for(:magic_login)`, invalidated by `current_sign_in_at`).
+  - `MagicLinksController` emails a one-time link (`User.generates_token_for(:magic_login)`) and a six-digit code (`User#generate_sign_in_code!`); both are invalidated by `current_sign_in_at`. Email confirmation links also land on a button page, so link scanners can't use them up.
   - Settings at `/settings`.
 - Tenancy: `AuthenticatedController` sets `Current.user` / `Current.group` (validated against memberships); `CurrentGroupsController` switches groups. Users get a personal group on sign-up.
 - Frontend:

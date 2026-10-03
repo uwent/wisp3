@@ -23,7 +23,7 @@ bin/rails typelizer:generate     # after changing serializers or routes; commit 
 - Shared props (`auth.user`, `auth.group`, `auth.groups`) come from `InertiaController`; `page.flash` carries `notice` and `alert`.
 - Page props are built with Alba serializers in `app/serializers`; Typelizer generates their TypeScript types (`@/types/serializers`) and typed route helpers (`@/routes`, returning `{url, method}` for `<Form action>` and `<Link href>`).
 - Forms: use Inertia's `<Form>` component with Rails-style input names (`user[email]`). On validation failure, controllers redirect back with `redirect_with_errors(path, record)`.
-- Devise controllers live in `app/controllers/users/` and render Inertia pages through `InertiaDeviseResponses`. One-time sign-in links: `MagicLinksController` + `User.generates_token_for(:magic_login)`.
+- Devise controllers live in `app/controllers/users/` and render Inertia pages through `InertiaDeviseResponses`. Passwordless sign-in (`MagicLinksController`) emails a one-time link (`User.generates_token_for(:magic_login)`) and a six-digit code (`User#generate_sign_in_code!`). Wrap links in emails with `email_link_to` (adds `ses:no-track`).
 
 ## Rules
 

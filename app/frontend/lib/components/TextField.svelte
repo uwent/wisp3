@@ -7,6 +7,7 @@
     error,
     hint,
     value = $bindable(),
+    class: className = '',
     id = `field-${name.replace(/[^a-z0-9]+/gi, '-')}`,
     ...rest
   }: HTMLInputAttributes & {
@@ -27,7 +28,7 @@
     {id}
     {name}
     class="block w-full rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm
-      {message ? 'border-status-irrigate' : ''}"
+      {message ? 'border-status-irrigate' : ''} {className}"
     aria-invalid={message ? 'true' : undefined}
     aria-describedby={describedBy}
     bind:value
