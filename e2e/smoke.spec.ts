@@ -118,3 +118,18 @@ test('daily entry saves rain for a field', async ({ page }) => {
   await page.getByRole('button', { name: /^Save / }).click()
   await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('')
 })
+
+test('daily entry asks before changing the date with unsaved values', async ({ page }) => {
+  await page.goto('/daily')
+  const date = await page.getByLabel('Date', { exact: true }).inputValue()
+  await page.getByLabel(/^Rain on /).first().fill('0.2')
+
+  page.once('dialog', (dialog) => dialog.dismiss())
+  await page.getByRole('button', { name: 'Previous day' }).click()
+  await expect(page.getByLabel('Date', { exact: true })).toHaveValue(date)
+  await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('0.2')
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Previous day' }).click()
+  await expect(page.getByLabel('Date', { exact: true })).not.toHaveValue(date)
+})

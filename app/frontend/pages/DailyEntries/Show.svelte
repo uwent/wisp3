@@ -4,6 +4,7 @@
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import { addDays, formatDate } from '@/lib/dates'
+  import { confirmUnsavedChanges, UNSAVED_MESSAGE } from '@/lib/unsaved.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { dailyEntries, fields as fieldRoutes, newQuickSetup } from '@/routes'
   import type { PivotIrrigation } from '@/types/serializers'
@@ -23,7 +24,17 @@
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const today = new Date().toLocaleDateString('en-CA')
 
-  const go = (to: string) => router.get(dailyEntries.show().url, { date: to })
+  // Typed values not yet saved: set by any input, cleared by a successful save
+  let dirty = $state(false)
+  confirmUnsavedChanges(() => dirty)
+
+  /** Goes to another date, asking first if there are unsaved values; false if the user stayed */
+  function go(to: string): boolean {
+    if (dirty && !confirm(UNSAVED_MESSAGE)) return false
+    dirty = false
+    router.get(dailyEntries.show().url, { date: to })
+    return true
+  }
   const canUseHours = (pivot: DayPivot) => pivot.pump_capacity_gpm !== null && pivot.fields.every((f) => f.area_acres !== null)
 
   // Which pivots are entered as run hours; starts from the saved irrigation
@@ -45,7 +56,9 @@
   </div>
   <div class="flex items-center gap-1">
     <Button variant="secondary" class="px-3" onclick={() => go(addDays(date, -1))} aria-label="Previous day">‹</Button>
-    <input type="date" value={date} max={today} class="rounded-md text-sm" aria-label="Date" onchange={(event) => go(event.currentTarget.value)} />
+    <input type="date" value={date} max={today} class="rounded-md text-sm" aria-label="Date" onchange={(event) => {
+        if (!go(event.currentTarget.value)) event.currentTarget.value = date
+      }} />
     <Button variant="secondary" class="px-3" onclick={() => go(addDays(date, 1))} disabled={date >= today} aria-label="Next day">›</Button>
   </div>
 </div>
@@ -56,7 +69,14 @@
   </section>
 {:else}
   {#key date}
-    <Form action={dailyEntries.update()} class="space-y-6" options={{ preserveScroll: true }}>
+    <Form
+      action={dailyEntries.update()}
+      class="space-y-6"
+      options={{ preserveScroll: true }}
+      oninput={() => (dirty = true)}
+      onchange={() => (dirty = true)}
+      onSuccess={() => (dirty = false)}
+    >
       {#snippet children({ errors, processing, isDirty })}
         {@const errs = errors as Record<string, string | string[]>}
         <input type="hidden" name="date" value={date} />
@@ -174,7 +194,7 @@
           <Button type="submit" disabled={processing}>Save {formatDate(date)}</Button>
           <p class="text-sm text-ink-muted">
             {#if Object.keys(errs).length}<span class="text-status-irrigate">Nothing was saved; please fix the highlighted values.</span>
-            {:else if isDirty}Unsaved changes{:else}Leave rain blank to use the modeled value; enter 0 if your gauge read nothing.{/if}
+            {:else if isDirty || dirty}Unsaved changes{:else}Leave rain blank to use the modeled value; enter 0 if your gauge read nothing.{/if}
           </p>
         </div>
       {/snippet}
