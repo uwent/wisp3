@@ -5,13 +5,16 @@
 
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
-  import { currentGroups, dashboard, settings, usersSessions } from '@/routes'
+  import { adminWeather, currentGroups, dashboard, settings, usersSessions } from '@/routes'
 
   let { children }: { children: Snippet } = $props()
 
   const auth = $derived(page.props.auth)
 
-  const nav = [{ label: 'Dashboard', route: dashboard.show() }]
+  const nav = $derived([
+    { label: 'Dashboard', route: dashboard.show() },
+    ...(auth.user?.admin ? [{ label: 'Weather', route: adminWeather.show() }] : []),
+  ])
 
   const isCurrent = (url: string) => page.url === url || page.url.startsWith(`${url}?`)
 

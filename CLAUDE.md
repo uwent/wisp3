@@ -16,7 +16,6 @@ npm test                         # vitest
 npm run check                    # svelte-check + tsc
 bin/rails typelizer:generate     # after changing serializers or routes; commit the output
 bin/rails demo:seed              # demo account with farms, fields and entries (EMAIL, PASSWORD, YEAR)
-bin/rails golden:import FILE=…   # legacy golden fixtures → spec/fixtures/legacy (see script/legacy/)
 ```
 
 ## Architecture
@@ -33,5 +32,5 @@ bin/rails golden:import FILE=…   # legacy golden fixtures → spec/fixtures/le
 - **Units:** store water depths in inches. Unit conversion (Q3: `users.unit_system`) happens only at the display and input edge in the frontend.
 - **Missing data is NULL, never 0.** A value the user entered as zero is 0.0.
 - **Legacy code:** when porting from `../wisp`, check each method against the audit in `PLAN.md` §9 before reusing it.
-- **Engine:** the water balance lives in plain-Ruby services (`WaterBalance`, `CropEt`, `Canopy`, `DailyInputs`, `PlantingBalance`), recalculated on read, never stored. A change to the balance must keep `spec/services/legacy_engine_spec.rb` and the golden tests passing; a deliberate change from legacy gets a fix ID in PLAN.md §9 and a switch in `LegacyEngine`.
+- **Engine:** the water balance lives in plain-Ruby services (`WaterBalance`, `CropEt`, `Canopy`, `DailyInputs`, `PlantingBalance`), recalculated on read, never stored. A change to the balance must keep `spec/services/legacy_engine_spec.rb` passing; a deliberate change from legacy gets a fix ID in PLAN.md §9 and a switch in `LegacyEngine`.
 - Ruby style is Standard; prefer small, plain-Ruby service objects for domain math (no ActiveRecord callbacks cascading recalculation).

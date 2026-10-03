@@ -5,6 +5,7 @@ class Pivot < ApplicationRecord
   LONGITUDES = -180.0..-52.0
 
   belongs_to :farm
+  belongs_to :weather_cell, optional: true
   has_many :fields, dependent: :destroy
   has_many :pivot_irrigations, dependent: :destroy
 
@@ -15,7 +16,19 @@ class Pivot < ApplicationRecord
   validates :arc_start_deg, :arc_end_deg, numericality: {in: 0..360}, allow_nil: true
   validate :arc_complete
 
+  before_save :assign_weather_cell, if: -> { will_save_change_to_latitude? || will_save_change_to_longitude? }
+  after_commit :backfill_weather, if: -> { saved_change_to_weather_cell_id? && weather_cell_id }
+
   private
+
+  def assign_weather_cell
+    self.weather_cell = WeatherCell.for(latitude, longitude)
+  end
+
+  # A new or moved pivot gets its cell's season-to-date weather in the background
+  def backfill_weather
+    WeatherBackfillJob.perform_later(weather_cell_id)
+  end
 
   def arc_complete
     errors.add(:arc_end_deg, "is needed with a start angle") if arc_start_deg && !arc_end_deg

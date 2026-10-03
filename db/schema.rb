@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_03_190300) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_03_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -146,7 +146,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_190300) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "weather_cell_id"
     t.index ["farm_id"], name: "index_pivots_on_farm_id"
+    t.index ["weather_cell_id"], name: "index_pivots_on_weather_cell_id"
     t.check_constraint "(arc_start_deg IS NULL) = (arc_end_deg IS NULL)", name: "pivots_arc_both_or_neither"
     t.check_constraint "pump_capacity_gpm IS NULL OR pump_capacity_gpm > 0::double precision", name: "pivots_pump_capacity_positive"
     t.check_constraint "radius_ft IS NULL OR radius_ft > 0::double precision", name: "pivots_radius_positive"
@@ -228,6 +230,74 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_190300) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  create_table "weather_cells", force: :cascade do |t|
+    t.float "latitude", null: false
+    t.float "longitude", null: false
+    t.string "timezone"
+    t.float "elevation_m"
+    t.datetime "last_fetched_at"
+    t.text "last_error"
+    t.datetime "last_error_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["latitude", "longitude"], name: "index_weather_cells_on_latitude_and_longitude", unique: true
+  end
+
+  create_table "weather_days", force: :cascade do |t|
+    t.bigint "weather_cell_id", null: false
+    t.date "date", null: false
+    t.float "et0_in"
+    t.float "precip_in"
+    t.float "rain_in"
+    t.float "snowfall_in"
+    t.float "snow_depth_in"
+    t.float "tmax_f"
+    t.float "tmin_f"
+    t.float "tmean_f"
+    t.float "dew_point_f"
+    t.float "rh_mean_pct"
+    t.float "rh_min_pct"
+    t.float "rh_max_pct"
+    t.float "vpd_max_kpa"
+    t.float "pressure_msl_hpa"
+    t.float "wind_speed_mph"
+    t.float "wind_speed_max_mph"
+    t.float "wind_gust_max_mph"
+    t.float "wind_direction_deg"
+    t.float "cloud_cover_pct"
+    t.float "cloud_cover_low_pct"
+    t.float "cloud_cover_mid_pct"
+    t.float "cloud_cover_high_pct"
+    t.float "soil_temp_0_7cm_f"
+    t.float "soil_temp_7_28cm_f"
+    t.float "soil_temp_28_100cm_f"
+    t.float "soil_temp_100_255cm_f"
+    t.float "soil_moisture_0_7cm"
+    t.float "soil_moisture_7_28cm"
+    t.float "soil_moisture_28_100cm"
+    t.float "soil_moisture_100_255cm"
+    t.string "model", null: false
+    t.string "soil_model"
+    t.integer "hours", null: false
+    t.boolean "final", default: false, null: false
+    t.datetime "fetched_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["weather_cell_id", "date"], name: "index_weather_days_on_weather_cell_id_and_date", unique: true
+  end
+
+  create_table "weather_forecasts", force: :cascade do |t|
+    t.bigint "weather_cell_id", null: false
+    t.datetime "issued_at", null: false
+    t.string "model", null: false
+    t.string "kind", default: "deterministic", null: false
+    t.jsonb "payload", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["weather_cell_id", "issued_at"], name: "index_weather_forecasts_on_weather_cell_id_and_issued_at"
+    t.check_constraint "kind::text = ANY (ARRAY['deterministic'::character varying, 'ensemble'::character varying]::text[])", name: "weather_forecasts_kind"
+  end
+
   add_foreign_key "canopy_observations", "plantings"
   add_foreign_key "farms", "groups"
   add_foreign_key "field_entries", "fields"
@@ -241,6 +311,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_190300) do
   add_foreign_key "memberships", "users", on_delete: :cascade
   add_foreign_key "pivot_irrigations", "pivots"
   add_foreign_key "pivots", "farms"
+  add_foreign_key "pivots", "weather_cells"
   add_foreign_key "plantings", "fields"
   add_foreign_key "plantings", "plants"
+  add_foreign_key "weather_days", "weather_cells"
+  add_foreign_key "weather_forecasts", "weather_cells"
 end

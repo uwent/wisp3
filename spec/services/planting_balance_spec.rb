@@ -28,6 +28,18 @@ RSpec.describe PlantingBalance do
     expect(described_class.new(planting).params.field_capacity).to eq(0.2)
   end
 
+  it "uses the stored weather for the field's cell by default" do
+    cell = field.pivot.reload.weather_cell
+    weather.each do |date, values|
+      cell.weather_days.create!(date:, et0_in: values[:et0], precip_in: values[:precip], model: "best_match", hours: 24,
+        fetched_at: Time.current)
+    end
+    cell.weather_days.find_by(date: Date.new(2026, 6, 10)).destroy!
+    days = described_class.new(planting).days
+    expect(days.first.inputs).to have_attributes(et0: 0.2, et0_source: :model, rain_source: :model)
+    expect(days.last.inputs).to have_attributes(et0: nil, et0_source: :missing, rain: nil)
+  end
+
   it "stops at the given date" do
     expect(described_class.new(planting, weather:).days(through: Date.new(2026, 6, 3)).size).to eq(3)
   end

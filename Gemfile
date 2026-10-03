@@ -20,6 +20,7 @@ group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
   gem "rspec-rails"
   gem "factory_bot_rails"
+  gem "dotenv" # loads .env (e.g. OPEN_METEO_API_KEY) in development and test
   gem "standard", require: false
 end
 

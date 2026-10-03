@@ -10,6 +10,16 @@
 #     schedule: at 5am every day
 
 production: &production
+  # Weather (PLAN.md §8.3); times are US Central
+  weather_refresh:
+    class: WeatherRefreshJob
+    schedule: at 5am, 11am and 5pm America/Chicago
+  weather_finalize:
+    class: WeatherFinalizeJob
+    schedule: at 3am every day America/Chicago
+  forecast_prune:
+    class: ForecastPruneJob
+    schedule: at 4am every sunday America/Chicago
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12

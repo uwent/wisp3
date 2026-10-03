@@ -2,10 +2,11 @@
 # ETCalculator#adj_et_pct_cover / #adj_et_lai_for_nonclumping, FieldDailyWeather#old_update_balances,
 # Field#do_balances and RingBuffer#mean_top_3. Missing reference ET is 0.0, as legacy stored it.
 #
-# Each PLAN.md §9 fix that changes the balance can be switched on, so a difference between
-# WaterBalance and legacy can be traced to the fixes that cause it (spec/golden). With every fix
-# on, it must match WaterBalance (spec/services/legacy_engine_spec.rb). C3 (canopy held to the end
-# date) changes the canopy series, not the balance, so callers pass the canopy they want.
+# Each PLAN.md §9 fix that changes the balance can be switched on. With every fix on it must match
+# WaterBalance, and without them every differing day must trace to a fix
+# (spec/services/legacy_engine_spec.rb). It was checked against 30 legacy production fields in
+# Phase 2 (golden tests, since retired; see PLAN.md §14). C3/C4 change the canopy series rather
+# than the balance, so callers pass the canopy they want.
 module LegacyEngine
   FIXES = {
     c2: "moisture reading capped at AD_max (not TAW) and floored at the wilting point",
@@ -14,8 +15,7 @@ module LegacyEngine
     c19: "ET recomputed on soil moisture reading days (legacy kept a stale stored value, which fed gap fill)"
   }.freeze
 
-  # Fixes that change the canopy series rather than the balance; the golden tests check them by
-  # running with legacy's own canopy
+  # Fixes that change the canopy series rather than the balance
   CANOPY_FIXES = {
     c3: "percent cover held to the end date (legacy: 6 days) and interpolated from emergence",
     c4: "LAI growth curve for field corn only (legacy used the corn curve for every crop)"

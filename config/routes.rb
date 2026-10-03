@@ -28,6 +28,12 @@ Rails.application.routes.draw do
   end
 
   resource :settings, only: [:show, :update]
+
+  namespace :admin do
+    resource :weather, only: :show, controller: "weather" do
+      post :refresh
+    end
+  end
   resource :current_group, only: :update, path: "group"
 
   root "dashboard#show"
