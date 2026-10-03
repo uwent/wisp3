@@ -22,7 +22,7 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Staging (non-blocking)
 
-- [ ] **Add the Open-Meteo key to staging credentials** before deploying: `bin/rails credentials:edit --environment staging`, add
+- [x] **Add the Open-Meteo key to staging credentials** before deploying: `bin/rails credentials:edit --environment staging`, add
   ```yaml
   open_meteo:
     api_key: <your key>
