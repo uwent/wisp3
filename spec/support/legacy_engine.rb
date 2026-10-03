@@ -13,6 +13,13 @@ module LegacyEngine
     c8: "percent-cover ET: half-open bare-soil steps, cover clamped to 0–100, never negative"
   }.freeze
 
+  # Fixes that change the canopy series rather than the balance; the golden tests check them by
+  # running with legacy's own canopy
+  CANOPY_FIXES = {
+    c3: "percent cover held to the end date (legacy: 6 days) and interpolated from emergence",
+    c4: "LAI growth curve for field corn only (legacy used the corn curve for every crop)"
+  }.freeze
+
   module_function
 
   # days: [{date:, et0:, rain:, irrigation:, moisture:, canopy:}]; returns AD per day

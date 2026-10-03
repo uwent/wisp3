@@ -118,7 +118,7 @@ AlertDelivery (dedupe log), MagicLinkToken (if not using stateless tokens), Anno
   - **Location is required and has no default.** In legacy production, 215 of 443 pivots (49%) were still at the default 43, −89, so half of all fields got weather for the wrong place.
   - Pivot creation therefore starts with a map picker (click the pivot center, drag the radius) or typed coordinates, validated to fall within a Wisconsin-and-neighbors bounding box.
 - **fields**: `name, area_acres, soil_type_id, field_capacity, perm_wilting_pt` (nullable, so NULL means "use the soil type default"; the legacy code used 0.0 for that), `notes`, optional `boundary` (GeoJSON jsonb) for non-pivot or partial areas.
-- **plantings**: `field_id, season_year, plant_id, variety, season_start (default Apr 1), emergence_date, end_date (harvest/kill), max_root_zone_depth, mad_frac, et_method (enum: pct_cover | lai), target_ad_pct, initial_moisture_pct (nullable, NULL = start at field capacity)`. Validation: plantings on the same field can't overlap in time. This supports double-cropping properly (replacing the legacy `current_crop` "latest emergence" hack).
+- **plantings**: `field_id, plant_id, variety, season_start (default Apr 1), emergence_date, end_date (harvest/kill, default Nov 30), max_root_zone_depth, mad_frac, et_method (pct_cover | lai), target_ad_pct, initial_moisture_pct (nullable, NULL = start at field capacity), notes`. The season year is `season_start.year` (no separate column to disagree with it). Plantings on the same field can't overlap in time (model validation plus a Postgres exclusion constraint). This supports double-cropping properly (replacing the legacy `current_crop` "latest emergence" hack). Emergence may precede `season_start` (perennials).
 - **canopy_observations**: `planting_id, date, pct_cover (0–100) | lai (≥0)`. These are anchor points for interpolation (§5.3).
 - **field_entries**: `field_id, date, rain_in, irrigation_in, soil_moisture_pct, notes`. All nullable, NULL = not entered, **0.0 = user entered zero** (removes the legacy `CHANGE_EPSILON` workaround). Unique on `(field_id, date)`.
 - **field_group_entries**: the same columns, keyed on `(field_group_id, date)`. These apply to member fields **when read**, not copied in on save.
@@ -197,12 +197,13 @@ The initial AD on `season_start` comes from `initial_moisture_pct` via the same 
 ### 5.3 Canopy
 
 - **Percent cover** (default): 0 before emergence; linear interpolation between observations; **held at the last observed value until `end_date`**; 0 after `end_date`. Legacy only carried the last value forward 6 days, after which cover fell back to 0 or a stale value, which collapsed ET to the bare-soil rate.
-- Interpolation from emergence (0%) to the first observation.
+- Interpolation from emergence (0%) to the first observation. Readings dated before emergence are ignored (for perennials, enter the green-up date as emergence).
 - **LAI** (kept, D8): LAI comes from a crop curve by default, and entered LAI observations override it, interpolated the same way as percent cover. Kc = 1.1 × (1 − e^(−1.5·LAI)), with LAI clamped to ≥ 0.
   - **Field corn curve** (from the WIS v6.3.11 spreadsheet): `LAI = 9e-12 × d^7.95 × e^(−0.1 d)`, d = days since emergence. It peaks at LAI 4.07 on day 80 (Kc 1.10) and falls to 0.86 by day 140.
   - **Which crops get which curve, and whether to switch to degree-day curves, depends on Q2.** Until then, the corn curve is offered only for field corn, and other crops can use LAI only with entered observations.
   - **Legacy problems (C4, C18):** the corn curve was applied to every crop, and sweet corn's placeholder curve produces **negative ET**.
   - The engine takes a `CanopyModel` per plant, so adding validated curves later is a data change.
+  - With LAI readings entered, they replace the curve entirely (interpolated like percent cover); with none, the curve is used, or LAI 0 (no ET) for plants without one. Revisit blending readings with the curve after Q2.
 
 ### 5.4 Crop ET (percent-cover method, from the A3600 Table C regressions)
 
@@ -210,10 +211,12 @@ Port `adj_et_pct_cover` with these fixes:
 - Clamp `pct_cover` to [0, 100]. Legacy treated negative values as full cover.
 - The bare-soil step lookup uses half-open intervals (`< 0.16`, `< 0.32`). Legacy used `0..0.159` / `0.160..0.319`, so a value such as 0.1595 fell through to the highest bin.
 - Fix the coefficient table as a named constant with a unit test per band boundary.
+- Never negative: the 10% regression's intercept makes it slightly negative for et0 below about 0.0095 in.
 
 **Gap fill** (observed days where et0 is NULL only): mean of the top 3 adj_ET values over the previous 7 days. This matches legacy; the RingBuffer is ported as a simple array window. Two fixes:
 - Gap-filled values are **not** fed back into the window, so a long gap can't keep using the same filled value indefinitely.
 - Legacy would raise `NoMethodError` if `ref_et` was NULL (`nil < epsilon`).
+- The window is the previous 7 calendar days. If it holds no computed values (a gap longer than a week), the day has no ET and is flagged `missing`, as legacy's empty buffer also gave 0.
 
 Gap fill is **never used for future days**; that's the projection's job (§6).
 
@@ -469,11 +472,12 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 
 ### Phase 2: Domain and engine
 
-- [ ] Migrations and models for §4; seeds for plants and soil types (ported YAML).
-- [ ] `WaterBalance`, `Canopy`, `CropEt` modules with the §5 fixes and full unit tests.
-- [ ] `DailyInputs` resolver (precedence and provenance, including pivot irrigation).
-- [ ] Golden tests against the exported legacy fixtures (§10), with the list of explained differences.
-- [ ] Dev seed task that builds a realistic demo group (several farms, multi-field pivots, both ET methods) for development, staging and the beta.
+- [x] Migrations and models for §4 (weather tables wait for Phase 3); plants and soil types in `db/reference/*.yml`, loaded by `ReferenceData` on `db:seed` and on every deploy.
+- [x] `WaterBalance`, `Canopy`/`CanopyModel`, `CropEt` (`app/services`) with the §5 fixes and unit tests; property tests for AD bounds and water conservation.
+- [x] `DailyInputs` resolver (precedence and provenance, including pivot irrigation and run hours); `PlantingBalance` runs a planting's season from the database.
+- [x] Golden test harness: `spec/support/legacy_engine.rb` reproduces legacy with each fix switchable (with all fixes it equals `WaterBalance`); `spec/golden` checks each fixture field and attributes every differing day to a fix. Export script `script/legacy/export_golden_fixtures.rb` (checked against the local legacy dev DB, whose 2026 fields have no weather).
+- [ ] Run the export on legacy production, `bin/rails golden:import FILE=…`, and make the golden tests pass (Ben runs the export).
+- [x] `bin/rails demo:seed`: a demo account with 3 farms, 13 fields (a pivot with 8 fields, a double crop), both ET methods, pivot irrigation in inches, run hours and for a subset, a soil moisture reading and a field group.
 - **Exit:** golden tests pass for every fixture field, and each difference traces to a listed fix.
 
 ### Phase 3: Weather

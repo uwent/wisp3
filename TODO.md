@@ -17,7 +17,14 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 - [ ] If not done yet, run the rainfall backfill on production: `DRY_RUN=1 bundle exec rake precip:backfill`, review the output, then run it without `DRY_RUN`.
 - [ ] Optional: tell the one sweet corn + LAI grower their 2026 water balance was wrong (PLAN.md C18).
-- [ ] **After Nov 30, and before Feb 15:** take an archive `pg_dump` of legacy production. The next session can write the scripts that export golden-test fixtures and AgWeather data; you run them on the server (PLAN.md §10, §8.4).
+- [ ] **Export golden-test fixtures** from legacy production (any time now; the 2026 season is over). Read-only:
+  ```bash
+  scp -P 216 script/legacy/export_golden_fixtures.rb deploy@<legacy host>:/tmp/
+  # on the server:
+  cd ~/wisp/current && RAILS_ENV=production bundle exec rails runner /tmp/export_golden_fixtures.rb > /tmp/wisp_golden.json
+  ```
+  Copy `wisp_golden.json` back and tell the next session; it runs `bin/rails golden:import FILE=wisp_golden.json` and works through any differences.
+- [ ] **After Nov 30, and before Feb 15:** take an archive `pg_dump` of legacy production. The AgWeather comparison export (PLAN.md §8.4) is still to be written, in Phase 3.
 
 ## Waiting on other people (start early)
 

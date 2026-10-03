@@ -44,20 +44,15 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
 - **`pkill -f` on a pattern** that appears in the same command line kills the shell. Stop dev servers by port/PID instead.
 - **Harmless CI noise:** svelte-check logs "Error while loading config" for a Vite template inside `vendor/bundle`; the step still passes.
 
-## Next: Phase 2, domain model and calculation engine (PLAN.md §4, §5, §14)
+## Phase 2 status (domain model and calculation engine)
 
-Suggested order:
+Done (see PLAN.md §14 Phase 2):
 
-1. **Reference data:** copy `../wisp/db/plants.yml` and `db/soil_types.yml`. Use plain `plants` / `soil_types` tables, not STI subclasses. Plants get a canopy/LAI model key (Q2: field corn uses the WIS curve; other crops get LAI only from entered observations).
-2. **Migrations and models from §4:**
-   - farms, pivots (location required, no default; radius/arc)
-   - fields, plantings (non-overlapping per field), canopy_observations
-   - field_entries, field_groups / members / entries
-   - pivot_irrigations (`field_ids` array, run hours → inches)
-   - Every group-owned query goes through `Current.group`, with a cross-tenant request spec per controller. Weather tables can wait for Phase 3.
-3. **Engine** (`app/services` or `app/lib`, plain Ruby, no ActiveRecord): `WaterBalance`, `CropEt` (A3600 percent-cover table and LAI/Kc), `Canopy` (interpolation, held at the last value until `end_date`). Port from `../wisp/vendor/asigbiophys/lib/{ad_calculator,et_calculator}.rb`, applying fixes C2–C8, C18 from §9, with a unit test per formula, band boundary and clamp, plus the property tests in §10.
-4. **`DailyInputs` resolver:** field entry > pivot irrigation > field group entry > model, with provenance tags and `rain_model_in` kept alongside (Q7).
-5. **Golden fixtures:** write a read-only export script for the legacy app that dumps about 30 anonymized 2026 fields (inputs + legacy AD series) to JSON. Ben runs it on legacy production. Golden specs go in `spec/fixtures/legacy/` and list each expected difference by fix ID.
-6. **Demo seed task:** several farms, multi-field pivots, both ET methods, for dev, staging and the beta.
+- Schema and models for §4 (no weather tables yet), reference data in `db/reference/*.yml`.
+- Engine in `app/services`: `CropEt`, `Canopy` + `CanopyModel`, `WaterBalance`, `DailyInputs`, `PlantingBalance`.
+- `spec/support/legacy_engine.rb`: legacy's balance with fixes C2, C7, C8 switchable; `spec/golden` compares fixtures and attributes differences (C3/C4 come from the canopy series).
+- `bin/rails demo:seed`.
 
-Phase 2 exit: golden tests pass, and every difference traces to a listed fix. Update the PLAN.md §14 checklists as work lands.
+Remaining: Ben runs `script/legacy/export_golden_fixtures.rb` on legacy production (TODO.md); then `bin/rails golden:import FILE=…` and work through failures. A failure of "is reproduced by LegacyEngine" means `LegacyEngine` doesn't yet match legacy (fix `LegacyEngine`); a failure of "differs … only where a listed fix explains it" means an unexplained change (fix the engine, or add a fix ID to §9 with a `LegacyEngine` switch). Watch for legacy's first day: its AD is recomputed on top of its own stored value, so both runs start from the fixture's day-1 AD.
+
+Next after that: Phase 3, weather (PLAN.md §8, §14). `PlantingBalance` takes `weather: {date => {et0:, precip:}}`; Phase 3 supplies it from `weather_days`.
