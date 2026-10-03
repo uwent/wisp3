@@ -131,6 +131,12 @@
     <Link href={setup.show()} class="mt-4 inline-block text-sm text-brand-600 hover:underline">Go to setup</Link>
   </section>
 {:else}
+  {#if summary.weather_pending}
+    <p role="status" class="rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm">
+      Weather for this pivot is on the way, usually within a few minutes of adding it. Until it arrives there's no ET,
+      so the water balance below stays flat.
+    </p>
+  {/if}
   <!-- Summary -->
   <section class="grid gap-4 rounded-lg border border-line bg-surface-raised p-4 sm:p-6 lg:grid-cols-3">
     <div class="space-y-2">

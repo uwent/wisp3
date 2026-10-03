@@ -10,6 +10,7 @@ class PlantingSummarySerializer < ApplicationSerializer
   attribute(:end_date) { |status| status.planting.end_date }
   attribute(:phase, &:phase)
   attribute(:status, &:status)
+  attribute(:weather_pending, &:weather_pending?)
   attribute(:date) { |status| status.current&.inputs&.date }
   attribute(:ad) { |status| status.current&.result&.ad }
   attribute(:pct_moisture) { |status| status.current&.result&.pct_moisture }
@@ -31,7 +32,7 @@ class PlantingSummarySerializer < ApplicationSerializer
 
   typelize planting_id: :number, plant_name: :string, variety: "string | null", season_start: :string,
     end_date: :string, phase: "'upcoming' | 'active' | 'ended'",
-    status: "'full' | 'ok' | 'caution' | 'irrigate' | null", date: "string | null", ad: "number | null",
+    status: "'full' | 'ok' | 'caution' | 'irrigate' | null", weather_pending: :boolean, date: "string | null", ad: "number | null",
     pct_moisture: "number | null", taw: :number, ad_max: :number, ad_pwp: :number, target_in: "number | null",
     field_capacity_pct: :number, wilting_point_pct: :number, pct_at_ad_zero: :number,
     last_rain: "{ date: string; inches: number } | null", last_irrigation: "{ date: string; inches: number } | null",

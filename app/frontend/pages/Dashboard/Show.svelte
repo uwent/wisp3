@@ -112,6 +112,8 @@
 
               {#if !summary}
                 <p class="text-sm text-ink-muted">No crop this season. Add a planting in setup.</p>
+              {:else if summary.weather_pending}
+                <p class="text-sm text-ink-muted">Weather for this pivot is on the way; the water balance fills in once it arrives.</p>
               {:else if summary.phase === 'upcoming'}
                 <p class="text-sm text-ink-muted">Season starts {formatDate(summary.season_start)}</p>
               {:else}

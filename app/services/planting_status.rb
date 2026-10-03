@@ -29,6 +29,9 @@ class PlantingStatus
 
   def status = current && WaterBalance.status(params, current.result.ad)
 
+  # The season has started but no weather has arrived for it yet (a new pivot, before its backfill)
+  def weather_pending? = days.any? && days.none? { |day| day.inputs.et0 }
+
   def last_rain = days.rfind { |day| day.inputs.rain.to_f.positive? }
   def last_irrigation = days.rfind { |day| day.inputs.irrigation.to_f.positive? }
 

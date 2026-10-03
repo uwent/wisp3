@@ -27,6 +27,12 @@ RSpec.describe PlantingStatus do
     expect(today.status).to eq(WaterBalance.status(today.params, today.current.result.ad))
   end
 
+  it "knows when the season has started but no weather has arrived" do
+    expect(status(Date.new(2026, 7, 10)).weather_pending?).to be(false)
+    expect(status(Date.new(2026, 6, 30)).weather_pending?).to be(false)
+    expect(described_class.new(planting, today: Date.new(2026, 7, 10), weather: {}).weather_pending?).to be(true)
+  end
+
   it "finds the latest rain and irrigation" do
     field.field_entries.create!(date: Date.new(2026, 7, 6), irrigation_in: 0.6)
     today = status(Date.new(2026, 7, 10))
