@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+/* Red Hat Text for body copy, Red Hat Display for headings: self-hosted variable fonts */
+@import '@fontsource-variable/red-hat-text';
+@import '@fontsource-variable/red-hat-display';
 
 @plugin '@tailwindcss/typography';
 @plugin '@tailwindcss/forms';
@@ -8,7 +11,8 @@
  * rather than raw palette colors, so light/dark and status colors are defined once.
  */
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'Red Hat Text Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Red Hat Display Variable', var(--font-sans);
 
   /* Brand: water blue */
   --color-brand-50: oklch(97% 0.02 230);
@@ -23,8 +27,9 @@
   --color-status-caution: oklch(75% 0.15 75);
   --color-status-irrigate: oklch(55% 0.2 27);
 
-  /* University of Wisconsin–Madison red, for the branding bar (the same in both themes) */
+  /* University of Wisconsin–Madison red, for the branding bar; the darker red in dark mode */
   --color-uw-red: #cf0a1b;
+  --color-uw-red-dark: #a3030e;
 
   /* Surfaces and text, switched for dark mode below */
   --color-surface: oklch(98.5% 0.003 240);
@@ -122,6 +127,15 @@
 
   :root[data-theme='dark'] {
     color-scheme: dark;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
   }
 
   /* @tailwindcss/forms resets inputs to white, in rules that come after this one with the same

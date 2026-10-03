@@ -21,6 +21,8 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@fontsource-variable/red-hat-display": "^5.3.0",
+    "@fontsource-variable/red-hat-text": "^5.3.0",
     "@inertiajs/svelte": "^3.8.0",
     "@inertiajs/vite": "^3.8.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
