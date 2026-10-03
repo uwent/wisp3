@@ -1,0 +1,90 @@
+# Crops, carried over from the legacy app (../wisp/db/plants.yml).
+# Default root zone depths: Table 3.4 of NRCS National Engineering Handbook part 652
+# (http://www.nrcs.usda.gov/Internet/FSE_DOCUMENTS/nrcs141p2_017640.pdf); mint from FAO-56
+# (http://www.fao.org/docrep/x0490e/x0490e0e.htm).
+# canopy_model: the LAI growth curve used when a planting uses the LAI method without entered
+# readings (CanopyModel). Only field corn has a validated curve (PLAN.md Q2); other crops can use
+# LAI only with entered readings.
+
+- key: potato
+  name: Potato
+  default_max_root_zone_depth: 16.0
+- key: sweet_corn
+  name: Sweet Corn
+  default_max_root_zone_depth: 27.0
+- key: snap_bean
+  name: Snap bean
+  default_max_root_zone_depth: 21.0
+- key: shell_peas
+  name: Shell peas
+  default_max_root_zone_depth: 36.0
+- key: onion
+  name: Onion
+  default_max_root_zone_depth: 12.0
+- key: cabbage
+  name: Cabbage
+  default_max_root_zone_depth: 15.0
+- key: carrot
+  name: Carrot
+  default_max_root_zone_depth: 12.0
+- key: soybean
+  name: Soybean
+  default_max_root_zone_depth: 33.0
+- key: field_corn
+  name: Field Corn
+  default_max_root_zone_depth: 33.0
+  canopy_model: field_corn
+- key: beets
+  name: Beets
+  default_max_root_zone_depth: 18.0
+- key: broccoli
+  name: Broccoli
+  default_max_root_zone_depth: 15.0
+- key: pepper
+  name: Pepper
+  default_max_root_zone_depth: 18.0
+- key: sweet_potato
+  name: Sweet potato
+  default_max_root_zone_depth: 16.0
+- key: mint
+  name: Mint
+  default_max_root_zone_depth: 15.0
+- key: tomato
+  name: Tomato
+  default_max_root_zone_depth: 15.0
+- key: melon
+  name: Melon
+  default_max_root_zone_depth: 18.0
+- key: pumpkin
+  name: Pumpkin
+  default_max_root_zone_depth: 18.0
+- key: winter_squash
+  name: Winter squash
+  default_max_root_zone_depth: 18.0
+- key: summer_squash
+  name: Summer squash
+  default_max_root_zone_depth: 18.0
+- key: leafy_greens
+  name: Leafy greens
+  default_max_root_zone_depth: 12.0
+- key: cucumber
+  name: Cucumber
+  default_max_root_zone_depth: 18.0
+- key: asparagus
+  name: Asparagus
+  default_max_root_zone_depth: 27.0
+- key: celery
+  name: Celery
+  default_max_root_zone_depth: 15.0
+- key: wheat
+  name: Wheat
+  default_max_root_zone_depth: 33.0
+- key: alfalfa
+  name: Alfalfa
+  default_max_root_zone_depth: 42.0
+- key: barley
+  name: Barley
+  default_max_root_zone_depth: 33.0
+- key: other
+  name: Other
+  default_max_root_zone_depth: 36.0

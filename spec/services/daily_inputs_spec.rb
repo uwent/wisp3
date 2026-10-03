@@ -1,0 +1,72 @@
+require "rails_helper"
+
+RSpec.describe DailyInputs do
+  let(:date) { Date.new(2026, 6, 1) }
+  let(:pivot) { create(:pivot, pump_capacity_gpm: 900) }
+  let(:field) { create(:field, pivot:, area_acres: 60) }
+  let(:other_field) { create(:field, pivot:, area_acres: 40) }
+  let(:weather) { {date => {et0: 0.22, precip: 0.35}} }
+
+  def resolve(on = date, weather: self.weather) = described_class.new(field, [on], weather:).days.first
+
+  it "uses the model with nothing entered" do
+    expect(resolve).to have_attributes(rain: 0.35, rain_source: :model, rain_model: 0.35, irrigation: 0.0,
+      irrigation_source: :none, et0: 0.22, et0_source: :model, soil_moisture_pct: nil, moisture_source: nil)
+  end
+
+  it "marks missing weather instead of using 0" do
+    expect(resolve(weather: {})).to have_attributes(rain: nil, rain_source: :missing, et0: nil, et0_source: :missing)
+  end
+
+  it "uses 0 rain, not the model, when the group enters rain by hand" do
+    field.farm.group.update!(use_model_precip: false)
+    expect(resolve).to have_attributes(rain: 0.0, rain_source: :none, rain_model: 0.35)
+  end
+
+  describe "precedence" do
+    let(:field_group) { create(:field_group, group: field.farm.group).tap { |g| g.fields << field } }
+
+    it "prefers the field's entry, keeping the modeled rain alongside" do
+      create(:field_entry, field:, date:, rain_in: 0.8, irrigation_in: 0.5, soil_moisture_pct: 14)
+      create(:field_group_entry, field_group:, date:, rain_in: 0.6, irrigation_in: 0.4, soil_moisture_pct: 12)
+      create(:pivot_irrigation, pivot:, date:, inches: 0.7)
+      expect(resolve).to have_attributes(rain: 0.8, rain_source: :entered, rain_model: 0.35, irrigation: 0.5,
+        irrigation_source: :entered, soil_moisture_pct: 14, moisture_source: :entered)
+    end
+
+    it "keeps an entered zero (C5)" do
+      create(:field_entry, field:, date:, rain_in: 0.0)
+      expect(resolve).to have_attributes(rain: 0.0, rain_source: :entered)
+    end
+
+    it "puts pivot irrigation above field group irrigation" do
+      create(:field_group_entry, field_group:, date:, rain_in: 0.6, irrigation_in: 0.4, soil_moisture_pct: 12)
+      create(:pivot_irrigation, pivot:, date:, inches: 0.7)
+      expect(resolve).to have_attributes(rain: 0.6, rain_source: :group, irrigation: 0.7, irrigation_source: :pivot,
+        soil_moisture_pct: 12, moisture_source: :group)
+    end
+
+    it "takes a field in two field groups from the older group" do
+      create(:field_group_entry, field_group:, date:, rain_in: 0.6)
+      newer = create(:field_group, group: field.farm.group).tap { |g| g.fields << field }
+      create(:field_group_entry, field_group: newer, date:, rain_in: 0.9)
+      expect(resolve.rain).to eq(0.6)
+    end
+  end
+
+  describe "pivot irrigation" do
+    it "applies only to the chosen fields" do
+      create(:pivot_irrigation, pivot:, date:, inches: 0.7, field_ids: [other_field.id])
+      expect(resolve.irrigation_source).to eq(:none)
+      expect(described_class.new(other_field, [date]).days.first.irrigation).to eq(0.7)
+    end
+
+    it "converts run hours over the irrigated acres" do
+      field
+      other_field
+      create(:pivot_irrigation, pivot:, date:, inches: nil, run_hours: 10)
+      # 900 gpm × 600 min / (27,154 gal per acre-inch × 100 acres)
+      expect(resolve.irrigation).to be_within(1e-9).of(900 * 600 / (27_154.0 * 100))
+    end
+  end
+end

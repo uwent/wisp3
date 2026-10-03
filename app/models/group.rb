@@ -3,6 +3,13 @@
 class Group < ApplicationRecord
   has_many :memberships, dependent: :destroy
   has_many :users, through: :memberships
+  has_many :farms, dependent: :destroy
+  has_many :pivots, through: :farms
+  has_many :fields, through: :pivots
+  has_many :field_groups, dependent: :destroy
+
+  # Plantings of this group's fields, for scoping lookups by ID
+  def plantings = Planting.joins(field: {pivot: :farm}).where(farms: {group_id: id})
 
   validates :name, presence: true, length: {maximum: 100}
 end
