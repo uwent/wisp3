@@ -1,16 +1,25 @@
-# Handoff: WISP 3, end of Phase 1 (2026-10-02)
+# Handoff: WISP 3, end of Phase 3 (2026-10-03)
 
 Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phases §14, open questions §15) and [CLAUDE.md](CLAUDE.md) (conventions) first. Ben's own action items are in [TODO.md](TODO.md).
 
 ## Where things stand
 
-- **Repo:** https://github.com/uwent/wisp3 (public), branch `main`, GitHub Actions CI green. `bin/ci` runs the same checks locally.
-- **Phase 0 (legacy `../wisp`):** done and deployed by Ben. That covered tenant scoping (S1), the rainfall toggle fix (C1), `rake precip:backfill`, and disabling the Feb 15 wipe. Ben may or may not have run the backfill yet.
-- **Phase 1:** done. Staging has been live at https://dev.wisp.cals.wisc.edu since 2026-10-03:
-  - Puma on `127.0.0.1:3100` behind nginx; nginx config is `sites-available/wisp3`, and the legacy site's config is kept.
-  - `wisp3-web` and `wisp3-jobs` are systemd user services, enabled.
-  - Redeploy with `cap staging deploy`, from the pushed `main` branch.
-  - Still open (Ben): sign up on staging and check the confirmation and sign-in-link emails arrive.
+- **Repo:** https://github.com/uwent/wisp3 (public), branch `main`. `bin/ci` runs the same checks as GitHub Actions. Ben pushes; check `git status` / `git log origin/main..` for unpushed commits.
+- **Phase 0 (legacy `../wisp`):** done and deployed; precipitation backfill run.
+- **Phase 1 (foundation):** done. Staging live at https://dev.wisp.cals.wisc.edu (Puma on `127.0.0.1:3100`, nginx `sites-available/wisp3`, systemd user units `wisp3-web` / `wisp3-jobs`). Redeploy: `bundle exec cap staging deploy` from pushed `main`.
+- **Phase 2 (domain + engine):** done. Golden tests against 30 legacy production fields passed, then were retired with the legacy data; `spec/support/legacy_engine.rb` and its synthetic spec remain as the record of each fix (C2, C3, C4, C7, C8, C19).
+- **Phase 3 (weather):** done locally on the free API (see below). Not yet on staging: Phase 2 and 3 need a push and `cap staging deploy`, plus the API key in staging credentials (TODO.md).
+- **Next: Phase 4, core UI** (PLAN.md §14): setup pages with the pivot map picker, the field status page (chart, daily grid, weather panels), dashboard, pivot irrigation entry, units. Nothing in the UI shows farms or weather yet.
+
+## Phase 3 summary (weather)
+
+- `app/services/weather/`: `Grid` (ECMWF O1280 cells, ported from Ben's R client `tmp/api_openmeteo.R`), `OpenMeteo` (client), `RateLimiter`, `Daily` (hourly → local days, unit conversion, model fallback), `Fetcher` (store days and forecasts), `DegreeDays`, `Comparison` (+ `WeatherComparisonReport`).
+- Models: daily values from NBM, then best_match (`OPEN_METEO_MODELS`); soil from `ecmwf_ifs`. Why: `docs/weather-comparison.md`, PLAN.md §8.2 and §8.4.
+- Jobs (`app/jobs`, `config/recurring.yml`, production and staging only): `WeatherRefreshJob` 3×/day, `WeatherBackfillJob` (on pivot create/move and after refresh), `WeatherFinalizeJob`, `ForecastPruneJob`. Dev has no recurring jobs: use `bin/rails weather:refresh`.
+- `PlantingBalance.new(planting).days` now reads stored weather for the field's cell.
+- Admin page `/admin/weather` (users with `admin: true`); "Weather" appears in the nav for admins.
+- Key: `OPEN_METEO_API_KEY` in `.env` (development, via dotenv; see `.env.example`) or `open_meteo.api_key` in Rails credentials (servers). Not yet tested with a real key.
+- Local dev data: `bin/rails demo:seed` then `bin/rails weather:refresh` gives the demo account a season of weather (the local demo user is an admin, password `demo-password-1`).
 
 ## What exists
 
@@ -20,9 +29,11 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
   - Settings at `/settings`.
 - Tenancy: `AuthenticatedController` sets `Current.user` / `Current.group` (validated against memberships); `CurrentGroupsController` switches groups. Users get a personal group on sign-up.
 - Frontend:
-  - `app/frontend/` contains `entrypoints/inertia.ts` (chooses the layout by page name), `layouts/`, `lib/components/` (Button, TextField, FlashMessages, Logo), `pages/Auth|Dashboard|Settings`.
+  - `app/frontend/` contains `entrypoints/inertia.ts` (chooses the layout by page name), `layouts/`, `lib/components/` (Button, TextField, FlashMessages, Logo), `pages/Auth|Dashboard|Settings|Admin`.
   - Design tokens (brand, status colors, surfaces, dark mode) are in `entrypoints/application.css`.
 - Types and route helpers: Typelizer generates `app/frontend/types/serializers` and `app/frontend/routes` from Alba serializers and the Rails routes. They are committed, and CI checks they're current.
+- Domain and engine (Phase 2): models for farms, pivots, fields, plantings, canopy observations, field/group entries and pivot irrigations; plain-Ruby engine in `app/services` (`WaterBalance`, `CropEt`, `Canopy`, `DailyInputs`, `PlantingBalance`); reference data in `db/reference/*.yml` (loaded on seed and every deploy); `bin/rails demo:seed`.
+- Weather (Phase 3): see the summary above.
 - Deploy: `Capfile`, `config/deploy*.rb`, `config/systemd/*.service.erb`, `lib/capistrano/tasks/systemd.rake`, `config/deploy/nginx.conf.example`, `docs/deployment.md`. Production stage needs `PRODUCTION_HOST` (new server, D11).
 
 ## Gotchas learned this session
@@ -43,16 +54,7 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
 - **Browser smoke testing:** Playwright browsers are cached in `~/.cache/ms-playwright`. Install `playwright` (1.63 works) in the scratchpad rather than the project. Letter Opener writes mail to `tmp/letter_opener/*/plain.html` (Devise mails only have `rich.html`, with HTML-escaped content).
 - **`pkill -f` on a pattern** that appears in the same command line kills the shell. Stop dev servers by port/PID instead.
 - **Harmless CI noise:** svelte-check logs "Error while loading config" for a Vite template inside `vendor/bundle`; the step still passes.
-
-## Phase 2 status (domain model and calculation engine)
-
-Done (see PLAN.md §14 Phase 2):
-
-- Schema and models for §4 (no weather tables yet), reference data in `db/reference/*.yml`.
-- Engine in `app/services`: `CropEt`, `Canopy` + `CanopyModel`, `WaterBalance`, `DailyInputs`, `PlantingBalance`.
-- `spec/support/legacy_engine.rb`: legacy's balance with fixes C2, C7, C8 switchable; `spec/golden` compares fixtures and attributes differences (C3/C4 come from the canopy series).
-- `bin/rails demo:seed`.
-
-Remaining: Ben runs `script/legacy/export_golden_fixtures.rb` on legacy production (TODO.md); then `bin/rails golden:import FILE=…` and work through failures. A failure of "is reproduced by LegacyEngine" means `LegacyEngine` doesn't yet match legacy (fix `LegacyEngine`); a failure of "differs … only where a listed fix explains it" means an unexplained change (fix the engine, or add a fix ID to §9 with a `LegacyEngine` switch). Watch for legacy's first day: its AD is recomputed on top of its own stored value, so both runs start from the fixture's day-1 AD.
-
-Next after that: Phase 3, weather (PLAN.md §8, §14). `PlantingBalance` takes `weather: {date => {et0:, precip:}}`; Phase 3 supplies it from `weather_days`.
+- **Open-Meteo:** the forecast API only reaches ~92 days back; older days need the historical-forecast API (same models) or the archive (ERA5). best_match, GFS and NBM have **no soil variables** over North America; ECMWF IFS does. Multi-model requests suffix each variable with the model name; multi-location requests return a JSON list (one location returns an object). Coastal points snap to a land cell (`cell_selection=land`), so the API's coordinates can differ from `Weather::Grid` there.
+- **Zeitwerk:** one constant per file, including error classes (`weather/error.rb`, `transient_error.rb`, `rate_limited.rb`).
+- **Development cache is a null store**, so rate-limit and usage counters don't persist in dev (the admin page shows 0). Staging/production use Solid Cache.
+- **AgWeather's public API** (`https://agweather.cals.wisc.edu/api/evapotranspirations|precips?lat=&long=&start_date=&end_date=&units=in`) is only used by the comparison report, never at runtime.

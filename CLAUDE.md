@@ -16,6 +16,8 @@ npm test                         # vitest
 npm run check                    # svelte-check + tsc
 bin/rails typelizer:generate     # after changing serializers or routes; commit the output
 bin/rails demo:seed              # demo account with farms, fields and entries (EMAIL, PASSWORD, YEAR)
+bin/rails weather:refresh        # fetch weather for active cells now (needs network; OPEN_METEO_API_KEY in .env optional)
+bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weather-comparison.md
 ```
 
 ## Architecture
@@ -33,4 +35,5 @@ bin/rails demo:seed              # demo account with farms, fields and entries (
 - **Missing data is NULL, never 0.** A value the user entered as zero is 0.0.
 - **Legacy code:** when porting from `../wisp`, check each method against the audit in `PLAN.md` §9 before reusing it.
 - **Engine:** the water balance lives in plain-Ruby services (`WaterBalance`, `CropEt`, `Canopy`, `DailyInputs`, `PlantingBalance`), recalculated on read, never stored. A change to the balance must keep `spec/services/legacy_engine_spec.rb` passing; a deliberate change from legacy gets a fix ID in PLAN.md §9 and a switch in `LegacyEngine`.
+- **Weather:** Open-Meteo only, fetched by jobs (never in a request) into `weather_days` per O1280 grid cell (`Weather::Grid`); values stored in inches/°F/mph, soil moisture as m³/m³. Specs never hit the network (WebMock; `spec/support/fake_open_meteo.rb`, recorded responses in `spec/fixtures/files/open_meteo`).
 - Ruby style is Standard; prefer small, plain-Ruby service objects for domain math (no ActiveRecord callbacks cascading recalculation).

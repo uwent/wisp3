@@ -7,7 +7,7 @@ module Admin
       render inertia: "Admin/Weather", props: {
         api: {
           mode: client.mode.to_s,
-          model: Weather::OpenMeteo.primary_model,
+          model: Weather::OpenMeteo.primary_models.join(", "),
           soil_model: Weather::OpenMeteo::SOIL_MODEL,
           usage: %i[minute hour day].to_h { |period| [period, limiter.used(period).round(1)] },
           limits: (client.mode == :free) ? Weather::RateLimiter::FREE_LIMITS : nil

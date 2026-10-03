@@ -49,7 +49,8 @@ module Weather
     module_function
 
     # {date => {"hours" => n, column => value, ...}} from one or more Hourly responses for the same
-    # location (e.g. the primary model and the soil model); each fills the columns it has data for
+    # location, in order of preference (e.g. NBM, then best_match, then the soil model): each value
+    # comes from the first response that has it
     def from_hourly(*responses)
       responses.each_with_object({}) do |response, days|
         dates = response.times.map { |time| Date.parse(time) }
@@ -60,9 +61,9 @@ module Weather
           day = days[date] ||= {"hours" => hours_by_date[date]}
           COLUMNS.each do |column, (variable, method, convert)|
             series = response.values[variable]
-            next if series.blank?
+            next if series.blank? || !day[column].nil?
             value = combine(indexes.map { |i| series[i] }, method, hours_by_date[date])
-            day[column] = value.nil? ? day[column] : convert.call(value)
+            day[column] = value && convert.call(value)
           end
         end
       end

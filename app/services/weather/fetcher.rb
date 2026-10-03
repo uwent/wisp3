@@ -8,8 +8,8 @@ module Weather
     FORECAST_DAYS = 16
     BACKFILL_CHUNK_DAYS = 92
 
-    def initialize(client: OpenMeteo.new, model: OpenMeteo.primary_model)
-      @client, @model = client, model
+    def initialize(client: OpenMeteo.new, models: OpenMeteo.primary_models)
+      @client, @models = client, models
     end
 
     # The last week and the 16-day forecast
@@ -40,17 +40,20 @@ module Weather
 
     def fetch(cells, endpoint, **dates)
       locations = cells.map { |cell| [cell.latitude, cell.longitude] }
-      primary = @client.hourly(locations, endpoint:, model: @model, variables: OpenMeteo::VARIABLES, **dates)
+      by_model = @models.map { |model| @client.hourly(locations, endpoint:, model:, variables: OpenMeteo::VARIABLES, **dates) }
       soil = @client.hourly(locations, endpoint:, model: OpenMeteo::SOIL_MODEL, variables: OpenMeteo::SOIL_VARIABLES,
         **dates)
-      cells.zip(primary, soil).sum do |cell, primary_hours, soil_hours|
-        store(cell, primary_hours, Daily.from_hourly(primary_hours, soil_hours), forecast: endpoint == :forecast)
+      cells.each_with_index.sum do |cell, i|
+        responses = by_model.map { |hourly| hourly[i] } + [soil[i]]
+        store(cell, responses.last, Daily.from_hourly(*responses), forecast: endpoint == :forecast)
       end
     rescue Error => e
       WeatherCell.where(id: cells.map(&:id)).update_all(last_error: e.message, last_error_at: Time.current)
       raise
     end
 
+    # response: one of the cell's responses, for its timezone and elevation (the soil model's,
+    # since it covers everywhere)
     def store(cell, response, days, forecast:)
       now = Time.current
       cell.update!(timezone: response.timezone, elevation_m: response.elevation, last_fetched_at: now, last_error: nil)
@@ -60,17 +63,19 @@ module Weather
       final = cell.weather_days.where(final: true, date: past.keys).pluck(:date).to_set
       rows = past.except(*final).map do |date, day|
         WeatherDay::VALUE_COLUMNS.index_with { |column| day[column] }.merge(
-          weather_cell_id: cell.id, date:, model: @model, soil_model: OpenMeteo::SOIL_MODEL, hours: day["hours"],
-          fetched_at: now, final: false
+          weather_cell_id: cell.id, date:, model: model_name, soil_model: OpenMeteo::SOIL_MODEL, hours: day["hours"],
+          fetched_at: now, final: date < today - PAST_DAYS # backfilled days past the refresh window are settled
         )
       end
       WeatherDay.upsert_all(rows, unique_by: [:weather_cell_id, :date]) if rows.any?
 
       if forecast
         upcoming = days.select { |date, _| date >= today }.sort.map { |date, day| day.except("hours").merge("date" => date.iso8601) }
-        cell.weather_forecasts.create!(issued_at: now, model: @model, payload: {"days" => upcoming}) if upcoming.any?
+        cell.weather_forecasts.create!(issued_at: now, model: model_name, payload: {"days" => upcoming}) if upcoming.any?
       end
       rows.size
     end
+
+    def model_name = @models.join(",")
   end
 end

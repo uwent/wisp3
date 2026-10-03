@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe Weather::Fetcher do
   let(:today) { Date.new(2026, 7, 20) }
   let(:client) { FakeOpenMeteo.new(today:) }
-  let(:fetcher) { described_class.new(client:, model: "best_match") }
+  let(:fetcher) { described_class.new(client:, models: %w[best_match]) }
   let(:cell) { WeatherCell.for(44.12, -89.53) }
 
   around { |example| travel_to(Time.zone.parse("2026-07-20 12:00")) { example.run } }
@@ -28,7 +28,7 @@ RSpec.describe Weather::Fetcher do
     it "updates provisional days but leaves final ones alone" do
       fetcher.refresh([cell])
       cell.weather_days.find_by(date: today - 7).update!(final: true, et0_in: 9.0)
-      described_class.new(client: FakeOpenMeteo.new(today:, et0_mm: 0.4), model: "best_match").refresh([cell])
+      described_class.new(client: FakeOpenMeteo.new(today:, et0_mm: 0.4), models: %w[best_match]).refresh([cell])
       expect(cell.weather_days.find_by(date: today - 7).et0_in).to eq(9.0)
       expect(cell.weather_days.find_by(date: today - 1).et0_in).to be_within(1e-9).of(24 * 0.4 / 25.4)
     end
@@ -39,6 +39,12 @@ RSpec.describe Weather::Fetcher do
       expect { described_class.new(client: failing).refresh([cell]) }.to raise_error(Weather::TransientError)
       expect(cell.reload.last_error).to eq("Open-Meteo 503")
     end
+  end
+
+  it "asks each primary model in turn, then the soil model" do
+    described_class.new(client:, models: %w[ncep_nbm_conus best_match]).refresh([cell])
+    expect(client.calls.map { |call| call[:model] }).to eq(%w[ncep_nbm_conus best_match ecmwf_ifs])
+    expect(cell.weather_days.first.model).to eq("ncep_nbm_conus,best_match")
   end
 
   describe "#backfill" do
@@ -52,6 +58,7 @@ RSpec.describe Weather::Fetcher do
       ])
       expect(fetcher.missing_runs(cell, Date.new(2026, 4, 1), today - 1)).to be_empty
       expect(cell.weather_forecasts.count).to eq(1) # backfills don't make forecasts
+      expect(cell.weather_days.where(final: false).pluck(:date)).to all(be >= today - 7)
     end
   end
 end

@@ -42,6 +42,14 @@ RSpec.describe Weather::Daily do
     expect(day).to include("tmean_f" => 68.0, "soil_moisture_0_7cm" => 0.25, "soil_temp_0_7cm_f" => 59.0)
   end
 
+  it "takes each value from the first model that has it (NBM, then best_match)" do
+    nbm = hourly(times.first(24), {"precipitation" => [1.0] * 24, "cloud_cover" => [nil] * 24})
+    best_match = hourly(times.first(24), {"precipitation" => [2.0] * 24, "cloud_cover" => [40.0] * 24})
+    day = described_class.from_hourly(nbm, best_match)[Date.new(2026, 7, 1)]
+    expect(day["precip_in"]).to be_within(1e-9).of(24 / 25.4)
+    expect(day["cloud_cover_pct"]).to eq(40.0)
+  end
+
   it "averages wind directions as vectors" do
     expect(described_class.mean_direction([350, 10])).to be_within(1e-9).of(0.0).or be_within(1e-9).of(360.0)
     expect(described_class.mean_direction([80, 100])).to be_within(1e-9).of(90.0)

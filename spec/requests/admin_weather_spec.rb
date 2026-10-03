@@ -31,7 +31,7 @@ RSpec.describe "Admin weather status", type: :request do
       sign_in admin
       get admin_weather_path
       expect_inertia.to render_component("Admin/Weather")
-      expect(inertia.props[:api]).to include(mode: "free", model: "best_match", soil_model: "ecmwf_ifs")
+      expect(inertia.props[:api]).to include(mode: "free", model: "ncep_nbm_conus, best_match", soil_model: "ecmwf_ifs")
       expect(inertia.props[:cells].sole).to include(pivot_count: 1, active: true, season_start: "2026-07-10",
         days_stored: 8, missing_days: 2, provisional_days: 5, latest_date: "2026-07-17",
         forecast_through: "2026-08-04", last_error: "Open-Meteo 503")

@@ -67,8 +67,8 @@
     <div class="rounded-lg border border-line bg-surface-raised p-3">
       <div class="text-xs text-ink-muted">Calls this {period}</div>
       <div class="text-lg font-semibold">
-        {api.usage[period]}{#if api.limits}<span class="text-sm font-normal text-ink-muted"> / {api.limits[period]}</span
-          >{/if}
+        {api.usage[period]}
+        {#if api.limits}<span class="text-sm font-normal text-ink-muted">of {api.limits[period]}</span>{/if}
       </div>
     </div>
   {/each}

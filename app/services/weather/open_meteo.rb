@@ -12,7 +12,7 @@ module Weather
       archive: ["archive-api.open-meteo.com", "/v1/archive"]
     }.freeze
 
-    # Atmospheric variables come from the primary model; soil variables from ECMWF IFS, the only
+    # Atmospheric variables come from the primary models; soil variables from ECMWF IFS, the only
     # model with them over North America (best_match, GFS and NBM return none).
     VARIABLES = %w[
       temperature_2m dew_point_2m relative_humidity_2m et0_fao_evapotranspiration precipitation rain
@@ -33,8 +33,12 @@ module Weather
 
     def self.api_key = ENV["OPEN_METEO_API_KEY"].presence || Rails.application.credentials.dig(:open_meteo, :api_key)
 
-    # The model for ET, rain and the rest (Phase 3 comparison: best_match vs ncep_nbm_conus)
-    def self.primary_model = ENV["OPEN_METEO_MODEL"].presence || "best_match"
+    # Models for ET, rain and the rest, in order of preference: each daily value comes from the
+    # first that has it. NBM matched AgWeather best (docs/weather-comparison.md) but covers only
+    # the contiguous US and has no cloud cover, so best_match fills in.
+    DEFAULT_MODELS = %w[ncep_nbm_conus best_match].freeze
+
+    def self.primary_models = ENV["OPEN_METEO_MODELS"].presence&.split(",")&.map(&:strip) || DEFAULT_MODELS
 
     attr_reader :api_key
 

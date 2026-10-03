@@ -70,7 +70,7 @@ PostgreSQL 16
 | Jobs | Solid Queue + `config/recurring.yml` | Backed by Postgres, no Redis. Runs as a systemd service (§12) |
 | Cache | Solid Cache | Replaces the Redis added recently |
 | HTTP client | `Net::HTTP` via a thin wrapper, or `faraday` with retry middleware | Timeouts, retries and 429 backoff in one place |
-| Rate limiting | Rails 8 built-in `rate_limit` on auth endpoints + `rack-attack` | Keep the current rack-attack rules |
+| Rate limiting | `WindowLimit` (fixed windows in Solid Cache) on sign-in emails and codes + `rack-attack` | Keep the current rack-attack rules |
 | Lint / test | Standard, RSpec, FactoryBot, WebMock | Same as legacy |
 
 ### Frontend
@@ -104,7 +104,7 @@ User ──< Membership >── Group (an "account": farm operation)
                           ├──< FieldGroup >──< FieldGroupMember (Field)
                           │     └──< FieldGroupEntry (date: same columns as FieldEntry)
                           └── AlertPreference (per user)
-WeatherCell (rounded lat/lon) ──< WeatherDay (date: et0, precip, tmax, tmin, source, fetched_at, final)
+WeatherCell (ECMWF O1280 grid cell) ──< WeatherDay (date: et0, precip, temperature, humidity, wind, cloud, soil temp/moisture…, model, fetched_at, final)
                               └──< WeatherForecast (issued_at, model, daily arrays, ensemble members jsonb)
 Plant, SoilType (reference data, seeded from YAML)
 AlertDelivery (dedupe log), MagicLinkToken (if not using stateless tokens), Announcement (replaces Blog)
@@ -128,9 +128,9 @@ AlertDelivery (dedupe log), MagicLinkToken (if not using stateless tokens), Anno
   - **Applied when read, not copied** into each field. Editing or deleting the pivot entry updates every field at once, and a per-field entry still wins for days when one field got a different amount (end-gun off, a sector skipped).
   - **Run hours instead of inches:** if only `run_hours` is given, inches are calculated as `pump_capacity_gpm × run_hours × 60 / (27,154 × irrigated acres)`, where irrigated acres is the sum of `area_acres` over the fields it applied to. This needs pump capacity and field areas; if they are missing, the form asks for inches. (27,154 gallons = 1 acre-inch.)
   - **UI:** the pivot's daily row shows one irrigation cell; each field's grid shows the value with a "from pivot" badge and an override.
-- **weather_cells**: `lat_key, lon_key` (rounded to 0.01°), unique. Pivots link to a cell by their rounded center.
-- **weather_days**: `weather_cell_id, date, et0_in, precip_in, tmax_f, tmin_f, model, fetched_at, final (bool)`. Unique `(cell, date)`. Missing values are **NULL**, never 0.
-- **weather_forecasts**: `weather_cell_id, issued_at, model, kind (deterministic|ensemble), payload jsonb` (daily arrays; ensemble payload has `members: [{et0:[…], precip:[…]}, …]`). Keep the most recent ~14 issues per cell for later checks of forecast accuracy, and prune older ones.
+- **weather_cells**: `latitude, longitude` of an ECMWF IFS O1280 grid cell center (~9 km; `Weather::Grid`, ported from Ben's R client), plus `timezone` and `elevation_m` from Open-Meteo and the last fetch/error. Pivots get their cell when created or moved (`pivots.weather_cell_id`), which queues a backfill. Requests go to the cell center, so every pivot in a cell shares one series.
+- **weather_days**: `weather_cell_id, date`, daily values built from hourly data in the cell's local day: `et0_in, precip_in, rain_in, snowfall_in, snow_depth_in, tmax_f, tmin_f, tmean_f, dew_point_f, rh_mean/min/max_pct, vpd_max_kpa, pressure_msl_hpa, wind_speed(_max)_mph, wind_gust_max_mph, wind_direction_deg, cloud_cover(_low/_mid/_high)_pct`, soil temperature (°F) and moisture (m³/m³, comparable with field capacity) at 0–7, 7–28, 28–100 and 100–255 cm; `model, soil_model, hours, fetched_at, final`. Unique `(cell, date)`. Missing values are **NULL**, never 0.
+- **weather_forecasts**: `weather_cell_id, issued_at, model, kind (deterministic|ensemble), payload jsonb` (`{"days": [{date, <weather_days columns>}, …]}`; the ensemble payload is defined in Phase 5). Keep the most recent 14 issues per cell for later checks of forecast accuracy, and prune older ones.
 - **users** (beyond Devise columns): `first_name, last_name, admin, unit_system (imperial|metric, default imperial)`.
 - **alert_preferences**: `user_id, enabled, lead_days (default 3), threshold (enum: target | mad_zero), min_probability (for ensemble, default 0.5), send_hour_local (default 6), digest (bool)`.
 - **alert_deliveries**: `user_id, planting_id, projected_cross_date, sent_at`. Dedupe key `(planting_id, projected_cross_date ± 1 day)`. The same projected crossing is not re-sent unless it moves earlier by ≥2 days or the field was refilled in between.
@@ -268,43 +268,43 @@ Past days use `weather_days` (final or provisional), future days use forecasts, 
 
 ### 8.1 Client and configuration
 
-```ruby
-# config/credentials or ENV
-OPEN_METEO_API_KEY   # optional
+`Weather::OpenMeteo` (app/services/weather):
 
-Weather::OpenMeteo.host_for(:forecast)            # api.open-meteo.com or customer-api.open-meteo.com
-Weather::OpenMeteo.host_for(:ensemble)            # ensemble-api… / customer-ensemble-api…
-Weather::OpenMeteo.host_for(:historical_forecast) # historical-forecast-api… / customer-historical-forecast-api…
-```
+- **Key:** `OPEN_METEO_API_KEY` (`.env` in development, loaded by dotenv) or credentials `open_meteo.api_key` on servers. With a key it uses the `customer-*` hosts (`customer-api`, `customer-historical-forecast-api`, `customer-archive-api`) with `&apikey=`; without one, the free hosts. The admin page shows which.
+- **Requests:** hourly variables, metric units, `timezone=auto` (pivots can be anywhere in the US and Canada, so each cell's local day is used, not America/Chicago), up to 25 locations per request.
+- **Rate limits:** `Weather::RateLimiter` counts calls the way Open-Meteo does (per location, ×variables/10 ×days/14) in `Rails.cache`, and keeps the free tier under 500/min, 4,500/h and 9,000/day (waits out a full minute; raises `RateLimited` for the hour or day and the job retries). With a key there are no client-side limits. 429s, 5xx and network errors are retried twice inline, then by the job.
+- A `Weather::Provider` interface was not built: with one provider it would only be indirection. The fetcher is the seam if a second source appears.
 
-- If a key is present, use the `customer-*` hosts with `&apikey=`; otherwise use the free hosts. Log which mode is active at boot and show it on the admin status page. (Confirm the customer hostnames against the account dashboard when wiring this up.)
-- Free-tier safeguards: a client-side token bucket below the published limits (600/min, 5,000/hr, 10,000/day), exponential backoff on 429 and 5xx, and batched multi-location requests (comma-separated lat/lon) grouped by cell.
-- Always send `timezone=America/Chicago` so daily totals use local days. Request metric units and convert in one place.
-- `Weather::Provider` interface (`daily_observed(cells, range)`, `forecast(cells)`, `ensemble(cells)`). Open-Meteo is the only implementation, but the interface keeps a future AgWeather 2 or a mesonet source possible.
+### 8.2 Variables and models
 
-### 8.2 Variables
+Hourly variables (from Ben's R client, including cloud cover): temperature, dew point, relative humidity, ET0 (FAO-56), precipitation, rain, snowfall, snow depth, MSL pressure, VPD, wind speed, gusts and direction, cloud cover (total, low, mid, high); soil temperature and moisture at four depths. `Weather::Daily` aggregates them to local days (sums, means, extremes, a vector mean for wind direction), converts to inches/°F/mph, and leaves a value NULL when more than 2 of its day's hours are missing.
 
-Daily: `et0_fao_evapotranspiration`, `precipitation_sum`, `temperature_2m_max`, `temperature_2m_min`. Optional for display: `precipitation_probability_max`, `shortwave_radiation_sum`.
+**Models (decided 2026-10-03 from the comparison, §8.4):** values come from a chain, each daily value from the first model that has it: **`ncep_nbm_conus` (NBM), then `best_match`** (`OPEN_METEO_MODELS` to change it). NBM matched AgWeather best for both ET and rain; it covers only the contiguous US and has no cloud cover, so best_match fills in (and covers Canada, Alaska, Hawaii). **Soil variables come from `ecmwf_ifs`**, the only model with them over North America (best_match, GFS and NBM return none).
 
-Model selection is configurable: evaluate `best_match` against `ncep_nbm_conus` (NBM is calibrated, often better for precipitation) during the Phase 3 comparison, then decide.
-
-### 8.3 Ingestion jobs (Solid Queue recurring)
+### 8.3 Ingestion jobs (Solid Queue recurring, `config/recurring.yml`)
 
 | Job | Schedule (CT) | Work |
 |---|---|---|
-| `WeatherRefreshJob` | 05:00, 11:00, 17:00 | For all active cells (cells with a planting in the current season): fetch `past_days=7` + 16-day forecast. Upsert `weather_days` for past dates (`final=false`) and write a `weather_forecasts` row |
-| `WeatherFinalizeJob` | 03:00 | Mark `weather_days` older than 7 days as `final=true`; they are no longer overwritten |
-| `EnsembleRefreshJob` | 06:30, 18:30 | Ensemble forecast per active cell |
-| `BackfillCellJob` | On demand | New pivot or moved pivot: fill from `season_start` to today using the historical-forecast API |
-| `ForecastPruneJob` | Weekly | Keep the latest 14 forecasts per cell |
+| `WeatherRefreshJob` | 05:00, 11:00, 17:00 | For active cells (a planting this year or still running): the last 7 days (provisional `weather_days`) and a 16-day `weather_forecasts` row from the forecast API; then queues a backfill per cell |
+| `WeatherBackfillJob` | When a pivot gets a new cell, and after each refresh | Fills missing days from the cell's season start (or the last 30 days) through yesterday from the **historical-forecast API** (same models as the forecast, so the series is consistent); days older than a week are stored final |
+| `WeatherFinalizeJob` | 03:00 | Days more than 7 days old become final; refreshes no longer overwrite them |
+| `ForecastPruneJob` | Sundays 04:00 | Keep the latest 14 forecasts per cell |
+| Ensemble refresh | — | Moved to Phase 5 with the projection that uses it |
 
-Weather fetching **never** happens inside a web request (legacy fetched synchronously on page view, which is why fields nobody opened never got data).
+Weather fetching **never** happens inside a web request (legacy fetched synchronously on page view, which is why fields nobody opened never got data). `bin/rails weather:refresh` runs a refresh and backfill by hand.
 
 ### 8.4 The AgWeather → Open-Meteo shift (validation task in Phase 3)
 
 The reference-ET method differs: legacy used AgWeather's ET product (see `public/diakEtal1998.pdf` in the legacy repo); Open-Meteo uses FAO-56 Penman-Monteith. The A3600 percent-cover regressions were developed against the legacy reference ET. Phase 3 produces a comparison report: for the 2025 and 2026 seasons at real pivot locations, AgWeather ET and precipitation vs Open-Meteo (`best_match`, NBM), with season totals, daily bias and scatter, and the resulting difference in AD and irrigation trigger dates. **Exit criterion:** the shift is understood and documented. If there's a consistent bias, decide whether to apply a correction or document it for users.
 
-The comparison uses a one-time export: AgWeather ET and precipitation for the ~228 legacy pivots that have real locations, fetched from AgWeather by a script. It is not a runtime dependency, and no legacy data enters WISP 3 (D10).
+The comparison uses AgWeather's public API (`bin/rails weather:compare`, report in `docs/weather-comparison.md`). It is not a runtime dependency, and no legacy data enters WISP 3 (D10).
+
+**Result (2026-10-03; 12 points in Wisconsin's irrigated areas, 2025 and 2026 seasons):**
+- **ET:** all models within a few percent of AgWeather: best_match +8%, NBM +2%, ECMWF IFS +3% (r 0.87–0.90).
+- **Rain:** best_match is the outlier: 79% of AgWeather's total and 844 rain days against AgWeather's 1,425. NBM 93% (r 0.79), ECMWF 83%.
+- **Effect on a standard potato field:** best_match calls for about **6 more irrigations a season** than AgWeather; NBM 1.5 fewer; ECMWF 0.4 fewer. All three Open-Meteo models put the **first irrigation 10–16 days earlier** than AgWeather, which needs a look (early-season ET or rain; TODO.md).
+- **Decision:** NBM, with best_match as fallback (§8.2). No correction factor for now.
+- **Still to do:** re-run at real pivot locations (`POINTS=file.csv`, TODO.md) before the beta.
 
 ---
 
@@ -485,11 +485,12 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 
 ### Phase 3: Weather
 
-- [ ] `Weather::OpenMeteo` client (free / customer endpoints, key optional), rate limiter, unit conversion.
-- [ ] Cells, `weather_days`, `weather_forecasts`; refresh, finalize, backfill and prune jobs.
-- [ ] Daily and cumulative GDD from tmax/tmin (base 50 °F / cap 86 °F), groundwork for Q2 option C.
-- [ ] Admin weather-status page.
-- [ ] **AgWeather vs Open-Meteo comparison report** (§8.4); choose the model (best_match vs NBM).
+- [x] `Weather::OpenMeteo` client (free / customer hosts, key optional), rate limiter, hourly → daily aggregation and unit conversion; WebMock specs from recorded responses.
+- [x] Cells on the O1280 grid, `weather_days`, `weather_forecasts`; refresh, finalize, backfill and prune jobs on recurring schedules. `PlantingBalance` reads stored weather.
+- [x] Daily and cumulative GDD from tmax/tmin (`Weather::DegreeDays`, base 50 °F / cap 86 °F), groundwork for Q2 option C.
+- [x] Admin weather-status page (`/admin/weather`; admins only), with "Refresh now".
+- [x] **AgWeather vs Open-Meteo comparison report** (§8.4, `docs/weather-comparison.md`); model chosen: NBM, then best_match.
+- [x] Verified locally on the free API: every demo pivot has season-to-date data and a current forecast. Still to check with the commercial key and on staging (TODO.md).
 - **Exit:** every pivot in the demo seed data has season-to-date data and a current forecast; comparison report written and decision recorded.
 
 ### Phase 4: Core UI
@@ -498,6 +499,7 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [ ] Pivot location picker (MapLibre, click center, drag radius) used in pivot creation; location required.
 - [ ] Editable daily grid component; field status page with the summary box.
 - [ ] ECharts chart: observed AD, inputs, thresholds, zoom.
+- [ ] Weather panels on the field page from `weather_days` and the forecast (Ben's request): modeled soil moisture by depth (against the field's FC/PWP) and soil temperature, GDD since emergence, temperature, humidity/VPD, wind and cloud cover.
 - [ ] Dashboard (field cards, status), bulk daily entry, field groups.
 - [ ] Pivot irrigation entry (inches or run hours, which fields it applied to) with "from pivot" badges and per-field overrides in field grids.
 - [ ] CSV export (parity with legacy columns).
