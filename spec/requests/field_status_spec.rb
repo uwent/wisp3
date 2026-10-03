@@ -218,5 +218,31 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       delete field_group_path(gauge)
       expect(group.field_groups).to be_empty
     end
+
+    it "records percent cover on each member's percent-cover crop, and clears it" do
+      lai_field = create(:field, pivot:)
+      lai_planting = create(:planting, field: lai_field, et_method: "lai")
+      gauge = create(:field_group, group:, fields: [field, lai_field])
+
+      patch field_group_day_path(gauge, "2026-07-08"), params: {day: {pct_cover: 40}}
+      expect(planting.canopy_observations.sole).to have_attributes(date: Date.new(2026, 7, 8), pct_cover: 40)
+      expect(lai_planting.canopy_observations).to be_empty
+      expect(gauge.field_group_entries).to be_empty
+
+      get field_group_path(gauge)
+      expect(inertia.props[:has_cover]).to be(true)
+      expect(inertia.props[:days].find { |day| day[:date] == "2026-07-08" }).to include(pct_cover: 40, pct_cover_mixed: false)
+
+      patch field_group_day_path(gauge, "2026-07-08"), params: {day: {pct_cover: ""}}
+      expect(planting.canopy_observations).to be_empty
+    end
+
+    it "refuses percent cover on a day no member has a percent-cover crop" do
+      gauge = create(:field_group, group:, fields: [field])
+      patch field_group_day_path(gauge, "2026-06-01"), params: {day: {pct_cover: 40}},
+        headers: {"HTTP_REFERER" => field_group_path(gauge)}
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("pct_cover")
+    end
   end
 end

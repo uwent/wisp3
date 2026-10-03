@@ -8,7 +8,8 @@ class FieldGroupsController < AuthenticatedController
     }
   end
 
-  # The group's entries for a season, one row per day from April 1 through today (or the season's end)
+  # The group's entries for a season, one row per day from April 1 through today (or the season's end),
+  # with the members' percent-cover readings
   def show
     group = Current.group.field_groups.find(params[:id])
     year = params.fetch(:year, Date.current.year).to_i
@@ -16,15 +17,21 @@ class FieldGroupsController < AuthenticatedController
     from = [plantings.minimum(:season_start), Date.new(year, 4, 1)].compact.min
     to = [[plantings.maximum(:end_date), Date.new(year, 11, 30)].compact.max, Date.current].min
     entries = group.field_group_entries.where(date: from..to).index_by(&:date)
+    cover_plantings = plantings.where(et_method: "pct_cover")
+    covers = CanopyObservation.where(planting: cover_plantings, date: from..to).where.not(pct_cover: nil)
+      .group_by(&:date).transform_values { |observations| observations.map(&:pct_cover).uniq }
 
     render inertia: "FieldGroups/Show", props: {
       field_group: FieldGroupSerializer.new(group).to_h,
       fields: field_choices,
       year:,
+      has_cover: cover_plantings.exists?,
+      # pct_cover: the members' reading when they agree; pct_cover_mixed when their readings differ
       days: (from..to).map do |date|
-        entry = entries[date]
+        entry, cover = entries[date], covers.fetch(date, [])
         {date:, rain_in: entry&.rain_in, irrigation_in: entry&.irrigation_in,
-         soil_moisture_pct: entry&.soil_moisture_pct, notes: entry&.notes}
+         soil_moisture_pct: entry&.soil_moisture_pct, notes: entry&.notes,
+         pct_cover: (cover.size == 1) ? cover.first : nil, pct_cover_mixed: cover.size > 1}
       end
     }
   end

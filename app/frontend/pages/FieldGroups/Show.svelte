@@ -13,27 +13,42 @@
   import FieldPicker from '@/lib/components/FieldPicker.svelte'
 
   type Choice = { id: number; name: string; pivot_name: string; farm_name: string }
-  type Day = { date: string; rain_in: number | null; irrigation_in: number | null; soil_moisture_pct: number | null; notes: string | null }
+  type Day = {
+    date: string
+    rain_in: number | null
+    irrigation_in: number | null
+    soil_moisture_pct: number | null
+    notes: string | null
+    /** Members' percent-cover reading when they agree; pct_cover_mixed when they differ */
+    pct_cover: number | null
+    pct_cover_mixed: boolean
+  }
 
-  let { field_group, fields, year, days }: { field_group: FieldGroup; fields: Choice[]; year: number; days: Day[] } = $props()
+  let {
+    field_group,
+    fields,
+    year,
+    has_cover,
+    days,
+  }: { field_group: FieldGroup; fields: Choice[]; year: number; has_cover: boolean; days: Day[] } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const rows = $derived([...days].reverse())
   let editingMembers = $state(false)
 
-  type Column = 'rain_in' | 'irrigation_in' | 'soil_moisture_pct' | 'notes'
+  type Column = 'rain_in' | 'irrigation_in' | 'soil_moisture_pct' | 'pct_cover' | 'notes'
 
   const text = (day: Day, column: Column) =>
     column === 'notes'
       ? (day.notes ?? '')
-      : column === 'soil_moisture_pct'
-        ? (day.soil_moisture_pct?.toString() ?? '')
+      : column === 'soil_moisture_pct' || column === 'pct_cover'
+        ? (day[column]?.toString() ?? '')
         : units.input('depth', day[column])
 
   async function saveCell(day: Day, column: Column, input: string) {
     let value: number | string | null = input.trim() || null
     if (column !== 'notes') {
-      const parsed = column === 'soil_moisture_pct' ? parseNumber(input) : units.parse('depth', input)
+      const parsed = column === 'soil_moisture_pct' || column === 'pct_cover' ? parseNumber(input) : units.parse('depth', input)
       if (!parsed.ok) return parsed.error
       value = parsed.value
     }
@@ -46,12 +61,14 @@
     }
   }
 
-  const COLUMNS: [Column, string][] = [
+  // Percent cover only when a member has a percent-cover crop this season
+  const COLUMNS = $derived<[Column, string][]>([
     ['rain_in', 'Rain'],
     ['irrigation_in', 'Irrigation'],
     ['soil_moisture_pct', 'Moisture reading'],
+    ...(has_cover ? [['pct_cover', 'Cover'] as [Column, string]] : []),
     ['notes', 'Notes'],
-  ]
+  ])
 </script>
 
 <svelte:head><title>{field_group.name} · WISP</title></svelte:head>
@@ -87,6 +104,7 @@
 
 <p class="text-xs text-ink-muted">
   Click a cell to enter a value for every field in the group; Enter saves and moves down. Depths in {units.label('depth')}.
+  {#if has_cover}Cover is saved as a reading on each member field's percent-cover crop.{/if}
 </p>
 <div class="max-h-[40rem] overflow-auto rounded-lg border border-line bg-surface-raised">
   <table class="w-full text-sm">
@@ -94,7 +112,7 @@
       <tr class="text-right">
         <th class="px-3 py-2 text-left font-medium">Date</th>
         {#each COLUMNS as [column, label] (column)}
-          <th class="px-2 py-2 font-medium {column === 'notes' ? 'text-left' : ''}">{label}{column === 'soil_moisture_pct' ? ' (%)' : ''}</th>
+          <th class="px-2 py-2 font-medium {column === 'notes' ? 'text-left' : ''}">{label}{column === 'soil_moisture_pct' || column === 'pct_cover' ? ' (%)' : ''}</th>
         {/each}
       </tr>
     </thead>
@@ -114,8 +132,9 @@
                 onsave={(input) => saveCell(day, column, input)}
               >
                 {#if column === 'notes'}<span class="block max-w-64 truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
+                {:else if column === 'pct_cover' && day.pct_cover_mixed}<span class="text-ink-muted" title="The member fields have different readings">varies</span>
                 {:else if day[column] === null}<span class="text-ink-muted">–</span>
-                {:else if column === 'soil_moisture_pct'}{day.soil_moisture_pct}
+                {:else if column === 'soil_moisture_pct' || column === 'pct_cover'}{day[column]}
                 {:else}{units.format('depth', day[column], { unit: false })}{/if}
               </EditableCell>
             </td>

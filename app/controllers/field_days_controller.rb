@@ -28,14 +28,7 @@ class FieldDaysController < AuthenticatedController
     planting = field.plantings.find(params.expect(:planting_id))
     return {canopy: ["is outside this planting's season"]} unless planting.season_range.cover?(date)
 
-    attribute = (planting.et_method == "lai") ? :lai : :pct_cover
-    observation = planting.canopy_observations.find_or_initialize_by(date:)
-    if value.blank?
-      observation.destroy! if observation.persisted?
-      return {}
-    end
-    observation.assign_attributes(pct_cover: nil, lai: nil)
-    observation[attribute] = value
-    observation.save ? {} : {canopy: observation.errors.full_messages}
+    observation = CanopyObservation.record(planting, date, value)
+    observation.errors.any? ? {canopy: observation.errors.full_messages} : {}
   end
 end
