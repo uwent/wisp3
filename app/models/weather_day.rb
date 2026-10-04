@@ -17,8 +17,15 @@ class WeatherDay < ApplicationRecord
 
   # {date => {et0:, precip:}} for the water balance (DailyInputs); dates without a day are absent
   def self.balance_inputs(cell, dates)
-    return {} unless cell
-    where(weather_cell: cell, date: dates).pluck(:date, :et0_in, :precip_in)
-      .to_h { |date, et0, precip| [date, {et0:, precip:}] }
+    return {} unless cell && dates.any?
+    wanted = dates.to_set
+    where(weather_cell: cell, date: dates.min..dates.max).pluck(:date, :et0_in, :precip_in)
+      .filter_map { |date, et0, precip| [date, {et0:, precip:}] if wanted.include?(date) }.to_h
+  end
+
+  # {cell_id => {date => {et0:, precip:}}} for several cells over a range of dates, in one query
+  def self.balance_inputs_by_cell(cell_ids, dates)
+    where(weather_cell_id: cell_ids, date: dates).pluck(:weather_cell_id, :date, :et0_in, :precip_in)
+      .group_by(&:first).transform_values { |rows| rows.to_h { |_, date, et0, precip| [date, {et0:, precip:}] } }
   end
 end

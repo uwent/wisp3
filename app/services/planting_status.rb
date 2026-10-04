@@ -7,9 +7,10 @@ class PlantingStatus
 
   attr_reader :planting, :today
 
-  def initialize(planting, today: Date.current, weather: nil)
+  # weather: and records: are passed to PlantingBalance (pages showing many plantings preload them)
+  def initialize(planting, today: Date.current, weather: nil, records: nil)
     @planting, @today = planting, today
-    @balance = PlantingBalance.new(planting, weather:)
+    @balance = PlantingBalance.new(planting, weather:, records:)
   end
 
   def params = @balance.params

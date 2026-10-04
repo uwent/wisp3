@@ -19,7 +19,7 @@ RSpec.describe DailyInputs do
   end
 
   it "uses 0 rain, not the model, when the group enters rain by hand" do
-    field.farm.group.update!(use_model_precip: false)
+    field.pivot.farm.group.update!(use_model_precip: false)
     expect(resolve).to have_attributes(rain: 0.0, rain_source: :none, rain_model: 0.35)
   end
 
@@ -67,6 +67,25 @@ RSpec.describe DailyInputs do
       create(:pivot_irrigation, pivot:, date:, inches: nil, run_hours: 10)
       # 900 gpm × 600 min / (27,154 gal per acre-inch × 100 acres)
       expect(resolve.irrigation).to be_within(1e-9).of(900 * 600 / (27_154.0 * 100))
+    end
+  end
+
+  describe ".preload" do
+    it "resolves every field's days exactly as querying them one field at a time does" do
+      dates = (date..date + 4).to_a
+      weather = dates.to_h { |day| [day, {et0: 0.2, precip: 0.1}] }
+      gauge = create(:field_group, group: field.farm.group).tap { |g| g.fields << field }
+      create(:field_entry, field:, date: date + 1, rain_in: 0.8, soil_moisture_pct: 12)
+      create(:field_group_entry, field_group: gauge, date: date + 2, rain_in: 0.4, irrigation_in: 0.3)
+      create(:pivot_irrigation, pivot:, date: date + 3, inches: 0.7, field_ids: [other_field.id])
+      create(:field_entry, field: other_field, date: date + 4, irrigation_in: 0.2)
+
+      records = described_class.preload([field, other_field], dates.first..dates.last)
+      [field, other_field].each do |each_field|
+        expect(described_class.new(each_field, dates, weather:, records: records[each_field.id]).days)
+          .to eq(described_class.new(each_field, dates, weather:).days)
+      end
+      expect(records[other_field.id].pivot_irrigations.size).to eq(1)
     end
   end
 end
