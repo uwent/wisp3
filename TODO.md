@@ -20,6 +20,11 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 - [x] **Export golden-test fixtures** from legacy production (done 2026-10-03; 30 fields, all passed; the tests have since been retired). You can delete `tmp/wisp_golden.json`.
 - [ ] **After Nov 30, and before Feb 15:** take an archive `pg_dump` of legacy production.
 
+## Phase 4 and 4.5 (next)
+
+- [ ] **Push `main` and `bundle exec cap staging deploy`**, then click through on staging: dashboard, a field page (edit a cell, Escape cancels), daily entry, setup, a pivot's irrigation page. GitHub Actions now runs the Playwright smoke tests too (`bin/e2e` locally).
+- [ ] **A stray `pnpm-lock.yaml`** appeared in the repo root during the 2026-10-03 session (not from Claude, which uses npm). It's untracked; delete it unless you're switching to pnpm.
+
 ## Staging (non-blocking)
 
 - [x] **Add the Open-Meteo key to staging credentials** before deploying: `bin/rails credentials:edit --environment staging`, add
@@ -51,5 +56,6 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Decisions still open
 
+- [ ] **Group member roles** (PLAN.md Q8): owner vs member, before group invitations.
 - [ ] Production hostname for the new server (set as `PRODUCTION_HOST` when deploying).
 - [ ] Legacy hostname after launch (PLAN.md suggests `legacy.wisp.cals.wisc.edu`).

@@ -469,7 +469,7 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [x] Capistrano config, systemd user units, nginx example, staging credentials; first-time setup steps in `docs/deployment.md`.
 - [x] First deploy to staging (2026-10-03): Puma answers on 127.0.0.1:3100 and both services are enabled. nginx serves it at https://dev.wisp.cals.wisc.edu.
 - [ ] Send the §12 server requirements to the sysadmin so the new production box is ready by February.
-- **Exit:** a user can sign up, confirm, sign in by password or link, and see an empty dashboard on staging. *(Verified locally in a headless browser, desktop and phone/dark; staging live 2026-10-03; sign-up and email delivery on staging still to check.)*
+- **Exit:** a user can sign up, confirm, sign in by password or link, and see an empty dashboard on staging. *(Verified locally in a headless browser, desktop and phone/dark; staging live 2026-10-03; sign-up and the confirmation email checked on staging.)*
 
 ### Phase 2: Domain and engine
 
@@ -490,7 +490,7 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [x] Daily and cumulative GDD from tmax/tmin (`Weather::DegreeDays`, base 50 °F / cap 86 °F), groundwork for Q2 option C.
 - [x] Admin weather-status page (`/admin/weather`; admins only), with "Refresh now".
 - [x] **AgWeather vs Open-Meteo comparison report** (§8.4, `docs/weather-comparison.md`); model chosen: NBM, then best_match.
-- [x] Verified locally on the free API: every demo pivot has season-to-date data and a current forecast. Still to check with the commercial key and on staging (TODO.md).
+- [x] Verified locally on the free API: every demo pivot has season-to-date data and a current forecast. Deployed to staging with the commercial key in its credentials (2026-10-03); the local `.env` key check is in TODO.md.
 - **Exit:** every pivot in the demo seed data has season-to-date data and a current forecast; comparison report written and decision recorded.
 
 ### Phase 4: Core UI
@@ -505,37 +505,39 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 - [x] CSV export (parity with legacy columns), plus each input's source and the modeled rain. Depths in inches whatever the user's units (`PlantingCsv`).
 - [x] Settings menu with the unit toggle (Q3) and the `units.ts` formatters and parsers used by every display and input. `NumberField` shows and parses in the user's units and submits stored units.
 - [x] Modeled rain shown next to entered corrections in the grid, chart and season summary (Q7).
-- [ ] Playwright smoke tests in CI (§10). A local script covered every page this phase (desktop, and phone in dark mode); not yet in the repo or CI.
+- [x] Playwright smoke tests in CI (§10). A local script covered every page this phase (desktop, and phone in dark mode). *(In the repo and CI from Phase 4.5: `bin/e2e`.)*
 - **Exit:** the main legacy features are all available; an internal user can manage a season end to end. *(Verified locally in a headless browser on the demo data and a fresh metric-units account, 2026-10-03; not yet deployed to staging.)*
 
 ### Phase 4.5: Review fixes and polish
 
 From a review of Phases 1–4 (2026-10-03): bugs, plan items that slipped, and rough edges to finish before the projection work builds on these pages.
 
+Done 2026-10-03, except the staging deploy (Ben pushes and deploys) and the member-roles decision (Q8). Also fixed: GitHub CI failed because `db:prepare` seeds reference data into a freshly created test database; `spec/rails_helper.rb` now clears it before the suite.
+
 Bugs:
-- [ ] **Escape in a grid cell saves the draft.** Chromium fires `blur` when the focused input is removed, and `EditableCell`'s `onblur` calls `commit()` without checking that editing was cancelled. Reproduced in Playwright on the field grid (typing a note, then Escape, sent the PATCH). The jsdom test passes because jsdom doesn't blur on removal. Guard `commit` (a cancelled flag or `if (!editing) return`) and cover it in the Playwright smoke tests.
-- [ ] Setup: "Delete this crop" closes the dialog even when the confirm is cancelled.
+- [x] **Escape in a grid cell saves the draft.** Chromium fires `blur` when the focused input is removed, and `EditableCell`'s `onblur` calls `commit()` without checking that editing was cancelled. Reproduced in Playwright on the field grid (typing a note, then Escape, sent the PATCH). The jsdom test passes because jsdom doesn't blur on removal. Guard `commit` (a cancelled flag or `if (!editing) return`) and cover it in the Playwright smoke tests. *(Fixed; a Vitest case simulates the blur, and the e2e test fails without the fix.)*
+- [x] Setup: "Delete this crop" closes the dialog even when the confirm is cancelled.
 
 Slipped from the plan:
-- [ ] **Field-group percent cover** (§4 precedence: "group pct-cover entries become CanopyObservations on each member planting"). The field group grid has rain, irrigation, moisture and notes, but no cover column.
-- [ ] Playwright smoke tests in CI (carried over from Phase 4): sign in, the demo group, every page, one grid edit, one daily entry save, Escape-cancels.
-- [ ] Deploy Phase 4 to staging and smoke test there (each phase ends deployed to staging).
-- [ ] Give unassigned §11/§12 items a phase, or cut them: admin users list, CSV, announcements and impersonation; the public landing and about pages; the admin email when a job fails or a cell's weather is more than 24 h stale. Suggest Phase 8 for all of them.
-- [ ] Plan housekeeping: Phase 7's "moving a pivot triggers a backfill" already shipped in Phase 3 (`Pivot#backfill_weather`; the balance is recalculated on read). The Phase 1 and Phase 3 exit notes still say staging sign-up and email delivery and the commercial key are "still to check", but TODO.md marks them done. Reconcile both.
+- [x] **Field-group percent cover** (§4 precedence: "group pct-cover entries become CanopyObservations on each member planting"). The field group grid has rain, irrigation, moisture and notes, but no cover column. *(A Cover column when a member has a percent-cover crop; saving writes `CanopyObservation.record` on each member's percent-cover planting that day; the grid shows their shared reading or "varies".)*
+- [x] Playwright smoke tests in CI (carried over from Phase 4): sign in, the demo group, every page, one grid edit, one daily entry save, Escape-cancels. *(`bin/e2e`: own database `wisp3_e2e`, demo account with synthetic weather from `e2e/seed.rb`, desktop and phone/dark; a step in `bin/ci` and GitHub Actions, which uploads the report on failure.)*
+- [ ] Deploy Phases 4 and 4.5 to staging and smoke test there (each phase ends deployed to staging). *(Ben: push, then `bundle exec cap staging deploy`; TODO.md.)*
+- [x] Give unassigned §11/§12 items a phase, or cut them: admin users list, CSV, announcements and impersonation; the public landing and about pages; the admin email when a job fails or a cell's weather is more than 24 h stale. Suggest Phase 8 for all of them. *(Added to Phase 8.)*
+- [x] Plan housekeeping: Phase 7's "moving a pivot triggers a backfill" already shipped in Phase 3 (`Pivot#backfill_weather`; the balance is recalculated on read). The Phase 1 and Phase 3 exit notes still say staging sign-up and email delivery and the commercial key are "still to check", but TODO.md marks them done. Reconcile both. *(Done.)*
 
 Polish:
-- [ ] **Weather-pending state.** A new pivot shows blank ET and a flat AD line until its backfill lands, with no explanation. Show "Weather for this pivot is on the way" on the field page and dashboard card while the cell has no days.
-- [ ] Daily entry: changing the date (arrows or picker), or leaving the page, silently drops unsaved values. Use `confirmUnsavedChanges` (the form already tracks `isDirty`).
-- [ ] Weather panels cover the whole season while the soil-water chart opens on the last 30 days. On a phone that's eight dense season-long charts. Open them on the same window as the main chart (or link their zoom), and consider collapsing them by default on narrow screens.
-- [ ] Phone header: the group switcher and user menu wrap to a second row, so about 140 px of chrome sits above the content. Fold them into one compact menu at phone widths.
-- [ ] Pivot irrigation page: "Add an irrigation" for a date that already has one silently replaces it. Warn, or switch the form to editing that day.
-- [ ] Copy last season: plantings that fail validation are skipped silently. Report how many were skipped and why.
-- [ ] Farm notes exist in the model but can't be edited (the farm dialog has only the name).
-- [ ] Charts draw with the body font when they are built. If Red Hat Text hasn't loaded yet, canvas text falls back to the system font, so rebuild once `document.fonts.ready` resolves.
-- [ ] CSV export: prefix cells starting with `=`, `+`, `-` or `@` with `'` (spreadsheet formula injection from field, farm and note text).
-- [ ] Dashboard runs the full balance for each field, about 5 queries per field (~50 ms for 2 fields locally). Measure with 50+ fields and batch the loads before Phase 5 adds forecast and ensemble runs to every card.
-- [ ] Membership roles: any member can rename the group, change its rainfall setting or delete farms. Decide on owner/member roles before group invitations (Phase 8 stretch).
-- [ ] Specs: a `PlantingCsv` unit spec (columns, totals, sources), `SeasonCopy` edge cases (leap day, overlap), and Vitest coverage for `weatherCharts.ts` and `dates.ts`.
+- [x] **Weather-pending state.** A new pivot shows blank ET and a flat AD line until its backfill lands, with no explanation. Show "Weather for this pivot is on the way" on the field page and dashboard card while the cell has no days. *(`PlantingStatus#weather_pending?`.)*
+- [x] Daily entry: changing the date (arrows or picker), or leaving the page, silently drops unsaved values. Use `confirmUnsavedChanges` (the form already tracks `isDirty`).
+- [x] Weather panels cover the whole season while the soil-water chart opens on the last 30 days. On a phone that's eight dense season-long charts. Open them on the same window as the main chart (or link their zoom), and consider collapsing them by default on narrow screens. *(Same window, scroll or pinch for more, collapsed on phones.)*
+- [x] Phone header: the group switcher and user menu wrap to a second row, so about 140 px of chrome sits above the content. Fold them into one compact menu at phone widths. *(Two rows; the group switch moves into the account menu.)*
+- [x] Pivot irrigation page: "Add an irrigation" for a date that already has one silently replaces it. Warn, or switch the form to editing that day. *(Warns, with "Edit that one instead".)*
+- [x] Copy last season: plantings that fail validation are skipped silently. Report how many were skipped and why. *(The realistic case is a season running into the next year, whose copy overlaps it.)*
+- [x] Farm notes exist in the model but can't be edited (the farm dialog has only the name).
+- [x] Charts draw with the body font when they are built. If Red Hat Text hasn't loaded yet, canvas text falls back to the system font, so rebuild once `document.fonts.ready` resolves.
+- [x] CSV export: prefix cells starting with `=`, `+`, `-` or `@` with `'` (spreadsheet formula injection from field, farm and note text).
+- [x] Dashboard runs the full balance for each field, about 5 queries per field (~50 ms for 2 fields locally). Measure with 50+ fields and batch the loads before Phase 5 adds forecast and ensemble runs to every card. *(60 fields: 368 queries / ~830 ms → 13 queries / ~220 ms in the test environment, via `DailyInputs.preload` and `WeatherDay.balance_inputs_by_cell`. What remains is the balance itself; Phase 5 should run projections from the same preloaded inputs.)*
+- [ ] Membership roles: any member can rename the group, change its rainfall setting or delete farms. Decide on owner/member roles before group invitations (Phase 8 stretch). *(Open question Q8.)*
+- [x] Specs: a `PlantingCsv` unit spec (columns, totals, sources), `SeasonCopy` edge cases (leap day, overlap), and Vitest coverage for `weatherCharts.ts` and `dates.ts`.
 - **Exit:** the bugs are fixed with tests, Playwright runs in CI, Phase 4 is live on staging, and every unassigned plan item has a phase.
 
 ### Phase 5: Forecast projection
@@ -556,14 +558,17 @@ Polish:
 
 - [ ] MapLibre map, USGS imagery + OpenFreeMap streets, pivot circles and arcs colored by status.
 - [ ] Map as a dashboard view (the setup picker shipped in Phase 4), status coloring, popovers, farm filter.
-- [ ] Moving a pivot (or changing its cell) triggers a backfill and recalculation.
+- [x] Moving a pivot (or changing its cell) triggers a backfill and recalculation. *(Shipped in Phase 3: `Pivot#backfill_weather` on a cell change; the balance is recalculated on read.)*
 - **Exit:** every pivot in the demo seed data is visible, and editing a location updates its weather within one job cycle.
 
 ### Phase 8: Polish, beta, launch
 
 - [ ] Accessibility pass (keyboard grid, contrast, chart table alternative), performance pass, empty states, onboarding tour.
 - [ ] Methods/help pages from the architecture doc; updated user guide.
-- [ ] Stretch: group invitations and the group switcher UI (A8).
+- [ ] Public landing and about pages (§11); signed-out visitors currently go straight to sign-in.
+- [ ] Admin (§11): users list with CSV export, announcements (shown in the app, replacing the legacy blog), impersonation for support.
+- [ ] Monitoring (§12): a daily email to admins when a job failed or a cell's weather is more than 24 h stale.
+- [ ] Stretch: group invitations (A8); the group switcher shipped in Phase 1. Needs member roles first (Q8).
 - [ ] Closed beta with a handful of growers or extension agents on staging, each setting up their own operation from scratch (this validates onboarding as well as the app).
 - [ ] New production server provisioned (§12), deploy rehearsed, backups and restore tested.
 - [ ] Legacy goes read-only (sign-ups disabled, banner) and moves to its legacy hostname; DNS switch; **launch by ~Mar 20, 2027** (§13).
@@ -712,3 +717,8 @@ If any answer is no, use an authenticated SMTP relay (campus relay or a transact
   - **Field summary:** season totals of entered vs modeled rain over the days with entries, so growers can see how their gauge compares with the model.
 - The resolver (§4) already keeps both values; it returns `rain_model_in` alongside the resolved `rain_in` and its provenance.
 - Revisit a correction factor after a season of gauge-vs-model data.
+
+### Q8. Group member roles
+
+Today every member of a group can do everything: rename it, switch its rainfall setting, and delete farms, pivots and fields. That's fine while each group has one person, but invitations (Phase 8 stretch) need a decision. Suggestion: **owner** (everything, including managing members and deleting) and **member** (data entry and setup, but not deleting farms or the group, or managing members). `memberships.admin` already exists and could become the owner flag.
+

@@ -1,4 +1,4 @@
-# Handoff: WISP 3, end of Phase 4 (2026-10-03)
+# Handoff: WISP 3, end of Phase 4.5 (2026-10-03)
 
 Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phases §14, open questions §15) and [CLAUDE.md](CLAUDE.md) (conventions) first. Ben's own action items are in [TODO.md](TODO.md).
 
@@ -10,7 +10,18 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
 - **Phase 2 (domain + engine):** done. Golden tests against 30 legacy production fields passed, then were retired with the legacy data; `spec/support/legacy_engine.rb` and its synthetic spec remain as the record of each fix (C2, C3, C4, C7, C8, C19).
 - **Phase 3 (weather):** done, and deployed to staging with the API key (TODO.md).
 - **Phase 4 (core UI):** done locally, verified in a headless browser and committed; not yet on staging. See the summary below. UI fonts are Red Hat Text with Red Hat Display for headings (self-hosted, `@fontsource-variable/*`); the UW bar is `--color-uw-red`, `--color-uw-red-dark` in dark mode.
-- **Next: Phase 4.5, review fixes and polish** (PLAN.md §14): a confirmed EditableCell bug (Escape saves), field-group percent cover, Playwright in CI, staging deploy, and a polish list. Then **Phase 5, forecast projection**: run the balance through the 16-day forecast, then the ensemble spike. The field chart (`lib/charts/fieldChart.ts`) and dashboard cards are where the projection shows; `PlantingStatus` is the place to add it on the server. Also still open from Phase 4: Playwright smoke tests in CI.
+- **Phase 4.5 (review fixes and polish):** done and committed, except deploying Phases 4 and 4.5 to staging (Ben pushes and deploys, TODO.md) and the member-roles decision (PLAN.md Q8). See the summary below.
+- **Next: Phase 5, forecast projection** (PLAN.md §14): run the balance through the 16-day forecast, then the ensemble spike. The field chart (`lib/charts/fieldChart.ts`) and dashboard cards are where the projection shows; `PlantingStatus` is the place to add it on the server. The dashboard preloads every card's inputs (`DailyInputs.preload`, `WeatherDay.balance_inputs_by_cell`); run projections from those, not per-field queries.
+
+## Phase 4.5 summary (review fixes and polish)
+
+- Fixed: Escape in a grid cell saved the draft (Chromium blurs a removed input; `EditableCell#commit` now returns unless editing); the crop dialog closing on a cancelled delete; GitHub CI failing because `db:prepare` seeds reference data into a new test database (`spec/rails_helper.rb` clears plants and soil types before the suite).
+- Field groups: a Cover column; saving writes `CanopyObservation.record` on each member's percent-cover planting that day.
+- **Browser smoke tests:** `bin/e2e` (also a `bin/ci` step and in GitHub Actions) prepares its own database `wisp3_e2e`, seeds the demo account with synthetic weather (`e2e/seed.rb`, no network), builds assets and runs `e2e/*.spec.ts` (Playwright 1.63) on desktop and on a phone in dark mode. Extra arguments go to `playwright test` (`bin/e2e -g "daily entry" --project desktop`).
+- Polish: "weather on the way" note for a new pivot (`PlantingStatus#weather_pending?`); daily entry asks before changing the date with unsaved values; weather panels open on the soil-water chart's 30-day window and start collapsed on phones; charts redraw once web fonts load; the phone header is two rows with the group switch in the account menu; the pivot irrigation form warns before replacing a day's irrigation; "copy last season" reports crops it couldn't copy; farm notes; CSV escapes formula-like names.
+- Dashboard performance: 60 fields went from 368 queries / ~830 ms to 13 queries / ~220 ms (test environment).
+- Plan: Phase 8 now holds the public pages, admin users/announcements/impersonation and job-failure monitoring; Q8 asks about member roles.
+- Fonts: Red Hat Text, with Red Hat Display for headings (self-hosted, `@fontsource-variable/*`); the UW bar is `--color-uw-red`, `--color-uw-red-dark` in dark mode.
 
 ## Phase 4 summary (core UI)
 
@@ -56,6 +67,11 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
 
 ## Gotchas learned this session
 
+- **The test environment records jobs instead of running them** (`config.active_job.queue_adapter = :test`), so the e2e server never calls Open-Meteo when a pivot is created.
+- **Chromium fires `blur` on an input removed while focused**; jsdom doesn't. Component tests of edit/cancel flows should fire the blur themselves (see `EditableCell.test.ts`).
+- **Per-query Ruby overhead dominates** pages that run many balances: ~1 ms per query outside Postgres (more in development, with verbose query logs). Query a date range, not an `IN` list of every date, and preload for many fields.
+- **Playwright dismisses dialogs by default**, so a stray `confirm` (unsaved changes) cancels a navigation in a test; handle it with `page.once('dialog', …)`.
+
 - **Tailwind v4 only emits theme variables some class uses.** The chart colors are read from JavaScript, so they're in an `@theme static` block in `application.css`; without it they're missing from `:root` and charts fall back to gray.
 - **MapLibre** sets `position: relative` on its container, so size the container (`h-full w-full`) rather than positioning it absolutely. Its worker URL is computed at run time, which breaks under Vite; `PivotMap` imports `maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url` and calls `setWorkerUrl` (`worker.format: 'es'` in `vite.config.ts`).
 - **ECharts can't parse `oklch()`.** `lib/charts/palette.ts` converts the design tokens to rgb by painting them on a canvas.
@@ -63,7 +79,6 @@ Read [PLAN.md](PLAN.md) (design, decisions D1–D11, legacy bug audit §9, phase
 - **`Object#blank?` calls `empty?`** when it exists, so don't define `empty?` on a model (`DailyEntry#nothing_entered?`).
 - **Checkbox lists:** a form with every box unchecked sends nothing, which Rails can't tell from "not sent". The field checkboxes send a blank sentinel (`name="…[field_ids][]" value=""`), and `PivotIrrigation.normalize_field_ids` treats `[]` as invalid and "not sent" as all fields.
 - **Inertia `<Form>` errors** come back keyed exactly as the server sends them, so nested forms read `errors['fields.0.name']`.
-- **Playwright smoke script:** the one used this session signed in as the demo user, switched to "Demo farms" (the demo user's default group is their empty personal one), and walked every page. It lived in the session scratchpad; a version of it belongs in `spec/` or `e2e/` with CI.
 
 ## Earlier gotchas
 
