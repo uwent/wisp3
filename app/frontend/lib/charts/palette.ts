@@ -12,6 +12,7 @@ export type Palette = {
   irrigation: string
   ad: string
   warm: string
+  snow: string
   depths: [string, string, string, string]
   status: { full: string; ok: string; caution: string; irrigate: string }
   dark: boolean
@@ -26,6 +27,7 @@ const TOKENS = {
   irrigation: '--color-chart-irrigation',
   ad: '--color-chart-ad',
   warm: '--color-chart-warm',
+  snow: '--color-chart-snow',
 } as const
 
 export function readPalette(element: Element = document.documentElement): Palette {

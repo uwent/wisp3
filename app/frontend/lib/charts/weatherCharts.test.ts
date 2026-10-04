@@ -6,10 +6,10 @@ import { addDays } from '../dates'
 import { units } from '../units'
 import { DEFAULT_WINDOW_DAYS } from './fieldChart'
 import type { Palette } from './palette'
-import { defaultView, runningTotal, showPanel, weatherChartOption, weatherPanels } from './weatherCharts'
+import { defaultView, runningTotal, weatherChartOption, weatherPanels } from './weatherCharts'
 
 const palette: Palette = {
-  ink: '#000', inkMuted: '#666', line: '#ddd', surface: '#fff', rain: '#00f', irrigation: '#0a0', ad: '#40a', warm: '#f60',
+  ink: '#000', inkMuted: '#666', line: '#ddd', surface: '#fff', rain: '#00f', irrigation: '#0a0', ad: '#40a', warm: '#f60', snow: '#ccc',
   depths: ['#1', '#2', '#3', '#4'], status: { full: '#00f', ok: '#0f0', caution: '#fa0', irrigate: '#f00' }, dark: false,
 }
 
@@ -97,11 +97,28 @@ describe('weather charts', () => {
     expect((option.series as SeriesOption[])[0].data[0]).toBeCloseTo(10.16, 2)
   })
 
-  it('shows the snow chart only when there is snow', () => {
-    expect(showPanel(panel('snow'), days)).toBe(false)
-    const snowy = days.map((day, i) => (i === 3 ? { ...day, snow_depth_in: 2 } : day))
-    expect(showPanel(panel('snow'), snowy)).toBe(true)
-    expect(showPanel(panel('air_temperature'), days)).toBe(true)
+  it('adds snow to the precipitation chart only when there is snow', () => {
+    const names = (d: WeatherPanelDay[]) =>
+      (weatherChartOption(panel('precipitation'), d, units('imperial'), palette).series as SeriesOption[]).map((s) => s.name)
+    expect(names(days)).toEqual(['Rain', 'Snow and other', 'Precipitation total'])
+    const snowy = days.map((day, i) => (i === 3 ? { ...day, snowfall_in: 1.5, snow_depth_in: 2 } : i === 4 ? { ...day, snow_depth_in: 1 } : day))
+    const [, , snowfall, snowDepth] = weatherChartOption(panel('precipitation'), snowy, units('imperial'), palette).series as SeriesOption[]
+    expect([snowfall.name, snowfall.type, snowfall.stack]).toEqual(['Snowfall', 'bar', undefined])
+    expect([snowDepth.name, snowDepth.type]).toEqual(['Snow depth', 'line'])
+    // Zero snow is no snow: a gap in the chart
+    expect(snowfall.data.slice(2, 5)).toEqual([null, 1.5, null])
+    expect(snowDepth.data.slice(2, 5)).toEqual([null, 2, 1])
+  })
+
+  it('leaves snow out of the tooltip on days without it', () => {
+    const snowy = days.map((day, i) => (i === 3 ? { ...day, snowfall_in: 1.5 } : day))
+    const option = weatherChartOption(panel('precipitation'), snowy, units('imperial'), palette)
+    const formatter = (option.tooltip as { formatter: (params: unknown) => string }).formatter
+    const param = (seriesIndex: number, seriesName: string, value: number | null) => ({ axisValue: '2026-06-02', seriesIndex, seriesName, marker: '', value })
+    const html = formatter([param(0, 'Rain', 0), param(1, 'Snow and other', null), param(2, 'Snowfall', null)])
+    expect(html).toContain('Snow and other')
+    expect(html).not.toContain('Snowfall')
+    expect(formatter([param(2, 'Snowfall', 1.5)])).toContain('1.50 in')
   })
 
   it('treats a missing day as a gap in the running total, not a zero', () => {

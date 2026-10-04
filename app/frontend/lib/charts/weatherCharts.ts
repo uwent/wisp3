@@ -9,7 +9,15 @@ import { baseOption, type Palette } from './palette'
 // The weather panels on a field's page: small multiples, one measure each, sharing the date axis,
 // with the forecast days shaded
 
-type Series = { name: string; color: (palette: Palette) => string; value: (day: WeatherPanelDay) => number | null }
+type Series = {
+  name: string
+  color: (palette: Palette) => string
+  value: (day: WeatherPanelDay) => number | null
+  /** Drawn as a line on a bar chart (or unstacked bars beside a stack): snow on the precipitation chart */
+  style?: 'line' | 'bar'
+  /** Zero means none (snow): left off the chart when no day has any, and out of the tooltip on days without */
+  sparse?: boolean
+}
 
 export type WeatherPanel = {
   key: string
@@ -23,8 +31,6 @@ export type WeatherPanel = {
   bars?: 'stack' | 'group'
   /** Running totals over the days in view, drawn in a second grid below the daily values */
   totals?: Series[]
-  /** Only shown when some day has a value above zero (snow, in a growing season) */
-  optional?: boolean
   /** Reference lines (e.g. the field's capacity and wilting point) */
   lines?: { name: string; value: number }[]
 }
@@ -71,27 +77,17 @@ export function weatherPanels(
       info:
         'Precipitation is all the water that fell: rain plus the water in snow, sleet and showers ("snow and other" ' +
         "is the part not reported as rain). The field's balance uses this unless you enter a rain gauge reading. " +
-        'The lower panel adds it up from the first day in view, so zooming changes the total.',
+        'The lower panel adds it up from the first day in view, so zooming changes the total. When there is snow, ' +
+        'the gray bars are snowfall (the depth of new snow) and the gray line is the snow on the ground, both ' +
+        'measured as snow, not water: 10 inches of snow holds roughly an inch of water, less when it is light and dry.',
       bars: 'stack',
       series: [
         { name: 'Rain', color: (p) => p.rain, value: (day) => depth(day.rain_in === null ? null : Math.min(day.rain_in, day.precip_in ?? Infinity)) },
         { name: 'Snow and other', color: (p) => p.depths[0], value: (day) => depth(otherPrecip(day)) },
+        { name: 'Snowfall', color: (p) => p.snow, value: (day) => depth(day.snowfall_in), style: 'bar', sparse: true },
+        { name: 'Snow depth', color: (p) => p.snow, value: (day) => depth(day.snow_depth_in), style: 'line', sparse: true },
       ],
       totals: [{ name: 'Precipitation total', color: (p) => p.rain, value: (day) => depth(day.precip_in) }],
-    },
-    {
-      key: 'snow',
-      title: 'Snow',
-      unit: (u) => `${u.label('depth')} of snow`,
-      info:
-        'Snowfall is the depth of new snow and snow depth is the snow on the ground, both measured as snow, not ' +
-        'water: 10 inches of snow holds roughly an inch of water, less when it is light and dry. Shown only when ' +
-        'the season has snow.',
-      optional: true,
-      series: [
-        { name: 'Snowfall', color: (p) => p.rain, value: (day) => depth(day.snowfall_in) },
-        { name: 'Snow depth', color: (p) => p.inkMuted, value: (day) => depth(day.snow_depth_in) },
-      ],
     },
     {
       key: 'et',
@@ -224,9 +220,15 @@ export function weatherPanels(
   ]
 }
 
-/** Optional panels (snow) are shown only when they have something to show */
-export const showPanel = (panel: WeatherPanel, days: WeatherPanelDay[]) =>
-  !panel.optional || days.some((day) => panel.series.some((series) => (series.value(day) ?? 0) > 0))
+/** A day's value, with a sparse series' zero as none */
+const valueOn = (series: Series, day: WeatherPanelDay) => {
+  const value = series.value(day)
+  return series.sparse && value === 0 ? null : value
+}
+
+/** The panel's series with something to show: sparse ones (snow) only when some day has some */
+export const shownSeries = (panel: WeatherPanel, days: WeatherPanelDay[]) =>
+  panel.series.filter((series) => !series.sparse || days.some((day) => (series.value(day) ?? 0) > 0))
 
 /** The days in view when a chart opens: the last observed days, then the forecast (as the soil-water chart) */
 export function defaultView(days: WeatherPanelDay[]): ChartView {
@@ -259,8 +261,9 @@ export function weatherChartOption(
   const startValue = dates[defaultView(days).start]
   const digits = (value: number | null) => (value === null ? null : Number(value.toFixed(2)))
   const unit = panel.unit(units)
+  const series = shownSeries(panel, days)
   const totals = panel.totals ?? []
-  const legendShown = panel.series.length + totals.length > 1
+  const legendShown = series.length + totals.length > 1
   const top = legendShown ? 32 : 12
   const axisLabel = { ...base.axisLabel, formatter: (iso: string) => formatDate(iso) }
 
@@ -273,15 +276,19 @@ export function weatherChartOption(
       }
     : undefined
 
-  const daily = panel.series.map((series, i) => ({
-    name: series.name,
+  // Light gray snow bars get an outline so they show on a light background
+  const outline = (s: Series) => (palette.dark || s.style !== 'bar' ? {} : { borderColor: palette.inkMuted, borderWidth: 0.5 })
+  const sparse = new Set(series.filter((s) => s.sparse).map((s) => s.name))
+  const daily = series.map((s, i) => ({
+    name: s.name,
     xAxisIndex: 0,
     yAxisIndex: 0,
-    data: days.map((day) => digits(series.value(day))),
-    itemStyle: { color: series.color(palette) },
-    ...(panel.bars
-      ? { type: 'bar', barMaxWidth: 10, ...(panel.bars === 'stack' ? { stack: panel.key } : {}) }
-      : { type: 'line', symbol: 'none', lineStyle: { width: 2, color: series.color(palette) } }),
+    data: days.map((day) => digits(valueOn(s, day))),
+    itemStyle: { color: s.color(palette), ...outline(s) },
+    ...(panel.bars && s.style !== 'line'
+      ? { type: 'bar', barMaxWidth: 10, ...(panel.bars === 'stack' && !s.style ? { stack: panel.key } : {}) }
+      : // A sparse line's lone days (a dusting of snow) need a dot to show
+        { type: 'line', symbol: s.sparse ? 'circle' : 'none', symbolSize: 3, lineStyle: { width: 2, color: s.color(palette) } }),
     ...(i === 0
       ? {
           markLine: panel.lines?.length
@@ -300,15 +307,15 @@ export function weatherChartOption(
       : {}),
   }))
 
-  const running = totals.map((series, i) => ({
-    name: series.name,
+  const running = totals.map((s, i) => ({
+    name: s.name,
     type: 'line',
     xAxisIndex: 1,
     yAxisIndex: 1,
-    data: runningTotal(days, series.value, view),
+    data: runningTotal(days, s.value, view),
     symbol: 'none',
-    lineStyle: { width: 2, color: series.color(palette), type: i === 0 ? 'solid' : 'dashed' },
-    itemStyle: { color: series.color(palette) },
+    lineStyle: { width: 2, color: s.color(palette), type: i === 0 ? 'solid' : 'dashed' },
+    itemStyle: { color: s.color(palette) },
     ...(i === 0 ? { markArea: forecastArea } : {}),
   }))
 
@@ -323,7 +330,7 @@ export function weatherChartOption(
     animation: base.animation,
     textStyle: base.textStyle,
     legend: legendShown ? { type: 'scroll', top: 0, left: 0, right: 0, textStyle: { color: palette.ink, fontSize: 11 }, itemWidth: 14 } : undefined,
-    tooltip: { ...base.tooltip, formatter: (params: unknown) => tooltip(params, unit, panel.bars || totals.length ? 2 : 1) },
+    tooltip: { ...base.tooltip, formatter: (params: unknown) => tooltip(params, unit, panel.bars || totals.length ? 2 : 1, sparse) },
     axisPointer: totals.length ? { link: [{ xAxisIndex: 'all' }] } : undefined,
     grid: grids,
     xAxis: totals.length
@@ -355,13 +362,14 @@ export function weatherChartOption(
 
 type TooltipParam = { axisValue: string; seriesIndex: number; seriesName: string; marker: string; value: unknown }
 
-/** The day, then each series in order (daily values before running totals) */
-function tooltip(params: unknown, unit: string, digits: number): string {
-  const list = ((Array.isArray(params) ? params : [params]) as TooltipParam[]).toSorted((a, b) => a.seriesIndex - b.seriesIndex)
-  if (!list.length) return ''
+/** The day, then each series in order (daily values before running totals); sparse series only on days they have a value */
+function tooltip(params: unknown, unit: string, digits: number, sparse: Set<string>): string {
+  const all = ((Array.isArray(params) ? params : [params]) as TooltipParam[]).toSorted((a, b) => a.seriesIndex - b.seriesIndex)
+  if (!all.length) return ''
+  const list = all.filter((param) => typeof param.value === 'number' || !sparse.has(param.seriesName))
   const rows = list.map((param) => {
     const value = typeof param.value === 'number' ? `${param.value.toFixed(digits)} ${unit}` : '—'
     return `<tr><td style="padding-right:12px">${param.marker}${param.seriesName}</td><td style="text-align:right"><strong>${value}</strong></td></tr>`
   })
-  return `<strong>${formatDate(list[0].axisValue, { weekday: true })}</strong><table>${rows.join('')}</table>`
+  return `<strong>${formatDate(all[0].axisValue, { weekday: true })}</strong><table>${rows.join('')}</table>`
 }

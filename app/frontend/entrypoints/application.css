@@ -43,7 +43,8 @@
    `static` makes Tailwind always emit them */
 @theme static {
   /* Chart series (validated for color-vision deficiency, light and dark): rain, irrigation, AD,
-     a warm series (e.g. high temperature), and soil depths shallow → deep as an ordinal ramp */
+     a warm series (e.g. high temperature), soil depths shallow → deep as an ordinal ramp, and snow
+     (light gray, near white in dark mode) */
   --color-chart-rain: #2a78d6;
   --color-chart-irrigation: #1baf7a;
   --color-chart-ad: #4a3aa7;
@@ -52,6 +53,7 @@
   --color-chart-depth-2: #3987e5;
   --color-chart-depth-3: #1c5cab;
   --color-chart-depth-4: #0d366b;
+  --color-chart-snow: #c3c8cf;
 }
 
 /*
@@ -79,6 +81,7 @@
     --color-chart-depth-2: #2a78d6;
     --color-chart-depth-3: #6da7ec;
     --color-chart-depth-4: #b7d3f6;
+    --color-chart-snow: #e8eaed;
   }
 }
 
@@ -101,6 +104,7 @@
   --color-chart-depth-2: #2a78d6;
   --color-chart-depth-3: #6da7ec;
   --color-chart-depth-4: #b7d3f6;
+  --color-chart-snow: #e8eaed;
 }
 
 /* Tailwind's dark: variant, matching the rules above */

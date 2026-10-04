@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Link, page, router } from '@inertiajs/svelte'
+  import { slide } from 'svelte/transition'
 
   import Chart from '@/lib/charts/Chart.svelte'
   import { fieldChartOption, type FieldChartMode } from '@/lib/charts/fieldChart'
@@ -38,6 +39,7 @@
   const lai = $derived(planting?.et_method === 'lai')
   const rows = $derived([...days].reverse())
   let chartMode = $state<FieldChartMode>('ad')
+  let dailyOpen = $state(true)
 
   const cropEt = $derived(Object.fromEntries(days.map((day) => [day.date, day.adj_et])))
   const panels = $derived(
@@ -232,98 +234,103 @@
 
     <!-- Daily grid -->
     <section class="space-y-2">
-      <div class="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 class="font-medium">Daily values</h2>
+      <div class="flex items-center justify-between">
+        <h2 class="font-medium">Daily values</h2>
+        <button type="button" class="text-sm text-brand-600 hover:underline" onclick={() => (dailyOpen = !dailyOpen)} aria-expanded={dailyOpen}>
+          {dailyOpen ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      {#if dailyOpen}
+        <div class="space-y-2" transition:slide={{ duration: 200 }}>
           <p class="text-xs text-ink-muted">
             Click a rain, irrigation, moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value; Enter saves and moves
             down. Clear a cell to go back to the modeled or pivot value. Depths in {units.label('depth')}.
           </p>
+          <div class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
+                <tr class="text-right">
+                  <th class="px-3 py-2 text-left font-medium">Date</th>
+                  <th class="px-2 py-2 font-medium">Ref ET</th>
+                  <th class="px-2 py-2 font-medium">Crop ET</th>
+                  <th class="px-2 py-2 font-medium">Rain</th>
+                  <th class="px-2 py-2 font-medium">Irrigation</th>
+                  <th class="px-2 py-2 font-medium">Moisture reading (%)</th>
+                  <th class="px-2 py-2 font-medium">{lai ? 'LAI' : 'Cover (%)'}</th>
+                  <th class="px-2 py-2 font-medium">AD</th>
+                  <th class="px-2 py-2 font-medium">Moisture (%)</th>
+                  <th class="px-2 py-2 font-medium">Drainage</th>
+                  <th class="px-2 py-2 text-left font-medium">Notes</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                {#each rows as day, row (day.date)}
+                  <tr class="text-right {day.ad <= 0 ? 'bg-status-irrigate/5' : ''}">
+                    <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap">{formatDate(day.date, { weekday: true })}</th>
+                    <td class="px-2 py-1 tabular-nums {day.et0_source === 'missing' ? 'text-ink-muted' : ''}">{depth(day.et0)}</td>
+                    <td class="px-2 py-1 tabular-nums" title={ET_SOURCE_LABELS[day.et_source]}>
+                      {depth(day.adj_et)}{#if day.et_source === 'gap_fill'}<span class="text-ink-muted">*</span>{/if}
+                    </td>
+                    <td class="px-1 py-0.5">
+                      <EditableCell grid="days" {row} col={0} text={inputText(day, 'rain_in')} label={cellLabel(day, 'Rain')} onsave={(t) => saveCell(day, 'rain_in', t)}>
+                        {#if day.rain_source === 'model' || day.rain_source === 'missing' || day.rain_source === 'none'}
+                          <span class="text-ink-muted">{depth(day.rain)}</span>
+                        {:else}
+                          <span class="font-medium">{depth(day.rain)}</span>
+                          {#if day.rain_source === 'group'}<span class="ml-1 text-xs text-brand-600">group</span>{/if}
+                          {#if rainOverridden(day)}<span class="block text-xs text-ink-muted">model {depth(day.rain_model)}</span>{/if}
+                        {/if}
+                      </EditableCell>
+                    </td>
+                    <td class="px-1 py-0.5">
+                      <EditableCell grid="days" {row} col={1} text={inputText(day, 'irrigation_in')} label={cellLabel(day, 'Irrigation')} onsave={(t) => saveCell(day, 'irrigation_in', t)}>
+                        {#if day.irrigation_source === 'none'}
+                          <span class="text-ink-muted">–</span>
+                        {:else}
+                          <span class="font-medium">{depth(day.irrigation)}</span>
+                          {#if day.irrigation_source === 'pivot'}<span class="ml-1 text-xs text-brand-600">pivot</span>{/if}
+                          {#if day.irrigation_source === 'group'}<span class="ml-1 text-xs text-brand-600">group</span>{/if}
+                          {#if day.irrigation_source === 'entered' && day.pivot_inches !== null}
+                            <span class="block text-xs text-ink-muted">pivot {depth(day.pivot_inches)}</span>
+                          {/if}
+                        {/if}
+                      </EditableCell>
+                    </td>
+                    <td class="px-1 py-0.5">
+                      <EditableCell grid="days" {row} col={2} text={inputText(day, 'soil_moisture_pct')} label={cellLabel(day, 'Soil moisture reading')} onsave={(t) => saveCell(day, 'soil_moisture_pct', t)}>
+                        {#if day.soil_moisture_pct !== null}
+                          <span class="font-medium">{day.soil_moisture_pct}</span>
+                          {#if day.moisture_source === 'group'}<span class="ml-1 text-xs text-brand-600">group</span>{/if}
+                        {:else}<span class="text-ink-muted">–</span>{/if}
+                      </EditableCell>
+                    </td>
+                    <td class="px-1 py-0.5">
+                      <EditableCell grid="days" {row} col={3} text={inputText(day, 'canopy')} label={cellLabel(day, lai ? 'LAI' : 'Percent cover')} onsave={(t) => saveCell(day, 'canopy', t)}>
+                        {#if day.canopy_entered !== null}<span class="font-medium">{formatNumber(day.canopy_entered, lai ? 2 : 0)}</span>
+                        {:else}<span class="text-ink-muted">{formatNumber(day.canopy, lai ? 2 : 0)}</span>{/if}
+                      </EditableCell>
+                    </td>
+                    <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate' : ''}">{depth(day.ad)}</td>
+                    <td class="px-2 py-1 tabular-nums">{formatNumber(day.pct_moisture, 1)}</td>
+                    <td class="px-2 py-1 tabular-nums text-ink-muted">{day.deep_drainage > 0 ? depth(day.deep_drainage) : ''}</td>
+                    <td class="px-1 py-0.5 text-left">
+                      <EditableCell grid="days" {row} col={4} align="left" text={inputText(day, 'notes')} label={cellLabel(day, 'Notes')} onsave={(t) => saveCell(day, 'notes', t)}>
+                        <span class="block max-w-48 truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
+                      </EditableCell>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+          <p class="text-xs text-ink-muted">
+            Muted rain is modeled for the pivot's location; bold values were entered.
+            Irrigation marked “pivot” is entered on the
+            <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline">pivot's irrigation page</Link> or in daily entry.
+            * Crop ET estimated from the past week because the day's weather is missing. {lai ? 'LAI' : 'Cover'} in muted text is interpolated between your readings.
+          </p>
         </div>
-      </div>
-      <div class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised">
-        <table class="w-full text-sm">
-          <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
-            <tr class="text-right">
-              <th class="px-3 py-2 text-left font-medium">Date</th>
-              <th class="px-2 py-2 font-medium">Ref ET</th>
-              <th class="px-2 py-2 font-medium">Crop ET</th>
-              <th class="px-2 py-2 font-medium">Rain</th>
-              <th class="px-2 py-2 font-medium">Irrigation</th>
-              <th class="px-2 py-2 font-medium">Moisture reading (%)</th>
-              <th class="px-2 py-2 font-medium">{lai ? 'LAI' : 'Cover (%)'}</th>
-              <th class="px-2 py-2 font-medium">AD</th>
-              <th class="px-2 py-2 font-medium">Moisture (%)</th>
-              <th class="px-2 py-2 font-medium">Drainage</th>
-              <th class="px-2 py-2 text-left font-medium">Notes</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-line">
-            {#each rows as day, row (day.date)}
-              <tr class="text-right {day.ad <= 0 ? 'bg-status-irrigate/5' : ''}">
-                <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap">{formatDate(day.date, { weekday: true })}</th>
-                <td class="px-2 py-1 tabular-nums {day.et0_source === 'missing' ? 'text-ink-muted' : ''}">{depth(day.et0)}</td>
-                <td class="px-2 py-1 tabular-nums" title={ET_SOURCE_LABELS[day.et_source]}>
-                  {depth(day.adj_et)}{#if day.et_source === 'gap_fill'}<span class="text-ink-muted">*</span>{/if}
-                </td>
-                <td class="px-1 py-0.5">
-                  <EditableCell grid="days" {row} col={0} text={inputText(day, 'rain_in')} label={cellLabel(day, 'Rain')} onsave={(t) => saveCell(day, 'rain_in', t)}>
-                    {#if day.rain_source === 'model' || day.rain_source === 'missing' || day.rain_source === 'none'}
-                      <span class="text-ink-muted">{depth(day.rain)}</span>
-                    {:else}
-                      <span class="font-medium">{depth(day.rain)}</span>
-                      {#if day.rain_source === 'group'}<span class="ml-1 text-xs text-brand-600">group</span>{/if}
-                      {#if rainOverridden(day)}<span class="block text-xs text-ink-muted">model {depth(day.rain_model)}</span>{/if}
-                    {/if}
-                  </EditableCell>
-                </td>
-                <td class="px-1 py-0.5">
-                  <EditableCell grid="days" {row} col={1} text={inputText(day, 'irrigation_in')} label={cellLabel(day, 'Irrigation')} onsave={(t) => saveCell(day, 'irrigation_in', t)}>
-                    {#if day.irrigation_source === 'none'}
-                      <span class="text-ink-muted">–</span>
-                    {:else}
-                      <span class="font-medium">{depth(day.irrigation)}</span>
-                      {#if day.irrigation_source === 'pivot'}<span class="ml-1 text-xs text-brand-600">pivot</span>{/if}
-                      {#if day.irrigation_source === 'group'}<span class="ml-1 text-xs text-brand-600">group</span>{/if}
-                      {#if day.irrigation_source === 'entered' && day.pivot_inches !== null}
-                        <span class="block text-xs text-ink-muted">pivot {depth(day.pivot_inches)}</span>
-                      {/if}
-                    {/if}
-                  </EditableCell>
-                </td>
-                <td class="px-1 py-0.5">
-                  <EditableCell grid="days" {row} col={2} text={inputText(day, 'soil_moisture_pct')} label={cellLabel(day, 'Soil moisture reading')} onsave={(t) => saveCell(day, 'soil_moisture_pct', t)}>
-                    {#if day.soil_moisture_pct !== null}
-                      <span class="font-medium">{day.soil_moisture_pct}</span>
-                      {#if day.moisture_source === 'group'}<span class="ml-1 text-xs text-brand-600">group</span>{/if}
-                    {:else}<span class="text-ink-muted">–</span>{/if}
-                  </EditableCell>
-                </td>
-                <td class="px-1 py-0.5">
-                  <EditableCell grid="days" {row} col={3} text={inputText(day, 'canopy')} label={cellLabel(day, lai ? 'LAI' : 'Percent cover')} onsave={(t) => saveCell(day, 'canopy', t)}>
-                    {#if day.canopy_entered !== null}<span class="font-medium">{formatNumber(day.canopy_entered, lai ? 2 : 0)}</span>
-                    {:else}<span class="text-ink-muted">{formatNumber(day.canopy, lai ? 2 : 0)}</span>{/if}
-                  </EditableCell>
-                </td>
-                <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate' : ''}">{depth(day.ad)}</td>
-                <td class="px-2 py-1 tabular-nums">{formatNumber(day.pct_moisture, 1)}</td>
-                <td class="px-2 py-1 tabular-nums text-ink-muted">{day.deep_drainage > 0 ? depth(day.deep_drainage) : ''}</td>
-                <td class="px-1 py-0.5 text-left">
-                  <EditableCell grid="days" {row} col={4} align="left" text={inputText(day, 'notes')} label={cellLabel(day, 'Notes')} onsave={(t) => saveCell(day, 'notes', t)}>
-                    <span class="block max-w-48 truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
-                  </EditableCell>
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-      <p class="text-xs text-ink-muted">
-        Muted rain is modeled for the pivot's location; bold values were entered.
-        Irrigation marked “pivot” is entered on the
-        <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline">pivot's irrigation page</Link> or in daily entry.
-        * Crop ET estimated from the past week because the day's weather is missing. {lai ? 'LAI' : 'Cover'} in muted text is interpolated between your readings.
-      </p>
+      {/if}
     </section>
   {/if}
 
