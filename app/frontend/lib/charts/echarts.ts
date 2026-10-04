@@ -27,3 +27,6 @@ echarts.use([
 
 export { echarts }
 export type { EChartsCoreOption } from 'echarts/core'
+
+/** The days in view on a chart's date axis, as indexes */
+export type ChartView = { start: number; end: number }

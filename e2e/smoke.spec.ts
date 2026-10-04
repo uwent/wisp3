@@ -151,3 +151,27 @@ test('adding a pivot irrigation on a date that has one offers to edit it instead
   await page.locator('main table tbody tr').first().getByRole('button', { name: 'Delete' }).click()
   await expect(page.getByText(/No irrigation entered/)).toBeVisible()
 })
+
+test('a weather chart explains itself, and resets after zooming', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto(await firstFieldPath(page))
+  const weather = page.getByRole('heading', { name: 'Weather at this pivot' }).locator('..').getByRole('button')
+  if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
+
+  const info = page.getByRole('button', { name: 'About the Precipitation chart' })
+  await info.click()
+  await expect(page.getByRole('tooltip')).toContainText('rain plus the water in snow')
+  await info.click()
+  await expect(page.getByRole('tooltip')).toBeHidden()
+
+  const card = info.locator('xpath=ancestor::div[contains(@class, "rounded-lg")][1]')
+  const reset = page.getByRole('button', { name: 'Reset Precipitation chart' })
+  await expect(reset).toBeHidden()
+  const box = (await card.locator('canvas').first().boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 3)
+  await page.mouse.wheel(0, -400)
+  await expect(reset).toBeVisible()
+  await reset.click()
+  await expect(reset).toBeHidden()
+  expect(errors).toEqual([])
+})

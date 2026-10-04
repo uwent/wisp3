@@ -2,8 +2,9 @@
   import { Link, page, router } from '@inertiajs/svelte'
 
   import Chart from '@/lib/charts/Chart.svelte'
+  import ChartCard from '@/lib/charts/ChartCard.svelte'
   import { fieldChartOption, type FieldChartMode } from '@/lib/charts/fieldChart'
-  import { weatherChartOption, weatherPanels } from '@/lib/charts/weatherCharts'
+  import { showPanel, weatherChartOption, weatherPanels } from '@/lib/charts/weatherCharts'
   import EditableCell from '@/lib/components/EditableCell.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
@@ -40,8 +41,11 @@
   // The weather panels are long on a phone, so they start collapsed there
   let showWeather = $state(typeof matchMedia === 'undefined' || matchMedia('(min-width: 768px)').matches)
 
+  const cropEt = $derived(Object.fromEntries(days.map((day) => [day.date, day.adj_et])))
   const panels = $derived(
-    weatherPanels(units, { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt }),
+    weatherPanels(units, { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt }, cropEt).filter(
+      (panel) => showPanel(panel, weather),
+    ),
   )
 
   // What it takes to refill the root zone to field capacity today
@@ -340,10 +344,14 @@
         </p>
         <div class="grid gap-3 md:grid-cols-2">
           {#each panels as panel (panel.key)}
-            <div class="rounded-lg border border-line bg-surface-raised p-3">
-              <h3 class="text-sm font-medium">{panel.title} <span class="font-normal text-ink-muted">({panel.unit(units)})</span></h3>
-              <Chart height="12rem" label={panel.title} build={(palette) => weatherChartOption(panel, weather, units, palette)} />
-            </div>
+            <ChartCard
+              title={panel.title}
+              info={panel.info}
+              height={panel.totals ? '17rem' : '12rem'}
+              build={(palette, view) => weatherChartOption(panel, weather, units, palette, view)}
+            >
+              {#snippet subtitle()}<span class="font-normal text-ink-muted">({panel.unit(units)})</span>{/snippet}
+            </ChartCard>
           {/each}
         </div>
       {/if}
