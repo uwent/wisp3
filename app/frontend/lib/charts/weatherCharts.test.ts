@@ -32,7 +32,7 @@ const field = { fieldCapacity: 0.1, wiltingPoint: 0.04 }
 // The balance's crop ET runs through the observed days
 const cropEt = Object.fromEntries(days.filter((day) => !day.forecast).map((day) => [day.date, 0.1]))
 const panel = (key: string, system: 'imperial' | 'metric' = 'imperial') =>
-  weatherPanels(units(system), field, cropEt).find((p) => p.key === key)!
+  weatherPanels(units(system), { field, cropEt }).find((p) => p.key === key)!
 type SeriesOption = { name: string; type: string; stack?: string; xAxisIndex: number; data: (number | null)[] }
 
 describe('weather charts', () => {
@@ -110,7 +110,7 @@ describe('weather charts', () => {
   })
 
   it('explains every chart', () => {
-    for (const p of weatherPanels(units('metric'), field)) expect(p.info.length).toBeGreaterThan(40)
+    for (const p of weatherPanels(units('metric'), { field })) expect(p.info.length).toBeGreaterThan(40)
     expect(panel('air_temperature', 'metric').info).toContain('30 °C')
   })
 

@@ -45,13 +45,19 @@ function otherPrecip(day: WeatherPanelDay): number | null {
 }
 
 /**
- * cropEt: the field's crop-adjusted ET by date (the balance's adjusted ET), which runs through
- * today, not into the forecast
+ * The panels for a field's page, or a pivot's (no field):
+ * - field: its capacity and wilting point, as reference lines on the modeled soil moisture
+ * - cropEt: the field's crop-adjusted ET by date (the balance's adjusted ET), which runs through
+ *   today, not into the forecast; without it the ET chart shows reference ET only
+ * - gddSince: what growing degree days count from ('emergence', or a date's label)
  */
 export function weatherPanels(
   units: Units,
-  field: { fieldCapacity: number; wiltingPoint: number },
-  cropEt: Record<string, number | null> = {},
+  {
+    field,
+    cropEt,
+    gddSince = 'emergence',
+  }: { field?: { fieldCapacity: number; wiltingPoint: number }; cropEt?: Record<string, number | null>; gddSince?: string } = {},
 ): WeatherPanel[] {
   const depthName = (label: string) =>
     units.system === 'metric' ? label.replace(/(\d+)/g, (n) => String(Math.round(Number(n) * 2.54))).replace('in', 'cm') : label
@@ -93,17 +99,23 @@ export function weatherPanels(
       unit: (u) => u.label('depth'),
       info:
         'Reference ET is the water a well-watered grass would use, from the FAO-56 Penman–Monteith equation on the ' +
-        "model's temperature, humidity, wind and sunshine. Crop ET is this field's estimate: reference ET adjusted " +
-        "for the crop's canopy, which is what the balance takes out of the soil. It's lower than reference ET while " +
-        'the canopy is small, and runs through today only. The lower panel adds both up from the first day in view.',
+        "model's temperature, humidity, wind and sunshine. " +
+        (cropEt
+          ? "Crop ET is this field's estimate: reference ET adjusted for the crop's canopy, which is what the balance " +
+            "takes out of the soil. It's lower than reference ET while the canopy is small, and runs through today only. " +
+            'The lower panel adds both up from the first day in view.'
+          : "Each field's crop ET (reference ET adjusted for its canopy) is on the field's page. The lower panel adds " +
+            'reference ET up from the first day in view.'),
       bars: 'group',
       series: [
         { name: 'Reference ET', color: (p) => p.warm, value: (day) => depth(day.et0_in) },
-        { name: 'Crop ET', color: (p) => p.irrigation, value: (day) => depth(cropEt[day.date] ?? null) },
+        ...(cropEt ? [{ name: 'Crop ET', color: (p: Palette) => p.irrigation, value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null) }] : []),
       ],
       totals: [
         { name: 'Reference ET total', color: (p) => p.warm, value: (day) => depth(day.et0_in) },
-        { name: 'Crop ET total', color: (p) => p.irrigation, value: (day) => depth(cropEt[day.date] ?? null) },
+        ...(cropEt
+          ? [{ name: 'Crop ET total', color: (p: Palette) => p.irrigation, value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null) }]
+          : []),
       ],
     },
     {
@@ -112,8 +124,10 @@ export function weatherPanels(
       unit: () => '% by volume',
       info:
         "The weather model's own estimate of the water in the soil at four depths, as a percent of the soil's " +
-        "volume (ECMWF IFS). It isn't this field's balance and doesn't know about irrigation; the dashed lines are " +
-        "the field's capacity and wilting point for comparison, and the model's soil may hold water differently.",
+        "volume (ECMWF IFS). It isn't a field's balance and doesn't know about irrigation" +
+        (field
+          ? "; the dashed lines are the field's capacity and wilting point for comparison, and the model's soil may hold water differently."
+          : ', and its soil may hold water differently from your fields.'),
       series: DEPTHS.map(([key, label], i) => ({
         name: depthName(label),
         color: (p) => p.depths[i],
@@ -122,7 +136,7 @@ export function weatherPanels(
           return value === null ? null : value * 100
         },
       })),
-      lines: [
+      lines: field && [
         { name: 'Field capacity', value: field.fieldCapacity * 100 },
         { name: 'Wilting point', value: field.wiltingPoint * 100 },
       ],
@@ -154,12 +168,12 @@ export function weatherPanels(
     },
     {
       key: 'gdd',
-      title: 'Growing degree days since emergence',
+      title: `Growing degree days since ${gddSince}`,
       unit: (u) => u.label('degreeDays'),
       info:
         `Growing degree days add up the heat a crop can use. Each day counts the mean of its high and low, each held ` +
         `between ${temp(50)} and ${temp(86)}, minus ${temp(50)} (the 50/86 method used for corn and many other crops). ` +
-        'Counted from emergence; crop stages are often predicted from this total.',
+        `Counted from ${gddSince}; crop stages are often predicted from this total.`,
       series: [{ name: 'GDD (50/86)', color: (p) => p.warm, value: (day) => converted(units, 'degreeDays', day.gdd_since_emergence) }],
     },
     {

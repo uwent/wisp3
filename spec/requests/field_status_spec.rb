@@ -114,20 +114,23 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
   end
 
   describe "the dashboard" do
-    it "shows a card per field with its status today" do
+    it "shows each farm's pivots, with a card per field and its status today" do
       create(:field, pivot:, name: "Bare")
+      empty = create(:pivot, farm:, name: "A new pivot")
       get root_path
-      cards = inertia.props[:cards].index_by { |card| card[:field][:name] }
+      farm_props = inertia.props[:farms].sole
+      expect(farm_props[:name]).to eq(farm.name)
+      expect(farm_props[:pivots].map { |p| [p[:name], p[:fields].size] }).to eq([[empty.name, 0], [pivot.name, 2]])
+      cards = farm_props[:pivots].last[:fields].index_by { |card| card[:name] }
       expect(cards["North potatoes"][:summary]).to include(phase: "active", status: "ok") # AD 1.05 of 1.2
       expect(cards["North potatoes"][:summary][:recent].size).to eq(20)
       expect(cards["Bare"][:summary]).to be_nil
-      expect(inertia.props[:farm_count]).to eq(1)
     end
 
     it "offers the guided setup to a new account" do
       sign_in create(:user)
       get root_path
-      expect(inertia.props).to include(cards: [], farm_count: 0)
+      expect(inertia.props).to include(farms: [])
     end
   end
 
@@ -162,6 +165,20 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       pivot.pivot_irrigations.create!(date: Date.new(2025, 7, 10), inches: 0.8)
       get pivot_path(pivot)
       expect(inertia.props[:irrigations].map { |i| i[:date] }).to eq(["2026-07-10"])
+    end
+
+    it "shows the pivot's weather from its earliest season start through the forecast" do
+      pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
+        payload: {days: [{date: "2026-07-20", tmax_f: 90, tmin_f: 70}]})
+      get pivot_path(pivot)
+      expect(inertia.props[:weather_from]).to eq("2026-07-01")
+      weather = inertia.props[:weather]
+      expect(weather.map { |day| day[:date] }.values_at(0, -1)).to eq(%w[2026-07-01 2026-07-20])
+      expect(weather.last).to include(forecast: true, tmax_f: 90)
+      expect(weather[4]).to include(date: "2026-07-05", precip_in: 0.4)
+
+      get pivot_path(pivot, year: 2025) # no plantings or weather that year
+      expect(inertia.props).to include(weather_from: "2025-04-01", weather: [])
     end
   end
 

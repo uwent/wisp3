@@ -1,16 +1,20 @@
-# Pivots are created and edited on the map picker; a pivot's page lists its irrigation by season
+# Pivots are created and edited on the map picker. A pivot's page lists its irrigation by season,
+# and its cell's weather over that season.
 class PivotsController < AuthenticatedController
   def show
-    pivot = Current.group.pivots.includes(:farm, fields: [:soil_type, {plantings: :plant}]).find(params[:id])
+    pivot = Current.group.pivots.includes(:farm, :weather_cell, fields: [:soil_type, {plantings: :plant}]).find(params[:id])
     year = params.fetch(:year, Date.current.year).to_i
     WeatherCell.keep_current([pivot.weather_cell_id])
     irrigations = pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(date: :desc)
+    dates = weather_dates(pivot, year)
 
     render inertia: "Pivots/Show", props: {
       pivot: PivotSerializer.new(pivot).to_h,
       farm: {id: pivot.farm.id, name: pivot.farm.name},
       year:,
-      irrigations: PivotIrrigationSerializer.new(irrigations).to_h
+      irrigations: PivotIrrigationSerializer.new(irrigations).to_h,
+      weather_from: dates.first,
+      weather: WeatherPanelDaySerializer.new(WeatherPanel.new(pivot.weather_cell, dates, emergence_date: dates.first).days).to_h
     }
   end
 
@@ -49,6 +53,16 @@ class PivotsController < AuthenticatedController
   end
 
   private
+
+  # The year's season on this pivot: from its plantings' earliest start (or April 1) to their latest
+  # end (or October 31), and this year through the forecast
+  def weather_dates(pivot, year)
+    plantings = pivot.fields.flat_map(&:plantings).select { |planting| planting.season_year == year }
+    from = plantings.map(&:season_start).min || Date.new(year, 4, 1)
+    to = [plantings.map(&:end_date).max, Date.new(year, 10, 31)].compact.max
+    to = Date.current + Weather::Fetcher::FORECAST_DAYS if year == Date.current.year
+    from..to
+  end
 
   def pivot_params
     params.expect(pivot: [:farm_id, :name, :latitude, :longitude, :radius_ft, :arc_start_deg, :arc_end_deg,

@@ -70,6 +70,15 @@ test('the dashboard shows field cards with a status', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   await expect(page.locator('main ul li').first()).toBeVisible()
   await expect(page.getByText('AD today').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Farm: / }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
+
+  // A pivot's View opens its irrigation and weather
+  const pivot = page.getByRole('heading', { name: /^Pivot: / }).first()
+  const name = (await pivot.textContent())!.replace('Pivot:', '').trim()
+  await page.getByRole('link', { name: `View ${name}` }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Pivot: ${name}`)
+  await expect(page.getByRole('heading', { name: /^Weather at this pivot/ })).toBeVisible()
 })
 
 test('a grid cell saves on Enter, and Escape cancels without saving', async ({ page }) => {

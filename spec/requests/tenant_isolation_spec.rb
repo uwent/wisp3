@@ -133,7 +133,7 @@ RSpec.describe "Tenant isolation", type: :request do
     their_field
     my_field
     get root_path
-    expect(inertia.props[:cards].map { |card| card[:field][:id] }).to eq([my_field.id])
+    expect(inertia.props[:farms].flat_map { |farm| farm[:pivots].flat_map { |pivot| pivot[:fields].pluck(:id) } }).to eq([my_field.id])
     get setup_path
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
     get daily_entry_path

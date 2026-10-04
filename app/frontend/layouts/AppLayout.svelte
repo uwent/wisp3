@@ -13,14 +13,17 @@
   const auth = $derived(page.props.auth)
 
   const nav = $derived([
-    { label: 'Dashboard', route: dashboard.show() },
+    // A pivot's and a field's pages are reached from the dashboard; creating and editing them is setup
+    { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields)\/\d+(\?|$)/] },
     { label: 'Daily entry', route: dailyEntries.show() },
-    { label: 'Setup', route: setup.show(), also: [fieldGroups.index().url, '/pivots', '/setup'] },
+    { label: 'Setup', route: setup.show(), also: [fieldGroups.index().url, /^\/pivots\/(new|\d+\/edit)/, '/setup'] },
     ...(auth.user?.admin ? [{ label: 'Weather', route: adminWeather.show() }] : []),
   ])
 
-  const isCurrent = (url: string, also: string[] = []) =>
-    page.url === url || page.url.startsWith(`${url}?`) || also.some((prefix) => page.url.startsWith(prefix))
+  const isCurrent = (url: string, also: (string | RegExp)[] = []) =>
+    page.url === url ||
+    page.url.startsWith(`${url}?`) ||
+    also.some((match) => (typeof match === 'string' ? page.url.startsWith(match) : match.test(page.url)))
 
   function switchGroup(groupId: number) {
     const { url, method } = currentGroups.update()

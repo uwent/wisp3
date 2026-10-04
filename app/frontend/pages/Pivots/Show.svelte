@@ -1,22 +1,34 @@
 <script lang="ts">
   import { Form, Link, page, router } from '@inertiajs/svelte'
 
+  import { weatherPanels } from '@/lib/charts/weatherCharts'
+  import WeatherSection from '@/lib/charts/WeatherSection.svelte'
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import { formatDate } from '@/lib/dates'
   import { units as unitsFor } from '@/lib/units'
-  import { fields as fieldRoutes, pivotIrrigations, pivots, setup } from '@/routes'
-  import type { Pivot, PivotIrrigation } from '@/types/serializers'
+  import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots } from '@/routes'
+  import type { Pivot, PivotIrrigation, WeatherPanelDay } from '@/types/serializers'
 
   let {
     pivot,
     farm,
     year,
     irrigations,
-  }: { pivot: Pivot; farm: { id: number; name: string }; year: number; irrigations: PivotIrrigation[] } = $props()
+    weather_from,
+    weather,
+  }: {
+    pivot: Pivot
+    farm: { id: number; name: string }
+    year: number
+    irrigations: PivotIrrigation[]
+    weather_from: string
+    weather: WeatherPanelDay[]
+  } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const today = new Date().toLocaleDateString('en-CA')
+  const panels = $derived(weatherPanels(units, { gddSince: formatDate(weather_from) }))
   const canUseHours = $derived(pivot.pump_capacity_gpm !== null && pivot.fields.every((field) => field.area_acres !== null))
 
   // The form edits a new irrigation, or an existing one picked from the list
@@ -44,15 +56,16 @@
   }
 </script>
 
-<svelte:head><title>{pivot.name} irrigation · WISP</title></svelte:head>
+<svelte:head><title>{pivot.name} · WISP</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
-    <Link href={setup.show()} class="text-sm text-brand-600 hover:underline">← Setup</Link>
-    <h1 class="text-2xl font-semibold">{pivot.name} irrigation</h1>
+    <Link href={dashboard.show()} class="text-sm text-brand-600 hover:underline">← Dashboard</Link>
+    <h1 class="text-2xl font-semibold"><span class="font-normal text-ink-muted">Pivot:</span> {pivot.name}</h1>
     <p class="text-sm text-ink-muted">
-      {farm.name} · enter each irrigation once here and it applies to the pivot's fields. A field's own entry for a day
-      replaces it.
+      Farm: {farm.name} · Fields:
+      {#each pivot.fields as field, i (field.id)}{i ? ', ' : ''}<Link href={fieldRoutes.show(field.id)} class="text-brand-600 hover:underline">{field.name}</Link>{:else}none yet{/each}
+      · <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline">Edit pivot</Link>
     </p>
   </div>
   <select class="rounded-md text-sm" aria-label="Season" value={year} onchange={(e) => router.get(pivots.show(pivot.id).url, { year: e.currentTarget.value })}>
@@ -62,7 +75,12 @@
 
 {#key formKey}
   <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
-    <h2 class="text-lg font-medium">{editing ? `Edit ${formatDate(editing.date)}` : 'Add an irrigation'}</h2>
+    <div>
+      <h2 class="text-lg font-medium">{editing ? `Edit ${formatDate(editing.date)}` : 'Add an irrigation'}</h2>
+      <p class="text-sm text-ink-muted">
+        Enter each irrigation once here and it applies to the pivot's fields. A field's own entry for a day replaces it.
+      </p>
+    </div>
     <Form
       action={editing ? pivotIrrigations.update({ pivotId: pivot.id, id: editing.id }) : pivotIrrigations.create(pivot.id)}
       class="space-y-4"
@@ -168,7 +186,6 @@
   {/if}
 </section>
 
-<p class="text-sm text-ink-muted">
-  Fields:
-  {#each pivot.fields as field, i (field.id)}{i ? ', ' : ''}<Link href={fieldRoutes.show(field.id)} class="text-brand-600 hover:underline">{field.name}</Link>{/each}
-</p>
+<WeatherSection title="Weather at this pivot, {year}" {panels} days={weather} {units}>
+  Each field's crop ET and soil water are on its own page.
+</WeatherSection>

@@ -2,9 +2,9 @@
   import { Link, page, router } from '@inertiajs/svelte'
 
   import Chart from '@/lib/charts/Chart.svelte'
-  import ChartCard from '@/lib/charts/ChartCard.svelte'
   import { fieldChartOption, type FieldChartMode } from '@/lib/charts/fieldChart'
-  import { showPanel, weatherChartOption, weatherPanels } from '@/lib/charts/weatherCharts'
+  import { weatherPanels } from '@/lib/charts/weatherCharts'
+  import WeatherSection from '@/lib/charts/WeatherSection.svelte'
   import EditableCell from '@/lib/components/EditableCell.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
@@ -38,14 +38,13 @@
   const lai = $derived(planting?.et_method === 'lai')
   const rows = $derived([...days].reverse())
   let chartMode = $state<FieldChartMode>('ad')
-  // The weather panels are long on a phone, so they start collapsed there
-  let showWeather = $state(typeof matchMedia === 'undefined' || matchMedia('(min-width: 768px)').matches)
 
   const cropEt = $derived(Object.fromEntries(days.map((day) => [day.date, day.adj_et])))
   const panels = $derived(
-    weatherPanels(units, { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt }, cropEt).filter(
-      (panel) => showPanel(panel, weather),
-    ),
+    weatherPanels(units, {
+      field: { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt },
+      cropEt,
+    }),
   )
 
   // What it takes to refill the root zone to field capacity today
@@ -328,33 +327,8 @@
     </section>
   {/if}
 
-  {#if weather.length}
-    <section class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 class="font-medium">Weather at this pivot</h2>
-        <button type="button" class="text-sm text-brand-600 hover:underline" onclick={() => (showWeather = !showWeather)} aria-expanded={showWeather}>
-          {showWeather ? 'Hide' : 'Show'}
-        </button>
-      </div>
-      {#if showWeather}
-        <p class="text-xs text-ink-muted">
-          Modeled by Open-Meteo for the pivot's grid cell, with the forecast shaded. Scroll or pinch a chart to see more of
-          the season. Soil moisture is the weather model's own
-          estimate, not this field's balance; it's shown against the field's capacity and wilting point for comparison.
-        </p>
-        <div class="grid gap-3 md:grid-cols-2">
-          {#each panels as panel (panel.key)}
-            <ChartCard
-              title={panel.title}
-              info={panel.info}
-              height={panel.totals ? '17rem' : '12rem'}
-              build={(palette, view) => weatherChartOption(panel, weather, units, palette, view)}
-            >
-              {#snippet subtitle()}<span class="font-normal text-ink-muted">({panel.unit(units)})</span>{/snippet}
-            </ChartCard>
-          {/each}
-        </div>
-      {/if}
-    </section>
-  {/if}
+  <WeatherSection {panels} days={weather} {units}>
+    Soil moisture is the model's own estimate, not this field's balance; it's shown against the field's capacity and
+    wilting point for comparison.
+  </WeatherSection>
 {/if}

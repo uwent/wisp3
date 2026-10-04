@@ -50,7 +50,7 @@ describe('field chart', () => {
   })
 
   it('compares modeled soil moisture with the field capacity in percent', () => {
-    const panel = weatherPanels(units('imperial'), { fieldCapacity: 0.1, wiltingPoint: 0.04 }).find((p) => p.key === 'soil_moisture')!
+    const panel = weatherPanels(units('imperial'), { field: { fieldCapacity: 0.1, wiltingPoint: 0.04 } }).find((p) => p.key === 'soil_moisture')!
     expect(panel.lines).toEqual([{ name: 'Field capacity', value: 10 }, { name: 'Wilting point', value: 4 }])
   })
 })
