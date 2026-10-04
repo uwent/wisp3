@@ -77,8 +77,10 @@ RSpec.describe Weather::RateLimiter do
     expect { limiter.acquire!(5) }.to raise_error(Weather::RateLimited) { |e| expect(e.retry_in).to be_between(1, 3600) }
   end
 
-  it "doesn't limit without limits (customer keys)" do
+  it "doesn't limit without limits (customer keys), but still counts" do
     limiter = described_class.new(limits: nil)
     expect { 5.times { limiter.acquire!(10_000) } }.not_to raise_error
+    expect(limiter.used(:minute)).to eq(50_000)
+    expect(limiter.used(:day)).to eq(50_000)
   end
 end

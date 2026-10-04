@@ -19,7 +19,7 @@ class Pivot < ApplicationRecord
   normalizes :equipment, :notes, with: ->(text) { text.strip.presence }
 
   before_save :assign_weather_cell, if: -> { will_save_change_to_latitude? || will_save_change_to_longitude? }
-  after_commit :backfill_weather, if: -> { saved_change_to_weather_cell_id? && weather_cell_id }
+  after_commit :update_weather, if: -> { saved_change_to_weather_cell_id? && weather_cell_id }
 
   private
 
@@ -27,9 +27,9 @@ class Pivot < ApplicationRecord
     self.weather_cell = WeatherCell.for(latitude, longitude)
   end
 
-  # A new or moved pivot gets its cell's season-to-date weather in the background
-  def backfill_weather
-    WeatherBackfillJob.perform_later(weather_cell_id)
+  # A new or moved pivot gets its cell's forecast and season-to-date weather in the background
+  def update_weather
+    WeatherUpdateJob.perform_later(weather_cell_id)
   end
 
   def arc_complete

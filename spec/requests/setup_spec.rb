@@ -55,7 +55,7 @@ RSpec.describe "Setup", type: :request do
       pivot = farm.pivots.sole
       expect(pivot).to have_attributes(name: "South", radius_ft: 950, arc_start_deg: nil)
       expect(pivot.weather_cell).to be_present
-      expect(WeatherBackfillJob).to have_been_enqueued.with(pivot.weather_cell_id)
+      expect(WeatherUpdateJob).to have_been_enqueued.with(pivot.weather_cell_id)
     end
 
     it "requires a location" do

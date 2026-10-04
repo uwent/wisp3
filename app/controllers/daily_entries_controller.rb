@@ -6,6 +6,7 @@ class DailyEntriesController < AuthenticatedController
     date = parse_date(params[:date]) || Date.current
     farms = Current.group.farms.order(:name).includes(pivots: [:weather_cell, {fields: {plantings: :plant}}])
     pivots = farms.flat_map(&:pivots)
+    WeatherCell.keep_current(pivots.map(&:weather_cell_id))
     irrigations = PivotIrrigation.where(pivot: pivots, date:).index_by(&:pivot_id)
     entries = FieldEntry.where(field_id: pivots.flat_map(&:field_ids), date:).index_by(&:field_id)
     rain = WeatherDay.where(weather_cell_id: pivots.map(&:weather_cell_id), date:).pluck(:weather_cell_id, :precip_in).to_h

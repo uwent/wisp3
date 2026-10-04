@@ -12,13 +12,14 @@ module Admin
           usage: %i[minute hour day].to_h { |period| [period, limiter.used(period).round(1)] },
           limits: (client.mode == :free) ? Weather::RateLimiter::FREE_LIMITS : nil
         },
-        cells: WeatherCellStatusSerializer.new(WeatherCellStatus.all).serializable_hash
+        cells: WeatherCellStatusSerializer.new(WeatherCellStatus.all).serializable_hash,
+        pending_jobs: WeatherJob.pending
       }
     end
 
     def refresh
-      WeatherRefreshJob.perform_later
-      redirect_to admin_weather_path, notice: "Weather refresh queued", status: :see_other
+      WeatherRefreshJob.perform_later(all: true)
+      redirect_to admin_weather_path, notice: "Weather refresh queued for every cell with a pivot", status: :see_other
     end
   end
 end

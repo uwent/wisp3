@@ -7,6 +7,7 @@ class FieldsController < AuthenticatedController
     field = Current.group.fields.includes(:soil_type, :field_groups, pivot: [:farm, :weather_cell],
       plantings: [:plant, :canopy_observations]).find(params[:id])
     planting = field.plantings.find { |p| p.id == params[:planting_id].to_i } || default_planting(field)
+    WeatherCell.keep_current([field.pivot.weather_cell_id])
 
     render inertia: "Fields/Show", props: {
       field: FieldSerializer.new(field).to_h,

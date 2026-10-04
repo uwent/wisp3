@@ -13,7 +13,9 @@ class DashboardController < AuthenticatedController
     starts = plantings.values.compact.map(&:season_start)
     dates = starts.any? ? starts.min..[today, plantings.values.compact.map(&:end_date).max].min : today..today
     records = DailyInputs.preload(fields, dates)
-    weather = WeatherDay.balance_inputs_by_cell(fields.map { |field| field.pivot.weather_cell_id }.uniq, dates)
+    cell_ids = fields.map { |field| field.pivot.weather_cell_id }.uniq
+    WeatherCell.keep_current(cell_ids)
+    weather = WeatherDay.balance_inputs_by_cell(cell_ids, dates)
 
     cards = fields.map do |field|
       planting = plantings[field.id]

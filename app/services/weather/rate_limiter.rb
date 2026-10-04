@@ -1,12 +1,14 @@
 module Weather
-  # Keeps Open-Meteo usage under its limits, counted the way Open-Meteo counts: per location, a
-  # request with more than 10 variables or more than 2 weeks of data counts as several calls
-  # (variables / 10 × days / 14). Counters live in Rails.cache, so they're shared across processes.
-  # Over the per-minute limit, it waits for the next minute; over the hourly or daily limit, it
-  # raises RateLimited and the job retries later.
+  # Counts Open-Meteo usage the way Open-Meteo counts it: per location, a request with more than
+  # 10 variables or more than 2 weeks of data counts as several calls (variables / 10 × days / 14).
+  # Counters live in Rails.cache, so they're shared across processes, and are kept with or without
+  # limits (the admin page shows them). With limits (the free API), over the per-minute limit it
+  # waits for the next minute; over the hourly or daily limit, it raises RateLimited and the job
+  # retries later.
   class RateLimiter
     # The free API's published limits, with some headroom
     FREE_LIMITS = {minute: 500, hour: 4_500, day: 9_000}.freeze
+    PERIODS = %i[minute hour day].freeze
 
     def initialize(limits: FREE_LIMITS, sleeper: ->(seconds) { sleep(seconds) })
       @limits, @sleeper = limits, sleeper
@@ -17,13 +19,12 @@ module Weather
     end
 
     def acquire!(weight)
-      return if @limits.blank?
-      @limits.each do |period, limit|
+      @limits&.each do |period, limit|
         next if used(period) + weight <= limit
         raise RateLimited.new("Open-Meteo #{period} limit reached", retry_in: seconds_left(period)) unless period == :minute
         @sleeper.call(seconds_left(:minute))
       end
-      @limits.each_key { |period| Rails.cache.increment(key(period), (weight * 100).ceil, expires_in: length(period)) }
+      PERIODS.each { |period| Rails.cache.increment(key(period), (weight * 100).ceil, expires_in: length(period)) }
     end
 
     def used(period) = Rails.cache.read(key(period), raw: true).to_i / 100.0

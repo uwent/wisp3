@@ -32,6 +32,7 @@ RSpec.describe "Admin weather status", type: :request do
       get admin_weather_path
       expect_inertia.to render_component("Admin/Weather")
       expect(inertia.props[:api]).to include(mode: "free", model: "ncep_nbm_conus, best_match", soil_model: "ecmwf_ifs")
+      expect(inertia.props[:pending_jobs]).to eq(1) # the new pivot's weather update
       expect(inertia.props[:cells].sole).to include(pivot_count: 1, active: true, season_start: "2026-07-10",
         days_stored: 8, missing_days: 2, provisional_days: 5, latest_date: "2026-07-17",
         forecast_through: "2026-08-04", last_error: "Open-Meteo 503")
@@ -40,7 +41,7 @@ RSpec.describe "Admin weather status", type: :request do
 
   it "queues a refresh" do
     sign_in admin
-    expect { post refresh_admin_weather_path }.to have_enqueued_job(WeatherRefreshJob)
+    expect { post refresh_admin_weather_path }.to have_enqueued_job(WeatherRefreshJob).with(all: true)
     expect(response).to redirect_to(admin_weather_path)
   end
 end

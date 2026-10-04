@@ -285,13 +285,14 @@ Hourly variables (from Ben's R client, including cloud cover): temperature, dew 
 
 | Job | Schedule (CT) | Work |
 |---|---|---|
-| `WeatherRefreshJob` | 05:00, 11:00, 17:00 | For active cells (a planting this year or still running): the last 7 days (provisional `weather_days`) and a 16-day `weather_forecasts` row from the forecast API; then queues a backfill per cell |
-| `WeatherBackfillJob` | When a pivot gets a new cell, and after each refresh | Fills missing days from the cell's season start (or the last 30 days) through yesterday from the **historical-forecast API** (same models as the forecast, so the series is consistent); days older than a week are stored final |
+| `WeatherRefreshJob` | 05:00, 11:00, 17:00 | For active cells (a planting this year or still running): the last 7 days (provisional `weather_days`) and a 16-day `weather_forecasts` row from the forecast API; then queues a backfill per cell. The admin page's "Refresh now" covers every cell with a pivot |
+| `WeatherUpdateJob` | When a pivot gets a new cell, and when a page showing a cell's pivots is opened (dashboard, field, pivot, daily entry; `WeatherCell.keep_current`, at most every 15 min per cell) | One cell, active or not: a refresh if its latest forecast is over 3 hours old, then a backfill of any gaps |
+| `WeatherBackfillJob` | After each refresh | Fills missing days from the cell's season start (or the last 30 days) through yesterday from the **historical-forecast API** (same models as the forecast, so the series is consistent); days older than a week are stored final |
 | `WeatherFinalizeJob` | 03:00 | Days more than 7 days old become final; refreshes no longer overwrite them |
 | `ForecastPruneJob` | Sundays 04:00 | Keep the latest 14 forecasts per cell |
 | Ensemble refresh | — | Moved to Phase 5 with the projection that uses it |
 
-Weather fetching **never** happens inside a web request (legacy fetched synchronously on page view, which is why fields nobody opened never got data). `bin/rails weather:refresh` runs a refresh and backfill by hand.
+Weather fetching **never** happens inside a web request (legacy fetched synchronously on page view, which is why fields nobody opened never got data); a page view only queues a `WeatherUpdateJob`. `bin/rails weather:refresh` runs a refresh and backfill by hand.
 
 ### 8.4 The AgWeather → Open-Meteo shift (validation task in Phase 3)
 

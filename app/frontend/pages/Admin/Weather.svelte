@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Form } from '@inertiajs/svelte'
+  import { Form, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import { adminWeather } from '@/routes'
@@ -9,6 +9,7 @@
   let {
     api,
     cells,
+    pending_jobs,
   }: {
     api: {
       mode: 'free' | 'customer'
@@ -18,7 +19,15 @@
       limits: Record<Period, number> | null
     }
     cells: WeatherCellStatus[]
+    pending_jobs: number
   } = $props()
+
+  // While weather jobs are queued or running, reload usage and cells so fetches show up as they land
+  $effect(() => {
+    if (pending_jobs === 0) return
+    const timer = setInterval(() => router.reload({ only: ['api', 'cells', 'pending_jobs'] }), 3000)
+    return () => clearInterval(timer)
+  })
 
   const periods: Period[] = ['minute', 'hour', 'day']
 
@@ -55,11 +64,18 @@
       {api.soil_model}
     </p>
   </div>
-  <Form action={adminWeather.refresh()}>
-    {#snippet children({ processing })}
-      <Button type="submit" variant="secondary" disabled={processing}>Refresh now</Button>
-    {/snippet}
-  </Form>
+  <div class="flex items-center gap-3">
+    {#if pending_jobs > 0}
+      <span class="text-sm text-ink-muted" role="status">
+        {pending_jobs} weather {pending_jobs === 1 ? 'job' : 'jobs'} queued or running · updating
+      </span>
+    {/if}
+    <Form action={adminWeather.refresh()}>
+      {#snippet children({ processing })}
+        <Button type="submit" variant="secondary" disabled={processing}>Refresh now</Button>
+      {/snippet}
+    </Form>
+  </div>
 </div>
 
 <section class="grid grid-cols-3 gap-3" aria-label="API usage">

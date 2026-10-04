@@ -50,6 +50,12 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(days["2026-07-12"][:irrigation]).to be_within(0.001).of(900 * 10 * 60 / (27_154.0 * 60))
     end
 
+    it "queues a weather update for the field's cell, and for the dashboard's" do
+      expect { get field_path(field) }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id)
+      Rails.cache.clear
+      expect { get root_path }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id)
+    end
+
     it "picks another season's planting" do
       older = create(:planting, field:, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
         end_date: Date.new(2025, 9, 1))
