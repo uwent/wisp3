@@ -6,7 +6,7 @@
   import BrandBar from '@/lib/components/BrandBar.svelte'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
-  import { adminWeather, currentGroups, dailyEntries, dashboard, fieldGroups, settings, setup, usersSessions } from '@/routes'
+  import { adminUsers, adminWeather, currentGroups, dailyEntries, dashboard, fieldGroups, settings, setup, usersSessions } from '@/routes'
 
   let { children }: { children: Snippet } = $props()
 
@@ -17,7 +17,12 @@
     { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields)\/\d+(\?|$)/] },
     { label: 'Daily entry', route: dailyEntries.show() },
     { label: 'Setup', route: setup.show(), also: [fieldGroups.index().url, /^\/pivots\/(new|\d+\/edit)/, '/setup'] },
-    ...(auth.user?.admin ? [{ label: 'Weather', route: adminWeather.show() }] : []),
+    ...(auth.user?.admin
+      ? [
+          { label: 'Weather', route: adminWeather.show() },
+          { label: 'Users', route: adminUsers.index(), also: ['/admin/users/'] },
+        ]
+      : []),
   ])
 
   const isCurrent = (url: string, also: (string | RegExp)[] = []) =>

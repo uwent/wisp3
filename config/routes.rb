@@ -49,6 +49,7 @@ Rails.application.routes.draw do
   resource :daily_entry, only: [:show, :update], path: "daily"
 
   namespace :admin do
+    resources :users, only: [:index, :show, :destroy]
     resource :weather, only: :show, controller: "weather" do
       post :refresh
     end

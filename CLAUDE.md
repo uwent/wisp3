@@ -30,12 +30,13 @@ bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weath
 - Units: format and parse every quantity through `app/frontend/lib/units.ts` (`units(user.unit_system)`); form inputs in user units use `NumberField`, which submits the stored unit in a hidden input. Dates from Rails are ISO strings; use `lib/dates.ts`.
 - Grids: `EditableCell` saves one value through `lib/save.ts` (an Inertia visit that keeps scroll and state, resolving with an error message or null). Daily entries are written with `FieldEntry.record` / `FieldGroupEntry.record` (blank clears a value; an empty entry is deleted); canopy readings with `CanopyObservation.record`.
 - Charts: ECharts through `lib/charts/Chart.svelte`, given a `build(palette)` function; option builders are pure (`fieldChart.ts`, `weatherCharts.ts`) and unit tested. Colors come from the `--color-chart-*` tokens (validated for color blindness, light and dark). No dual-axis charts: stack grids or use small multiples.
+- Tables: `DataTable.svelte` sorts and searches rows in the browser from column definitions (`lib/table.ts`).
 - Map: `PivotMap.svelte` (MapLibre, loaded on demand; its worker is bundled by Vite and set with `setWorkerUrl`).
 - Devise controllers live in `app/controllers/users/` and render Inertia pages through `InertiaDeviseResponses`. Passwordless sign-in (`MagicLinksController`) emails a one-time link (`User.generates_token_for(:magic_login)`) and a six-digit code (`User#generate_sign_in_code!`). Wrap links in emails with `email_link_to` (adds `ses:no-track`).
 
 ## Rules
 
-- **Tenancy:** every signed-in controller inherits `AuthenticatedController`. Load group-owned records only through `Current.group` (e.g. `Current.group.farms.find(params[:id])`), never `Model.find(params[:id])`. The legacy app's worst bug was unscoped lookups. Add a cross-tenant request spec for every new controller.
+- **Tenancy:** every signed-in controller inherits `AuthenticatedController`. Load group-owned records only through `Current.group` (e.g. `Current.group.farms.find(params[:id])`), never `Model.find(params[:id])`. The legacy app's worst bug was unscoped lookups. Add a cross-tenant request spec for every new controller. The exception is `Admin::` controllers (admins only, 404 for everyone else), which see every account.
 - **Units:** store water depths in inches. Unit conversion (Q3: `users.unit_system`) happens only at the display and input edge in the frontend.
 - **Missing data is NULL, never 0.** A value the user entered as zero is 0.0.
 - **Legacy code:** when porting from `../wisp`, check each method against the audit in `PLAN.md` §9 before reusing it.

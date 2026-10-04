@@ -568,7 +568,8 @@ Polish:
 - [ ] Accessibility pass (keyboard grid, contrast, chart table alternative), performance pass, empty states, onboarding tour.
 - [ ] Methods/help pages from the architecture doc; updated user guide.
 - [ ] Public landing and about pages (§11); signed-out visitors currently go straight to sign-in.
-- [ ] Admin (§11): users list with CSV export, announcements (shown in the app, replacing the legacy blog), impersonation for support.
+- [x] Admin users list (`/admin/users`): a searchable, sortable table (`DataTable`) of every account with its farm, pivot and field counts; delete unconfirmed accounts from the list. Each account's page shows its attributes (not its secrets), its groups and members, and its farms, pivots and fields, with a delete button (with confirmation) except for your own or another admin's account.
+- [ ] Admin (§11): CSV export of users, announcements (shown in the app, replacing the legacy blog), impersonation for support.
 - [ ] Monitoring (§12): a daily email to admins when a job failed or a cell's weather is more than 24 h stale.
 - [ ] Stretch: group invitations (A8); the group switcher shipped in Phase 1. Needs member roles first (Q8).
 - [ ] Closed beta with a handful of growers or extension agents on staging, each setting up their own operation from scratch (this validates onboarding as well as the app).
