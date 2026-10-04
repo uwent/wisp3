@@ -538,7 +538,7 @@ Polish:
 - [x] Charts draw with the body font when they are built. If Red Hat Text hasn't loaded yet, canvas text falls back to the system font, so rebuild once `document.fonts.ready` resolves.
 - [x] CSV export: prefix cells starting with `=`, `+`, `-` or `@` with `'` (spreadsheet formula injection from field, farm and note text).
 - [x] Dashboard runs the full balance for each field, about 5 queries per field (~50 ms for 2 fields locally). Measure with 50+ fields and batch the loads before Phase 5 adds forecast and ensemble runs to every card. *(60 fields: 368 queries / ~830 ms → 13 queries / ~220 ms in the test environment, via `DailyInputs.preload` and `WeatherDay.balance_inputs_by_cell`. What remains is the balance itself; Phase 5 should run projections from the same preloaded inputs.)*
-- [ ] Membership roles: any member can rename the group, change its rainfall setting or delete farms. Decide on owner/member roles before group invitations (Phase 8 stretch). *(Open question Q8.)*
+- [x] Membership roles: any member can rename the group, change its rainfall setting or delete farms. Decide on owner/member roles before group invitations (Phase 8 stretch). *(Q8 decided 2026-10-04: owner and member; shipped with the operation page.)*
 - [x] Specs: a `PlantingCsv` unit spec (columns, totals, sources), `SeasonCopy` edge cases (leap day, overlap), and Vitest coverage for `weatherCharts.ts` and `dates.ts`.
 - **Exit:** the bugs are fixed with tests, Playwright runs in CI, Phase 4 is live on staging, and every unassigned plan item has a phase.
 
@@ -571,7 +571,7 @@ Polish:
 - [x] Admin users list (`/admin/users`): a searchable, sortable table (`DataTable`) of every account with its farm, pivot and field counts; delete unconfirmed accounts from the list. Each account's page shows its attributes (not its secrets), its groups and members, and its farms, pivots and fields, with a delete button (with confirmation) except for your own or another admin's account.
 - [ ] Admin (§11): CSV export of users, announcements (shown in the app, replacing the legacy blog), impersonation for support.
 - [ ] Monitoring (§12): a daily email to admins when a job failed or a cell's weather is more than 24 h stale.
-- [ ] Stretch: group invitations (A8); the group switcher shipped in Phase 1. Needs member roles first (Q8).
+- [x] Group members (A8, Q8): an operation page (`/operation`) for the current group, with its name and rainfall setting (moved from Setup), its members, your other operations, creating one, and deleting it. Owners add people by the email they sign in with (an existing, confirmed account; no invitation tokens) and they get an email; owners change roles and remove members; anyone can leave. A group always keeps an owner, and someone left with no group gets a new one of their own.
 - [ ] Closed beta with a handful of growers or extension agents on staging, each setting up their own operation from scratch (this validates onboarding as well as the app).
 - [ ] New production server provisioned (§12), deploy rehearsed, backups and restore tested.
 - [ ] Legacy goes read-only (sign-ups disabled, banner) and moves to its legacy hostname; DNS switch; **launch by ~Mar 20, 2027** (§13).
@@ -724,4 +724,6 @@ If any answer is no, use an authenticated SMTP relay (campus relay or a transact
 ### Q8. Group member roles
 
 Today every member of a group can do everything: rename it, switch its rainfall setting, and delete farms, pivots and fields. That's fine while each group has one person, but invitations (Phase 8 stretch) need a decision. Suggestion: **owner** (everything, including managing members and deleting) and **member** (data entry and setup, but not deleting farms or the group, or managing members). `memberships.admin` already exists and could become the owner flag.
+
+**Decided (2026-10-04):** owner and member as suggested. `memberships.admin` is renamed `owner`. Owners only: the group's name and rainfall setting, adding and removing members and changing roles, and deleting farms, pivots, fields or the group (`AuthenticatedController#require_owner`). Members can do everything else, including deleting plantings, irrigation and field groups. Members are added by the email of an existing, confirmed account; there are no invitations for people without one. A group always has an owner: the last owner can't step down or leave, and deleting the account of a group's only owner hands it to its longest-standing member.
 

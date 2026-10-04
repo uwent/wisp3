@@ -1,4 +1,6 @@
 class FieldsController < AuthenticatedController
+  before_action :require_owner, only: :destroy
+
   FORECAST_DAYS = Weather::Fetcher::FORECAST_DAYS
 
   # The field status page (PLAN.md §11): one planting's season with its summary, daily grid, chart

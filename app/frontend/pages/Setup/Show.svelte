@@ -8,7 +8,7 @@
   import { units as unitsFor } from '@/lib/units'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
   import PlantingForm from '@/lib/setup/PlantingForm.svelte'
-  import { farms as farmRoutes, fieldGroups, fields, newQuickSetup, pivots, plantings, seasonCopies, setup } from '@/routes'
+  import { farms as farmRoutes, fieldGroups, fields, groups as groupRoutes, newQuickSetup, pivots, plantings, seasonCopies, setup } from '@/routes'
   import type { Farm, Field, Pivot, Plant, Planting, SoilType } from '@/types/serializers'
 
   let {
@@ -21,6 +21,8 @@
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const group = $derived(page.props.auth.group!)
+  // Only owners delete farms, pivots and fields (Q8)
+  const owner = $derived(page.props.auth.owner)
   const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
   const seasonPlantings = (field: Field) => field.plantings.filter((planting) => planting.year === year)
   const hasLastSeason = $derived(allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))))
@@ -89,9 +91,11 @@
       <div class="flex gap-1 text-sm">
         <Link href={pivots.new({ query: { farm_id: farm.id } })} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50">Add pivot</Link>
         <Button variant="ghost" class="px-3 py-1.5" onclick={() => open({ kind: 'farm', farm })}>Edit</Button>
-        <Button variant="danger-ghost" class="px-3 py-1.5" onclick={() => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its pivots and fields`)}>
-          Delete
-        </Button>
+        {#if owner}
+          <Button variant="danger-ghost" class="px-3 py-1.5" onclick={() => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its pivots and fields`)}>
+            Delete
+          </Button>
+        {/if}
       </div>
     </div>
 
@@ -115,9 +119,11 @@
             <Link href={pivots.show(pivot.id)} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50">Irrigation</Link>
             <Link href={pivots.edit(pivot.id)} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50">Edit</Link>
             <Button variant="ghost" class="px-3 py-1.5" onclick={() => open({ kind: 'field', pivot })}>Add field</Button>
-            <Button variant="danger-ghost" class="px-3 py-1.5" onclick={() => destroy(pivots.destroy(pivot.id), `${pivot.name} and its fields`)}>
-              Delete
-            </Button>
+            {#if owner}
+              <Button variant="danger-ghost" class="px-3 py-1.5" onclick={() => destroy(pivots.destroy(pivot.id), `${pivot.name} and its fields`)}>
+                Delete
+              </Button>
+            {/if}
           </div>
         </div>
 
@@ -152,9 +158,11 @@
                 </div>
                 <div class="flex gap-1 text-xs">
                   <Button variant="ghost" class="px-2 py-1 text-xs" onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button>
-                  <Button variant="danger-ghost" class="px-2 py-1 text-xs" onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its records`)}>
-                    Delete
-                  </Button>
+                  {#if owner}
+                    <Button variant="danger-ghost" class="px-2 py-1 text-xs" onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its records`)}>
+                      Delete
+                    </Button>
+                  {/if}
                 </div>
               </li>
             {/each}
@@ -174,31 +182,11 @@
   <Link href={fieldGroups.index()} class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface">
     Field groups
   </Link>
+  <Link href={groupRoutes.show()} class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface">
+    Operation settings and members
+  </Link>
 </div>
 
-<section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
-  <h2 class="text-lg font-medium">Account</h2>
-  <Form action={setup.update()} class="max-w-xl space-y-4" options={{ preserveScroll: true }}>
-    {#snippet children({ errors, processing })}
-      <TextField label="Operation name" name="group[name]" value={group.name} error={errors.name} />
-      <fieldset class="space-y-2">
-        <legend class="text-sm font-medium">Rainfall</legend>
-        <label class="flex items-start gap-3 text-sm">
-          <input type="radio" name="group[use_model_precip]" value="true" checked={group.use_model_precip} class="mt-0.5" />
-          <span>
-            Modeled rainfall for each pivot's location
-            <span class="block text-ink-muted">Your own gauge readings replace it on the days you enter them.</span>
-          </span>
-        </label>
-        <label class="flex items-start gap-3 text-sm">
-          <input type="radio" name="group[use_model_precip]" value="false" checked={!group.use_model_precip} class="mt-0.5" />
-          <span>Only the rain I enter</span>
-        </label>
-      </fieldset>
-      <Button type="submit" disabled={processing}>Save</Button>
-    {/snippet}
-  </Form>
-</section>
 
 <Dialog bind:open={dialogOpen} title={dialogTitle} wide={dialog?.kind === 'planting'}>
   {#if dialog?.kind === 'farm'}

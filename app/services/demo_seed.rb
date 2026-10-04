@@ -23,7 +23,7 @@ class DemoSeed
     ActiveRecord::Base.transaction do
       user.groups.where(name: GROUP_NAME).destroy_all
       group = Group.create!(name: GROUP_NAME)
-      user.memberships.create!(group:, admin: true)
+      user.memberships.create!(group:, owner: true)
       build(group)
     end
 

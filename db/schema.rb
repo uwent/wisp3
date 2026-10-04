@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_03_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_04_213800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -110,7 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_200000) do
   create_table "memberships", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "group_id", null: false
-    t.boolean "admin", default: false, null: false
+    t.boolean "owner", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["group_id"], name: "index_memberships_on_group_id"
@@ -171,7 +171,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_200000) do
     t.datetime "updated_at", null: false
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
-    t.check_constraint "et_method::text = ANY (ARRAY['pct_cover'::character varying, 'lai'::character varying]::text[])", name: "plantings_et_method"
+    t.check_constraint "et_method::text = ANY (ARRAY['pct_cover'::character varying::text, 'lai'::character varying::text])", name: "plantings_et_method"
     t.check_constraint "initial_moisture_pct IS NULL OR initial_moisture_pct >= 0::double precision AND initial_moisture_pct <= 100::double precision", name: "plantings_initial_moisture_range"
     t.check_constraint "mad_frac >= 0.05::double precision AND mad_frac <= 0.95::double precision", name: "plantings_mad_frac_range"
     t.check_constraint "max_root_zone_depth > 0::double precision", name: "plantings_mrzd_positive"
@@ -295,7 +295,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_200000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["weather_cell_id", "issued_at"], name: "index_weather_forecasts_on_weather_cell_id_and_issued_at"
-    t.check_constraint "kind::text = ANY (ARRAY['deterministic'::character varying, 'ensemble'::character varying]::text[])", name: "weather_forecasts_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['deterministic'::character varying::text, 'ensemble'::character varying::text])", name: "weather_forecasts_kind"
   end
 
   add_foreign_key "canopy_observations", "plantings"

@@ -6,11 +6,11 @@ class AdminGroupSerializer < ApplicationSerializer
 
   attribute :members do |group|
     group.memberships.sort_by { |membership| membership.user.email }.map do |membership|
-      {id: membership.user_id, email: membership.user.email, admin: membership.admin}
+      {id: membership.user_id, email: membership.user.email, owner: membership.owner}
     end
   end
 
   many :farms, proc { |farms| farms.sort_by(&:name) }, resource: FarmSerializer
 
-  typelize members: "{ id: number; email: string; admin: boolean }[]"
+  typelize members: "{ id: number; email: string; owner: boolean }[]"
 end

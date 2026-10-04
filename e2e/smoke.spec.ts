@@ -53,7 +53,7 @@ test('every page renders without errors or sideways scrolling', async ({ page })
   await page.goto('/admin/users')
   const user = new URL((await page.locator('main a[href*="/admin/users/"]').first().getAttribute('href'))!, page.url()).pathname
 
-  const paths = ['/', field, '/setup', '/daily', pivot, `${pivot}/edit`, '/pivots/new', '/field_groups', '/setup/start', '/settings',
+  const paths = ['/', field, '/setup', '/daily', pivot, `${pivot}/edit`, '/pivots/new', '/field_groups', '/setup/start', '/settings', '/operation',
     '/admin/weather', '/admin/users', user]
   for (const path of paths) {
     await page.goto(path)

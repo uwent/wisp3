@@ -51,7 +51,7 @@ RSpec.describe "Admin users", type: :request do
       :sign_in_code_digest)
     expect(inertia.props[:deletable]).to be(true)
     group = inertia.props[:groups].sole
-    expect(group[:members]).to eq([{"id" => grower.id, "email" => "grower@example.com", "admin" => true}])
+    expect(group[:members]).to eq([{"id" => grower.id, "email" => "grower@example.com", "owner" => true}])
     farm = group[:farms].sole
     expect(farm[:name]).to eq("Hancock")
     expect(farm[:pivots].sole[:fields].sole).to include(name: "North")

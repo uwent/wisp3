@@ -23,11 +23,6 @@ RSpec.describe "Setup", type: :request do
       expect(inertia.props[:plants].map { |plant| plant[:name] }).to include("Potato")
       expect(inertia.props[:year]).to eq(2026)
     end
-
-    it "updates the group's name and rainfall setting" do
-      patch setup_path, params: {group: {name: "Sands Farms", use_model_precip: "false"}}
-      expect(group.reload).to have_attributes(name: "Sands Farms", use_model_precip: false)
-    end
   end
 
   describe "farms" do

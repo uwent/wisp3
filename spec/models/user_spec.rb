@@ -5,7 +5,7 @@ RSpec.describe User do
     it "gets a personal group it administers" do
       user = create(:user, first_name: "Pat", last_name: "Grower")
       expect(user.groups.map(&:name)).to eq(["Pat Grower's farms"])
-      expect(user.memberships.first).to be_admin
+      expect(user.memberships.first).to be_owner
     end
 
     it "names the group after the email when there is no name" do

@@ -8,8 +8,18 @@ class AuthenticatedController < InertiaController
 
   def set_current_group
     Current.user = current_user
-    groups = current_user.groups
-    Current.group = groups.find_by(id: session[:group_id]) || groups.order(:id).first
-    session[:group_id] = Current.group&.id
+    memberships = current_user.memberships.includes(:group)
+    # Someone removed from their last group gets a fresh one of their own
+    current_user.create_personal_group if memberships.none?
+    Current.membership = memberships.find_by(group_id: session[:group_id]) || memberships.order(:group_id).first
+    Current.group = Current.membership.group
+    session[:group_id] = Current.group.id
+  end
+
+  # For actions only the group's owners may take (Q8)
+  def require_owner
+    return if Current.owner?
+
+    redirect_back_or_to root_path, alert: "Only an owner of #{Current.group.name} can do that.", status: :see_other
   end
 end

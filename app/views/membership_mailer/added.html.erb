@@ -1,0 +1,9 @@
+<p>Hello <%= @user.display_name %>,</p>
+
+<p><%= @added_by.display_name %> (<%= @added_by.email %>) added you to <strong><%= @group.name %></strong> on WISP as <%= @owner ? "an owner" : "a member" %>. You can now see and work on its farms, pivots and fields.</p>
+
+<p>Once you've signed in, switch to <%= @group.name %> with the farm operation menu at the top of the page.</p>
+
+<p><%= email_link_to "Open WISP", @url %></p>
+
+<p>If you don't know why you were added, you can leave the operation from its page in WISP.</p>

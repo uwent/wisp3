@@ -1,4 +1,6 @@
 class FarmsController < AuthenticatedController
+  before_action :require_owner, only: :destroy
+
   def create
     farm = Current.group.farms.build(farm_params)
     if farm.save

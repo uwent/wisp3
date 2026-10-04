@@ -24,7 +24,7 @@ bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weath
 ## Architecture
 
 - Rails controllers render Svelte pages with Inertia: `render inertia: "Folder/Page", props: {...}` maps to `app/frontend/pages/Folder/Page.svelte`. Pages under `Auth/` use `AuthLayout`; everything else uses `AppLayout` (`app/frontend/entrypoints/inertia.ts`).
-- Shared props (`auth.user`, `auth.group`, `auth.groups`) come from `InertiaController`; `page.flash` carries `notice` and `alert`.
+- Shared props (`auth.user`, `auth.group`, `auth.owner`, `auth.groups`) come from `InertiaController`; `page.flash` carries `notice` and `alert`.
 - Page props are built with Alba serializers in `app/serializers`; Typelizer generates their TypeScript types (`@/types/serializers`) and typed route helpers (`@/routes`, returning `{url, method}` for `<Form action>` and `<Link href>`).
 - Forms: use Inertia's `<Form>` component with Rails-style input names (`user[email]`). On validation failure, controllers redirect back with `redirect_with_errors(path, record)`.
 - Units: format and parse every quantity through `app/frontend/lib/units.ts` (`units(user.unit_system)`); form inputs in user units use `NumberField`, which submits the stored unit in a hidden input. Dates from Rails are ISO strings; use `lib/dates.ts`.
@@ -36,7 +36,7 @@ bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weath
 
 ## Rules
 
-- **Tenancy:** every signed-in controller inherits `AuthenticatedController`. Load group-owned records only through `Current.group` (e.g. `Current.group.farms.find(params[:id])`), never `Model.find(params[:id])`. The legacy app's worst bug was unscoped lookups. Add a cross-tenant request spec for every new controller. The exception is `Admin::` controllers (admins only, 404 for everyone else), which see every account.
+- **Tenancy:** every signed-in controller inherits `AuthenticatedController`. Load group-owned records only through `Current.group` (e.g. `Current.group.farms.find(params[:id])`), never `Model.find(params[:id])`. The legacy app's worst bug was unscoped lookups. Actions only a group's owners may take (Q8) use `before_action :require_owner`; `Current.membership` and `Current.owner?` give the user's role, and pages get it as `auth.owner`. Add a cross-tenant request spec for every new controller. The exception is `Admin::` controllers (admins only, 404 for everyone else), which see every account.
 - **Units:** store water depths in inches. Unit conversion (Q3: `users.unit_system`) happens only at the display and input edge in the frontend.
 - **Missing data is NULL, never 0.** A value the user entered as zero is 0.0.
 - **Legacy code:** when porting from `../wisp`, check each method against the audit in `PLAN.md` §9 before reusing it.

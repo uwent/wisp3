@@ -69,6 +69,15 @@ class User < ApplicationRecord
     confirm unless confirmed? || unconfirmed_email.present?
   end
 
+  # A new, empty group the user owns. Every account starts with one, and gets another if it's
+  # removed from (or deletes) its last group.
+  def create_personal_group
+    transaction do
+      group = Group.create!(name: "#{display_name}'s farms")
+      memberships.create!(group:, owner: true)
+    end
+  end
+
   private
 
   def sign_in_code_live?
@@ -87,15 +96,17 @@ class User < ApplicationRecord
     errors.add(:email, "can't be from a .ru domain") if email.to_s.match?(/\.ru\z/i)
   end
 
-  # Deleting an account deletes the farm data only it could reach; shared groups stay
+  # Deleting an account deletes the farm data only it could reach; shared groups stay, and one
+  # it was the only owner of passes to its longest-standing member
   def destroy_groups_left_empty
-    groups.each { |group| group.destroy! if group.memberships.count == 1 }
-  end
-
-  def create_personal_group
-    transaction do
-      group = Group.create!(name: "#{display_name}'s farms")
-      memberships.create!(group:, admin: true)
+    memberships.includes(:group).find_each do |membership|
+      group = membership.group
+      others = group.memberships.where.not(id: membership.id)
+      if others.none?
+        group.destroy!
+      elsif membership.owner? && others.owners.none?
+        others.order(:created_at, :id).first.update!(owner: true)
+      end
     end
   end
 end

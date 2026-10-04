@@ -6,6 +6,8 @@ class InertiaController < ApplicationController
       auth: {
         user: current_user && UserSerializer.new(current_user).to_h,
         group: Current.group && GroupSerializer.new(Current.group).to_h,
+        # Whether the user owns the current group (Q8), so pages can hide what only owners can do
+        owner: Current.owner?,
         groups: current_user ? GroupSerializer.new(current_user.groups.order(:name)).to_h : []
       }
     }

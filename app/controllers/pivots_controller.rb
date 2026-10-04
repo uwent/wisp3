@@ -1,6 +1,8 @@
 # Pivots are created and edited on the map picker. A pivot's page lists its irrigation by season,
 # and its cell's weather over that season.
 class PivotsController < AuthenticatedController
+  before_action :require_owner, only: :destroy
+
   def show
     pivot = Current.group.pivots.includes(:farm, :weather_cell, fields: [:soil_type, {plantings: :plant}]).find(params[:id])
     year = params.fetch(:year, Date.current.year).to_i

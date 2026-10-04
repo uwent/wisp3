@@ -2,6 +2,6 @@ FactoryBot.define do
   factory :membership do
     user
     group
-    admin { false }
+    owner { false }
   end
 end

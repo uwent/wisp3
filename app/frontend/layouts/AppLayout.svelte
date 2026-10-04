@@ -6,7 +6,7 @@
   import BrandBar from '@/lib/components/BrandBar.svelte'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
-  import { adminUsers, adminWeather, currentGroups, dailyEntries, dashboard, fieldGroups, settings, setup, usersSessions } from '@/routes'
+  import { adminUsers, adminWeather, currentGroups, dailyEntries, dashboard, fieldGroups, groups, settings, setup, usersSessions } from '@/routes'
 
   let { children }: { children: Snippet } = $props()
 
@@ -78,6 +78,10 @@
                       <span class="w-5">{group.id === auth.group?.id ? '✓' : ''}</span>{group.name}
                     </DropdownMenu.Item>
                   {/each}
+                  <DropdownMenu.Separator class="my-1 h-px bg-line" />
+                  <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(groups.show().url)}>
+                    <span class="w-5"></span>Manage operations
+                  </DropdownMenu.Item>
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
@@ -106,6 +110,9 @@
                   <DropdownMenu.Separator class="my-1 h-px bg-line" />
                 </DropdownMenu.Group>
               {/if}
+              <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(groups.show().url)}>
+                Farm operation and members
+              </DropdownMenu.Item>
               <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(settings.show().url)}>
                 Settings
               </DropdownMenu.Item>

@@ -11,6 +11,7 @@ export type SharedProps = {
   auth: {
     user: User | null
     group: Group | null
+    owner: boolean
     groups: Group[]
   }
 }

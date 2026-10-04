@@ -30,7 +30,7 @@ Rails.application.routes.draw do
   resource :settings, only: [:show, :update]
 
   # Setup: farms → pivots → fields → plantings, the guided first run, and copying last season
-  resource :setup, only: [:show, :update], controller: "setup"
+  resource :setup, only: :show, controller: "setup"
   resource :quick_setup, only: [:new, :create], path: "setup/start", path_names: {new: ""}
   resource :season_copy, only: :create, path: "setup/copy_season"
   resources :farms, only: [:create, :update, :destroy]
@@ -55,6 +55,10 @@ Rails.application.routes.draw do
     end
   end
   resource :current_group, only: :update, path: "group"
+  # The current farm operation (Current.group) and its members; creating another
+  resource :group, only: [:show, :update, :destroy], path: "operation"
+  resources :groups, only: :create, path: "operations"
+  resources :memberships, only: [:create, :update, :destroy], path: "operation/members"
 
   root "dashboard#show"
 

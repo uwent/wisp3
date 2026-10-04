@@ -102,7 +102,7 @@
             {#each group.members as member, i (member.id)}
               <span>
                 {#if member.id === user.id}{member.email}{:else}<Link href={adminUsers.show(member.id)} class="text-brand-600 hover:underline">{member.email}</Link>{/if}
-                {#if member.admin}<span class="text-ink-muted">(group admin)</span>{/if}{i < group.members.length - 1 ? ',' : ''}
+                {#if member.owner}<span class="text-ink-muted">(owner)</span>{/if}{i < group.members.length - 1 ? ',' : ''}
               </span>
             {/each}
           </p>
