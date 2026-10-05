@@ -46,7 +46,7 @@ describe('field chart', () => {
     expect(series.find((s) => s.name === 'Modeled rain')!.data).toEqual([0.4, null, null])
     expect(series.find((s) => s.name === 'Rain')!.data).toEqual([1, 0.3, 0])
     // the reading day is marked on the AD line
-    expect(series[0].data[2]).toMatchObject({ symbol: 'circle' })
+    expect(series.find((s) => s.name === 'Allowable depletion')!.data[2]).toMatchObject({ symbol: 'circle' })
   })
 
   it('continues the line dashed through the forecast, with the ensemble range and planned irrigation', () => {
@@ -72,6 +72,8 @@ describe('field chart', () => {
     expect(named('Irrigation').data).toEqual([0, 0, null, null])
     expect(named('Planned irrigation').data).toEqual([null, null, 0, 0.5])
     expect(named('Rain').data[2]).toMatchObject({ value: 0.2, itemStyle: { opacity: 0.4 } })
+    // The slider outlines the first series: observed and projected AD
+    expect(series[0].data).toEqual([0.3, 0.2, 0.1, 0.4])
   })
 
   it('leaves the forecast out when there is none', () => {

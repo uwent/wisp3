@@ -154,6 +154,18 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       },
     ],
     series: [
+      // Not drawn: the slider outlines the first series, so this one carries AD through the forecast
+      {
+        name: SLIDER,
+        type: 'line',
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+        data: all.map((day) => level(day.ad)),
+        symbol: 'none',
+        lineStyle: { opacity: 0 },
+        tooltip: { show: false },
+        silent: true,
+      },
       {
         name: balanceName,
         type: 'line',
@@ -296,6 +308,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
 }
 
 const RANGE = 'Forecast range (10–90%)'
+const SLIDER = 'Slider outline'
 
 function tooltip(days: FieldDay[], observed: number, summary: PlantingSummary, params: unknown, units: Units): string {
   const list = (Array.isArray(params) ? params : [params]) as { dataIndex: number }[]
