@@ -6,25 +6,46 @@
   import BrandBar from '@/lib/components/BrandBar.svelte'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
-  import { adminUsers, adminWeather, alerts, currentGroups, dailyEntries, dashboard, fieldGroups, groups, settings, setup, usersSessions } from '@/routes'
+  import {
+    about,
+    adminUsers,
+    adminWeather,
+    alerts,
+    currentGroups,
+    dailyEntries,
+    dashboard,
+    fieldGroups,
+    groups,
+    newUserRegistration,
+    newUserSession,
+    settings,
+    setup,
+    usersSessions,
+  } from '@/routes'
 
   let { children }: { children: Snippet } = $props()
 
   const auth = $derived(page.props.auth)
 
-  const nav = $derived([
-    // A pivot's and a field's pages are reached from the dashboard; creating and editing them is setup
-    { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields)\/\d+(\?|$)/] },
-    { label: 'Daily entry', route: dailyEntries.show() },
-    { label: 'Alerts', route: alerts.show() },
-    { label: 'Setup', route: setup.show(), also: [fieldGroups.index().url, /^\/pivots\/(new|\d+\/edit)/, '/setup'] },
-    ...(auth.user?.admin
+  // Signed out (the landing and About pages), the nav is just About
+  const nav = $derived(
+    auth.user
       ? [
-          { label: 'Weather', route: adminWeather.show() },
-          { label: 'Users', route: adminUsers.index(), also: ['/admin/users/'] },
+          // A pivot's and a field's pages are reached from the dashboard; creating and editing them is setup
+          { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields)\/\d+(\?|$)/] },
+          { label: 'Daily entry', route: dailyEntries.show() },
+          { label: 'Alerts', route: alerts.show() },
+          { label: 'Setup', route: setup.show(), also: [fieldGroups.index().url, /^\/pivots\/(new|\d+\/edit)/, '/setup'] },
+          { label: 'About', route: about() },
+          ...(auth.user.admin
+            ? [
+                { label: 'Weather', route: adminWeather.show() },
+                { label: 'Users', route: adminUsers.index(), also: ['/admin/users/'] },
+              ]
+            : []),
         ]
-      : []),
-  ])
+      : [{ label: 'About', route: about() }],
+  )
 
   const isCurrent = (url: string, also: (string | RegExp)[] = []) =>
     page.url === url ||
@@ -91,42 +112,49 @@
           <span class="hidden text-sm text-ink-muted sm:inline">{auth.group.name}</span>
         {/if}
 
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger
-            class="rounded-full bg-brand-100 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
-            aria-label="Account menu"
-          >
-            {auth.user?.display_name}
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
-              {#if auth.groups.length > 1}
-                <DropdownMenu.Group class="sm:hidden" aria-label="Farm operation">
-                  <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted">Farm operation</DropdownMenu.GroupHeading>
-                  {#each auth.groups as group (group.id)}
-                    <DropdownMenu.Item class={menuItem} onSelect={() => switchGroup(group.id)}>
-                      <span class="w-5">{group.id === auth.group?.id ? '✓' : ''}</span>{group.name}
-                    </DropdownMenu.Item>
-                  {/each}
-                  <DropdownMenu.Separator class="my-1 h-px bg-line" />
-                </DropdownMenu.Group>
-              {/if}
-              <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(groups.show().url)}>
-                Farm operation and members
-              </DropdownMenu.Item>
-              <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(settings.show().url)}>
-                Settings
-              </DropdownMenu.Item>
-              <DropdownMenu.Separator class="my-1 h-px bg-line" />
-              <DropdownMenu.Item
-                class={menuItem}
-                onSelect={() => router.visit(usersSessions.destroy().url, { method: 'delete' })}
-              >
-                Sign out
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        {#if !auth.user}
+          <Link href={newUserSession()} class="rounded-md px-3 py-1.5 text-sm font-medium text-ink-muted hover:text-ink">Sign in</Link>
+          <Link href={newUserRegistration()} class="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface">
+            Create account
+          </Link>
+        {:else}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger
+              class="rounded-full bg-brand-100 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+              aria-label="Account menu"
+            >
+              {auth.user?.display_name}
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
+                {#if auth.groups.length > 1}
+                  <DropdownMenu.Group class="sm:hidden" aria-label="Farm operation">
+                    <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted">Farm operation</DropdownMenu.GroupHeading>
+                    {#each auth.groups as group (group.id)}
+                      <DropdownMenu.Item class={menuItem} onSelect={() => switchGroup(group.id)}>
+                        <span class="w-5">{group.id === auth.group?.id ? '✓' : ''}</span>{group.name}
+                      </DropdownMenu.Item>
+                    {/each}
+                    <DropdownMenu.Separator class="my-1 h-px bg-line" />
+                  </DropdownMenu.Group>
+                {/if}
+                <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(groups.show().url)}>
+                  Farm operation and members
+                </DropdownMenu.Item>
+                <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(settings.show().url)}>
+                  Settings
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator class="my-1 h-px bg-line" />
+                <DropdownMenu.Item
+                  class={menuItem}
+                  onSelect={() => router.visit(usersSessions.destroy().url, { method: 'delete' })}
+                >
+                  Sign out
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        {/if}
       </div>
     </div>
   </header>

@@ -71,7 +71,12 @@ Rails.application.routes.draw do
   resources :groups, only: :create, path: "operations"
   resources :memberships, only: [:create, :update, :destroy], path: "operation/members"
 
-  root "dashboard#show"
+  # Signed in, / is the dashboard; signed out, the landing page. The About page is public.
+  authenticated :user do
+    root "dashboard#show", as: :dashboard_root
+  end
+  root "pages#home"
+  get "about", to: "pages#about"
 
   get "up", to: "rails/health#show", as: :rails_health_check
 

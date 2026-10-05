@@ -135,11 +135,12 @@ RSpec.describe "Sign-in links and codes", type: :request do
       expect_inertia.to render_component("Auth/MagicLink")
       expect(inertia.props[:valid]).to be(true)
 
-      get root_path
+      get setup_path
       expect(response).to redirect_to(new_user_session_path)
 
       post redeem_magic_link_path(token: emailed_token)
-      expect(response).to redirect_to(root_path)
+      # Back to the page that asked for sign-in
+      expect(response).to redirect_to(setup_path)
     end
 
     it "works only once" do

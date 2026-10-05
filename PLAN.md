@@ -567,6 +567,24 @@ Decided 2026-10-04 (Ben): a **daily digest** instead of event-based alerts. Simp
 - [x] Admin preview: "what would be sent today" for any user. *(Admin user page → "Preview today's daily email".)*
 - **Exit:** staging sends correct digests for test fields across simulated scenarios (rain refill, sudden heat, planned irrigation pushing back "Irrigate by").
 
+### Phase 6.5: Landing page and documentation
+
+Decided 2026-10-05 (Ben): replace the legacy PDF user guide with documentation in the app, and greet signed-out visitors with what WISP is instead of a sign-in form. Brought forward from Phase 8.
+
+- [x] **Landing page** at `/` for signed-out visitors (signed in, `/` stays the dashboard): what WISP is and who it's for, how it works in a few steps (weather → water balance → when and how much to irrigate), what you enter, and sign-up / sign-in buttons. Its text is the introduction of the About page, shared rather than copied. *(`PagesController`, `Pages/Home`; `lib/docs/Introduction.svelte`.)*
+- [x] **About page** (`/about`, public, in the nav after Setup; signed out, the nav shows only About with sign-in and sign-up buttons). Sections, each with an anchor:
+  - Introduction (shared with the landing page).
+  - How WISP works: the water balance (§5) in plain words; weather from Open-Meteo, the forecast and its scenarios; statuses and "Irrigate by".
+  - Getting started: account, operations and members, farms → pivots → fields → plantings, quick setup, copying last season.
+  - Day to day: dashboard, daily entry, field groups, the field page (grid, planned irrigation, chart, weather), the daily email (Alerts).
+  - Ground-truthing: which readings matter and how often (`lib/guidance.ts`): soil moisture weekly, sensor depths, percent cover or LAI, rain gauges.
+  - Crops: a table from the `plants` table: default root zone depth, canopy methods (percent cover; LAI with the growth curve or with readings only), suggested sensor depths, with the shared defaults (MAD 50%, season dates) noted.
+  - Glossary: every entry in `lib/glossary.ts`, each with an anchor the tooltips can link to.
+  - Credits and contact: UW-Madison Vegetable Entomology Lab, agweather@cals.wisc.edu.
+  *(`Pages/About`; the crop table from `plants`, reading advice from `lib/guidance.ts`, glossary from `lib/glossary.ts`, so they follow the app.)*
+- [ ] Wording reviewed by Ben (agronomy, contact details).
+- **Later (Phase 8):** screenshots, a printable version, the methods detail (equations from §5) for agronomists, and a "More in the guide" link from each glossary tooltip.
+
 ### Phase 7: Map
 
 - [ ] MapLibre map, USGS imagery + OpenFreeMap streets, pivot circles and arcs colored by status.
@@ -577,8 +595,7 @@ Decided 2026-10-04 (Ben): a **daily digest** instead of event-based alerts. Simp
 ### Phase 8: Polish, beta, launch
 
 - [ ] Accessibility pass (keyboard grid, contrast, chart table alternative), performance pass, empty states, onboarding tour.
-- [ ] Methods/help pages from the architecture doc; updated user guide.
-- [ ] Public landing and about pages (§11); signed-out visitors currently go straight to sign-in.
+- [ ] Methods detail for the About page (Phase 6.5 "Later").
 - [x] Admin users list (`/admin/users`): a searchable, sortable table (`DataTable`) of every account with its farm, pivot and field counts; delete unconfirmed accounts from the list. Each account's page shows its attributes (not its secrets), its groups and members, and its farms, pivots and fields, with a delete button (with confirmation) except for your own or another admin's account.
 - [ ] Admin (§11): CSV export of users, announcements (shown in the app, replacing the legacy blog), impersonation for support.
 - [ ] Monitoring (§12): a daily email to admins when a job failed or a cell's weather is more than 24 h stale.

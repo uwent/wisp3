@@ -7,8 +7,10 @@ RSpec.describe "Authentication", type: :request do
     post user_session_path, params: {user: {email:, password:}}
   end
 
-  it "redirects signed-out visitors to sign in" do
+  it "shows signed-out visitors the landing page, and redirects them from the app's pages to sign in" do
     get root_path
+    expect_inertia.to render_component("Pages/Home")
+    get setup_path
     expect(response).to redirect_to(new_user_session_path)
   end
 
@@ -87,7 +89,7 @@ RSpec.describe "Authentication", type: :request do
       delete destroy_user_session_path
       expect(response).to have_http_status(:see_other)
       get root_path
-      expect(response).to redirect_to(new_user_session_path)
+      expect_inertia.to render_component("Pages/Home")
     end
 
     it "rejects a wrong password without saying whether the account exists" do
@@ -101,12 +103,12 @@ RSpec.describe "Authentication", type: :request do
       unconfirmed = create(:user, :unconfirmed, password:)
       sign_in_with(email: unconfirmed.email, password:)
       expect(flash[:alert]).to match(/confirm your email/i)
-      get root_path
+      get setup_path
       expect(response).to redirect_to(new_user_session_path)
     end
 
     it "redirects Inertia (XHR) requests to sign in instead of returning a bare 401" do
-      get root_path, headers: {"X-Inertia" => "true", "X-Requested-With" => "XMLHttpRequest"}
+      get setup_path, headers: {"X-Inertia" => "true", "X-Requested-With" => "XMLHttpRequest"}
       expect(response).to have_http_status(:found).or have_http_status(:conflict)
     end
   end

@@ -16,17 +16,16 @@
   const entry = $derived(given ?? glossaryEntry(id!))
 </script>
 
-<Popover.Root>
-  <Popover.Trigger
+<!-- No whitespace between the tags: it would show as a space after the term, before punctuation -->
+<Popover.Root
+  ><Popover.Trigger
     openOnHover
     openDelay={150}
     class="cursor-help rounded-sm underline decoration-ink-muted decoration-dotted underline-offset-3 hover:decoration-ink
       focus-visible:outline-2 focus-visible:outline-brand-600"
-  >
-    {#if children}{@render children()}{:else}{entry.term}{/if}
-  </Popover.Trigger>
-  <Popover.Portal>
-    <Popover.Content
+    >{#if children}{@render children()}{:else}{entry.term}{/if}</Popover.Trigger
+  ><Popover.Portal
+    ><Popover.Content
       side="bottom"
       align="start"
       sideOffset={4}
@@ -38,6 +37,6 @@
     >
       <p class="font-medium">{entry.term}</p>
       <p class="mt-1 text-ink-muted">{entry.definition}</p>
-    </Popover.Content>
-  </Popover.Portal>
-</Popover.Root>
+    </Popover.Content></Popover.Portal
+  ></Popover.Root
+>
