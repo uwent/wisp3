@@ -4,7 +4,7 @@
   import Sparkline from '@/lib/components/Sparkline.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
-  import { outlook } from '@/lib/outlook'
+  import { LEAD_DAYS, outlook } from '@/lib/outlook'
   import { units as unitsFor } from '@/lib/units'
   import { dailyEntries, fields, newQuickSetup, pivots, setup } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
@@ -18,7 +18,26 @@
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   let farmId = $state<number | 'all'>('all')
 
-  const shown = $derived(farms.filter((farm) => farmId === 'all' || farm.id === farmId))
+  // Fields whose season has ended go after the rest, and so do pivots and farms with only ended fields
+  // (the sort is stable, so names stay in order otherwise)
+  const ended = (card: FieldCard) => card.summary?.phase === 'ended'
+  const allEnded = (cards: FieldCard[]) => cards.length > 0 && cards.every(ended)
+  const endedLast = <T,>(items: T[], isEnded: (item: T) => boolean) =>
+    items.toSorted((a, b) => Number(isEnded(a)) - Number(isEnded(b)))
+  const sorted = $derived(
+    endedLast(
+      farms.map((farm) => ({
+        ...farm,
+        pivots: endedLast(
+          farm.pivots.map((pivot) => ({ ...pivot, fields: endedLast(pivot.fields, ended) })),
+          (pivot) => allEnded(pivot.fields),
+        ),
+      })),
+      (farm) => allEnded(farm.pivots.flatMap((pivot) => pivot.fields)),
+    ),
+  )
+
+  const shown = $derived(sorted.filter((farm) => farmId === 'all' || farm.id === farmId))
   const cards = $derived(shown.flatMap((farm) => farm.pivots.flatMap((pivot) => pivot.fields)))
   const anyFields = $derived(farms.some((farm) => farm.pivots.some((pivot) => pivot.fields.length)))
 
@@ -32,9 +51,22 @@
       count: cards.filter((card) => card.summary?.phase === 'active' && card.summary.status === status).length,
     })),
   )
+  const endedCount = $derived(cards.filter(ended).length)
+
+  const fieldCount = (count: number) => `${count} field${count === 1 ? '' : 's'}`
+  const countTips = {
+    irrigate: (count: number) => `${fieldCount(count)} at or below the irrigation point today`,
+    caution: (count: number) => `${fieldCount(count)} running low, or projected to need irrigation within ${LEAD_DAYS} days`,
+    ok: (count: number) => `${fieldCount(count)} with enough water for now`,
+    full: (count: number) => `${fieldCount(count)} near field capacity`,
+  }
 </script>
 
 <svelte:head><title>Dashboard · WISP</title></svelte:head>
+
+{#snippet seasonEnded()}
+  <span class="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted">Season ended</span>
+{/snippet}
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
@@ -84,8 +116,13 @@
   {:else}
     <div class="flex flex-wrap gap-2 text-sm" aria-label="Fields by status">
       {#each counts as { status, count } (status)}
-        {#if count}<span class="flex items-center gap-1.5"><StatusBadge {status} size="sm" /> {count}</span>{/if}
+        {#if count}
+          <span class="flex items-center gap-1.5" title={countTips[status](count)}><StatusBadge {status} size="sm" /> {count}</span>
+        {/if}
       {/each}
+      {#if endedCount}
+        <span class="flex items-center gap-1.5" title="{fieldCount(endedCount)} whose season has ended">{@render seasonEnded()} {endedCount}</span>
+      {/if}
     </div>
   {/if}
 
@@ -124,7 +161,11 @@
                           </p>
                         {/if}
                       </div>
-                      {#if summary?.phase === 'active'}<StatusBadge status={summary.status} size="sm" />{/if}
+                      {#if summary?.phase === 'active'}
+                        <StatusBadge status={summary.status} size="sm" />
+                      {:else if summary?.phase === 'ended'}
+                        {@render seasonEnded()}
+                      {/if}
                     </div>
 
                     {#if !summary}
