@@ -75,5 +75,10 @@ Rails.application.routes.draw do
 
   get "up", to: "rails/health#show", as: :rails_health_check
 
-  mount LetterOpenerWeb::Engine, at: "/letter_opener" if Rails.env.development?
+  if Rails.env.development?
+    mount LetterOpenerWeb::Engine, at: "/letter_opener"
+    # Chrome DevTools asks every localhost site for its workspace settings; answer so it isn't logged
+    # as a routing error
+    get ".well-known/appspecific/com.chrome.devtools.json", to: proc { [204, {}, []] }
+  end
 end
