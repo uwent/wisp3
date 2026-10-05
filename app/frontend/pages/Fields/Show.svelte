@@ -67,6 +67,7 @@
   }
   const thresholdName = $derived(summary?.target_in === null ? 'at 0 AD' : 'below target')
   let chartMode = $state<FieldChartMode>('ad')
+  let forecastOpen = $state(true)
   let dailyOpen = $state(true)
 
   // Crop ET by date, as a string so the weather charts rebuild only when it changes (an edit to
@@ -310,59 +311,66 @@
     {#if forecast_days.length}
       <!-- The projection, and planned irrigation -->
       <section class="space-y-2">
-        <div>
+        <div class="flex items-center justify-between">
           <h2 class="font-medium">Next {forecast_days.length} days</h2>
-          <p class="text-xs text-ink-muted">
-            The forecast for this pivot run through the water balance. Plan irrigation by entering it on a future day; it
-            counts as applied when the day comes, so change or clear it if plans change. Depths in {units.label('depth')}.
-          </p>
+          <button type="button" class="text-sm text-brand-600 hover:underline" onclick={() => (forecastOpen = !forecastOpen)} aria-expanded={forecastOpen}>
+            {forecastOpen ? 'Hide' : 'Show'}
+          </button>
         </div>
-        <div class="overflow-auto rounded-lg border border-line bg-surface-raised">
-          <table class="w-full text-sm">
-            <thead class="border-b border-line text-xs text-ink-muted">
-              <tr class="text-right">
-                <th class="px-3 py-2 text-left font-medium">Date</th>
-                <th class="px-2 py-2 font-medium">Crop ET</th>
-                <th class="px-2 py-2 font-medium">Rain</th>
-                <th class="px-2 py-2 font-medium">Planned irrigation</th>
-                <th class="px-2 py-2 font-medium">AD</th>
-                {#if summary?.ensemble_size}
-                  <th class="px-2 py-2 font-medium">Range (10–90%)</th>
-                  <th class="px-2 py-2 font-medium">Chance {thresholdName} by then</th>
-                {/if}
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-line">
-              {#each forecast_days as day, row (day.date)}
-                {@const band = projectionByDate.get(day.date)}
-                <tr class="text-right {day.ad <= (summary?.threshold ?? 0) ? 'bg-status-irrigate/5' : ''}">
-                  <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap">{formatDate(day.date, { weekday: true })}</th>
-                  <td class="px-2 py-1 text-ink-muted tabular-nums">{depth(day.adj_et)}</td>
-                  <td class="px-2 py-1 tabular-nums">
-                    {#if day.rain_source === 'forecast' || day.rain_source === 'none'}<span class="text-ink-muted">{depth(day.rain)}</span>
-                    {:else}<span class="font-medium">{depth(day.rain)}</span>{/if}
-                  </td>
-                  <td class="px-1 py-0.5">
-                    <EditableCell grid="forecast" {row} col={0} text={inputText(day, 'irrigation_in')} label={cellLabel(day, 'Planned irrigation')} onsave={(t) => saveCell(day, 'irrigation_in', t)}>
-                      {#if day.irrigation_source === 'none'}<span class="text-ink-muted">–</span>
-                      {:else}
-                        <span class="font-medium">{depth(day.irrigation)}</span>
-                        {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600">{day.irrigation_source}</span>{/if}
+        {#if forecastOpen}
+          <div class="space-y-2" transition:slide={{ duration: 200 }}>
+            <p class="text-xs text-ink-muted">
+              The forecast for this pivot run through the water balance. Plan irrigation by entering it on a future day; it
+              counts as applied when the day comes, so change or clear it if plans change. Depths in {units.label('depth')}.
+            </p>
+            <div class="overflow-auto rounded-lg border border-line bg-surface-raised">
+              <table class="w-full text-sm">
+                <thead class="border-b border-line text-xs text-ink-muted">
+                  <tr class="text-right">
+                    <th class="px-3 py-2 text-left font-medium">Date</th>
+                    <th class="px-2 py-2 font-medium">Crop ET</th>
+                    <th class="px-2 py-2 font-medium">Rain</th>
+                    <th class="px-2 py-2 font-medium">Planned irrigation</th>
+                    <th class="px-2 py-2 font-medium">AD</th>
+                    {#if summary?.ensemble_size}
+                      <th class="px-2 py-2 font-medium">Range (10–90%)</th>
+                      <th class="px-2 py-2 font-medium">Chance {thresholdName} by then</th>
+                    {/if}
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line">
+                  {#each forecast_days as day, row (day.date)}
+                    {@const band = projectionByDate.get(day.date)}
+                    <tr class="text-right {day.ad <= (summary?.threshold ?? 0) ? 'bg-status-irrigate/5' : ''}">
+                      <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap">{formatDate(day.date, { weekday: true })}</th>
+                      <td class="px-2 py-1 text-ink-muted tabular-nums">{depth(day.adj_et)}</td>
+                      <td class="px-2 py-1 tabular-nums">
+                        {#if day.rain_source === 'forecast' || day.rain_source === 'none'}<span class="text-ink-muted">{depth(day.rain)}</span>
+                        {:else}<span class="font-medium">{depth(day.rain)}</span>{/if}
+                      </td>
+                      <td class="px-1 py-0.5">
+                        <EditableCell grid="forecast" {row} col={0} text={inputText(day, 'irrigation_in')} label={cellLabel(day, 'Planned irrigation')} onsave={(t) => saveCell(day, 'irrigation_in', t)}>
+                          {#if day.irrigation_source === 'none'}<span class="text-ink-muted">–</span>
+                          {:else}
+                            <span class="font-medium">{depth(day.irrigation)}</span>
+                            {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600">{day.irrigation_source}</span>{/if}
+                          {/if}
+                        </EditableCell>
+                      </td>
+                      <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate' : ''}">{depth(day.ad)}</td>
+                      {#if summary?.ensemble_size}
+                        <td class="px-2 py-1 text-ink-muted tabular-nums whitespace-nowrap">
+                          {band?.p10 != null && band.p90 != null ? `${depth(band.p10)} to ${depth(band.p90)}` : ''}
+                        </td>
+                        <td class="px-2 py-1 tabular-nums">{band?.chance != null ? `${Math.round(band.chance * 100)}%` : ''}</td>
                       {/if}
-                    </EditableCell>
-                  </td>
-                  <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate' : ''}">{depth(day.ad)}</td>
-                  {#if summary?.ensemble_size}
-                    <td class="px-2 py-1 text-ink-muted tabular-nums whitespace-nowrap">
-                      {band?.p10 != null && band.p90 != null ? `${depth(band.p10)} to ${depth(band.p90)}` : ''}
-                    </td>
-                    <td class="px-2 py-1 tabular-nums">{band?.chance != null ? `${Math.round(band.chance * 100)}%` : ''}</td>
-                  {/if}
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {/if}
       </section>
     {/if}
 
