@@ -65,8 +65,33 @@ RSpec.describe DailyDigest do
   it "says why it wouldn't send" do
     expect(described_class.new(user).skip_reason).to eq("No included field has a crop in season today.")
     field_at("North", 15)
-    user.update!(digest: false)
-    expect(described_class.new(user.reload).skip_reason).to eq("The digest is turned off.")
+    user.update!(digest_frequency: "never")
+    expect(described_class.new(user.reload).skip_reason).to eq("The daily email is turned off.")
+  end
+
+  it "only sends on days a field needs water, for those who asked for that" do
+    field = field_at("North", 15)
+    user.update!(digest_frequency: "needed")
+    expect(described_class.new(user).skip_reason).to eq("No field needs irrigation in the next 3 days.")
+
+    field.field_entries.find_by!(date: Date.new(2026, 7, 19)).update!(soil_moisture_pct: 12)
+    expect(described_class.new(user)).to be_deliverable
+  end
+
+  it "groups fields by farm and pivot, in name order, with each pivot's weather" do
+    other_pivot = create(:pivot, farm:, name: "Pivot 0", weather_cell: pivot.weather_cell)
+    river = create(:farm, group:, name: "River")
+    river_pivot = create(:pivot, farm: river, name: "East", weather_cell: pivot.weather_cell)
+    b = field_at("B", 15)
+    a = field_at("A", 9)
+    zero = digest_field(other_pivot, "Zero", 15)
+    east = digest_field(river_pivot, "East 1", 12)
+
+    farms = described_class.new(user).farms
+    expect(farms.map { |section| [section.farm.name, section.pivots.map { |p| [p.pivot.name, p.entries.map(&:field)] }] })
+      .to eq([["Home", [["Pivot 0", [zero]], ["Pivot 1", [a, b]]]], ["River", [["East", [east]]]]])
+    expect(farms.first.pivots.first.weather[:past]).to have_attributes(days: 7, precip: 0.0, tmax: 85.0..85.0)
+    expect(farms.first.pivots.first.weather[:ahead]).to have_attributes(days: 7, tmin: 62..62)
   end
 
   it "formats depths in the user's units" do
@@ -74,5 +99,12 @@ RSpec.describe DailyDigest do
     expect(described_class.new(user).depth(0.5)).to eq("12.7 mm")
     expect(described_class.new(user).depth(-0.001)).to eq("0.0 mm")
     expect(described_class.new(create(:user)).depth(0.5)).to eq("0.50 in")
+  end
+
+  it "formats temperature ranges in the user's units" do
+    expect(described_class.new(user).temperatures(68.4..82.0)).to eq("68–82°F")
+    expect(described_class.new(user).temperatures(75.0..75.2)).to eq("75°F")
+    user.update!(unit_system: "metric")
+    expect(described_class.new(user).temperatures(32.0..82.0)).to eq("0–28°C")
   end
 end

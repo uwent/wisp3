@@ -1,15 +1,10 @@
 <script lang="ts">
   import { Link } from '@inertiajs/svelte'
 
+  import EmailPreview, { type DigestPreview } from '@/lib/components/EmailPreview.svelte'
   import { adminUsers } from '@/routes'
 
-  let {
-    user,
-    skip_reason,
-    subject,
-    html,
-  }: { user: { id: number; email: string }; skip_reason: string | null; subject: string | null; html: string | null } =
-    $props()
+  let { user, preview }: { user: { id: number; email: string }; preview: DigestPreview } = $props()
 </script>
 
 <svelte:head><title>Daily email · {user.email} · WISP</title></svelte:head>
@@ -21,18 +16,5 @@
     <p class="text-sm text-ink-muted">What the 6 am digest would send {user.email} with today's data. Nothing is sent from here.</p>
   </div>
 
-  {#if skip_reason}
-    <p class="rounded-md bg-status-caution/15 px-3 py-2 text-sm">Nothing would be sent today: {skip_reason}</p>
-  {/if}
-
-  {#if html}
-    <p class="text-sm"><span class="text-ink-muted">Subject:</span> <span class="font-medium">{subject}</span></p>
-    <!-- The email as a mail client shows it: its own document, light background, no scripts -->
-    <iframe
-      title="Daily email preview"
-      srcdoc={html}
-      sandbox="allow-popups"
-      class="h-[80vh] w-full rounded-lg border border-line bg-white"
-    ></iframe>
-  {/if}
+  <EmailPreview {preview} />
 </div>

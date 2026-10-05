@@ -33,7 +33,7 @@ bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weath
 - Tables: `DataTable.svelte` sorts and searches rows in the browser from column definitions (`lib/table.ts`).
 - Map: `PivotMap.svelte` (MapLibre, loaded on demand; its worker is bundled by Vite and set with `setWorkerUrl`).
 - Devise controllers live in `app/controllers/users/` and render Inertia pages through `InertiaDeviseResponses`. Passwordless sign-in (`MagicLinksController`) emails a one-time link (`User.generates_token_for(:magic_login)`) and a six-digit code (`User#generate_sign_in_code!`). Wrap links in emails with `email_link_to` (adds `ses:no-track`); links to a group's record add `operation: group.id`, which switches to that group if the user belongs to it.
-- Daily digest (Phase 6): `DailyDigestJob` (6 am) → `DailyDigest` (a user's included fields in season, most urgent first) → `DigestMailer`. Its outlook wording (`Outlook`) mirrors `lib/outlook.ts`; change both together.
+- Daily digest (Phase 6): `DailyDigestJob` (6 am) → `DailyDigest` (a user's included fields in season, most urgent first and by farm and pivot, with `WeatherSummary` per pivot; `users.digest_frequency` decides whether it's sent) → `DigestMailer`. Settings, preview and test send are on the Alerts page (`AlertsController`). Its outlook wording (`Outlook`) mirrors `lib/outlook.ts`; change both together.
 
 ## Rules
 

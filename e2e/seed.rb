@@ -6,7 +6,7 @@ PASSWORD = "e2e-password-1"
 ReferenceData.load!
 DemoSeed.new(email: EMAIL, password: PASSWORD).run
 # An admin, so the smoke tests cover the admin pages
-User.find_by!(email: EMAIL).update!(password: PASSWORD, admin: true)
+User.find_by!(email: EMAIL).update!(password: PASSWORD, admin: true, digest_frequency: "daily", digest_test_sent_at: nil)
 
 today = Date.current
 now = Time.current

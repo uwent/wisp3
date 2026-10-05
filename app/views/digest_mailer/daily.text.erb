@@ -2,25 +2,34 @@ Your fields this morning, <%= @digest.today.strftime("%A, %B %-d") %>
 <% if @digest.attention.any? %>
 
 NEEDS ATTENTION
+
 <% @digest.attention.each do |entry| %>
-
-<%= entry.field.name %> [<%= status_label(entry.status.status) %>]
-<%= digest_place(entry, @digest) %>
-<% if entry.outlook %><%= entry.outlook.headline %>. <%= entry.outlook.detail %><%= " #{entry.outlook.chance}" if entry.outlook.chance %>
-<% end %><%= digest_ad(entry, @digest) %>
-Last rain: <%= digest_last(entry, @digest, :rain) %> · Last irrigation: <%= digest_last(entry, @digest, :irrigation) %>
-<%= field_link(entry) %>
+- <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_place(entry, @digest) %><%= ": #{entry.outlook.headline}" if entry.outlook %>
 <% end %>
 <% end %>
-<% if @digest.others.any? %>
+<% @digest.farms.each do |section| %>
 
-<%= @digest.attention.any? ? "EVERYTHING ELSE" : "ALL FIELDS" %>
+== <%= digest_farm(section, @digest).upcase %> ==
+<% section.pivots.each do |pivot_section| %>
 
-<% @digest.others.each do |entry| %>
-- <%= entry.field.name %> [<%= status_label(entry.status.status) %>]: <%= digest_ad(entry, @digest, short: true) %>. <%= digest_summary(entry) %>
+<%= pivot_section.pivot.name %>
+<% digest_weather(pivot_section, @digest).each do |line| %>
+  <%= line %>
+<% end %>
+<% pivot_section.entries.each do |entry| %>
+
+  <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_crop(entry) %> · <%= digest_ad(entry, @digest, short: !entry.attention?) %>
+<% if entry.attention? && entry.outlook %>
+  <%= entry.outlook.headline %>. <%= entry.outlook.detail %><%= " #{entry.outlook.chance}" if entry.outlook.chance %>
+  Last rain: <%= digest_last(entry, @digest, :rain) %> · Last irrigation: <%= digest_last(entry, @digest, :irrigation) %>
+  <%= field_link(entry) %>
+<% else %>
+  <%= digest_summary(entry) %>
+<% end %>
+<% end %>
 <% end %>
 <% end %>
 
-You get this email from WISP each morning while your fields are in season.
-Choose which fields it covers: <%= @settings_url %>
+<%= digest_reason(@user, test: @test) %>
+Change how often and which fields: <%= @alerts_url %>
 Unsubscribe: <%= @unsubscribe_url %>

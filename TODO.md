@@ -27,7 +27,7 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Phase 6: daily email (next)
 
-- [ ] **Deploy and check the digest on staging.** It goes out at 6 am Central to every confirmed user with a field in season (on by default). Before the first morning, preview it from an admin user page ("Preview today's daily email"), or send one now: `RAILS_ENV=staging bin/rails runner 'u = User.find_by!(email: "you@…"); DigestMailer.daily(DailyDigest.new(u)).deliver_now'`.
+- [ ] **Deploy and check the digest on staging.** It goes out at 6 am Central to every confirmed user with a field in season (daily by default; users can pick "Only when irrigation is needed" or "Never" on the Alerts page). Before the first morning, preview it and send yourself a test from the Alerts page; admins can preview anyone's from their user page.
 - [ ] **SPF and DKIM (Q6):** in Gmail, open the digest → "Show original" and check SPF and DKIM both say PASS. If not, ask campus IT (PLAN.md Q6). Also try the one-click "Unsubscribe" Gmail shows next to the sender.
 - [ ] **Exit check:** on staging, set up test fields for a rain refill, a sudden heat spell, and planned irrigation pushing back "Irrigate by", and check the digests read right.
 

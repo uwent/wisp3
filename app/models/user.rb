@@ -6,12 +6,17 @@ class User < ApplicationRecord
   MAGIC_LINK_TTL = 15.minutes
   SIGN_IN_CODE_ATTEMPTS = 5
   SIGN_IN_CODE_RESEND_AFTER = 60.seconds
+  # How often the daily digest is sent: never, every morning a field is in season, or only on
+  # mornings a field needs irrigation within PlantingStatus::LEAD_DAYS (DailyDigest#skip_reason)
+  DIGEST_FREQUENCIES = %w[never daily needed].freeze
+  DIGEST_TEST_COOLDOWN = 5.minutes
 
   has_many :memberships, dependent: :destroy
   has_many :groups, through: :memberships
   has_many :digest_exclusions, dependent: :delete_all
 
   validates :unit_system, inclusion: {in: UNIT_SYSTEMS}
+  validates :digest_frequency, inclusion: {in: DIGEST_FREQUENCIES}
   validates :first_name, :last_name, length: {maximum: 100}
   validate :email_domain_allowed
 
@@ -26,6 +31,24 @@ class User < ApplicationRecord
 
   # The daily digest's unsubscribe link (and List-Unsubscribe header), which doesn't expire
   generates_token_for :digest_unsubscribe
+
+  def digest? = digest_frequency != "never"
+
+  # When the next test digest can be sent from the Alerts page, or nil if it can be now
+  def digest_test_available_at
+    available = digest_test_sent_at && digest_test_sent_at + DIGEST_TEST_COOLDOWN
+    available if available&.future?
+  end
+
+  # Starts the test email's cooldown; false if it's already running. Atomic, so parallel requests
+  # can't both send.
+  def claim_digest_test!
+    now = Time.current
+    claimed = self.class.where(id:).where("digest_test_sent_at IS NULL OR digest_test_sent_at <= ?", now - DIGEST_TEST_COOLDOWN)
+      .update_all(digest_test_sent_at: now) == 1
+    self.digest_test_sent_at = now if claimed
+    claimed
+  end
 
   # The fields the daily digest covers: every field in the user's operations, less the operations,
   # farms and fields they've left out

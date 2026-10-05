@@ -10,7 +10,7 @@ class DigestUnsubscribesController < InertiaController
 
   def create
     user = User.find_by_token_for(:digest_unsubscribe, params[:token])
-    user&.update!(digest: false)
+    user&.update!(digest_frequency: "never")
     render inertia: "Auth/Unsubscribe", props: {token: params[:token], valid: user.present?, done: user.present?}
   end
 end

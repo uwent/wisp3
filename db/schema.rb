@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_05_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -235,11 +235,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_000000) do
     t.string "sign_in_code_digest"
     t.datetime "sign_in_code_sent_at"
     t.integer "sign_in_code_attempts", default: 0, null: false
-    t.boolean "digest", default: true, null: false
     t.date "digest_sent_on"
+    t.string "digest_frequency", default: "daily", null: false
+    t.datetime "digest_test_sent_at"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.check_constraint "digest_frequency::text = ANY (ARRAY['never'::character varying, 'daily'::character varying, 'needed'::character varying]::text[])", name: "users_digest_frequency"
   end
 
   create_table "weather_cells", force: :cascade do |t|

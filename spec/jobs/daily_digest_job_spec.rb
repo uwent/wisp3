@@ -12,7 +12,7 @@ RSpec.describe DailyDigestJob do
   around { |example| travel_to(digest_today) { example.run } }
 
   it "sends each user with the digest on and a field in season one email a day" do
-    off = create(:user, digest: false)
+    off = create(:user, digest_frequency: "never")
     unconfirmed = create(:user, :unconfirmed)
     [off, unconfirmed].each { |other| create(:membership, user: other, group: user.groups.first) }
     create(:user) # no fields
@@ -24,6 +24,16 @@ RSpec.describe DailyDigestJob do
     expect { described_class.perform_now }.not_to change { ActionMailer::Base.deliveries.size }
     travel 1.day
     expect { described_class.perform_now }.to change { ActionMailer::Base.deliveries.size }.by(1)
+  end
+
+  it "sends those who only want it when a field needs water only then" do
+    user.update!(digest_frequency: "needed")
+    expect { described_class.perform_now }.to change { ActionMailer::Base.deliveries.size }.by(1)
+
+    travel 1.day
+    pivot.fields.sole.field_entries.create!(date: Date.new(2026, 7, 20), irrigation_in: 1.5)
+    expect { described_class.perform_now }.not_to change { ActionMailer::Base.deliveries.size }
+    expect(user.reload.digest_sent_on).to eq(Date.new(2026, 7, 20))
   end
 
   it "carries on past a user whose digest fails" do

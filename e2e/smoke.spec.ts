@@ -53,7 +53,7 @@ test('every page renders without errors or sideways scrolling', async ({ page })
   await page.goto('/admin/users')
   const user = new URL((await page.locator('main a[href*="/admin/users/"]').first().getAttribute('href'))!, page.url()).pathname
 
-  const paths = ['/', field, '/setup', '/daily', pivot, `${pivot}/edit`, '/pivots/new', '/field_groups', '/setup/start', '/settings', '/operation',
+  const paths = ['/', field, '/setup', '/daily', pivot, `${pivot}/edit`, '/pivots/new', '/field_groups', '/setup/start', '/settings', '/alerts', '/operation',
     '/admin/weather', '/admin/users', user]
   for (const path of paths) {
     await page.goto(path)
@@ -223,4 +223,31 @@ test('a weather chart explains itself, and resets after zooming', async ({ page 
   await reset.click()
   await expect(reset).toBeHidden()
   expect(errors).toEqual([])
+})
+
+test('alerts previews today’s email and sends a test, then waits', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/alerts')
+  await expect(page.getByLabel('Email frequency')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Preview today’s email' }).click()
+  const email = page.frameLocator('iframe[title="Daily email preview"]')
+  await expect(email.getByRole('heading', { name: 'Your fields this morning' })).toBeVisible()
+
+  // Both projects sign in as one user, who can send one test per cooldown (reset by e2e/seed.rb)
+  if (test.info().project.name !== 'desktop') return
+  await page.getByRole('button', { name: 'Send me a test email' }).click()
+  await expect(page.getByText('Test email sent to')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Send a test email \(again in \d+ min\)/ })).toBeDisabled()
+  // The preview stays open across the redirect
+  await expect(email.getByRole('heading', { name: 'Your fields this morning' })).toBeVisible()
+
+  // Saving rebuilds the open preview in the same request
+  await page.getByLabel('Email frequency').selectOption('needed')
+  await page.getByRole('button', { name: 'Save alert settings' }).click()
+  await expect(page.getByText('Alert settings saved')).toBeVisible()
+  await expect(email.getByRole('heading', { name: 'Your fields this morning' })).toBeVisible()
+  await expect(page.getByLabel('Email frequency')).toHaveValue('needed')
+  // Playwright's trace recorder tries to run its snapshot script in the preview's sandboxed frame
+  expect(errors.filter((error) => !error.includes("Blocked script execution in 'about:srcdoc'"))).toEqual([])
 })

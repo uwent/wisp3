@@ -24,13 +24,9 @@ module Admin
     # What the daily digest would send this user today (PLAN.md Phase 6), without sending it
     def digest
       user = User.find(params[:id])
-      digest = DailyDigest.new(user)
-      mail = DigestMailer.daily(digest) if digest.entries.any?
       render inertia: "Admin/Users/Digest", props: {
         user: {id: user.id, email: user.email},
-        skip_reason: digest.skip_reason,
-        subject: mail&.subject,
-        html: mail&.html_part&.body&.decoded
+        preview: DigestMailer.preview(DailyDigest.new(user))
       }
     end
 

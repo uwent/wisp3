@@ -26,12 +26,14 @@
     return `${plural(farms, 'farm')}, ${plural(pivots, 'pivot')}, ${plural(fields, 'field')}`
   }
 
+  const digestFrequencies = { never: 'Never', daily: 'Daily during season', needed: 'Only when irrigation is needed' }
+
   const attributes = $derived<[string, string][]>([
     ['Name', user.display_name === user.email ? '—' : user.display_name],
     ['Email', user.email],
     ...(user.unconfirmed_email ? [['Email change pending', user.unconfirmed_email] as [string, string]] : []),
     ['Units', user.unit_system === 'metric' ? 'Metric' : 'US (imperial)'],
-    ['Daily email', `${user.digest ? 'On' : 'Off'}${user.digest_sent_on ? `, last sent ${formatDate(user.digest_sent_on, { year: true })}` : ''}`],
+    ['Daily email', `${digestFrequencies[user.digest_frequency]}${user.digest_sent_on ? `, last sent ${formatDate(user.digest_sent_on, { year: true })}` : ''}`],
     ['WISP admin', user.admin ? 'Yes' : 'No'],
     ['Created', formatTimestamp(user.created_at)],
     ['Last updated', formatTimestamp(user.updated_at)],

@@ -6,7 +6,7 @@
   import BrandBar from '@/lib/components/BrandBar.svelte'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
-  import { adminUsers, adminWeather, currentGroups, dailyEntries, dashboard, fieldGroups, groups, settings, setup, usersSessions } from '@/routes'
+  import { adminUsers, adminWeather, alerts, currentGroups, dailyEntries, dashboard, fieldGroups, groups, settings, setup, usersSessions } from '@/routes'
 
   let { children }: { children: Snippet } = $props()
 
@@ -16,6 +16,7 @@
     // A pivot's and a field's pages are reached from the dashboard; creating and editing them is setup
     { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields)\/\d+(\?|$)/] },
     { label: 'Daily entry', route: dailyEntries.show() },
+    { label: 'Alerts', route: alerts.show() },
     { label: 'Setup', route: setup.show(), also: [fieldGroups.index().url, /^\/pivots\/(new|\d+\/edit)/, '/setup'] },
     ...(auth.user?.admin
       ? [

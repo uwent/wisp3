@@ -4,7 +4,7 @@ RSpec.describe "Daily digest", type: :request do
   let(:user) { create(:user) }
   let(:group) { user.groups.first }
 
-  describe "settings" do
+  describe "the alerts page" do
     let(:home) { create(:farm, group:, name: "Home") }
     let(:river) { create(:farm, group:, name: "River") }
     let!(:north) { create(:field, pivot: create(:pivot, farm: home), name: "North") }
@@ -13,17 +13,20 @@ RSpec.describe "Daily digest", type: :request do
 
     before { sign_in user }
 
-    it "lists every field by operation and farm, all included by default" do
-      get settings_path
-      digest = inertia.props[:digest]
-      expect(digest).to include(enabled: true, field_ids: contain_exactly(north.id, south.id, east.id))
-      expect(digest[:groups].sole[:farms].map { |farm| [farm[:name], farm[:fields].map { |field| field[:name] }] })
+    it "lists every field by operation and farm, all included and sent daily by default" do
+      get alerts_path
+      expect_inertia.to render_component("Alerts/Show")
+      expect(inertia.props).to include(frequency: "daily", field_ids: contain_exactly(north.id, south.id, east.id), test_wait: 0)
+      expect(inertia.props[:groups].sole[:farms].map { |farm| [farm[:name], farm[:fields].map { |field| field[:name] }] })
         .to eq([["Home", ["North", "South"]], ["River", ["East"]]])
+      # The preview is built only when asked for
+      expect(inertia.props).not_to have_key(:preview)
     end
 
     it "leaves out a farm with none of its fields picked, so its new fields stay out" do
-      patch digest_settings_path, params: {digest: {enabled: "1", field_ids: ["", north.id.to_s]}}
-      expect(response).to redirect_to(settings_path)
+      patch alerts_path, params: {digest: {frequency: "needed", field_ids: ["", north.id.to_s]}}
+      expect(response).to redirect_to(alerts_path)
+      expect(user.reload.digest_frequency).to eq("needed")
       expect(user.digest_exclusions.map(&:subject)).to contain_exactly(south, river)
 
       later = create(:field, pivot: east.pivot)
@@ -34,16 +37,83 @@ RSpec.describe "Daily digest", type: :request do
     end
 
     it "turns the digest off, and leaves out a whole operation" do
-      patch digest_settings_path, params: {digest: {enabled: "0", field_ids: [""]}}
-      expect(user.reload.digest).to be(false)
+      patch alerts_path, params: {digest: {frequency: "never", field_ids: [""]}}
+      expect(user.reload.digest_frequency).to eq("never")
       expect(user.digest_exclusions.map(&:subject)).to eq([group])
+    end
+
+    it "rejects an unknown frequency without changing the fields" do
+      patch alerts_path, params: {digest: {frequency: "hourly", field_ids: [""]}}
+      expect(response).to redirect_to(alerts_path)
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("digest_frequency")
+      expect(user.reload.digest_frequency).to eq("daily")
+      expect(user.digest_exclusions).to be_empty
     end
 
     it "ignores fields from other operations" do
       theirs = create(:field, pivot: create(:pivot, farm: create(:farm)))
-      patch digest_settings_path, params: {digest: {enabled: "1", field_ids: ["", theirs.id.to_s]}}
+      patch alerts_path, params: {digest: {frequency: "daily", field_ids: ["", theirs.id.to_s]}}
       expect(user.digest_fields).to be_empty
       expect(user.digest_exclusions.map(&:subject)).to eq([group])
+    end
+
+    it "is in the main nav, not on the settings page" do
+      get settings_path
+      expect(inertia.props).not_to have_key(:digest)
+    end
+  end
+
+  describe "previewing and testing on the alerts page" do
+    let(:pivot) { create(:pivot, farm: create(:farm, group:)) }
+
+    around { |example| travel_to(digest_today) { example.run } }
+
+    before do
+      digest_weather(pivot)
+      sign_in user
+    end
+
+    def preview
+      get alerts_path, headers: {"X-Inertia" => "true", "X-Inertia-Partial-Component" => "Alerts/Show",
+                                 "X-Inertia-Partial-Data" => "preview", "X-Inertia-Version" => ViteRuby.digest}
+      response.parsed_body.dig("props", "preview")
+    end
+
+    it "shows today's email, and why it wouldn't be sent" do
+      digest_field(pivot, "North", 15)
+      expect(preview).to include("skip_reason" => nil, "subject" => "WISP: 1 field OK (Mon, Jul 20)")
+
+      user.update!(digest_frequency: "needed")
+      expect(preview).to include("skip_reason" => "No field needs irrigation in the next 3 days.")
+      expect(preview["html"]).to include("North")
+    end
+
+    it "sends a test email, then waits five minutes before another" do
+      digest_field(pivot, "North", 12)
+      user.update!(digest_frequency: "never")
+
+      expect { perform_enqueued_jobs { post test_email_alerts_path } }.to change { ActionMailer::Base.deliveries.size }.by(1)
+      expect(response).to redirect_to(alerts_path)
+      expect(flash[:notice]).to eq("Test email sent to #{user.email}")
+      mail = ActionMailer::Base.deliveries.last
+      expect(mail.subject).to eq("[Test] WISP: 1 field to watch (Mon, Jul 20)")
+      expect(mail.text_part.body.decoded).to include("This is a test you sent from WISP's Alerts page.")
+
+      travel 2.minutes
+      expect { perform_enqueued_jobs { post test_email_alerts_path } }.not_to change { ActionMailer::Base.deliveries.size }
+      expect(flash[:alert]).to eq("You can send another test email in 3 minutes.")
+      get alerts_path
+      expect(inertia.props[:test_wait]).to eq(180)
+
+      travel 3.minutes
+      expect { perform_enqueued_jobs { post test_email_alerts_path } }.to change { ActionMailer::Base.deliveries.size }.by(1)
+    end
+
+    it "doesn't send, or start the cooldown, with nothing in season" do
+      expect { post test_email_alerts_path }.not_to have_enqueued_mail(DigestMailer)
+      expect(flash[:alert]).to eq("There's nothing to send: no included field has a crop in season today.")
+      expect(user.reload.digest_test_sent_at).to be_nil
     end
   end
 
@@ -54,18 +124,18 @@ RSpec.describe "Daily digest", type: :request do
       get digest_unsubscribe_path(token:)
       expect_inertia.to render_component("Auth/Unsubscribe")
       expect(inertia.props).to include(valid: true, done: false)
-      expect(user.reload.digest).to be(true)
+      expect(user.reload.digest_frequency).to eq("daily")
 
       post digest_unsubscribe_path(token:)
       expect(inertia.props).to include(valid: true, done: true)
-      expect(user.reload.digest).to be(false)
+      expect(user.reload.digest_frequency).to eq("never")
     end
 
     it "takes a mail provider's one-click POST without a CSRF token" do
       ActionController::Base.allow_forgery_protection = true
       post digest_unsubscribe_path(token:), params: {"List-Unsubscribe" => "One-Click"}
       expect(response).to have_http_status(:ok)
-      expect(user.reload.digest).to be(false)
+      expect(user.reload.digest_frequency).to eq("never")
     ensure
       ActionController::Base.allow_forgery_protection = false
     end
@@ -73,7 +143,7 @@ RSpec.describe "Daily digest", type: :request do
     it "rejects a made-up token" do
       post digest_unsubscribe_path(token: "nope")
       expect(inertia.props).to include(valid: false)
-      expect(user.reload.digest).to be(true)
+      expect(user.reload.digest_frequency).to eq("daily")
     end
   end
 
@@ -108,14 +178,14 @@ RSpec.describe "Daily digest", type: :request do
       sign_in admin
       expect { get digest_admin_user_path(user) }.not_to change { ActionMailer::Base.deliveries.size }
       expect_inertia.to render_component("Admin/Users/Digest")
-      expect(inertia.props).to include(skip_reason: nil, subject: "WISP: 1 field to watch (Mon, Jul 20)")
-      expect(inertia.props[:html]).to include("Irrigate by Wed, Jul 22")
+      expect(inertia.props[:preview]).to include(skip_reason: nil, subject: "WISP: 1 field to watch (Mon, Jul 20)")
+      expect(inertia.props[:preview][:html]).to include("Irrigate by Wed, Jul 22")
     end
 
     it "says why nothing would be sent" do
       sign_in admin
       get digest_admin_user_path(user)
-      expect(inertia.props).to include(skip_reason: "No included field has a crop in season today.", html: nil)
+      expect(inertia.props[:preview]).to include(skip_reason: "No included field has a crop in season today.", html: nil)
     end
 
     it "is hidden from users who aren't admins" do

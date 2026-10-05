@@ -12,7 +12,7 @@ module DigestFields
     end
     dates = Date.new(2026, 7, 20)..Date.new(2026, 8, 4)
     cell.weather_forecasts.create!(issued_at: Time.current, model: "ncep_nbm_conus",
-      payload: {days: dates.map { |date| {date: date.iso8601, et0_in: 0.2, precip_in: 0.0} }})
+      payload: {days: dates.map { |date| {date: date.iso8601, et0_in: 0.2, precip_in: 0.0, tmax_f: 88, tmin_f: 62} }})
   end
 
   def digest_field(pivot, name, moisture_pct)

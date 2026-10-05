@@ -28,7 +28,10 @@ Rails.application.routes.draw do
   end
 
   resource :settings, only: [:show, :update]
-  resource :digest_settings, only: :update, path: "settings/digest"
+  # The daily digest's settings, with a preview of today's email and a test send
+  resource :alerts, only: [:show, :update] do
+    post :test_email
+  end
 
   # The daily digest's unsubscribe link. Its GET only shows a button; the POST also takes mail
   # providers' one-click unsubscribe (List-Unsubscribe-Post).
