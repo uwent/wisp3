@@ -251,3 +251,13 @@ test('alerts previews today’s email and sends a test, then waits', async ({ pa
   // Playwright's trace recorder tries to run its snapshot script in the preview's sandboxed frame
   expect(errors.filter((error) => !error.includes("Blocked script execution in 'about:srcdoc'"))).toEqual([])
 })
+
+test('glossary terms explain themselves on hover or tap', async ({ page }) => {
+  await page.goto(await firstFieldPath(page))
+  const term = page.getByRole('button', { name: 'allowable depletion', exact: true })
+  if (test.info().project.name === 'phone') await term.tap()
+  else await term.hover()
+  await expect(page.getByText('The water left in the root zone that the crop can use without stress.')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('The water left in the root zone that the crop can use without stress.')).toBeHidden()
+})

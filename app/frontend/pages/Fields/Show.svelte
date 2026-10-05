@@ -7,7 +7,9 @@
   import { weatherPanels } from '@/lib/charts/weatherCharts'
   import WeatherSection from '@/lib/charts/WeatherSection.svelte'
   import EditableCell from '@/lib/components/EditableCell.svelte'
+  import GlossaryText from '@/lib/components/GlossaryText.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
+  import Term from '@/lib/components/Term.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
   import { guidance as guidanceFor } from '@/lib/guidance'
   import { outlook as outlookFor } from '@/lib/outlook'
@@ -190,7 +192,7 @@
       {:else}
         <p class="text-sm">
           {#if summary.phase === 'ended'}At the end of the season{:else}Today{/if}:
-          <strong class="tabular-nums">{units.format('depth', summary.ad)}</strong> allowable depletion of
+          <strong class="tabular-nums">{units.format('depth', summary.ad)}</strong> <Term id="ad">allowable depletion</Term> of
           {units.format('depth', summary.ad_max)}, <strong>{formatNumber(summary.pct_moisture, 1)}%</strong> soil moisture.
         </p>
         {#if outlook}
@@ -205,13 +207,13 @@
     </div>
 
     <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-      <div><dt class="text-ink-muted">At field capacity</dt><dd class="tabular-nums">{units.format('depth', summary.ad_max)} AD</dd></div>
+      <div><dt class="text-ink-muted">At <Term id="field_capacity">field capacity</Term></dt><dd class="tabular-nums">{units.format('depth', summary.ad_max)} AD</dd></div>
       <div>
         <dt class="text-ink-muted">Target</dt>
         <dd class="tabular-nums">{summary.target_in === null ? 'Not set' : `${units.format('depth', summary.target_in)} AD`}</dd>
       </div>
       <div><dt class="text-ink-muted">Irrigate at</dt><dd class="tabular-nums">0 AD ({formatNumber(summary.pct_at_ad_zero, 1)}% moisture)</dd></div>
-      <div><dt class="text-ink-muted">Root zone</dt><dd class="tabular-nums">{units.format('rootDepth', planting.max_root_zone_depth)}, MAD {Math.round(planting.mad_frac * 100)}%</dd></div>
+      <div><dt class="text-ink-muted">Root zone</dt><dd class="tabular-nums">{units.format('rootDepth', planting.max_root_zone_depth)}, <Term id="mad">MAD</Term> {Math.round(planting.mad_frac * 100)}%</dd></div>
       <div>
         <dt class="text-ink-muted">Last rain</dt>
         <dd>{summary.last_rain ? `${units.format('depth', summary.last_rain.inches)}, ${when(summary.last_rain.date)}` : 'None'}</dd>
@@ -227,8 +229,8 @@
       <dl class="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 tabular-nums">
         <dt class="text-ink-muted">Rain</dt><dd>{units.format('depth', summary.totals.rain)}</dd>
         <dt class="text-ink-muted">Irrigation</dt><dd>{units.format('depth', summary.totals.irrigation)}</dd>
-        <dt class="text-ink-muted">Crop ET</dt><dd>{units.format('depth', summary.totals.adj_et)}</dd>
-        <dt class="text-ink-muted">Deep drainage</dt><dd>{units.format('depth', summary.totals.deep_drainage)}</dd>
+        <dt class="text-ink-muted"><Term id="crop_et">Crop ET</Term></dt><dd>{units.format('depth', summary.totals.adj_et)}</dd>
+        <dt class="text-ink-muted"><Term id="deep_drainage">Deep drainage</Term></dt><dd>{units.format('depth', summary.totals.deep_drainage)}</dd>
       </dl>
       {#if summary.totals.entered_rain_days}
         <p class="mt-2 text-xs text-ink-muted">
@@ -246,7 +248,7 @@
       >
         <summary class="cursor-pointer font-medium">{guidance.title}</summary>
         <div class="mt-2 max-w-3xl space-y-2 text-ink-muted">
-          {#each guidance.paragraphs as paragraph, i (i)}<p>{paragraph}</p>{/each}
+          <GlossaryText paragraphs={guidance.paragraphs} />
         </div>
         {#if guidance.readings.length}
           <ul class="mt-3 flex flex-wrap gap-2" aria-label="Last readings">
