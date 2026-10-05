@@ -4,6 +4,7 @@
   import Sparkline from '@/lib/components/Sparkline.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
+  import { outlook } from '@/lib/outlook'
   import { units as unitsFor } from '@/lib/units'
   import { dailyEntries, fields, newQuickSetup, pivots, setup } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
@@ -108,6 +109,7 @@
             <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {#each pivot.fields as card (card.id)}
                 {@const summary = card.summary}
+                {@const look = summary && outlook(summary, units)}
                 <li>
                   <Link
                     href={fields.show(card.id)}
@@ -145,11 +147,15 @@
                         <Sparkline
                           class="max-w-32"
                           values={summary.recent.map((day) => day.ad)}
+                          projected={summary.phase === 'active' ? summary.projection.map((day) => day.ad) : []}
                           max={summary.ad_max}
                           min={summary.ad_pwp}
-                          label="Allowable depletion over the last {summary.recent.length} days"
+                          label="Allowable depletion over the last {summary.recent.length} days{summary.phase === 'active' && summary.projection.length ? `, and the ${summary.projection.length} days ahead` : ''}"
                         />
                       </div>
+                      {#if look}
+                        <p class="text-sm {look.urgent ? 'font-medium text-status-irrigate' : ''}">{look.headline}</p>
+                      {/if}
                       <dl class="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <dt class="text-ink-muted">Last rain</dt>

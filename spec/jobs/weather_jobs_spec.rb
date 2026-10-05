@@ -44,18 +44,19 @@ RSpec.describe "Weather jobs" do
   end
 
   describe WeatherRefreshJob do
-    it "refreshes active cells, then queues a backfill for each" do
+    it "refreshes active cells and their ensembles, then queues a backfill for each" do
       create(:planting, field: create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53)))
-      fetcher = instance_double(Weather::Fetcher, refresh: nil)
+      fetcher = instance_double(Weather::Fetcher, refresh: nil, refresh_ensemble: 0)
       allow(Weather::Fetcher).to receive(:new).and_return(fetcher)
       expect { described_class.perform_now }.to have_enqueued_job(WeatherBackfillJob).with(WeatherCell.sole.id)
       expect(fetcher).to have_received(:refresh).with([WeatherCell.sole])
+      expect(fetcher).to have_received(:refresh_ensemble).with([WeatherCell.sole])
     end
 
     it "refreshes every cell with a pivot when asked for all" do
       create(:pivot, latitude: 44.12, longitude: -89.53)
       WeatherCell.for(36.7, -119.8) # no pivot
-      fetcher = instance_double(Weather::Fetcher, refresh: nil)
+      fetcher = instance_double(Weather::Fetcher, refresh: nil, refresh_ensemble: 0)
       allow(Weather::Fetcher).to receive(:new).and_return(fetcher)
       described_class.perform_now
       expect(fetcher).to have_received(:refresh).with([])
@@ -65,20 +66,22 @@ RSpec.describe "Weather jobs" do
   end
 
   describe WeatherUpdateJob do
-    let(:fetcher) { instance_double(Weather::Fetcher, refresh: nil, backfill: 0) }
+    let(:fetcher) { instance_double(Weather::Fetcher, refresh: nil, refresh_ensemble: 0, backfill: 0) }
 
     before { allow(Weather::Fetcher).to receive(:new).and_return(fetcher) }
 
     it "refreshes a stale cell, active or not, then fills its gaps" do
       described_class.perform_now(cell.id)
       expect(fetcher).to have_received(:refresh).with([cell])
+      expect(fetcher).to have_received(:refresh_ensemble).with([cell])
       expect(fetcher).to have_received(:backfill).with(cell, from: Date.new(2026, 6, 20))
     end
 
-    it "skips the refresh when the forecast is fresh" do
+    it "skips the refresh when the forecast is fresh, and the ensemble likewise" do
       cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "best_match", payload: {days: []})
       described_class.perform_now(cell.id)
       expect(fetcher).not_to have_received(:refresh)
+      expect(fetcher).to have_received(:refresh_ensemble)
       expect(fetcher).to have_received(:backfill)
     end
   end
@@ -103,13 +106,15 @@ RSpec.describe "Weather jobs" do
   end
 
   describe ForecastPruneJob do
-    it "keeps each cell's latest 14 forecasts" do
+    it "keeps each cell's latest 14 forecasts of each kind" do
       other = WeatherCell.for(36.7, -119.8)
       20.times { |i| cell.weather_forecasts.create!(issued_at: i.hours.ago, model: "best_match", payload: {days: []}) }
+      cell.weather_forecasts.create!(kind: "ensemble", issued_at: 30.hours.ago, model: "gfs_seamless", payload: {dates: [], members: []})
       3.times { |i| other.weather_forecasts.create!(issued_at: i.hours.ago, model: "best_match", payload: {days: []}) }
       described_class.perform_now
-      expect(cell.weather_forecasts.count).to eq(14)
-      expect(cell.weather_forecasts.minimum(:issued_at)).to be > 14.hours.ago
+      expect(cell.weather_forecasts.deterministic.count).to eq(14)
+      expect(cell.weather_forecasts.deterministic.minimum(:issued_at)).to be > 14.hours.ago
+      expect(cell.weather_forecasts.ensemble.count).to eq(1)
       expect(other.weather_forecasts.count).to eq(3)
     end
   end

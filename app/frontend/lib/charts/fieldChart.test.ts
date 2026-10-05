@@ -49,6 +49,38 @@ describe('field chart', () => {
     expect(series[0].data[2]).toMatchObject({ symbol: 'circle' })
   })
 
+  it('continues the line dashed through the forecast, with the ensemble range and planned irrigation', () => {
+    const days = [day('2026-07-01', { ad: 0.3 }), day('2026-07-02', { ad: 0.2 })]
+    const forecastDays = [
+      day('2026-07-03', { ad: 0.1, rain: 0.2, rain_source: 'forecast' }),
+      day('2026-07-04', { ad: 0.4, irrigation: 0.5, irrigation_source: 'entered' }),
+    ]
+    const projection = [
+      { date: '2026-07-03', ad: 0.1, p10: 0.05, p50: 0.1, p90: 0.2, chance: 0.1 },
+      { date: '2026-07-04', ad: 0.4, p10: 0.3, p50: 0.4, p90: 0.45, chance: 0.2 },
+    ]
+    const option = fieldChartOption({
+      days, forecastDays, summary: { ...summary, projection }, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette,
+    })
+    const series = option.series as { name: string; data: unknown[]; stack?: string }[]
+    const named = (name: string) => series.find((s) => s.name === name)!
+    expect(named('Allowable depletion').data).toEqual([{ value: 0.3 }, { value: 0.2 }, null, null])
+    // From today's AD on
+    expect(named('Forecast').data).toEqual([null, 0.2, 0.1, 0.4])
+    expect(named('Range low').data).toEqual([null, 0.2, 0.05, 0.3])
+    expect(named('Forecast range (10–90%)').data).toEqual([null, 0, 0.15, 0.15])
+    expect(named('Irrigation').data).toEqual([0, 0, null, null])
+    expect(named('Planned irrigation').data).toEqual([null, null, 0, 0.5])
+    expect(named('Rain').data[2]).toMatchObject({ value: 0.2, itemStyle: { opacity: 0.4 } })
+  })
+
+  it('leaves the forecast out when there is none', () => {
+    const option = fieldChartOption({ days: [day('2026-07-01')], summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette })
+    const names = (option.series as { name: string }[]).map((s) => s.name)
+    expect(names).not.toContain('Forecast')
+    expect(names).not.toContain('Planned irrigation')
+  })
+
   it('compares modeled soil moisture with the field capacity in percent', () => {
     const panel = weatherPanels(units('imperial'), { field: { fieldCapacity: 0.1, wiltingPoint: 0.04 } }).find((p) => p.key === 'soil_moisture')!
     expect(panel.lines).toEqual([{ name: 'Field capacity', value: 10 }, { name: 'Wilting point', value: 4 }])

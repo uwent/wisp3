@@ -17,7 +17,7 @@ class FieldsController < AuthenticatedController
       farm: {id: field.pivot.farm.id, name: field.pivot.farm.name},
       field_groups: field.field_groups.map { |group| {id: group.id, name: group.name} },
       planting: planting && PlantingSerializer.new(planting).to_h,
-      **(planting ? season_props(field, planting) : {summary: nil, days: [], weather: []})
+      **(planting ? season_props(field, planting) : {summary: nil, days: [], forecast_days: [], weather: []})
     }
   end
 
@@ -66,13 +66,17 @@ class FieldsController < AuthenticatedController
       .to_h { |irrigation| [irrigation.date, irrigation.applied_inches] }
     weather_dates = planting.season_start..[planting.end_date, Date.current + FORECAST_DAYS].min
 
+    day_params = {
+      entries: field.field_entries.where(date: dates).index_by(&:date),
+      observations: planting.canopy_observations.to_h { |obs| [obs.date, obs[attribute]] }.compact,
+      pivot_inches:
+    }
+
     {
       summary: PlantingSummarySerializer.new(status).to_h,
-      days: FieldDaySerializer.new(status.days, params: {
-        entries: field.field_entries.where(date: dates).index_by(&:date),
-        observations: planting.canopy_observations.to_h { |obs| [obs.date, obs[attribute]] }.compact,
-        pivot_inches:
-      }).to_h,
+      days: FieldDaySerializer.new(status.days, params: day_params).to_h,
+      # The projection's days, with planned irrigation (entries on future dates)
+      forecast_days: FieldDaySerializer.new(status.forecast_days, params: day_params).to_h,
       weather: WeatherPanelDaySerializer.new(
         WeatherPanel.new(field.pivot.weather_cell, weather_dates, emergence_date: planting.emergence_date).days
       ).to_h

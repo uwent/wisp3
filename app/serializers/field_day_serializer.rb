@@ -2,7 +2,7 @@
 # and balance. params: entries {date => FieldEntry} for notes, observations {date => canopy
 # reading}, pivot_inches {date => inches from the pivot} (shown when a field entry overrides it).
 class FieldDaySerializer < ApplicationSerializer
-  SOURCE = "'entered' | 'pivot' | 'group' | 'model' | 'none' | 'missing'"
+  SOURCE = "'entered' | 'pivot' | 'group' | 'model' | 'forecast' | 'none' | 'missing'"
 
   attribute(:date) { |day| day.inputs.date }
   attribute(:et0) { |day| day.inputs.et0 }
@@ -24,7 +24,7 @@ class FieldDaySerializer < ApplicationSerializer
   attribute(:deep_drainage) { |day| day.result.deep_drainage }
   attribute(:notes) { |day| params[:entries][day.inputs.date]&.notes }
 
-  typelize date: :string, et0: "number | null", et0_source: "'model' | 'missing'", adj_et: "number | null",
+  typelize date: :string, et0: "number | null", et0_source: "'model' | 'forecast' | 'missing'", adj_et: "number | null",
     et_source: "'computed' | 'gap_fill' | 'missing'", rain: "number | null", rain_source: SOURCE,
     rain_model: "number | null", irrigation: "number | null", irrigation_source: SOURCE,
     pivot_inches: "number | null", soil_moisture_pct: "number | null", moisture_source: "'entered' | 'group' | null",

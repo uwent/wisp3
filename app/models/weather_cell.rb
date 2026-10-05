@@ -1,7 +1,5 @@
 # An O1280 grid cell (Weather::Grid). Pivots in a cell share its daily weather and forecasts.
 class WeatherCell < ApplicationRecord
-  # A forecast older than this is refetched when someone opens a page showing the cell's pivots
-  STALE_AFTER = 3.hours
   # Pages ask for an update at most this often per cell
   UPDATE_THROTTLE = 15.minutes
 
@@ -38,9 +36,10 @@ class WeatherCell < ApplicationRecord
     end
   end
 
-  def forecast_stale?(now = Time.current)
-    issued = weather_forecasts.maximum(:issued_at)
-    issued.nil? || issued < now - STALE_AFTER
+  # kind: "deterministic" or "ensemble"
+  def forecast_stale?(now = Time.current, kind: "deterministic")
+    issued = weather_forecasts.where(kind:).maximum(:issued_at)
+    issued.nil? || issued < now - WeatherForecast::STALE_AFTER
   end
 
   # Backfills start at the earliest season start this year, or 30 days ago
@@ -49,7 +48,8 @@ class WeatherCell < ApplicationRecord
   def time_zone = ActiveSupport::TimeZone[timezone || Time.zone.name]
   def today = Time.current.in_time_zone(time_zone).to_date
 
-  def latest_forecast = weather_forecasts.order(issued_at: :desc).first
+  def latest_forecast = weather_forecasts.deterministic.order(issued_at: :desc).first
+  def latest_ensemble = weather_forecasts.ensemble.order(issued_at: :desc).first
 
   # Earliest season start of this cell's plantings this year, for backfills
   def season_start(today = self.today)

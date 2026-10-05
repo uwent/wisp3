@@ -20,16 +20,33 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((parseDate(to).getTime() - parseDate(from).getTime()) / 86_400_000)
 }
 
+// Formatting a date is slow (toLocaleDateString builds a formatter each time), and grids and chart
+// axes format the same few hundred dates on every update, so formatters and results are cached
+const formatters = new Map<string, Intl.DateTimeFormat>()
+const formatted = new Map<string, string>()
+
 /** "Jul 1"; with year: "Jul 1, 2026"; with weekday: "Wed, Jul 1" */
 export function formatDate(iso: string | null | undefined, options: { year?: boolean; weekday?: boolean } = {}) {
   if (!iso) return '—'
-  return parseDate(iso).toLocaleDateString('en-US', {
-    timeZone: 'UTC',
-    month: 'short',
-    day: 'numeric',
-    ...(options.year ? { year: 'numeric' } : {}),
-    ...(options.weekday ? { weekday: 'short' } : {}),
-  })
+  const style = `${options.year ? 'y' : ''}${options.weekday ? 'w' : ''}`
+  const key = `${iso.slice(0, 10)}|${style}`
+  let text = formatted.get(key)
+  if (text === undefined) {
+    let formatter = formatters.get(style)
+    if (!formatter) {
+      formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'UTC',
+        month: 'short',
+        day: 'numeric',
+        ...(options.year ? { year: 'numeric' } : {}),
+        ...(options.weekday ? { weekday: 'short' } : {}),
+      })
+      formatters.set(style, formatter)
+    }
+    text = formatter.format(parseDate(iso))
+    formatted.set(key, text)
+  }
+  return text
 }
 
 /** "today", "yesterday", "3 days ago" relative to today (ISO) */

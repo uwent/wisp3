@@ -15,17 +15,25 @@ class WeatherDay < ApplicationRecord
 
   def degree_days = Weather::DegreeDays.daily(tmax_f, tmin_f)
 
-  # {date => {et0:, precip:}} for the water balance (DailyInputs); dates without a day are absent
+  # {date => {et0:, precip:}} for the water balance (DailyInputs) over a range of dates. Days not
+  # stored yet (today, and the days ahead) come from the cell's latest forecast, marked
+  # forecast: true; dates with neither are absent.
   def self.balance_inputs(cell, dates)
     return {} unless cell && dates.any?
-    wanted = dates.to_set
-    where(weather_cell: cell, date: dates.min..dates.max).pluck(:date, :et0_in, :precip_in)
-      .filter_map { |date, et0, precip| [date, {et0:, precip:}] if wanted.include?(date) }.to_h
+    balance_inputs_by_cell([cell.id], dates.min..dates.max).fetch(cell.id, {})
   end
 
-  # {cell_id => {date => {et0:, precip:}}} for several cells over a range of dates, in one query
+  # {cell_id => {date => {et0:, precip:}}} for several cells over a range of dates, in two queries
   def self.balance_inputs_by_cell(cell_ids, dates)
-    where(weather_cell_id: cell_ids, date: dates).pluck(:weather_cell_id, :date, :et0_in, :precip_in)
+    stored = where(weather_cell_id: cell_ids, date: dates).pluck(:weather_cell_id, :date, :et0_in, :precip_in)
       .group_by(&:first).transform_values { |rows| rows.to_h { |_, date, et0, precip| [date, {et0:, precip:}] } }
+    WeatherForecast.deterministic.latest_by_cell(cell_ids).each do |cell_id, forecast|
+      days = stored[cell_id] ||= {}
+      forecast.days.each do |date, values|
+        next if days.key?(date) || !dates.cover?(date)
+        days[date] = {et0: values["et0_in"], precip: values["precip_in"], forecast: true}
+      end
+    end
+    stored
   end
 end

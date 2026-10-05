@@ -6,11 +6,13 @@
 #   et0        = weather (nil → WaterBalance gap-fills)
 #   moisture   = field entry ?? field group entry
 #
-# Sources: :entered, :pivot, :group, :model, :none (nothing entered and nothing modeled), and
-# :missing (the model value should exist but doesn't, e.g. weather not fetched yet). A day
-# with no moisture reading has moisture_source nil.
+# Sources: :entered, :pivot, :group, :model, :forecast (modeled, from the forecast: today and the
+# days ahead), :none (nothing entered and nothing modeled), and :missing (the model value should
+# exist but doesn't, e.g. weather not fetched yet). A day with no moisture reading has
+# moisture_source nil.
 #
-# weather: {date => {et0:, precip:}} (in/day); missing dates or values are nil. records: the field's
+# weather: {date => {et0:, precip:, forecast:}} (in/day; WeatherDay.balance_inputs); missing dates
+# or values are nil. records: the field's
 # entries, field group entries and pivot irrigations, from DailyInputs.preload (pages showing many
 # fields load them once for all); without it they're queried here.
 class DailyInputs
@@ -59,7 +61,7 @@ class DailyInputs
       moisture, moisture_source = first_of([entry&.soil_moisture_pct, :entered], [group_entry&.soil_moisture_pct, :group], [nil, nil])
 
       Day.new(date:, rain:, rain_source:, rain_model: weather[:precip], irrigation:, irrigation_source:,
-        et0: weather[:et0], et0_source: weather[:et0] ? :model : :missing,
+        et0: weather[:et0], et0_source: weather[:et0] ? model_source(weather) : :missing,
         soil_moisture_pct: moisture, moisture_source:)
     end
   end
@@ -72,7 +74,7 @@ class DailyInputs
 
   def rain(entry, group_entry, weather)
     modeled = if use_model_precip?
-      [weather[:precip], weather[:precip] ? :model : :missing]
+      [weather[:precip], weather[:precip] ? model_source(weather) : :missing]
     else
       [0.0, :none]
     end
@@ -83,6 +85,8 @@ class DailyInputs
     first_of([entry&.irrigation_in, :entered], [pivot_irrigation&.applied_inches, :pivot],
       [group_entry&.irrigation_in, :group], [0.0, :none])
   end
+
+  def model_source(weather) = weather[:forecast] ? :forecast : :model
 
   # The first [value, source] with a value; [nil, last source] if none has one
   def first_of(*candidates)

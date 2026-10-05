@@ -12,18 +12,21 @@ class DashboardController < AuthenticatedController
         field.plantings.select { |p| p.season_year == today.year }.min_by { |p| (p.season_start - today).abs }]
     end
 
-    # Every card's entries and weather in a few queries, not several per field
+    # Every card's entries, weather and ensemble in a few queries, not several per field; through the
+    # projection's days, for planned irrigation and the forecast
     starts = plantings.values.compact.map(&:season_start)
-    dates = starts.any? ? starts.min..[today, plantings.values.compact.map(&:end_date).max].min : today..today
+    last = [today + PlantingStatus::HORIZON, plantings.values.compact.map(&:end_date).max].compact.min
+    dates = starts.any? ? starts.min..last : today..today
     records = DailyInputs.preload(fields, dates)
     cell_ids = pivots.map(&:weather_cell_id).uniq
     WeatherCell.keep_current(cell_ids)
     weather = WeatherDay.balance_inputs_by_cell(cell_ids, dates)
+    ensembles = WeatherForecast.ensemble.latest_by_cell(cell_ids).transform_values(&:members)
 
     card = lambda do |field, pivot|
       planting = plantings[field.id]
       status = planting && PlantingStatus.new(planting, today:, records: records[field.id],
-        weather: weather.fetch(pivot.weather_cell_id, {}))
+        weather: weather.fetch(pivot.weather_cell_id, {}), ensemble: ensembles.fetch(pivot.weather_cell_id, []))
       {id: field.id, name: field.name, summary: status && PlantingSummarySerializer.new(status).to_h}
     end
 

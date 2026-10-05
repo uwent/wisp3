@@ -9,7 +9,8 @@ module Weather
     ENDPOINTS = {
       forecast: ["api.open-meteo.com", "/v1/forecast"],
       historical_forecast: ["historical-forecast-api.open-meteo.com", "/v1/forecast"],
-      archive: ["archive-api.open-meteo.com", "/v1/archive"]
+      archive: ["archive-api.open-meteo.com", "/v1/archive"],
+      ensemble: ["ensemble-api.open-meteo.com", "/v1/ensemble"]
     }.freeze
 
     # Atmospheric variables come from the primary models; soil variables from ECMWF IFS, the only
@@ -25,6 +26,12 @@ module Weather
       soil_moisture_28_to_100cm soil_moisture_100_to_255cm
     ].freeze
     SOIL_MODEL = "ecmwf_ifs"
+    # The ensemble for the projection's uncertainty (PLAN.md §6): GFS, 31 members (the control and
+    # 30 perturbed) over the full 16 days. ECMWF's 51 members stop at 15 days. Each member has its
+    # own et0 and precipitation.
+    ENSEMBLE_MODEL = "gfs_seamless"
+    ENSEMBLE_MEMBERS = 31
+    ENSEMBLE_VARIABLES = %w[et0_fao_evapotranspiration precipitation].freeze
     BATCH_SIZE = 25 # locations per request
     RETRY_DELAYS = [2, 8].freeze # seconds, for 429 / 5xx / network errors before giving up
 
@@ -50,7 +57,9 @@ module Weather
     def mode = api_key ? :customer : :free
 
     # Hourly values for each location, in order. dates: past_days:/forecast_days: (forecast) or
-    # start_date:/end_date:.
+    # start_date:/end_date:. From the ensemble endpoint, values also has each member's series
+    # ("precipitation_member01", ...; the unsuffixed one is the control), and Open-Meteo counts
+    # each member as a variable.
     def hourly(locations, endpoint:, model:, variables:, **dates)
       locations.each_slice(BATCH_SIZE).flat_map do |batch|
         params = {
@@ -59,7 +68,8 @@ module Weather
           hourly: variables.join(","), models: model, timezone: "auto", **dates.compact
         }
         days = dates[:start_date] ? (dates[:end_date] - dates[:start_date]).to_i + 1 : dates.values_at(:past_days, :forecast_days).compact.sum
-        @limiter.acquire!(RateLimiter.weight(locations: batch.size, variables: variables.size, days:))
+        counted = (endpoint == :ensemble) ? variables.size * ENSEMBLE_MEMBERS : variables.size
+        @limiter.acquire!(RateLimiter.weight(locations: batch.size, variables: counted, days:))
         Array.wrap(get(endpoint, params)).map { |json| parse(json, variables) }
       end
     end
@@ -110,7 +120,7 @@ module Weather
       hourly = json.fetch("hourly")
       Hourly.new(latitude: json["latitude"], longitude: json["longitude"], timezone: json["timezone"],
         elevation: json["elevation"], times: hourly.fetch("time"),
-        values: variables.to_h { |variable| [variable, hourly[variable] || []] })
+        values: variables.to_h { |variable| [variable, hourly[variable] || []] }.merge(hourly.except("time")))
     end
   end
 end

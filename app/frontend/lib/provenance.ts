@@ -8,6 +8,7 @@ export const SOURCE_LABELS: Record<Source, string> = {
   pivot: 'from pivot',
   group: 'field group',
   model: 'modeled',
+  forecast: 'forecast',
   none: 'none',
   missing: 'missing',
 }

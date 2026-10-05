@@ -119,6 +119,42 @@ test('a grid cell saves on Enter, and Escape cancels without saving', async ({ p
   await expect(page.locator('[data-grid="days"][data-row="2"][data-col="4"]')).not.toContainText(note)
 })
 
+test('planned irrigation updates the projection', async ({ page }) => {
+  await page.goto(await firstFieldPath(page))
+  await expect(page.locator('main h1')).toBeVisible()
+  const forecast = page.getByRole('heading', { name: /^Next \d+ days$/ })
+  test.skip(!(await forecast.isVisible()), 'the season has no projection on this date')
+
+  const plan = page.locator('[data-grid="forecast"][data-row="1"][data-col="0"]')
+  // The projected AD the day after
+  const nextAd = page.locator('tbody:has([data-grid="forecast"]) > tr').nth(2).locator('td').nth(3)
+  const before = await nextAd.textContent()
+
+  await plan.click()
+  await page.keyboard.type('1.5')
+  // Timed in the page, checking every frame (expect's retries back off)
+  const cell = await nextAd.elementHandle()
+  const changed = page.waitForFunction(
+    ([element, text]) => element!.textContent !== text && performance.now(),
+    [cell, before] as const,
+    { polling: 'raf' },
+  )
+  const started = await page.evaluate(() => performance.now())
+  await page.keyboard.press('Enter')
+  const elapsed = Math.round(((await (await changed).jsonValue()) as number) - started)
+  // PLAN.md's Phase 5 target is 300 ms; CI machines are slower, so this only catches regressions
+  console.log(`projection updated in ${elapsed} ms`)
+  expect(elapsed).toBeLessThan(1000)
+
+  // Clear it again so reruns start from the seed
+  await page.keyboard.press('Escape')
+  await plan.click()
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Delete')
+  await page.keyboard.press('Enter')
+  await expect(nextAd).toHaveText(before!)
+})
+
 test('daily entry saves rain for a field', async ({ page }) => {
   await page.goto('/daily')
   const rain = page.getByLabel(/^Rain on /).first()

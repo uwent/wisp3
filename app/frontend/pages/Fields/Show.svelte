@@ -9,6 +9,7 @@
   import EditableCell from '@/lib/components/EditableCell.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
+  import { outlook as outlookFor } from '@/lib/outlook'
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
   import { formatNumber, parseNumber, units as unitsFor } from '@/lib/units'
@@ -23,6 +24,7 @@
     planting,
     summary,
     days,
+    forecast_days,
     weather,
   }: {
     field: Field
@@ -32,20 +34,26 @@
     planting: Planting | null
     summary: PlantingSummary | null
     days: FieldDay[]
+    forecast_days: FieldDay[]
     weather: WeatherPanelDay[]
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const lai = $derived(planting?.et_method === 'lai')
   const rows = $derived([...days].reverse())
+  const outlook = $derived(summary && outlookFor(summary, units))
+  const projectionByDate = $derived(new Map(summary?.projection.map((day) => [day.date, day]) ?? []))
+  const thresholdName = $derived(summary?.target_in === null ? 'at 0 AD' : 'below target')
   let chartMode = $state<FieldChartMode>('ad')
   let dailyOpen = $state(true)
 
-  const cropEt = $derived(Object.fromEntries(days.map((day) => [day.date, day.adj_et])))
+  // Crop ET by date, as a string so the weather charts rebuild only when it changes (an edit to
+  // rain or irrigation reloads the days, but leaves ET alone)
+  const cropEtJson = $derived(JSON.stringify(Object.fromEntries(days.map((day) => [day.date, day.adj_et]))))
   const panels = $derived(
     weatherPanels(units, {
       field: { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt },
-      cropEt,
+      cropEt: JSON.parse(cropEtJson),
     }),
   )
 
@@ -79,10 +87,12 @@
       if (!parsed.ok) return parsed.error
       value = parsed.value
     }
-    return save(fieldDays.update({ fieldId: field.id, date: day.date }), {
-      day: { [column]: value },
-      planting_id: planting!.id,
-    })
+    // Only the balance changes; the weather and the rest of the page stay as they are
+    return save(
+      fieldDays.update({ fieldId: field.id, date: day.date }),
+      { day: { [column]: value }, planting_id: planting!.id },
+      { only: ['summary', 'days', 'forecast_days', 'errors'] },
+    )
   }
 
   const cellLabel = (day: FieldDay, what: string) => `${what}, ${formatDate(day.date, { weekday: true })}`
@@ -163,7 +173,12 @@
           <strong class="tabular-nums">{units.format('depth', summary.ad)}</strong> allowable depletion of
           {units.format('depth', summary.ad_max)}, <strong>{formatNumber(summary.pct_moisture, 1)}%</strong> soil moisture.
         </p>
-        {#if summary.phase === 'active' && refill !== null && refill > 0.005}
+        {#if outlook}
+          <div class="rounded-md border px-3 py-2 text-sm {outlook.urgent ? 'border-status-irrigate/50 bg-status-irrigate/5' : 'border-line'}">
+            <p class="font-medium">{outlook.headline}</p>
+            <p class="text-ink-muted">{outlook.detail}{#if outlook.chance}{' '}{outlook.chance}{/if}</p>
+          </div>
+        {:else if summary.phase === 'active' && refill !== null && refill > 0.005}
           <p class="text-sm">Refilling to field capacity takes about <strong>{units.format('depth', refill)}</strong>.</p>
         {/if}
       {/if}
@@ -224,13 +239,84 @@
         height="26rem"
         label="Soil water and water inputs over the season; the daily table below has the same values"
         build={(palette) =>
-          fieldChartOption({ days, summary: summary!, rootZoneDepth: planting!.max_root_zone_depth, units, mode: chartMode, palette })}
+          fieldChartOption({
+            days,
+            forecastDays: forecast_days,
+            summary: summary!,
+            rootZoneDepth: planting!.max_root_zone_depth,
+            units,
+            mode: chartMode,
+            palette,
+          })}
       />
       <p class="text-xs text-ink-muted">
         Dots on the line mark soil moisture readings. A dashed outline shows the modeled rain on days you entered your own.
+        {#if forecast_days.length}
+          After today the dashed line follows the forecast, with planned irrigation; the shaded band is the range of
+          {summary?.ensemble_size ? `${summary.ensemble_size} forecast scenarios (10th to 90th percentile)` : 'forecast scenarios, once they arrive'}.
+        {/if}
         Scroll or drag the bar below to see the whole season.
       </p>
     </section>
+
+    {#if forecast_days.length}
+      <!-- The projection, and planned irrigation -->
+      <section class="space-y-2">
+        <div>
+          <h2 class="font-medium">Next {forecast_days.length} days</h2>
+          <p class="text-xs text-ink-muted">
+            The forecast for this pivot run through the water balance. Plan irrigation by entering it on a future day; it
+            counts as applied when the day comes, so change or clear it if plans change. Depths in {units.label('depth')}.
+          </p>
+        </div>
+        <div class="overflow-auto rounded-lg border border-line bg-surface-raised">
+          <table class="w-full text-sm">
+            <thead class="border-b border-line text-xs text-ink-muted">
+              <tr class="text-right">
+                <th class="px-3 py-2 text-left font-medium">Date</th>
+                <th class="px-2 py-2 font-medium">Crop ET</th>
+                <th class="px-2 py-2 font-medium">Rain</th>
+                <th class="px-2 py-2 font-medium">Planned irrigation</th>
+                <th class="px-2 py-2 font-medium">AD</th>
+                {#if summary?.ensemble_size}
+                  <th class="px-2 py-2 font-medium">Range (10–90%)</th>
+                  <th class="px-2 py-2 font-medium">Chance {thresholdName} by then</th>
+                {/if}
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              {#each forecast_days as day, row (day.date)}
+                {@const band = projectionByDate.get(day.date)}
+                <tr class="text-right {day.ad <= (summary?.threshold ?? 0) ? 'bg-status-irrigate/5' : ''}">
+                  <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap">{formatDate(day.date, { weekday: true })}</th>
+                  <td class="px-2 py-1 text-ink-muted tabular-nums">{depth(day.adj_et)}</td>
+                  <td class="px-2 py-1 tabular-nums">
+                    {#if day.rain_source === 'forecast' || day.rain_source === 'none'}<span class="text-ink-muted">{depth(day.rain)}</span>
+                    {:else}<span class="font-medium">{depth(day.rain)}</span>{/if}
+                  </td>
+                  <td class="px-1 py-0.5">
+                    <EditableCell grid="forecast" {row} col={0} text={inputText(day, 'irrigation_in')} label={cellLabel(day, 'Planned irrigation')} onsave={(t) => saveCell(day, 'irrigation_in', t)}>
+                      {#if day.irrigation_source === 'none'}<span class="text-ink-muted">–</span>
+                      {:else}
+                        <span class="font-medium">{depth(day.irrigation)}</span>
+                        {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600">{day.irrigation_source}</span>{/if}
+                      {/if}
+                    </EditableCell>
+                  </td>
+                  <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate' : ''}">{depth(day.ad)}</td>
+                  {#if summary?.ensemble_size}
+                    <td class="px-2 py-1 text-ink-muted tabular-nums whitespace-nowrap">
+                      {band?.p10 != null && band.p90 != null ? `${depth(band.p10)} to ${depth(band.p90)}` : ''}
+                    </td>
+                    <td class="px-2 py-1 tabular-nums">{band?.chance != null ? `${Math.round(band.chance * 100)}%` : ''}</td>
+                  {/if}
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {/if}
 
     <!-- Daily grid -->
     <section class="space-y-2">

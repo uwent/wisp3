@@ -8,6 +8,18 @@ RSpec.describe Weather::Fetcher do
 
   around { |example| travel_to(Time.zone.parse("2026-07-20 12:00")) { example.run } }
 
+  describe "#refresh_ensemble" do
+    it "stores each member's et0 and precipitation from today through the 16 days" do
+      expect(fetcher.refresh_ensemble([cell])).to eq(1)
+      expect(client.calls.sole).to include(endpoint: :ensemble, model: "gfs_seamless", forecast_days: 16)
+      ensemble = cell.latest_ensemble
+      expect(ensemble.payload["dates"].first).to eq(today.iso8601)
+      expect(ensemble.members.size).to eq(3)
+      expect(ensemble.members.first[today + 15][:et0]).to be_within(1e-4).of(24 * 0.2 / 25.4)
+      expect(cell.latest_forecast).to be_nil
+    end
+  end
+
   describe "#refresh" do
     it "stores the past week and a 16-day forecast, from the primary and soil models" do
       fetcher.refresh([cell])

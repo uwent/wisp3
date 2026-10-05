@@ -70,6 +70,55 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
     end
   end
 
+  describe "the projection" do
+    # Today and 15 days ahead at 0.2 in/day of ET, and an ensemble of a dry member and a wet one
+    before do
+      dates = Date.new(2026, 7, 20)..Date.new(2026, 8, 4)
+      cell = pivot.weather_cell
+      cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
+        payload: {days: dates.map { |date| {date: date.iso8601, et0_in: 0.2, precip_in: 0.0} }})
+      cell.weather_forecasts.create!(kind: "ensemble", issued_at: 1.hour.ago, model: "gfs_seamless",
+        payload: {dates: dates.map(&:iso8601), members: [
+          {et0_in: [0.2] * 16, precip_in: [0.0] * 16}, {et0_in: [0.2] * 16, precip_in: [0.0, 1.0] + [0.0] * 14}
+        ]})
+    end
+
+    it "runs the balance through the forecast, with the ensemble's range and when to irrigate" do
+      get field_path(field)
+      props = inertia.props
+      expect(props[:days].last).to include(date: "2026-07-20", et0_source: "forecast", rain_source: "forecast")
+      expect(props[:forecast_days].map { |day| day[:date] }).to eq((Date.new(2026, 7, 21)..Date.new(2026, 8, 4)).map(&:iso8601))
+      summary = props[:summary]
+      expect(summary[:ensemble_size]).to eq(2)
+      expect(summary[:projection].size).to eq(15)
+      expect(summary[:projection].first).to include(date: "2026-07-21", chance: 0.0)
+      expect(summary[:projection].first[:p90]).to be > summary[:projection].first[:p10]
+      expect(summary).to include(crossing: nil) # no canopy readings: bare soil barely uses water
+      expect(summary[:threshold]).to eq(0.0)
+    end
+
+    it "takes planned irrigation on future days, but not rain or readings" do
+      patch field_day_path(field, "2026-07-25"), params: {day: {irrigation_in: 1.0}, planting_id: planting.id}
+      expect(field.field_entries.sole).to have_attributes(date: Date.new(2026, 7, 25), irrigation_in: 1.0)
+      get field_path(field)
+      expect(inertia.props[:forecast_days].find { |day| day[:date] == "2026-07-25" })
+        .to include(irrigation: 1.0, irrigation_source: "entered")
+
+      patch field_day_path(field, "2026-07-26"), params: {day: {rain_in: 0.5}, planting_id: planting.id},
+        headers: {"HTTP_REFERER" => field_path(field)}
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("rain_in")
+      expect(field.field_entries.count).to eq(1)
+    end
+
+    it "gives each dashboard card the projection" do
+      get root_path
+      summary = inertia.props[:farms].sole[:pivots].sole[:fields].sole[:summary]
+      expect(summary[:projection].size).to eq(15)
+      expect(summary[:ensemble_size]).to eq(2)
+    end
+  end
+
   describe "editing a day" do
     let(:url) { field_day_path(field, "2026-07-08") }
 

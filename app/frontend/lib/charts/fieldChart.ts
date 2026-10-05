@@ -13,6 +13,8 @@ export type FieldChartMode = 'ad' | 'moisture'
 
 export type FieldChartInput = {
   days: FieldDay[]
+  /** The projection's days after today (planned irrigation is their entered irrigation) */
+  forecastDays?: FieldDay[]
   summary: PlantingSummary
   rootZoneDepth: number
   units: Units
@@ -38,23 +40,54 @@ export function thresholds({ summary, rootZoneDepth, units, mode, palette }: Omi
 }
 
 export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
-  const { days, units, mode, palette } = input
+  const { days, forecastDays = [], summary, rootZoneDepth, units, mode, palette } = input
   const base = baseOption(palette)
-  const dates = days.map((day) => day.date)
+  const all = [...days, ...forecastDays]
+  const dates = all.map((day) => day.date)
+  const observed = days.length
   const depth = (inches: number | null) => units.toDisplay('depth', inches)
   const round = (value: number | null, digits = 3) => (value === null ? null : Number(value.toFixed(digits)))
+  // AD in the chart's units
+  const level = (ad: number | null) =>
+    ad === null ? null : round(mode === 'ad' ? depth(ad) : summary.pct_at_ad_zero + (ad / rootZoneDepth) * 100)
   const lines = thresholds(input)
   const zeroLine = lines.find((line) => line.name.startsWith('Irrigate'))!.value
   const wiltingLine = lines[lines.length - 1].value
+  const forecastOnly = <T>(value: (day: FieldDay, i: number) => T) => all.map((day, i) => (i < observed ? null : value(day, i)))
 
-  const balance = days.map((day) => ({
-    value: round(mode === 'ad' ? depth(day.ad) : day.pct_moisture),
-    // A soil moisture reading reset the balance on this day
-    ...(day.moisture_source ? { symbol: 'circle', symbolSize: 8 } : {}),
-  }))
+  const balance = all.map((day, i) =>
+    i < observed
+      ? {
+          value: level(day.ad),
+          // A soil moisture reading reset the balance on this day
+          ...(day.moisture_source ? { symbol: 'circle', symbolSize: 8 } : {}),
+        }
+      : null,
+  )
+
+  // The projection continues from today's AD; the ensemble's range opens from it
+  const today = days.at(-1)
+  const bands = new Map(summary.projection?.map((day) => [day.date, day]) ?? [])
+  const hasBand = forecastDays.some((day) => bands.get(day.date)?.p10 != null)
+  const atToday = (value: (day: FieldDay) => number | null) => all.map((day, i) => (i === observed - 1 ? level(day.ad) : i < observed ? null : value(day)))
+  const projection = atToday((day) => level(day.ad))
+  const bandLow = atToday((day) => level(bands.get(day.date)?.p10 ?? null))
+  const bandHigh = atToday((day) => level(bands.get(day.date)?.p90 ?? null))
+  const bandWidth = bandHigh.map((high, i) => (high === null || bandLow[i] === null ? null : round(high - bandLow[i]!)))
+  const planned = forecastDays.some((day) => (day.irrigation ?? 0) > 0)
+
+  const forecastArea = forecastDays.length
+    ? {
+        silent: true,
+        itemStyle: { color: palette.inkMuted, opacity: 0.08 },
+        label: { show: true, position: 'insideTop', color: palette.inkMuted, fontSize: 10, formatter: 'Forecast' },
+        data: [[{ xAxis: forecastDays[0].date }, { xAxis: dates.at(-1) }]],
+      }
+    : undefined
 
   const axisLabel = { ...base.axisLabel, formatter: (iso: string) => formatDate(iso) }
   const yName = mode === 'ad' ? `AD (${units.label('depth')})` : 'Soil moisture (%)'
+  const balanceName = mode === 'ad' ? 'Allowable depletion' : 'Soil moisture'
 
   return {
     animation: base.animation,
@@ -65,9 +98,17 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       left: 0,
       right: 0,
       textStyle: { color: palette.ink, fontSize: 12 },
-      data: [mode === 'ad' ? 'Allowable depletion' : 'Soil moisture', 'Rain', 'Modeled rain', 'Irrigation'],
+      data: [
+        balanceName,
+        ...(forecastDays.length ? ['Forecast'] : []),
+        ...(hasBand ? [RANGE] : []),
+        'Rain',
+        'Modeled rain',
+        'Irrigation',
+        ...(planned ? ['Planned irrigation'] : []),
+      ],
     },
-    tooltip: { ...base.tooltip, formatter: (params: unknown) => tooltip(days, params, units) },
+    tooltip: { ...base.tooltip, formatter: (params: unknown) => tooltip(all, observed, summary, params, units) },
     axisPointer: { link: [{ xAxisIndex: 'all' }] },
     grid: [
       { left: 48, right: 112, top: 56, height: '50%' },
@@ -100,13 +141,13 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       },
     ],
     dataZoom: [
-      { type: 'inside', xAxisIndex: [0, 1], startValue: dates[Math.max(0, dates.length - DEFAULT_WINDOW_DAYS)] },
+      { type: 'inside', xAxisIndex: [0, 1], startValue: dates[Math.max(0, observed - DEFAULT_WINDOW_DAYS)] },
       {
         type: 'slider',
         xAxisIndex: [0, 1],
         bottom: 8,
         height: 20,
-        startValue: dates[Math.max(0, dates.length - DEFAULT_WINDOW_DAYS)],
+        startValue: dates[Math.max(0, observed - DEFAULT_WINDOW_DAYS)],
         borderColor: palette.line,
         textStyle: { color: palette.inkMuted },
         labelFormatter: (_: number, iso: string) => formatDate(iso),
@@ -114,7 +155,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
     ],
     series: [
       {
-        name: mode === 'ad' ? 'Allowable depletion' : 'Soil moisture',
+        name: balanceName,
         type: 'line',
         xAxisIndex: 0,
         yAxisIndex: 0,
@@ -140,15 +181,71 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
           data: [[{ yAxis: zeroLine }, { yAxis: wiltingLine }]],
         },
       },
+      // The ensemble's 10th–90th percentile range: an invisible base at the 10th, then the width
+      ...(hasBand
+        ? [
+            {
+              name: 'Range low',
+              type: 'line',
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              stack: 'range',
+              stackStrategy: 'all',
+              data: bandLow,
+              symbol: 'none',
+              lineStyle: { opacity: 0 },
+              tooltip: { show: false },
+              silent: true,
+            },
+            {
+              name: RANGE,
+              type: 'line',
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              stack: 'range',
+              stackStrategy: 'all',
+              data: bandWidth,
+              symbol: 'none',
+              lineStyle: { opacity: 0 },
+              itemStyle: { color: palette.ad },
+              areaStyle: { color: palette.ad, opacity: 0.15 },
+              silent: true,
+            },
+          ]
+        : []),
+      ...(forecastDays.length
+        ? [
+            {
+              name: 'Forecast',
+              type: 'line',
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              data: projection,
+              symbol: 'none',
+              lineStyle: { width: 2, color: palette.ad, type: 'dashed' },
+              itemStyle: { color: palette.ad },
+              markArea: forecastArea,
+              markLine: {
+                silent: true,
+                symbol: 'none',
+                data: [{ xAxis: today!.date }],
+                lineStyle: { color: palette.inkMuted, type: 'solid', width: 1 },
+                label: { formatter: 'Today', position: 'insideEndTop', color: palette.inkMuted, fontSize: 10 },
+              },
+            },
+          ]
+        : []),
       {
         name: 'Rain',
         type: 'bar',
         stack: 'water',
         xAxisIndex: 1,
         yAxisIndex: 1,
-        data: days.map((day) => round(depth(day.rain))),
+        // Forecast rain is lighter
+        data: all.map((day, i) => (i < observed ? round(depth(day.rain)) : { value: round(depth(day.rain)), itemStyle: { opacity: 0.4 } })),
         itemStyle: { color: palette.rain },
         barMaxWidth: 12,
+        markArea: forecastArea && { ...forecastArea, label: { show: false } },
       },
       {
         name: 'Irrigation',
@@ -156,10 +253,32 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         stack: 'water',
         xAxisIndex: 1,
         yAxisIndex: 1,
-        data: days.map((day) => round(depth(day.irrigation))),
+        data: all.map((day, i) => (i < observed ? round(depth(day.irrigation)) : null)),
         itemStyle: { color: palette.irrigation, borderRadius: [2, 2, 0, 0] },
         barMaxWidth: 12,
       },
+      // Irrigation entered on future dates: outlined and hatched
+      ...(planned
+        ? [
+            {
+              name: 'Planned irrigation',
+              type: 'bar',
+              stack: 'water',
+              xAxisIndex: 1,
+              yAxisIndex: 1,
+              data: forecastOnly((day) => round(depth(day.irrigation))),
+              itemStyle: {
+                color: palette.irrigation,
+                opacity: 0.6,
+                borderColor: palette.irrigation,
+                borderWidth: 1.5,
+                borderRadius: [2, 2, 0, 0],
+                decal: { symbol: 'rect', symbolSize: 1, dashArrayX: [1, 0], dashArrayY: [2, 3], rotation: -Math.PI / 4, color: palette.surface },
+              },
+              barMaxWidth: 12,
+            },
+          ]
+        : []),
       // Where an entry replaced the modeled rain, the model's amount as an outline over the bar
       {
         name: 'Modeled rain',
@@ -168,7 +287,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         yAxisIndex: 1,
         barGap: '-100%',
         z: 3,
-        data: days.map((day) => (rainOverridden(day) ? round(depth(day.rain_model)) : null)),
+        data: all.map((day) => (rainOverridden(day) ? round(depth(day.rain_model)) : null)),
         itemStyle: { color: 'transparent', borderColor: palette.rain, borderType: 'dashed', borderWidth: 1.5 },
         barMaxWidth: 12,
       },
@@ -176,14 +295,23 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   }
 }
 
-function tooltip(days: FieldDay[], params: unknown, units: Units): string {
+const RANGE = 'Forecast range (10–90%)'
+
+function tooltip(days: FieldDay[], observed: number, summary: PlantingSummary, params: unknown, units: Units): string {
   const list = (Array.isArray(params) ? params : [params]) as { dataIndex: number }[]
-  const day = list.length ? days[list[0].dataIndex] : undefined
+  const index = list.length ? list[0].dataIndex : -1
+  const day = days[index]
   if (!day) return ''
   const depth = (value: number | null) => units.format('depth', value)
   const source = (label: string) => `<span style="opacity:.7">${label}</span>`
+  const forecast = index >= observed
+  const band = forecast ? summary.projection?.find((p) => p.date === day.date) : undefined
   const rows = [
-    ['AD', depth(day.ad)],
+    [forecast ? 'Projected AD' : 'AD', depth(day.ad)],
+    ...(band?.p10 != null && band.p90 != null ? [['Range (10–90%)', `${depth(band.p10)} to ${depth(band.p90)}`]] : []),
+    ...(band?.chance != null
+      ? [[summary.target_in === null ? 'Chance at 0 AD by now' : 'Chance below target by now', `${Math.round(band.chance * 100)}%`]]
+      : []),
     ['Soil moisture', `${day.pct_moisture.toFixed(1)}%`],
     ['Adjusted ET', `${depth(day.adj_et)} ${source(ET_SOURCE_LABELS[day.et_source])}`],
     [
@@ -191,10 +319,11 @@ function tooltip(days: FieldDay[], params: unknown, units: Units): string {
       `${depth(day.rain)} ${source(SOURCE_LABELS[day.rain_source])}` +
         (rainOverridden(day) ? ` ${source(`model ${depth(day.rain_model)}`)}` : ''),
     ],
-    ['Irrigation', `${depth(day.irrigation)} ${source(SOURCE_LABELS[day.irrigation_source])}`],
+    ['Irrigation', `${depth(day.irrigation)} ${source(forecast && day.irrigation_source === 'entered' ? 'planned' : SOURCE_LABELS[day.irrigation_source])}`],
   ]
   if (day.soil_moisture_pct !== null) rows.push(['Moisture reading', `${day.soil_moisture_pct}%`])
   if (day.deep_drainage > 0) rows.push(['Deep drainage', depth(day.deep_drainage)])
   const body = rows.map(([name, value]) => `<tr><td style="padding-right:12px">${name}</td><td>${value}</td></tr>`)
-  return `<strong>${formatDate(day.date, { weekday: true })}</strong><table>${body.join('')}</table>`
+  const heading = `${formatDate(day.date, { weekday: true })}${forecast ? ' · forecast' : ''}`
+  return `<strong>${heading}</strong><table>${body.join('')}</table>`
 }

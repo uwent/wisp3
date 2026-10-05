@@ -19,6 +19,25 @@ module Weather
       end
     end
 
+    # The ensemble forecast (Weather::Ensemble), for the projection's range of outcomes. Returns the
+    # number of cells stored.
+    def refresh_ensemble(cells)
+      cells.each_slice(OpenMeteo::BATCH_SIZE).sum do |batch|
+        locations = batch.map { |cell| [cell.latitude, cell.longitude] }
+        responses = @client.hourly(locations, endpoint: :ensemble, model: OpenMeteo::ENSEMBLE_MODEL,
+          variables: OpenMeteo::ENSEMBLE_VARIABLES, forecast_days: FORECAST_DAYS)
+        batch.zip(responses).count do |cell, response|
+          cell.update!(timezone: response.timezone) if cell.timezone.nil?
+          payload = Ensemble.from_hourly(response, today: cell.today)
+          next false if payload["dates"].empty?
+          cell.weather_forecasts.create!(kind: "ensemble", issued_at: Time.current, model: OpenMeteo::ENSEMBLE_MODEL, payload:)
+        end
+      rescue Error => e
+        WeatherCell.where(id: batch.map(&:id)).update_all(last_error: e.message, last_error_at: Time.current)
+        raise
+      end
+    end
+
     # Fills days missing from `from` through yesterday, from the historical-forecast API (the same
     # models as the forecast, so the series stays consistent). Returns the number of days stored.
     def backfill(cell, from:, to: cell.today - 1)

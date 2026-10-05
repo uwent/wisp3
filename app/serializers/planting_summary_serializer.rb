@@ -1,5 +1,7 @@
 # A planting's status and season so far (PlantingStatus), for dashboard cards and the field page.
-# Depths are inches; recent is AD over the last RECENT_DAYS days, for sparklines.
+# Depths are inches; recent is AD over the last RECENT_DAYS days, for sparklines. projection is
+# each day ahead: the forecast's AD and, with an ensemble, its 10th–90th percentiles and the chance
+# of reaching the threshold by then. crossing is when the projection first reaches the threshold.
 class PlantingSummarySerializer < ApplicationSerializer
   RECENT_DAYS = 21
 
@@ -29,6 +31,16 @@ class PlantingSummarySerializer < ApplicationSerializer
     status.days.last(RECENT_DAYS).map { |day| {date: day.inputs.date, ad: day.result.ad} }
   end
   attribute(:totals) { |status| status.totals.to_h }
+  attribute(:threshold) { |status| status.threshold.round(WaterBalance::PRECISION) }
+  attribute(:crossing) { |status| status.crossing&.to_h }
+  attribute(:ensemble_size, &:ensemble_size)
+  attribute(:projection) do |status|
+    bands = status.ensemble.index_by(&:date)
+    status.forecast_days.map do |day|
+      band = bands[day.inputs.date]
+      {date: day.inputs.date, ad: day.result.ad, p10: band&.p10, p50: band&.p50, p90: band&.p90, chance: band&.chance}
+    end
+  end
 
   typelize planting_id: :number, plant_name: :string, variety: "string | null", season_start: :string,
     end_date: :string, phase: "'upcoming' | 'active' | 'ended'",
@@ -38,5 +50,9 @@ class PlantingSummarySerializer < ApplicationSerializer
     last_rain: "{ date: string; inches: number } | null", last_irrigation: "{ date: string; inches: number } | null",
     recent: "{ date: string; ad: number }[]",
     totals: "{ rain: number; irrigation: number; adj_et: number; deep_drainage: number; rain_model: number; " \
-      "entered_rain_days: number; entered_rain: number; entered_rain_model: number }"
+      "entered_rain_days: number; entered_rain: number; entered_rain_model: number }",
+    threshold: :number, crossing: "{ date: string; days: number; ad: number; refill: number } | null",
+    ensemble_size: :number,
+    projection: "{ date: string; ad: number; p10: number | null; p50: number | null; p90: number | null; " \
+      "chance: number | null }[]"
 end
