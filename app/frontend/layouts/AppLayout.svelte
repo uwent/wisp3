@@ -46,7 +46,7 @@
   <BrandBar />
   <header class="border-b border-line bg-surface-raised">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-      <Link href={dashboard.show()} class="text-ink"><Logo /></Link>
+      <Link href={dashboard.show()} class="flex text-ink"><Logo /></Link>
 
       <!-- On phones: logo and account menu on one row, the nav below; the group switch moves into the account menu -->
       <nav aria-label="Main" class="order-3 -mx-1 flex w-full gap-1 overflow-x-auto sm:order-2 sm:w-auto">
