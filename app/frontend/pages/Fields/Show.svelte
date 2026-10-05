@@ -9,6 +9,7 @@
   import EditableCell from '@/lib/components/EditableCell.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
+  import { guidance as guidanceFor } from '@/lib/guidance'
   import { outlook as outlookFor } from '@/lib/outlook'
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
@@ -43,6 +44,25 @@
   const rows = $derived([...days].reverse())
   const outlook = $derived(summary && outlookFor(summary, units))
   const projectionByDate = $derived(new Map(summary?.projection.map((day) => [day.date, day]) ?? []))
+  const guidance = $derived(
+    planting && guidanceFor(planting, days, units, summary?.phase === 'active' ? summary.date : null),
+  )
+  // Whether "How … is modeled" is open: open until closed, then remembered in this browser
+  const GUIDANCE_KEY = 'wisp:field-guidance-open'
+  let guidanceOpen = $state(true)
+  try {
+    guidanceOpen = localStorage.getItem(GUIDANCE_KEY) !== 'false'
+  } catch {
+    // Storage blocked: stay open
+  }
+  function toggleGuidance(open: boolean) {
+    guidanceOpen = open
+    try {
+      localStorage.setItem(GUIDANCE_KEY, String(open))
+    } catch {
+      // Storage blocked: only this page view remembers
+    }
+  }
   const thresholdName = $derived(summary?.target_in === null ? 'at 0 AD' : 'below target')
   let chartMode = $state<FieldChartMode>('ad')
   let dailyOpen = $state(true)
@@ -217,6 +237,32 @@
         </p>
       {/if}
     </div>
+
+    {#if guidance}
+      <details
+        class="border-t border-line pt-3 text-sm lg:col-span-3"
+        open={guidanceOpen}
+        ontoggle={(event) => toggleGuidance(event.currentTarget.open)}
+      >
+        <summary class="cursor-pointer font-medium">{guidance.title}</summary>
+        <div class="mt-2 max-w-3xl space-y-2 text-ink-muted">
+          {#each guidance.paragraphs as paragraph, i (i)}<p>{paragraph}</p>{/each}
+        </div>
+        {#if guidance.readings.length}
+          <ul class="mt-3 flex flex-wrap gap-2" aria-label="Last readings">
+            {#each guidance.readings as reading (reading.label)}
+              <li
+                class="rounded-md border px-2.5 py-1 text-xs
+                  {reading.due ? 'border-status-caution/60 bg-status-caution/10' : 'border-line'}"
+              >
+                <span class="font-medium">{reading.label}:</span>
+                {reading.last}{#if reading.note}{' '}<span class="text-ink-muted">· {reading.note}</span>{/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </details>
+    {/if}
   </section>
 
   {#if days.length}
