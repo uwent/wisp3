@@ -17,6 +17,10 @@ production: &production
   weather_finalize:
     class: WeatherFinalizeJob
     schedule: at 3am every day America/Chicago
+  # After the 5am refresh (PLAN.md Phase 6)
+  daily_digest:
+    class: DailyDigestJob
+    schedule: at 6am every day America/Chicago
   forecast_prune:
     class: ForecastPruneJob
     schedule: at 4am every sunday America/Chicago

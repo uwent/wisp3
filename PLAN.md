@@ -50,7 +50,7 @@ Browser (Svelte 5 pages, Tailwind v4, ECharts, MapLibre)
 Rails 8.1 (Ruby 4.0)
    ├── Controllers → Inertia responses (render inertia: "Fields/Show", props: …)
    ├── Devise (+ magic-link strategy)
-   ├── Domain services: WaterBalance, Projection, Canopy, WeatherIngest, AlertEvaluator
+   ├── Domain services: WaterBalance, PlantingStatus (projection), EnsembleProjection, Canopy, Weather::Fetcher, digest
    ├── Weather::OpenMeteo client (free / customer endpoints)
    ├── Solid Queue (jobs + recurring schedule), Solid Cache
    └── Action Mailer (sendmail on existing hosts)
@@ -130,10 +130,9 @@ AlertDelivery (dedupe log), MagicLinkToken (if not using stateless tokens), Anno
   - **UI:** the pivot's daily row shows one irrigation cell; each field's grid shows the value with a "from pivot" badge and an override.
 - **weather_cells**: `latitude, longitude` of an ECMWF IFS O1280 grid cell center (~9 km; `Weather::Grid`, ported from Ben's R client), plus `timezone` and `elevation_m` from Open-Meteo and the last fetch/error. Pivots get their cell when created or moved (`pivots.weather_cell_id`), which queues a backfill. Requests go to the cell center, so every pivot in a cell shares one series.
 - **weather_days**: `weather_cell_id, date`, daily values built from hourly data in the cell's local day: `et0_in, precip_in, rain_in, snowfall_in, snow_depth_in, tmax_f, tmin_f, tmean_f, dew_point_f, rh_mean/min/max_pct, vpd_max_kpa, pressure_msl_hpa, wind_speed(_max)_mph, wind_gust_max_mph, wind_direction_deg, cloud_cover(_low/_mid/_high)_pct`, soil temperature (°F) and moisture (m³/m³, comparable with field capacity) at 0–7, 7–28, 28–100 and 100–255 cm; `model, soil_model, hours, fetched_at, final`. Unique `(cell, date)`. Missing values are **NULL**, never 0.
-- **weather_forecasts**: `weather_cell_id, issued_at, model, kind (deterministic|ensemble), payload jsonb` (`{"days": [{date, <weather_days columns>}, …]}`; the ensemble payload is defined in Phase 5). Keep the most recent 14 issues per cell for later checks of forecast accuracy, and prune older ones.
+- **weather_forecasts**: `weather_cell_id, issued_at, model, kind (deterministic|ensemble), payload jsonb` (deterministic: `{"days": [{date, <weather_days columns>}, …]}`; ensemble: `{"dates": [...], "members": [{"et0_in": [...], "precip_in": [...]}, …]}`, one entry per member). Keep the most recent 14 issues of each kind per cell for later checks of forecast accuracy, and prune older ones.
 - **users** (beyond Devise columns): `first_name, last_name, admin, unit_system (imperial|metric, default imperial)`.
-- **alert_preferences**: `user_id, enabled, lead_days (default 3), threshold (enum: target | mad_zero), min_probability (for ensemble, default 0.5), send_hour_local (default 6), digest (bool)`.
-- **alert_deliveries**: `user_id, planting_id, projected_cross_date, sent_at`. Dedupe key `(planting_id, projected_cross_date ± 1 day)`. The same projected crossing is not re-sent unless it moves earlier by ≥2 days or the field was refilled in between.
+- **Daily digest** (Phase 6, replacing event-based alerts; decided 2026-10-04): `users.digest` (on by default) and `users.digest_sent_on` (so a rerun of the job doesn't send twice). **digest_exclusions**: `user_id, subject (Group | Farm | Field)`, unique. Every field in the user's operations is covered unless it, its farm or its operation is excluded; saving the settings leaves out a farm or operation whole when none of its fields are picked, so fields added there later stay out, and otherwise excludes single fields, so new ones join.
 
 ### Precedence when resolving a day's inputs for a field
 
@@ -244,6 +243,13 @@ Run the **same engine** forward from today's AD:
 4. **Recommended irrigation**: the latest date to irrigate before crossing the target, and the inches needed to refill to field capacity (AD_max − AD). Shown in the field status summary.
 
 Past days use `weather_days` (final or provisional), future days use forecasts, and the switch-over is drawn on the chart.
+
+**As built (Phase 5, 2026-10-04):**
+- **Today comes from the forecast.** `weather_days` holds only complete local days (before today), so today's et0 and rain come from the latest deterministic forecast (`WeatherDay.balance_inputs`, source `forecast` in the grid and tooltips). Before this, today's ET was gap-filled and its rain counted as missing. One balance run covers the season through the forecast; `PlantingStatus#forecast_days` are the days after today with forecast weather, up to the season's end.
+- **Ensemble spike:** Open-Meteo's ensemble API returns `et0_fao_evapotranspiration` and `precipitation` for every member. GFS (`gfs_seamless`) has 31 members (control + 30) over the full 16 days with no gaps; ECMWF IFS (51 members) stops at 15 days and leaves gaps at the end. GFS is used. Members are fetched with each refresh (`Fetcher#refresh_ensemble`), and Open-Meteo counts each member as a variable, so a cell's ensemble costs about 7 calls per refresh.
+- **Ensemble runner** (`EnsembleProjection`): each member runs from today's AD with its own et0 and, where the day's rain is modeled, its own rain; entered values (planned irrigation) are kept. Per day: P10/P50/P90 of AD, and the share of members at or below the threshold by then (cumulative).
+- **Threshold:** the field's target if set, else AD = 0. `PlantingStatus#crossing` is the first day (today or ahead) the deterministic projection reaches it, with the refill to field capacity then. A field OK today that crosses within 3 days (`LEAD_DAYS`) is caution (§5.5).
+- **Planned irrigation** is an irrigation entry on a future date (no separate table). A future day accepts only irrigation and notes. The field page has a "Next 15 days" table to plan it; a save reloads only the balance props, and the projection updates in about 200 ms (e2e, test server).
 
 ---
 
@@ -544,17 +550,21 @@ Polish:
 
 ### Phase 5: Forecast projection
 
-- [ ] Deterministic projection through the 16-day forecast.
-- [ ] Ensemble spike (et0 per member?), then the ensemble runner, P10/P50/P90 band, crossing probability.
-- [ ] Planned irrigation (what-if) and recommended irrigation amount and timing.
+- [x] Deterministic projection through the 16-day forecast. *(Today from the forecast too; §6 "As built".)*
+- [x] Ensemble spike (et0 per member?), then the ensemble runner, P10/P50/P90 band, crossing probability. *(Yes for GFS, 31 members; `EnsembleProjection`.)*
+- [x] Planned irrigation (what-if) and recommended irrigation amount and timing. *("Irrigate by" with the refill amount and the share of forecast scenarios that agree, on the field page and dashboard cards; the dashboard sparkline continues dashed through the forecast.)*
 - **Exit:** the chart shows observed → forecast → band; adding a planned irrigation updates the projection in under 300 ms.
 
 ### Phase 6: Alerts
 
-- [ ] Alert preferences UI; `AlertEvaluatorJob` after each ensemble refresh; daily digest email at the user's chosen hour.
-- [ ] Dedupe (`alert_deliveries`), unsubscribe link, `List-Unsubscribe` header, SPF/DKIM check.
-- [ ] Admin preview: "what would be sent today".
-- **Exit:** staging sends correct digests for test fields across simulated scenarios (rain refill, sudden heat, planned irrigation suppressing an alert).
+Decided 2026-10-04 (Ben): a **daily digest** instead of event-based alerts. Simpler to build and to understand, and it shows the whole picture every day.
+
+- [x] Digest settings: on/off per user, and which fields it includes (default: every field in the user's operations, picked by operation, farm or field). *(Settings page, "Daily email"; `digest_exclusions` in §4.)*
+- [x] The digest email rehashes each included field's dashboard card: status, AD today, the outlook ("Irrigate by …", refill amount, how many forecast scenarios agree), last rain and irrigation. Fields needing attention (irrigate, or caution) come first and are highlighted; a field that's fine is one compact line. *(`DailyDigest`, `DigestMailer`; the outlook's wording is in Ruby too, `Outlook`, matching `lib/outlook.ts`. Links carry `?operation=` so they open in the field's operation.)*
+- [x] Sent each morning after the 5 am refresh, to users with the digest on and at least one active field; unsubscribe link and `List-Unsubscribe` header. *(`DailyDigestJob` at 6 am Central; one-click `List-Unsubscribe-Post`; the link's GET only shows a button.)*
+- [ ] SPF/DKIM check (Q6): Ben, on staging.
+- [x] Admin preview: "what would be sent today" for any user. *(Admin user page → "Preview today's daily email".)*
+- **Exit:** staging sends correct digests for test fields across simulated scenarios (rain refill, sudden heat, planned irrigation pushing back "Irrigate by").
 
 ### Phase 7: Map
 
@@ -599,6 +609,8 @@ Polish:
 | Q7 | Per-field rainfall correction | **Resolved**: per-day overrides shown next to modeled values; no multiplier | – |
 
 ### Q1. Alert defaults: resolved (recommendation adopted)
+
+*Update 2026-10-04:* Phase 6 is now a daily digest of every included field rather than alerts for crossings, so the probability and dedupe settings below don't apply. The threshold (target, else AD = 0) and the 3-day lead time live on as the projection's "Irrigate by" and caution status (§6 "As built").
 
 **What it decides:** when a user gets an email saying a field is heading for irrigation.
 

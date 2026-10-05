@@ -9,6 +9,7 @@ class User < ApplicationRecord
 
   has_many :memberships, dependent: :destroy
   has_many :groups, through: :memberships
+  has_many :digest_exclusions, dependent: :delete_all
 
   validates :unit_system, inclusion: {in: UNIT_SYSTEMS}
   validates :first_name, :last_name, length: {maximum: 100}
@@ -21,6 +22,43 @@ class User < ApplicationRecord
   # before it, so each link works once.
   generates_token_for :magic_login, expires_in: MAGIC_LINK_TTL do
     current_sign_in_at
+  end
+
+  # The daily digest's unsubscribe link (and List-Unsubscribe header), which doesn't expire
+  generates_token_for :digest_unsubscribe
+
+  # The fields the daily digest covers: every field in the user's operations, less the operations,
+  # farms and fields they've left out
+  def digest_fields
+    excluded = digest_exclusions.pluck(:subject_type, :subject_id).group_by(&:first).transform_values { |pairs| pairs.map(&:last) }
+    Field.joins(pivot: :farm)
+      .where(farms: {group_id: memberships.select(:group_id)})
+      .where.not(farms: {group_id: excluded.fetch("Group", [])})
+      .where.not(farms: {id: excluded.fetch("Farm", [])})
+      .where.not(id: excluded.fetch("Field", []))
+  end
+
+  # Includes exactly these fields of the user's operations in the digest. A farm or operation with
+  # none of its fields picked is left out as a whole, so fields added to it later stay out too; one
+  # with all of them picked takes in new fields.
+  def digest_field_ids=(ids)
+    picked = ids.map(&:to_i).to_set
+    transaction do
+      digest_exclusions.delete_all
+      groups.includes(farms: {pivots: :fields}).find_each do |group|
+        fields = group.farms.flat_map { |farm| farm.pivots.flat_map(&:fields) }
+        next digest_exclusions.create!(subject: group) if fields.any? && fields.none? { |field| picked.include?(field.id) }
+
+        group.farms.each do |farm|
+          fields = farm.pivots.flat_map(&:fields)
+          if fields.any? && fields.none? { |field| picked.include?(field.id) }
+            digest_exclusions.create!(subject: farm)
+          else
+            fields.reject { |field| picked.include?(field.id) }.each { |field| digest_exclusions.create!(subject: field) }
+          end
+        end
+      end
+    end
   end
 
   # A six-digit code sent with each sign-in link, for typing in on the device that asked for it

@@ -22,8 +22,14 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Phase 4 and 4.5 (next)
 
-- [ ] **Push `main` and `bundle exec cap staging deploy`**, then click through on staging: dashboard, a field page (edit a cell, Escape cancels), daily entry, setup, a pivot's irrigation page. GitHub Actions now runs the Playwright smoke tests too (`bin/e2e` locally).
-- [ ] **A stray `pnpm-lock.yaml`** appeared in the repo root during the 2026-10-03 session (not from Claude, which uses npm). It's untracked; delete it unless you're switching to pnpm.
+- [x] **Push `main` and `bundle exec cap staging deploy`**, then click through on staging: dashboard, a field page (edit a cell, Escape cancels), daily entry, setup, a pivot's irrigation page. GitHub Actions now runs the Playwright smoke tests too (`bin/e2e` locally).
+- [x] **A stray `pnpm-lock.yaml`** appeared in the repo root during the 2026-10-03 session (not from Claude, which uses npm). It's untracked; delete it unless you're switching to pnpm.
+
+## Phase 6: daily email (next)
+
+- [ ] **Deploy and check the digest on staging.** It goes out at 6 am Central to every confirmed user with a field in season (on by default). Before the first morning, preview it from an admin user page ("Preview today's daily email"), or send one now: `RAILS_ENV=staging bin/rails runner 'u = User.find_by!(email: "you@…"); DigestMailer.daily(DailyDigest.new(u)).deliver_now'`.
+- [ ] **SPF and DKIM (Q6):** in Gmail, open the digest → "Show original" and check SPF and DKIM both say PASS. If not, ask campus IT (PLAN.md Q6). Also try the one-click "Unsubscribe" Gmail shows next to the sender.
+- [ ] **Exit check:** on staging, set up test fields for a rain refill, a sudden heat spell, and planned irrigation pushing back "Irrigate by", and check the digests read right.
 
 ## Staging (non-blocking)
 
@@ -39,10 +45,10 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Weather (Phase 3 follow-ups)
 
-- [ ] **Put your Open-Meteo key in `.env`** (copy `.env.example`; `.env` is gitignored): `OPEN_METEO_API_KEY=…`. Then `bin/rails weather:refresh` and check `/admin/weather` says "commercial API key" with no errors (the local demo user `demo@example.com` / `demo-password-1` is an admin). Tell the next session if it fails.
-- [ ] **Review `docs/weather-comparison.md` and the model decision** (NBM, then best_match; PLAN.md §8.2, §8.4). Change with `OPEN_METEO_MODELS` if you disagree.
-- [ ] **Look into the early first irrigation:** on all three Open-Meteo models the standard field's first irrigation comes 10–16 days earlier than on AgWeather (season totals are close). Worth knowing whether AgWeather's early-season ET is low, or its spring rain high, before growers compare the two.
-- [ ] Optional, before the beta: re-run the comparison at real pivot locations. On legacy production (read-only): `cd ~/wisp/current && RAILS_ENV=production bundle exec rails runner 'puts "name,lat,lng"; Pivot.where(cropping_year: 2025..).where.not(latitude: 43, longitude: -89).distinct.pluck(:latitude, :longitude).map { |a, b| [a.round(2), b.round(2)] }.uniq.each_with_index { |(a, b), i| puts "pivot_#{i},#{a},#{b}" }' > /tmp/pivots.csv`, copy it to `tmp/pivots.csv`, then `bin/rails weather:compare POINTS=tmp/pivots.csv` (with the key; a few hundred points is fine on the commercial API).
+- [x] **Put your Open-Meteo key in `.env`** (copy `.env.example`; `.env` is gitignored): `OPEN_METEO_API_KEY=…`. Then `bin/rails weather:refresh` and check `/admin/weather` says "commercial API key" with no errors (the local demo user `demo@example.com` / `demo-password-1` is an admin). Tell the next session if it fails.
+- [x] **Review `docs/weather-comparison.md` and the model decision** (NBM, then best_match; PLAN.md §8.2, §8.4). Change with `OPEN_METEO_MODELS` if you disagree.
+- [x] **Look into the early first irrigation:** on all three Open-Meteo models the standard field's first irrigation comes 10–16 days earlier than on AgWeather (season totals are close). Worth knowing whether AgWeather's early-season ET is low, or its spring rain high, before growers compare the two.
+- [x] Optional, before the beta: re-run the comparison at real pivot locations. On legacy production (read-only): `cd ~/wisp/current && RAILS_ENV=production bundle exec rails runner 'puts "name,lat,lng"; Pivot.where(cropping_year: 2025..).where.not(latitude: 43, longitude: -89).distinct.pluck(:latitude, :longitude).map { |a, b| [a.round(2), b.round(2)] }.uniq.each_with_index { |(a, b), i| puts "pivot_#{i},#{a},#{b}" }' > /tmp/pivots.csv`, copy it to `tmp/pivots.csv`, then `bin/rails weather:compare POINTS=tmp/pivots.csv` (with the key; a few hundred points is fine on the commercial API).
 - [ ] Sysadmin requirement (PLAN.md §12) is unchanged: outbound HTTPS to `*.open-meteo.com`.
 
 ## Waiting on other people (start early)

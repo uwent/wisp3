@@ -6,6 +6,7 @@ class Field < ApplicationRecord
   has_many :field_entries, dependent: :destroy
   has_many :field_group_members, dependent: :destroy
   has_many :field_groups, through: :field_group_members
+  has_many :digest_exclusions, as: :subject, dependent: :delete_all
 
   validates :name, presence: true, length: {maximum: 100}
   validates :area_acres, numericality: {greater_than: 0}, allow_nil: true

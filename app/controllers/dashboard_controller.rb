@@ -7,26 +7,11 @@ class DashboardController < AuthenticatedController
       {fields: [:soil_type, {plantings: [:plant, :canopy_observations]}]}]).to_a
     pivots = farms.flat_map { |farm| farm.pivots.sort_by(&:name) }
     fields = pivots.flat_map(&:fields)
-    plantings = fields.to_h do |field|
-      [field.id, field.planting_on(today) ||
-        field.plantings.select { |p| p.season_year == today.year }.min_by { |p| (p.season_start - today).abs }]
-    end
+    WeatherCell.keep_current(pivots.map(&:weather_cell_id).uniq)
+    statuses = FieldStatuses.for(fields, today:)
 
-    # Every card's entries, weather and ensemble in a few queries, not several per field; through the
-    # projection's days, for planned irrigation and the forecast
-    starts = plantings.values.compact.map(&:season_start)
-    last = [today + PlantingStatus::HORIZON, plantings.values.compact.map(&:end_date).max].compact.min
-    dates = starts.any? ? starts.min..last : today..today
-    records = DailyInputs.preload(fields, dates)
-    cell_ids = pivots.map(&:weather_cell_id).uniq
-    WeatherCell.keep_current(cell_ids)
-    weather = WeatherDay.balance_inputs_by_cell(cell_ids, dates)
-    ensembles = WeatherForecast.ensemble.latest_by_cell(cell_ids).transform_values(&:members)
-
-    card = lambda do |field, pivot|
-      planting = plantings[field.id]
-      status = planting && PlantingStatus.new(planting, today:, records: records[field.id],
-        weather: weather.fetch(pivot.weather_cell_id, {}), ensemble: ensembles.fetch(pivot.weather_cell_id, []))
+    card = lambda do |field|
+      status = statuses[field.id]
       {id: field.id, name: field.name, summary: status && PlantingSummarySerializer.new(status).to_h}
     end
 
@@ -34,7 +19,7 @@ class DashboardController < AuthenticatedController
       today:,
       farms: farms.map do |farm|
         {id: farm.id, name: farm.name, pivots: farm.pivots.sort_by(&:name).map do |pivot|
-          {id: pivot.id, name: pivot.name, fields: pivot.fields.map { |field| card.call(field, pivot) }}
+          {id: pivot.id, name: pivot.name, fields: pivot.fields.map { |field| card.call(field) }}
         end}
       end
     }

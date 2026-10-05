@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_213800) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -26,6 +26,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_213800) do
     t.check_constraint "lai IS NULL OR lai >= 0::double precision", name: "canopy_observations_lai_positive"
     t.check_constraint "num_nonnulls(pct_cover, lai) = 1", name: "canopy_observations_one_value"
     t.check_constraint "pct_cover IS NULL OR pct_cover >= 0::double precision AND pct_cover <= 100::double precision", name: "canopy_observations_pct_cover_range"
+  end
+
+  create_table "digest_exclusions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "subject_type", null: false
+    t.bigint "subject_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["subject_type", "subject_id"], name: "index_digest_exclusions_on_subject"
+    t.index ["user_id", "subject_type", "subject_id"], name: "idx_on_user_id_subject_type_subject_id_0f834daf0d", unique: true
   end
 
   create_table "farms", force: :cascade do |t|
@@ -225,6 +235,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_213800) do
     t.string "sign_in_code_digest"
     t.datetime "sign_in_code_sent_at"
     t.integer "sign_in_code_attempts", default: 0, null: false
+    t.boolean "digest", default: true, null: false
+    t.date "digest_sent_on"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
@@ -299,6 +311,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_213800) do
   end
 
   add_foreign_key "canopy_observations", "plantings"
+  add_foreign_key "digest_exclusions", "users", on_delete: :cascade
   add_foreign_key "farms", "groups"
   add_foreign_key "field_entries", "fields"
   add_foreign_key "field_group_entries", "field_groups"

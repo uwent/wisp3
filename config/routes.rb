@@ -28,6 +28,12 @@ Rails.application.routes.draw do
   end
 
   resource :settings, only: [:show, :update]
+  resource :digest_settings, only: :update, path: "settings/digest"
+
+  # The daily digest's unsubscribe link. Its GET only shows a button; the POST also takes mail
+  # providers' one-click unsubscribe (List-Unsubscribe-Post).
+  get "digest/unsubscribe/:token", to: "digest_unsubscribes#show", as: :digest_unsubscribe
+  post "digest/unsubscribe/:token", to: "digest_unsubscribes#create"
 
   # Setup: farms → pivots → fields → plantings, the guided first run, and copying last season
   resource :setup, only: :show, controller: "setup"
@@ -49,7 +55,9 @@ Rails.application.routes.draw do
   resource :daily_entry, only: [:show, :update], path: "daily"
 
   namespace :admin do
-    resources :users, only: [:index, :show, :destroy]
+    resources :users, only: [:index, :show, :destroy] do
+      get :digest, on: :member
+    end
     resource :weather, only: :show, controller: "weather" do
       post :refresh
     end

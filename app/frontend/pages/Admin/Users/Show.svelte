@@ -3,7 +3,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
-  import { formatTimestamp } from '@/lib/dates'
+  import { formatDate, formatTimestamp } from '@/lib/dates'
   import { units as unitsFor } from '@/lib/units'
   import { adminUsers } from '@/routes'
   import type { AdminGroup, AdminUserDetail, Field } from '@/types/serializers'
@@ -31,6 +31,7 @@
     ['Email', user.email],
     ...(user.unconfirmed_email ? [['Email change pending', user.unconfirmed_email] as [string, string]] : []),
     ['Units', user.unit_system === 'metric' ? 'Metric' : 'US (imperial)'],
+    ['Daily email', `${user.digest ? 'On' : 'Off'}${user.digest_sent_on ? `, last sent ${formatDate(user.digest_sent_on, { year: true })}` : ''}`],
     ['WISP admin', user.admin ? 'Yes' : 'No'],
     ['Created', formatTimestamp(user.created_at)],
     ['Last updated', formatTimestamp(user.updated_at)],
@@ -79,7 +80,10 @@
   </div>
 
   <section class="space-y-2">
-    <h2 class="font-medium">Account</h2>
+    <div class="flex items-baseline justify-between gap-3">
+      <h2 class="font-medium">Account</h2>
+      <Link href={adminUsers.digest(user.id)} class="text-sm text-brand-600 hover:underline">Preview today's daily email</Link>
+    </div>
     <dl class="grid gap-x-6 rounded-lg border border-line bg-surface-raised p-4 text-sm sm:grid-cols-[max-content_1fr]">
       {#each attributes as [label, value] (label)}
         <dt class="pt-2 text-ink-muted first:pt-0 sm:py-0.5">{label}</dt>

@@ -1,17 +1,52 @@
 <script lang="ts">
   import { Form, page } from '@inertiajs/svelte'
+  import { SvelteSet } from 'svelte/reactivity'
 
   import Button from '@/lib/components/Button.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import { settings, usersRegistrations } from '@/routes'
+  import { digestSettings, settings, usersRegistrations } from '@/routes'
 
-  let { unit_systems, pending_email }: { unit_systems: string[]; pending_email: string | null } = $props()
+  type DigestField = { id: number; name: string; pivot: string }
+  type DigestFarm = { id: number; name: string; fields: DigestField[] }
+  type DigestGroup = { id: number; name: string; farms: DigestFarm[] }
+  type Digest = { enabled: boolean; field_ids: number[]; groups: DigestGroup[] }
+
+  let {
+    unit_systems,
+    pending_email,
+    digest,
+  }: { unit_systems: string[]; pending_email: string | null; digest: Digest } = $props()
 
   const user = $derived(page.props.auth.user!)
 
   const unitLabels: Record<string, { name: string; detail: string }> = {
     imperial: { name: 'US units', detail: 'inches, °F, acres, gpm' },
     metric: { name: 'Metric', detail: 'millimeters, °C, hectares, L/s' },
+  }
+
+  // The daily email's fields, as picked on the form (reset from the props after each save)
+  let enabled = $state(false)
+  const picked = new SvelteSet<number>()
+  $effect.pre(() => {
+    enabled = digest.enabled
+    picked.clear()
+    for (const id of digest.field_ids) picked.add(id)
+  })
+  const groupFields = (group: DigestGroup) => group.farms.flatMap((farm) => farm.fields)
+  const allFields = $derived(digest.groups.flatMap(groupFields))
+  // Operations get their own checkbox only when there's more than one with fields
+  const severalGroups = $derived(digest.groups.filter((group) => groupFields(group).length).length > 1)
+  const pickedCount = (fields: DigestField[]) => fields.filter((field) => picked.has(field.id)).length
+  function pickAll(fields: DigestField[], on: boolean) {
+    for (const field of fields) {
+      if (on) picked.add(field.id)
+      else picked.delete(field.id)
+    }
+  }
+  /** A parent checkbox: checked when all its fields are, mixed when some are */
+  const mixed = (fields: DigestField[]) => (node: HTMLInputElement) => {
+    const count = pickedCount(fields)
+    node.indeterminate = count > 0 && count < fields.length
   }
 
   // Returning false from onBefore cancels the request
@@ -44,6 +79,85 @@
         {/each}
       </fieldset>
       <Button type="submit" disabled={processing}>Save</Button>
+    {/snippet}
+  </Form>
+</section>
+
+<section id="digest" class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
+  <div>
+    <h2 class="text-lg font-medium">Daily email</h2>
+    <p class="text-sm text-ink-muted">
+      Each morning at about 6 am, while your fields are in season, WISP emails a summary of them: fields to irrigate or
+      watch first, with when to irrigate and how much, then a line for each of the rest.
+    </p>
+  </div>
+  <Form action={digestSettings.update()} class="max-w-xl space-y-4" options={{ preserveScroll: true }}>
+    {#snippet children({ processing })}
+      <input type="hidden" name="digest[enabled]" value="0" />
+      <label class="flex items-center gap-3 text-sm font-medium">
+        <input type="checkbox" name="digest[enabled]" value="1" bind:checked={enabled} />
+        Send me the daily email
+      </label>
+      <input type="hidden" name="digest[field_ids][]" value="" />
+      {#if allFields.length}
+        <fieldset class="space-y-3 {enabled ? '' : 'opacity-60'}">
+          <legend class="text-sm font-medium">Fields it covers</legend>
+          <p class="text-sm text-ink-muted">
+            New fields are included, unless their farm or operation is left out entirely.
+            {pickedCount(allFields)} of {allFields.length} included.
+          </p>
+          {#each digest.groups as group (group.id)}
+            {@const fields = groupFields(group)}
+            {#if fields.length}
+              <div class="space-y-2">
+                {#if severalGroups}
+                  <label class="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={pickedCount(fields) === fields.length}
+                      {@attach mixed(fields)}
+                      onchange={(event) => pickAll(fields, event.currentTarget.checked)}
+                    />
+                    {group.name}
+                  </label>
+                {/if}
+                {#each group.farms as farm (farm.id)}
+                  {#if farm.fields.length}
+                    <div class="space-y-1 {severalGroups ? 'pl-6' : ''}">
+                      <label class="flex items-center gap-2 text-sm font-medium">
+                        <input
+                          type="checkbox"
+                          checked={pickedCount(farm.fields) === farm.fields.length}
+                          {@attach mixed(farm.fields)}
+                          onchange={(event) => pickAll(farm.fields, event.currentTarget.checked)}
+                        />
+                        {farm.name}
+                      </label>
+                      <div class="grid gap-1 pl-6 sm:grid-cols-2">
+                        {#each farm.fields as field (field.id)}
+                          <label class="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              name="digest[field_ids][]"
+                              value={field.id}
+                              checked={picked.has(field.id)}
+                              onchange={(event) => pickAll([field], event.currentTarget.checked)}
+                            />
+                            <span>{field.name} <span class="text-ink-muted">· {field.pivot}</span></span>
+                          </label>
+                        {/each}
+                      </div>
+                    </div>
+                  {/if}
+                {/each}
+              </div>
+            {/if}
+          {/each}
+        </fieldset>
+      {:else}
+        <p class="text-sm text-ink-muted">Once you've added fields, every one of them is included.</p>
+      {/if}
+      <Button type="submit" disabled={processing}>Save daily email settings</Button>
     {/snippet}
   </Form>
 </section>
