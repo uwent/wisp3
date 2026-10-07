@@ -9,6 +9,7 @@
   import Button from '@/lib/components/Button.svelte'
   import EditableCell from '@/lib/components/EditableCell.svelte'
   import GlossaryText from '@/lib/components/GlossaryText.svelte'
+  import SeasonDetails from '@/lib/components/SeasonDetails.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import Term from '@/lib/components/Term.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
@@ -16,6 +17,7 @@
   import { outlook as outlookFor } from '@/lib/outlook'
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
+  import { seasonStats } from '@/lib/seasonStats'
   import { formatNumber, parseNumber, units as unitsFor } from '@/lib/units'
   import { exportPlanting, fieldDays, fieldGroups, fields, pivots, setup } from '@/routes'
   import type { Field, FieldDay, Planting, PlantingSummary, WeatherPanelDay } from '@/types/serializers'
@@ -51,6 +53,7 @@
   const hasDry = $derived(summary?.projection.some((day) => day.dry_ad !== null) ?? false)
   // The operation's rainfall setting, which a field follows unless it has its own
   const operationUsesModel = $derived(page.props.auth.group?.use_model_precip ?? true)
+  const stats = $derived(days.length ? seasonStats(days) : null)
   const rainSetting = $derived(field.use_model_precip === null ? '' : String(field.use_model_precip))
   // [value, label, hint]: blank follows the operation
   const rainOptions = $derived([
@@ -258,14 +261,15 @@
       </dl>
       {#if !summary.use_model_precip}
         <p class="mt-2 text-xs">
-          Rain: only what you enter, and the forecast's ahead ·
-          <a href="#field-settings" class="text-brand-600 hover:underline">change</a>
+          Rain: <Term id="entered_rain_only">only what you enter</Term>, and the forecast's ahead ·
+          <a href="#season-details" class="text-brand-600 hover:underline">change</a>
         </p>
       {/if}
       {#if summary.totals.entered_rain_days}
         <p class="mt-2 text-xs text-ink-muted">
           On the {summary.totals.entered_rain_days} days with entered rain, your gauge read
           {units.format('depth', summary.totals.entered_rain)} and the model {units.format('depth', summary.totals.entered_rain_model)}.
+          <a href="#season-details" class="text-brand-600 hover:underline">Compare day by day</a>
         </p>
       {/if}
     </div>
@@ -518,9 +522,12 @@
   </WeatherSection>
 {/if}
 
-<!-- Settings for this field's balance (not its setup, which is on the setup page) -->
-<section id="field-settings" class="scroll-mt-4 space-y-3 rounded-lg border border-line bg-surface-raised p-4">
-  <h2 class="font-medium">Field settings</h2>
+<!-- The season in numbers, and settings for this field's balance (its setup is on the setup page) -->
+<section id="season-details" class="scroll-mt-4 space-y-4 rounded-lg border border-line bg-surface-raised p-4">
+  <h2 class="font-medium">{stats && planting ? 'Season details and settings' : 'Field settings'}</h2>
+  {#if stats && planting && summary}
+    <SeasonDetails {stats} {units} useModelPrecip={summary.use_model_precip} />
+  {/if}
   <Form action={fields.update(field.id)} class="max-w-xl space-y-3" options={{ preserveScroll: true }}>
     {#snippet children({ processing })}
       <fieldset class="space-y-2">

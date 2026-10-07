@@ -155,6 +155,26 @@ test('planned irrigation updates the projection', async ({ page }) => {
   await expect(nextAd).toHaveText(before!)
 })
 
+test('a field switches to entered rain only and back', async ({ page }) => {
+  await page.goto(await firstFieldPath(page))
+  const details = page.locator('#season-details')
+  await expect(details.getByRole('heading', { name: 'Season details and settings' })).toBeVisible()
+  await expect(details).toContainText('Your gauge and the model')
+  const setting = (name: RegExp) => details.getByRole('radio', { name })
+  const note = page.getByText("Rain: only what you enter, and the forecast's ahead")
+
+  await setting(/^Only the rain you enter/).check()
+  await details.getByRole('button', { name: 'Save' }).click()
+  await expect(note).toBeVisible()
+  await expect(details).toContainText('Modeled, left out of the balance')
+
+  // Back to following the operation, as the seed had it
+  await setting(/^The operation's setting/).check()
+  await details.getByRole('button', { name: 'Save' }).click()
+  await expect(note).toBeHidden()
+  await expect(setting(/^The operation's setting/)).toBeChecked()
+})
+
 test('daily entry saves rain for a field', async ({ page }) => {
   await page.goto('/daily')
   const rain = page.getByLabel(/^Rain on /).first()

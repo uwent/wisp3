@@ -605,14 +605,14 @@ Decided 2026-10-07 (Ben): some growers want the balance to use only the rain the
 - [x] `weatherPanels(units, { fieldRain })`, from `days` and `forecast_days`: an entered rain bar where there's an entry, with the modeled precipitation as a hollow, dashed bar behind it (the soil-water chart's style); for entered-only fields every modeled bar not used by the balance is hollow. The lower panel gets two running totals: modeled, and used by the balance. The section intro and the chart's info text say so. vitest for overrides, entered-only and no `fieldRain`. *(Entered rain is a bar beside the model's stack, like snowfall, rather than over it; the tooltip marks outlined amounts "not used".)*
 
 **D. Season details and settings card** (at the bottom of the field page, after the weather)
-- [ ] The rain setting: operation default (named) / modeled, replaced by my entries / only rain I enter. Saving reloads the season.
-- [ ] Statistics through today, computed in the browser from `days` (`lib/seasonStats.ts`, pure and unit tested):
+- [x] The rain setting: operation default (named) / modeled, replaced by my entries / only rain I enter. Saving reloads the season.
+- [x] Statistics through today, computed in the browser from `days` (`lib/seasonStats.ts`, pure and unit tested):
   - Entered rain: total, readings, days with rain. Modeled rain: total, days with rain (≥ 0.01″, measurable). For entered-only fields, the modeled rain days and total the balance left out.
   - Irrigation: total, days, typical interval (median days between irrigations), typical amount (median).
   - Deep drainage: season total.
   - Gauge vs model, by day: both rained; you entered rain the model didn't have; you entered 0 where the model had rain; model rain with no reading (not counted as a disagreement: no reading may mean no rain or no check). On days both rained: how often they disagree (by more than the larger of 0.1″ and 25%), the typical adjustment (median entered − modeled), and the ratio of the totals.
-- [ ] The summary card's "your gauge read … the model …" sentence links to the card. A glossary entry for the rain setting; guidance on when to choose entered-only (a gauge read every day it rains).
-- [ ] Playwright: switch a field to entered-only, see the badge, totals and dry line change, switch back.
+- [x] The summary card's "your gauge read … the model …" sentence links to the card. A glossary entry for the rain setting; guidance on when to choose entered-only (a gauge read every day it rains). *(Glossary `entered_rain_only`; the About page's Weather section and its rain advice.)*
+- [x] Playwright: switch a field to entered-only, see the badge, totals and dry line change, switch back.
 - **Exit:** switching a demo field to entered-only and back restores the same balance; its projection shows both cases; the precipitation chart and the details card agree with the daily grid.
 
 ### Phase 7: Map

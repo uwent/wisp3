@@ -103,6 +103,16 @@ export const GLOSSARY: GlossaryEntry[] = [
       'Water that drains below the root zone when rain or irrigation fills it past field capacity. It carries ' +
       'nutrients toward groundwater, so keeping it low saves water and fertilizer.',
   },
+  {
+    id: 'entered_rain_only',
+    term: 'Entered rain only',
+    matches: ['only the rain you enter', 'only the rain we enter'],
+    definition:
+      'A rainfall setting for an operation or a single field: the balance counts only the rain you enter, and ' +
+      'days without a reading as dry, instead of the modeled rain. The days ahead still use the forecast’s rain, ' +
+      'and the outlook also says when the field would need water if none fell. For a gauge you read every day it ' +
+      'rains; nothing is deleted, so you can switch back.',
+  },
 ]
 
 const byId = new Map(GLOSSARY.map((entry) => [entry.id, entry]))

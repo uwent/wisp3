@@ -83,7 +83,8 @@
       roughly 9 km grid cell it sits in, refreshed at 5 am, 11 am and 5 pm Central: rain, reference ET (FAO-56
       Penman-Monteith), temperatures, humidity, wind, and modeled soil moisture and temperature. Past days are revised as
       better data comes in, then fixed. You can use your own rain gauge readings in place of the modeled rain on any day,
-      or, for a whole operation, use only the rain you enter.
+      or, for a whole operation or a single field, use only the rain you enter. The days ahead still use the forecast's
+      rain, and such a field's outlook also says when it would need water if no rain fell.
     </p>
 
     <h3>The outlook</h3>
@@ -184,7 +185,9 @@
       </li>
       <li>
         <strong>Rain:</strong> rain is patchy, and the weather model's estimate for your pivot can miss a storm or catch one
-        that missed you. A gauge at or near the field, read daily, is the single best correction.
+        that missed you. A gauge at or near the field, read daily, is the single best correction. If you read it every day
+        it rains, set the field to use only the rain you enter; the season details on its page compare your gauge with the
+        model.
       </li>
       <li>
         <strong>Soil moisture:</strong> a measured root zone moisture resets the balance, correcting any drift. Enter one about
