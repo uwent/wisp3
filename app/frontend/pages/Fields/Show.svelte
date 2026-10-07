@@ -119,7 +119,6 @@
   )
 
   type Column = 'rain_in' | 'irrigation_in' | 'soil_moisture_pct' | 'canopy' | 'notes'
-  const COLUMNS: Column[] = ['rain_in', 'irrigation_in', 'soil_moisture_pct', 'canopy', 'notes']
 
   function inputText(day: FieldDay, column: Column): string {
     switch (column) {

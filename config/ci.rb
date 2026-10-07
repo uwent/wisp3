@@ -4,6 +4,7 @@ CI.run do
 
   step "Style: Ruby", "bundle exec standardrb"
   step "Style: Frontend", "npm run format:check"
+  step "Lint: Frontend", "npm run lint"
   step "Types: Svelte/TypeScript", "npm run check"
   step "Generated types and routes are current", "TYPELIZER=1 bin/rails typelizer:generate && git diff --exit-code app/frontend/types/serializers app/frontend/routes"
 

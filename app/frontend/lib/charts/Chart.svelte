@@ -13,6 +13,7 @@
     build,
     height = '18rem',
     label,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-useless-assignment -- write-only: parents read it with bind:modified
     modified = $bindable(false),
   }: {
     build: (palette: Palette, view?: ChartView) => EChartsCoreOption
