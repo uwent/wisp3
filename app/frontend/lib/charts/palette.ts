@@ -10,6 +10,7 @@ export type Palette = {
   surface: string
   rain: string
   irrigation: string
+  canopy: string
   ad: string
   warm: string
   snow: string
@@ -25,6 +26,7 @@ const TOKENS = {
   surface: '--color-surface-raised',
   rain: '--color-chart-rain',
   irrigation: '--color-chart-irrigation',
+  canopy: '--color-chart-canopy',
   ad: '--color-chart-ad',
   warm: '--color-chart-warm',
   snow: '--color-chart-snow',

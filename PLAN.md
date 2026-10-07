@@ -395,7 +395,9 @@ Every ported method is checked against this list. Items marked **Hotfix** should
 ### Field status chart (ECharts)
 
 - X axis: season dates; default view about 21 days back + 16 days forward, zoomable to the full season.
-- Bars, upward on a secondary axis: rain (blue), irrigation (teal), planned irrigation (hatched).
+- Small multiples sharing the date axis (no second y axis): AD on top; water in below it; the running totals of rain and irrigation over the days in view (as the weather precipitation chart); the crop canopy (percent cover or LAI) at the bottom.
+- Water in: rain (blue) and irrigation (orange) stacked, planned irrigation hatched, and modeled rain the balance didn't use as a dashed outline beside the rain (replaced by an entry, or left out on a field using only entered rain).
+- Canopy (green): the balance's daily value, interpolated between readings, with a dot for each reading.
 - Line: AD (inches) observed (solid) → deterministic projection (dashed).
 - Band: ensemble P10–P90 for future days.
 - Horizontal lines: AD_max (field capacity), target, 0 (MAD trigger), AD_pwp (wilting point).

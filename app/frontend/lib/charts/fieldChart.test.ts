@@ -8,7 +8,7 @@ import type { Palette } from './palette'
 import { weatherPanels } from './weatherCharts'
 
 const palette: Palette = {
-  ink: '#000', inkMuted: '#666', line: '#ddd', surface: '#fff', rain: '#00f', irrigation: '#0a0', ad: '#40a', warm: '#f60', snow: '#ccc',
+  ink: '#000', inkMuted: '#666', line: '#ddd', surface: '#fff', rain: '#00f', irrigation: '#f80', canopy: '#0a0', ad: '#40a', warm: '#f60', snow: '#ccc',
   depths: ['#1', '#2', '#3', '#4'], status: { full: '#00f', ok: '#0f0', caution: '#fa0', irrigate: '#f00' }, dark: false,
 }
 
@@ -35,7 +35,7 @@ describe('field chart', () => {
     expect(lines[2].value).toBeCloseTo(7) // AD = 0
   })
 
-  it('outlines modeled rain only where an entry replaced it', () => {
+  it('outlines modeled rain only where an entry replaced it, on a field using modeled rain', () => {
     const days = [
       day('2026-07-01', { rain: 1, rain_source: 'entered', rain_model: 0.4 }),
       day('2026-07-02', { rain: 0.3, rain_source: 'model', rain_model: 0.3 }),
@@ -47,6 +47,50 @@ describe('field chart', () => {
     expect(series.find((s) => s.name === 'Rain')!.data).toEqual([1, 0.3, 0])
     // the reading day is marked on the AD line
     expect(series.find((s) => s.name === 'Allowable depletion')!.data[2]).toMatchObject({ symbol: 'circle' })
+  })
+
+  it('dodges the modeled rain beside the rain, and outlines it on days a field using only entered rain left it out', () => {
+    const days = [day('2026-07-01', { rain: 1, rain_source: 'entered', rain_model: 0.4 }), day('2026-07-02', { rain: 0, rain_source: 'none', rain_model: 0.3 })]
+    const series = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette }).series as {
+      name: string
+      data: unknown[]
+      barGap?: string
+    }[]
+    const modeled = series.find((s) => s.name === 'Modeled rain')!
+    expect(modeled.data).toEqual([0.4, 0.3])
+    expect(modeled.barGap).not.toBe('-100%')
+  })
+
+  it('totals rain and irrigation over the days in view, with the modeled rain when the balance left some out', () => {
+    const days = [
+      day('2026-07-01', { rain: 0.5, rain_model: 0.5 }),
+      day('2026-07-02', { rain: 1, rain_source: 'entered', rain_model: 0.4, irrigation: 0.6, irrigation_source: 'entered' }),
+      day('2026-07-03', { rain: 0.2, rain_model: 0.2 }),
+    ]
+    const totals = (view?: { start: number; end: number }) => {
+      const series = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette, view }).series as {
+        name: string
+        data: (number | null)[]
+        xAxisIndex: number
+      }[]
+      return Object.fromEntries(series.filter((s) => s.xAxisIndex === 2).map((s) => [s.name, s.data]))
+    }
+    expect(totals()).toEqual({ 'Rain total': [0.5, 1.5, 1.7], 'Modeled rain total': [0.5, 0.9, 1.1], 'Irrigation total': [0, 0.6, 0.6] })
+    expect(totals({ start: 1, end: 2 })['Rain total']).toEqual([null, 1, 1.2])
+    const plain = days.map((d) => ({ ...d, rain: d.rain_model, rain_source: 'model' as const }))
+    const names = (fieldChartOption({ days: plain, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette }).series as { name: string }[]).map((s) => s.name)
+    expect(names).not.toContain('Modeled rain total')
+  })
+
+  it('draws the canopy as modeled, with dots for the readings', () => {
+    const days = [day('2026-07-01', { canopy: 20, canopy_entered: 20 }), day('2026-07-02', { canopy: 25 }), day('2026-07-03', { canopy: 30.456 })]
+    const option = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette })
+    const series = option.series as { name: string; type: string; data: unknown[]; xAxisIndex: number }[]
+    expect(series.find((s) => s.name === 'Canopy cover')).toMatchObject({ type: 'line', xAxisIndex: 3, data: [20, 25, 30.46] })
+    expect(series.find((s) => s.name === 'Cover readings')).toMatchObject({ type: 'line', symbol: 'circle', lineStyle: { width: 0 }, xAxisIndex: 3, data: [20, null, null] })
+    const lai = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette, canopy: 'lai' })
+    expect((lai.series as { name: string }[]).map((s) => s.name)).toContain('LAI readings')
+    expect((lai.yAxis as { name: string }[])[3].name).toBe('LAI')
   })
 
   it('continues the line dashed through the forecast, with the ensemble range and planned irrigation', () => {

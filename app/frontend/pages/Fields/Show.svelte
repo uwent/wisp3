@@ -318,9 +318,9 @@
         </div>
       </div>
       <Chart
-        height="26rem"
-        label="Soil water and water inputs over the season; the daily table below has the same values"
-        build={(palette) =>
+        height="40rem"
+        label="Soil water, water inputs and their totals, and the crop canopy over the season; the daily table below has the same values"
+        build={(palette, view) =>
           fieldChartOption({
             days,
             forecastDays: forecast_days,
@@ -329,10 +329,14 @@
             units,
             mode: chartMode,
             palette,
+            canopy: lai ? 'lai' : 'cover',
+            view,
           })}
       />
       <p class="text-xs text-ink-muted">
-        Dots on the line mark soil moisture readings. A dashed outline shows the modeled rain on days you entered your own.
+        Dots on the line mark soil moisture readings. A dashed outline beside the rain shows the modeled rain where the balance
+        didn't use it. The totals add up rain and irrigation from the first day in view, so zooming changes them. The bottom
+        panel is the crop's {lai ? 'LAI' : 'canopy cover'} as the balance models it, with dots for your readings.
         {#if forecast_days.length}
           After today the dashed line follows the forecast, with planned irrigation; the shaded band is the range of
           {summary?.ensemble_size ? `${summary.ensemble_size} forecast scenarios (10th to 90th percentile)` : 'forecast scenarios, once they arrive'}.

@@ -9,7 +9,7 @@ import type { Palette } from './palette'
 import { defaultView, type FieldRain, runningTotal, weatherChartOption, weatherPanels } from './weatherCharts'
 
 const palette: Palette = {
-  ink: '#000', inkMuted: '#666', line: '#ddd', surface: '#fff', rain: '#00f', irrigation: '#0a0', ad: '#40a', warm: '#f60', snow: '#ccc',
+  ink: '#000', inkMuted: '#666', line: '#ddd', surface: '#fff', rain: '#00f', irrigation: '#f80', canopy: '#0a0', ad: '#40a', warm: '#f60', snow: '#ccc',
   depths: ['#1', '#2', '#3', '#4'], status: { full: '#00f', ok: '#0f0', caution: '#fa0', irrigate: '#f00' }, dark: false,
 }
 

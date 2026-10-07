@@ -5,6 +5,9 @@ import type { Quantity, Units } from '../units'
 import type { ChartView, EChartsCoreOption } from './echarts'
 import { DEFAULT_WINDOW_DAYS } from './fieldChart'
 import { baseOption, type Palette } from './palette'
+import { runningTotal } from './totals'
+
+export { runningTotal }
 
 // The weather panels on a field's page: small multiples, one measure each, sharing the date axis,
 // with the forecast days shaded
@@ -153,12 +156,12 @@ export function weatherPanels(
       bars: 'group',
       series: [
         { name: 'Reference ET', color: (p) => p.warm, value: (day) => depth(day.et0_in) },
-        ...(cropEt ? [{ name: 'Crop ET', color: (p: Palette) => p.irrigation, value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null) }] : []),
+        ...(cropEt ? [{ name: 'Crop ET', color: (p: Palette) => p.canopy, value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null) }] : []),
       ],
       totals: [
         { name: 'Reference ET total', color: (p) => p.warm, value: (day) => depth(day.et0_in) },
         ...(cropEt
-          ? [{ name: 'Crop ET total', color: (p: Palette) => p.irrigation, value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null) }]
+          ? [{ name: 'Crop ET total', color: (p: Palette) => p.canopy, value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null) }]
           : []),
       ],
     },
@@ -229,7 +232,7 @@ export function weatherPanels(
         'afternoons raise crop water use; long humid spells favor leaf diseases such as late blight and white mold.',
       series: [
         { name: 'Daily mean', color: (p) => p.rain, value: (day) => day.rh_mean_pct },
-        { name: 'Daily low', color: (p) => p.irrigation, value: (day) => day.rh_min_pct },
+        { name: 'Daily low', color: (p) => p.canopy, value: (day) => day.rh_min_pct },
       ],
     },
     {
@@ -295,18 +298,6 @@ function legendSeries(series: Series[], days: WeatherPanelDay[], view: ChartView
 export function defaultView(days: WeatherPanelDay[]): ChartView {
   const observed = days.filter((day) => !day.forecast).length
   return { start: Math.max(0, observed - DEFAULT_WINDOW_DAYS), end: days.length - 1 }
-}
-
-/** A running total of value over the days in view, null outside them and on days without a value */
-export function runningTotal(days: WeatherPanelDay[], value: Series['value'], view: ChartView): (number | null)[] {
-  let total = 0
-  return days.map((day, i) => {
-    if (i < view.start || i > view.end) return null
-    const amount = value(day)
-    if (amount === null) return null
-    total += amount
-    return Number(total.toFixed(2))
-  })
 }
 
 export function weatherChartOption(
