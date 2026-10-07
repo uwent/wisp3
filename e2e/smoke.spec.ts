@@ -123,7 +123,10 @@ test('an open grid cell keeps its column width, and clicking another cell opens 
   await page.goto(await firstFieldPath(page))
   const cell = (row: number, col: number) => page.locator(`[data-grid="days"][data-row="${row}"][data-col="${col}"]`)
   const widths = () => page.locator('table:has([data-grid="days"]) thead th').evaluateAll((ths) => ths.map((th) => Math.round(th.getBoundingClientRect().width)))
+  // The table renders after the page's first paint; wait as long as a click would
+  await cell(2, 0).waitFor()
   const before = await widths()
+  expect(before.length).toBeGreaterThan(0)
 
   await cell(2, 0).click()
   await expect(page.getByRole('textbox', { name: /^Rain, / })).toBeFocused()
