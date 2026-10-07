@@ -93,16 +93,31 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   const view = input.view ?? { start: openingStart, end: all.length - 1 }
   const anyUnused = all.some(modelUnused)
   const totals = [
-    { name: RAIN_TOTAL, color: palette.rain, type: 'solid', data: runningTotal(all, (day) => depth(day.rain), view) },
+    { id: 'total-rain', group: RAIN, label: 'Rain total', color: palette.rain, type: 'solid', data: runningTotal(all, (day) => depth(day.rain), view) },
     ...(anyUnused
-      ? [{ name: MODELED_TOTAL, color: palette.rain, type: 'dashed', data: runningTotal(all, (day) => depth(day.rain_model), view) }]
+      ? [
+          {
+            id: 'total-modeled',
+            group: RAIN,
+            label: 'Modeled rain total',
+            color: palette.rain,
+            type: 'dashed',
+            data: runningTotal(all, (day) => depth(day.rain_model), view),
+          },
+        ]
       : []),
-    { name: IRRIGATION_TOTAL, color: palette.irrigation, type: 'solid', data: runningTotal(all, (day) => depth(day.irrigation), view) },
+    {
+      id: 'total-irrigation',
+      group: IRRIGATION,
+      label: 'Irrigation total',
+      color: palette.irrigation,
+      type: 'solid',
+      data: runningTotal(all, (day) => depth(day.irrigation), view),
+    },
   ]
 
   // The canopy as modeled each day (interpolated between readings), and the readings themselves
   const canopyName = canopy === 'lai' ? 'LAI' : 'Canopy cover'
-  const canopyReadings = `${canopy === 'lai' ? 'LAI' : 'Cover'} readings`
 
   const forecastArea = forecastDays.length
     ? {
@@ -126,19 +141,11 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       left: 0,
       right: 0,
       textStyle: { color: palette.ink, fontSize: 12 },
-      data: [
-        balanceName,
-        ...(forecastDays.length ? ['Forecast'] : []),
-        ...(hasDry ? [DRY] : []),
-        ...(hasBand ? [RANGE] : []),
-        'Rain',
-        'Modeled rain',
-        'Irrigation',
-        ...(planned ? ['Planned irrigation'] : []),
-        ...totals.map((total) => total.name),
-        canopyName,
-        canopyReadings,
-      ],
+      // One entry per measure: series sharing a name show and hide together (the balance with its
+      // forecast and range; rain with the modeled rain and the totals; irrigation with planned and its
+      // total; the canopy with its readings). The thresholds, today and the forecast shading are on
+      // series outside the legend, so they always stay.
+      data: [balanceName, ...(hasDry ? [DRY] : []), RAIN, IRRIGATION, canopyName],
     },
     tooltip: {
       ...base.tooltip,
@@ -214,8 +221,11 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       },
     ],
     series: [
-      // Not drawn: the slider outlines the first series, so this one carries AD through the forecast
+      // Not drawn and not in the legend: the slider outlines the first series, so this one carries AD
+      // through the forecast. It also carries what always stays on the chart: the thresholds, the
+      // zone below the trigger point, today, and the forecast shading.
       {
+        id: 'slider',
         name: SLIDER,
         type: 'line',
         xAxisIndex: 0,
@@ -225,8 +235,52 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         lineStyle: { opacity: 0 },
         tooltip: { show: false },
         silent: true,
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          data: [
+            ...lines.map((line) => ({
+              yAxis: line.value,
+              name: line.name,
+              lineStyle: { color: line.color, type: line.dashed ? 'dashed' : 'solid', width: 1 },
+              label: { formatter: line.name, position: 'end', color: palette.inkMuted, fontSize: 11 },
+            })),
+            ...(forecastDays.length
+              ? [
+                  {
+                    xAxis: today!.date,
+                    lineStyle: { color: palette.inkMuted, type: 'solid', width: 1 },
+                    label: { formatter: 'Today', position: 'insideEndTop', color: palette.inkMuted, fontSize: 10 },
+                  },
+                ]
+              : []),
+          ],
+        },
+        // Below the trigger point, shaded faintly in the irrigate color, and the forecast
+        markArea: {
+          silent: true,
+          data: [
+            [{ yAxis: zeroLine, itemStyle: { color: palette.status.irrigate, opacity: 0.07 } }, { yAxis: wiltingLine }],
+            ...(forecastArea ? forecastArea.data.map(([from, to]) => [{ ...from, itemStyle: forecastArea.itemStyle, label: forecastArea.label }, to]) : []),
+          ],
+        },
       },
+      // The forecast shading on the panels below, on series of their own for the same reason
+      ...(forecastArea
+        ? [1, 2, 3].map((index) => ({
+            id: `shading-${index}`,
+            name: SHADING,
+            type: 'line',
+            xAxisIndex: index,
+            yAxisIndex: index,
+            data: [],
+            tooltip: { show: false },
+            silent: true,
+            markArea: { ...forecastArea, label: { show: false } },
+          }))
+        : []),
       {
+        id: 'balance',
         name: balanceName,
         type: 'line',
         xAxisIndex: 0,
@@ -236,28 +290,13 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         showSymbol: true,
         lineStyle: { width: 2, color: palette.ad },
         itemStyle: { color: palette.ad, borderColor: palette.surface, borderWidth: 2 },
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          data: lines.map((line) => ({
-            yAxis: line.value,
-            name: line.name,
-            lineStyle: { color: line.color, type: line.dashed ? 'dashed' : 'solid', width: 1 },
-            label: { formatter: line.name, position: 'end', color: palette.inkMuted, fontSize: 11 },
-          })),
-        },
-        // Below the trigger point, shaded faintly in the irrigate color
-        markArea: {
-          silent: true,
-          itemStyle: { color: palette.status.irrigate, opacity: 0.07 },
-          data: [[{ yAxis: zeroLine }, { yAxis: wiltingLine }]],
-        },
       },
       // The ensemble's 10th–90th percentile range: an invisible base at the 10th, then the width
       ...(hasBand
         ? [
             {
-              name: 'Range low',
+              id: 'range-low',
+              name: balanceName,
               type: 'line',
               xAxisIndex: 0,
               yAxisIndex: 0,
@@ -270,7 +309,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
               silent: true,
             },
             {
-              name: RANGE,
+              id: 'range',
+              name: balanceName,
               type: 'line',
               xAxisIndex: 0,
               yAxisIndex: 0,
@@ -288,7 +328,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       ...(forecastDays.length
         ? [
             {
-              name: 'Forecast',
+              id: 'forecast',
+              name: balanceName,
               type: 'line',
               xAxisIndex: 0,
               yAxisIndex: 0,
@@ -296,20 +337,13 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
               symbol: 'none',
               lineStyle: { width: 2, color: palette.ad, type: 'dashed' },
               itemStyle: { color: palette.ad },
-              markArea: forecastArea,
-              markLine: {
-                silent: true,
-                symbol: 'none',
-                data: [{ xAxis: today!.date }],
-                lineStyle: { color: palette.inkMuted, type: 'solid', width: 1 },
-                label: { formatter: 'Today', position: 'insideEndTop', color: palette.inkMuted, fontSize: 10 },
-              },
             },
           ]
         : []),
       ...(hasDry
         ? [
             {
+              id: 'dry',
               name: DRY,
               type: 'line',
               xAxisIndex: 0,
@@ -322,7 +356,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
           ]
         : []),
       {
-        name: 'Rain',
+        id: 'rain',
+        name: RAIN,
         type: 'bar',
         stack: 'water',
         xAxisIndex: 1,
@@ -331,10 +366,10 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         data: all.map((day, i) => (i < observed ? round(depth(day.rain)) : { value: round(depth(day.rain)), itemStyle: { opacity: 0.4 } })),
         itemStyle: { color: palette.rain },
         barMaxWidth: 12,
-        markArea: forecastArea && { ...forecastArea, label: { show: false } },
       },
       {
-        name: 'Irrigation',
+        id: 'irrigation',
+        name: IRRIGATION,
         type: 'bar',
         stack: 'water',
         xAxisIndex: 1,
@@ -347,7 +382,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       ...(planned
         ? [
             {
-              name: 'Planned irrigation',
+              id: 'planned',
+              name: IRRIGATION,
               type: 'bar',
               stack: 'water',
               xAxisIndex: 1,
@@ -367,7 +403,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         : []),
       // Modeled rain the balance didn't use, as an outline beside the bar (as the precipitation chart)
       {
-        name: 'Modeled rain',
+        id: 'modeled-rain',
+        name: RAIN,
         type: 'bar',
         xAxisIndex: 1,
         yAxisIndex: 1,
@@ -376,8 +413,9 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         itemStyle: { color: 'transparent', borderColor: palette.rain, borderType: 'dashed', borderWidth: 1.5 },
         barMaxWidth: 12,
       },
-      ...totals.map((total, i) => ({
-        name: total.name,
+      ...totals.map((total) => ({
+        id: total.id,
+        name: total.group,
         type: 'line',
         xAxisIndex: 2,
         yAxisIndex: 2,
@@ -385,9 +423,9 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         symbol: 'none',
         lineStyle: { width: 2, color: total.color, type: total.type },
         itemStyle: { color: total.color },
-        ...(i === 0 && forecastArea ? { markArea: { ...forecastArea, label: { show: false } } } : {}),
       })),
       {
+        id: 'canopy',
         name: canopyName,
         type: 'line',
         xAxisIndex: 3,
@@ -396,11 +434,11 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         symbol: 'none',
         lineStyle: { width: 2, color: palette.canopy },
         itemStyle: { color: palette.canopy },
-        ...(forecastArea ? { markArea: { ...forecastArea, label: { show: false } } } : {}),
       },
       {
         // Markers only (a line with no line, as scatter isn't bundled)
-        name: canopyReadings,
+        id: 'canopy-readings',
+        name: canopyName,
         type: 'line',
         xAxisIndex: 3,
         yAxisIndex: 3,
@@ -418,12 +456,11 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   }
 }
 
-const RANGE = 'Forecast range (10–90%)'
-const RAIN_TOTAL = 'Rain total'
-const MODELED_TOTAL = 'Modeled rain total'
-const IRRIGATION_TOTAL = 'Irrigation total'
+const RAIN = 'Rain'
+const IRRIGATION = 'Irrigation'
 const DRY = 'If no rain falls'
 const SLIDER = 'Slider outline'
+const SHADING = 'Forecast shading'
 
 function tooltip(
   days: FieldDay[],
@@ -431,7 +468,7 @@ function tooltip(
   summary: PlantingSummary,
   params: unknown,
   units: Units,
-  { canopy, totals }: { canopy: 'cover' | 'lai'; totals: { name: string; data: (number | null)[] }[] },
+  { canopy, totals }: { canopy: 'cover' | 'lai'; totals: { label: string; data: (number | null)[] }[] },
 ): string {
   const list = (Array.isArray(params) ? params : [params]) as { dataIndex: number }[]
   const index = list.length ? list[0].dataIndex : -1
@@ -459,7 +496,7 @@ function tooltip(
     // Running totals are already in display units
     ...totals.flatMap((total) => {
       const value = total.data[index]
-      return value === null ? [] : [[`${total.name} in view`, `${value.toFixed(2)} ${units.label('depth')}`]]
+      return value === null ? [] : [[`${total.label} in view`, `${value.toFixed(2)} ${units.label('depth')}`]]
     }),
     [
       canopy === 'lai' ? 'LAI' : 'Canopy cover',

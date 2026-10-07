@@ -42,21 +42,22 @@ describe('field chart', () => {
       day('2026-07-03', { soil_moisture_pct: 9, moisture_source: 'entered' }),
     ]
     const option = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette })
-    const series = option.series as { name: string; data: unknown[] }[]
-    expect(series.find((s) => s.name === 'Modeled rain')!.data).toEqual([0.4, null, null])
-    expect(series.find((s) => s.name === 'Rain')!.data).toEqual([1, 0.3, 0])
+    const series = option.series as { id: string; name: string; data: unknown[] }[]
+    expect(series.find((s) => s.id === 'modeled-rain')!.data).toEqual([0.4, null, null])
+    expect(series.find((s) => s.id === 'rain')!.data).toEqual([1, 0.3, 0])
     // the reading day is marked on the AD line
-    expect(series.find((s) => s.name === 'Allowable depletion')!.data[2]).toMatchObject({ symbol: 'circle' })
+    expect(series.find((s) => s.id === 'balance')!.data[2]).toMatchObject({ symbol: 'circle' })
   })
 
   it('dodges the modeled rain beside the rain, and outlines it on days a field using only entered rain left it out', () => {
     const days = [day('2026-07-01', { rain: 1, rain_source: 'entered', rain_model: 0.4 }), day('2026-07-02', { rain: 0, rain_source: 'none', rain_model: 0.3 })]
     const series = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette }).series as {
+      id: string
       name: string
       data: unknown[]
       barGap?: string
     }[]
-    const modeled = series.find((s) => s.name === 'Modeled rain')!
+    const modeled = series.find((s) => s.id === 'modeled-rain')!
     expect(modeled.data).toEqual([0.4, 0.3])
     expect(modeled.barGap).not.toBe('-100%')
   })
@@ -69,27 +70,27 @@ describe('field chart', () => {
     ]
     const totals = (view?: { start: number; end: number }) => {
       const series = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette, view }).series as {
-        name: string
+        id: string
         data: (number | null)[]
-        xAxisIndex: number
       }[]
-      return Object.fromEntries(series.filter((s) => s.xAxisIndex === 2).map((s) => [s.name, s.data]))
+      return Object.fromEntries(series.filter((s) => s.id.startsWith('total-')).map((s) => [s.id, s.data]))
     }
-    expect(totals()).toEqual({ 'Rain total': [0.5, 1.5, 1.7], 'Modeled rain total': [0.5, 0.9, 1.1], 'Irrigation total': [0, 0.6, 0.6] })
-    expect(totals({ start: 1, end: 2 })['Rain total']).toEqual([null, 1, 1.2])
+    expect(totals()).toEqual({ 'total-rain': [0.5, 1.5, 1.7], 'total-modeled': [0.5, 0.9, 1.1], 'total-irrigation': [0, 0.6, 0.6] })
+    expect(totals({ start: 1, end: 2 })['total-rain']).toEqual([null, 1, 1.2])
     const plain = days.map((d) => ({ ...d, rain: d.rain_model, rain_source: 'model' as const }))
-    const names = (fieldChartOption({ days: plain, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette }).series as { name: string }[]).map((s) => s.name)
-    expect(names).not.toContain('Modeled rain total')
+    const ids = (fieldChartOption({ days: plain, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette }).series as { id: string }[]).map((s) => s.id)
+    expect(ids).not.toContain('total-modeled')
   })
 
   it('draws the canopy as modeled, with dots for the readings', () => {
     const days = [day('2026-07-01', { canopy: 20, canopy_entered: 20 }), day('2026-07-02', { canopy: 25 }), day('2026-07-03', { canopy: 30.456 })]
     const option = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette })
-    const series = option.series as { name: string; type: string; data: unknown[]; xAxisIndex: number }[]
-    expect(series.find((s) => s.name === 'Canopy cover')).toMatchObject({ type: 'line', xAxisIndex: 3, data: [20, 25, 30.46] })
-    expect(series.find((s) => s.name === 'Cover readings')).toMatchObject({ type: 'line', symbol: 'circle', lineStyle: { width: 0 }, xAxisIndex: 3, data: [20, null, null] })
+    const series = option.series as { id: string; name: string; type: string; data: unknown[]; xAxisIndex: number }[]
+    expect(series.find((s) => s.id === 'canopy')).toMatchObject({ name: 'Canopy cover', type: 'line', xAxisIndex: 3, data: [20, 25, 30.46] })
+    expect(series.find((s) => s.id === 'canopy-readings')).toMatchObject({ name: 'Canopy cover' })
+    expect(series.find((s) => s.id === 'canopy-readings')).toMatchObject({ type: 'line', symbol: 'circle', lineStyle: { width: 0 }, xAxisIndex: 3, data: [20, null, null] })
     const lai = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette, canopy: 'lai' })
-    expect((lai.series as { name: string }[]).map((s) => s.name)).toContain('LAI readings')
+    expect((lai.series as { id: string; name: string }[]).find((s) => s.id === 'canopy-readings')!.name).toBe('LAI')
     expect((lai.yAxis as { name: string }[])[3].name).toBe('LAI')
   })
 
@@ -106,16 +107,16 @@ describe('field chart', () => {
     const option = fieldChartOption({
       days, forecastDays, summary: { ...summary, projection }, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette,
     })
-    const series = option.series as { name: string; data: unknown[]; stack?: string }[]
-    const named = (name: string) => series.find((s) => s.name === name)!
-    expect(named('Allowable depletion').data).toEqual([{ value: 0.3 }, { value: 0.2 }, null, null])
+    const series = option.series as { id: string; name: string; data: unknown[]; stack?: string }[]
+    const named = (id: string) => series.find((s) => s.id === id)!
+    expect(named('balance').data).toEqual([{ value: 0.3 }, { value: 0.2 }, null, null])
     // From today's AD on
-    expect(named('Forecast').data).toEqual([null, 0.2, 0.1, 0.4])
-    expect(named('Range low').data).toEqual([null, 0.2, 0.05, 0.3])
-    expect(named('Forecast range (10–90%)').data).toEqual([null, 0, 0.15, 0.15])
-    expect(named('Irrigation').data).toEqual([0, 0, null, null])
-    expect(named('Planned irrigation').data).toEqual([null, null, 0, 0.5])
-    expect(named('Rain').data[2]).toMatchObject({ value: 0.2, itemStyle: { opacity: 0.4 } })
+    expect(named('forecast').data).toEqual([null, 0.2, 0.1, 0.4])
+    expect(named('range-low').data).toEqual([null, 0.2, 0.05, 0.3])
+    expect(named('range').data).toEqual([null, 0, 0.15, 0.15])
+    expect(named('irrigation').data).toEqual([0, 0, null, null])
+    expect(named('planned').data).toEqual([null, null, 0, 0.5])
+    expect(named('rain').data[2]).toMatchObject({ value: 0.2, itemStyle: { opacity: 0.4 } })
     // The slider outlines the first series: observed and projected AD
     expect(series[0].data).toEqual([0.3, 0.2, 0.1, 0.4])
   })
@@ -136,11 +137,33 @@ describe('field chart', () => {
     expect((without.series as { name: string }[]).map((s) => s.name)).not.toContain('If no rain falls')
   })
 
+  it('groups the legend by measure, and keeps the thresholds, today and the forecast shading out of it', () => {
+    const days = [day('2026-07-01', { ad: 0.3 }), day('2026-07-02', { ad: 0.2 })]
+    const forecastDays = [day('2026-07-03', { ad: 0.1, irrigation: 0.5, irrigation_source: 'entered' })]
+    const projection = [{ date: '2026-07-03', ad: 0.1, p10: 0.05, p50: 0.1, p90: 0.2, chance: 0.1, dry_ad: null }]
+    const option = fieldChartOption({
+      days, forecastDays, summary: { ...summary, projection }, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette,
+    })
+    expect((option.legend as { data: string[] }).data).toEqual(['Allowable depletion', 'Rain', 'Irrigation', 'Canopy cover'])
+    const series = option.series as { id: string; name: string; markLine?: { data: object[] }; markArea?: { data: unknown[] } }[]
+    const group = (name: string) => series.filter((s) => s.name === name).map((s) => s.id)
+    expect(group('Allowable depletion')).toEqual(['balance', 'range-low', 'range', 'forecast'])
+    expect(group('Rain')).toEqual(['rain', 'modeled-rain', 'total-rain'])
+    expect(group('Irrigation')).toEqual(['irrigation', 'planned', 'total-irrigation'])
+    // On the series outside the legend: four threshold lines and today; the zone below the trigger and the forecast
+    const always = series.find((s) => s.id === 'slider')!
+    expect(always.markLine!.data).toHaveLength(5)
+    expect(always.markLine!.data.at(-1)).toMatchObject({ xAxis: '2026-07-02' })
+    expect(always.markArea!.data).toHaveLength(2)
+    expect(series.filter((s) => s.id.startsWith('shading-')).map((s) => s.markArea!.data)).toHaveLength(3)
+    expect(series.filter((s) => s.id !== 'slider' && !s.id.startsWith('shading-')).every((s) => !s.markLine && !s.markArea)).toBe(true)
+  })
+
   it('leaves the forecast out when there is none', () => {
     const option = fieldChartOption({ days: [day('2026-07-01')], summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette })
-    const names = (option.series as { name: string }[]).map((s) => s.name)
-    expect(names).not.toContain('Forecast')
-    expect(names).not.toContain('Planned irrigation')
+    const ids = (option.series as { id: string }[]).map((s) => s.id)
+    expect(ids).not.toContain('forecast')
+    expect(ids).not.toContain('planned')
   })
 
   it('compares modeled soil moisture with the field capacity in percent', () => {
