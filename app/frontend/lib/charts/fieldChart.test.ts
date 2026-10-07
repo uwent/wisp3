@@ -56,8 +56,8 @@ describe('field chart', () => {
       day('2026-07-04', { ad: 0.4, irrigation: 0.5, irrigation_source: 'entered' }),
     ]
     const projection = [
-      { date: '2026-07-03', ad: 0.1, p10: 0.05, p50: 0.1, p90: 0.2, chance: 0.1 },
-      { date: '2026-07-04', ad: 0.4, p10: 0.3, p50: 0.4, p90: 0.45, chance: 0.2 },
+      { date: '2026-07-03', ad: 0.1, p10: 0.05, p50: 0.1, p90: 0.2, chance: 0.1, dry_ad: null },
+      { date: '2026-07-04', ad: 0.4, p10: 0.3, p50: 0.4, p90: 0.45, chance: 0.2, dry_ad: null },
     ]
     const option = fieldChartOption({
       days, forecastDays, summary: { ...summary, projection }, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette,
@@ -74,6 +74,22 @@ describe('field chart', () => {
     expect(named('Rain').data[2]).toMatchObject({ value: 0.2, itemStyle: { opacity: 0.4 } })
     // The slider outlines the first series: observed and projected AD
     expect(series[0].data).toEqual([0.3, 0.2, 0.1, 0.4])
+  })
+
+  it('adds the no-rain projection for a field using only entered rain', () => {
+    const days = [day('2026-07-01', { ad: 0.3 }), day('2026-07-02', { ad: 0.2 })]
+    const forecastDays = [day('2026-07-03', { ad: 0.6, rain: 0.5, rain_source: 'forecast' })]
+    const projection = [{ date: '2026-07-03', ad: 0.6, p10: null, p50: null, p90: null, chance: null, dry_ad: 0.1 }]
+    const option = fieldChartOption({
+      days, forecastDays, summary: { ...summary, projection }, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette,
+    })
+    const dry = (option.series as { name: string; data: unknown[] }[]).find((s) => s.name === 'If no rain falls')!
+    expect(dry.data).toEqual([null, 0.2, 0.1])
+    expect((option.legend as { data: string[] }).data).toContain('If no rain falls')
+    const without = fieldChartOption({
+      days, forecastDays, summary: { ...summary, projection: [{ ...projection[0], dry_ad: null }] }, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette,
+    })
+    expect((without.series as { name: string }[]).map((s) => s.name)).not.toContain('If no rain falls')
   })
 
   it('leaves the forecast out when there is none', () => {

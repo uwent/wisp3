@@ -12,6 +12,11 @@ export type Outlook = {
   detail: string
   /** "4 of 31 forecast scenarios…", or null without an ensemble */
   chance: string | null
+  /**
+   * For a field using only entered rain, when it needs water if no rain falls, where that's sooner
+   * than the forecast case (Q7); otherwise null
+   */
+  dry: string | null
 }
 
 /** Matches PlantingStatus::LEAD_DAYS */
@@ -28,12 +33,19 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
     return chance == null || !members ? null : `${Math.round(chance * members)} of ${members} forecast scenarios`
   }
 
+  const dryCrossing = summary.dry_crossing ?? null
+  const dry =
+    dryCrossing && (!crossing || dryCrossing.date < crossing.date)
+      ? `If no rain falls: irrigate by ${formatDate(dryCrossing.date, { weekday: true })} (${relativeDay(dryCrossing.date, today)}).`
+      : null
+
   if (crossing && crossing.days === 0) {
     return {
       urgent: true,
       headline: summary.target_in === null ? 'At the irrigation point now' : 'Below target now',
       detail: `About ${depth(crossing.refill)} refills the root zone to field capacity.`,
       chance: null,
+      dry: null,
     }
   }
   if (crossing) {
@@ -43,6 +55,7 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
       headline: `Irrigate by ${formatDate(crossing.date, { weekday: true })}`,
       detail: `Projected to reach ${level} ${relativeDay(crossing.date, today)}; about ${depth(crossing.refill)} would refill it to field capacity then.`,
       chance: scenarios && `${scenarios} reach it by then.`,
+      dry,
     }
   }
   const last = projection.at(-1)
@@ -53,5 +66,6 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
     headline: `No irrigation needed through ${formatDate(last.date, { weekday: true })}`,
     detail: `Projected to stay above ${level} through the forecast.`,
     chance: scenarios && !scenarios.startsWith('0 ') ? `${scenarios} reach it by then.` : null,
+    dry,
   }
 }

@@ -2,7 +2,8 @@
 # (or the season's end), today's status, the latest rain and irrigation, and season totals, with
 # entered rain set against the modeled rain for the same days (Q7). While the season is on, also
 # the projection (PLAN.md §6): the same balance through the forecast, with planned irrigation (entries
-# on future dates), the ensemble's range around it, and when the field reaches its threshold.
+# on future dates), the ensemble's range around it, and when the field reaches its threshold. A field
+# that uses only entered rain also gets a projection with no rain at all (Q7), beside the forecast's.
 class PlantingStatus
   Totals = Data.define(:rain, :irrigation, :adj_et, :deep_drainage, :rain_model, :entered_rain_days,
     :entered_rain, :entered_rain_model)
@@ -21,7 +22,7 @@ class PlantingStatus
   # ensemble: the cell's ensemble members (WeatherForecast#members); loaded if not given.
   def initialize(planting, today: Date.current, weather: nil, records: nil, ensemble: :load)
     @planting, @today, @ensemble_members = planting, today, ensemble
-    @balance = PlantingBalance.new(planting, weather:, records:)
+    @balance = PlantingBalance.new(planting, weather:, records:, today:)
   end
 
   def params = @balance.params
@@ -58,17 +59,38 @@ class PlantingStatus
 
   def crossing
     return @crossing if defined?(@crossing)
-    day = ([current] + forecast_days).compact.find { |d| d.result.ad <= threshold } if phase == :active
-    @crossing = day && Crossing.new(date: day.inputs.date, days: (day.inputs.date - today).to_i, ad: day.result.ad,
-      refill: (params.ad_max - day.result.ad).round(WaterBalance::PRECISION))
+    @crossing = first_crossing(([current] + forecast_days).compact.map(&:result))
+  end
+
+  # Whether days without entered rain take the model's (the field's setting, or its group's)
+  def use_model_precip? = planting.field.effective_use_model_precip
+
+  # For a field using only entered rain: the projection's balance (WaterBalance::Results) with no
+  # forecast rain, keeping planned irrigation and any rain entered ahead. Empty otherwise.
+  def dry_projection
+    @dry_projection ||= if !use_model_precip? && phase == :active && current && forecast_days.any?
+      dry_days = forecast_days.map do |day|
+        rain = %i[forecast model].include?(day.inputs.rain_source) ? 0.0 : day.inputs.rain
+        WaterBalance::Day.new(date: day.inputs.date, et0: day.inputs.et0, rain:, irrigation: day.inputs.irrigation,
+          soil_moisture_pct: day.inputs.soil_moisture_pct, canopy: day.canopy)
+      end
+      WaterBalance.run(params, dry_days, initial_ad: current.result.ad, et_history:)
+    else
+      []
+    end
+  end
+
+  # When the no-rain projection reaches the threshold (nil without one)
+  def dry_crossing
+    return @dry_crossing if defined?(@dry_crossing)
+    @dry_crossing = dry_projection.any? ? first_crossing([current.result] + dry_projection) : nil
   end
 
   # EnsembleProjection::Bands for forecast_days (empty without an ensemble)
   def ensemble
     @ensemble ||= if phase == :active && current && forecast_days.any? && ensemble_members.present?
-      history = days.filter_map { |day| [day.inputs.date, day.result.adj_et] if day.result.et_source == :computed }
       EnsembleProjection.run(params, days: forecast_days, members: ensemble_members, start_ad: current.result.ad,
-        threshold:, et_history: history.last(WaterBalance::GAP_FILL_DAYS), already_crossed: current.result.ad <= threshold)
+        threshold:, et_history:, already_crossed: current.result.ad <= threshold)
     else
       []
     end
@@ -93,6 +115,19 @@ class PlantingStatus
   end
 
   private
+
+  # The first of results (today's, then the projection's) at or below the threshold, while the season is on
+  def first_crossing(results)
+    result = results.find { |r| r.ad <= threshold } if phase == :active
+    result && Crossing.new(date: result.date, days: (result.date - today).to_i, ad: result.ad,
+      refill: (params.ad_max - result.ad).round(WaterBalance::PRECISION))
+  end
+
+  # The past week's computed crop ET, so a run starting today gap-fills as the season's would
+  def et_history
+    days.filter_map { |day| [day.inputs.date, day.result.adj_et] if day.result.et_source == :computed }
+      .last(WaterBalance::GAP_FILL_DAYS)
+  end
 
   # Season start through today plus the projection's days (within the season); none before it starts
   def balance_days

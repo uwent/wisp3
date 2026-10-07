@@ -38,6 +38,21 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
         .to eq([["2026-07-20", true], ["2026-07-21", true]])
     end
 
+    it "sets the field's rainfall setting, and clears it to follow the operation's (Q7)" do
+      patch field_path(field), params: {field: {use_model_precip: "false"}}, headers: {"Referer" => field_url(field)}
+      expect(response).to redirect_to(field_url(field))
+      expect(field.reload.use_model_precip).to be(false)
+
+      get field_path(field)
+      expect(inertia.props[:field][:use_model_precip]).to be(false)
+      expect(inertia.props[:summary][:use_model_precip]).to be(false)
+      expect(inertia.props[:days][4]).to include(rain: 0.0, rain_source: "none", rain_model: 0.4)
+      expect(inertia.props[:summary][:totals]).to include(rain: 0.0, rain_model: 0.4)
+
+      patch field_path(field), params: {field: {use_model_precip: ""}}
+      expect(field.reload.use_model_precip).to be_nil
+    end
+
     it "shows a pivot's irrigation as from the pivot, and the pivot amount under a field's override" do
       pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 10), inches: 0.8)
       field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.5)
@@ -239,6 +254,13 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       pivot_props = inertia.props[:farms].sole[:pivots].sole
       expect(pivot_props[:fields].map { |f| [f[:name], f[:rain_model]] }).to eq([["North corn", 0.4], ["North potatoes", 0.4]])
       expect(inertia.props[:date]).to eq("2026-07-05")
+    end
+
+    it "leaves out the modeled rain on a field that uses only entered rain (Q7)" do
+      field.update!(use_model_precip: false)
+      get daily_entry_path(date: "2026-07-05")
+      fields = inertia.props[:farms].sole[:pivots].sole[:fields]
+      expect(fields.map { |f| [f[:name], f[:rain_model]] }).to eq([["North corn", 0.4], ["North potatoes", nil]])
     end
 
     it "saves pivot irrigation and field entries for the day together" do

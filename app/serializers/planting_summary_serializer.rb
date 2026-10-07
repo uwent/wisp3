@@ -2,6 +2,8 @@
 # Depths are inches; recent is AD over the last RECENT_DAYS days, for sparklines. projection is
 # each day ahead: the forecast's AD and, with an ensemble, its 10th–90th percentiles and the chance
 # of reaching the threshold by then. crossing is when the projection first reaches the threshold.
+# For a field using only entered rain (use_model_precip false), dry_ad and dry_crossing are the same
+# with no forecast rain (Q7); otherwise null.
 class PlantingSummarySerializer < ApplicationSerializer
   RECENT_DAYS = 21
 
@@ -33,12 +35,16 @@ class PlantingSummarySerializer < ApplicationSerializer
   attribute(:totals) { |status| status.totals.to_h }
   attribute(:threshold) { |status| status.threshold.round(WaterBalance::PRECISION) }
   attribute(:crossing) { |status| status.crossing&.to_h }
+  attribute(:use_model_precip, &:use_model_precip?)
+  attribute(:dry_crossing) { |status| status.dry_crossing&.to_h }
   attribute(:ensemble_size, &:ensemble_size)
   attribute(:projection) do |status|
     bands = status.ensemble.index_by(&:date)
+    dry = status.dry_projection.index_by(&:date)
     status.forecast_days.map do |day|
       band = bands[day.inputs.date]
-      {date: day.inputs.date, ad: day.result.ad, p10: band&.p10, p50: band&.p50, p90: band&.p90, chance: band&.chance}
+      {date: day.inputs.date, ad: day.result.ad, p10: band&.p10, p50: band&.p50, p90: band&.p90, chance: band&.chance,
+       dry_ad: dry[day.inputs.date]&.ad}
     end
   end
 
@@ -52,7 +58,8 @@ class PlantingSummarySerializer < ApplicationSerializer
     totals: "{ rain: number; irrigation: number; adj_et: number; deep_drainage: number; rain_model: number; " \
       "entered_rain_days: number; entered_rain: number; entered_rain_model: number }",
     threshold: :number, crossing: "{ date: string; days: number; ad: number; refill: number } | null",
+    use_model_precip: :boolean, dry_crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     ensemble_size: :number,
     projection: "{ date: string; ad: number; p10: number | null; p50: number | null; p90: number | null; " \
-      "chance: number | null }[]"
+      "chance: number | null; dry_ad: number | null }[]"
 end

@@ -138,6 +138,7 @@
                   <p class="text-xs text-ink-muted">
                     {units.format('area', field.area_acres)} · {field.soil_type_name}
                     {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(custom FC/PWP){/if}
+                    {#if field.use_model_precip !== null}· {field.use_model_precip ? 'modeled rain' : 'entered rain only'}{/if}
                   </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">

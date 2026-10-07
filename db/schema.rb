@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_144518) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -105,6 +105,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_000000) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "use_model_precip"
     t.index ["pivot_id"], name: "index_fields_on_pivot_id"
     t.index ["soil_type_id"], name: "index_fields_on_soil_type_id"
     t.check_constraint "area_acres IS NULL OR area_acres > 0::double precision", name: "fields_area_positive"

@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { Link, page, router } from '@inertiajs/svelte'
+  import { Form, Link, page, router } from '@inertiajs/svelte'
   import { slide } from 'svelte/transition'
 
   import Chart from '@/lib/charts/Chart.svelte'
   import { fieldChartOption, type FieldChartMode } from '@/lib/charts/fieldChart'
   import { weatherPanels } from '@/lib/charts/weatherCharts'
   import WeatherSection from '@/lib/charts/WeatherSection.svelte'
+  import Button from '@/lib/components/Button.svelte'
   import EditableCell from '@/lib/components/EditableCell.svelte'
   import GlossaryText from '@/lib/components/GlossaryText.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
@@ -46,6 +47,21 @@
   const rows = $derived([...days].reverse())
   const outlook = $derived(summary && outlookFor(summary, units))
   const projectionByDate = $derived(new Map(summary?.projection.map((day) => [day.date, day]) ?? []))
+  // A field using only entered rain also has a projection with no rain (Q7)
+  const hasDry = $derived(summary?.projection.some((day) => day.dry_ad !== null) ?? false)
+  // The operation's rainfall setting, which a field follows unless it has its own
+  const operationUsesModel = $derived(page.props.auth.group?.use_model_precip ?? true)
+  const rainSetting = $derived(field.use_model_precip === null ? '' : String(field.use_model_precip))
+  // [value, label, hint]: blank follows the operation
+  const rainOptions = $derived([
+    ['', `The operation's setting (${operationUsesModel ? 'modeled rain' : 'only rain you enter'})`, null],
+    ['true', 'Modeled rain for this pivot', 'Your own gauge readings replace it on the days you enter them.'],
+    [
+      'false',
+      'Only the rain you enter',
+      "For a gauge you read every day it rains. Other days count as dry; the projection still takes the forecast's rain, and shows the case with none.",
+    ],
+  ] as const)
   const guidance = $derived(
     planting && guidanceFor(planting, days, units, summary?.phase === 'active' ? summary.date : null),
   )
@@ -200,6 +216,7 @@
           <div class="rounded-md border px-3 py-2 text-sm {outlook.urgent ? 'border-status-irrigate/50 bg-status-irrigate/5' : 'border-line'}">
             <p class="font-medium">{outlook.headline}</p>
             <p class="text-ink-muted">{outlook.detail}{#if outlook.chance}{' '}{outlook.chance}{/if}</p>
+            {#if outlook.dry}<p class="text-ink-muted">{outlook.dry}</p>{/if}
           </div>
         {:else if summary.phase === 'active' && refill !== null && refill > 0.005}
           <p class="text-sm">Refilling to field capacity takes about <strong>{units.format('depth', refill)}</strong>.</p>
@@ -233,6 +250,12 @@
         <dt class="text-ink-muted"><Term id="crop_et">Crop ET</Term></dt><dd>{units.format('depth', summary.totals.adj_et)}</dd>
         <dt class="text-ink-muted"><Term id="deep_drainage">Deep drainage</Term></dt><dd>{units.format('depth', summary.totals.deep_drainage)}</dd>
       </dl>
+      {#if !summary.use_model_precip}
+        <p class="mt-2 text-xs">
+          Rain: only what you enter, and the forecast's ahead ·
+          <a href="#field-settings" class="text-brand-600 hover:underline">change</a>
+        </p>
+      {/if}
       {#if summary.totals.entered_rain_days}
         <p class="mt-2 text-xs text-ink-muted">
           On the {summary.totals.entered_rain_days} days with entered rain, your gauge read
@@ -303,6 +326,7 @@
         {#if forecast_days.length}
           After today the dashed line follows the forecast, with planned irrigation; the shaded band is the range of
           {summary?.ensemble_size ? `${summary.ensemble_size} forecast scenarios (10th to 90th percentile)` : 'forecast scenarios, once they arrive'}.
+          {#if hasDry}The dotted line is the same with no rain at all, since this field counts only the rain you enter.{/if}
         {/if}
         Scroll or drag the bar below to see the whole season.
       </p>
@@ -332,6 +356,7 @@
                     <th class="px-2 py-2 font-medium">Rain</th>
                     <th class="px-2 py-2 font-medium">Planned irrigation</th>
                     <th class="px-2 py-2 font-medium">AD</th>
+                    {#if hasDry}<th class="px-2 py-2 font-medium">AD if no rain</th>{/if}
                     {#if summary?.ensemble_size}
                       <th class="px-2 py-2 font-medium">Range (10–90%)</th>
                       <th class="px-2 py-2 font-medium">Chance {thresholdName} by then</th>
@@ -358,6 +383,10 @@
                         </EditableCell>
                       </td>
                       <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate' : ''}">{depth(day.ad)}</td>
+                      {#if hasDry}
+                        {@const dryAd = band?.dry_ad ?? null}
+                        <td class="px-2 py-1 text-ink-muted tabular-nums {dryAd !== null && dryAd <= 0 ? 'text-status-irrigate' : ''}">{depth(dryAd)}</td>
+                      {/if}
                       {#if summary?.ensemble_size}
                         <td class="px-2 py-1 text-ink-muted tabular-nums whitespace-nowrap">
                           {band?.p10 != null && band.p90 != null ? `${depth(band.p10)} to ${depth(band.p90)}` : ''}
@@ -481,3 +510,25 @@
     wilting point for comparison.
   </WeatherSection>
 {/if}
+
+<!-- Settings for this field's balance (not its setup, which is on the setup page) -->
+<section id="field-settings" class="scroll-mt-4 space-y-3 rounded-lg border border-line bg-surface-raised p-4">
+  <h2 class="font-medium">Field settings</h2>
+  <Form action={fields.update(field.id)} class="max-w-xl space-y-3" options={{ preserveScroll: true }}>
+    {#snippet children({ processing })}
+      <fieldset class="space-y-2">
+        <legend class="text-sm font-medium">Rainfall</legend>
+        {#each rainOptions as [value, label, hint] (value)}
+          <label class="flex items-start gap-3 text-sm">
+            <input type="radio" name="field[use_model_precip]" {value} checked={rainSetting === value} class="mt-0.5" />
+            <span>{label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}</span>
+          </label>
+        {/each}
+      </fieldset>
+      <p class="text-xs text-ink-muted">
+        This only changes how the balance reads your data: nothing is copied or deleted, so you can switch back at any time.
+      </p>
+      <Button type="submit" disabled={processing}>Save</Button>
+    {/snippet}
+  </Form>
+</section>

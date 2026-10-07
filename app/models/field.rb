@@ -19,6 +19,12 @@ class Field < ApplicationRecord
   def effective_field_capacity = field_capacity || soil_type.field_capacity
   def effective_perm_wilting_pt = perm_wilting_pt || soil_type.perm_wilting_pt
 
+  # Whether the balance uses modeled rain where nothing is entered: the field's setting, NULL
+  # following its group's (Q7). Either way the projection uses forecast rain (DailyInputs).
+  def effective_use_model_precip
+    use_model_precip.nil? ? pivot.farm.group.use_model_precip : use_model_precip
+  end
+
   # The planting whose season includes date, if any
   def planting_on(date)
     plantings.find { |planting| planting.season_range.cover?(date) }

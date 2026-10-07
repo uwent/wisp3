@@ -19,7 +19,16 @@ describe('outlook', () => {
       headline: 'Irrigate by Sun, Jul 12',
       detail: 'Projected to reach the irrigation point in 2 days; about 1.30 in would refill it to field capacity then.',
       chance: '15 of 30 forecast scenarios reach it by then.',
+      dry: null,
     })
+  })
+
+  it('says when a field on entered rain needs water if no rain falls, when that is sooner', () => {
+    const dry_crossing = { date: '2026-07-11', days: 1, ad: -0.1, refill: 1.3 }
+    expect(outlook(summary({ dry_crossing }), units('imperial'))!.dry).toBe('If no rain falls: irrigate by Sat, Jul 11 (tomorrow).')
+    const crossing = { date: '2026-07-12', days: 2, ad: -0.1, refill: 1.3 }
+    expect(outlook(summary({ crossing, dry_crossing }), units('imperial'))!.dry).toContain('Sat, Jul 11')
+    expect(outlook(summary({ crossing, dry_crossing: crossing }), units('imperial'))!.dry).toBeNull()
   })
 
   it('names the target when there is one, and says when it is crossed already', () => {

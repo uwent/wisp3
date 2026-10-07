@@ -23,6 +23,29 @@ RSpec.describe DailyInputs do
     expect(resolve).to have_attributes(rain: 0.0, rain_source: :none, rain_model: 0.35)
   end
 
+  describe "the field's rainfall setting (Q7)" do
+    def resolve_for(field, on = date, today: date) = described_class.new(field.reload, [on], weather:, today:).days.first
+
+    it "overrides the group's either way, and follows it when not set" do
+      field.update!(use_model_precip: false)
+      expect(resolve_for(field)).to have_attributes(rain: 0.0, rain_source: :none, rain_model: 0.35)
+      field.pivot.farm.group.update!(use_model_precip: false)
+      field.update!(use_model_precip: true)
+      expect(resolve_for(field)).to have_attributes(rain: 0.35, rain_source: :model)
+      field.update!(use_model_precip: nil)
+      expect(resolve_for(field).rain_source).to eq(:none)
+    end
+
+    it "still takes the forecast's rain after today, but not today's" do
+      field.update!(use_model_precip: false)
+      ahead = {date => {et0: 0.2, precip: 0.4, forecast: true}}
+      expect(described_class.new(field, [date], weather: ahead, today: date - 1).days.first)
+        .to have_attributes(rain: 0.4, rain_source: :forecast)
+      expect(described_class.new(field, [date], weather: ahead, today: date).days.first)
+        .to have_attributes(rain: 0.0, rain_source: :none)
+    end
+  end
+
   describe "precedence" do
     let(:field_group) { create(:field_group, group: field.farm.group).tap { |g| g.fields << field } }
 

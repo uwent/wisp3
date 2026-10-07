@@ -74,6 +74,9 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   const bandLow = atToday((day) => level(bands.get(day.date)?.p10 ?? null))
   const bandHigh = atToday((day) => level(bands.get(day.date)?.p90 ?? null))
   const bandWidth = bandHigh.map((high, i) => (high === null || bandLow[i] === null ? null : round(high - bandLow[i]!)))
+  // A field using only entered rain: the projection with no rain as well (Q7)
+  const hasDry = forecastDays.some((day) => bands.get(day.date)?.dry_ad != null)
+  const dry = atToday((day) => level(bands.get(day.date)?.dry_ad ?? null))
   const planned = forecastDays.some((day) => (day.irrigation ?? 0) > 0)
 
   const forecastArea = forecastDays.length
@@ -101,6 +104,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       data: [
         balanceName,
         ...(forecastDays.length ? ['Forecast'] : []),
+        ...(hasDry ? [DRY] : []),
         ...(hasBand ? [RANGE] : []),
         'Rain',
         'Modeled rain',
@@ -247,6 +251,20 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
             },
           ]
         : []),
+      ...(hasDry
+        ? [
+            {
+              name: DRY,
+              type: 'line',
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              data: dry,
+              symbol: 'none',
+              lineStyle: { width: 1.5, color: palette.ad, type: 'dotted' },
+              itemStyle: { color: palette.ad },
+            },
+          ]
+        : []),
       {
         name: 'Rain',
         type: 'bar',
@@ -308,6 +326,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
 }
 
 const RANGE = 'Forecast range (10–90%)'
+const DRY = 'If no rain falls'
 const SLIDER = 'Slider outline'
 
 function tooltip(days: FieldDay[], observed: number, summary: PlantingSummary, params: unknown, units: Units): string {
@@ -321,6 +340,7 @@ function tooltip(days: FieldDay[], observed: number, summary: PlantingSummary, p
   const band = forecast ? summary.projection?.find((p) => p.date === day.date) : undefined
   const rows = [
     [forecast ? 'Projected AD' : 'AD', depth(day.ad)],
+    ...(band?.dry_ad != null ? [['If no rain falls', depth(band.dry_ad)]] : []),
     ...(band?.p10 != null && band.p90 != null ? [['Range (10–90%)', `${depth(band.p10)} to ${depth(band.p90)}`]] : []),
     ...(band?.chance != null
       ? [[summary.target_in === null ? 'Chance at 0 AD by now' : 'Chance below target by now', `${Math.round(band.chance * 100)}%`]]

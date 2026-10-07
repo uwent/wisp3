@@ -38,7 +38,7 @@
               <span style="<%= muted %>">· <%= digest_crop(entry) %> · <%= digest_ad(entry, @digest, short: !entry.attention?) %></span><br>
               <% if entry.attention? && entry.outlook %>
                 <span style="font-weight:600;<%= "color:#cc2827" if entry.outlook.urgent %>"><%= entry.outlook.headline %></span><br>
-                <%= entry.outlook.detail %><% if entry.outlook.chance %> <%= entry.outlook.chance %><% end %><br>
+                <%= entry.outlook.detail %><% if entry.outlook.chance %> <%= entry.outlook.chance %><% end %><% if entry.outlook.dry %> <%= entry.outlook.dry %><% end %><br>
                 <span style="<%= muted %>">Last rain: <%= digest_last(entry, @digest, :rain) %> · Last irrigation: <%= digest_last(entry, @digest, :irrigation) %></span>
               <% else %>
                 <span style="<%= muted %>"><%= digest_summary(entry) %></span>

@@ -1,7 +1,8 @@
 # A field with its plantings (every season). field_capacity and perm_wilting_pt are the field's
 # overrides (null = the soil type's); the effective_ values are what the balance uses.
 class FieldSerializer < ApplicationSerializer
-  attributes :id, :pivot_id, :name, :area_acres, :soil_type_id, :field_capacity, :perm_wilting_pt, :notes
+  # use_model_precip: null follows the group's rainfall setting (Q7)
+  attributes :id, :pivot_id, :name, :area_acres, :soil_type_id, :field_capacity, :perm_wilting_pt, :notes, :use_model_precip
 
   attribute :soil_type_name do |field|
     field.soil_type.name

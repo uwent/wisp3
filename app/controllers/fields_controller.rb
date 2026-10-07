@@ -49,7 +49,8 @@ class FieldsController < AuthenticatedController
   private
 
   def field_params
-    params.expect(field: [:pivot_id, :name, :area_acres, :soil_type_id, :field_capacity, :perm_wilting_pt, :notes])
+    params.expect(field: [:pivot_id, :name, :area_acres, :soil_type_id, :field_capacity, :perm_wilting_pt, :notes,
+      :use_model_precip])
   end
 
   def default_planting(field)

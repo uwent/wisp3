@@ -20,7 +20,7 @@ NEEDS ATTENTION
 
   <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_crop(entry) %> · <%= digest_ad(entry, @digest, short: !entry.attention?) %>
 <% if entry.attention? && entry.outlook %>
-  <%= entry.outlook.headline %>. <%= entry.outlook.detail %><%= " #{entry.outlook.chance}" if entry.outlook.chance %>
+  <%= entry.outlook.headline %>. <%= entry.outlook.detail %><%= " #{entry.outlook.chance}" if entry.outlook.chance %><%= " #{entry.outlook.dry}" if entry.outlook.dry %>
   Last rain: <%= digest_last(entry, @digest, :rain) %> · Last irrigation: <%= digest_last(entry, @digest, :irrigation) %>
   <%= field_link(entry) %>
 <% else %>

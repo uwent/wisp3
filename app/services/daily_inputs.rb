@@ -39,8 +39,10 @@ class DailyInputs
     end
   end
 
-  def initialize(field, dates, weather: {}, records: nil)
-    @field, @dates, @weather = field, dates, weather
+  # today: days after it are the projection, which takes the forecast's rain even on a field that
+  # uses only entered rain (nobody can enter rain ahead; Q7)
+  def initialize(field, dates, weather: {}, records: nil, today: Date.current)
+    @field, @dates, @weather, @today = field, dates, weather, today
     @records = records || Records.new(
       entries: @field.field_entries.where(date: span),
       group_entries: FieldGroupEntry.where(field_group_id: @field.field_group_ids, date: span),
@@ -56,7 +58,7 @@ class DailyInputs
 
     @dates.map do |date|
       entry, group_entry, weather = entries[date], group_entries[date], @weather[date] || {}
-      rain, rain_source = rain(entry, group_entry, weather)
+      rain, rain_source = rain(date, entry, group_entry, weather)
       irrigation, irrigation_source = irrigation(entry, pivot_irrigations[date], group_entry)
       moisture, moisture_source = first_of([entry&.soil_moisture_pct, :entered], [group_entry&.soil_moisture_pct, :group], [nil, nil])
 
@@ -72,8 +74,8 @@ class DailyInputs
   # values are looked up by date, so dates in between that weren't asked for are never used
   def span = @dates.empty? ? Date.current...Date.current : @dates.min..@dates.max
 
-  def rain(entry, group_entry, weather)
-    modeled = if use_model_precip?
+  def rain(date, entry, group_entry, weather)
+    modeled = if use_model_precip? || date > @today
       [weather[:precip], weather[:precip] ? model_source(weather) : :missing]
     else
       [0.0, :none]
@@ -94,7 +96,7 @@ class DailyInputs
   end
 
   def use_model_precip?
-    @use_model_precip = @field.pivot.farm.group.use_model_precip if @use_model_precip.nil?
+    @use_model_precip = @field.effective_use_model_precip if @use_model_precip.nil?
     @use_model_precip
   end
 

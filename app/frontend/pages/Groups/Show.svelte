@@ -86,6 +86,7 @@
             <input type="radio" name="group[use_model_precip]" value="false" checked={!group.use_model_precip} class="mt-0.5" />
             <span>Only the rain we enter</span>
           </label>
+          <p class="text-xs text-ink-muted">A field can have its own setting, on its page. The forecast's rain counts in the days ahead either way.</p>
         </fieldset>
         <Button type="submit" disabled={processing}>Save</Button>
       {/snippet}
@@ -95,7 +96,9 @@
       <dt class="text-ink-muted">Rainfall</dt>
       <dd>{group.use_model_precip ? "Modeled for each pivot's location, replaced by gauge readings when entered" : 'Only the rain entered'}</dd>
     </dl>
-    <p class="text-sm text-ink-muted">Only owners can change the operation's name and rainfall setting.</p>
+    <p class="text-sm text-ink-muted">
+      Only owners can change the operation's name and rainfall setting; a field can have its own rainfall setting, on its page.
+    </p>
   {/if}
 </section>
 

@@ -21,7 +21,8 @@ class DailyEntriesController < AuthenticatedController
            fields: pivot.fields.map do |field|
              entry = entries[field.id]
              {id: field.id, name: field.name, area_acres: field.area_acres, crop: field.planting_on(date)&.plant&.name,
-              rain_model: rain[pivot.weather_cell_id],
+              # Only as a hint where the balance would use it (Q7: not on a field using entered rain, through today)
+              rain_model: (field.effective_use_model_precip || date > Date.current) ? rain[pivot.weather_cell_id] : nil,
               entry: entry&.slice(:rain_in, :irrigation_in, :soil_moisture_pct, :notes)}
            end}
         end}

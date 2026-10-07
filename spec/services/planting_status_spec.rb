@@ -100,6 +100,39 @@ RSpec.describe PlantingStatus, "projection" do
     expect([ended.forecast_days, ended.crossing]).to eq([[], nil])
   end
 
+  describe "for a field using only entered rain (Q7)" do
+    # 1 in of rain forecast for tomorrow, and some today that no gauge has caught
+    let(:weather) do
+      (Date.new(2026, 7, 1)..today + 15).to_h do |date|
+        [date, {et0: 0.1, precip: [today, today + 1].include?(date) ? 1.0 : 0.0, forecast: date >= today}]
+      end
+    end
+
+    before { field.update!(use_model_precip: false) }
+
+    it "projects with the forecast's rain, and also with none" do
+      projection = status
+      expect(projection.current.inputs).to have_attributes(rain: 0.0, rain_source: :none)
+      # Today 0.2 (its rain not counted); tomorrow's rain puts off the forecast case's crossing
+      expect(projection.forecast_days.first.inputs).to have_attributes(rain: 1.0, rain_source: :forecast)
+      expect(projection.crossing.date).to eq(today + 12)
+      expect(projection.dry_projection.map(&:date)).to eq(projection.forecast_days.map { |day| day.inputs.date })
+      expect(projection.dry_crossing).to have_attributes(date: today + 2, ad: 0.0, refill: 1.2)
+      expect(Outlook.for(projection, depth: ->(inches) { "#{inches} in" }).dry)
+        .to eq("If no rain falls: irrigate by Sun, Jul 12 (in 2 days).")
+    end
+
+    it "keeps planned irrigation in the dry case" do
+      field.field_entries.create!(date: today + 1, irrigation_in: 1.0)
+      expect(status.dry_crossing.date).to eq(today + 12)
+    end
+
+    it "has no dry case on a field using modeled rain" do
+      field.update!(use_model_precip: nil)
+      expect([status.dry_projection, status.dry_crossing]).to eq([[], nil])
+    end
+  end
+
   describe "ensemble" do
     # Three members over the 15 days ahead: dry and hot, the same as the forecast, and 1 in of rain tomorrow
     let(:members) do
