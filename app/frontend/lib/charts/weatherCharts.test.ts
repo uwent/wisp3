@@ -29,8 +29,8 @@ const days = Array.from({ length: 65 }, (_, i) => ({
 })) as unknown as WeatherPanelDay[]
 
 const field = { fieldCapacity: 0.1, wiltingPoint: 0.04 }
-// The balance's crop ET runs through the observed days
-const cropEt = Object.fromEntries(days.filter((day) => !day.forecast).map((day) => [day.date, 0.1]))
+// The balance's crop ET, through the projection; the last forecast day has none (the projection ends there)
+const cropEt = Object.fromEntries(days.slice(0, -1).map((day) => [day.date, 0.1]))
 const panel = (key: string, system: 'imperial' | 'metric' = 'imperial') =>
   weatherPanels(units(system), { field, cropEt }).find((p) => p.key === key)!
 type SeriesOption = { name: string; type: string; stack?: string; xAxisIndex: number; data: (number | null)[] }
@@ -82,14 +82,14 @@ describe('weather charts', () => {
     expect(total.data[21]).toBeNull()
   })
 
-  it('pairs reference and crop ET bars, and stops crop ET at today', () => {
+  it('pairs reference and crop ET bars, with crop ET through the projection', () => {
     const option = weatherChartOption(panel('et'), days, units('imperial'), palette)
     const [reference, crop, referenceTotal, cropTotal] = option.series as SeriesOption[]
     expect([reference.stack, crop.stack]).toEqual([undefined, undefined])
-    expect([reference.data[61], crop.data[59], crop.data[61]]).toEqual([0.2, 0.1, null])
+    expect([reference.data[61], crop.data[59], crop.data[61], crop.data[64]]).toEqual([0.2, 0.1, 0.1, null])
     expect(referenceTotal.data[64]).toBe(Number((0.2 * (65 - defaultView(days).start)).toFixed(2)))
-    expect(cropTotal.data[59]).toBe(Number((0.1 * DEFAULT_WINDOW_DAYS).toFixed(2)))
-    expect(cropTotal.data[60]).toBeNull()
+    expect(cropTotal.data[63]).toBe(Number((0.1 * (DEFAULT_WINDOW_DAYS + 4)).toFixed(2)))
+    expect(cropTotal.data[64]).toBeNull()
   })
 
   it('shows precipitation in mm for metric', () => {
@@ -108,6 +108,18 @@ describe('weather charts', () => {
     // Zero snow is no snow: a gap in the chart
     expect(snowfall.data.slice(2, 5)).toEqual([null, 1.5, null])
     expect(snowDepth.data.slice(2, 5)).toEqual([null, 2, 1])
+  })
+
+  it('names snow in the legend only when the days in view have some', () => {
+    const legend = (d: WeatherPanelDay[], view?: { start: number; end: number }) =>
+      (weatherChartOption(panel('precipitation'), d, units('imperial'), palette, view).legend as { data: string[] }).data
+    // Snow early in the season, outside the opening view
+    const snowy = days.map((day, i) => (i === 3 ? { ...day, snowfall_in: 1.5, snow_depth_in: 2 } : day))
+    expect(legend(snowy)).toEqual(['Rain', 'Snow and other', 'Precipitation total'])
+    expect(legend(snowy, { start: 0, end: 20 })).toEqual(['Rain', 'Snow and other', 'Snowfall', 'Snow depth', 'Precipitation total'])
+    // The series stay on the chart, for scrolling back to them
+    const names = (weatherChartOption(panel('precipitation'), snowy, units('imperial'), palette).series as SeriesOption[]).map((s) => s.name)
+    expect(names).toContain('Snow depth')
   })
 
   it('leaves snow out of the tooltip on days without it', () => {

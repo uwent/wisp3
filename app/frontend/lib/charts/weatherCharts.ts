@@ -15,7 +15,10 @@ type Series = {
   value: (day: WeatherPanelDay) => number | null
   /** Drawn as a line on a bar chart (or unstacked bars beside a stack): snow on the precipitation chart */
   style?: 'line' | 'bar'
-  /** Zero means none (snow): left off the chart when no day has any, and out of the tooltip on days without */
+  /**
+   * Zero means none (snow): left off the chart when no day has any, out of the legend when no day in
+   * view has any, and out of the tooltip on days without
+   */
   sparse?: boolean
 }
 
@@ -53,8 +56,8 @@ function otherPrecip(day: WeatherPanelDay): number | null {
 /**
  * The panels for a field's page, or a pivot's (no field):
  * - field: its capacity and wilting point, as reference lines on the modeled soil moisture
- * - cropEt: the field's crop-adjusted ET by date (the balance's adjusted ET), which runs through
- *   today, not into the forecast; without it the ET chart shows reference ET only
+ * - cropEt: the field's crop-adjusted ET by date (the balance's adjusted ET), through the forecast
+ *   (the projection's); without it the ET chart shows reference ET only
  * - gddSince: what growing degree days count from ('emergence', or a date's label)
  */
 export function weatherPanels(
@@ -98,7 +101,8 @@ export function weatherPanels(
         "model's temperature, humidity, wind and sunshine. " +
         (cropEt
           ? "Crop ET is this field's estimate: reference ET adjusted for the crop's canopy, which is what the balance " +
-            "takes out of the soil. It's lower than reference ET while the canopy is small, and runs through today only. " +
+            "takes out of the soil. It's lower than reference ET while the canopy is small. In the forecast it's the projection's, " +
+            "from the forecast reference ET and the expected canopy. " +
             'The lower panel adds both up from the first day in view.'
           : "Each field's crop ET (reference ET adjusted for its canopy) is on the field's page. The lower panel adds " +
             'reference ET up from the first day in view.'),
@@ -230,6 +234,15 @@ const valueOn = (series: Series, day: WeatherPanelDay) => {
 export const shownSeries = (panel: WeatherPanel, days: WeatherPanelDay[]) =>
   panel.series.filter((series) => !series.sparse || days.some((day) => (series.value(day) ?? 0) > 0))
 
+/**
+ * The series to name in the legend: sparse ones only when a day in view has some (April's snow
+ * stays on the chart for when you scroll back to it, but out of an October legend)
+ */
+function legendSeries(series: Series[], days: WeatherPanelDay[], view: ChartView) {
+  const inView = days.slice(view.start, view.end + 1)
+  return series.filter((s) => !s.sparse || inView.some((day) => (s.value(day) ?? 0) > 0))
+}
+
 /** The days in view when a chart opens: the last observed days, then the forecast (as the soil-water chart) */
 export function defaultView(days: WeatherPanelDay[]): ChartView {
   const observed = days.filter((day) => !day.forecast).length
@@ -329,7 +342,17 @@ export function weatherChartOption(
   return {
     animation: base.animation,
     textStyle: base.textStyle,
-    legend: legendShown ? { type: 'scroll', top: 0, left: 0, right: 0, textStyle: { color: palette.ink, fontSize: 11 }, itemWidth: 14 } : undefined,
+    legend: legendShown
+      ? {
+          type: 'scroll',
+          top: 0,
+          left: 0,
+          right: 0,
+          data: [...legendSeries(series, days, view), ...totals].map((s) => s.name),
+          textStyle: { color: palette.ink, fontSize: 11 },
+          itemWidth: 14,
+        }
+      : undefined,
     tooltip: { ...base.tooltip, formatter: (params: unknown) => tooltip(params, unit, panel.bars || totals.length ? 2 : 1, sparse) },
     axisPointer: totals.length ? { link: [{ xAxisIndex: 'all' }] } : undefined,
     grid: grids,

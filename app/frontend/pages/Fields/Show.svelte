@@ -70,9 +70,9 @@
   let forecastOpen = $state(true)
   let dailyOpen = $state(true)
 
-  // Crop ET by date, as a string so the weather charts rebuild only when it changes (an edit to
-  // rain or irrigation reloads the days, but leaves ET alone)
-  const cropEtJson = $derived(JSON.stringify(Object.fromEntries(days.map((day) => [day.date, day.adj_et]))))
+  // Crop ET by date, through the projection, as a string so the weather charts rebuild only when it
+  // changes (an edit to rain or irrigation reloads the days, but leaves ET alone)
+  const cropEtJson = $derived(JSON.stringify(Object.fromEntries([...days, ...forecast_days].map((day) => [day.date, day.adj_et]))))
   const panels = $derived(
     weatherPanels(units, {
       field: { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt },

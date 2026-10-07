@@ -591,8 +591,8 @@ Decided 2026-10-05 (Ben): replace the legacy PDF user guide with documentation i
 Decided 2026-10-07 (Ben): some growers want the balance to use only the rain they enter, field by field. A per-field setting (Q7 addendum, §4 precedence), a "season details" card with gauge-vs-model statistics, entered rain on the precipitation chart, and two chart fixes.
 
 **A. Chart fixes** (independent; can land first)
-- [ ] Snowfall and snow depth appear in the precipitation legend only when the days *in view* have some (`shownSeries` checks the whole season today, so April snow puts them in an October legend).
-- [ ] Crop ET on the ET chart continues through the forecast: the projection's `adj_et` (forecast et0 and projected canopy) is what it takes out of the soil. Update the chart's info text.
+- [x] Snowfall and snow depth appear in the precipitation legend only when the days *in view* have some (`shownSeries` checked the whole season, so April snow put them in an October legend). *(The series stay on the chart, for scrolling back; `legend.data` names only those with snow in view.)*
+- [x] Crop ET on the ET chart continues through the forecast: the projection's `adj_et` (forecast et0 and projected canopy) is what it takes out of the soil. Update the chart's info text.
 
 **B. Per-field rain setting**
 - [ ] `fields.use_model_precip` (nullable boolean); `Field#effective_use_model_precip` falls back to the group's. `DailyInputs` reads it, and uses modeled rain on days after today whatever the setting (it takes `today:`, passed through `PlantingBalance` from `PlantingStatus`). Check that `FieldStatuses` and `DailyDigest` preload what it reads.
