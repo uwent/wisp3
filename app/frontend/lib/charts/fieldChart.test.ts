@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { FieldDay, PlantingSummary } from '@/types/serializers'
 
 import { units } from '../units'
-import { fieldChartOption, thresholds } from './fieldChart'
+import { fieldChartOption, roundUp, thresholds } from './fieldChart'
 import type { Palette } from './palette'
 import { weatherPanels } from './weatherCharts'
 
@@ -157,6 +157,28 @@ describe('field chart', () => {
     expect(always.markArea!.data).toHaveLength(2)
     expect(series.filter((s) => s.id.startsWith('shading-')).map((s) => s.markArea!.data)).toHaveLength(3)
     expect(series.filter((s) => s.id !== 'slider' && !s.id.startsWith('shading-')).every((s) => !s.markLine && !s.markArea)).toBe(true)
+  })
+
+  it('stacks deep drainage on the field capacity line, and lists it in the tooltip even when none', () => {
+    const days = [day('2026-07-01', { ad: 0.48, deep_drainage: 0.3 }), day('2026-07-02', { ad: 0.4 })]
+    const option = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette })
+    const series = option.series as { id: string; name: string; data: unknown[]; stack?: string }[]
+    expect(series.find((s) => s.id === 'drainage-base')).toMatchObject({ stack: 'drainage', data: [0.48, 0.48] })
+    expect(series.find((s) => s.id === 'drainage')).toMatchObject({ name: 'Deep drainage', stack: 'drainage', data: [0.3, 0] })
+    expect((option.legend as { data: string[] }).data).toContain('Deep drainage')
+    const formatter = (option.tooltip as { formatter: (params: unknown) => string }).formatter
+    expect(formatter([{ dataIndex: 0 }])).toContain('Deep drainage</td><td>0.30 in')
+    expect(formatter([{ dataIndex: 1 }])).toContain('Deep drainage</td><td>0.00 in')
+
+    // In percent moisture, the same depth over the root zone; and none of it without drainage
+    const moisture = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'moisture', palette })
+    expect((moisture.series as { id: string; data: unknown[] }[]).find((s) => s.id === 'drainage')!.data).toEqual([1.875, 0])
+    const dry = fieldChartOption({ days: [day('2026-07-02')], summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette })
+    expect((dry.series as { id: string }[]).map((s) => s.id)).not.toContain('drainage')
+  })
+
+  it('rounds an axis top up to a round number', () => {
+    expect([roundUp(1.764), roundUp(45), roundUp(12.3), roundUp(0.48), roundUp(2)]).toEqual([2, 45, 15, 0.5, 2])
   })
 
   it('leaves the forecast out when there is none', () => {

@@ -398,6 +398,8 @@ Every ported method is checked against this list. Items marked **Hotfix** should
 - Small multiples sharing the date axis (no second y axis): AD on top; water in below it; the running totals of rain and irrigation over the days in view (as the weather precipitation chart); the crop canopy (percent cover or LAI) at the bottom.
 - Water in: rain (blue) and irrigation (orange) stacked, planned irrigation hatched, and modeled rain the balance didn't use as a dashed outline beside the rain (replaced by an entry, or left out on a field using only entered rain).
 - Canopy (green): the balance's daily value, interpolated between readings, with a dot for each reading.
+- Deep drainage: AD never rises above field capacity (the excess drains that day), so each day's drainage is a purple area stacked on the field capacity line, as high as the depth drained.
+- Legend: one entry per measure (AD with its forecast and range; deep drainage; rain with modeled rain and totals; irrigation with planned and its total; canopy with its readings). Thresholds, today and forecast shading stay whatever is hidden.
 - Line: AD (inches) observed (solid) → deterministic projection (dashed).
 - Band: ensemble P10–P90 for future days.
 - Horizontal lines: AD_max (field capacity), target, 0 (MAD trigger), AD_pwp (wilting point).

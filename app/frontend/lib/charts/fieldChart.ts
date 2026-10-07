@@ -88,6 +88,11 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   const dry = atToday((day) => level(bands.get(day.date)?.dry_ad ?? null))
   const planned = forecastDays.some((day) => (day.irrigation ?? 0) > 0)
 
+  // Deep drainage: AD stops at field capacity and the water above it drains that day, so it's drawn
+  // as an area stacked on the field capacity line, as high as the day's drainage
+  const drains = all.some((day) => day.deep_drainage > 0)
+  const drainage = all.map((day) => round(mode === 'ad' ? depth(day.deep_drainage) : (day.deep_drainage / rootZoneDepth) * 100))
+
   // Running totals over the days in view, through the forecast (as the precipitation chart)
   const openingStart = Math.max(0, observed - DEFAULT_WINDOW_DAYS)
   const view = input.view ?? { start: openingStart, end: all.length - 1 }
@@ -145,7 +150,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       // forecast and range; rain with the modeled rain and the totals; irrigation with planned and its
       // total; the canopy with its readings). The thresholds, today and the forecast shading are on
       // series outside the legend, so they always stay.
-      data: [balanceName, ...(hasDry ? [DRY] : []), RAIN, IRRIGATION, canopyName],
+      data: [balanceName, ...(hasDry ? [DRY] : []), ...(drains ? [DRAINAGE] : []), RAIN, IRRIGATION, canopyName],
     },
     tooltip: {
       ...base.tooltip,
@@ -173,7 +178,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         axisLabel: base.axisLabel,
         splitLine: base.splitLine,
         min: (extent: { min: number }) => Math.min(extent.min, wiltingLine),
-        max: (extent: { max: number }) => Math.max(extent.max, lines[0].value),
+        // Field capacity at the top, unless deep drainage stacked on it reaches higher
+        max: (extent: { max: number }) => (extent.max > lines[0].value + 1e-9 ? roundUp(extent.max) : lines[0].value),
       },
       {
         type: 'value',
@@ -278,6 +284,39 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
             silent: true,
             markArea: { ...forecastArea, label: { show: false } },
           }))
+        : []),
+      // An invisible base at field capacity, then the day's drainage above it
+      ...(drains
+        ? [
+            {
+              // Outside the legend, so the legend's swatch is the drainage's own
+              id: 'drainage-base',
+              name: DRAINAGE_BASE,
+              type: 'line',
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              stack: 'drainage',
+              data: all.map(() => lines[0].value),
+              symbol: 'none',
+              lineStyle: { opacity: 0 },
+              tooltip: { show: false },
+              silent: true,
+            },
+            {
+              id: 'drainage',
+              name: DRAINAGE,
+              type: 'line',
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              stack: 'drainage',
+              data: drainage,
+              symbol: 'none',
+              lineStyle: { width: 1, color: palette.ad, opacity: 0.6 },
+              itemStyle: { color: palette.ad },
+              areaStyle: { color: palette.ad, opacity: 0.3 },
+              silent: true,
+            },
+          ]
         : []),
       {
         id: 'balance',
@@ -459,6 +498,15 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
 const RAIN = 'Rain'
 const IRRIGATION = 'Irrigation'
 const DRY = 'If no rain falls'
+const DRAINAGE = 'Deep drainage'
+const DRAINAGE_BASE = 'Deep drainage base'
+
+/** A round number at or above value for an axis' top, in steps of half its order of magnitude: 1.76 → 2, 12.3 → 15, 45 → 45 */
+export function roundUp(value: number): number {
+  if (value <= 0) return value
+  const step = 10 ** Math.floor(Math.log10(value)) / 2
+  return Number((Math.ceil(value / step) * step).toFixed(6))
+}
 const SLIDER = 'Slider outline'
 const SHADING = 'Forecast shading'
 
@@ -493,6 +541,7 @@ function tooltip(
         (modelUnused(day) ? ` ${source(`model ${depth(day.rain_model)}`)}` : ''),
     ],
     ['Irrigation', `${depth(day.irrigation)} ${source(forecast && day.irrigation_source === 'entered' ? 'planned' : SOURCE_LABELS[day.irrigation_source])}`],
+    ['Deep drainage', depth(day.deep_drainage)],
     // Running totals are already in display units
     ...totals.flatMap((total) => {
       const value = total.data[index]
@@ -504,7 +553,6 @@ function tooltip(
     ],
   ]
   if (day.soil_moisture_pct !== null) rows.push(['Moisture reading', `${day.soil_moisture_pct}%`])
-  if (day.deep_drainage > 0) rows.push(['Deep drainage', depth(day.deep_drainage)])
   const body = rows.map(([name, value]) => `<tr><td style="padding-right:12px">${name}</td><td>${value}</td></tr>`)
   const heading = `${formatDate(day.date, { weekday: true })}${forecast ? ' · forecast' : ''}`
   return `<strong>${heading}</strong><table>${body.join('')}</table>`
