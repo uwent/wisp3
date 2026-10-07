@@ -31,6 +31,15 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 - [x] **SPF and DKIM (Q6):** in Gmail, open the digest → "Show original" and check SPF and DKIM both say PASS. If not, ask campus IT (PLAN.md Q6). Also try the one-click "Unsubscribe" Gmail shows next to the sender.
 - [ ] **Exit check:** on staging, set up test fields for a rain refill, a sudden heat spell, and planned irrigation pushing back "Irrigate by", and check the digests read right.
 
+## Phase 6.6: field rain setting and season details
+
+- [ ] **Deploy to staging** (`bundle exec cap staging deploy`); it runs the new migration (`fields.use_model_precip`).
+- [ ] **Exit check:** on staging, pick a field with a few weeks of rain gauge readings (or enter some), then:
+  - At the bottom of its page, switch it to "Only the rain you enter" and save. The summary card should say "Rain: only what you enter…", and the season details show the modeled rain left out of the balance.
+  - Check the projection shows both cases: the dotted "If no rain falls" line on the soil-water chart, the "AD if no rain" column in the forecast table, and "If no rain falls: irrigate by …" in the outlook (and in the daily email) when that's sooner.
+  - Check the precipitation chart (weather section) and the season details agree with the daily grid: entered rain beside the model's, outlined modeled rain where it isn't used.
+  - Switch back to "The operation's setting" and check the balance and season totals return to what they were.
+
 ## Staging (non-blocking)
 
 - [x] **Add the Open-Meteo key to staging credentials** before deploying: `bin/rails credentials:edit --environment staging`, add
