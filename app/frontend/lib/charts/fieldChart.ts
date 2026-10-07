@@ -5,6 +5,7 @@ import { ET_SOURCE_LABELS, rainOverridden, SOURCE_LABELS } from '../provenance'
 import type { Units } from '../units'
 import type { ChartView, EChartsCoreOption } from './echarts'
 import { baseOption, type Palette } from './palette'
+import { forecastShading } from './shading'
 import { runningTotal } from './totals'
 
 /** Days shown before zooming out to the whole season */
@@ -124,13 +125,13 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   // The canopy as modeled each day (interpolated between readings), and the readings themselves
   const canopyName = canopy === 'lai' ? 'LAI' : 'Canopy cover'
 
-  const forecastArea = forecastDays.length
-    ? {
-        silent: true,
-        itemStyle: { color: palette.inkMuted, opacity: 0.08 },
-        label: { show: true, position: 'insideTop', color: palette.inkMuted, fontSize: 10, formatter: 'Forecast' },
-        data: [[{ xAxis: forecastDays[0].date }, { xAxis: dates.at(-1) }]],
-      }
+  // The forecast's days shaded edge to edge on every panel, and named once at the top
+  const shading = forecastShading({ dates, from: forecastDays.length ? observed : -1, grids: 4, axisOffset: 4, palette })
+  const forecastLabel = forecastDays.length
+    ? [
+        { xAxis: forecastDays[0].date, itemStyle: { opacity: 0 }, label: { show: true, position: 'insideTop', color: palette.inkMuted, fontSize: 10, formatter: 'Forecast' } },
+        { xAxis: dates.at(-1) },
+      ]
     : undefined
 
   const axisLabel = { ...base.axisLabel, formatter: (iso: string) => formatDate(iso) }
@@ -164,11 +165,14 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       { left: 48, right: 112, top: '66%', height: '9%' },
       { left: 48, right: 112, top: '81%', bottom: 56 },
     ],
-    xAxis: [0, 1, 2, 3].map((gridIndex) =>
-      gridIndex === 3
-        ? { type: 'category', data: dates, gridIndex, axisLabel, axisLine: base.axisLine }
-        : { type: 'category', data: dates, gridIndex, axisLabel: { show: false }, axisLine: base.axisLine, axisTick: { show: false } },
-    ),
+    xAxis: [
+      ...[0, 1, 2, 3].map((gridIndex) =>
+        gridIndex === 3
+          ? { type: 'category', data: dates, gridIndex, axisLabel, axisLine: base.axisLine }
+          : { type: 'category', data: dates, gridIndex, axisLabel: { show: false }, axisLine: base.axisLine, axisTick: { show: false } },
+      ),
+      ...shading.xAxis,
+    ],
     yAxis: [
       {
         type: 'value',
@@ -212,12 +216,13 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         min: 0,
         ...(canopy === 'lai' ? {} : { max: 100 }),
       },
+      ...shading.yAxis,
     ],
     dataZoom: [
-      { type: 'inside', xAxisIndex: [0, 1, 2, 3], startValue: dates[openingStart] },
+      { type: 'inside', xAxisIndex: [0, 1, 2, 3, ...shading.xAxisIndexes], startValue: dates[openingStart] },
       {
         type: 'slider',
-        xAxisIndex: [0, 1, 2, 3],
+        xAxisIndex: [0, 1, 2, 3, ...shading.xAxisIndexes],
         bottom: 8,
         height: 20,
         startValue: dates[openingStart],
@@ -262,29 +267,16 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
               : []),
           ],
         },
-        // Below the trigger point, shaded faintly in the irrigate color, and the forecast
+        // Below the trigger point, shaded faintly in the irrigate color, and the forecast's label
         markArea: {
           silent: true,
           data: [
             [{ yAxis: zeroLine, itemStyle: { color: palette.status.irrigate, opacity: 0.07 } }, { yAxis: wiltingLine }],
-            ...(forecastArea ? forecastArea.data.map(([from, to]) => [{ ...from, itemStyle: forecastArea.itemStyle, label: forecastArea.label }, to]) : []),
+            ...(forecastLabel ? [forecastLabel] : []),
           ],
         },
       },
-      // The forecast shading on the panels below, on series of their own for the same reason
-      ...(forecastArea
-        ? [1, 2, 3].map((index) => ({
-            id: `shading-${index}`,
-            name: SHADING,
-            type: 'line',
-            xAxisIndex: index,
-            yAxisIndex: index,
-            data: [],
-            tooltip: { show: false },
-            silent: true,
-            markArea: { ...forecastArea, label: { show: false } },
-          }))
-        : []),
+      ...shading.series,
       // An invisible base at field capacity, then the day's drainage above it
       ...(drains
         ? [
@@ -508,7 +500,6 @@ export function roundUp(value: number): number {
   return Number((Math.ceil(value / step) * step).toFixed(6))
 }
 const SLIDER = 'Slider outline'
-const SHADING = 'Forecast shading'
 
 function tooltip(
   days: FieldDay[],

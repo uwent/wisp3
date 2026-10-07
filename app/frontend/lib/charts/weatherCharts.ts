@@ -5,6 +5,7 @@ import type { Quantity, Units } from '../units'
 import type { ChartView, EChartsCoreOption } from './echarts'
 import { DEFAULT_WINDOW_DAYS } from './fieldChart'
 import { baseOption, type Palette } from './palette'
+import { forecastShading } from './shading'
 import { runningTotal } from './totals'
 
 export { runningTotal }
@@ -319,10 +320,19 @@ export function weatherChartOption(
   const top = legendShown ? 32 : 12
   const axisLabel = { ...base.axisLabel, formatter: (iso: string) => formatDate(iso) }
 
+  // The forecast's days shaded edge to edge, and named once at the top
+  const gridCount = totals.length ? 2 : 1
+  const shading = forecastShading({
+    dates,
+    from: firstForecast ? dates.indexOf(firstForecast) : -1,
+    grids: gridCount,
+    axisOffset: gridCount,
+    palette,
+  })
   const forecastArea = firstForecast
     ? {
         silent: true,
-        itemStyle: { color: palette.inkMuted, opacity: 0.08 },
+        itemStyle: { opacity: 0 },
         label: { show: true, position: 'insideTop', color: palette.inkMuted, fontSize: 10, formatter: 'Forecast' },
         data: [[{ xAxis: firstForecast }, { xAxis: dates[dates.length - 1] }]],
       }
@@ -373,7 +383,6 @@ export function weatherChartOption(
     symbol: 'none',
     lineStyle: { width: 2, color: s.color(palette), type: i === 0 ? 'solid' : 'dashed' },
     itemStyle: { color: s.color(palette) },
-    ...(i === 0 ? { markArea: forecastArea } : {}),
   }))
 
   const grids = totals.length
@@ -400,30 +409,36 @@ export function weatherChartOption(
     tooltip: { ...base.tooltip, formatter: (params: unknown) => tooltip(params, unit, panel.bars || totals.length ? 2 : 1, sparse) },
     axisPointer: totals.length ? { link: [{ xAxisIndex: 'all' }] } : undefined,
     grid: grids,
-    xAxis: totals.length
-      ? [
-          { type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false }, axisLine: base.axisLine, axisTick: { show: false } },
-          { type: 'category', data: dates, gridIndex: 1, axisLabel, axisLine: base.axisLine },
-        ]
-      : [{ type: 'category', data: dates, axisLabel, axisLine: base.axisLine }],
-    yAxis: totals.length
-      ? [
-          { type: 'value', gridIndex: 0, min: 0, splitNumber: 3, axisLabel: base.axisLabel, splitLine: base.splitLine },
-          {
-            type: 'value',
-            gridIndex: 1,
-            min: 0,
-            splitNumber: 2,
-            name: 'Total in view',
-            nameTextStyle: { color: palette.inkMuted, fontSize: 10, align: 'left' },
-            nameGap: 6,
-            axisLabel: base.axisLabel,
-            splitLine: base.splitLine,
-          },
-        ]
-      : [{ type: 'value', scale: !panel.bars, axisLabel: base.axisLabel, splitLine: base.splitLine }],
-    dataZoom: [{ type: 'inside', xAxisIndex: totals.length ? [0, 1] : [0], startValue }],
-    series: [...daily, ...running],
+    xAxis: [
+      ...(totals.length
+        ? [
+            { type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false }, axisLine: base.axisLine, axisTick: { show: false } },
+            { type: 'category', data: dates, gridIndex: 1, axisLabel, axisLine: base.axisLine },
+          ]
+        : [{ type: 'category', data: dates, axisLabel, axisLine: base.axisLine }]),
+      ...shading.xAxis,
+    ],
+    yAxis: [
+      ...(totals.length
+        ? [
+            { type: 'value', gridIndex: 0, min: 0, splitNumber: 3, axisLabel: base.axisLabel, splitLine: base.splitLine },
+            {
+              type: 'value',
+              gridIndex: 1,
+              min: 0,
+              splitNumber: 2,
+              name: 'Total in view',
+              nameTextStyle: { color: palette.inkMuted, fontSize: 10, align: 'left' },
+              nameGap: 6,
+              axisLabel: base.axisLabel,
+              splitLine: base.splitLine,
+            },
+          ]
+        : [{ type: 'value', scale: !panel.bars, axisLabel: base.axisLabel, splitLine: base.splitLine }]),
+      ...shading.yAxis,
+    ],
+    dataZoom: [{ type: 'inside', xAxisIndex: [...(totals.length ? [0, 1] : [0]), ...shading.xAxisIndexes], startValue }],
+    series: [...daily, ...running, ...shading.series],
   }
 }
 

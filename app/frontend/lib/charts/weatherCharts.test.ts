@@ -36,11 +36,18 @@ const panel = (key: string, system: 'imperial' | 'metric' = 'imperial') =>
 type SeriesOption = { name: string; type: string; stack?: string; xAxisIndex: number; data: (number | null)[] }
 
 describe('weather charts', () => {
-  it('opens on the last observed days and shades the forecast', () => {
+  it('opens on the last observed days and shades the forecast edge to edge', () => {
     const option = weatherChartOption(panel('air_temperature'), days, units('imperial'), palette)
-    expect(option.dataZoom).toEqual([{ type: 'inside', xAxisIndex: [0], startValue: days[60 - DEFAULT_WINDOW_DAYS].date }])
-    const [first] = option.series as { markArea?: { data: { xAxis: string }[][] } }[]
-    expect(first.markArea!.data[0].map((point) => point.xAxis)).toEqual([days[60].date, days[64].date])
+    // The chart's axis and the shading's hidden one move together
+    expect(option.dataZoom).toEqual([{ type: 'inside', xAxisIndex: [0, 1], startValue: days[60 - DEFAULT_WINDOW_DAYS].date }])
+    const series = option.series as { id?: string; type: string; xAxisIndex?: number; data: unknown[]; barWidth?: string; markArea?: { data: { xAxis: string }[][] } }[]
+    // Named over the forecast days
+    expect(series[0].markArea!.data[0].map((point) => point.xAxis)).toEqual([days[60].date, days[64].date])
+    // Shaded by full-width bars on the forecast days, on the hidden axis
+    const shading = series.find((s) => s.id === 'shading-0')!
+    expect(shading).toMatchObject({ type: 'bar', xAxisIndex: 1, barWidth: '100%' })
+    expect(shading.data.slice(58, 62)).toEqual([null, null, 1, 1])
+    expect((option.xAxis as { show?: boolean }[])[1].show).toBe(false)
   })
 
   it('shows temperatures in the user units', () => {
@@ -100,7 +107,7 @@ describe('weather charts', () => {
   it('adds snow to the precipitation chart only when there is snow', () => {
     const names = (d: WeatherPanelDay[]) =>
       (weatherChartOption(panel('precipitation'), d, units('imperial'), palette).series as SeriesOption[]).map((s) => s.name)
-    expect(names(days)).toEqual(['Rain', 'Snow and other', 'Precipitation total'])
+    expect(names(days)).toEqual(['Rain', 'Snow and other', 'Precipitation total', 'Forecast shading', 'Forecast shading'])
     const snowy = days.map((day, i) => (i === 3 ? { ...day, snowfall_in: 1.5, snow_depth_in: 2 } : i === 4 ? { ...day, snow_depth_in: 1 } : day))
     const [, , snowfall, snowDepth] = weatherChartOption(panel('precipitation'), snowy, units('imperial'), palette).series as SeriesOption[]
     expect([snowfall.name, snowfall.type, snowfall.stack]).toEqual(['Snowfall', 'bar', undefined])
@@ -152,7 +159,13 @@ describe('weather charts', () => {
 
     it('adds the entered rain beside the model, and outlines the modeled rain it replaced', () => {
       const series = option(fieldRain()).series as { name: string; data: Item[]; stack?: string }[]
-      expect(series.map((s) => s.name)).toEqual(['Rain', 'Snow and other', 'Entered rain', 'Modeled total', 'Used by the balance'])
+      expect(series.map((s) => s.name).filter((name) => name !== 'Forecast shading')).toEqual([
+        'Rain',
+        'Snow and other',
+        'Entered rain',
+        'Modeled total',
+        'Used by the balance',
+      ])
       const [rain, , entered] = series
       expect(entered.stack).toBeUndefined()
       expect(entered.data.slice(29, 33)).toEqual([null, 0.8, 0, null])

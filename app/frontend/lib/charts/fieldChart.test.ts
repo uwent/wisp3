@@ -155,8 +155,12 @@ describe('field chart', () => {
     expect(always.markLine!.data).toHaveLength(5)
     expect(always.markLine!.data.at(-1)).toMatchObject({ xAxis: '2026-07-02' })
     expect(always.markArea!.data).toHaveLength(2)
-    expect(series.filter((s) => s.id.startsWith('shading-')).map((s) => s.markArea!.data)).toHaveLength(3)
-    expect(series.filter((s) => s.id !== 'slider' && !s.id.startsWith('shading-')).every((s) => !s.markLine && !s.markArea)).toBe(true)
+    expect(series.filter((s) => s.id !== 'slider').every((s) => !s.markLine && !s.markArea)).toBe(true)
+    // The forecast shaded edge to edge on all four panels, by full-width bars on hidden axes the zoom moves too
+    const shading = series.filter((s) => s.id.startsWith('shading-')) as unknown as { xAxisIndex: number; data: unknown[]; barWidth: string }[]
+    expect(shading.map((s) => [s.xAxisIndex, s.barWidth])).toEqual([[4, '100%'], [5, '100%'], [6, '100%'], [7, '100%']])
+    expect(shading[0].data).toEqual([null, null, 1])
+    expect((option.dataZoom as { xAxisIndex: number[] }[])[0].xAxisIndex).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
   })
 
   it('stacks deep drainage on the field capacity line, and lists it in the tooltip even when none', () => {
