@@ -10,7 +10,11 @@ const rows = [
 
 describe('table', () => {
   it('sorts strings ignoring case and numbers by value', () => {
-    expect(sortRows(rows, (r) => r.email, 'asc').map((r) => r.email)).toEqual(['a@example.com', 'b@example.com', 'C@example.com'])
+    expect(sortRows(rows, (r) => r.email, 'asc').map((r) => r.email)).toEqual([
+      'a@example.com',
+      'b@example.com',
+      'C@example.com',
+    ])
     expect(sortRows(rows, (r) => r.farms, 'desc').map((r) => r.farms)).toEqual([10, 2, 0])
   })
 

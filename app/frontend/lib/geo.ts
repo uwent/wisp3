@@ -18,7 +18,8 @@ export function destination([lng, lat]: LngLat, distanceM: number, bearingDeg: n
   const b = rad(bearingDeg)
   const lat1 = rad(lat)
   const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b))
-  const lng2 = rad(lng) + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2))
+  const lng2 =
+    rad(lng) + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2))
   return [deg(lng2), deg(lat2)]
 }
 
@@ -32,7 +33,8 @@ export function distanceM([lng1, lat1]: LngLat, [lng2, lat2]: LngLat): number {
 /** Bearing from the first point to the second, 0–360 clockwise from north */
 export function bearing([lng1, lat1]: LngLat, [lng2, lat2]: LngLat): number {
   const y = Math.sin(rad(lng2 - lng1)) * Math.cos(rad(lat2))
-  const x = Math.cos(rad(lat1)) * Math.sin(rad(lat2)) - Math.sin(rad(lat1)) * Math.cos(rad(lat2)) * Math.cos(rad(lng2 - lng1))
+  const x =
+    Math.cos(rad(lat1)) * Math.sin(rad(lat2)) - Math.sin(rad(lat1)) * Math.cos(rad(lat2)) * Math.cos(rad(lng2 - lng1))
   return (deg(Math.atan2(y, x)) + 360) % 360
 }
 

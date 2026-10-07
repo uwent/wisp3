@@ -56,7 +56,8 @@
   const fieldCount = (count: number) => `${count} field${count === 1 ? '' : 's'}`
   const countTips = {
     irrigate: (count: number) => `${fieldCount(count)} at or below the irrigation point today`,
-    caution: (count: number) => `${fieldCount(count)} running low, or projected to need irrigation within ${LEAD_DAYS} days`,
+    caution: (count: number) =>
+      `${fieldCount(count)} running low, or projected to need irrigation within ${LEAD_DAYS} days`,
     ok: (count: number) => `${fieldCount(count)} with enough water for now`,
     full: (count: number) => `${fieldCount(count)} near field capacity`,
   }
@@ -71,7 +72,9 @@
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
     <h1 class="text-2xl font-semibold">Dashboard</h1>
-    <p class="text-sm text-ink-muted">{page.props.auth.group?.name} · {formatDate(today, { weekday: true, year: true })}</p>
+    <p class="text-sm text-ink-muted">
+      {page.props.auth.group?.name} · {formatDate(today, { weekday: true, year: true })}
+    </p>
   </div>
   {#if anyFields}
     <div class="flex flex-wrap items-center gap-2">
@@ -117,31 +120,48 @@
     <div class="flex flex-wrap gap-2 text-sm" aria-label="Fields by status">
       {#each counts as { status, count } (status)}
         {#if count}
-          <span class="flex items-center gap-1.5" title={countTips[status](count)}><StatusBadge {status} size="sm" /> {count}</span>
+          <span class="flex items-center gap-1.5" title={countTips[status](count)}
+            ><StatusBadge {status} size="sm" /> {count}</span
+          >
         {/if}
       {/each}
       {#if endedCount}
-        <span class="flex items-center gap-1.5" title="{fieldCount(endedCount)} whose season has ended">{@render seasonEnded()} {endedCount}</span>
+        <span class="flex items-center gap-1.5" title="{fieldCount(endedCount)} whose season has ended"
+          >{@render seasonEnded()} {endedCount}</span
+        >
       {/if}
     </div>
   {/if}
 
   {#each shown as farm (farm.id)}
     <section class="space-y-3" aria-labelledby="farm-{farm.id}">
-      <h2 id="farm-{farm.id}" class="text-lg font-medium"><span class="font-normal text-ink-muted">Farm:</span> {farm.name}</h2>
+      <h2 id="farm-{farm.id}" class="text-lg font-medium">
+        <span class="font-normal text-ink-muted">Farm:</span>
+        {farm.name}
+      </h2>
       {#each farm.pivots as pivot (pivot.id)}
-        <section class="space-y-3 rounded-lg border border-line bg-surface p-3 sm:p-4" aria-labelledby="pivot-{pivot.id}">
+        <section
+          class="space-y-3 rounded-lg border border-line bg-surface p-3 sm:p-4"
+          aria-labelledby="pivot-{pivot.id}"
+        >
           <div class="flex items-center justify-between gap-3">
             <h3 id="pivot-{pivot.id}" class="min-w-0 truncate font-medium">
-              <span class="font-normal text-ink-muted">Pivot:</span> {pivot.name}
+              <span class="font-normal text-ink-muted">Pivot:</span>
+              {pivot.name}
             </h3>
             <div class="flex shrink-0 gap-3 text-sm">
-              <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline" aria-label="View {pivot.name}">View</Link>
-              <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}">Edit</Link>
+              <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline" aria-label="View {pivot.name}"
+                >View</Link
+              >
+              <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
+                >Edit</Link
+              >
             </div>
           </div>
           {#if pivot.fields.length === 0}
-            <p class="text-sm text-ink-muted">No fields yet. <Link href={setup.show()} class="text-brand-600 hover:underline">Add them in setup</Link>.</p>
+            <p class="text-sm text-ink-muted">
+              No fields yet. <Link href={setup.show()} class="text-brand-600 hover:underline">Add them in setup</Link>.
+            </p>
           {:else}
             <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {#each pivot.fields as card (card.id)}
@@ -154,7 +174,10 @@
                   >
                     <div class="flex items-start justify-between gap-2">
                       <div class="min-w-0">
-                        <h4 class="truncate font-medium"><span class="font-normal text-ink-muted">Field:</span> {card.name}</h4>
+                        <h4 class="truncate font-medium">
+                          <span class="font-normal text-ink-muted">Field:</span>
+                          {card.name}
+                        </h4>
                         {#if summary}
                           <p class="truncate text-xs text-ink-muted">
                             {summary.plant_name}{#if summary.variety}{` (${summary.variety})`}{/if}
@@ -171,7 +194,9 @@
                     {#if !summary}
                       <p class="text-sm text-ink-muted">No crop this season. Add a planting in setup.</p>
                     {:else if summary.weather_pending}
-                      <p class="text-sm text-ink-muted">Weather for this pivot is on the way; the water balance fills in once it arrives.</p>
+                      <p class="text-sm text-ink-muted">
+                        Weather for this pivot is on the way; the water balance fills in once it arrives.
+                      </p>
                     {:else if summary.phase === 'upcoming'}
                       <p class="text-sm text-ink-muted">Season starts {formatDate(summary.season_start)}</p>
                     {:else}
@@ -191,7 +216,10 @@
                           projected={summary.phase === 'active' ? summary.projection.map((day) => day.ad) : []}
                           max={summary.ad_max}
                           min={summary.ad_pwp}
-                          label="Allowable depletion over the last {summary.recent.length} days{summary.phase === 'active' && summary.projection.length ? `, and the ${summary.projection.length} days ahead` : ''}"
+                          label="Allowable depletion over the last {summary.recent.length} days{summary.phase ===
+                            'active' && summary.projection.length
+                            ? `, and the ${summary.projection.length} days ahead`
+                            : ''}"
                         />
                       </div>
                       {#if look}
@@ -201,13 +229,19 @@
                         <div>
                           <dt class="text-ink-muted">Last rain</dt>
                           <dd>
-                            {#if summary.last_rain}{units.format('depth', summary.last_rain.inches)}, {when(summary, summary.last_rain.date)}{:else}None{/if}
+                            {#if summary.last_rain}{units.format('depth', summary.last_rain.inches)}, {when(
+                                summary,
+                                summary.last_rain.date,
+                              )}{:else}None{/if}
                           </dd>
                         </div>
                         <div>
                           <dt class="text-ink-muted">Last irrigation</dt>
                           <dd>
-                            {#if summary.last_irrigation}{units.format('depth', summary.last_irrigation.inches)}, {when(summary, summary.last_irrigation.date)}{:else}None{/if}
+                            {#if summary.last_irrigation}{units.format('depth', summary.last_irrigation.inches)}, {when(
+                                summary,
+                                summary.last_irrigation.date,
+                              )}{:else}None{/if}
                           </dd>
                         </div>
                       </dl>
@@ -220,7 +254,9 @@
         </section>
       {/each}
       {#if farm.pivots.length === 0}
-        <p class="text-sm text-ink-muted">No pivots yet. <Link href={setup.show()} class="text-brand-600 hover:underline">Add one in setup</Link>.</p>
+        <p class="text-sm text-ink-muted">
+          No pivots yet. <Link href={setup.show()} class="text-brand-600 hover:underline">Add one in setup</Link>.
+        </p>
       {/if}
     </section>
   {/each}

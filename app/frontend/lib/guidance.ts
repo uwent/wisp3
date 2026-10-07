@@ -53,7 +53,11 @@ export function guidance(
       `(${units.format('rootDepth', depth * 0.25)} and ${units.format('rootDepth', depth * 0.75)} deep).`,
   )
 
-  return { title: `How ${crop.toLowerCase()} is modeled`, paragraphs, readings: today ? readings(planting, days, today) : [] }
+  return {
+    title: `How ${crop.toLowerCase()} is modeled`,
+    paragraphs,
+    readings: today ? readings(planting, days, today) : [],
+  }
 }
 
 function methodText(planting: Pick<Planting, 'plant_name' | 'et_method' | 'canopy_curve'>): string {
@@ -96,12 +100,19 @@ function readings(
     return { label, last, due, note: due ? 'due' : null }
   }
 
-  const list = [reading('Soil moisture', last((day) => day.moisture_source !== null))]
+  const list = [
+    reading(
+      'Soil moisture',
+      last((day) => day.moisture_source !== null),
+    ),
+  ]
   const canopy = last((day) => day.canopy_entered !== null)
   if (planting.et_method === 'pct_cover') {
     const cover = reading('Percent cover', canopy)
     // Done once the canopy is nearly closed: WISP holds the last reading
-    list.push(canopy && canopy.canopy_entered! >= FULL_COVER_PCT ? { ...cover, due: false, note: 'canopy closed' } : cover)
+    list.push(
+      canopy && canopy.canopy_entered! >= FULL_COVER_PCT ? { ...cover, due: false, note: 'canopy closed' } : cover,
+    )
   } else if (!planting.canopy_curve || canopy) {
     list.push(reading('LAI', canopy))
   }

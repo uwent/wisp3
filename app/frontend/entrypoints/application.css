@@ -11,7 +11,9 @@
  * rather than raw palette colors, so light/dark and status colors are defined once.
  */
 @theme {
-  --font-sans: 'Red Hat Text Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans:
+    'Red Hat Text Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
   --font-display: 'Red Hat Display Variable', var(--font-sans);
 
   /* Brand: water blue */

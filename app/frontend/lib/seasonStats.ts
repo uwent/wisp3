@@ -58,12 +58,18 @@ export function median(values: number[]): number | null {
 }
 
 const round = (inches: number) => Number(inches.toFixed(4))
-const total = (values: number[]): Total => ({ days: values.length, inches: round(values.reduce((sum, value) => sum + value, 0)) })
+const total = (values: number[]): Total => ({
+  days: values.length,
+  inches: round(values.reduce((sum, value) => sum + value, 0)),
+})
 
 export function seasonStats(days: FieldDay[]): SeasonStats {
-  const isReading = (day: FieldDay) => (day.rain_source === 'entered' || day.rain_source === 'group') && day.rain !== null
+  const isReading = (day: FieldDay) =>
+    (day.rain_source === 'entered' || day.rain_source === 'group') && day.rain !== null
   const readings = days.filter(isReading)
-  const modeledRain = days.flatMap((day) => (day.rain_model !== null && day.rain_model >= RAIN_DAY ? [day.rain_model] : []))
+  const modeledRain = days.flatMap((day) =>
+    day.rain_model !== null && day.rain_model >= RAIN_DAY ? [day.rain_model] : [],
+  )
 
   const both: { entered: number; model: number }[] = []
   const missed: number[] = []
@@ -86,7 +92,9 @@ export function seasonStats(days: FieldDay[]): SeasonStats {
 
   const irrigated = days.filter((day) => (day.irrigation ?? 0) > 0)
   const intervals = irrigated.slice(1).map((day, i) => daysBetween(irrigated[i].date, day.date))
-  const leftOut = days.flatMap((day) => (day.rain_source === 'none' && day.rain_model !== null && day.rain_model >= RAIN_DAY ? [day.rain_model] : []))
+  const leftOut = days.flatMap((day) =>
+    day.rain_source === 'none' && day.rain_model !== null && day.rain_model >= RAIN_DAY ? [day.rain_model] : [],
+  )
 
   return {
     days: days.length,
@@ -100,7 +108,9 @@ export function seasonStats(days: FieldDay[]): SeasonStats {
     comparison: {
       both: {
         ...total(both.map((day) => day.entered)),
-        disagree: both.filter((day) => Math.abs(day.entered - day.model) > Math.max(DISAGREE_IN, DISAGREE_SHARE * day.model)).length,
+        disagree: both.filter(
+          (day) => Math.abs(day.entered - day.model) > Math.max(DISAGREE_IN, DISAGREE_SHARE * day.model),
+        ).length,
         typicalAdjustment: median(both.map((day) => round(day.entered - day.model))),
         ratio: bothModel > 0 ? round(bothEntered / bothModel) : null,
       },

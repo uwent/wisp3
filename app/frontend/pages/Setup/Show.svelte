@@ -8,7 +8,17 @@
   import { units as unitsFor } from '@/lib/units'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
   import PlantingForm from '@/lib/setup/PlantingForm.svelte'
-  import { farms as farmRoutes, fieldGroups, fields, groups as groupRoutes, newQuickSetup, pivots, plantings, seasonCopies, setup } from '@/routes'
+  import {
+    farms as farmRoutes,
+    fieldGroups,
+    fields,
+    groups as groupRoutes,
+    newQuickSetup,
+    pivots,
+    plantings,
+    seasonCopies,
+    setup,
+  } from '@/routes'
   import type { Farm, Field, Pivot, Plant, Planting, SoilType } from '@/types/serializers'
 
   let {
@@ -25,7 +35,9 @@
   const owner = $derived(page.props.auth.owner)
   const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
   const seasonPlantings = (field: Field) => field.plantings.filter((planting) => planting.year === year)
-  const hasLastSeason = $derived(allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))))
+  const hasLastSeason = $derived(
+    allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
+  )
 
   type DialogState =
     | { kind: 'farm'; farm?: Farm }
@@ -49,8 +61,11 @@
   const dialogTitle = $derived.by(() => {
     if (!dialog) return ''
     if (dialog.kind === 'farm') return dialog.farm ? `Edit ${dialog.farm.name}` : 'Add a farm'
-    if (dialog.kind === 'field') return dialog.field ? `Edit ${dialog.field.name}` : `Add a field to ${dialog.pivot.name}`
-    return dialog.planting ? `Edit ${dialog.planting.plant_name} on ${dialog.field.name}` : `Add a ${year} crop to ${dialog.field.name}`
+    if (dialog.kind === 'field')
+      return dialog.field ? `Edit ${dialog.field.name}` : `Add a field to ${dialog.pivot.name}`
+    return dialog.planting
+      ? `Edit ${dialog.planting.plant_name} on ${dialog.field.name}`
+      : `Add a ${year} crop to ${dialog.field.name}`
   })
 </script>
 
@@ -63,19 +78,33 @@
   </div>
   <div class="flex flex-wrap items-center gap-2">
     <label for="season" class="text-sm text-ink-muted">Season</label>
-    <select id="season" class="rounded-md text-sm" value={year} onchange={(e) => router.get(setup.show().url, { year: e.currentTarget.value })}>
+    <select
+      id="season"
+      class="rounded-md text-sm"
+      value={year}
+      onchange={(e) => router.get(setup.show().url, { year: e.currentTarget.value })}
+    >
       {#each [...new Set([...years, year + 1])] as y (y)}<option value={y}>{y}</option>{/each}
     </select>
-    <Link href={newQuickSetup()} class="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface">
+    <Link
+      href={newQuickSetup()}
+      class="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface"
+    >
       Set up a pivot
     </Link>
   </div>
 </div>
 
 {#if hasLastSeason}
-  <Form action={seasonCopies.create({ query: { year } })} class="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-brand-50 px-4 py-3 text-sm">
+  <Form
+    action={seasonCopies.create({ query: { year } })}
+    class="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-brand-50 px-4 py-3 text-sm"
+  >
     {#snippet children({ processing })}
-      <p class="flex-1">Growing the same crops as {year - 1}? Copy last season's crops to {year}, with the same settings and dates a year later.</p>
+      <p class="flex-1">
+        Growing the same crops as {year - 1}? Copy last season's crops to {year}, with the same settings and dates a
+        year later.
+      </p>
       <Button type="submit" variant="secondary" disabled={processing}>Copy {year - 1} crops</Button>
     {/snippet}
   </Form>
@@ -89,10 +118,17 @@
         {#if farm.notes}<p class="text-sm whitespace-pre-line text-ink-muted">{farm.notes}</p>{/if}
       </div>
       <div class="flex gap-1 text-sm">
-        <Link href={pivots.new({ query: { farm_id: farm.id } })} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50">Add pivot</Link>
+        <Link
+          href={pivots.new({ query: { farm_id: farm.id } })}
+          class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50">Add pivot</Link
+        >
         <Button variant="ghost" class="px-3 py-1.5" onclick={() => open({ kind: 'farm', farm })}>Edit</Button>
         {#if owner}
-          <Button variant="danger-ghost" class="px-3 py-1.5" onclick={() => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its pivots and fields`)}>
+          <Button
+            variant="danger-ghost"
+            class="px-3 py-1.5"
+            onclick={() => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its pivots and fields`)}
+          >
             Delete
           </Button>
         {/if}
@@ -110,17 +146,29 @@
             <h3 class="font-medium">{pivot.name}</h3>
             <p class="text-xs text-ink-muted">
               {pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}
-              {#if pivot.radius_ft} · radius {units.format('distance', pivot.radius_ft)}{/if}
-              {#if pivot.pump_capacity_gpm} · pump {units.format('flow', pivot.pump_capacity_gpm)}{/if}
-              {#if pivot.equipment} · {pivot.equipment}{/if}
+              {#if pivot.radius_ft}
+                · radius {units.format('distance', pivot.radius_ft)}{/if}
+              {#if pivot.pump_capacity_gpm}
+                · pump {units.format('flow', pivot.pump_capacity_gpm)}{/if}
+              {#if pivot.equipment}
+                · {pivot.equipment}{/if}
             </p>
           </div>
           <div class="flex flex-wrap gap-1 text-sm">
-            <Link href={pivots.show(pivot.id)} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50">Irrigation</Link>
-            <Link href={pivots.edit(pivot.id)} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50">Edit</Link>
-            <Button variant="ghost" class="px-3 py-1.5" onclick={() => open({ kind: 'field', pivot })}>Add field</Button>
+            <Link href={pivots.show(pivot.id)} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
+              >Irrigation</Link
+            >
+            <Link href={pivots.edit(pivot.id)} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
+              >Edit</Link
+            >
+            <Button variant="ghost" class="px-3 py-1.5" onclick={() => open({ kind: 'field', pivot })}>Add field</Button
+            >
             {#if owner}
-              <Button variant="danger-ghost" class="px-3 py-1.5" onclick={() => destroy(pivots.destroy(pivot.id), `${pivot.name} and its fields`)}>
+              <Button
+                variant="danger-ghost"
+                class="px-3 py-1.5"
+                onclick={() => destroy(pivots.destroy(pivot.id), `${pivot.name} and its fields`)}
+              >
                 Delete
               </Button>
             {/if}
@@ -138,7 +186,9 @@
                   <p class="text-xs text-ink-muted">
                     {units.format('area', field.area_acres)} · {field.soil_type_name}
                     {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(custom FC/PWP){/if}
-                    {#if field.use_model_precip !== null}· {field.use_model_precip ? 'modeled rain' : 'entered rain only'}{/if}
+                    {#if field.use_model_precip !== null}· {field.use_model_precip
+                        ? 'modeled rain'
+                        : 'entered rain only'}{/if}
                   </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -150,17 +200,29 @@
                       title="Edit this crop"
                     >
                       <span class="font-medium">{planting.plant_name}</span>
-                      <span class="text-ink-muted">{formatDate(planting.emergence_date)} – {formatDate(planting.end_date)}</span>
+                      <span class="text-ink-muted"
+                        >{formatDate(planting.emergence_date)} – {formatDate(planting.end_date)}</span
+                      >
                     </button>
                   {:else}
                     <span class="text-xs text-ink-muted">No {year} crop</span>
                   {/each}
-                  <Button variant="ghost" class="px-2 py-1 text-xs" onclick={() => open({ kind: 'planting', field })}>+ Crop</Button>
+                  <Button variant="ghost" class="px-2 py-1 text-xs" onclick={() => open({ kind: 'planting', field })}
+                    >+ Crop</Button
+                  >
                 </div>
                 <div class="flex gap-1 text-xs">
-                  <Button variant="ghost" class="px-2 py-1 text-xs" onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button>
+                  <Button
+                    variant="ghost"
+                    class="px-2 py-1 text-xs"
+                    onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button
+                  >
                   {#if owner}
-                    <Button variant="danger-ghost" class="px-2 py-1 text-xs" onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its records`)}>
+                    <Button
+                      variant="danger-ghost"
+                      class="px-2 py-1 text-xs"
+                      onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its records`)}
+                    >
                       Delete
                     </Button>
                   {/if}
@@ -173,21 +235,28 @@
     {/each}
   </section>
 {:else}
-  <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted">
+  <section
+    class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted"
+  >
     No farms yet. <Link href={newQuickSetup()} class="text-brand-600 hover:underline">Set up your first pivot</Link>.
   </section>
 {/each}
 
 <div class="flex flex-wrap gap-3">
   <Button variant="secondary" onclick={() => open({ kind: 'farm' })}>Add a farm</Button>
-  <Link href={fieldGroups.index()} class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface">
+  <Link
+    href={fieldGroups.index()}
+    class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
+  >
     Field groups
   </Link>
-  <Link href={groupRoutes.show()} class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface">
+  <Link
+    href={groupRoutes.show()}
+    class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
+  >
     Operation settings and members
   </Link>
 </div>
-
 
 <Dialog bind:open={dialogOpen} title={dialogTitle} wide={dialog?.kind === 'planting'}>
   {#if dialog?.kind === 'farm'}
@@ -208,13 +277,21 @@
         />
         <div class="space-y-1">
           <label for="farm-notes" class="block text-sm font-medium">Notes</label>
-          <textarea id="farm-notes" name="farm[notes]" rows="2" class="block w-full rounded-md text-sm">{dialog?.kind === 'farm' ? (dialog.farm?.notes ?? '') : ''}</textarea>
+          <textarea id="farm-notes" name="farm[notes]" rows="2" class="block w-full rounded-md text-sm"
+            >{dialog?.kind === 'farm' ? (dialog.farm?.notes ?? '') : ''}</textarea
+          >
         </div>
         <Button type="submit" disabled={processing}>Save</Button>
       {/snippet}
     </Form>
   {:else if dialog?.kind === 'field'}
-    <FieldForm field={dialog.field} pivotId={dialog.pivot.id} pivots={allPivots} soilTypes={soil_types} ondone={close} />
+    <FieldForm
+      field={dialog.field}
+      pivotId={dialog.pivot.id}
+      pivots={allPivots}
+      soilTypes={soil_types}
+      ondone={close}
+    />
   {:else if dialog?.kind === 'planting'}
     <PlantingForm planting={dialog.planting} fieldId={dialog.field.id} {year} {plants} ondone={close} />
     {#if dialog.planting}
@@ -223,7 +300,13 @@
         class="mt-4 text-sm text-status-irrigate hover:underline"
         onclick={() => {
           if (dialog?.kind !== 'planting' || !dialog.planting) return
-          if (destroy(plantings.destroy(dialog.planting.id), `this ${dialog.planting.plant_name} crop and its canopy readings`)) close()
+          if (
+            destroy(
+              plantings.destroy(dialog.planting.id),
+              `this ${dialog.planting.plant_name} crop and its canopy readings`,
+            )
+          )
+            close()
         }}
       >
         Delete this crop

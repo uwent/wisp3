@@ -14,7 +14,12 @@ export type Quantity =
   | 'degreeDays' // growing degree days (°F·d ↔ °C·d)
   | 'speed' // wind (mph ↔ km/h)
 
-type Unit = { label: string; digits: number; toDisplay: (stored: number) => number; toStored: (shown: number) => number }
+type Unit = {
+  label: string
+  digits: number
+  toDisplay: (stored: number) => number
+  toStored: (shown: number) => number
+}
 
 const same = (label: string, digits: number): Unit => ({ label, digits, toDisplay: (v) => v, toStored: (v) => v })
 const scaled = (label: string, digits: number, factor: number): Unit => ({
@@ -48,7 +53,11 @@ export type Units = {
   /** A display-unit value back to the stored unit */
   toStored: (quantity: Quantity, shown: number) => number
   /** "0.75 in", or "0.75" with unit: false; "—" for missing values */
-  format: (quantity: Quantity, stored: number | null | undefined, options?: { digits?: number; unit?: boolean }) => string
+  format: (
+    quantity: Quantity,
+    stored: number | null | undefined,
+    options?: { digits?: number; unit?: boolean },
+  ) => string
   /** A display value for an input box: rounded, no unit, '' for null */
   input: (quantity: Quantity, stored: number | null | undefined, digits?: number) => string
   /** Text typed in display units → the stored value; blank is null (not entered), "0" is 0 */

@@ -24,15 +24,20 @@
   <section class="space-y-3">
     <div class="flex items-center justify-between">
       <h2 class="font-medium">{title}</h2>
-      <button type="button" class="text-sm text-brand-600 hover:underline" onclick={() => (open = !open)} aria-expanded={open}>
+      <button
+        type="button"
+        class="text-sm text-brand-600 hover:underline"
+        onclick={() => (open = !open)}
+        aria-expanded={open}
+      >
         {open ? 'Hide' : 'Show'}
       </button>
     </div>
     {#if open}
       <div class="space-y-3" transition:slide={{ duration: 200 }}>
         <p class="text-xs text-ink-muted">
-          Modeled by Open-Meteo for the pivot's grid cell, with the forecast shaded. Scroll or pinch a chart to see more of the
-          season; the (i) on each chart explains what it shows. {@render children?.()}
+          Modeled by Open-Meteo for the pivot's grid cell, with the forecast shaded. Scroll or pinch a chart to see more
+          of the season; the (i) on each chart explains what it shows. {@render children?.()}
         </p>
         <div class="grid gap-3 md:grid-cols-2">
           {#each panels as panel (panel.key)}

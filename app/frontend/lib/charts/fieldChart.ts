@@ -35,7 +35,13 @@ const modelUnused = (day: FieldDay) =>
 type Threshold = { name: string; value: number; color: string; dashed: boolean }
 
 /** The horizontal reference lines, in the chart's units (display depth, or percent moisture) */
-export function thresholds({ summary, rootZoneDepth, units, mode, palette }: Omit<FieldChartInput, 'days'>): Threshold[] {
+export function thresholds({
+  summary,
+  rootZoneDepth,
+  units,
+  mode,
+  palette,
+}: Omit<FieldChartInput, 'days'>): Threshold[] {
   const value = (ad: number) =>
     mode === 'ad' ? (units.toDisplay('depth', ad) ?? 0) : summary.pct_at_ad_zero + (ad / rootZoneDepth) * 100
   const lines: Threshold[] = [
@@ -63,7 +69,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   const lines = thresholds(input)
   const zeroLine = lines.find((line) => line.name.startsWith('Irrigate'))!.value
   const wiltingLine = lines[lines.length - 1].value
-  const forecastOnly = <T>(value: (day: FieldDay, i: number) => T) => all.map((day, i) => (i < observed ? null : value(day, i)))
+  const forecastOnly = <T>(value: (day: FieldDay, i: number) => T) =>
+    all.map((day, i) => (i < observed ? null : value(day, i)))
 
   const balance = all.map((day, i) =>
     i < observed
@@ -79,7 +86,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   const today = days.at(-1)
   const bands = new Map(summary.projection?.map((day) => [day.date, day]) ?? [])
   const hasBand = forecastDays.some((day) => bands.get(day.date)?.p10 != null)
-  const atToday = (value: (day: FieldDay) => number | null) => all.map((day, i) => (i === observed - 1 ? level(day.ad) : i < observed ? null : value(day)))
+  const atToday = (value: (day: FieldDay) => number | null) =>
+    all.map((day, i) => (i === observed - 1 ? level(day.ad) : i < observed ? null : value(day)))
   const projection = atToday((day) => level(day.ad))
   const bandLow = atToday((day) => level(bands.get(day.date)?.p10 ?? null))
   const bandHigh = atToday((day) => level(bands.get(day.date)?.p90 ?? null))
@@ -92,14 +100,23 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   // Deep drainage: AD stops at field capacity and the water above it drains that day, so it's drawn
   // as an area stacked on the field capacity line, as high as the day's drainage
   const drains = all.some((day) => day.deep_drainage > 0)
-  const drainage = all.map((day) => round(mode === 'ad' ? depth(day.deep_drainage) : (day.deep_drainage / rootZoneDepth) * 100))
+  const drainage = all.map((day) =>
+    round(mode === 'ad' ? depth(day.deep_drainage) : (day.deep_drainage / rootZoneDepth) * 100),
+  )
 
   // Running totals over the days in view, through the forecast (as the precipitation chart)
   const openingStart = Math.max(0, observed - DEFAULT_WINDOW_DAYS)
   const view = input.view ?? { start: openingStart, end: all.length - 1 }
   const anyUnused = all.some(modelUnused)
   const totals = [
-    { id: 'total-rain', group: RAIN, label: 'Rain total', color: palette.rain, type: 'solid', data: runningTotal(all, (day) => depth(day.rain), view) },
+    {
+      id: 'total-rain',
+      group: RAIN,
+      label: 'Rain total',
+      color: palette.rain,
+      type: 'solid',
+      data: runningTotal(all, (day) => depth(day.rain), view),
+    },
     ...(anyUnused
       ? [
           {
@@ -126,10 +143,20 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   const canopyName = canopy === 'lai' ? 'LAI' : 'Canopy cover'
 
   // The forecast's days shaded edge to edge on every panel, and named once at the top
-  const shading = forecastShading({ dates, from: forecastDays.length ? observed : -1, grids: 4, axisOffset: 4, palette })
+  const shading = forecastShading({
+    dates,
+    from: forecastDays.length ? observed : -1,
+    grids: 4,
+    axisOffset: 4,
+    palette,
+  })
   const forecastLabel = forecastDays.length
     ? [
-        { xAxis: forecastDays[0].date, itemStyle: { opacity: 0 }, label: { show: true, position: 'insideTop', color: palette.inkMuted, fontSize: 10, formatter: 'Forecast' } },
+        {
+          xAxis: forecastDays[0].date,
+          itemStyle: { opacity: 0 },
+          label: { show: true, position: 'insideTop', color: palette.inkMuted, fontSize: 10, formatter: 'Forecast' },
+        },
         { xAxis: dates.at(-1) },
       ]
     : undefined
@@ -169,7 +196,14 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       ...[0, 1, 2, 3].map((gridIndex) =>
         gridIndex === 3
           ? { type: 'category', data: dates, gridIndex, axisLabel, axisLine: base.axisLine }
-          : { type: 'category', data: dates, gridIndex, axisLabel: { show: false }, axisLine: base.axisLine, axisTick: { show: false } },
+          : {
+              type: 'category',
+              data: dates,
+              gridIndex,
+              axisLabel: { show: false },
+              axisLine: base.axisLine,
+              axisTick: { show: false },
+            },
       ),
       ...shading.xAxis,
     ],
@@ -394,7 +428,9 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         xAxisIndex: 1,
         yAxisIndex: 1,
         // Forecast rain is lighter
-        data: all.map((day, i) => (i < observed ? round(depth(day.rain)) : { value: round(depth(day.rain)), itemStyle: { opacity: 0.4 } })),
+        data: all.map((day, i) =>
+          i < observed ? round(depth(day.rain)) : { value: round(depth(day.rain)), itemStyle: { opacity: 0.4 } },
+        ),
         itemStyle: { color: palette.rain },
         barMaxWidth: 12,
       },
@@ -426,7 +462,14 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
                 borderColor: palette.irrigation,
                 borderWidth: 1.5,
                 borderRadius: [2, 2, 0, 0],
-                decal: { symbol: 'rect', symbolSize: 1, dashArrayX: [1, 0], dashArrayY: [2, 3], rotation: -Math.PI / 4, color: palette.surface },
+                decal: {
+                  symbol: 'rect',
+                  symbolSize: 1,
+                  dashArrayX: [1, 0],
+                  dashArrayY: [2, 3],
+                  rotation: -Math.PI / 4,
+                  color: palette.surface,
+                },
               },
               barMaxWidth: 12,
             },
@@ -522,7 +565,12 @@ function tooltip(
     ...(band?.dry_ad != null ? [['If no rain falls', depth(band.dry_ad)]] : []),
     ...(band?.p10 != null && band.p90 != null ? [['Range (10–90%)', `${depth(band.p10)} to ${depth(band.p90)}`]] : []),
     ...(band?.chance != null
-      ? [[summary.target_in === null ? 'Chance at 0 AD by now' : 'Chance below target by now', `${Math.round(band.chance * 100)}%`]]
+      ? [
+          [
+            summary.target_in === null ? 'Chance at 0 AD by now' : 'Chance below target by now',
+            `${Math.round(band.chance * 100)}%`,
+          ],
+        ]
       : []),
     ['Soil moisture', `${day.pct_moisture.toFixed(1)}%`],
     ['Adjusted ET', `${depth(day.adj_et)} ${source(ET_SOURCE_LABELS[day.et_source])}`],
@@ -531,7 +579,10 @@ function tooltip(
       `${depth(day.rain)} ${source(SOURCE_LABELS[day.rain_source])}` +
         (modelUnused(day) ? ` ${source(`model ${depth(day.rain_model)}`)}` : ''),
     ],
-    ['Irrigation', `${depth(day.irrigation)} ${source(forecast && day.irrigation_source === 'entered' ? 'planned' : SOURCE_LABELS[day.irrigation_source])}`],
+    [
+      'Irrigation',
+      `${depth(day.irrigation)} ${source(forecast && day.irrigation_source === 'entered' ? 'planned' : SOURCE_LABELS[day.irrigation_source])}`,
+    ],
     ['Deep drainage', depth(day.deep_drainage)],
     // Running totals are already in display units
     ...totals.flatMap((total) => {
@@ -540,7 +591,8 @@ function tooltip(
     }),
     [
       canopy === 'lai' ? 'LAI' : 'Canopy cover',
-      (canopy === 'lai' ? day.canopy.toFixed(2) : `${day.canopy.toFixed(0)}%`) + ` ${source(day.canopy_entered === null ? 'estimated' : 'reading')}`,
+      (canopy === 'lai' ? day.canopy.toFixed(2) : `${day.canopy.toFixed(0)}%`) +
+        ` ${source(day.canopy_entered === null ? 'estimated' : 'reading')}`,
     ],
   ]
   if (day.soil_moisture_pct !== null) rows.push(['Moisture reading', `${day.soil_moisture_pct}%`])

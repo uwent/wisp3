@@ -5,8 +5,10 @@
   import TextField from '@/lib/components/TextField.svelte'
   import { usersPasswords } from '@/routes'
 
-  let { reset_password_token, minimum_password_length }: { reset_password_token: string; minimum_password_length: number } =
-    $props()
+  let {
+    reset_password_token,
+    minimum_password_length,
+  }: { reset_password_token: string; minimum_password_length: number } = $props()
 </script>
 
 <svelte:head><title>Choose a new password · WISP</title></svelte:head>

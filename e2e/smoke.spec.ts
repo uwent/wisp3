@@ -27,7 +27,8 @@ async function signIn(page: Page) {
 
   // The demo farms are a second group; the user's own (empty) group is the default. The switcher
   // is its own menu on wider screens, and part of the account menu on phones.
-  if ((await page.getByRole('heading', { name: 'Dashboard' }).locator('..').textContent())?.includes('Demo farms')) return
+  if ((await page.getByRole('heading', { name: 'Dashboard' }).locator('..').textContent())?.includes('Demo farms'))
+    return
   const switcher = page.getByRole('button', { name: 'Switch farm operation' })
   await ((await switcher.isVisible()) ? switcher : page.getByRole('button', { name: 'Account menu' })).click()
   await page.getByRole('menuitem', { name: 'Demo farms' }).click()
@@ -48,13 +49,31 @@ test('every page renders without errors or sideways scrolling', async ({ page })
   const errors = watchErrors(page)
   const field = await firstFieldPath(page)
   await page.goto(field)
-  const pivot = new URL((await page.locator('main a[href*="/pivots/"]').first().getAttribute('href'))!, page.url()).pathname
+  const pivot = new URL((await page.locator('main a[href*="/pivots/"]').first().getAttribute('href'))!, page.url())
+    .pathname
 
   await page.goto('/admin/users')
-  const user = new URL((await page.locator('main a[href*="/admin/users/"]').first().getAttribute('href'))!, page.url()).pathname
+  const user = new URL((await page.locator('main a[href*="/admin/users/"]').first().getAttribute('href'))!, page.url())
+    .pathname
 
-  const paths = ['/', field, '/setup', '/daily', pivot, `${pivot}/edit`, '/pivots/new', '/field_groups', '/setup/start', '/settings', '/alerts', '/about', '/operation',
-    '/admin/weather', '/admin/users', user]
+  const paths = [
+    '/',
+    field,
+    '/setup',
+    '/daily',
+    pivot,
+    `${pivot}/edit`,
+    '/pivots/new',
+    '/field_groups',
+    '/setup/start',
+    '/settings',
+    '/alerts',
+    '/about',
+    '/operation',
+    '/admin/weather',
+    '/admin/users',
+    user,
+  ]
   for (const path of paths) {
     await page.goto(path)
     await expect(page.locator('main h1').first()).toBeVisible()
@@ -122,7 +141,10 @@ test('a grid cell saves on Enter, and Escape cancels without saving', async ({ p
 test('an open grid cell keeps its column width, and clicking another cell opens that one', async ({ page }) => {
   await page.goto(await firstFieldPath(page))
   const cell = (row: number, col: number) => page.locator(`[data-grid="days"][data-row="${row}"][data-col="${col}"]`)
-  const widths = () => page.locator('table:has([data-grid="days"]) thead th').evaluateAll((ths) => ths.map((th) => Math.round(th.getBoundingClientRect().width)))
+  const widths = () =>
+    page
+      .locator('table:has([data-grid="days"]) thead th')
+      .evaluateAll((ths) => ths.map((th) => Math.round(th.getBoundingClientRect().width)))
   // The table renders after the page's first paint; wait as long as a click would
   await cell(2, 0).waitFor()
   const before = await widths()
@@ -201,7 +223,10 @@ test('daily entry saves rain for a field', async ({ page }) => {
   await expect(page.getByText(/^Saved /)).toBeVisible()
   await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('0.3')
 
-  await page.getByLabel(/^Rain on /).first().fill('')
+  await page
+    .getByLabel(/^Rain on /)
+    .first()
+    .fill('')
   await page.getByRole('button', { name: /^Save / }).click()
   await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('')
 })
@@ -209,7 +234,10 @@ test('daily entry saves rain for a field', async ({ page }) => {
 test('daily entry asks before changing the date with unsaved values', async ({ page }) => {
   await page.goto('/daily')
   const date = await page.getByLabel('Date', { exact: true }).inputValue()
-  await page.getByLabel(/^Rain on /).first().fill('0.2')
+  await page
+    .getByLabel(/^Rain on /)
+    .first()
+    .fill('0.2')
 
   page.once('dialog', (dialog) => dialog.dismiss())
   await page.getByRole('button', { name: 'Previous day' }).click()

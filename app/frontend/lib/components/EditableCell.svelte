@@ -80,7 +80,12 @@
   }
 
   function onCellKey(event: KeyboardEvent) {
-    const moves: Record<string, [number, number]> = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }
+    const moves: Record<string, [number, number]> = {
+      ArrowUp: [-1, 0],
+      ArrowDown: [1, 0],
+      ArrowLeft: [0, -1],
+      ArrowRight: [0, 1],
+    }
     const move = moves[event.key]
     if (move) {
       event.preventDefault()
@@ -117,7 +122,10 @@
         {error ? 'border-status-irrigate' : ''}"
     />
     {#if error}
-      <p role="alert" class="absolute top-full right-0 z-10 mt-1 w-max max-w-56 rounded bg-status-irrigate px-2 py-1 text-xs text-white shadow">
+      <p
+        role="alert"
+        class="absolute top-full right-0 z-10 mt-1 w-max max-w-56 rounded bg-status-irrigate px-2 py-1 text-xs text-white shadow"
+      >
         {error}
       </p>
     {/if}

@@ -7,11 +7,7 @@
   // A glossary term in running text: underlined with dots, with its definition shown while a mouse
   // hovers it, and toggled by click, tap, Enter or Space (a click pins a hovered one). The popup
   // never takes focus, and stays on screen at any width.
-  let {
-    id,
-    entry: given,
-    children,
-  }: { id?: string; entry?: GlossaryEntry; children?: Snippet } = $props()
+  let { id, entry: given, children }: { id?: string; entry?: GlossaryEntry; children?: Snippet } = $props()
 
   const entry = $derived(given ?? glossaryEntry(id!))
 </script>

@@ -47,7 +47,10 @@
       >
         Create a free account
       </Link>
-      <Link href={newUserSession()} class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface">
+      <Link
+        href={newUserSession()}
+        class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
+      >
         Sign in
       </Link>
       <Link href={about()} class="px-2 py-2 text-sm font-medium text-brand-600 hover:underline">How WISP works →</Link>

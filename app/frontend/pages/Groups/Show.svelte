@@ -26,13 +26,19 @@
   const ownerCount = $derived(members.filter((member) => member.owner).length)
 
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
-  const setupSummary = $derived(`${plural(counts.farms, 'farm')}, ${plural(counts.pivots, 'pivot')} and ${plural(counts.fields, 'field')}`)
+  const setupSummary = $derived(
+    `${plural(counts.farms, 'farm')}, ${plural(counts.pivots, 'pivot')} and ${plural(counts.fields, 'field')}`,
+  )
 
   // Matches Membership#removal_error and #demotion_error, which the server checks
   const lastOwner = (member: Member) => member.owner && ownerCount === 1
 
   function setRole(member: Member, makeOwner: boolean) {
-    router.patch(memberships.update(member.id).url, { membership: { owner: String(makeOwner) } }, { preserveScroll: true })
+    router.patch(
+      memberships.update(member.id).url,
+      { membership: { owner: String(makeOwner) } },
+      { preserveScroll: true },
+    )
   }
 
   function remove(member: Member) {
@@ -76,17 +82,31 @@
         <fieldset class="space-y-2">
           <legend class="text-sm font-medium">Rainfall</legend>
           <label class="flex items-start gap-3 text-sm">
-            <input type="radio" name="group[use_model_precip]" value="true" checked={group.use_model_precip} class="mt-0.5" />
+            <input
+              type="radio"
+              name="group[use_model_precip]"
+              value="true"
+              checked={group.use_model_precip}
+              class="mt-0.5"
+            />
             <span>
               Modeled rainfall for each pivot's location
               <span class="block text-ink-muted">Your own gauge readings replace it on the days you enter them.</span>
             </span>
           </label>
           <label class="flex items-start gap-3 text-sm">
-            <input type="radio" name="group[use_model_precip]" value="false" checked={!group.use_model_precip} class="mt-0.5" />
+            <input
+              type="radio"
+              name="group[use_model_precip]"
+              value="false"
+              checked={!group.use_model_precip}
+              class="mt-0.5"
+            />
             <span>Only the rain we enter</span>
           </label>
-          <p class="text-xs text-ink-muted">A field can have its own setting, on its page. The forecast's rain counts in the days ahead either way.</p>
+          <p class="text-xs text-ink-muted">
+            A field can have its own setting, on its page. The forecast's rain counts in the days ahead either way.
+          </p>
         </fieldset>
         <Button type="submit" disabled={processing}>Save</Button>
       {/snippet}
@@ -94,10 +114,15 @@
   {:else}
     <dl class="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
       <dt class="text-ink-muted">Rainfall</dt>
-      <dd>{group.use_model_precip ? "Modeled for each pivot's location, replaced by gauge readings when entered" : 'Only the rain entered'}</dd>
+      <dd>
+        {group.use_model_precip
+          ? "Modeled for each pivot's location, replaced by gauge readings when entered"
+          : 'Only the rain entered'}
+      </dd>
     </dl>
     <p class="text-sm text-ink-muted">
-      Only owners can change the operation's name and rainfall setting; a field can have its own rainfall setting, on its page.
+      Only owners can change the operation's name and rainfall setting; a field can have its own rainfall setting, on
+      its page.
     </p>
   {/if}
 </section>
@@ -106,8 +131,8 @@
   <div>
     <h2 class="text-lg font-medium">Members</h2>
     <p class="text-sm text-ink-muted">
-      Everyone here sees and works on the same farms. Owners can also change the settings above, add and remove
-      members, and delete farms, pivots, fields or the whole operation. An operation always has at least one owner.
+      Everyone here sees and works on the same farms. Owners can also change the settings above, add and remove members,
+      and delete farms, pivots, fields or the whole operation. An operation always has at least one owner.
     </p>
   </div>
 
@@ -120,7 +145,10 @@
             {#if member.id === membership_id}<span class="font-normal text-ink-muted">(you)</span>{/if}
           </div>
           <div class="text-xs text-ink-muted">
-            {#if member.name}{member.email}{' · '}{/if}{member.owner ? 'Owner' : 'Member'} since {formatDate(member.created_at, { year: true })}
+            {#if member.name}{member.email}{' · '}{/if}{member.owner ? 'Owner' : 'Member'} since {formatDate(
+              member.created_at,
+              { year: true },
+            )}
           </div>
         </div>
         <div class="flex items-center gap-1">
@@ -179,7 +207,9 @@
       <li class="flex items-center justify-between gap-4 px-4 py-3 text-sm">
         <div>
           <div class="font-medium">{operation.name}</div>
-          <div class="text-xs text-ink-muted">{operation.owner ? 'Owner' : 'Member'} · {plural(operation.members, 'member')}</div>
+          <div class="text-xs text-ink-muted">
+            {operation.owner ? 'Owner' : 'Member'} · {plural(operation.members, 'member')}
+          </div>
         </div>
         {#if operation.id === group.id}
           <span class="text-xs text-ink-muted">Current</span>

@@ -21,18 +21,51 @@
   // From the last observed value on
   const ahead = $derived(
     projected.length && values.length
-      ? line([[values.length - 1, values[values.length - 1]], ...projected.map((value, i): [number, number] => [values.length + i, value])])
+      ? line([
+          [values.length - 1, values[values.length - 1]],
+          ...projected.map((value, i): [number, number] => [values.length + i, value]),
+        ])
       : '',
   )
 </script>
 
-<svg viewBox="0 0 {width} {height}" class="h-8 w-full {className}" role="img" aria-label={label} preserveAspectRatio="none">
-  <line x1="0" x2={width} y1={y(0)} y2={y(0)} class="stroke-status-irrigate" stroke-width="1" vector-effect="non-scaling-stroke" />
-  <line x1="0" x2={width} y1={y(max)} y2={y(max)} class="stroke-line" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" />
+<svg
+  viewBox="0 0 {width} {height}"
+  class="h-8 w-full {className}"
+  role="img"
+  aria-label={label}
+  preserveAspectRatio="none"
+>
+  <line
+    x1="0"
+    x2={width}
+    y1={y(0)}
+    y2={y(0)}
+    class="stroke-status-irrigate"
+    stroke-width="1"
+    vector-effect="non-scaling-stroke"
+  />
+  <line
+    x1="0"
+    x2={width}
+    y1={y(max)}
+    y2={y(max)}
+    class="stroke-line"
+    stroke-width="1"
+    stroke-dasharray="3 3"
+    vector-effect="non-scaling-stroke"
+  />
   {#if values.length}
     <path d={path} fill="none" class="stroke-chart-ad" stroke-width="2" vector-effect="non-scaling-stroke" />
   {/if}
   {#if ahead}
-    <path d={ahead} fill="none" class="stroke-chart-ad" stroke-width="1.5" stroke-dasharray="3 2" vector-effect="non-scaling-stroke" />
+    <path
+      d={ahead}
+      fill="none"
+      class="stroke-chart-ad"
+      stroke-width="1.5"
+      stroke-dasharray="3 2"
+      vector-effect="non-scaling-stroke"
+    />
   {/if}
 </svg>

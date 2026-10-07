@@ -33,7 +33,16 @@
     let result = option
     if (zoom && Array.isArray(option.dataZoom)) {
       const { start, end } = zoom
-      result = { ...result, dataZoom: option.dataZoom.map((dz: object) => ({ ...dz, start, end, startValue: undefined, endValue: undefined })) }
+      result = {
+        ...result,
+        dataZoom: option.dataZoom.map((dz: object) => ({
+          ...dz,
+          start,
+          end,
+          startValue: undefined,
+          endValue: undefined,
+        })),
+      }
     }
     if (legend && option.legend) result = { ...result, legend: { ...(option.legend as object), selected: legend } }
     return result

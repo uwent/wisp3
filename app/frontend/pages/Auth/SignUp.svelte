@@ -17,7 +17,11 @@
   </p>
 </div>
 
-<Form action={usersRegistrations.create()} class="space-y-4" resetOnError={['user[password]', 'user[password_confirmation]']}>
+<Form
+  action={usersRegistrations.create()}
+  class="space-y-4"
+  resetOnError={['user[password]', 'user[password_confirmation]']}
+>
   {#snippet children({ errors, processing })}
     <div class="grid gap-4 sm:grid-cols-2">
       <TextField label="First name" name="user[first_name]" autocomplete="given-name" error={errors.first_name} />

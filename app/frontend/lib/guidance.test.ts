@@ -3,8 +3,20 @@ import { describe, expect, it } from 'vitest'
 import { guidance } from './guidance'
 import { units } from './units'
 
-const corn = { plant_name: 'Field Corn', plant_key: 'field_corn', et_method: 'lai', canopy_curve: true, max_root_zone_depth: 32 } as const
-const potato = { plant_name: 'Potato', plant_key: 'potato', et_method: 'pct_cover', canopy_curve: false, max_root_zone_depth: 16 } as const
+const corn = {
+  plant_name: 'Field Corn',
+  plant_key: 'field_corn',
+  et_method: 'lai',
+  canopy_curve: true,
+  max_root_zone_depth: 32,
+} as const
+const potato = {
+  plant_name: 'Potato',
+  plant_key: 'potato',
+  et_method: 'pct_cover',
+  canopy_curve: false,
+  max_root_zone_depth: 16,
+} as const
 const day = (date: string, entered: { moisture?: boolean; canopy?: number } = {}) => ({
   date,
   moisture_source: entered.moisture ? ('entered' as const) : null,
@@ -27,11 +39,19 @@ describe('guidance', () => {
     const result = guidance({ ...potato, et_method: 'lai' }, [], units('metric'), today)
     expect(result.paragraphs[0]).toContain("There's no LAI growth curve for potato")
     expect(result.paragraphs[0]).toContain('the crop uses no water in the model')
-    expect(result.readings.map((reading) => [reading.label, reading.due])).toEqual([['Soil moisture', true], ['LAI', true]])
+    expect(result.readings.map((reading) => [reading.label, reading.due])).toEqual([
+      ['Soil moisture', true],
+      ['LAI', true],
+    ])
   })
 
   it('asks for percent cover weekly until the canopy is nearly closed, with notes for the crop', () => {
-    const result = guidance(potato, [day('2026-07-10', { canopy: 60 }), day('2026-07-15', { moisture: true })], units('imperial'), today)
+    const result = guidance(
+      potato,
+      [day('2026-07-10', { canopy: 60 }), day('2026-07-15', { moisture: true })],
+      units('imperial'),
+      today,
+    )
     expect(result.paragraphs[0]).toMatch(/^Potato water use is modeled from percent canopy cover/)
     expect(result.paragraphs[1]).toContain('top of the hill')
     expect(result.paragraphs.at(-1)).toContain('(4 in and 12 in deep)')

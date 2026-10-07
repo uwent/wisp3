@@ -9,13 +9,15 @@ test('the landing page introduces WISP and leads to the About page and sign-up',
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Irrigate when your fields need it, not before')
   await expect(page.getByRole('link', { name: 'Create a free account' })).toBeVisible()
-  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/home-${test.info().project.name}.png`, fullPage: true })
+  if (process.env.SHOT_DIR)
+    await page.screenshot({ path: `${process.env.SHOT_DIR}/home-${test.info().project.name}.png`, fullPage: true })
 
   await page.getByRole('link', { name: /Step 1/ }).click()
   await expect(page).toHaveURL(/\/about#getting-started$/)
   await expect(page.getByRole('heading', { name: 'Getting started' })).toBeInViewport()
   await expect(page.getByRole('row', { name: /Field Corn/ })).toContainText('from a growth curve or readings')
-  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/about-${test.info().project.name}.png`, fullPage: true })
+  if (process.env.SHOT_DIR)
+    await page.screenshot({ path: `${process.env.SHOT_DIR}/about-${test.info().project.name}.png`, fullPage: true })
 
   for (const path of ['/', '/about']) {
     await page.goto(path)

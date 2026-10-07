@@ -5,12 +5,7 @@ import { defineConfig } from 'vite'
 import RubyPlugin from 'vite-plugin-ruby'
 
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    RubyPlugin(),
-    inertia(),
-    svelte(),
-  ],
+  plugins: [tailwindcss(), RubyPlugin(), inertia(), svelte()],
   // MapLibre's worker is an ES module (lib/components/PivotMap.svelte)
   worker: { format: 'es' },
 })

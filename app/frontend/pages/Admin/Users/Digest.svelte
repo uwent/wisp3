@@ -13,7 +13,9 @@
   <div>
     <Link href={adminUsers.show(user.id)} class="text-sm text-brand-600 hover:underline">← {user.email}</Link>
     <h1 class="text-2xl font-semibold">Today's daily email</h1>
-    <p class="text-sm text-ink-muted">What the 6 am digest would send {user.email} with today's data. Nothing is sent from here.</p>
+    <p class="text-sm text-ink-muted">
+      What the 6 am digest would send {user.email} with today's data. Nothing is sent from here.
+    </p>
   </div>
 
   <EmailPreview {preview} />

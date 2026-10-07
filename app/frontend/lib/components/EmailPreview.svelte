@@ -13,7 +13,9 @@
   {/if}
 
   {#if preview.html}
-    <p class="text-sm"><span class="text-ink-muted">Subject:</span> <span class="font-medium">{preview.subject}</span></p>
+    <p class="text-sm">
+      <span class="text-ink-muted">Subject:</span> <span class="font-medium">{preview.subject}</span>
+    </p>
     <!-- The email as a mail client shows it: its own document, light background, no scripts -->
     <iframe
       title="Daily email preview"

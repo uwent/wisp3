@@ -4,7 +4,10 @@
   let { fields, selected = [], name }: { fields: Choice[]; selected?: number[]; name: string } = $props()
 
   const byPivot = $derived(
-    Object.entries(Object.groupBy(fields, (field) => `${field.farm_name} · ${field.pivot_name}`)) as [string, Choice[]][],
+    Object.entries(Object.groupBy(fields, (field) => `${field.farm_name} · ${field.pivot_name}`)) as [
+      string,
+      Choice[],
+    ][],
   )
 </script>
 

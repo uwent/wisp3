@@ -5,7 +5,15 @@
   import type { GeoJSONSource, LayerSpecification, Map as MapLibreMap, Marker, StyleSpecification } from 'maplibre-gl'
 
   import { GEOCODER_ATTRIBUTION, searchPlaces, type Place } from '@/lib/geocode'
-  import { DEFAULT_RADIUS_FT, destination, distanceM, edgePointer, FEET_PER_METER, pivotRing, type LngLat } from '@/lib/geo'
+  import {
+    DEFAULT_RADIUS_FT,
+    destination,
+    distanceM,
+    edgePointer,
+    FEET_PER_METER,
+    pivotRing,
+    type LngLat,
+  } from '@/lib/geo'
 
   type Outline = {
     id: number
@@ -54,7 +62,8 @@
         tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}'],
         tileSize: 256,
         maxzoom: 16,
-        attribution: 'Imagery: <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS</a>',
+        attribution:
+          'Imagery: <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS</a>',
       },
     },
     layers: [{ id: 'imagery', type: 'raster', source: 'imagery' }],
@@ -93,7 +102,11 @@
   }
 
   function feature(ring: LngLat[], name = '') {
-    return { type: 'Feature' as const, properties: { name }, geometry: { type: 'Polygon' as const, coordinates: [ring] } }
+    return {
+      type: 'Feature' as const,
+      properties: { name },
+      geometry: { type: 'Polygon' as const, coordinates: [ring] },
+    }
   }
 
   function addLayers(m: MapLibreMap) {
@@ -103,13 +116,23 @@
         type: 'FeatureCollection',
         features: others.map((other) =>
           feature(
-            pivotRing([other.longitude, other.latitude], other.radius_ft ?? DEFAULT_RADIUS_FT, other.arc_start_deg, other.arc_end_deg),
+            pivotRing(
+              [other.longitude, other.latitude],
+              other.radius_ft ?? DEFAULT_RADIUS_FT,
+              other.arc_start_deg,
+              other.arc_end_deg,
+            ),
             other.name,
           ),
         ),
       },
     })
-    m.addLayer({ id: 'others-line', type: 'line', source: 'others', paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0.7 } })
+    m.addLayer({
+      id: 'others-line',
+      type: 'line',
+      source: 'others',
+      paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0.7 },
+    })
     m.addLayer({
       id: 'others-label',
       type: 'symbol',
@@ -118,8 +141,18 @@
       paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
     })
     m.addSource('pivot', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-    m.addLayer({ id: 'pivot-fill', type: 'fill', source: 'pivot', paint: { 'fill-color': '#3987e5', 'fill-opacity': 0.25 } })
-    m.addLayer({ id: 'pivot-line', type: 'line', source: 'pivot', paint: { 'line-color': '#3987e5', 'line-width': 2.5 } })
+    m.addLayer({
+      id: 'pivot-fill',
+      type: 'fill',
+      source: 'pivot',
+      paint: { 'fill-color': '#3987e5', 'fill-opacity': 0.25 },
+    })
+    m.addLayer({
+      id: 'pivot-line',
+      type: 'line',
+      source: 'pivot',
+      paint: { 'line-color': '#3987e5', 'line-width': 2.5 },
+    })
     drawPivot()
   }
 
@@ -150,7 +183,9 @@
       const handle = document.createElement('div')
       handle.className = 'size-4 rounded-full border-2 border-white bg-[#1c5cab] shadow cursor-ew-resize'
       handle.title = 'Drag to set the radius'
-      edgeMarker = new Marker({ element: handle, draggable: true }).setLngLat(destination(center, radiusM, handleBearing)).addTo(map)
+      edgeMarker = new Marker({ element: handle, draggable: true })
+        .setLngLat(destination(center, radiusM, handleBearing))
+        .addTo(map)
       edgeMarker.on('drag', () => {
         if (!center) return
         const { lng, lat } = edgeMarker!.getLngLat()
@@ -190,7 +225,9 @@
         sources: { ...next.sources, ...Object.fromEntries(OWN_SOURCES.map((id) => [id, previous!.sources[id]])) },
         layers: [
           ...next.layers,
-          ...previous!.layers.filter((layer: LayerSpecification) => 'source' in layer && OWN_SOURCES.includes(layer.source as string)),
+          ...previous!.layers.filter(
+            (layer: LayerSpecification) => 'source' in layer && OWN_SOURCES.includes(layer.source as string),
+          ),
         ],
       }),
     })
@@ -226,7 +263,10 @@
     places = null
     try {
       const view = map?.getBounds()
-      const found = await searchPlaces(query.trim(), view && [view.getWest(), view.getSouth(), view.getEast(), view.getNorth()])
+      const found = await searchPlaces(
+        query.trim(),
+        view && [view.getWest(), view.getSouth(), view.getEast(), view.getNorth()],
+      )
       if (found.length === 0) searchError = 'No places found'
       else if (found.length === 1) goTo(found[0])
       else places = found
@@ -241,7 +281,13 @@
   function goTo(place: Place) {
     places = null
     const [west, south, east, north] = place.bounds
-    map?.fitBounds([[west, south], [east, north]], { padding: 40, maxZoom: PIVOT_ZOOM - 1 })
+    map?.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 40, maxZoom: PIVOT_ZOOM - 1 },
+    )
   }
 
   // The search box sits inside the page's form: Enter searches instead of submitting it
@@ -258,35 +304,37 @@
     let disposed = false
     // MapLibre computes its worker's URL at run time, which Vite can't follow, so Vite bundles the
     // worker itself and MapLibre is told where it is
-    Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url')]).then(([maplibre, worker]) => {
-      if (disposed) return
-      const { Map, NavigationControl, LngLatBounds, AttributionControl } = maplibre
-      maplibre.setWorkerUrl(worker.default)
-      const m = new Map({ container, style: IMAGERY, ...DEFAULT_VIEW, attributionControl: false })
-      m.addControl(new AttributionControl({ compact: true, customAttribution: GEOCODER_ATTRIBUTION }), 'bottom-right')
-      m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
-      if (center) {
-        m.jumpTo({ center, zoom: PIVOT_ZOOM })
-      } else if (others.length) {
-        const bounds = new LngLatBounds()
-        others.forEach((other) => bounds.extend([other.longitude, other.latitude]))
-        m.fitBounds(bounds, { padding: 80, maxZoom: PIVOT_ZOOM - 1, duration: 0 })
-      }
-      m.on('load', () => {
-        addLayers(m)
-        placeMarkers()
-      })
-      m.on('move', updatePointer)
-      m.on('resize', updatePointer)
-      m.on('click', (event) => {
-        places = null
-        // A click away from the pivot moves it; clicks on the markers are drags
-        if (!center || distanceM(center, [event.lngLat.lng, event.lngLat.lat]) > radiusM * 0.15) {
-          setCenter([event.lngLat.lng, event.lngLat.lat])
+    Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url')]).then(
+      ([maplibre, worker]) => {
+        if (disposed) return
+        const { Map, NavigationControl, LngLatBounds, AttributionControl } = maplibre
+        maplibre.setWorkerUrl(worker.default)
+        const m = new Map({ container, style: IMAGERY, ...DEFAULT_VIEW, attributionControl: false })
+        m.addControl(new AttributionControl({ compact: true, customAttribution: GEOCODER_ATTRIBUTION }), 'bottom-right')
+        m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+        if (center) {
+          m.jumpTo({ center, zoom: PIVOT_ZOOM })
+        } else if (others.length) {
+          const bounds = new LngLatBounds()
+          others.forEach((other) => bounds.extend([other.longitude, other.latitude]))
+          m.fitBounds(bounds, { padding: 80, maxZoom: PIVOT_ZOOM - 1, duration: 0 })
         }
-      })
-      map = m
-    })
+        m.on('load', () => {
+          addLayers(m)
+          placeMarkers()
+        })
+        m.on('move', updatePointer)
+        m.on('resize', updatePointer)
+        m.on('click', (event) => {
+          places = null
+          // A click away from the pivot moves it; clicks on the markers are drags
+          if (!center || distanceM(center, [event.lngLat.lng, event.lngLat.lat]) > radiusM * 0.15) {
+            setCenter([event.lngLat.lng, event.lngLat.lat])
+          }
+        })
+        map = m
+      },
+    )
     return () => {
       disposed = true
       map?.remove()
@@ -296,9 +344,16 @@
 
 <div class="space-y-2">
   <div class="relative overflow-hidden rounded-lg border border-line" style:height>
-    <div bind:this={container} class="h-full w-full" aria-label="Map: click to place the pivot center" role="application"></div>
+    <div
+      bind:this={container}
+      class="h-full w-full"
+      aria-label="Map: click to place the pivot center"
+      role="application"
+    ></div>
 
-    <div class="absolute top-2 left-2 flex overflow-hidden rounded-md border border-line bg-surface-raised text-xs shadow">
+    <div
+      class="absolute top-2 left-2 flex overflow-hidden rounded-md border border-line bg-surface-raised text-xs shadow"
+    >
       {#each [['imagery', 'Satellite'], ['streets', 'Map']] as const as [key, name] (key)}
         <button
           type="button"
@@ -310,7 +365,9 @@
     </div>
 
     {#if !center}
-      <p class="pointer-events-none absolute top-12 right-12 left-2 mx-auto max-w-xs rounded-md bg-black/60 px-3 py-2 text-center text-sm text-white">
+      <p
+        class="pointer-events-none absolute top-12 right-12 left-2 mx-auto max-w-xs rounded-md bg-black/60 px-3 py-2 text-center text-sm text-white"
+      >
         Click the map at the center of the pivot
       </p>
     {/if}
@@ -325,7 +382,17 @@
         title="Show the pivot"
         onclick={showPivot}
       >
-        <svg viewBox="0 0 24 24" class="size-5" style:transform="rotate({pointer.angle}deg)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          class="size-5"
+          style:transform="rotate({pointer.angle}deg)"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <path d="M5 12h14M13 6l6 6-6 6" />
         </svg>
       </button>
@@ -333,10 +400,17 @@
 
     <div class="absolute bottom-2 left-2 w-[min(18rem,calc(100%-6rem))]">
       {#if places}
-        <ul class="mb-1 overflow-hidden rounded-md border border-line bg-surface-raised text-sm shadow-lg" aria-label="Places found">
+        <ul
+          class="mb-1 overflow-hidden rounded-md border border-line bg-surface-raised text-sm shadow-lg"
+          aria-label="Places found"
+        >
           {#each places as place (place.label)}
             <li>
-              <button type="button" class="block w-full px-3 py-2 text-left hover:bg-brand-50" onclick={() => goTo(place)}>{place.label}</button>
+              <button
+                type="button"
+                class="block w-full px-3 py-2 text-left hover:bg-brand-50"
+                onclick={() => goTo(place)}>{place.label}</button
+              >
             </li>
           {/each}
         </ul>
@@ -353,17 +427,29 @@
           aria-label="Find a place on the map"
           class="min-w-0 flex-1 border-0 px-3 py-1.5 text-sm focus:ring-0"
         />
-        <button type="button" class="px-3 text-sm text-brand-600 hover:bg-brand-50 disabled:opacity-60" onclick={search} disabled={searching}>
+        <button
+          type="button"
+          class="px-3 text-sm text-brand-600 hover:bg-brand-50 disabled:opacity-60"
+          onclick={search}
+          disabled={searching}
+        >
           {searching ? '…' : 'Go'}
         </button>
       </div>
     </div>
   </div>
   <div class="flex flex-wrap items-center gap-3 text-sm">
-    <button type="button" class="text-brand-600 hover:underline disabled:opacity-60" onclick={locate} disabled={locating}>
+    <button
+      type="button"
+      class="text-brand-600 hover:underline disabled:opacity-60"
+      onclick={locate}
+      disabled={locating}
+    >
       {locating ? 'Finding you…' : 'Use my location'}
     </button>
     {#if locateError}<span class="text-status-irrigate">{locateError}</span>{/if}
-    {#if center}<span class="text-ink-muted">Drag the pin to move the pivot, or the round handle to set its radius.</span>{/if}
+    {#if center}<span class="text-ink-muted"
+        >Drag the pin to move the pivot, or the round handle to set its radius.</span
+      >{/if}
   </div>
 </div>

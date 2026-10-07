@@ -33,7 +33,10 @@
     ['Email', user.email],
     ...(user.unconfirmed_email ? [['Email change pending', user.unconfirmed_email] as [string, string]] : []),
     ['Units', user.unit_system === 'metric' ? 'Metric' : 'US (imperial)'],
-    ['Daily email', `${digestFrequencies[user.digest_frequency]}${user.digest_sent_on ? `, last sent ${formatDate(user.digest_sent_on, { year: true })}` : ''}`],
+    [
+      'Daily email',
+      `${digestFrequencies[user.digest_frequency]}${user.digest_sent_on ? `, last sent ${formatDate(user.digest_sent_on, { year: true })}` : ''}`,
+    ],
     ['WISP admin', user.admin ? 'Yes' : 'No'],
     ['Created', formatTimestamp(user.created_at)],
     ['Last updated', formatTimestamp(user.updated_at)],
@@ -53,7 +56,9 @@
   /** The field's latest planting, as "Corn 2026" */
   function crop(field: Field) {
     const latest = field.plantings.at(-1)
-    return latest ? `${latest.plant_name}${latest.variety ? ` (${latest.variety})` : ''} ${latest.year}` : 'no plantings'
+    return latest
+      ? `${latest.plant_name}${latest.variety ? ` (${latest.variety})` : ''} ${latest.year}`
+      : 'no plantings'
   }
 
   let dialogOpen = $state(false)
@@ -84,7 +89,9 @@
   <section class="space-y-2">
     <div class="flex items-baseline justify-between gap-3">
       <h2 class="font-medium">Account</h2>
-      <Link href={adminUsers.digest(user.id)} class="text-sm text-brand-600 hover:underline">Preview today's daily email</Link>
+      <Link href={adminUsers.digest(user.id)} class="text-sm text-brand-600 hover:underline"
+        >Preview today's daily email</Link
+      >
     </div>
     <dl class="grid gap-x-6 rounded-lg border border-line bg-surface-raised p-4 text-sm sm:grid-cols-[max-content_1fr]">
       {#each attributes as [label, value] (label)}
@@ -101,14 +108,21 @@
         <div>
           <h3 class="font-medium">{group.name}</h3>
           <p class="text-xs text-ink-muted">
-            Group {group.id} · {summary([group])} · rain from {group.use_model_precip ? 'the weather model' : 'entries only'}
+            Group {group.id} · {summary([group])} · rain from {group.use_model_precip
+              ? 'the weather model'
+              : 'entries only'}
           </p>
           <p class="mt-1 text-sm">
             Members:
             {#each group.members as member, i (member.id)}
               <span>
-                {#if member.id === user.id}{member.email}{:else}<Link href={adminUsers.show(member.id)} class="text-brand-600 hover:underline">{member.email}</Link>{/if}
-                {#if member.owner}<span class="text-ink-muted">(owner)</span>{/if}{i < group.members.length - 1 ? ',' : ''}
+                {#if member.id === user.id}{member.email}{:else}<Link
+                    href={adminUsers.show(member.id)}
+                    class="text-brand-600 hover:underline">{member.email}</Link
+                  >{/if}
+                {#if member.owner}<span class="text-ink-muted">(owner)</span>{/if}{i < group.members.length - 1
+                  ? ','
+                  : ''}
               </span>
             {/each}
           </p>
@@ -119,7 +133,9 @@
           <ul class="space-y-3 text-sm">
             {#each group.farms as farm (farm.id)}
               <li>
-                <div class="font-medium">Farm: {farm.name} <span class="font-normal text-ink-muted">(#{farm.id})</span></div>
+                <div class="font-medium">
+                  Farm: {farm.name} <span class="font-normal text-ink-muted">(#{farm.id})</span>
+                </div>
                 {#if farm.pivots.length === 0}
                   <p class="ml-4 text-ink-muted">No pivots.</p>
                 {:else}
@@ -144,7 +160,9 @@
                               <li>
                                 Field: {field.name} · {crop(field)}
                                 <span class="text-xs text-ink-muted">
-                                  · {field.soil_type_name}{field.area_acres !== null ? ` · ${units.format('area', field.area_acres)}` : ''}
+                                  · {field.soil_type_name}{field.area_acres !== null
+                                    ? ` · ${units.format('area', field.area_acres)}`
+                                    : ''}
                                   · {plural(field.plantings.length, 'planting')} (#{field.id})
                                 </span>
                               </li>
@@ -171,7 +189,9 @@
       <Button variant="danger" onclick={() => (dialogOpen = true)}>Delete this account</Button>
     {:else}
       <p class="text-sm text-ink-muted">
-        {isMe ? "You can't delete your own account here; use Settings." : "Another admin's account can't be deleted here."}
+        {isMe
+          ? "You can't delete your own account here; use Settings."
+          : "Another admin's account can't be deleted here."}
       </p>
     {/if}
   </section>
@@ -181,13 +201,15 @@
   <div class="space-y-4 text-sm">
     {#if deletedGroups.length}
       <p>
-        These groups have no other members and are deleted with the account, including {summary(deletedGroups)} and
-        every entry in them:
+        These groups have no other members and are deleted with the account, including {summary(deletedGroups)} and every
+        entry in them:
       </p>
       <ul class="list-disc pl-5">
         {#each deletedGroups as group (group.id)}<li>{group.name}</li>{/each}
       </ul>
-      {#if deletedGroups.length < groups.length}<p class="text-ink-muted">Groups shared with other members are kept.</p>{/if}
+      {#if deletedGroups.length < groups.length}<p class="text-ink-muted">
+          Groups shared with other members are kept.
+        </p>{/if}
     {:else}
       <p>Only the account is deleted: its groups have other members and are kept.</p>
     {/if}

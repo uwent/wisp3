@@ -48,7 +48,8 @@
   async function saveCell(day: Day, column: Column, input: string) {
     let value: number | string | null = input.trim() || null
     if (column !== 'notes') {
-      const parsed = column === 'soil_moisture_pct' || column === 'pct_cover' ? parseNumber(input) : units.parse('depth', input)
+      const parsed =
+        column === 'soil_moisture_pct' || column === 'pct_cover' ? parseNumber(input) : units.parse('depth', input)
       if (!parsed.ok) return parsed.error
       value = parsed.value
     }
@@ -78,21 +79,36 @@
     <Link href={fieldGroups.index()} class="text-sm text-brand-600 hover:underline">← Field groups</Link>
     <h1 class="text-2xl font-semibold">{field_group.name}</h1>
     <p class="text-sm text-ink-muted">
-      {fields.filter((f) => field_group.field_ids.includes(f.id)).map((f) => f.name).join(', ') || 'No fields yet'}
+      {fields
+        .filter((f) => field_group.field_ids.includes(f.id))
+        .map((f) => f.name)
+        .join(', ') || 'No fields yet'}
     </p>
   </div>
   <div class="flex flex-wrap items-center gap-2">
-    <select class="rounded-md text-sm" aria-label="Season" value={year} onchange={(e) => router.get(fieldGroups.show(field_group.id).url, { year: e.currentTarget.value })}>
+    <select
+      class="rounded-md text-sm"
+      aria-label="Season"
+      value={year}
+      onchange={(e) => router.get(fieldGroups.show(field_group.id).url, { year: e.currentTarget.value })}
+    >
       {#each [year - 2, year - 1, year, year + 1] as y (y)}<option value={y}>{y}</option>{/each}
     </select>
-    <Button variant="secondary" onclick={() => (editingMembers = !editingMembers)}>{editingMembers ? 'Close' : 'Edit group'}</Button>
+    <Button variant="secondary" onclick={() => (editingMembers = !editingMembers)}
+      >{editingMembers ? 'Close' : 'Edit group'}</Button
+    >
     <Button variant="danger-ghost" onclick={destroy}>Delete</Button>
   </div>
 </div>
 
 {#if editingMembers}
   <section class="rounded-lg border border-line bg-surface-raised p-6">
-    <Form action={fieldGroups.update(field_group.id)} class="space-y-4" options={{ preserveScroll: true }} onSuccess={() => (editingMembers = false)}>
+    <Form
+      action={fieldGroups.update(field_group.id)}
+      class="space-y-4"
+      options={{ preserveScroll: true }}
+      onSuccess={() => (editingMembers = false)}
+    >
       {#snippet children({ errors, processing })}
         <TextField label="Name" name="field_group[name]" value={field_group.name} error={errors.name} required />
         <FieldPicker {fields} selected={field_group.field_ids} name="field_group[field_ids][]" />
@@ -103,7 +119,9 @@
 {/if}
 
 <p class="text-xs text-ink-muted">
-  Click a cell to enter a value for every field in the group; Enter saves and moves down. Depths in {units.label('depth')}.
+  Click a cell to enter a value for every field in the group; Enter saves and moves down. Depths in {units.label(
+    'depth',
+  )}.
   {#if has_cover}Cover is saved as a reading on each member field's percent-cover crop.{/if}
 </p>
 <div class="max-h-[40rem] overflow-auto rounded-lg border border-line bg-surface-raised">
@@ -112,14 +130,18 @@
       <tr class="text-right">
         <th class="px-3 py-2 text-left font-medium">Date</th>
         {#each COLUMNS as [column, label] (column)}
-          <th class="px-2 py-2 font-medium {column === 'notes' ? 'text-left' : ''}">{label}{column === 'soil_moisture_pct' || column === 'pct_cover' ? ' (%)' : ''}</th>
+          <th class="px-2 py-2 font-medium {column === 'notes' ? 'text-left' : ''}"
+            >{label}{column === 'soil_moisture_pct' || column === 'pct_cover' ? ' (%)' : ''}</th
+          >
         {/each}
       </tr>
     </thead>
     <tbody class="divide-y divide-line">
       {#each rows as day, row (day.date)}
         <tr>
-          <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap">{formatDate(day.date, { weekday: true })}</th>
+          <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap"
+            >{formatDate(day.date, { weekday: true })}</th
+          >
           {#each COLUMNS as [column, label], col (column)}
             <td class="px-1 py-0.5">
               <EditableCell
@@ -131,8 +153,13 @@
                 label="{label}, {formatDate(day.date, { weekday: true })}"
                 onsave={(input) => saveCell(day, column, input)}
               >
-                {#if column === 'notes'}<span class="block max-w-64 truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
-                {:else if column === 'pct_cover' && day.pct_cover_mixed}<span class="text-ink-muted" title="The member fields have different readings">varies</span>
+                {#if column === 'notes'}<span class="block max-w-64 truncate text-ink-muted"
+                    >{day.notes ?? ''}&nbsp;</span
+                  >
+                {:else if column === 'pct_cover' && day.pct_cover_mixed}<span
+                    class="text-ink-muted"
+                    title="The member fields have different readings">varies</span
+                  >
                 {:else if day[column] === null}<span class="text-ink-muted">–</span>
                 {:else if column === 'soil_moisture_pct' || column === 'pct_cover'}{day[column]}
                 {:else}{units.format('depth', day[column], { unit: false })}{/if}

@@ -17,7 +17,15 @@
 
 <Form action={usersPasswords.create()} class="space-y-4">
   {#snippet children({ errors, processing })}
-    <TextField label="Email" name="user[email]" type="email" autocomplete="email" required value={email} error={errors.email} />
+    <TextField
+      label="Email"
+      name="user[email]"
+      type="email"
+      autocomplete="email"
+      required
+      value={email}
+      error={errors.email}
+    />
     <Button type="submit" class="w-full" disabled={processing}>Send reset link</Button>
   {/snippet}
 </Form>

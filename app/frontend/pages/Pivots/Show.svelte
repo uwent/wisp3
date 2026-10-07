@@ -29,7 +29,9 @@
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const today = new Date().toLocaleDateString('en-CA')
   const panels = $derived(weatherPanels(units, { gddSince: formatDate(weather_from) }))
-  const canUseHours = $derived(pivot.pump_capacity_gpm !== null && pivot.fields.every((field) => field.area_acres !== null))
+  const canUseHours = $derived(
+    pivot.pump_capacity_gpm !== null && pivot.fields.every((field) => field.area_acres !== null),
+  )
 
   // The form edits a new irrigation, or an existing one picked from the list
   let editing = $state<PivotIrrigation | null>(null)
@@ -47,7 +49,12 @@
   }
 
   const fieldNames = (ids: number[] | null) =>
-    ids === null ? 'All fields' : pivot.fields.filter((field) => ids.includes(field.id)).map((field) => field.name).join(', ')
+    ids === null
+      ? 'All fields'
+      : pivot.fields
+          .filter((field) => ids.includes(field.id))
+          .map((field) => field.name)
+          .join(', ')
 
   function remove(irrigation: PivotIrrigation) {
     if (confirm(`Delete the ${formatDate(irrigation.date)} irrigation?`)) {
@@ -64,11 +71,19 @@
     <h1 class="text-2xl font-semibold"><span class="font-normal text-ink-muted">Pivot:</span> {pivot.name}</h1>
     <p class="text-sm text-ink-muted">
       Farm: {farm.name} · Fields:
-      {#each pivot.fields as field, i (field.id)}{i ? ', ' : ''}<Link href={fieldRoutes.show(field.id)} class="text-brand-600 hover:underline">{field.name}</Link>{:else}none yet{/each}
+      {#each pivot.fields as field, i (field.id)}{i ? ', ' : ''}<Link
+          href={fieldRoutes.show(field.id)}
+          class="text-brand-600 hover:underline">{field.name}</Link
+        >{:else}none yet{/each}
       · <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline">Edit pivot</Link>
     </p>
   </div>
-  <select class="rounded-md text-sm" aria-label="Season" value={year} onchange={(e) => router.get(pivots.show(pivot.id).url, { year: e.currentTarget.value })}>
+  <select
+    class="rounded-md text-sm"
+    aria-label="Season"
+    value={year}
+    onchange={(e) => router.get(pivots.show(pivot.id).url, { year: e.currentTarget.value })}
+  >
     {#each [year - 2, year - 1, year, year + 1] as y (y)}<option value={y}>{y}</option>{/each}
   </select>
 </div>
@@ -82,7 +97,9 @@
       </p>
     </div>
     <Form
-      action={editing ? pivotIrrigations.update({ pivotId: pivot.id, id: editing.id }) : pivotIrrigations.create(pivot.id)}
+      action={editing
+        ? pivotIrrigations.update({ pivotId: pivot.id, id: editing.id })
+        : pivotIrrigations.create(pivot.id)}
       class="space-y-4"
       options={{ preserveScroll: true }}
       onSuccess={() => edit(null)}
@@ -91,20 +108,42 @@
         <div class="grid gap-4 sm:grid-cols-3">
           <div class="space-y-1">
             <label for="irrigation-date" class="block text-sm font-medium">Date</label>
-            <input id="irrigation-date" type="date" name="pivot_irrigation[date]" bind:value={date} required class="block w-full rounded-md text-sm" />
+            <input
+              id="irrigation-date"
+              type="date"
+              name="pivot_irrigation[date]"
+              bind:value={date}
+              required
+              class="block w-full rounded-md text-sm"
+            />
             {#if errors.date}<p class="text-sm text-status-irrigate">{errors.date}</p>{/if}
             {#if existing}
               <p class="text-sm" role="status">
-                ⚠ {formatDate(existing.date)} already has {units.format('depth', existing.applied_inches)}; saving replaces it.
-                <button type="button" class="text-brand-600 underline" onclick={() => edit(existing)}>Edit that one instead</button>
+                ⚠ {formatDate(existing.date)} already has {units.format('depth', existing.applied_inches)}; saving
+                replaces it.
+                <button type="button" class="text-brand-600 underline" onclick={() => edit(existing)}
+                  >Edit that one instead</button
+                >
               </p>
             {/if}
           </div>
           {#if byHours}
-            <NumberField label="Run hours" name="pivot_irrigation[run_hours]" unitLabel="h" value={editing?.run_hours ?? null} error={errors.run_hours} />
+            <NumberField
+              label="Run hours"
+              name="pivot_irrigation[run_hours]"
+              unitLabel="h"
+              value={editing?.run_hours ?? null}
+              error={errors.run_hours}
+            />
             <input type="hidden" name="pivot_irrigation[inches]" value="" />
           {:else}
-            <NumberField label="Amount" name="pivot_irrigation[inches]" quantity="depth" value={editing?.inches ?? null} error={errors.inches} />
+            <NumberField
+              label="Amount"
+              name="pivot_irrigation[inches]"
+              quantity="depth"
+              value={editing?.inches ?? null}
+              error={errors.inches}
+            />
             <input type="hidden" name="pivot_irrigation[run_hours]" value="" />
           {/if}
           <div class="flex items-end pb-2 text-sm">
@@ -140,7 +179,12 @@
         {/if}
         <div class="space-y-1">
           <label for="irrigation-notes" class="block text-sm font-medium">Notes</label>
-          <input id="irrigation-notes" name="pivot_irrigation[notes]" value={editing?.notes ?? ''} class="block w-full rounded-md text-sm" />
+          <input
+            id="irrigation-notes"
+            name="pivot_irrigation[notes]"
+            value={editing?.notes ?? ''}
+            class="block w-full rounded-md text-sm"
+          />
         </div>
         <div class="flex gap-2">
           <Button type="submit" disabled={processing}>Save irrigation</Button>
@@ -171,13 +215,16 @@
             <td class="px-4 py-2 whitespace-nowrap">{formatDate(irrigation.date, { weekday: true })}</td>
             <td class="px-4 py-2 text-right whitespace-nowrap tabular-nums">
               {units.format('depth', irrigation.applied_inches)}
-              {#if irrigation.inches === null}<span class="block text-xs text-ink-muted">{irrigation.run_hours} h run</span>{/if}
+              {#if irrigation.inches === null}<span class="block text-xs text-ink-muted"
+                  >{irrigation.run_hours} h run</span
+                >{/if}
             </td>
             <td class="px-4 py-2">{fieldNames(irrigation.field_ids)}</td>
             <td class="px-4 py-2 text-ink-muted">{irrigation.notes ?? ''}</td>
             <td class="px-4 py-2 text-right whitespace-nowrap">
               <Button variant="ghost" class="px-2 py-1 text-xs" onclick={() => edit(irrigation)}>Edit</Button>
-              <Button variant="danger-ghost" class="px-2 py-1 text-xs" onclick={() => remove(irrigation)}>Delete</Button>
+              <Button variant="danger-ghost" class="px-2 py-1 text-xs" onclick={() => remove(irrigation)}>Delete</Button
+              >
             </td>
           </tr>
         {/each}

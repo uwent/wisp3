@@ -25,9 +25,7 @@
     <h1 class="text-xl font-semibold">Email already confirmed</h1>
     <p class="mt-1 text-sm text-ink-muted">This address is confirmed, so you can sign in.</p>
   </div>
-  <Link href={usersSessions.new()} class="block text-center font-medium text-brand-600 hover:underline">
-    Sign in
-  </Link>
+  <Link href={usersSessions.new()} class="block text-center font-medium text-brand-600 hover:underline">Sign in</Link>
 {:else}
   <div>
     <h1 class="text-xl font-semibold">This link doesn't work</h1>

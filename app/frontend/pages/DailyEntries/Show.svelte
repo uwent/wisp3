@@ -15,9 +15,20 @@
     area_acres: number | null
     crop: string | null
     rain_model: number | null
-    entry: { rain_in: number | null; irrigation_in: number | null; soil_moisture_pct: number | null; notes: string | null } | null
+    entry: {
+      rain_in: number | null
+      irrigation_in: number | null
+      soil_moisture_pct: number | null
+      notes: string | null
+    } | null
   }
-  type DayPivot = { id: number; name: string; pump_capacity_gpm: number | null; irrigation: PivotIrrigation | null; fields: DayField[] }
+  type DayPivot = {
+    id: number
+    name: string
+    pump_capacity_gpm: number | null
+    irrigation: PivotIrrigation | null
+    fields: DayField[]
+  }
 
   let { date, farms }: { date: string; farms: { id: number; name: string; pivots: DayPivot[] }[] } = $props()
 
@@ -35,11 +46,13 @@
     router.get(dailyEntries.show().url, { date: to })
     return true
   }
-  const canUseHours = (pivot: DayPivot) => pivot.pump_capacity_gpm !== null && pivot.fields.every((f) => f.area_acres !== null)
+  const canUseHours = (pivot: DayPivot) =>
+    pivot.pump_capacity_gpm !== null && pivot.fields.every((f) => f.area_acres !== null)
 
   // Which pivots are entered as run hours; starts from the saved irrigation
   let byHours = $state<Record<number, boolean>>({})
-  const hours = (pivot: DayPivot) => byHours[pivot.id] ?? (pivot.irrigation !== null && pivot.irrigation.inches === null)
+  const hours = (pivot: DayPivot) =>
+    byHours[pivot.id] ?? (pivot.irrigation !== null && pivot.irrigation.inches === null)
 
   const pivotApplies = (pivot: DayPivot, field: DayField) =>
     pivot.irrigation !== null && (pivot.irrigation.field_ids === null || pivot.irrigation.field_ids.includes(field.id))
@@ -56,15 +69,30 @@
   </div>
   <div class="flex items-center gap-1">
     <Button variant="secondary" class="px-3" onclick={() => go(addDays(date, -1))} aria-label="Previous day">‹</Button>
-    <input type="date" value={date} max={today} class="rounded-md text-sm" aria-label="Date" onchange={(event) => {
+    <input
+      type="date"
+      value={date}
+      max={today}
+      class="rounded-md text-sm"
+      aria-label="Date"
+      onchange={(event) => {
         if (!go(event.currentTarget.value)) event.currentTarget.value = date
-      }} />
-    <Button variant="secondary" class="px-3" onclick={() => go(addDays(date, 1))} disabled={date >= today} aria-label="Next day">›</Button>
+      }}
+    />
+    <Button
+      variant="secondary"
+      class="px-3"
+      onclick={() => go(addDays(date, 1))}
+      disabled={date >= today}
+      aria-label="Next day">›</Button
+    >
   </div>
 </div>
 
 {#if farms.every((farm) => farm.pivots.length === 0)}
-  <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted">
+  <section
+    class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted"
+  >
     No pivots yet. <Link href={newQuickSetup()} class="text-brand-600 hover:underline">Set up your first pivot</Link>.
   </section>
 {:else}
@@ -95,16 +123,33 @@
                     </div>
                     <div class="w-40">
                       {#if hours(pivot)}
-                        <NumberField label="Run hours" name="pivots[{pivot.id}][run_hours]" unitLabel="h" value={pivot.irrigation?.run_hours ?? null} error={e(errs, `pivots.${pivot.id}.run_hours`)} />
+                        <NumberField
+                          label="Run hours"
+                          name="pivots[{pivot.id}][run_hours]"
+                          unitLabel="h"
+                          value={pivot.irrigation?.run_hours ?? null}
+                          error={e(errs, `pivots.${pivot.id}.run_hours`)}
+                        />
                         <input type="hidden" name="pivots[{pivot.id}][inches]" value="" />
                       {:else}
-                        <NumberField label="Irrigation" name="pivots[{pivot.id}][inches]" quantity="depth" value={pivot.irrigation?.inches ?? null} error={e(errs, `pivots.${pivot.id}.inches`)} />
+                        <NumberField
+                          label="Irrigation"
+                          name="pivots[{pivot.id}][inches]"
+                          quantity="depth"
+                          value={pivot.irrigation?.inches ?? null}
+                          error={e(errs, `pivots.${pivot.id}.inches`)}
+                        />
                         <input type="hidden" name="pivots[{pivot.id}][run_hours]" value="" />
                       {/if}
                     </div>
                     {#if canUseHours(pivot)}
                       <label class="flex items-center gap-2 self-end pb-2 text-sm">
-                        <input type="checkbox" class="rounded" checked={hours(pivot)} onchange={(event) => (byHours[pivot.id] = event.currentTarget.checked)} />
+                        <input
+                          type="checkbox"
+                          class="rounded"
+                          checked={hours(pivot)}
+                          onchange={(event) => (byHours[pivot.id] = event.currentTarget.checked)}
+                        />
                         Run hours
                       </label>
                     {/if}
@@ -120,13 +165,16 @@
                                 class="rounded"
                                 name="pivots[{pivot.id}][field_ids][]"
                                 value={field.id}
-                                checked={pivot.irrigation?.field_ids == null || pivot.irrigation.field_ids.includes(field.id)}
+                                checked={pivot.irrigation?.field_ids == null ||
+                                  pivot.irrigation.field_ids.includes(field.id)}
                               />
                               {field.name}
                             </label>
                           {/each}
                         </div>
-                        {#if e(errs, `pivots.${pivot.id}.field_ids`)}<p class="text-xs text-status-irrigate">{e(errs, `pivots.${pivot.id}.field_ids`)}</p>{/if}
+                        {#if e(errs, `pivots.${pivot.id}.field_ids`)}<p class="text-xs text-status-irrigate">
+                            {e(errs, `pivots.${pivot.id}.field_ids`)}
+                          </p>{/if}
                       </fieldset>
                     {/if}
                   </div>
@@ -155,7 +203,9 @@
                                 name="fields[{field.id}][rain_in]"
                                 quantity="depth"
                                 value={field.entry?.rain_in ?? null}
-                                placeholder={field.rain_model === null ? '' : `model ${units.format('depth', field.rain_model, { unit: false })}`}
+                                placeholder={field.rain_model === null
+                                  ? ''
+                                  : `model ${units.format('depth', field.rain_model, { unit: false })}`}
                                 error={e(errs, `fields.${field.id}.rain_in`)}
                               />
                             </td>
@@ -190,11 +240,16 @@
           {/if}
         {/each}
 
-        <div class="sticky bottom-0 -mx-4 flex items-center gap-3 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur">
+        <div
+          class="sticky bottom-0 -mx-4 flex items-center gap-3 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur"
+        >
           <Button type="submit" disabled={processing}>Save {formatDate(date)}</Button>
           <p class="text-sm text-ink-muted">
-            {#if Object.keys(errs).length}<span class="text-status-irrigate">Nothing was saved; please fix the highlighted values.</span>
-            {:else if isDirty || dirty}Unsaved changes{:else}Leave rain blank to use the modeled value; enter 0 if your gauge read nothing.{/if}
+            {#if Object.keys(errs).length}<span class="text-status-irrigate"
+                >Nothing was saved; please fix the highlighted values.</span
+              >
+            {:else if isDirty || dirty}Unsaved changes{:else}Leave rain blank to use the modeled value; enter 0 if your
+              gauge read nothing.{/if}
           </p>
         </div>
       {/snippet}

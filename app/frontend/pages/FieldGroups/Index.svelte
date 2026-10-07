@@ -11,7 +11,11 @@
   type Choice = { id: number; name: string; pivot_name: string; farm_name: string }
   let { field_groups, fields }: { field_groups: FieldGroup[]; fields: Choice[] } = $props()
 
-  const names = (ids: number[]) => fields.filter((f) => ids.includes(f.id)).map((f) => f.name).join(', ')
+  const names = (ids: number[]) =>
+    fields
+      .filter((f) => ids.includes(f.id))
+      .map((f) => f.name)
+      .join(', ')
 </script>
 
 <svelte:head><title>Field groups · WISP</title></svelte:head>
@@ -46,7 +50,13 @@
   {:else}
     <Form action={fieldGroups.create()} class="space-y-4" resetOnSuccess>
       {#snippet children({ errors, processing })}
-        <TextField label="Name" name="field_group[name]" placeholder="e.g. Home rain gauge" error={errors.name} required />
+        <TextField
+          label="Name"
+          name="field_group[name]"
+          placeholder="e.g. Home rain gauge"
+          error={errors.name}
+          required
+        />
         <FieldPicker {fields} name="field_group[field_ids][]" />
         <Button type="submit" disabled={processing}>Create group</Button>
       {/snippet}

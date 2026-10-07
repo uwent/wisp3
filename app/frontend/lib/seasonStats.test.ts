@@ -27,7 +27,13 @@ describe('season stats', () => {
   })
 
   it('counts entered and modeled rain, with rain days at measurable amounts', () => {
-    const stats = seasonStats([entered(0, 0.8, 0.5), entered(1, 0, 0.3), modeled(2, 0.005), modeled(3, 0.4), day(4, { rain_source: 'group', rain: 0.2, rain_model: null })])
+    const stats = seasonStats([
+      entered(0, 0.8, 0.5),
+      entered(1, 0, 0.3),
+      modeled(2, 0.005),
+      modeled(3, 0.4),
+      day(4, { rain_source: 'group', rain: 0.2, rain_model: null }),
+    ])
     expect(stats.entered).toEqual({ readings: 3, rainDays: 2, inches: 1 })
     // 0.5 + 0.3 + 0.4: the 0.005 drizzle isn't a rain day
     expect(stats.modeled).toEqual({ days: 3, inches: 1.2 })
@@ -51,14 +57,26 @@ describe('season stats', () => {
   })
 
   it('counts the modeled rain a field using only entered rain left out', () => {
-    const stats = seasonStats([day(0, { rain: 0, rain_source: 'none', rain_model: 0.6 }), day(1, { rain_source: 'none', rain_model: 0 }), entered(2, 0.4, 0.3)])
+    const stats = seasonStats([
+      day(0, { rain: 0, rain_source: 'none', rain_model: 0.6 }),
+      day(1, { rain_source: 'none', rain_model: 0 }),
+      entered(2, 0.4, 0.3),
+    ])
     expect(stats.leftOut).toEqual({ days: 1, inches: 0.6 })
     expect(stats.comparison.noReading).toEqual({ days: 1, inches: 0.6 })
   })
 
   it('finds the typical gap between irrigations and the typical amount', () => {
     const irrigation = (i: number, inches: number) => day(i, { irrigation: inches, irrigation_source: 'entered' })
-    const stats = seasonStats([irrigation(0, 1), day(1), day(2), irrigation(3, 0.5), day(4), irrigation(5, 0.75), irrigation(9, 0.75)])
+    const stats = seasonStats([
+      irrigation(0, 1),
+      day(1),
+      day(2),
+      irrigation(3, 0.5),
+      day(4),
+      irrigation(5, 0.75),
+      irrigation(9, 0.75),
+    ])
     expect(stats.irrigation).toEqual({ days: 4, inches: 3, typicalInterval: 3, typicalAmount: 0.75 })
     expect(seasonStats([irrigation(0, 1)]).irrigation).toMatchObject({ typicalInterval: null, typicalAmount: 1 })
   })

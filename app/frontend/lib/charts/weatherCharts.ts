@@ -88,7 +88,9 @@ export function weatherPanels(
   } = {},
 ): WeatherPanel[] {
   const depthName = (label: string) =>
-    units.system === 'metric' ? label.replace(/(\d+)/g, (n) => String(Math.round(Number(n) * 2.54))).replace('in', 'cm') : label
+    units.system === 'metric'
+      ? label.replace(/(\d+)/g, (n) => String(Math.round(Number(n) * 2.54))).replace('in', 'cm')
+      : label
   const temp = (f: number) => units.format('temperature', f)
   const depth = (value: number | null) => converted(units, 'depth', value)
   // The rain the grower entered (on the field or its group), and whether the balance left the model's out
@@ -128,15 +130,33 @@ export function weatherPanels(
         },
         { name: 'Snow and other', color: (p) => p.depths[0], value: (day) => depth(otherPrecip(day)), ...hollow },
         ...(fieldRain
-          ? [{ name: 'Entered rain', color: (p: Palette) => p.rain, value: (day: WeatherPanelDay) => depth(enteredRain(day)), style: 'bar' as const, entries: true }]
+          ? [
+              {
+                name: 'Entered rain',
+                color: (p: Palette) => p.rain,
+                value: (day: WeatherPanelDay) => depth(enteredRain(day)),
+                style: 'bar' as const,
+                entries: true,
+              },
+            ]
           : []),
         { name: 'Snowfall', color: (p) => p.snow, value: (day) => depth(day.snowfall_in), style: 'bar', sparse: true },
-        { name: 'Snow depth', color: (p) => p.snow, value: (day) => depth(day.snow_depth_in), style: 'line', sparse: true },
+        {
+          name: 'Snow depth',
+          color: (p) => p.snow,
+          value: (day) => depth(day.snow_depth_in),
+          style: 'line',
+          sparse: true,
+        },
       ],
       totals: fieldRain
         ? [
             { name: 'Modeled total', color: (p) => p.rain, value: (day) => depth(day.precip_in) },
-            { name: 'Used by the balance', color: (p) => p.ad, value: (day) => depth(fieldRain[day.date]?.rain ?? null) },
+            {
+              name: 'Used by the balance',
+              color: (p) => p.ad,
+              value: (day) => depth(fieldRain[day.date]?.rain ?? null),
+            },
           ]
         : [{ name: 'Precipitation total', color: (p) => p.rain, value: (day) => depth(day.precip_in) }],
     },
@@ -150,19 +170,33 @@ export function weatherPanels(
         (cropEt
           ? "Crop ET is this field's estimate: reference ET adjusted for the crop's canopy, which is what the balance " +
             "takes out of the soil. It's lower than reference ET while the canopy is small. In the forecast it's the projection's, " +
-            "from the forecast reference ET and the expected canopy. " +
+            'from the forecast reference ET and the expected canopy. ' +
             'The lower panel adds both up from the first day in view.'
           : "Each field's crop ET (reference ET adjusted for its canopy) is on the field's page. The lower panel adds " +
             'reference ET up from the first day in view.'),
       bars: 'group',
       series: [
         { name: 'Reference ET', color: (p) => p.warm, value: (day) => depth(day.et0_in) },
-        ...(cropEt ? [{ name: 'Crop ET', color: (p: Palette) => p.canopy, value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null) }] : []),
+        ...(cropEt
+          ? [
+              {
+                name: 'Crop ET',
+                color: (p: Palette) => p.canopy,
+                value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null),
+              },
+            ]
+          : []),
       ],
       totals: [
         { name: 'Reference ET total', color: (p) => p.warm, value: (day) => depth(day.et0_in) },
         ...(cropEt
-          ? [{ name: 'Crop ET total', color: (p: Palette) => p.canopy, value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null) }]
+          ? [
+              {
+                name: 'Crop ET total',
+                color: (p: Palette) => p.canopy,
+                value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null),
+              },
+            ]
           : []),
       ],
     },
@@ -199,7 +233,8 @@ export function weatherPanels(
       series: DEPTHS.map(([key, label], i) => ({
         name: depthName(label),
         color: (p) => p.depths[i],
-        value: (day) => converted(units, 'temperature', day[`soil_temp_${key}_f` as keyof WeatherPanelDay] as number | null),
+        value: (day) =>
+          converted(units, 'temperature', day[`soil_temp_${key}_f` as keyof WeatherPanelDay] as number | null),
       })),
     },
     {
@@ -222,7 +257,13 @@ export function weatherPanels(
         `Growing degree days add up the heat a crop can use. Each day counts the mean of its high and low, each held ` +
         `between ${temp(50)} and ${temp(86)}, minus ${temp(50)} (the 50/86 method used for corn and many other crops). ` +
         `Counted from ${gddSince}; crop stages are often predicted from this total.`,
-      series: [{ name: 'GDD (50/86)', color: (p) => p.warm, value: (day) => converted(units, 'degreeDays', day.gdd_since_emergence) }],
+      series: [
+        {
+          name: 'GDD (50/86)',
+          color: (p) => p.warm,
+          value: (day) => converted(units, 'degreeDays', day.gdd_since_emergence),
+        },
+      ],
     },
     {
       key: 'humidity',
@@ -339,10 +380,16 @@ export function weatherChartOption(
     : undefined
 
   // Light gray snow bars get an outline so they show on a light background
-  const outline = (s: Series) => (palette.dark || s.style !== 'bar' ? {} : { borderColor: palette.inkMuted, borderWidth: 0.5 })
+  const outline = (s: Series) =>
+    palette.dark || s.style !== 'bar' ? {} : { borderColor: palette.inkMuted, borderWidth: 0.5 }
   // Series named in the tooltip only on days they have a value
   const sparse = new Set(series.filter((s) => s.sparse || s.entries).map((s) => s.name))
-  const hollowStyle = (s: Series) => ({ color: 'transparent', borderColor: s.color(palette), borderType: 'dashed', borderWidth: 1 })
+  const hollowStyle = (s: Series) => ({
+    color: 'transparent',
+    borderColor: s.color(palette),
+    borderType: 'dashed',
+    borderWidth: 1,
+  })
   const daily = series.map((s, i) => ({
     name: s.name,
     xAxisIndex: 0,
@@ -355,7 +402,12 @@ export function weatherChartOption(
     ...(panel.bars && s.style !== 'line'
       ? { type: 'bar', barMaxWidth: 10, ...(panel.bars === 'stack' && !s.style ? { stack: panel.key } : {}) }
       : // A sparse line's lone days (a dusting of snow) need a dot to show
-        { type: 'line', symbol: s.sparse ? 'circle' : 'none', symbolSize: 3, lineStyle: { width: 2, color: s.color(palette) } }),
+        {
+          type: 'line',
+          symbol: s.sparse ? 'circle' : 'none',
+          symbolSize: 3,
+          lineStyle: { width: 2, color: s.color(palette) },
+        }),
     ...(i === 0
       ? {
           markLine: panel.lines?.length
@@ -406,13 +458,23 @@ export function weatherChartOption(
           itemWidth: 14,
         }
       : undefined,
-    tooltip: { ...base.tooltip, formatter: (params: unknown) => tooltip(params, unit, panel.bars || totals.length ? 2 : 1, sparse) },
+    tooltip: {
+      ...base.tooltip,
+      formatter: (params: unknown) => tooltip(params, unit, panel.bars || totals.length ? 2 : 1, sparse),
+    },
     axisPointer: totals.length ? { link: [{ xAxisIndex: 'all' }] } : undefined,
     grid: grids,
     xAxis: [
       ...(totals.length
         ? [
-            { type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false }, axisLine: base.axisLine, axisTick: { show: false } },
+            {
+              type: 'category',
+              data: dates,
+              gridIndex: 0,
+              axisLabel: { show: false },
+              axisLine: base.axisLine,
+              axisTick: { show: false },
+            },
             { type: 'category', data: dates, gridIndex: 1, axisLabel, axisLine: base.axisLine },
           ]
         : [{ type: 'category', data: dates, axisLabel, axisLine: base.axisLine }]),
@@ -421,7 +483,14 @@ export function weatherChartOption(
     yAxis: [
       ...(totals.length
         ? [
-            { type: 'value', gridIndex: 0, min: 0, splitNumber: 3, axisLabel: base.axisLabel, splitLine: base.splitLine },
+            {
+              type: 'value',
+              gridIndex: 0,
+              min: 0,
+              splitNumber: 3,
+              axisLabel: base.axisLabel,
+              splitLine: base.splitLine,
+            },
             {
               type: 'value',
               gridIndex: 1,
@@ -437,20 +506,33 @@ export function weatherChartOption(
         : [{ type: 'value', scale: !panel.bars, axisLabel: base.axisLabel, splitLine: base.splitLine }]),
       ...shading.yAxis,
     ],
-    dataZoom: [{ type: 'inside', xAxisIndex: [...(totals.length ? [0, 1] : [0]), ...shading.xAxisIndexes], startValue }],
+    dataZoom: [
+      { type: 'inside', xAxisIndex: [...(totals.length ? [0, 1] : [0]), ...shading.xAxisIndexes], startValue },
+    ],
     series: [...daily, ...running, ...shading.series],
   }
 }
 
-type TooltipParam = { axisValue: string; seriesIndex: number; seriesName: string; marker: string; value: unknown; data?: unknown }
+type TooltipParam = {
+  axisValue: string
+  seriesIndex: number
+  seriesName: string
+  marker: string
+  value: unknown
+  data?: unknown
+}
 
 /** The day, then each series in order (daily values before running totals); sparse series only on days they have a value */
 function tooltip(params: unknown, unit: string, digits: number, sparse: Set<string>): string {
-  const all = ((Array.isArray(params) ? params : [params]) as TooltipParam[]).toSorted((a, b) => a.seriesIndex - b.seriesIndex)
+  const all = ((Array.isArray(params) ? params : [params]) as TooltipParam[]).toSorted(
+    (a, b) => a.seriesIndex - b.seriesIndex,
+  )
   if (!all.length) return ''
   const list = all.filter((param) => typeof param.value === 'number' || !sparse.has(param.seriesName))
   const rows = list.map((param) => {
-    const unused = (param.data as { unused?: boolean } | null)?.unused ? ' <span style="opacity:.7">not used</span>' : ''
+    const unused = (param.data as { unused?: boolean } | null)?.unused
+      ? ' <span style="opacity:.7">not used</span>'
+      : ''
     const value = typeof param.value === 'number' ? `${param.value.toFixed(digits)} ${unit}${unused}` : '—'
     return `<tr><td style="padding-right:12px">${param.marker}${param.seriesName}</td><td style="text-align:right"><strong>${value}</strong></td></tr>`
   })

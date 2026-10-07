@@ -108,7 +108,7 @@
       <tbody>
         {#each cells as cell (cell.id)}
           {@const [tone, label] = health(cell)}
-          <tr class="border-b border-line last:border-0 align-top">
+          <tr class="border-b border-line align-top last:border-0">
             <td class="px-3 py-2 whitespace-nowrap">
               <div class="font-mono text-xs">{cell.latitude.toFixed(4)}, {cell.longitude.toFixed(4)}</div>
               <div class="text-xs text-ink-muted">
@@ -118,7 +118,9 @@
             <td class="px-3 py-2">
               <span class="rounded-full px-2 py-0.5 text-xs whitespace-nowrap {badge[tone]}">{label}</span>
               {#if cell.last_error}
-                <div class="mt-1 max-w-xs text-xs text-status-irrigate">{cell.last_error} ({ago(cell.last_error_at)})</div>
+                <div class="mt-1 max-w-xs text-xs text-status-irrigate">
+                  {cell.last_error} ({ago(cell.last_error_at)})
+                </div>
               {/if}
             </td>
             <td class="px-3 py-2">{cell.pivot_count}</td>
@@ -131,7 +133,9 @@
             </td>
             <td class="px-3 py-2 whitespace-nowrap">
               <div>{ago(cell.forecast_issued_at)}</div>
-              <div class="text-xs text-ink-muted">{cell.forecast_through ? `through ${cell.forecast_through}` : ''}</div>
+              <div class="text-xs text-ink-muted">
+                {cell.forecast_through ? `through ${cell.forecast_through}` : ''}
+              </div>
             </td>
             <td class="px-3 py-2 whitespace-nowrap">{ago(cell.last_fetched_at)}</td>
           </tr>

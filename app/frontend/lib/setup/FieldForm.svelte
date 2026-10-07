@@ -41,8 +41,19 @@
   {#snippet children({ errors, processing })}
     <TextField label="Name" name="field[name]" value={field?.name ?? ''} error={errors.name} required />
     <div class="grid gap-4 sm:grid-cols-2">
-      <SelectField label="Pivot" name="field[pivot_id]" value={String(field?.pivot_id ?? pivotId)} options={pivots.map((p) => ({ value: String(p.id), label: p.name }))} />
-      <NumberField label="Area" name="field[area_acres]" quantity="area" value={field?.area_acres ?? null} error={errors.area_acres} />
+      <SelectField
+        label="Pivot"
+        name="field[pivot_id]"
+        value={String(field?.pivot_id ?? pivotId)}
+        options={pivots.map((p) => ({ value: String(p.id), label: p.name }))}
+      />
+      <NumberField
+        label="Area"
+        name="field[area_acres]"
+        quantity="area"
+        value={field?.area_acres ?? null}
+        error={errors.area_acres}
+      />
     </div>
     <SelectField
       label="Soil"
@@ -76,7 +87,9 @@
     </details>
     <div class="space-y-1">
       <label for="field-notes" class="block text-sm font-medium">Notes</label>
-      <textarea id="field-notes" name="field[notes]" rows="2" class="block w-full rounded-md text-sm">{field?.notes ?? ''}</textarea>
+      <textarea id="field-notes" name="field[notes]" rows="2" class="block w-full rounded-md text-sm"
+        >{field?.notes ?? ''}</textarea
+      >
     </div>
     <Button type="submit" disabled={processing}>{field ? 'Save field' : 'Add field'}</Button>
   {/snippet}

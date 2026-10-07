@@ -14,13 +14,17 @@
     <h1 class="text-xl font-semibold">This link doesn't work</h1>
     <p class="mt-1 text-sm text-ink-muted">Sign in and turn the daily email off in your settings.</p>
   </div>
-  <Link href={settings.show()} class="block text-center font-medium text-brand-600 hover:underline">Go to settings</Link>
+  <Link href={settings.show()} class="block text-center font-medium text-brand-600 hover:underline">Go to settings</Link
+  >
 {:else if done}
   <div>
     <h1 class="text-xl font-semibold">You're unsubscribed</h1>
-    <p class="mt-1 text-sm text-ink-muted">WISP won't send you the daily email. You can turn it back on in your settings.</p>
+    <p class="mt-1 text-sm text-ink-muted">
+      WISP won't send you the daily email. You can turn it back on in your settings.
+    </p>
   </div>
-  <Link href={settings.show()} class="block text-center font-medium text-brand-600 hover:underline">Go to settings</Link>
+  <Link href={settings.show()} class="block text-center font-medium text-brand-600 hover:underline">Go to settings</Link
+  >
 {:else}
   <div>
     <h1 class="text-xl font-semibold">Stop the daily email?</h1>

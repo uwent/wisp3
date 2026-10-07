@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { GLOSSARY, glossaryEntry, markTerms } from './glossary'
 
 const marked = (text: string, seen?: Set<string>) =>
-  markTerms(text, seen).map((segment) => (segment.entry ? `[${segment.text}:${segment.entry.id}]` : segment.text)).join('')
+  markTerms(text, seen)
+    .map((segment) => (segment.entry ? `[${segment.text}:${segment.entry.id}]` : segment.text))
+    .join('')
 
 describe('markTerms', () => {
   it('marks each term once, preferring the longest wording', () => {
@@ -24,7 +26,9 @@ describe('markTerms', () => {
   })
 
   it('matches phrases in any case', () => {
-    expect(marked('Field capacity, then Deep Drainage.')).toBe('[Field capacity:field_capacity], then [Deep Drainage:deep_drainage].')
+    expect(marked('Field capacity, then Deep Drainage.')).toBe(
+      '[Field capacity:field_capacity], then [Deep Drainage:deep_drainage].',
+    )
   })
 
   it('shares what it has marked across the paragraphs of a block', () => {

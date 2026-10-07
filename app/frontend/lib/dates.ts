@@ -61,5 +61,11 @@ export function relativeDay(iso: string, today: string): string {
 /** An instant (a Rails timestamp) in the browser's time zone: "Jul 1, 2026, 3:04 PM" */
 export function formatTimestamp(iso: string | null | undefined) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }

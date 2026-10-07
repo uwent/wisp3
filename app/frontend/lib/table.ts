@@ -29,7 +29,8 @@ export function sortRows<T>(rows: T[], value: (row: T) => SortValue, direction: 
   return rows.toSorted((a, b) => {
     const [x, y] = [value(a), value(b)]
     if (missing(x) || missing(y)) return Number(missing(x)) - Number(missing(y))
-    if (typeof x === 'string' && typeof y === 'string') return sign * x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' })
+    if (typeof x === 'string' && typeof y === 'string')
+      return sign * x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' })
     return sign * (Number(x) - Number(y))
   })
 }
@@ -37,6 +38,9 @@ export function sortRows<T>(rows: T[], value: (row: T) => SortValue, direction: 
 /** True when every word of the query appears in one of the texts, ignoring case */
 export function matchesQuery(query: string, texts: SortValue[]): boolean {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-  const haystack = texts.filter((text) => text !== null && text !== undefined).join(' ').toLowerCase()
+  const haystack = texts
+    .filter((text) => text !== null && text !== undefined)
+    .join(' ')
+    .toLowerCase()
   return words.every((word) => haystack.includes(word))
 }

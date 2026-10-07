@@ -35,7 +35,11 @@
           { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields)\/\d+(\?|$)/] },
           { label: 'Daily entry', route: dailyEntries.show() },
           { label: 'Alerts', route: alerts.show() },
-          { label: 'Setup', route: setup.show(), also: [fieldGroups.index().url, /^\/pivots\/(new|\d+\/edit)/, '/setup'] },
+          {
+            label: 'Setup',
+            route: setup.show(),
+            also: [fieldGroups.index().url, /^\/pivots\/(new|\d+\/edit)/, '/setup'],
+          },
           { label: 'About', route: about() },
           ...(auth.user.admin
             ? [
@@ -113,8 +117,13 @@
         {/if}
 
         {#if !auth.user}
-          <Link href={newUserSession()} class="rounded-md px-3 py-1.5 text-sm font-medium text-ink-muted hover:text-ink">Sign in</Link>
-          <Link href={newUserRegistration()} class="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface">
+          <Link href={newUserSession()} class="rounded-md px-3 py-1.5 text-sm font-medium text-ink-muted hover:text-ink"
+            >Sign in</Link
+          >
+          <Link
+            href={newUserRegistration()}
+            class="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface"
+          >
             Create account
           </Link>
         {:else}
@@ -129,7 +138,9 @@
               <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
                 {#if auth.groups.length > 1}
                   <DropdownMenu.Group class="sm:hidden" aria-label="Farm operation">
-                    <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted">Farm operation</DropdownMenu.GroupHeading>
+                    <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted"
+                      >Farm operation</DropdownMenu.GroupHeading
+                    >
                     {#each auth.groups as group (group.id)}
                       <DropdownMenu.Item class={menuItem} onSelect={() => switchGroup(group.id)}>
                         <span class="w-5">{group.id === auth.group?.id ? '✓' : ''}</span>{group.name}

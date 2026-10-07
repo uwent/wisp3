@@ -23,7 +23,15 @@
     onblur={() => (pinned = false)}
     onkeydown={(event) => event.key === 'Escape' && (pinned = hovered = false)}
   >
-    <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      class="size-4"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="9" />
       <path d="M12 11v5M12 8h.01" />
     </svg>

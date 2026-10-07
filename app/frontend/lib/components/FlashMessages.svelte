@@ -31,11 +31,8 @@
       : 'border-status-ok/40 bg-status-ok/10'}"
   >
     <p>{message.text}</p>
-    <button
-      type="button"
-      class="text-ink-muted hover:text-ink"
-      aria-label="Dismiss"
-      onclick={() => (dismissed = true)}>✕</button
+    <button type="button" class="text-ink-muted hover:text-ink" aria-label="Dismiss" onclick={() => (dismissed = true)}
+      >✕</button
     >
   </div>
 {/each}

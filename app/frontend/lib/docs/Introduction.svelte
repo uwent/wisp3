@@ -5,10 +5,10 @@
 </script>
 
 <p>
-  WISP, the Wisconsin Irrigation Scheduling Program, helps growers decide when to irrigate and how much. For each field it
-  keeps a daily water balance of the crop's <Term id="root_zone">root zone</Term>: rain and irrigation in, the crop's water
-  use and <Term id="deep_drainage">drainage</Term> out. Run forward with the weather forecast, it shows which fields will
-  need water in the next few days, and how much would refill them.
+  WISP, the Wisconsin Irrigation Scheduling Program, helps growers decide when to irrigate and how much. For each field
+  it keeps a daily water balance of the crop's <Term id="root_zone">root zone</Term>: rain and irrigation in, the crop's
+  water use and <Term id="deep_drainage">drainage</Term> out. Run forward with the weather forecast, it shows which fields
+  will need water in the next few days, and how much would refill them.
 </p>
 <p>
   Weather comes in automatically for each pivot's location. What you add is what only you know: your rain gauges, the
@@ -18,6 +18,6 @@
 </p>
 <p>
   WISP was developed by the Departments of Soil Science and Biological Systems Engineering at the University of
-  Wisconsin–Madison, and is maintained by the UW–Madison Vegetable Entomology Lab. It is built for Wisconsin and the upper
-  Midwest, and is free to use.
+  Wisconsin–Madison, and is maintained by the UW–Madison Vegetable Entomology Lab. It is built for Wisconsin and the
+  upper Midwest, and is free to use.
 </p>

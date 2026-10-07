@@ -34,7 +34,12 @@
     if (chosen && !typedDepth) rootDepth = chosen.default_max_root_zone_depth
   }
 
-  const date = (name: string, label: string, value: string, error?: string | string[]) => ({ name, label, value, error })
+  const date = (name: string, label: string, value: string, error?: string | string[]) => ({
+    name,
+    label,
+    value,
+    error,
+  })
 </script>
 
 <Form
@@ -51,7 +56,10 @@
         name="planting[plant_id]"
         value={plantId}
         onchange={(event) => choosePlant(event.currentTarget.value)}
-        options={[{ value: '', label: 'Choose a crop' }, ...plants.map((p) => ({ value: String(p.id), label: p.name }))]}
+        options={[
+          { value: '', label: 'Choose a crop' },
+          ...plants.map((p) => ({ value: String(p.id), label: p.name })),
+        ]}
         error={errors.plant}
         required
       />
@@ -61,14 +69,27 @@
       {#each [date('season_start', 'Season start', planting?.season_start ?? `${year}-04-01`, errors.season_start), date('emergence_date', 'Emergence', planting?.emergence_date ?? `${year}-05-01`, errors.emergence_date), date('end_date', 'Harvest or kill', planting?.end_date ?? `${year}-11-30`, errors.end_date)] as d (d.name)}
         <div class="space-y-1">
           <label class="block text-sm font-medium" for="planting-{d.name}">{d.label}</label>
-          <input id="planting-{d.name}" type="date" name="planting[{d.name}]" value={d.value} required class="block w-full rounded-md text-sm {d.error ? 'border-status-irrigate' : ''}" />
+          <input
+            id="planting-{d.name}"
+            type="date"
+            name="planting[{d.name}]"
+            value={d.value}
+            required
+            class="block w-full rounded-md text-sm {d.error ? 'border-status-irrigate' : ''}"
+          />
           {#if d.error}<p class="text-sm text-status-irrigate">{Array.isArray(d.error) ? d.error[0] : d.error}</p>{/if}
         </div>
       {/each}
     </div>
     <div class="grid gap-4 sm:grid-cols-2">
       <div oninput={() => (typedDepth = true)}>
-        <NumberField label="Root zone depth" name="planting[max_root_zone_depth]" quantity="rootDepth" bind:value={rootDepth} error={errors.max_root_zone_depth} />
+        <NumberField
+          label="Root zone depth"
+          name="planting[max_root_zone_depth]"
+          quantity="rootDepth"
+          bind:value={rootDepth}
+          error={errors.max_root_zone_depth}
+        />
       </div>
       <NumberField
         label="Allowable depletion (MAD)"
@@ -84,7 +105,9 @@
       <legend class="text-sm font-medium">Canopy method</legend>
       <label class="flex items-start gap-3 text-sm">
         <input type="radio" name="planting[et_method]" value="pct_cover" bind:group={etMethod} class="mt-0.5" />
-        <span>Percent cover <span class="text-ink-muted">(enter canopy cover now and then in the daily grid)</span></span>
+        <span
+          >Percent cover <span class="text-ink-muted">(enter canopy cover now and then in the daily grid)</span></span
+        >
       </label>
       <label class="flex items-start gap-3 text-sm">
         <input type="radio" name="planting[et_method]" value="lai" bind:group={etMethod} class="mt-0.5" />
@@ -117,7 +140,9 @@
     </div>
     <div class="space-y-1">
       <label for="planting-notes" class="block text-sm font-medium">Notes</label>
-      <textarea id="planting-notes" name="planting[notes]" rows="2" class="block w-full rounded-md text-sm">{planting?.notes ?? ''}</textarea>
+      <textarea id="planting-notes" name="planting[notes]" rows="2" class="block w-full rounded-md text-sm"
+        >{planting?.notes ?? ''}</textarea
+      >
     </div>
     {#if errors.base}<p class="text-sm text-status-irrigate">{errors.base}</p>{/if}
     <Button type="submit" disabled={processing}>{planting ? 'Save crop' : 'Add crop'}</Button>

@@ -37,7 +37,8 @@
         {#each unit_systems as system (system)}
           <label class="flex items-center gap-3 text-sm">
             <input type="radio" name="user[unit_system]" value={system} checked={user.unit_system === system} />
-            <span><span class="font-medium">{unitLabels[system]?.name ?? system}</span>
+            <span
+              ><span class="font-medium">{unitLabels[system]?.name ?? system}</span>
               <span class="text-ink-muted">({unitLabels[system]?.detail})</span></span
             >
           </label>
@@ -66,7 +67,14 @@
     resetOnError={['user[password]', 'user[password_confirmation]', 'user[current_password]']}
   >
     {#snippet children({ errors, processing })}
-      <TextField label="Email" name="user[email]" type="email" autocomplete="email" value={user.email} error={errors.email} />
+      <TextField
+        label="Email"
+        name="user[email]"
+        type="email"
+        autocomplete="email"
+        value={user.email}
+        error={errors.email}
+      />
       <div class="grid gap-4 sm:grid-cols-2">
         <TextField
           label="New password"

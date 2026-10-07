@@ -95,8 +95,7 @@
     const timer = setInterval(() => (now = Date.now()), 1000)
     return () => clearInterval(timer)
   })
-  const waitLabel = (seconds: number) =>
-    seconds > 60 ? `${Math.ceil(seconds / 60)} min` : `${seconds} s`
+  const waitLabel = (seconds: number) => (seconds > 60 ? `${Math.ceil(seconds / 60)} min` : `${seconds} s`)
 </script>
 
 <svelte:head><title>Alerts · WISP</title></svelte:head>
@@ -111,11 +110,7 @@
 
 <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
   <h2 class="text-lg font-medium">Daily email</h2>
-  <Form
-    action={alerts.update()}
-    class="max-w-xl space-y-4"
-    options={saveOptions}
-  >
+  <Form action={alerts.update()} class="max-w-xl space-y-4" options={saveOptions}>
     {#snippet children({ errors, processing })}
       <SelectField
         label="Email frequency"
