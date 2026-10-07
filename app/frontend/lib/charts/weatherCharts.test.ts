@@ -6,7 +6,7 @@ import { addDays } from '../dates'
 import { units } from '../units'
 import { DEFAULT_WINDOW_DAYS } from './fieldChart'
 import type { Palette } from './palette'
-import { defaultView, runningTotal, weatherChartOption, weatherPanels } from './weatherCharts'
+import { defaultView, type FieldRain, runningTotal, weatherChartOption, weatherPanels } from './weatherCharts'
 
 const palette: Palette = {
   ink: '#000', inkMuted: '#666', line: '#ddd', surface: '#fff', rain: '#00f', irrigation: '#0a0', ad: '#40a', warm: '#f60', snow: '#ccc',
@@ -131,6 +131,58 @@ describe('weather charts', () => {
     expect(html).toContain('Snow and other')
     expect(html).not.toContain('Snowfall')
     expect(formatter([param(2, 'Snowfall', 1.5)])).toContain('1.50 in')
+  })
+
+  describe("with the field's rain", () => {
+    // Day 30: rain entered over the model's 0.5; day 31: an entered zero; day 40: the model's, used
+    const fieldRain = (unused: 'none' | 'model' = 'model'): FieldRain =>
+      Object.fromEntries(
+        days.map((day, i) => [
+          day.date,
+          i === 30
+            ? { rain: 0.8, rain_source: 'entered', rain_model: 0.5 }
+            : i === 31
+              ? { rain: 0, rain_source: 'entered', rain_model: 0 }
+              : { rain: unused === 'none' && !day.forecast ? 0 : day.precip_in, rain_source: day.forecast ? 'forecast' : unused, rain_model: day.precip_in },
+        ]),
+      )
+    const option = (rain: FieldRain, view?: { start: number; end: number }) =>
+      weatherChartOption(weatherPanels(units('imperial'), { fieldRain: rain }).find((p) => p.key === 'precipitation')!, days, units('imperial'), palette, view)
+    type Item = number | null | { value: number; unused?: boolean; itemStyle: { color: string; borderType: string } }
+
+    it('adds the entered rain beside the model, and outlines the modeled rain it replaced', () => {
+      const series = option(fieldRain()).series as { name: string; data: Item[]; stack?: string }[]
+      expect(series.map((s) => s.name)).toEqual(['Rain', 'Snow and other', 'Entered rain', 'Modeled total', 'Used by the balance'])
+      const [rain, , entered] = series
+      expect(entered.stack).toBeUndefined()
+      expect(entered.data.slice(29, 33)).toEqual([null, 0.8, 0, null])
+      expect(rain.data[30]).toMatchObject({ value: 0.4, unused: true, itemStyle: { color: 'transparent', borderType: 'dashed' } })
+      expect(rain.data[40]).toBe(0.4)
+    })
+
+    it('outlines every modeled day the balance leaves out on a field using only entered rain, but not the forecast', () => {
+      const [rain] = option(fieldRain('none')).series as { data: Item[] }[]
+      expect(rain.data[40]).toMatchObject({ value: 0.4, unused: true })
+      expect(rain.data[60]).toBe(0.4)
+    })
+
+    it("totals the model's precipitation and the rain the balance used", () => {
+      const series = option(fieldRain('none'), { start: 30, end: 64 }).series as { name: string; data: (number | null)[] }[]
+      const total = (name: string) => series.find((s) => s.name === name)!.data[64]
+      // Model: days 30, 40, 50 and 60; balance: the 0.8 entered and the forecast's 0.5 on day 60
+      expect([total('Modeled total'), total('Used by the balance')]).toEqual([2, 1.3])
+    })
+
+    it('names entered rain in the legend and tooltip only where there is some', () => {
+      const legend = (view: { start: number; end: number }) => (option(fieldRain(), view).legend as { data: string[] }).data
+      expect(legend({ start: 0, end: 20 })).not.toContain('Entered rain')
+      expect(legend({ start: 20, end: 40 })).toContain('Entered rain')
+      const formatter = (option(fieldRain()).tooltip as { formatter: (params: unknown) => string }).formatter
+      const param = (seriesIndex: number, seriesName: string, value: number | null, data: unknown = value) =>
+        ({ axisValue: days[30].date, seriesIndex, seriesName, marker: '', value, data })
+      expect(formatter([param(0, 'Rain', 0.4), param(2, 'Entered rain', null)])).not.toContain('Entered rain')
+      expect(formatter([param(0, 'Rain', 0.4, { value: 0.4, unused: true }), param(2, 'Entered rain', 0)])).toMatch(/not used[\s\S]*Entered rain/)
+    })
   })
 
   it('treats a missing day as a gap in the running total, not a zero', () => {

@@ -86,15 +86,21 @@
   let forecastOpen = $state(true)
   let dailyOpen = $state(true)
 
-  // Crop ET by date, through the projection, as a string so the weather charts rebuild only when it
-  // changes (an edit to rain or irrigation reloads the days, but leaves ET alone)
-  const cropEtJson = $derived(JSON.stringify(Object.fromEntries([...days, ...forecast_days].map((day) => [day.date, day.adj_et]))))
-  const panels = $derived(
-    weatherPanels(units, {
-      field: { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt },
-      cropEt: JSON.parse(cropEtJson),
-    }),
+  // Crop ET and rain by date, through the projection, as a string so the weather charts rebuild only
+  // when they change (an edit to irrigation or a reading reloads the days, but leaves both alone)
+  const balanceJson = $derived(
+    JSON.stringify(
+      [...days, ...forecast_days].map(({ date, adj_et, rain, rain_source, rain_model }) => ({ date, adj_et, rain, rain_source, rain_model })),
+    ),
   )
+  const panels = $derived.by(() => {
+    const balance: Pick<FieldDay, 'date' | 'adj_et' | 'rain' | 'rain_source' | 'rain_model'>[] = JSON.parse(balanceJson)
+    return weatherPanels(units, {
+      field: { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt },
+      cropEt: Object.fromEntries(balance.map((day) => [day.date, day.adj_et])),
+      fieldRain: Object.fromEntries(balance.map(({ date, rain, rain_source, rain_model }) => [date, { rain, rain_source, rain_model }])),
+    })
+  })
 
   // What it takes to refill the root zone to field capacity today
   const refill = $derived(summary?.ad !== null && summary?.ad !== undefined ? Math.max(0, summary.ad_max - summary.ad) : null)
@@ -506,6 +512,7 @@
   {/if}
 
   <WeatherSection {panels} days={weather} {units}>
+    Precipitation also shows the rain you entered for this field, with the modeled rain its balance doesn't use outlined.
     Soil moisture is the model's own estimate, not this field's balance; it's shown against the field's capacity and
     wilting point for comparison.
   </WeatherSection>

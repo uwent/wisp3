@@ -1,4 +1,4 @@
-import type { WeatherPanelDay } from '@/types/serializers'
+import type { FieldDay, WeatherPanelDay } from '@/types/serializers'
 
 import { formatDate } from '../dates'
 import type { Quantity, Units } from '../units'
@@ -20,7 +20,14 @@ type Series = {
    * view has any, and out of the tooltip on days without
    */
   sparse?: boolean
+  /** A value only on some days (entered rain): out of the legend and tooltip without one, but zero kept */
+  entries?: boolean
+  /** Days drawn as an outline: modeled rain the field's balance doesn't use */
+  hollow?: (day: WeatherPanelDay) => boolean
 }
+
+/** A field's rain by date as its balance resolved it (FieldDay), for the precipitation chart */
+export type FieldRain = Record<string, Pick<FieldDay, 'rain' | 'rain_source' | 'rain_model'>>
 
 export type WeatherPanel = {
   key: string
@@ -59,6 +66,8 @@ function otherPrecip(day: WeatherPanelDay): number | null {
  * - cropEt: the field's crop-adjusted ET by date (the balance's adjusted ET), through the forecast
  *   (the projection's); without it the ET chart shows reference ET only
  * - gddSince: what growing degree days count from ('emergence', or a date's label)
+ * - fieldRain: the field's rain as its balance used it; the precipitation chart then adds the rain
+ *   entered, outlines the modeled rain the balance doesn't use, and totals both
  */
 export function weatherPanels(
   units: Units,
@@ -66,12 +75,28 @@ export function weatherPanels(
     field,
     cropEt,
     gddSince = 'emergence',
-  }: { field?: { fieldCapacity: number; wiltingPoint: number }; cropEt?: Record<string, number | null>; gddSince?: string } = {},
+    fieldRain,
+  }: {
+    field?: { fieldCapacity: number; wiltingPoint: number }
+    cropEt?: Record<string, number | null>
+    gddSince?: string
+    fieldRain?: FieldRain
+  } = {},
 ): WeatherPanel[] {
   const depthName = (label: string) =>
     units.system === 'metric' ? label.replace(/(\d+)/g, (n) => String(Math.round(Number(n) * 2.54))).replace('in', 'cm') : label
   const temp = (f: number) => units.format('temperature', f)
   const depth = (value: number | null) => converted(units, 'depth', value)
+  // The rain the grower entered (on the field or its group), and whether the balance left the model's out
+  const enteredRain = (day: WeatherPanelDay) => {
+    const rain = fieldRain?.[day.date]
+    return rain && (rain.rain_source === 'entered' || rain.rain_source === 'group') ? rain.rain : null
+  }
+  const modelUnused = (day: WeatherPanelDay) => {
+    const source = fieldRain?.[day.date]?.rain_source
+    return source === 'entered' || source === 'group' || source === 'none'
+  }
+  const hollow = fieldRain ? { hollow: modelUnused } : {}
   return [
     {
       key: 'precipitation',
@@ -82,15 +107,34 @@ export function weatherPanels(
         "is the part not reported as rain). The field's balance uses this unless you enter a rain gauge reading. " +
         'The lower panel adds it up from the first day in view, so zooming changes the total. When there is snow, ' +
         'the gray bars are snowfall (the depth of new snow) and the gray line is the snow on the ground, both ' +
-        'measured as snow, not water: 10 inches of snow holds roughly an inch of water, less when it is light and dry.',
+        'measured as snow, not water: 10 inches of snow holds roughly an inch of water, less when it is light and dry.' +
+        (fieldRain
+          ? " Here it also shows the rain you entered for this field, beside the model's. Modeled precipitation the " +
+            "field's balance doesn't use is drawn as an outline: on days you entered rain, and on every day you " +
+            "didn't if the field counts only the rain you enter. The lower panel totals the model's precipitation and " +
+            'the rain the balance used.'
+          : ''),
       bars: 'stack',
       series: [
-        { name: 'Rain', color: (p) => p.rain, value: (day) => depth(day.rain_in === null ? null : Math.min(day.rain_in, day.precip_in ?? Infinity)) },
-        { name: 'Snow and other', color: (p) => p.depths[0], value: (day) => depth(otherPrecip(day)) },
+        {
+          name: 'Rain',
+          color: (p) => p.rain,
+          value: (day) => depth(day.rain_in === null ? null : Math.min(day.rain_in, day.precip_in ?? Infinity)),
+          ...hollow,
+        },
+        { name: 'Snow and other', color: (p) => p.depths[0], value: (day) => depth(otherPrecip(day)), ...hollow },
+        ...(fieldRain
+          ? [{ name: 'Entered rain', color: (p: Palette) => p.rain, value: (day: WeatherPanelDay) => depth(enteredRain(day)), style: 'bar' as const, entries: true }]
+          : []),
         { name: 'Snowfall', color: (p) => p.snow, value: (day) => depth(day.snowfall_in), style: 'bar', sparse: true },
         { name: 'Snow depth', color: (p) => p.snow, value: (day) => depth(day.snow_depth_in), style: 'line', sparse: true },
       ],
-      totals: [{ name: 'Precipitation total', color: (p) => p.rain, value: (day) => depth(day.precip_in) }],
+      totals: fieldRain
+        ? [
+            { name: 'Modeled total', color: (p) => p.rain, value: (day) => depth(day.precip_in) },
+            { name: 'Used by the balance', color: (p) => p.ad, value: (day) => depth(fieldRain[day.date]?.rain ?? null) },
+          ]
+        : [{ name: 'Precipitation total', color: (p) => p.rain, value: (day) => depth(day.precip_in) }],
     },
     {
       key: 'et',
@@ -230,9 +274,13 @@ const valueOn = (series: Series, day: WeatherPanelDay) => {
   return series.sparse && value === 0 ? null : value
 }
 
-/** The panel's series with something to show: sparse ones (snow) only when some day has some */
+/** Whether a sparse or entries series has something on a day (always, for the others) */
+const hasValue = (series: Series, day: WeatherPanelDay) =>
+  series.entries ? series.value(day) !== null : !series.sparse || (series.value(day) ?? 0) > 0
+
+/** The panel's series with something to show: sparse ones (snow) and entries only when some day has some */
 export const shownSeries = (panel: WeatherPanel, days: WeatherPanelDay[]) =>
-  panel.series.filter((series) => !series.sparse || days.some((day) => (series.value(day) ?? 0) > 0))
+  panel.series.filter((series) => days.some((day) => hasValue(series, day)))
 
 /**
  * The series to name in the legend: sparse ones only when a day in view has some (April's snow
@@ -240,7 +288,7 @@ export const shownSeries = (panel: WeatherPanel, days: WeatherPanelDay[]) =>
  */
 function legendSeries(series: Series[], days: WeatherPanelDay[], view: ChartView) {
   const inView = days.slice(view.start, view.end + 1)
-  return series.filter((s) => !s.sparse || inView.some((day) => (s.value(day) ?? 0) > 0))
+  return series.filter((s) => inView.some((day) => hasValue(s, day)))
 }
 
 /** The days in view when a chart opens: the last observed days, then the forecast (as the soil-water chart) */
@@ -291,12 +339,17 @@ export function weatherChartOption(
 
   // Light gray snow bars get an outline so they show on a light background
   const outline = (s: Series) => (palette.dark || s.style !== 'bar' ? {} : { borderColor: palette.inkMuted, borderWidth: 0.5 })
-  const sparse = new Set(series.filter((s) => s.sparse).map((s) => s.name))
+  // Series named in the tooltip only on days they have a value
+  const sparse = new Set(series.filter((s) => s.sparse || s.entries).map((s) => s.name))
+  const hollowStyle = (s: Series) => ({ color: 'transparent', borderColor: s.color(palette), borderType: 'dashed', borderWidth: 1 })
   const daily = series.map((s, i) => ({
     name: s.name,
     xAxisIndex: 0,
     yAxisIndex: 0,
-    data: days.map((day) => digits(valueOn(s, day))),
+    data: days.map((day) => {
+      const value = digits(valueOn(s, day))
+      return value !== null && s.hollow?.(day) ? { value, unused: true, itemStyle: hollowStyle(s) } : value
+    }),
     itemStyle: { color: s.color(palette), ...outline(s) },
     ...(panel.bars && s.style !== 'line'
       ? { type: 'bar', barMaxWidth: 10, ...(panel.bars === 'stack' && !s.style ? { stack: panel.key } : {}) }
@@ -383,7 +436,7 @@ export function weatherChartOption(
   }
 }
 
-type TooltipParam = { axisValue: string; seriesIndex: number; seriesName: string; marker: string; value: unknown }
+type TooltipParam = { axisValue: string; seriesIndex: number; seriesName: string; marker: string; value: unknown; data?: unknown }
 
 /** The day, then each series in order (daily values before running totals); sparse series only on days they have a value */
 function tooltip(params: unknown, unit: string, digits: number, sparse: Set<string>): string {
@@ -391,7 +444,8 @@ function tooltip(params: unknown, unit: string, digits: number, sparse: Set<stri
   if (!all.length) return ''
   const list = all.filter((param) => typeof param.value === 'number' || !sparse.has(param.seriesName))
   const rows = list.map((param) => {
-    const value = typeof param.value === 'number' ? `${param.value.toFixed(digits)} ${unit}` : '—'
+    const unused = (param.data as { unused?: boolean } | null)?.unused ? ' <span style="opacity:.7">not used</span>' : ''
+    const value = typeof param.value === 'number' ? `${param.value.toFixed(digits)} ${unit}${unused}` : '—'
     return `<tr><td style="padding-right:12px">${param.marker}${param.seriesName}</td><td style="text-align:right"><strong>${value}</strong></td></tr>`
   })
   return `<strong>${formatDate(all[0].axisValue, { weekday: true })}</strong><table>${rows.join('')}</table>`
