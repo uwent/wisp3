@@ -117,7 +117,7 @@ AlertDelivery (dedupe log), MagicLinkToken (if not using stateless tokens), Anno
 - **pivots**: `name, latitude, longitude, radius_ft, arc_start_deg, arc_end_deg (nullable = full circle), equipment, pump_capacity_gpm, notes`.
   - **Location is required and has no default.** In legacy production, 215 of 443 pivots (49%) were still at the default 43, −89, so half of all fields got weather for the wrong place.
   - Pivot creation therefore starts with a map picker (click the pivot center, drag the radius) or typed coordinates, validated to fall within a US-and-Canada bounding box (latitude 18–84, longitude −180 to −52). Weather coverage is global, so this can widen later.
-- **fields**: `name, area_acres, soil_type_id, field_capacity, perm_wilting_pt` (nullable, so NULL means "use the soil type default"; the legacy code used 0.0 for that), `notes`, optional `boundary` (GeoJSON jsonb) for non-pivot or partial areas.
+- **fields**: `name, area_acres, soil_type_id, field_capacity, perm_wilting_pt` (nullable, so NULL means "use the soil type default"; the legacy code used 0.0 for that), `notes`, optional `boundary` (GeoJSON jsonb) for non-pivot or partial areas, `use_model_precip` (nullable boolean, Phase 6.6: NULL follows the group's setting; true or false overrides it for this field).
 - **plantings**: `field_id, plant_id, variety, season_start (default Apr 1), emergence_date, end_date (harvest/kill, default Nov 30), max_root_zone_depth, mad_frac, et_method (pct_cover | lai), target_ad_pct, initial_moisture_pct (nullable, NULL = start at field capacity), notes`. The season year is `season_start.year` (no separate column to disagree with it). Plantings on the same field can't overlap in time (model validation plus a Postgres exclusion constraint). This supports double-cropping properly (replacing the legacy `current_crop` "latest emergence" hack). Emergence may precede `season_start` (perennials).
 - **canopy_observations**: `planting_id, date, pct_cover (0–100) | lai (≥0)`. These are anchor points for interpolation (§5.3).
 - **field_entries**: `field_id, date, rain_in, irrigation_in, soil_moisture_pct, notes`. All nullable, NULL = not entered, **0.0 = user entered zero** (removes the legacy `CHANGE_EPSILON` workaround). Unique on `(field_id, date)`.
@@ -137,7 +137,8 @@ AlertDelivery (dedupe log), MagicLinkToken (if not using stateless tokens), Anno
 ### Precedence when resolving a day's inputs for a field
 
 ```
-rain       = field_entry.rain_in ?? group_entry.rain_in ?? (group.use_model_precip ? weather.precip_in : 0.0)
+rain       = field_entry.rain_in ?? group_entry.rain_in ?? (use_model_precip || date > today ? weather.precip_in : 0.0)
+             where use_model_precip = field.use_model_precip ?? group.use_model_precip   (Phase 6.6; Q7)
 irrigation = field_entry.irrigation_in ?? pivot_irrigation.inches (if this field is included) ?? group_entry.irrigation_in ?? 0.0
 et0        = weather.et0_in            (NULL → gap fill, §5.4)
 moisture   = field_entry.soil_moisture_pct ?? group_entry.soil_moisture_pct   (resets balance, §5.2)
@@ -585,6 +586,35 @@ Decided 2026-10-05 (Ben): replace the legacy PDF user guide with documentation i
 - [ ] Wording reviewed by Ben (agronomy, contact details).
 - **Later (Phase 8):** screenshots, a printable version, the methods detail (equations from §5) for agronomists, and a "More in the guide" link from each glossary tooltip.
 
+### Phase 6.6: Field rain setting and season details
+
+Decided 2026-10-07 (Ben): some growers want the balance to use only the rain they enter, field by field. A per-field setting (Q7 addendum, §4 precedence), a "season details" card with gauge-vs-model statistics, entered rain on the precipitation chart, and two chart fixes.
+
+**A. Chart fixes** (independent; can land first)
+- [ ] Snowfall and snow depth appear in the precipitation legend only when the days *in view* have some (`shownSeries` checks the whole season today, so April snow puts them in an October legend).
+- [ ] Crop ET on the ET chart continues through the forecast: the projection's `adj_et` (forecast et0 and projected canopy) is what it takes out of the soil. Update the chart's info text.
+
+**B. Per-field rain setting**
+- [ ] `fields.use_model_precip` (nullable boolean); `Field#effective_use_model_precip` falls back to the group's. `DailyInputs` reads it, and uses modeled rain on days after today whatever the setting (it takes `today:`, passed through `PlantingBalance` from `PlantingStatus`). Check that `FieldStatuses` and `DailyDigest` preload what it reads.
+- [ ] Any member can change it (like other field settings); the group-level default stays owner-only (Q8).
+- [ ] `FieldSerializer`: the field's setting, the effective one and the group's default; `fields#update` permits it. Specs: override both ways, NULL inherits, forecast rain kept after today, cross-tenant update. `legacy_engine_spec` unchanged (the default doesn't change).
+- [ ] **"No rain" projection** for entered-only fields: `PlantingStatus` runs the balance over the projection's days with forecast rain set to zero (planned irrigation and entered rain kept), from today's AD with the same ET history as the ensemble. The projection gets a `dry_ad` per day and the summary a `dry_crossing`. On the field page: a dashed "If no rain falls" line on the soil-water chart, a column in the forecast table, and "Irrigate by … (… if no rain falls)". Status, "Irrigate by" and the digest follow the forecast case.
+- [ ] Wording elsewhere: the operation page says fields can override its setting; daily entry doesn't show the "model" placeholder for entered-only fields; Setup marks entered-only fields; the field page's summary card says "Rain: only your entries · change" (linking to the setting).
+
+**C. Entered rain on the field page's precipitation chart** (the pivot page's chart is unchanged)
+- [ ] `weatherPanels(units, { fieldRain })`, from `days` and `forecast_days`: an entered rain bar where there's an entry, with the modeled precipitation as a hollow, dashed bar behind it (the soil-water chart's style); for entered-only fields every modeled bar not used by the balance is hollow. The lower panel gets two running totals: modeled, and used by the balance. The section intro and the chart's info text say so. vitest for overrides, entered-only and no `fieldRain`.
+
+**D. Season details and settings card** (at the bottom of the field page, after the weather)
+- [ ] The rain setting: operation default (named) / modeled, replaced by my entries / only rain I enter. Saving reloads the season.
+- [ ] Statistics through today, computed in the browser from `days` (`lib/seasonStats.ts`, pure and unit tested):
+  - Entered rain: total, readings, days with rain. Modeled rain: total, days with rain (≥ 0.01″, measurable). For entered-only fields, the modeled rain days and total the balance left out.
+  - Irrigation: total, days, typical interval (median days between irrigations), typical amount (median).
+  - Deep drainage: season total.
+  - Gauge vs model, by day: both rained; you entered rain the model didn't have; you entered 0 where the model had rain; model rain with no reading (not counted as a disagreement: no reading may mean no rain or no check). On days both rained: how often they disagree (by more than the larger of 0.1″ and 25%), the typical adjustment (median entered − modeled), and the ratio of the totals.
+- [ ] The summary card's "your gauge read … the model …" sentence links to the card. A glossary entry for the rain setting; guidance on when to choose entered-only (a gauge read every day it rains).
+- [ ] Playwright: switch a field to entered-only, see the badge, totals and dry line change, switch back.
+- **Exit:** switching a demo field to entered-only and back restores the same balance; its projection shows both cases; the precipitation chart and the details card agree with the daily grid.
+
 ### Phase 7: Map
 
 - [ ] MapLibre map, USGS imagery + OpenFreeMap streets, pivot circles and arcs colored by status.
@@ -624,7 +654,7 @@ Decided 2026-10-05 (Ben): replace the legacy PDF user guide with documentation i
 | Q4 | Pivot-level irrigation | **Resolved** → D9, §4 `pivot_irrigations` | – |
 | Q5 | Can the deploy user run `systemd --user` services? | **Resolved**: yes on staging; new production server provisioned with it (D11, §12) | – |
 | Q6 | Alert email sender and DKIM | Ask campus IT | Phase 6 |
-| Q7 | Per-field rainfall correction | **Resolved**: per-day overrides shown next to modeled values; no multiplier | – |
+| Q7 | Per-field rainfall correction | **Resolved**: per-day overrides shown next to modeled values; no multiplier; per-field entered-only setting (2026-10-07) | – |
 
 ### Q1. Alert defaults: resolved (recommendation adopted)
 
@@ -750,6 +780,11 @@ If any answer is no, use an authenticated SMTP relay (campus relay or a transact
   - **Field summary:** season totals of entered vs modeled rain over the days with entries, so growers can see how their gauge compares with the model.
 - The resolver (§4) already keeps both values; it returns `rain_model_in` alongside the resolved `rain_in` and its provenance.
 - Revisit a correction factor after a season of gauge-vs-model data.
+
+**Added (2026-10-07, Ben):** the modeled/manual switch can also be **set per field** (Phase 6.6). It is a setting read when the balance runs; it never copies or deletes entries, so switching back restores the modeled rain exactly.
+- **Entered-only applies through today; the projection still uses forecast rain.** Nobody can enter future rain, and the forecast is expected to be roughly right; growers choosing entered-only mostly want exact amounts, or know storms often miss their field. This changes the existing group-level switch too (it zeroed forecast rain).
+- **Entered-only fields also show a "no rain" projection**: the same balance with no forecast rain (planned irrigation kept), so the grower sees both the forecast case and the dry case. Status, "Irrigate by" and the digest follow the forecast case.
+- Field rain entries and field-group rain entries both count as entered.
 
 ### Q8. Group member roles
 
