@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe DailyDigestJob do
-  let(:user) { create(:user) }
+  let(:user) { create(:user, digest_frequency: "daily") }
   let(:pivot) { create(:pivot, farm: create(:farm, group: user.groups.first)) }
 
   before do
@@ -12,8 +12,8 @@ RSpec.describe DailyDigestJob do
   around { |example| travel_to(digest_today) { example.run } }
 
   it "sends each user with the digest on and a field in season one email a day" do
-    off = create(:user, digest_frequency: "never")
-    unconfirmed = create(:user, :unconfirmed)
+    off = create(:user) # the digest starts off
+    unconfirmed = create(:user, :unconfirmed, digest_frequency: "daily")
     [off, unconfirmed].each { |other| create(:membership, user: other, group: user.groups.first) }
     create(:user) # no fields
 
@@ -37,7 +37,7 @@ RSpec.describe DailyDigestJob do
   end
 
   it "carries on past a user whose digest fails" do
-    other = create(:user)
+    other = create(:user, digest_frequency: "daily")
     create(:membership, user: other, group: user.groups.first)
     allow(DigestMailer).to receive(:daily).and_call_original
     allow(DigestMailer).to receive(:daily).with(having_attributes(user:)).and_raise("boom")

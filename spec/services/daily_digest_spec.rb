@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe DailyDigest do
-  let(:user) { create(:user) }
+  let(:user) { create(:user, digest_frequency: "daily") }
   let(:group) { user.groups.first }
   let(:farm) { create(:farm, group:, name: "Home") }
   let(:pivot) { create(:pivot, farm:, name: "Pivot 1") }

@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe DigestMailer do
-  let(:user) { create(:user, email: "pat@example.com") }
+  let(:user) { create(:user, email: "pat@example.com", digest_frequency: "daily") }
   let(:pivot) { create(:pivot, farm: create(:farm, group: user.groups.first, name: "Home"), name: "Pivot 1") }
 
   before { digest_weather(pivot) }

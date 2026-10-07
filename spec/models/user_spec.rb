@@ -8,6 +8,10 @@ RSpec.describe User do
       expect(user.memberships.first).to be_owner
     end
 
+    it "starts with the daily email off" do
+      expect(create(:user).digest_frequency).to eq("never")
+    end
+
     it "names the group after the email when there is no name" do
       user = create(:user, first_name: nil, last_name: nil, email: "pat@example.com")
       expect(user.groups.first.name).to eq("pat@example.com's farms")

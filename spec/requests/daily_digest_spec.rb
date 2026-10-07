@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Daily digest", type: :request do
-  let(:user) { create(:user) }
+  let(:user) { create(:user, digest_frequency: "daily") }
   let(:group) { user.groups.first }
 
   describe "the alerts page" do
@@ -13,7 +13,7 @@ RSpec.describe "Daily digest", type: :request do
 
     before { sign_in user }
 
-    it "lists every field by operation and farm, all included and sent daily by default" do
+    it "lists every field by operation and farm, all included by default" do
       get alerts_path
       expect_inertia.to render_component("Alerts/Show")
       expect(inertia.props).to include(frequency: "daily", field_ids: contain_exactly(north.id, south.id, east.id), test_wait: 0)
