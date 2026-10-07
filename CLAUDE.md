@@ -12,8 +12,8 @@ WISP 3: a rewrite of the Wisconsin Irrigation Scheduling Program (legacy app in 
 bin/dev                          # Rails :3000 + Vite dev server
 bin/ci                           # full CI: standardrb, svelte-check/tsc, typelizer freshness, vitest, rspec
 bundle exec rspec spec/path_spec.rb
-npm test                         # vitest
-npm run check                    # svelte-check + tsc
+pnpm test                       # vitest
+pnpm check                      # svelte-check + tsc
 bin/e2e                          # Playwright smoke tests on their own database (args go to playwright test)
 bin/rails typelizer:generate     # after changing serializers or routes; commit the output
 bin/rails demo:seed              # demo account with farms, fields and entries (EMAIL, PASSWORD, YEAR)

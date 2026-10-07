@@ -16,7 +16,7 @@ WISP 3 is a rewrite of the [original WISP](https://github.com/uwent/wisp). See [
 Requirements: Ruby 4.0.5 (rbenv), Node 24, PostgreSQL 16+.
 
 ```bash
-bin/setup          # installs gems and npm packages, prepares the database, starts the app
+bin/setup          # installs gems and pnpm packages, prepares the database, starts the app
 bin/dev            # Rails on http://localhost:3000 plus the Vite dev server
 ```
 
@@ -27,8 +27,8 @@ The database connects to `localhost` as `postgres`/`password` by default; overri
 ```bash
 bin/ci                            # everything CI runs: lint, type checks, frontend and Rails tests
 bundle exec rspec                 # Rails tests
-npm test                          # frontend component tests (Vitest)
-npm run check                     # svelte-check + TypeScript
+pnpm test                         # frontend component tests (Vitest)
+pnpm check                      # svelte-check + TypeScript
 bundle exec standardrb            # Ruby lint
 bin/rails typelizer:generate      # regenerate TS types (app/frontend/types/serializers) and route helpers (app/frontend/routes)
 ```

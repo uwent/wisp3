@@ -20,7 +20,7 @@ cap staging systemd:status         # service status
 ssh -p 216 deploy@dev.agweather.cals.wisc.edu journalctl --user -u wisp3-web -f    # logs (also wisp3-jobs)
 ```
 
-Each deploy installs npm packages, builds the Vite assets, runs `db:prepare` (migrations), and restarts both services.
+Each deploy installs pnpm packages, builds the Vite assets, runs `db:prepare` (migrations), and restarts both services.
 
 ## First-time setup on a server
 

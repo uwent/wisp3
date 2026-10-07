@@ -8,4 +8,4 @@ export RAILS_ENV=test E2E=1
 bin/rails db:prepare
 bin/rails runner e2e/seed.rb
 bin/vite build --mode test > /dev/null
-npx playwright test "$@"
+pnpm exec playwright test "$@"

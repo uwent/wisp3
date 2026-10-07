@@ -23,7 +23,6 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 ## Phase 4 and 4.5
 
 - [x] **Push `main` and `bundle exec cap staging deploy`**, then click through on staging: dashboard, a field page (edit a cell, Escape cancels), daily entry, setup, a pivot's irrigation page. GitHub Actions now runs the Playwright smoke tests too (`bin/e2e` locally).
-- [x] **A stray `pnpm-lock.yaml`** appeared in the repo root during the 2026-10-03 session (not from Claude, which uses npm). It's untracked; delete it unless you're switching to pnpm.
 
 ## Phase 6: daily email (next)
 

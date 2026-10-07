@@ -9,4 +9,4 @@ playwright-report
 test-results
 tmp
 vendor
-package-lock.json
+pnpm-lock.yaml

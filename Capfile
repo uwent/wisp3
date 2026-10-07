@@ -5,7 +5,7 @@ install_plugin Capistrano::SCM::Git
 
 require "capistrano/rbenv"
 require "capistrano/bundler"
-require "capistrano/rails/assets" # assets:precompile = npm install + vite build
+require "capistrano/rails/assets" # assets:precompile = pnpm install + vite build
 require "capistrano/rails/migrations"
 
 Dir.glob("lib/capistrano/tasks/*.rake").each { |r| import r }
