@@ -119,6 +119,21 @@ test('a grid cell saves on Enter, and Escape cancels without saving', async ({ p
   await expect(page.locator('[data-grid="days"][data-row="2"][data-col="4"]')).not.toContainText(note)
 })
 
+test('an open grid cell keeps its column width, and clicking another cell opens that one', async ({ page }) => {
+  await page.goto(await firstFieldPath(page))
+  const cell = (row: number, col: number) => page.locator(`[data-grid="days"][data-row="${row}"][data-col="${col}"]`)
+  const widths = () => page.locator('table:has([data-grid="days"]) thead th').evaluateAll((ths) => ths.map((th) => Math.round(th.getBoundingClientRect().width)))
+  const before = await widths()
+
+  await cell(2, 0).click()
+  await expect(page.getByRole('textbox', { name: /^Rain, / })).toBeFocused()
+  expect(await widths()).toEqual(before)
+
+  await cell(4, 1).click()
+  await expect(page.getByRole('textbox', { name: /^Irrigation, / })).toBeFocused()
+  await page.keyboard.press('Escape')
+})
+
 test('planned irrigation updates the projection', async ({ page }) => {
   await page.goto(await firstFieldPath(page))
   await expect(page.locator('main h1')).toBeVisible()

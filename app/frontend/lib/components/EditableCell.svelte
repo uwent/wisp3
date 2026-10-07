@@ -99,7 +99,11 @@
 </script>
 
 {#if editing}
+  <!-- The cell's content stays in place, unseen, so the column keeps its width while the input
+       covers it; otherwise the table shifts as an edit opens and closes, and a click meant for the
+       next cell lands somewhere else -->
   <div class="relative">
+    <span aria-hidden="true" class="invisible block min-w-16 px-1.5 py-1 tabular-nums">{@render children()}</span>
     <input
       bind:this={input}
       bind:value={draft}
@@ -108,7 +112,7 @@
       aria-label={label}
       aria-invalid={error ? 'true' : undefined}
       disabled={saving}
-      class="w-full min-w-16 rounded border-brand-500 px-1.5 py-1 text-sm tabular-nums focus:ring-brand-500
+      class="absolute inset-0 size-full min-w-0 rounded border-brand-500 px-1.5 py-0 text-sm tabular-nums focus:ring-brand-500
         {align === 'right' ? 'text-right' : 'text-left'}
         {error ? 'border-status-irrigate' : ''}"
     />
