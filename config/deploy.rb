@@ -10,7 +10,7 @@ set :rbenv_type, :user
 set :rbenv_ruby, File.read(".ruby-version").strip
 
 # Each stage also links its Rails credentials key (see config/deploy/<stage>.rb)
-append :linked_dirs, "log", "tmp/pids", "tmp/cache", "tmp/sockets", "node_modules"
+append :linked_dirs, "log", "tmp/pids", "tmp/cache", "tmp/sockets"
 
 # Vite Ruby builds to public/vite (linked, so old assets survive a deploy) with its manifest
 # in .vite/; capistrano-rails defaults to the Sprockets/Propshaft layout in public/assets.
