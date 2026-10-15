@@ -78,7 +78,7 @@ RSpec.describe DailyDigest do
     expect(described_class.new(user)).to be_deliverable
   end
 
-  it "groups fields by farm and pivot, in name order, with each pivot's weather" do
+  it "groups fields by operation, weather zone and pivot, in name order, with each zone's weather" do
     other_pivot = create(:pivot, farm:, name: "Pivot 0", weather_cell: pivot.weather_cell)
     river = create(:farm, group:, name: "River")
     river_pivot = create(:pivot, farm: river, name: "East", weather_cell: pivot.weather_cell)
@@ -87,11 +87,18 @@ RSpec.describe DailyDigest do
     zero = digest_field(other_pivot, "Zero", 15)
     east = digest_field(river_pivot, "East 1", 12)
 
-    farms = described_class.new(user).farms
-    expect(farms.map { |section| [section.farm.name, section.pivots.map { |p| [p.pivot.name, p.entries.map(&:field)] }] })
-      .to eq([["Home", [["Pivot 0", [zero]], ["Pivot 1", [a, b]]]], ["River", [["East", [east]]]]])
-    expect(farms.first.pivots.first.weather[:past]).to have_attributes(days: 7, precip: 0.0, tmax: 85.0..85.0)
-    expect(farms.first.pivots.first.weather[:ahead]).to have_attributes(days: 7, tmin: 62..62)
+    elsewhere = create(:pivot, farm: river, name: "West", latitude: 45.5, longitude: -91.5)
+    digest_weather(elsewhere)
+    west = digest_field(elsewhere, "West 1", 15)
+
+    operations = described_class.new(user).operations
+    expect(operations.map(&:group)).to eq([group])
+    zones = operations.sole.zones
+    expect(zones.map { |zone| [zone.number, zone.cell, zone.pivots.map { |p| [p.pivot.name, p.entries.map(&:field)] }] })
+      .to eq([[1, pivot.weather_cell, [["Pivot 0", [zero]], ["Pivot 1", [a, b]], ["East", [east]]]],
+        [2, elsewhere.weather_cell, [["West", [west]]]]])
+    expect(zones.first.weather[:past]).to have_attributes(days: 7, precip: 0.0, tmax: 85.0..85.0)
+    expect(zones.first.weather[:ahead]).to have_attributes(days: 7, tmin: 62..62)
   end
 
   it "formats depths in the user's units" do
