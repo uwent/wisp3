@@ -57,7 +57,8 @@ class DemoSeed
     south = hancock.pivots.create!(name: "South 80", latitude: 44.1129, longitude: -89.5371, radius_ft: 950,
       arc_start_deg: 30, arc_end_deg: 300, pump_capacity_gpm: 600)
     beans = field(south, "South snap beans", 48, "sandy_loam")
-    planting(beans, "snap_bean", emergence: date(6, 5), end_date: date(8, 25), target: 50)
+    # No canopy readings: the snap bean curve stands in for them (PLAN.md Phase 6.7)
+    planting(beans, "snap_bean", emergence: date(6, 5), end_date: date(8, 25), target: 50, readings: [])
     [[6, 25, 0.6], [7, 6, 0.7], [7, 18, 0.7], [8, 1, 0.65]].each do |month, day, inches|
       beans.field_entries.create!(date: date(month, day), irrigation_in: inches)
     end
@@ -97,15 +98,18 @@ class DemoSeed
     pivot.fields.create!(name:, area_acres: acres, soil_type: soil(soil_key))
   end
 
-  # Percent-cover plantings get readings that rise to full cover; LAI ones use the plant's curve
+  COVER_READINGS = [[14, 10], [28, 35], [42, 70], [56, 90]].freeze
+
+  # Percent-cover plantings get readings (days after emergence, cover) that rise to full cover; LAI
+  # ones use the plant's curve
   def planting(field, plant_key, emergence:, end_date:, season_start: date(4, 1), et_method: "pct_cover", variety: nil,
-    target: nil)
+    target: nil, readings: COVER_READINGS)
     crop = plant(plant_key)
     planting = field.plantings.create!(Planting.defaults_for(crop, @year).merge(
       plant: crop, season_start:, emergence_date: emergence, end_date:, et_method:, variety:, target_ad_pct: target
     ))
     if et_method == "pct_cover"
-      [[14, 10], [28, 35], [42, 70], [56, 90]].each do |days, cover|
+      readings.each do |days, cover|
         reading = emergence + days
         planting.canopy_observations.create!(date: reading, pct_cover: cover) if reading <= end_date
       end

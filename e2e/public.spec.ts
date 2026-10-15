@@ -15,7 +15,15 @@ test('the landing page introduces WISP and leads to the About page and sign-up',
   await page.getByRole('link', { name: /Step 1/ }).click()
   await expect(page).toHaveURL(/\/about#getting-started$/)
   await expect(page.getByRole('heading', { name: 'Getting started' })).toBeInViewport()
-  await expect(page.getByRole('row', { name: /Field Corn/ })).toContainText('from a growth curve or readings')
+  await expect(page.getByRole('row', { name: /Field Corn/ })).toContainText(
+    'Percent cover, with a curve; LAI with a curve',
+  )
+  // Each crop's canopy curve, with its source
+  const potato = page.getByRole('region', { name: 'Potato', exact: true })
+  await expect(
+    potato.getByRole('img', { name: /Potato canopy cover by day since emergence: 50% on day 24/ }),
+  ).toBeVisible()
+  await expect(potato).toContainText('From August 1')
   if (process.env.SHOT_DIR)
     await page.screenshot({ path: `${process.env.SHOT_DIR}/about-${test.info().project.name}.png`, fullPage: true })
 

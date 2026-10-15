@@ -70,7 +70,7 @@ Percent cover curve; LAI for every crop except field corn comes from the cover c
 | Carrot, beets, celery, leafy greens, sweet potato | FAO-56 (rows above) | End date | FAO-56 derived |
 | Cucumber, melon, pumpkin, winter squash, summer squash | FAO-56 (rows above) | End date | FAO-56 derived |
 | Pepper | FAO-56, CCx 75% (as tomato) | End date | FAO-56 derived, CCx assumed |
-| Wheat | FAO-56 spring small grains | AquaCrop Barley's decline (from day 58) | FAO-56 derived; winter wheat (emergence = spring green-up) to check |
+| Wheat | FAO-56 spring small grains | From the end of FAO-56's mid-season (day 95) at AquaCrop Barley's rate | FAO-56 derived; winter wheat (emergence = spring green-up) to check |
 | Barley | AquaCrop Barley (calendar; CCx 80%) | AquaCrop (from day 58) | Published, unvalidated in WI |
 | Onion | **None** (readings only) | | No source found |
 | Alfalfa, mint | **None** (readings only) | | Cut and regrown during the season (WI 2026 alfalfa: a sawtooth, note 01); needs cutting dates, a later feature |

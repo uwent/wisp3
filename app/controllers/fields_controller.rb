@@ -70,7 +70,8 @@ class FieldsController < AuthenticatedController
     day_params = {
       entries: field.field_entries.where(date: dates).index_by(&:date),
       observations: planting.canopy_observations.to_h { |obs| [obs.date, obs[attribute]] }.compact,
-      pivot_inches:
+      pivot_inches:,
+      canopy: status.canopy
     }
 
     {

@@ -12,10 +12,11 @@ class PlantingBalance
 
   def params = @params ||= WaterBalance::Params.for(@planting)
 
+  def canopy = @canopy ||= Canopy.for(@planting)
+
   # One Day per date from season start through `through` (default: end_date)
   def days(through: @planting.end_date)
     dates = (@planting.season_start..[through, @planting.end_date].min).to_a
-    canopy = Canopy.for(@planting)
     weather = @weather || WeatherDay.balance_inputs(@planting.field.pivot.weather_cell, dates)
     inputs = DailyInputs.new(@planting.field, dates, weather:, records: @records, today: @today).days
     canopies = dates.map { |date| canopy.on(date) }

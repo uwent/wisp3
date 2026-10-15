@@ -15,8 +15,22 @@ RSpec.describe "Public pages", type: :request do
     create(:plant, key: "field_corn", name: "Field Corn", default_max_root_zone_depth: 33, canopy_model: "field_corn")
     get about_path
     expect_inertia.to render_component("Pages/About")
-    expect(inertia.props[:plants]).to include({key: "field_corn", name: "Field Corn", root_zone_in: 33.0, lai_curve: true})
-    expect(inertia.props[:defaults]).to eq("mad_pct" => 50, "lead_days" => 3, "forecast_days" => 16)
+    expect(inertia.props[:plants]).to include({key: "field_corn", name: "Field Corn", root_zone_in: 33.0, lai_curve: true,
+      cover_curve: true})
+    expect(inertia.props[:defaults]).to eq("mad_pct" => 50, "lead_days" => 3, "forecast_days" => 16,
+      "shift_warning_days" => 7, "drop_warning" => 5)
+  end
+
+  it "documents each crop's canopy curve, with its sources" do
+    create(:plant, key: "potato", name: "Potato")
+    create(:plant, key: "onion", name: "Onion")
+    get about_path
+    curves = inertia.props[:canopy_curves]
+    expect(curves.map { |curve| curve[:key] }).to eq(["potato"])
+    expect(curves.first).to include(confidence: "matches_wi", days_to: {"50" => 24, "80" => 31},
+      decline: {"type" => "rule", "date" => "08-01", "per_week" => 10, "floor" => 50})
+    expect(curves.first[:covers].size).to eq(PagesController::CURVE_DAYS + 1)
+    expect(curves.first[:sources].map { |source| source[:url] }).to include("https://doi.org/10.2134/agronj2008.0139s")
   end
 
   it "keeps the signed-in user's operation on the About page" do

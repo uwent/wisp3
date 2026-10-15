@@ -27,6 +27,9 @@ class PlantingStatus
 
   def params = @balance.params
 
+  # The planting's Canopy: its curve, and whether readings disagree with it (Canopy#check)
+  def canopy = @balance.canopy
+
   # :upcoming (before season start), :active, or :ended
   def phase
     if today < planting.season_start then :upcoming

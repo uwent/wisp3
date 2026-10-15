@@ -96,6 +96,15 @@ export const GLOSSARY: GlossaryEntry[] = [
       'over each square foot of soil. It can be measured with a ceptometer.',
   },
   {
+    id: 'canopy_curve',
+    term: 'Canopy curve',
+    matches: ['canopy curve', 'crop curve'],
+    definition:
+      'A crop’s typical percent cover (or LAI) by day since emergence. WISP follows it when no readings are ' +
+      'entered, and scales it through the readings you enter. Each crop’s curve and its source are on the ' +
+      'About page.',
+  },
+  {
     id: 'deep_drainage',
     term: 'Deep drainage',
     matches: ['deep drainage'],

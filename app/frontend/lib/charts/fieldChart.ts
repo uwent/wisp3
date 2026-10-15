@@ -139,8 +139,10 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
     },
   ]
 
-  // The canopy as modeled each day (interpolated between readings), and the readings themselves
+  // The canopy as modeled each day (following the crop's curve or straight lines between readings),
+  // the readings themselves, and the crop's curve as it would be with no readings
   const canopyName = canopy === 'lai' ? 'LAI' : 'Canopy cover'
+  const hasCurve = all.some((day) => day.canopy_curve !== null)
 
   // The forecast's days shaded edge to edge on every panel, and named once at the top
   const shading = forecastShading({
@@ -509,6 +511,22 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         lineStyle: { width: 2, color: palette.canopy },
         itemStyle: { color: palette.canopy },
       },
+      ...(hasCurve
+        ? [
+            {
+              id: 'canopy-curve',
+              name: canopyName,
+              type: 'line',
+              xAxisIndex: 3,
+              yAxisIndex: 3,
+              data: all.map((day) => (day.canopy_curve === null ? null : round(day.canopy_curve, 2))),
+              symbol: 'none',
+              lineStyle: { width: 1, color: palette.canopy, type: 'dashed', opacity: 0.7 },
+              itemStyle: { color: palette.canopy },
+              z: 1,
+            },
+          ]
+        : []),
       {
         // Markers only (a line with no line, as scatter isn't bundled)
         id: 'canopy-readings',
@@ -594,6 +612,9 @@ function tooltip(
       (canopy === 'lai' ? day.canopy.toFixed(2) : `${day.canopy.toFixed(0)}%`) +
         ` ${source(day.canopy_entered === null ? 'estimated' : 'reading')}`,
     ],
+    ...(day.canopy_curve === null
+      ? []
+      : [['Crop curve', canopy === 'lai' ? day.canopy_curve.toFixed(2) : `${day.canopy_curve.toFixed(0)}%`]]),
   ]
   if (day.soil_moisture_pct !== null) rows.push(['Moisture reading', `${day.soil_moisture_pct}%`])
   const body = rows.map(([name, value]) => `<tr><td style="padding-right:12px">${name}</td><td>${value}</td></tr>`)

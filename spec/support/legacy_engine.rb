@@ -18,7 +18,9 @@ module LegacyEngine
   # Fixes that change the canopy series rather than the balance
   CANOPY_FIXES = {
     c3: "percent cover held to the end date (legacy: 6 days) and interpolated from emergence",
-    c4: "LAI growth curve for field corn only (legacy used the corn curve for every crop)"
+    c4: "LAI growth curve for field corn only (legacy used the corn curve for every crop)",
+    c20: "crop canopy curves: followed with no readings and between readings (legacy: 0% cover until the first " \
+      "reading, then straight lines)"
   }.freeze
 
   module_function

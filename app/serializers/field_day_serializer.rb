@@ -1,6 +1,7 @@
 # One row of a field's daily grid: PlantingBalance::Day's resolved inputs (with sources), canopy
 # and balance. params: entries {date => FieldEntry} for notes, observations {date => canopy
-# reading}, pivot_inches {date => inches from the pivot} (shown when a field entry overrides it).
+# reading}, pivot_inches {date => inches from the pivot} (shown when a field entry overrides it),
+# canopy (the planting's Canopy, for its crop's curve).
 class FieldDaySerializer < ApplicationSerializer
   SOURCE = "'entered' | 'pivot' | 'group' | 'model' | 'forecast' | 'none' | 'missing'"
 
@@ -19,6 +20,7 @@ class FieldDaySerializer < ApplicationSerializer
   attribute(:moisture_source) { |day| day.inputs.moisture_source }
   attribute(:canopy) { |day| day.canopy.round(WaterBalance::PRECISION) }
   attribute(:canopy_entered) { |day| params[:observations][day.inputs.date] }
+  attribute(:canopy_curve) { |day| params[:canopy]&.curve_on(day.inputs.date)&.round(WaterBalance::PRECISION) }
   attribute(:ad) { |day| day.result.ad }
   attribute(:pct_moisture) { |day| day.result.pct_moisture }
   attribute(:deep_drainage) { |day| day.result.deep_drainage }
@@ -28,6 +30,6 @@ class FieldDaySerializer < ApplicationSerializer
     et_source: "'computed' | 'gap_fill' | 'missing'", rain: "number | null", rain_source: SOURCE,
     rain_model: "number | null", irrigation: "number | null", irrigation_source: SOURCE,
     pivot_inches: "number | null", soil_moisture_pct: "number | null", moisture_source: "'entered' | 'group' | null",
-    canopy: :number, canopy_entered: "number | null", ad: :number, pct_moisture: :number, deep_drainage: :number,
+    canopy: :number, canopy_entered: "number | null", canopy_curve: "number | null", ad: :number, pct_moisture: :number, deep_drainage: :number,
     notes: "string | null"
 end
