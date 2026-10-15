@@ -30,6 +30,9 @@ class PlantingStatus
   # The planting's Canopy: its curve, and whether readings disagree with it (Canopy#check)
   def canopy = @balance.canopy
 
+  # The readings to enter and checks to make while the season is on (PlantingTasks::Task)
+  def tasks = @tasks ||= PlantingTasks.new(self).all
+
   # :upcoming (before season start), :active, or :ended
   def phase
     if today < planting.season_start then :upcoming

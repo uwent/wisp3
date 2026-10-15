@@ -66,14 +66,7 @@
     ],
   ] as const)
   const guidance = $derived(
-    planting &&
-      guidanceFor(
-        planting,
-        days,
-        units,
-        summary?.phase === 'active' ? summary.date : null,
-        summary?.canopy_check ?? null,
-      ),
+    planting && guidanceFor(planting, units, summary?.tasks ?? [], summary?.phase === 'active' ? summary.date : null),
   )
   // Whether "How … is modeled" is open: open until closed, then remembered in this browser
   const GUIDANCE_KEY = 'wisp:field-guidance-open'

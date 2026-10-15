@@ -26,6 +26,9 @@ NEEDS ATTENTION
 <% else %>
   <%= digest_summary(entry) %>
 <% end %>
+<% if (tasks = digest_tasks(entry)).any? %>
+  To do: <%= tasks.join(" · ") %>
+<% end %>
 <% end %>
 <% end %>
 <% end %>
