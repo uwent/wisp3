@@ -4,30 +4,35 @@ Your fields this morning, <%= @digest.today.strftime("%A, %B %-d") %>
 NEEDS ATTENTION
 
 <% @digest.attention.each do |entry| %>
-- <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_place(entry, @digest) %><%= ": #{entry.outlook.headline}" if entry.outlook %>
+- Field: <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_place(entry, @digest) %><%= ": #{entry.outlook.headline}" if entry.outlook %>
 <% end %>
 <% end %>
-<% @digest.farms.each do |section| %>
+<% @digest.operations.each do |operation| %>
 
-== <%= digest_farm(section, @digest).upcase %> ==
-<% section.pivots.each do |pivot_section| %>
+== OPERATION: <%= operation.group.name.upcase %> ==
+<% operation.zones.each do |zone| %>
 
-<%= pivot_section.pivot.name %>
-<% digest_weather(pivot_section, @digest).each do |line| %>
-  <%= line %>
+-- <%= digest_zone(zone) %> --
+<% digest_weather(zone, @digest).each do |line| %>
+   <%= line %>
 <% end %>
+   Pivots in this zone: <%= digest_zone_pivots(zone) %>
+<% zone.pivots.each do |pivot_section| %>
+
+   Pivot: <%= pivot_section.pivot.name %> · <%= pivot_section.pivot.farm.name %>
 <% pivot_section.entries.each do |entry| %>
 
-  <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_crop(entry) %> · <%= digest_ad(entry, @digest, short: !entry.attention?) %>
+     Field: <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_crop(entry) %> · <%= digest_ad(entry, @digest, short: !entry.attention?) %>
 <% if entry.attention? && entry.outlook %>
-  <%= entry.outlook.headline %>. <%= entry.outlook.detail %><%= " #{entry.outlook.chance}" if entry.outlook.chance %><%= " #{entry.outlook.dry}" if entry.outlook.dry %>
-  Last rain: <%= digest_last(entry, @digest, :rain) %> · Last irrigation: <%= digest_last(entry, @digest, :irrigation) %>
-  <%= field_link(entry) %>
+     <%= entry.outlook.headline %>. <%= entry.outlook.detail %><%= " #{entry.outlook.chance}" if entry.outlook.chance %><%= " #{entry.outlook.dry}" if entry.outlook.dry %>
+     Last rain: <%= digest_last(entry, @digest, :rain) %> · Last irrigation: <%= digest_last(entry, @digest, :irrigation) %>
+     <%= field_link(entry) %>
 <% else %>
-  <%= digest_summary(entry) %>
+     <%= digest_summary(entry) %>
 <% end %>
 <% if (tasks = digest_tasks(entry)).any? %>
-  To do: <%= tasks.join(" · ") %>
+     To do: <%= tasks.join(" · ") %>
+<% end %>
 <% end %>
 <% end %>
 <% end %>

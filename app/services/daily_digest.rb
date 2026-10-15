@@ -1,7 +1,7 @@
 # The daily digest email's contents (PLAN.md Phase 6): every field the user includes that has a
-# planting in season today, with its status and outlook, by farm and pivot as on the dashboard,
-# each pivot with a summary of its weather. Fields needing attention (irrigate, or caution) are
-# also listed first, soonest crossing first.
+# planting in season today, with its status and outlook, by operation, weather zone (the weather
+# grid cell its pivots share, with a summary of its weather), pivot and field. Fields needing
+# attention (irrigate, or caution) are also listed first, soonest crossing first.
 class DailyDigest
   Entry = Data.define(:field, :status, :outlook) do
     def attention? = ATTENTION.include?(status.status)
@@ -10,9 +10,11 @@ class DailyDigest
     def group = farm.group
   end
 
-  FarmSection = Data.define(:farm, :pivots)
-  # weather: {past:, ahead:} WeatherSummary::Spans
-  PivotSection = Data.define(:pivot, :weather, :entries)
+  OperationSection = Data.define(:group, :zones)
+  # A weather grid cell and the pivots in it; weather: {past:, ahead:} WeatherSummary::Spans.
+  # number counts zones within the operation, from 1.
+  ZoneSection = Data.define(:cell, :number, :weather, :pivots)
+  PivotSection = Data.define(:pivot, :entries)
 
   ATTENTION = %i[irrigate caution].freeze
   RANK = {irrigate: 0, caution: 1, ok: 2, full: 3}.freeze
@@ -41,14 +43,17 @@ class DailyDigest
 
   def attention = entries.select(&:attention?)
 
-  # The entries by farm and pivot, in name order (operation first, when there are several)
-  def farms
-    @farms ||= begin
+  # The entries by operation, weather zone, pivot and field. Operations, pivots (by farm, then pivot)
+  # and fields are in name order; zones in the order of their first pivot.
+  def operations
+    @operations ||= begin
       weather = WeatherSummary.by_cell(entries.map { |entry| entry.pivot.weather_cell_id }.uniq, today:)
-      entries.sort_by { |entry| place_order(entry) }.group_by(&:farm).map do |farm, farm_entries|
-        FarmSection.new(farm:, pivots: farm_entries.group_by(&:pivot).map do |pivot, pivot_entries|
-          PivotSection.new(pivot:, weather: weather.fetch(pivot.weather_cell_id, {}), entries: pivot_entries)
-        end)
+      entries.sort_by { |entry| place_order(entry) }.group_by(&:group).map do |group, group_entries|
+        zones = group_entries.group_by { |entry| entry.pivot.weather_cell }.each_with_index.map do |(cell, cell_entries), i|
+          pivots = cell_entries.group_by(&:pivot).map { |pivot, pivot_entries| PivotSection.new(pivot:, entries: pivot_entries) }
+          ZoneSection.new(cell:, number: i + 1, weather: weather.fetch(cell.id, {}), pivots:)
+        end
+        OperationSection.new(group:, zones:)
       end
     end
   end

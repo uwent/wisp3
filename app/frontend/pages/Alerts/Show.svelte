@@ -103,8 +103,9 @@
 <div>
   <h1 class="text-2xl font-semibold">Alerts</h1>
   <p class="text-sm text-ink-muted">
-    A morning email at about 6 am with your fields by farm and pivot, each pivot's weather for the past and coming week,
-    and which fields to irrigate or watch, with when and how much.
+    A morning email at about 6 am with your fields by operation, weather zone (pivots sharing the same weather) and
+    pivot, each zone's weather for the past and coming week, which fields to irrigate or watch, with when and how much,
+    and the readings due on each field.
   </p>
 </div>
 

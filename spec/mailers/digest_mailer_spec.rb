@@ -8,7 +8,7 @@ RSpec.describe DigestMailer do
 
   around { |example| travel_to(digest_today) { example.run } }
 
-  it "lists fields needing attention first, then every field by farm and pivot with the pivot's weather" do
+  it "lists fields needing attention first, then every field by operation, weather zone and pivot" do
     soon = digest_field(pivot, "Soon", 12)
     digest_field(pivot, "Fine", 15)
 
@@ -17,15 +17,18 @@ RSpec.describe DigestMailer do
     expect(mail.subject).to eq("WISP: 1 field to watch (Mon, Jul 20)")
 
     text = mail.text_part.body.decoded
-    expect(text).to include("NEEDS ATTENTION\n\n- Soon [! Caution] Home › Pivot 1: Irrigate by Wed, Jul 22\n")
-    expect(text).to include("== HOME ==\n\nPivot 1\n" \
-      "  Past 7 days: 0.00 in rain · 1.40 in ET · highs 85°F, lows 60°F\n" \
-      "  Next 7 days: 0.00 in rain · 1.40 in ET · highs 88°F, lows 62°F\n")
-    expect(text).to include("  Fine [✓ OK] Potato · AD 1.00 in\n  Irrigate by Sat, Jul 25\n")
-    expect(text).to include("  Soon [! Caution] Potato · AD 0.28 in of 1.20 in · 11.2% moisture\n  Irrigate by Wed, Jul 22. Projected")
+    expect(text).to include("NEEDS ATTENTION\n\n- Field: Soon [! Caution] Home › Pivot 1: Irrigate by Wed, Jul 22\n")
+    cell = pivot.weather_cell
+    zone = format("Weather zone 1 (%.2f°N, %.2f°W)", cell.latitude, -cell.longitude)
+    expect(text).to include("== OPERATION: #{user.groups.first.name.upcase} ==\n\n-- #{zone} --\n" \
+      "   Past 7 days: 0.00 in rain · 1.40 in ET · highs 85°F, lows 60°F\n" \
+      "   Next 7 days: 0.00 in rain · 1.40 in ET · highs 88°F, lows 62°F\n" \
+      "   Pivots in this zone: Pivot 1\n\n   Pivot: Pivot 1 · Home\n")
+    expect(text).to include("     Field: Fine [✓ OK] Potato · AD 1.00 in\n     Irrigate by Sat, Jul 25\n")
+    expect(text).to include("     Field: Soon [! Caution] Potato · AD 0.28 in of 1.20 in · 11.2% moisture\n     Irrigate by Wed, Jul 22. Projected")
     expect(text).to include("Last rain: None · Last irrigation: None")
     # In the tree, fields are in name order
-    expect(text.index("  Fine")).to be < text.index("  Soon")
+    expect(text.index("Field: Fine")).to be < text.index("     Field: Soon")
     expect(text).to include("You get this email from WISP each morning while your fields are in season.")
 
     html = mail.html_part.body.decoded
@@ -42,18 +45,19 @@ RSpec.describe DigestMailer do
 
     mail = described_class.daily(DailyDigest.new(user))
     todo = "To do: Enter a soil moisture reading (last Jul 10) · Enter a percent cover reading (last Jul 1)"
-    expect(mail.text_part.body.decoded).to include("\n  #{todo}\n")
+    expect(mail.text_part.body.decoded).to include("\n     #{todo}\n")
     expect(mail.html_part.body.decoded).to include(todo)
   end
 
-  it "names the operation when the fields come from several" do
+  it "gives each operation its own section, and each its weather zones" do
     digest_field(pivot, "Fine", 15)
     partners = create(:group, name: "Partners")
     create(:membership, user:, group: partners)
     digest_field(create(:pivot, farm: create(:farm, group: partners, name: "Far"), weather_cell: pivot.weather_cell), "Away", 15)
     text = described_class.daily(DailyDigest.new(user)).text_part.body.decoded
-    expect(text).to include("== FAR · PARTNERS ==")
-    expect(text).to include("== HOME · #{user.groups.first.name.upcase} ==")
+    expect(text).to include("== OPERATION: PARTNERS ==")
+    expect(text).to include("== OPERATION: #{user.groups.first.name.upcase} ==")
+    expect(text.scan("-- Weather zone 1").size).to eq(2)
   end
 
   it "marks a test email, and says how often the real one comes" do

@@ -11,10 +11,15 @@ module DigestHelper
     [(entry.group.name if digest.several_groups?), entry.farm.name, entry.pivot.name].compact.join(" › ")
   end
 
-  # "Home farm", or "Home farm · Partners" when the digest spans several operations
-  def digest_farm(section, digest)
-    digest.several_groups? ? "#{section.farm.name} · #{section.farm.group.name}" : section.farm.name
+  # "Weather zone 1 (44.13°N, 89.52°W)"
+  def digest_zone(zone)
+    cell = zone.cell
+    "Weather zone #{zone.number} (#{format("%.2f", cell.latitude.abs)}°#{cell.latitude.negative? ? "S" : "N"}, " \
+      "#{format("%.2f", cell.longitude.abs)}°#{cell.longitude.negative? ? "W" : "E"})"
   end
+
+  # The pivots a weather zone covers: "North 160, South 80"
+  def digest_zone_pivots(zone) = zone.pivots.map { |section| section.pivot.name }.join(", ")
 
   # "AD 0.45 in of 1.20 in · 9.5% moisture", or just "AD 0.45 in"
   def digest_ad(entry, digest, short: false)
@@ -41,7 +46,7 @@ module DigestHelper
     end
   end
 
-  # A pivot's weather, one line each for the last week and the week ahead:
+  # A weather zone's weather, one line each for the last week and the week ahead:
   # ["Past 7 days: 0.85 in rain · 1.12 in ET · highs 68–82°F, lows 48–60°F", "Next 7 days: …"]
   def digest_weather(section, digest)
     lines = {past: "Past", ahead: "Next"}.filter_map do |key, label|
@@ -53,7 +58,7 @@ module DigestHelper
         temps.compact.join(", ").presence].compact
       "#{label} #{span.days} #{"day".pluralize(span.days)}: #{parts.any? ? parts.join(" · ") : "no data"}"
     end
-    lines.presence || ["Weather for this pivot is on the way."]
+    lines.presence || ["Weather for these pivots is on the way."]
   end
 
   # Why the reader gets this email, and how often
