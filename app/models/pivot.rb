@@ -6,6 +6,7 @@ class Pivot < ApplicationRecord
 
   belongs_to :farm
   belongs_to :weather_cell, optional: true
+  has_many :digest_exclusions, as: :subject, dependent: :delete_all
   has_many :fields, -> { order(:name) }, dependent: :destroy
   has_many :pivot_irrigations, dependent: :destroy
 

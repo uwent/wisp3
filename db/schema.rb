@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_15_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_15_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -241,10 +241,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_130000) do
     t.date "digest_sent_on"
     t.string "digest_frequency", default: "never", null: false
     t.datetime "digest_test_sent_at"
+    t.string "digest_scope", default: "in_season", null: false
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
-    t.check_constraint "digest_frequency::text = ANY (ARRAY['never'::character varying, 'daily'::character varying, 'needed'::character varying]::text[])", name: "users_digest_frequency"
+    t.check_constraint "digest_frequency::text = ANY (ARRAY['never'::character varying, 'daily'::character varying, 'daily_all_year'::character varying, 'needed'::character varying]::text[])", name: "users_digest_frequency"
+    t.check_constraint "digest_scope::text = ANY (ARRAY['all'::character varying, 'in_season'::character varying, 'needs_action'::character varying, 'needs_irrigation'::character varying]::text[])", name: "users_digest_scope"
   end
 
   create_table "weather_cells", force: :cascade do |t|

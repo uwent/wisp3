@@ -221,9 +221,11 @@
         Export the season as a CSV file.
       </li>
       <li>
-        <strong>Alerts:</strong> a morning email at about 6 am with your fields by operation, weather zone (pivots sharing
+        <strong>Alerts:</strong> a morning email at about 6 am with your fields by operation, farm, weather zone (pivots sharing
         the same weather) and pivot, each zone's weather, which fields to irrigate or watch, and the readings due. Choose
-        to get it daily during the season, only when a field needs irrigation, or never, and which fields it covers.
+        which fields it covers and which of them it lists (all, those in season, those needing irrigation or readings, or
+        only those needing irrigation), and how often it comes: daily during the season, daily all year (weather out of season
+        too), only when a field needs irrigation, or never.
       </li>
     </ul>
 

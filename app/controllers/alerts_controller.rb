@@ -1,15 +1,18 @@
-# The daily digest's settings (PLAN.md Phase 6): how often it's sent and which fields it covers,
+# The daily digest's settings (PLAN.md Phase 6): how often it's sent, which fields it covers and
+# which of those it lists,
 # with a preview of today's email (loaded on request) and a test send, once per cooldown
 class AlertsController < AuthenticatedController
   def show
     groups = current_user.groups.order(:name).includes(farms: {pivots: :fields})
     render inertia: "Alerts/Show", props: {
       frequency: current_user.digest_frequency,
+      scope: current_user.digest_scope,
       field_ids: current_user.digest_fields.pluck(:id),
       groups: groups.map do |group|
         {id: group.id, name: group.name, farms: group.farms.sort_by(&:name).map do |farm|
-          {id: farm.id, name: farm.name,
-           fields: farm.pivots.flat_map { |pivot| pivot.fields.map { |field| {id: field.id, name: field.name, pivot: pivot.name} } }}
+          {id: farm.id, name: farm.name, pivots: farm.pivots.map do |pivot|
+            {id: pivot.id, name: pivot.name, fields: pivot.fields.map { |field| {id: field.id, name: field.name} }}
+          end}
         end}
       end,
       # Seconds until another test email can be sent
@@ -19,8 +22,9 @@ class AlertsController < AuthenticatedController
   end
 
   def update
-    settings = params.expect(digest: [:frequency, field_ids: []])
+    settings = params.expect(digest: [:frequency, :scope, field_ids: []])
     current_user.digest_frequency = settings[:frequency]
+    current_user.digest_scope = settings[:scope] if settings[:scope]
     return redirect_with_errors(alerts_path, current_user) unless current_user.valid?
 
     current_user.transaction do
@@ -35,8 +39,8 @@ class AlertsController < AuthenticatedController
   def test_email
     return redirect_to(alerts_path, alert: cooldown_message) if current_user.digest_test_available_at
 
-    if DailyDigest.new(current_user).entries.none?
-      redirect_to alerts_path, alert: "There's nothing to send: no included field has a crop in season today."
+    if DailyDigest.new(current_user).all_entries.none?
+      redirect_to alerts_path, alert: "There's nothing to send: no fields are included."
     elsif current_user.claim_digest_test!
       DigestMailer.test_daily(current_user).deliver_later
       redirect_to alerts_path, notice: "Test email sent to #{current_user.email}"

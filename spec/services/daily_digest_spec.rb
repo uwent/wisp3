@@ -63,7 +63,18 @@ RSpec.describe DailyDigest do
   end
 
   it "says why it wouldn't send" do
+    expect(described_class.new(user).skip_reason).to eq("No fields are included.")
+    off = digest_field(pivot, "Off", 15)
+    off.plantings.sole.update!(end_date: Date.new(2026, 7, 10))
     expect(described_class.new(user).skip_reason).to eq("No included field has a crop in season today.")
+    # Daily all year sends anyway, with the weather
+    user.update!(digest_frequency: "daily_all_year")
+    digest = described_class.new(user)
+    expect(digest).to be_deliverable
+    expect(digest.subject).to eq("WISP: no crops in season (Mon, Jul 20)")
+    expect(digest.operations.sole.farms.sole.zones.sole.pivots.sole).to have_attributes(pivot:, entries: [])
+
+    user.update!(digest_frequency: "daily")
     field_at("North", 15)
     user.update!(digest_frequency: "never")
     expect(described_class.new(user.reload).skip_reason).to eq("The daily email is turned off.")
@@ -78,7 +89,7 @@ RSpec.describe DailyDigest do
     expect(described_class.new(user)).to be_deliverable
   end
 
-  it "groups fields by operation, weather zone and pivot, in name order, with each zone's weather" do
+  it "groups fields by operation, farm, weather zone and pivot, in name order, with each zone's weather" do
     other_pivot = create(:pivot, farm:, name: "Pivot 0", weather_cell: pivot.weather_cell)
     river = create(:farm, group:, name: "River")
     river_pivot = create(:pivot, farm: river, name: "East", weather_cell: pivot.weather_cell)
@@ -91,14 +102,42 @@ RSpec.describe DailyDigest do
     digest_weather(elsewhere)
     west = digest_field(elsewhere, "West 1", 15)
 
-    operations = described_class.new(user).operations
-    expect(operations.map(&:group)).to eq([group])
-    zones = operations.sole.zones
-    expect(zones.map { |zone| [zone.number, zone.cell, zone.pivots.map { |p| [p.pivot.name, p.entries.map(&:field)] }] })
-      .to eq([[1, pivot.weather_cell, [["Pivot 0", [zero]], ["Pivot 1", [a, b]], ["East", [east]]]],
-        [2, elsewhere.weather_cell, [["West", [west]]]]])
-    expect(zones.first.weather[:past]).to have_attributes(days: 7, precip: 0.0, tmax: 85.0..85.0)
-    expect(zones.first.weather[:ahead]).to have_attributes(days: 7, tmin: 62..62)
+    digest = described_class.new(user)
+    farms = digest.operations.sole.farms
+    expect(farms.map { |section| [section.farm.name, section.zones.map { |zone| [zone.number, zone.cell, zone.pivots.map { |p| [p.pivot.name, p.entries.map(&:field)] }] }] })
+      .to eq([["Home", [[1, pivot.weather_cell, [["Pivot 0", [zero]], ["Pivot 1", [a, b]]]]]],
+        ["River", [[1, pivot.weather_cell, [["East", [east]]]], [2, elsewhere.weather_cell, [["West", [west]]]]]]])
+    expect(farms.first.zones.first.weather[:past]).to have_attributes(days: 7, precip: 0.0, tmax: 85.0..85.0)
+    expect(farms.first.zones.first.weather[:ahead]).to have_attributes(days: 7, tmin: 62..62)
+    # One operation: its heading gives way to a line at the top; two farms keep theirs
+    expect(digest).to have_attributes(several_groups?: false, several_farms?: true, context: [["Operation", group.name]])
+  end
+
+  it "lists the included fields the user chose: all, in season, needing action, or needing irrigation" do
+    soon = field_at("Soon", 12) # caution, and a moisture reading yesterday
+    stale = field_at("Stale", 15)
+    stale.plantings.sole.canopy_observations.update_all(pct_cover: 40) # on Jul 1: a cover reading is due
+    fine = field_at("Fine", 15)
+    off = field_at("Off", 15)
+    off.plantings.sole.update!(end_date: Date.new(2026, 7, 10))
+
+    listed = ->(scope) { user.update!(digest_scope: scope) && described_class.new(user.reload).listed.map(&:field) }
+    expect(listed.call("all")).to contain_exactly(soon, stale, fine, off)
+    expect(listed.call("in_season")).to contain_exactly(soon, stale, fine)
+    expect(listed.call("needs_action")).to contain_exactly(soon, stale)
+    expect(listed.call("needs_irrigation")).to eq([soon])
+
+    digest = described_class.new(user)
+    expect(digest.counts).to have_attributes(fields: 1, pivots: 1, covered_fields: 4, covered_pivots: 1, planted: 4)
+    expect(digest.context).to eq([["Operation", group.name], ["Farm", "Home"]])
+  end
+
+  it "says when nothing needs doing, and still shows the in-season pivots' weather" do
+    field_at("Fine", 15)
+    user.update!(digest_scope: "needs_irrigation")
+    digest = described_class.new(user)
+    expect(digest.nothing_listed).to eq("No field needs irrigation now or within 3 days.")
+    expect(digest.operations.sole.farms.sole.zones.sole.pivots.sole.entries).to eq([])
   end
 
   it "formats depths in the user's units" do

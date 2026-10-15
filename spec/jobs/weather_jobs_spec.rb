@@ -26,6 +26,18 @@ RSpec.describe "Weather jobs" do
       expect(field.pivot.weather_cell.season_start).to eq(Date.new(2026, 4, 1))
     end
 
+    it "is active out of season for a digest that shows its pivots' weather then" do
+      user = create(:user, digest_frequency: "daily")
+      field = create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53, farm: create(:farm, group: user.groups.first)))
+      expect(WeatherCell.active).to be_empty
+      user.update!(digest_frequency: "daily_all_year")
+      expect(WeatherCell.active).to eq([field.pivot.weather_cell])
+      user.update!(digest_frequency: "daily", digest_scope: "all")
+      expect(WeatherCell.active).to eq([field.pivot.weather_cell])
+      user.update!(digest_frequency: "never")
+      expect(WeatherCell.active).to be_empty
+    end
+
     it "queues an update for cells being looked at, at most every 15 minutes each" do
       other = WeatherCell.for(36.7, -119.8)
       expect { WeatherCell.keep_current([cell.id, nil, cell.id]) }.to have_enqueued_job(WeatherUpdateJob).with(cell.id).exactly(:once)

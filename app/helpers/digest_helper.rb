@@ -18,7 +18,7 @@ module DigestHelper
       "#{format("%.2f", cell.longitude.abs)}°#{cell.longitude.negative? ? "W" : "E"})"
   end
 
-  # The pivots a weather zone covers: "North 160, South 80"
+  # The pivots of a weather zone in this email: "North 160, South 80"
   def digest_zone_pivots(zone) = zone.pivots.map { |section| section.pivot.name }.join(", ")
 
   # "AD 0.45 in of 1.20 in · 9.5% moisture", or just "AD 0.45 in"
@@ -36,7 +36,30 @@ module DigestHelper
   end
 
   # What's due for a field (PlantingTasks): ["Enter a soil moisture reading (last Oct 1)", …]
-  def digest_tasks(entry) = entry.status.tasks.select(&:due).map(&:todo)
+  def digest_tasks(entry) = entry.active? ? entry.status.tasks.select(&:due).map(&:todo) : []
+
+  # A field out of season: "Potato · season starts Apr 1", "Potato · season ended Sep 15", or "No
+  # crop this season"
+  def digest_off_season(entry)
+    status = entry.status or return "No crop this season"
+    planting = status.planting
+    when_text = (status.phase == :upcoming) ? "season starts #{planting.season_start.strftime("%b %-d")}" :
+      "season ended #{planting.end_date.strftime("%b %-d")}"
+    "#{digest_crop(entry)} · #{when_text}"
+  end
+
+  # The one operation and farm the email covers, when their headings are left out: "Operation: Demo ·
+  # Farm: Hancock"
+  def digest_context(digest) = digest.context.map { |label, name| "#{label}: #{name}" }.join(" · ")
+
+  # "This email lists 2 fields on 2 pivots, of the 13 fields on 8 pivots your alerts cover (5 with a
+  # crop this season)."
+  def digest_counts(digest)
+    c = digest.counts
+    "This email lists #{pluralize(c.fields, "field")} on #{pluralize(c.pivots, "pivot")}, of the " \
+      "#{pluralize(c.covered_fields, "field")} on #{pluralize(c.covered_pivots, "pivot")} your alerts cover " \
+      "(#{c.planted} with a crop this season)."
+  end
 
   # The one-line outlook for a field that's fine, or why there isn't one
   def digest_summary(entry)
@@ -66,6 +89,7 @@ module DigestHelper
     reason = case user.digest_frequency
     when "needed" then "You get this email from WISP on mornings when a field needs irrigation within #{PlantingStatus::LEAD_DAYS} days."
     when "daily" then "You get this email from WISP each morning while your fields are in season."
+    when "daily_all_year" then "You get this email from WISP every morning, all year."
     else "WISP's daily email is turned off for you."
     end
     test ? "This is a test you sent from WISP's Alerts page. #{reason}" : reason

@@ -13,12 +13,14 @@ RSpec.describe "Daily digest", type: :request do
 
     before { sign_in user }
 
-    it "lists every field by operation and farm, all included by default" do
+    it "lists every field by operation, farm and pivot, all included by default" do
       get alerts_path
       expect_inertia.to render_component("Alerts/Show")
-      expect(inertia.props).to include(frequency: "daily", field_ids: contain_exactly(north.id, south.id, east.id), test_wait: 0)
-      expect(inertia.props[:groups].sole[:farms].map { |farm| [farm[:name], farm[:fields].map { |field| field[:name] }] })
-        .to eq([["Home", ["North", "South"]], ["River", ["East"]]])
+      expect(inertia.props).to include(frequency: "daily", scope: "in_season",
+        field_ids: contain_exactly(north.id, south.id, east.id), test_wait: 0)
+      farms = inertia.props[:groups].sole[:farms]
+      expect(farms.map { |farm| [farm[:name], farm[:pivots].map { |pivot| [pivot[:name], pivot[:fields].map { |field| field[:name] }] }] })
+        .to eq([["Home", [[north.pivot.name, ["North", "South"]]]], ["River", [[east.pivot.name, ["East"]]]]])
       # The preview is built only when asked for
       expect(inertia.props).not_to have_key(:preview)
     end
@@ -33,6 +35,16 @@ RSpec.describe "Daily digest", type: :request do
       newer = create(:field, pivot: north.pivot)
       # River was left out whole; Home only lost South, so it takes in new fields
       expect(user.digest_fields).to contain_exactly(north, newer)
+      expect(user.digest_fields).not_to include(later)
+    end
+
+    it "leaves out a pivot with none of its fields picked, and sets which fields the email lists" do
+      west = create(:field, pivot: create(:pivot, farm: home), name: "West")
+      patch alerts_path, params: {digest: {frequency: "daily_all_year", scope: "needs_action",
+                                           field_ids: ["", north.id.to_s, south.id.to_s, east.id.to_s]}}
+      expect(user.reload).to have_attributes(digest_frequency: "daily_all_year", digest_scope: "needs_action")
+      expect(user.digest_exclusions.map(&:subject)).to eq([west.pivot])
+      later = create(:field, pivot: west.pivot)
       expect(user.digest_fields).not_to include(later)
     end
 
@@ -110,9 +122,9 @@ RSpec.describe "Daily digest", type: :request do
       expect { perform_enqueued_jobs { post test_email_alerts_path } }.to change { ActionMailer::Base.deliveries.size }.by(1)
     end
 
-    it "doesn't send, or start the cooldown, with nothing in season" do
+    it "doesn't send, or start the cooldown, with no fields included" do
       expect { post test_email_alerts_path }.not_to have_enqueued_mail(DigestMailer)
-      expect(flash[:alert]).to eq("There's nothing to send: no included field has a crop in season today.")
+      expect(flash[:alert]).to eq("There's nothing to send: no fields are included.")
       expect(user.reload.digest_test_sent_at).to be_nil
     end
   end
@@ -185,7 +197,7 @@ RSpec.describe "Daily digest", type: :request do
     it "says why nothing would be sent" do
       sign_in admin
       get digest_admin_user_path(user)
-      expect(inertia.props[:preview]).to include(skip_reason: "No included field has a crop in season today.", html: nil)
+      expect(inertia.props[:preview]).to include(skip_reason: "No fields are included.", html: nil)
     end
 
     it "is hidden from users who aren't admins" do
