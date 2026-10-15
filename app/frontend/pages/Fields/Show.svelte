@@ -66,7 +66,14 @@
     ],
   ] as const)
   const guidance = $derived(
-    planting && guidanceFor(planting, days, units, summary?.phase === 'active' ? summary.date : null),
+    planting &&
+      guidanceFor(
+        planting,
+        days,
+        units,
+        summary?.phase === 'active' ? summary.date : null,
+        summary?.canopy_check ?? null,
+      ),
   )
   // Whether "How … is modeled" is open: open until closed, then remembered in this browser
   const GUIDANCE_KEY = 'wisp:field-guidance-open'
@@ -337,6 +344,14 @@
       {/if}
     </div>
 
+    {#if guidance?.warning}
+      <p
+        role="status"
+        class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2 text-sm lg:col-span-3"
+      >
+        {guidance.warning}
+      </p>
+    {/if}
     {#if guidance}
       <details
         class="border-t border-line pt-3 text-sm lg:col-span-3"
@@ -401,7 +416,8 @@
       <p class="text-xs text-ink-muted">
         Dots on the line mark soil moisture readings. A dashed outline beside the rain shows the modeled rain where the
         balance didn't use it. The totals add up rain and irrigation from the first day in view, so zooming changes
-        them. The bottom panel is the crop's {lai ? 'LAI' : 'canopy cover'} as the balance models it, with dots for your readings.
+        them. The bottom panel is the crop's {lai ? 'LAI' : 'canopy cover'} as the balance models it, with dots for your readings{#if planting?.canopy_curve}{' '}and
+          a thin dashed line for the {planting.plant_name.toLowerCase()} curve as it would be without them{/if}.
         {#if forecast_days.length}
           After today the dashed line follows the forecast, with planned irrigation; the shaded band is the range of
           {summary?.ensemble_size
@@ -665,7 +681,9 @@
             <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline">pivot's irrigation page</Link> or in
             daily entry. * Crop ET estimated from the past week because the day's weather is missing. {lai
               ? 'LAI'
-              : 'Cover'} in muted text is interpolated between your readings.
+              : 'Cover'} in muted text is estimated: {planting?.effective_canopy_interpolation === 'curve'
+              ? "the crop's curve, scaled through your readings"
+              : 'straight lines between your readings'}.
           </p>
         </div>
       {/if}

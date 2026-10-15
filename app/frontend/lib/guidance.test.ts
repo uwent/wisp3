@@ -8,12 +8,18 @@ const corn = {
   plant_key: 'field_corn',
   et_method: 'lai',
   max_root_zone_depth: 32,
+  canopy_curve: true,
+  effective_canopy_interpolation: 'curve',
+  emergence_date: '2026-05-12',
 } as const
 const potato = {
   plant_name: 'Potato',
   plant_key: 'potato',
   et_method: 'pct_cover',
   max_root_zone_depth: 16,
+  canopy_curve: true,
+  effective_canopy_interpolation: 'curve',
+  emergence_date: '2026-05-15',
 } as const
 const day = (date: string, entered: { moisture?: boolean; canopy?: number } = {}) => ({
   date,
@@ -62,5 +68,36 @@ describe('guidance', () => {
 
   it('leaves out reminders outside the season', () => {
     expect(guidance(potato, [], units('imperial'), null).readings).toEqual([])
+  })
+
+  it('explains how readings combine with the curve, or that there is none', () => {
+    const curve = guidance(potato, [], units('imperial'), today).paragraphs[0]
+    expect(curve).toContain('WISP follows a potato canopy curve from the emergence date')
+    expect(curve).toContain('Your readings scale the curve')
+    const lines = guidance({ ...potato, effective_canopy_interpolation: 'linear' }, [], units('imperial'), today)
+    expect(lines.paragraphs[0]).toContain('draws straight lines between your readings instead')
+    const none = guidance(
+      { ...potato, plant_name: 'Onion', canopy_curve: false, effective_canopy_interpolation: 'linear' },
+      [],
+      units('imperial'),
+      today,
+    )
+    expect(none.paragraphs[0]).toContain("There's no canopy curve for onion")
+    expect(none.paragraphs[0]).toContain('Between readings WISP draws a straight line')
+    expect(none.warning).toBeNull()
+  })
+
+  it('warns when readings run ahead of or behind the curve, or fall', () => {
+    const ahead = guidance(potato, [], units('imperial'), today, { days_ahead: 9, drop: null })
+    expect(ahead.warning).toContain('run about 9 days ahead of the potato curve')
+    expect(ahead.warning).toContain('check the emergence date (May 15)')
+    expect(ahead.warning).toContain('WISP still follows the curve')
+    const behind = guidance(potato, [], units('imperial'), today, { days_ahead: -8, drop: null })
+    expect(behind.warning).toContain('8 days behind the potato curve')
+    const drop = guidance(potato, [], units('imperial'), today, {
+      days_ahead: null,
+      drop: { date: '2026-06-17', from: 60, to: 40 },
+    })
+    expect(drop.warning).toContain('reading on Jun 17 (40%) is lower than the one before it (60%)')
   })
 })

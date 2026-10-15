@@ -24,7 +24,10 @@
   let rootDepth = $state<number | null>(untrack(() => planting?.max_root_zone_depth ?? null))
   let madFrac = $state<number | null>(untrack(() => planting?.mad_frac ?? 0.5))
   let etMethod = $state(untrack(() => planting?.et_method ?? 'pct_cover'))
+  let interpolation = $state(untrack(() => planting?.canopy_interpolation ?? 'curve'))
   const plant = $derived(plants.find((p) => String(p.id) === plantId))
+  // Whether the crop has a canopy curve for the chosen method (Planting#canopy_curve?)
+  const hasCurve = $derived(etMethod === 'lai' ? plant?.has_lai_curve : plant?.has_cover_curve)
 
   // A new crop brings its default root zone depth unless one was typed
   let typedDepth = false
@@ -33,7 +36,7 @@
     const chosen = plants.find((p) => String(p.id) === id)
     if (chosen && !typedDepth) rootDepth = chosen.default_max_root_zone_depth
     // LAI is offered only for crops with an LAI growth curve
-    if (!chosen?.has_canopy_curve) etMethod = 'pct_cover'
+    if (!chosen?.has_lai_curve) etMethod = 'pct_cover'
   }
 
   const date = (name: string, label: string, value: string, error?: string | string[]) => ({
@@ -111,7 +114,7 @@
           >Percent cover <span class="text-ink-muted">(enter canopy cover now and then in the daily grid)</span></span
         >
       </label>
-      {#if plant?.has_canopy_curve}
+      {#if plant?.has_lai_curve}
         <label class="flex items-start gap-3 text-sm">
           <input type="radio" name="planting[et_method]" value="lai" bind:group={etMethod} class="mt-0.5" />
           <span>
@@ -123,6 +126,34 @@
         </label>
       {/if}
     </fieldset>
+    {#if hasCurve}
+      <fieldset class="space-y-2">
+        <legend class="text-sm font-medium">Between canopy readings</legend>
+        <label class="flex items-start gap-3 text-sm">
+          <input
+            type="radio"
+            name="planting[canopy_interpolation]"
+            value="curve"
+            bind:group={interpolation}
+            class="mt-0.5"
+          />
+          <span
+            >Follow the {plant!.name.toLowerCase()} curve
+            <span class="text-ink-muted">(scaled through your readings, including its late-season decline)</span></span
+          >
+        </label>
+        <label class="flex items-start gap-3 text-sm">
+          <input
+            type="radio"
+            name="planting[canopy_interpolation]"
+            value="linear"
+            bind:group={interpolation}
+            class="mt-0.5"
+          />
+          <span>Straight lines <span class="text-ink-muted">(and hold the last reading)</span></span>
+        </label>
+      </fieldset>
+    {/if}
     <div class="grid gap-4 sm:grid-cols-2">
       <NumberField
         label="Target AD"

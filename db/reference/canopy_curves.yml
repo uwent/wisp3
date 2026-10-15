@@ -1,0 +1,190 @@
+# Default percent cover curves by crop (plant key), read by CanopyCurve and shown on the About page.
+# PLAN.md Phase 6.7; the research behind each one is in docs/canopy/ (notes 02–04).
+#
+# Growth follows the FAO AquaCrop canopy cover equations, by days since emergence (t):
+#   CC = cc0 · e^(cgc·t)                     while CC ≤ ccx/2
+#   CC = ccx − ¼ · ccx² / cc0 · e^(−cgc·t)   after, up to ccx
+# cc0 and ccx are fractions of the ground covered, cgc is per day.
+#
+# Decline, if any:
+#   aquacrop: from start_day after emergence, CC = ccx · [1 − 0.05 · (e^(3.33·cdc·t′ / (ccx + 2.29)) − 1)],
+#             t′ = days since start_day
+#   rule:     from a calendar date (or when the canopy reaches 98% of ccx, if later), down by
+#             per_week percentage points a week to floor percent
+# Without a decline the canopy holds ccx until the planting's end date.
+#
+# confidence: matches_wi (published, matches Wisconsin 2026 readings), adjusted_wi (published,
+# adjusted to them), fitted_wi (fitted to them), published (not checked in Wisconsin), fao56
+# (derived from FAO-56 stage lengths, not checked in Wisconsin).
+# Crops not listed (onion, alfalfa, mint, asparagus, other) have no curve: readings only.
+
+sources:
+  aquacrop:
+    citation: "Steduto, P., Hsiao, T. C., Raes, D. & Fereres, E. (2009). AquaCrop—The FAO crop model to simulate yield response to water: I. Concepts and underlying principles. Agronomy Journal 101, 426–437."
+    url: https://doi.org/10.2134/agronj2008.0139s
+  aquacrop_algorithms:
+    citation: "Raes, D., Steduto, P., Hsiao, T. C. & Fereres, E. (2009). AquaCrop—The FAO crop model to simulate yield response to water: II. Main algorithms and software description. Agronomy Journal 101, 438–447."
+    url: https://doi.org/10.2134/agronj2008.0140s
+  aquacrop_crop_files:
+    citation: "FAO AquaCrop default crop files, as distributed with AquaCrop-OSPy: Kelly, T. D. & Foster, T. (2021). AquaCrop-OSPy: Bridging the gap between research and practice in crop-water modeling. Agricultural Water Management 254, 106976."
+    url: https://doi.org/10.1016/j.agwat.2021.106976
+  fao56:
+    citation: "Allen, R. G., Pereira, L. S., Raes, D. & Smith, M. (1998). Crop evapotranspiration: Guidelines for computing crop water requirements. FAO Irrigation and Drainage Paper 56, Table 11 (lengths of crop development stages)."
+    url: https://www.fao.org/4/x0490e/x0490e0b.htm
+  wisp_2026:
+    citation: "Percent cover readings entered by Wisconsin growers in legacy WISP, 2026 season (anonymised; 37 screened series of potato, field corn, soybean, snap bean, shell peas and sweet corn). Analysis in docs/canopy/ in the WISP source code."
+    url: https://github.com/uwent/wisp3/tree/main/docs/canopy
+
+crops:
+  potato:
+    growth: {cc0: 0.006, ccx: 0.92, cgc: 0.18896}
+    decline: {type: rule, date: "08-01", per_week: 10, floor: 50}
+    basis: AquaCrop potato crop file (calendar days)
+    confidence: matches_wi
+    sources: [aquacrop, aquacrop_crop_files, wisp_2026]
+    notes: >-
+      Reaches 50% cover about 24 days after emergence and 80% about 31 days after (Wisconsin 2026:
+      22 and 32). The decline is a Central Wisconsin management rule (expert judgment, until a
+      researcher's potato model is available): the canopy senesces from early August, before vine
+      kill in mid to late August, so it declines from August 1 by 10 points a week to 50% and holds
+      there until the planting's end date (set it to vine kill).
+  field_corn:
+    growth: {cc0: 0.0049, ccx: 0.96, cgc: 0.16312}
+    decline: {type: aquacrop, start_day: 101, cdc: 0.11691}
+    basis: AquaCrop maize crop file (calendar days)
+    confidence: matches_wi
+    sources: [aquacrop, aquacrop_crop_files, wisp_2026]
+    notes: >-
+      Reaches 50% cover about 29 days after emergence and 80% about 35 days after (Wisconsin 2026:
+      26 and 40). For the LAI method, field corn keeps its own LAI curve (WIS v6.3.11).
+  sweet_corn:
+    growth: {cc0: 0.0049, ccx: 0.96, cgc: 0.124}
+    basis: AquaCrop maize crop file, growth slowed to fit Wisconsin sweet corn
+    confidence: adjusted_wi
+    sources: [aquacrop, aquacrop_crop_files, fao56, wisp_2026]
+    notes: >-
+      Growth rate lowered from 0.163 to 0.124 a day, so 80% cover comes about 46 days after
+      emergence: the two Wisconsin 2026 series reached it in 40–52 days, and FAO-56's sweet corn rows
+      give 37–52. Harvested green, so no decline: the canopy holds until the end date.
+  soybean:
+    growth: {cc0: 0.0165, ccx: 0.98, cgc: 0.087}
+    decline: {type: aquacrop, start_day: 95, cdc: 0.02885}
+    basis: AquaCrop soybean crop file (calendar days), growth slowed to fit Wisconsin soybeans
+    confidence: adjusted_wi
+    sources: [aquacrop, aquacrop_crop_files, wisp_2026]
+    notes: >-
+      Growth rate lowered from 0.106 to 0.087 a day: the published curve reached 80% cover 6 days
+      before Wisconsin 2026 soybeans did. Now 50% and 80% come about 40 and 51 days after emergence
+      (Wisconsin 2026: 39 and 51).
+  snap_bean:
+    growth: {cc0: 0.0132, ccx: 0.99, cgc: 0.11804}
+    basis: AquaCrop dry bean crop file (calendar days)
+    confidence: matches_wi
+    sources: [aquacrop, aquacrop_crop_files, wisp_2026]
+    notes: >-
+      Reaches 50% cover about 31 days after emergence and 80% about 39 days after (Wisconsin 2026:
+      29 and 42). Harvested green, so no decline.
+  shell_peas:
+    growth: {cc0: 0.0453, ccx: 0.95, cgc: 0.088}
+    basis: AquaCrop equations fitted to Wisconsin 2026 readings
+    confidence: fitted_wi
+    sources: [aquacrop, wisp_2026, fao56]
+    notes: >-
+      50% cover 28 days and 80% 40 days after emergence, as in the three Wisconsin 2026 series;
+      FAO-56's temperate pea rows give 80% at 30 (Europe) to 50 days (Idaho). Harvested green, so no
+      decline.
+  tomato:
+    growth: {cc0: 0.00667, ccx: 0.75, cgc: 0.12286}
+    decline: {type: aquacrop, start_day: 87, cdc: 0.07238}
+    basis: AquaCrop tomato crop file (calendar days, from transplanting)
+    confidence: published
+    sources: [aquacrop, aquacrop_crop_files]
+    notes: Use the transplanting date as emergence. Maximum cover 75%.
+  barley:
+    growth: {cc0: 0.0225, ccx: 0.80, cgc: 0.1241}
+    decline: {type: aquacrop, start_day: 58, cdc: 0.07697}
+    basis: AquaCrop barley crop file (calendar days)
+    confidence: published
+    sources: [aquacrop, aquacrop_crop_files]
+    notes: Maximum cover 80%.
+  wheat:
+    growth: {cc0: 0.0338, ccx: 0.95, cgc: 0.1084}
+    decline: {type: aquacrop, start_day: 95, cdc: 0.07697}
+    basis: "FAO-56 spring small grains (35–45° latitude, March/April planting); decline at AquaCrop barley's rate"
+    confidence: fao56
+    sources: [fao56, aquacrop]
+    notes: >-
+      For spring wheat. For winter wheat, use spring green-up as emergence. Declines from the end of
+      FAO-56's mid-season stage (95 days after emergence).
+  cabbage:
+    growth: &crucifers {cc0: 0.0164, ccx: 0.95, cgc: 0.0904}
+    basis: FAO-56 crucifers (Mediterranean, April planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+    notes: Use the transplanting date as emergence. The same curve as broccoli.
+  broccoli:
+    growth: *crucifers
+    basis: FAO-56 crucifers (Mediterranean, April planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+    notes: Use the transplanting date as emergence. The same curve as cabbage.
+  carrot:
+    growth: {cc0: 0.0338, ccx: 0.95, cgc: 0.0678}
+    basis: FAO-56 carrots (Mediterranean, February/March planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+  beets:
+    growth: {cc0: 0.0420, ccx: 0.95, cgc: 0.1084}
+    basis: FAO-56 table beets (Mediterranean, April/May planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+  celery:
+    growth: {cc0: 0.0184, ccx: 0.95, cgc: 0.0678}
+    basis: FAO-56 celery (Mediterranean, April planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+    notes: Use the transplanting date as emergence.
+  leafy_greens:
+    growth: {cc0: 0.0309, ccx: 0.95, cgc: 0.0904}
+    basis: FAO-56 lettuce (Mediterranean, April planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+  pepper:
+    growth: {cc0: 0.0055, ccx: 0.75, cgc: 0.1036}
+    basis: FAO-56 sweet peppers (Europe and Mediterranean, April–June planting)
+    confidence: fao56
+    sources: [fao56, aquacrop, aquacrop_crop_files]
+    notes: Use the transplanting date as emergence. Maximum cover 75%, assumed from AquaCrop's tomato.
+  cucumber:
+    growth: &cucurbits_fast {cc0: 0.0309, ccx: 0.95, cgc: 0.0904}
+    basis: FAO-56 cucumber (arid region, June/August planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+  summer_squash:
+    growth: *cucurbits_fast
+    basis: FAO-56 squash and zucchini (Mediterranean and Europe, May/June planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+  melon:
+    growth: &cucurbits_slow {cc0: 0.0248, ccx: 0.95, cgc: 0.0775}
+    basis: FAO-56 sweet melons (Mediterranean, May planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+  pumpkin:
+    growth: *cucurbits_slow
+    basis: FAO-56 pumpkin and winter squash (Europe, June planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+    notes: The same curve as winter squash.
+  winter_squash:
+    growth: *cucurbits_slow
+    basis: FAO-56 pumpkin and winter squash (Europe, June planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+    notes: The same curve as pumpkin.
+  sweet_potato:
+    growth: {cc0: 0.0164, ccx: 0.95, cgc: 0.0904}
+    basis: FAO-56 sweet potato (Mediterranean, April planting)
+    confidence: fao56
+    sources: [fao56, aquacrop]
+    notes: Use the transplanting date as emergence.

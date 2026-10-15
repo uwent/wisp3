@@ -4,8 +4,8 @@ RSpec.describe Canopy do
   let(:emergence) { Date.new(2026, 5, 15) }
   let(:end_date) { Date.new(2026, 9, 30) }
 
-  def canopy(observations = [], curve: nil)
-    described_class.new(emergence_date: emergence, end_date:, observations:, curve:)
+  def canopy(observations = [], curve: nil, **)
+    described_class.new(emergence_date: emergence, end_date:, observations:, curve:, **)
   end
 
   it "is 0 everywhere with no readings and no curve" do
@@ -43,7 +43,8 @@ RSpec.describe Canopy do
   end
 
   describe "the field corn LAI curve (WIS v6.3.11)" do
-    let(:corn) { canopy(curve: "field_corn") }
+    let(:curve) { CanopyModel.from("field_corn", emergence) }
+    let(:corn) { canopy(curve:, floor: 0.05) }
 
     it "matches the spreadsheet's values by day since emergence" do
       {30 => 0.25, 50 => 1.95, 80 => 4.07, 100 => 3.25, 140 => 0.86}.each do |day, lai|
@@ -56,9 +57,105 @@ RSpec.describe Canopy do
       expect(corn.on(emergence + 80)).to be_within(0.01).of(4.07)
     end
 
-    it "is replaced by readings when there are some" do
-      c = canopy([[Date.new(2026, 7, 1), 3.0]], curve: "field_corn")
+    it "is followed through readings, never above the curve's peak or the highest reading" do
+      c = canopy([[Date.new(2026, 7, 1), 3.0]], curve:, floor: 0.05)
+      expect(c.on(Date.new(2026, 7, 1))).to be_within(1e-9).of(3.0)
+      expect(c.on(Date.new(2026, 8, 15))).to be_within(0.01).of(4.07)
+    end
+
+    it "is replaced by readings with straight lines" do
+      c = canopy([[Date.new(2026, 7, 1), 3.0]], curve:, follow_curve: false)
       expect(c.on(Date.new(2026, 8, 15))).to eq(3.0)
+    end
+  end
+
+  describe "a percent cover curve" do
+    let(:potato) { CanopyCurve.for("potato") }
+    let(:curve) { potato.from(emergence) }
+
+    def cover(observations = [], **)
+      canopy(observations, curve:, check: true, **)
+    end
+
+    it "is followed with no readings, from emergence to the end date" do
+      c = cover
+      expect(c.on(emergence - 1)).to eq(0.0)
+      expect(c.on(emergence + 31)).to be_within(0.1).of(potato.cover(emergence, emergence + 31))
+      expect(c.on(end_date + 1)).to eq(0.0)
+      expect(c.curve_on(emergence + 31)).to eq(c.on(emergence + 31))
+    end
+
+    it "passes through each reading and keeps the curve's shape between and after them" do
+      june10, june24 = Date.new(2026, 6, 10), Date.new(2026, 6, 24)
+      c = cover([[june10, 40.0], [june24, 85.0]])
+      expect(c.on(june10)).to be_within(1e-9).of(40.0)
+      expect(c.on(june24)).to be_within(1e-9).of(85.0)
+      # The ratio to the curve is interpolated: between them, the curve times a ratio between the two
+      ratio = c.on(june10 + 7) / curve.call(june10 + 7)
+      expect(ratio).to be_between(40.0 / curve.call(june10), 85.0 / curve.call(june24))
+      # After the last reading the ratio is held, so the canopy follows potato's August decline
+      expect(c.on(Date.new(2026, 8, 20)) / curve.call(Date.new(2026, 8, 20))).to be_within(1e-9).of(85.0 / curve.call(june24))
+      expect(c.on(Date.new(2026, 8, 20))).to be < 85.0
+    end
+
+    it "rises from the curve at emergence to the first reading" do
+      c = cover([[emergence + 20, 50.0]])
+      expect(c.on(emergence)).to be_within(1e-9).of(curve.call(emergence))
+      expect(c.on(emergence + 20)).to be_within(1e-9).of(50.0)
+    end
+
+    it "never goes above the curve's peak or the highest reading" do
+      c = cover([[emergence + 10, 30.0]]) # far ahead of the curve (4% on day 10)
+      expect(c.on(emergence + 60)).to be_within(0.01).of(potato.ccx * 100)
+    end
+
+    it "draws straight lines when the planting says so" do
+      c = cover([[Date.new(2026, 6, 10), 40.0]], follow_curve: false)
+      expect(c.on(Date.new(2026, 8, 20))).to eq(40.0)
+    end
+
+    describe "#check" do
+      it "is nil when the readings follow the curve" do
+        readings = [20, 27, 34].map { |day| [emergence + day, potato.cover(emergence, emergence + day)] }
+        expect(cover(readings).check).to be_nil
+      end
+
+      it "says how many days ahead of the curve the readings run, beyond a week" do
+        readings = [12, 18].map { |day| [emergence + day, potato.cover(emergence, emergence + day + 9)] }
+        expect(cover(readings).check).to have_attributes(days_ahead: 9, drop: nil)
+        behind = [30, 36].map { |day| [emergence + day, potato.cover(emergence, emergence + day - 10)] }
+        expect(cover(behind).check.days_ahead).to eq(-10)
+      end
+
+      it "notes a reading that fell while the curve was still growing or holding" do
+        june10, june17 = Date.new(2026, 6, 10), Date.new(2026, 6, 17)
+        expect(cover([[june10, 60.0], [june17, 40.0]]).check.drop).to eq(date: june17, from: 60.0, to: 40.0)
+        # In the curve's August decline a fall is expected
+        expect(cover([[Date.new(2026, 8, 10), 80.0], [Date.new(2026, 8, 24), 60.0]]).check).to be_nil
+      end
+
+      it "isn't run for LAI or without a curve" do
+        expect(canopy([[Date.new(2026, 6, 10), 60.0], [Date.new(2026, 6, 17), 40.0]]).check).to be_nil
+      end
+    end
+  end
+
+  describe ".for" do
+    it "takes the crop's percent cover curve and the planting's setting" do
+      potato = create(:plant, key: "potato")
+      planting = create(:planting, plant: potato, emergence_date: emergence, end_date:)
+      expect(described_class.for(planting).on(emergence + 31)).to be > 50
+      expect(planting.effective_canopy_interpolation).to eq("curve")
+
+      planting.update!(canopy_interpolation: "linear")
+      CanopyObservation.record(planting, Date.new(2026, 6, 10), 40)
+      expect(described_class.for(planting.reload).on(Date.new(2026, 8, 20))).to eq(40.0)
+    end
+
+    it "has no curve for a crop without one" do
+      planting = create(:planting, emergence_date: emergence, end_date:)
+      expect(described_class.for(planting).on(emergence + 31)).to eq(0.0)
+      expect(planting.effective_canopy_interpolation).to eq("linear")
     end
   end
 end

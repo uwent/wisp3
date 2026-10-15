@@ -116,6 +116,16 @@ RSpec.describe "Setup", type: :request do
       expect(field.plantings).to be_empty
     end
 
+    it "sets how canopy readings combine with the crop's curve, and copies it to next season" do
+      planting = create(:planting, field:, plant: potato)
+      patch planting_path(planting), params: {planting: {canopy_interpolation: "linear"}}
+      expect(planting.reload.canopy_interpolation).to eq("linear")
+      patch planting_path(planting), params: {planting: {canopy_interpolation: "sideways"}}
+      expect(planting.reload.canopy_interpolation).to eq("linear")
+      expect(SeasonCopy.new(field.pivot.farm.group, planting.season_year + 1).run.copied.sole.canopy_interpolation)
+        .to eq("linear")
+    end
+
     it "offers LAI only for crops with an LAI growth curve" do
       planting = create(:planting, field:, plant: potato)
       patch planting_path(planting), params: {planting: {et_method: "lai"}}

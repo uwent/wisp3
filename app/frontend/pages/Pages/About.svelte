@@ -3,6 +3,7 @@
 
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import Term from '@/lib/components/Term.svelte'
+  import CanopyCurvePlot from '@/lib/docs/CanopyCurvePlot.svelte'
   import Introduction from '@/lib/docs/Introduction.svelte'
   import { GLOSSARY } from '@/lib/glossary'
   import { FULL_COVER_PCT, READING_EVERY } from '@/lib/guidance'
@@ -12,11 +13,54 @@
   // Public; the crop table comes from the plants table, the glossary from lib/glossary.ts and the
   // reading advice from lib/guidance.ts, so they stay in step with the app.
 
-  type Plant = { key: string; name: string; root_zone_in: number; lai_curve: boolean }
+  type Plant = { key: string; name: string; root_zone_in: number; lai_curve: boolean; cover_curve: boolean }
+  // A crop's percent cover curve, from db/reference/canopy_curves.yml (PagesController#canopy_curves)
+  type CanopyCurve = {
+    key: string
+    name: string
+    basis: string
+    confidence: string
+    confidence_label: string
+    notes: string | null
+    growth: { cc0: number; ccx: number; cgc: number }
+    decline:
+      | { type: 'aquacrop'; start_day: number; cdc: number }
+      | { type: 'rule'; date: string; per_week: number; floor: number }
+      | null
+    days_to: { 50: number | null; 80: number | null }
+    covers: number[]
+    sources: { citation: string; url: string }[]
+  }
   let {
     plants,
+    canopy_curves: curves,
     defaults,
-  }: { plants: Plant[]; defaults: { mad_pct: number; lead_days: number; forecast_days: number } } = $props()
+  }: {
+    plants: Plant[]
+    canopy_curves: CanopyCurve[]
+    defaults: {
+      mad_pct: number
+      lead_days: number
+      forecast_days: number
+      shift_warning_days: number
+      drop_warning: number
+    }
+  } = $props()
+  const withoutCurve = $derived(plants.filter((plant) => !plant.cover_curve).map((plant) => plant.name))
+
+  const pct = (fraction: number) => `${+(fraction * 100).toFixed(2)}%`
+  function declineText(decline: CanopyCurve['decline']): string {
+    if (!decline) return "Holds its maximum until the planting's end date."
+    if (decline.type === 'aquacrop') {
+      return `Declines from day ${decline.start_day} by AquaCrop's equation (CDC ${decline.cdc} a day).`
+    }
+    const [month, day] = decline.date.split('-').map(Number)
+    const date = new Date(2000, month - 1, day).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+    return (
+      `From ${date} (or once the canopy is full, if later), down ${decline.per_week} points a week to ` +
+      `${decline.floor}%, then holds until the end date.`
+    )
+  }
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const depth = (inches: number) => units.format('rootDepth', inches)
@@ -28,6 +72,7 @@
     { id: 'day-to-day', title: 'Day to day' },
     { id: 'ground-truthing', title: 'Keeping the model on track' },
     { id: 'crops', title: 'Crops' },
+    { id: 'canopy', title: 'Canopy curves' },
     { id: 'glossary', title: 'Glossary' },
     { id: 'contact', title: 'Credits and contact' },
   ]
@@ -205,9 +250,9 @@
       </li>
       <li>
         <strong>Canopy:</strong> with percent cover, enter it about weekly from emergence until the canopy covers about
-        {FULL_COVER_PCT}% of the ground; WISP holds the last value after that. For row crops, divide the average canopy
-        width by the row spacing. LAI is available for field corn, which follows a growth curve unless you enter
-        readings.
+        {FULL_COVER_PCT}% of the ground; between and after readings WISP follows the crop's
+        <a href="#canopy">canopy curve</a>, scaled through them. For row crops, divide the average canopy width by the
+        row spacing. LAI is available for field corn, which follows a growth curve unless you enter readings.
       </li>
       <li>
         <strong>Root zone depth:</strong> the defaults are typical; the depth your crop actually roots to is best measured
@@ -243,12 +288,107 @@
                 {depth(plant.root_zone_in * 0.25)} and {depth(plant.root_zone_in * 0.75)}
               </td>
               <td class="px-3 py-1.5"
-                >{plant.lai_curve ? 'Percent cover; LAI from a growth curve or readings' : 'Percent cover'}</td
+                >{plant.cover_curve ? 'Percent cover, with a curve' : 'Percent cover, readings only'}{plant.lai_curve
+                  ? '; LAI with a curve'
+                  : ''}</td
               >
             </tr>
           {/each}
         </tbody>
       </table>
+    </div>
+
+    <h2 id="canopy">Canopy curves</h2>
+    <p>
+      A crop's water use follows its canopy, so WISP needs the canopy every day of the season. Every crop with a card
+      below has a default <Term id="canopy_curve">canopy curve</Term>: percent cover by day since emergence. With no
+      readings WISP follows it from the emergence date.
+    </p>
+    <p>
+      <strong>Your readings scale the curve.</strong> At each reading WISP takes the ratio of your reading to the curve, draws
+      straight lines between those ratios (starting from 1 at emergence, and holding the last one), and multiplies the curve
+      by them. The canopy then passes through every reading and keeps the curve's shape between and after them, including
+      its late-season decline. It never goes above the larger of the curve's maximum and your highest reading. In setup, a
+      planting can draw straight lines between readings instead, as WISP used to. Backtested on Wisconsin growers' 2026 readings,
+      following the curve halved the error in the next week's canopy compared with straight lines.
+    </p>
+    <p>
+      <strong>When readings and the curve disagree,</strong> the field page says so: if readings between 10% and 80% run
+      more than {defaults.shift_warning_days} days ahead of or behind the curve (often a sign that the emergence date is off),
+      or a reading falls more than {defaults.drop_warning} points while the curve is still growing or holding. WISP keeps
+      following the curve through your readings either way.
+    </p>
+    <p>
+      <strong>How the curves were made.</strong> Growth follows the canopy cover equations of FAO's AquaCrop model, with
+      three numbers per crop: the cover just after emergence (CC₀), the maximum cover (CCx), and a growth rate (CGC).
+      Some crops also decline late in the season. Where FAO's AquaCrop has a crop file, its calendar-day values are
+      used; they matched Wisconsin 2026 readings within a few days for potato, field corn and snap bean, and were
+      adjusted to them for soybean and sweet corn. Other crops' timings come from FAO-56's stage lengths. Each card says
+      which, and how far it has been checked. The research notes, data screening and scripts are in
+      <a href="https://github.com/uwent/wisp3/tree/main/docs/canopy" target="_blank" rel="noopener"
+        >the WISP source code</a
+      >.
+    </p>
+    <pre class="text-xs"><code
+        >growth:  CC = CC₀ · e^(CGC·t)                   while CC ≤ CCx/2
+         CC = CCx − ¼ · CCx² / CC₀ · e^(−CGC·t)  after, up to CCx
+decline: CC = CCx · [1 − 0.05 · (e^(3.33·CDC·t′ / (CCx + 2.29)) − 1)]
+t: days since emergence; t′: days since the decline starts</code
+      ></pre>
+    <p>
+      <strong>Crops without a curve</strong> ({withoutCurve.join(', ')}) use only the cover you enter: straight lines
+      between readings, and no cover until the first one. Onion has no published canopy parameters we could check;
+      alfalfa and mint are cut and regrown during the season; asparagus has no source for fern growth after harvest.
+    </p>
+    <p>
+      <strong>LAI</strong> is offered only for crops with an LAI curve, so far field corn, whose curve comes from the Wisconsin
+      Irrigation Scheduler (WIS v6.3.11) spreadsheet and peaks at about 4 around 80 days after emergence. Deriving LAI from
+      percent cover would put crop water use 20–40% below the percent cover method while the canopy develops, so it isn't
+      offered.
+    </p>
+    <p class="text-sm text-ink-muted">
+      Each curve is drawn for a May 15 emergence, over {curves[0]?.covers.length - 1} days.
+    </p>
+    <div class="not-prose grid gap-4 sm:grid-cols-2">
+      {#each curves as curve (curve.key)}
+        <section
+          id="canopy-{curve.key}"
+          aria-labelledby="canopy-{curve.key}-name"
+          class="scroll-mt-6 space-y-2 rounded-lg border border-line bg-surface-raised p-3 text-sm"
+        >
+          <div class="flex flex-wrap items-baseline justify-between gap-x-2">
+            <h3 id="canopy-{curve.key}-name" class="font-display font-semibold">{curve.name}</h3>
+            <span class="text-xs text-ink-muted">{curve.confidence_label}</span>
+          </div>
+          <CanopyCurvePlot
+            covers={curve.covers}
+            label="{curve.name} canopy cover by day since emergence{curve.days_to[50] !== null
+              ? `: 50% on day ${curve.days_to[50]}`
+              : ''}{curve.days_to[80] !== null ? `, 80% on day ${curve.days_to[80]}` : ''}"
+          />
+          <p>
+            {#if curve.days_to[50] !== null}50% cover on day {curve.days_to[50]}{/if}{#if curve.days_to[80] !== null},
+              80% on day {curve.days_to[80]}{/if}. {declineText(curve.decline)}
+          </p>
+          <p class="text-ink-muted">
+            {curve.basis}. CC₀ {pct(curve.growth.cc0)}, CCx {pct(curve.growth.ccx)}, CGC {curve.growth.cgc} a day.
+          </p>
+          {#if curve.notes}<p class="text-ink-muted">{curve.notes}</p>{/if}
+          <details class="text-xs text-ink-muted">
+            <summary class="cursor-pointer">Sources</summary>
+            <ul class="mt-1 list-disc space-y-1 pl-4">
+              {#each curve.sources as source (source.url)}
+                <li>
+                  {source.citation}
+                  <a href={source.url} target="_blank" rel="noopener" class="break-all text-brand-600 hover:underline"
+                    >{source.url}</a
+                  >
+                </li>
+              {/each}
+            </ul>
+          </details>
+        </section>
+      {/each}
     </div>
 
     <h2 id="glossary">Glossary</h2>

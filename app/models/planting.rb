@@ -2,6 +2,7 @@
 # cropping (legacy picked the crop with the latest emergence, C10).
 class Planting < ApplicationRecord
   ET_METHODS = %w[pct_cover lai].freeze
+  CANOPY_INTERPOLATIONS = %w[linear curve].freeze
   DEFAULT_MAD_FRAC = 0.5
 
   belongs_to :field
@@ -12,6 +13,7 @@ class Planting < ApplicationRecord
   validates :max_root_zone_depth, numericality: {greater_than: 0}
   validates :mad_frac, numericality: {in: 0.05..0.95, message: "must be between 5% and 95%"}
   validates :et_method, inclusion: {in: ET_METHODS}
+  validates :canopy_interpolation, inclusion: {in: CANOPY_INTERPOLATIONS}, allow_nil: true
   validates :target_ad_pct, :initial_moisture_pct, numericality: {in: 0..100, message: "must be between 0 and 100"},
     allow_nil: true
   validate :dates_in_order
@@ -19,6 +21,7 @@ class Planting < ApplicationRecord
   validate :no_overlap, if: -> { field && season_start && end_date }
 
   normalizes :variety, :notes, with: ->(text) { text.strip.presence }
+  normalizes :canopy_interpolation, with: ->(value) { value.presence }
 
   scope :in_season, ->(year) { where(season_start: Date.new(year).all_year) }
 
@@ -33,6 +36,12 @@ class Planting < ApplicationRecord
       et_method: "pct_cover"
     }
   end
+
+  # Whether the crop has a canopy curve for this planting's method (CanopyCurve, or CanopyModel for LAI)
+  def canopy_curve? = (et_method == "lai") ? plant.canopy_model.present? : CanopyCurve.for(plant.key).present?
+
+  # How readings combine with the curve: the setting, or the curve where there is one
+  def effective_canopy_interpolation = canopy_curve? ? (canopy_interpolation || "curve") : "linear"
 
   def season_range = season_start..end_date
   def season_year = season_start.year

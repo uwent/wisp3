@@ -47,6 +47,7 @@ const day = (date: string, overrides: Partial<FieldDay> = {}): FieldDay => ({
   moisture_source: null,
   canopy: 50,
   canopy_entered: null,
+  canopy_curve: null,
   ad: 0.3,
   pct_moisture: 9.5,
   deep_drainage: 0,
@@ -172,6 +173,24 @@ describe('field chart', () => {
     })
     expect((lai.series as { id: string; name: string }[]).find((s) => s.id === 'canopy-readings')!.name).toBe('LAI')
     expect((lai.yAxis as { name: string }[])[3].name).toBe('LAI')
+    // No curve for the crop: no curve series
+    expect(series.find((s) => s.id === 'canopy-curve')).toBeUndefined()
+  })
+
+  it("draws the crop's curve dashed behind the canopy, and names it in the tooltip", () => {
+    const days = [
+      day('2026-07-01', { canopy: 20, canopy_entered: 20, canopy_curve: 30 }),
+      day('2026-07-02', { canopy: 22.5, canopy_curve: 33.333 }),
+    ]
+    const option = fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette })
+    const series = option.series as { id: string; name: string; data: unknown[]; lineStyle: { type?: string } }[]
+    expect(series.find((s) => s.id === 'canopy-curve')).toMatchObject({
+      name: 'Canopy cover',
+      data: [30, 33.33],
+      lineStyle: { type: 'dashed' },
+    })
+    const formatter = (option.tooltip as { formatter: (params: unknown) => string }).formatter
+    expect(formatter([{ dataIndex: 1 }])).toContain('Crop curve</td><td>33%')
   })
 
   it('continues the line dashed through the forecast, with the ensemble range and planned irrigation', () => {

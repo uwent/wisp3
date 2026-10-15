@@ -38,6 +38,22 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
         .to eq([["2026-07-20", true], ["2026-07-21", true]])
     end
 
+    it "gives the crop's canopy curve each day, and flags readings that run ahead of it (Phase 6.7)" do
+      planting.update!(plant: create(:plant, key: "potato"))
+      get field_path(field)
+      expect(inertia.props[:planting]).to include(canopy_curve: true, effective_canopy_interpolation: "curve")
+      day = inertia.props[:days].find { |d| d[:date] == "2026-07-15" }
+      expect(day[:canopy_curve]).to be_within(0.01).of(CanopyCurve.for("potato").cover(planting.emergence_date, Date.new(2026, 7, 15)))
+      expect(day[:canopy]).to eq(day[:canopy_curve]) # no readings: the curve
+      expect(inertia.props[:summary][:canopy_check]).to be_nil
+
+      # 30% and 50% cover are reached on days 15 and 24 of the curve; read 9 days early
+      CanopyObservation.record(planting, Date.new(2026, 7, 7), 30)
+      CanopyObservation.record(planting, Date.new(2026, 7, 16), 50)
+      get field_path(field)
+      expect(inertia.props[:summary][:canopy_check]).to include(days_ahead: be > 7, drop: nil)
+    end
+
     it "sets the field's rainfall setting, and clears it to follow the operation's (Q7)" do
       patch field_path(field), params: {field: {use_model_precip: "false"}}, headers: {"Referer" => field_url(field)}
       expect(response).to redirect_to(field_url(field))

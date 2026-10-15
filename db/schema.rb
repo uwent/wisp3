@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_15_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_15_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -180,8 +180,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_120000) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "canopy_interpolation"
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
+    t.check_constraint "canopy_interpolation::text = ANY (ARRAY['linear'::character varying, 'curve'::character varying]::text[])", name: "plantings_canopy_interpolation"
     t.check_constraint "et_method::text = ANY (ARRAY['pct_cover'::character varying::text, 'lai'::character varying::text])", name: "plantings_et_method"
     t.check_constraint "initial_moisture_pct IS NULL OR initial_moisture_pct >= 0::double precision AND initial_moisture_pct <= 100::double precision", name: "plantings_initial_moisture_range"
     t.check_constraint "mad_frac >= 0.05::double precision AND mad_frac <= 0.95::double precision", name: "plantings_mad_frac_range"
