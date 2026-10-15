@@ -31,7 +31,7 @@ class AlertsController < AuthenticatedController
       current_user.save!
       current_user.digest_field_ids = settings.fetch(:field_ids, []).compact_blank
     end
-    redirect_to alerts_path, notice: "Alert settings saved"
+    redirect_to alerts_path
   end
 
   # Today's digest, sent now whatever the frequency, so the user can see it in their inbox. The

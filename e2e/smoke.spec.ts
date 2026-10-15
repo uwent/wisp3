@@ -308,12 +308,21 @@ test('alerts previews today’s email and sends a test, then waits', async ({ pa
   // The preview stays open across the redirect
   await expect(email.getByRole('heading', { name: 'Your fields this morning' })).toBeVisible()
 
-  // Saving rebuilds the open preview in the same request
+  // Changes save themselves, rebuilding the open preview in the same request; the preview waits for them
+  const status = page.getByRole('status').filter({ hasText: /Saving|save automatically/ })
   await page.getByLabel('Email frequency').selectOption('needed')
-  await page.getByRole('button', { name: 'Save alert settings' }).click()
-  await expect(page.getByText('Alert settings saved')).toBeVisible()
+  const field = page.getByRole('checkbox', { name: 'North corn' })
+  await field.uncheck()
+  await expect(page.getByRole('button', { name: 'Refresh preview' })).toBeDisabled()
+  await expect(status).toHaveText('Changes save automatically')
   await expect(email.getByRole('heading', { name: 'Your fields this morning' })).toBeVisible()
+  await page.getByRole('button', { name: 'Refresh preview' }).click()
+  await expect(field).not.toBeChecked()
+  await page.reload()
   await expect(page.getByLabel('Email frequency')).toHaveValue('needed')
+  await expect(field).not.toBeChecked()
+  await field.check()
+  await expect(status).toHaveText('Changes save automatically')
   // Playwright's trace recorder tries to run its snapshot script in the preview's sandboxed frame
   expect(errors.filter((error) => !error.includes("Blocked script execution in 'about:srcdoc'"))).toEqual([])
 })
