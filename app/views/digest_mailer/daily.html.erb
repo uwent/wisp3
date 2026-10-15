@@ -43,6 +43,9 @@
               <% else %>
                 <span style="<%= muted %>"><%= digest_summary(entry) %></span>
               <% end %>
+              <% if (tasks = digest_tasks(entry)).any? %>
+                <br><span style="font-size:12px">To do: <%= tasks.join(" · ") %></span>
+              <% end %>
             </td>
           </tr>
         <% end %>

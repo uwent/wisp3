@@ -35,6 +35,17 @@ RSpec.describe DigestMailer do
     expect(html).to include("http://example.com/alerts")
   end
 
+  it "lists each field's readings to enter and checks to make" do
+    field = digest_field(pivot, "Stale", 15)
+    field.field_entries.update_all(date: Date.new(2026, 7, 10))
+    field.plantings.sole.canopy_observations.update_all(pct_cover: 40)
+
+    mail = described_class.daily(DailyDigest.new(user))
+    todo = "To do: Enter a soil moisture reading (last Jul 10) · Enter a percent cover reading (last Jul 1)"
+    expect(mail.text_part.body.decoded).to include("\n  #{todo}\n")
+    expect(mail.html_part.body.decoded).to include(todo)
+  end
+
   it "names the operation when the fields come from several" do
     digest_field(pivot, "Fine", 15)
     partners = create(:group, name: "Partners")

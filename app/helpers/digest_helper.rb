@@ -30,6 +30,9 @@ module DigestHelper
     day ? "#{digest.depth(day.inputs.public_send(kind))}, #{day.inputs.date.strftime("%b %-d")}" : "None"
   end
 
+  # What's due for a field (PlantingTasks): ["Enter a soil moisture reading (last Oct 1)", …]
+  def digest_tasks(entry) = entry.status.tasks.select(&:due).map(&:todo)
+
   # The one-line outlook for a field that's fine, or why there isn't one
   def digest_summary(entry)
     if entry.status.weather_pending? then "Weather for this pivot is on the way."

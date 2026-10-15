@@ -38,8 +38,8 @@ class PlantingSummarySerializer < ApplicationSerializer
   attribute(:use_model_precip, &:use_model_precip?)
   attribute(:dry_crossing) { |status| status.dry_crossing&.to_h }
   attribute(:ensemble_size, &:ensemble_size)
-  # Whether canopy readings disagree with the crop's curve (Canopy#check)
-  attribute(:canopy_check) { |status| status.canopy.check&.to_h }
+  # Readings to enter and checks to make (PlantingTasks), while the season is on
+  attribute(:tasks) { |status| status.tasks.map(&:to_h) }
   attribute(:projection) do |status|
     bands = status.ensemble.index_by(&:date)
     dry = status.dry_projection.index_by(&:date)
@@ -62,7 +62,8 @@ class PlantingSummarySerializer < ApplicationSerializer
     threshold: :number, crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     use_model_precip: :boolean, dry_crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     ensemble_size: :number,
-    canopy_check: "{ days_ahead: number | null; drop: { date: string; from: number; to: number } | null } | null",
+    tasks: "{ kind: 'soil_moisture' | 'canopy' | 'canopy_check'; label: string; last_date: string | null; " \
+      "due: boolean; note: 'due' | 'canopy closed' | null; todo: string | null; message: string | null }[]",
     projection: "{ date: string; ad: number; p10: number | null; p50: number | null; p90: number | null; " \
       "chance: number | null; dry_ad: number | null }[]"
 end

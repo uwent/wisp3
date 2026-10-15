@@ -45,13 +45,14 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       day = inertia.props[:days].find { |d| d[:date] == "2026-07-15" }
       expect(day[:canopy_curve]).to be_within(0.01).of(CanopyCurve.for("potato").cover(planting.emergence_date, Date.new(2026, 7, 15)))
       expect(day[:canopy]).to eq(day[:canopy_curve]) # no readings: the curve
-      expect(inertia.props[:summary][:canopy_check]).to be_nil
+      expect(inertia.props[:summary][:tasks].map { |task| task[:kind] }).to eq(%w[soil_moisture canopy])
 
       # 30% and 50% cover are reached on days 15 and 24 of the curve; read 9 days early
       CanopyObservation.record(planting, Date.new(2026, 7, 7), 30)
       CanopyObservation.record(planting, Date.new(2026, 7, 16), 50)
       get field_path(field)
-      expect(inertia.props[:summary][:canopy_check]).to include(days_ahead: be > 7, drop: nil)
+      check = inertia.props[:summary][:tasks].last
+      expect(check).to include(kind: "canopy_check", due: true, todo: match(/days ahead of the potato curve/))
     end
 
     it "sets the field's rainfall setting, and clears it to follow the operation's (Q7)" do
@@ -204,6 +205,8 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       cards = farm_props[:pivots].last[:fields].index_by { |card| card[:name] }
       expect(cards["North potatoes"][:summary]).to include(phase: "active", status: "ok") # AD 1.05 of 1.2
       expect(cards["North potatoes"][:summary][:recent].size).to eq(20)
+      expect(cards["North potatoes"][:summary][:tasks].select { |task| task[:due] }.map { |task| task[:todo] })
+        .to eq(["Enter a soil moisture reading (none yet this season)", "Enter a percent cover reading (none yet this season)"])
       expect(cards["Bare"][:summary]).to be_nil
     end
 

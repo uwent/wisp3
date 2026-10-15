@@ -245,6 +245,17 @@
                           </dd>
                         </div>
                       </dl>
+                      {@const todo = summary.tasks.filter((task) => task.due)}
+                      {#if todo.length}
+                        <ul class="space-y-1 border-t border-line pt-2 text-xs" aria-label="To do">
+                          {#each todo as task (task.kind)}
+                            <li class="flex gap-1.5" title={task.message ?? undefined}>
+                              <span aria-hidden="true" class="text-status-caution">○</span>
+                              <span>{task.todo}</span>
+                            </li>
+                          {/each}
+                        </ul>
+                      {/if}
                     {/if}
                   </Link>
                 </li>

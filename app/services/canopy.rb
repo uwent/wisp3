@@ -13,7 +13,8 @@
 # - straight lines (or no curve): linear from 0 at emergence through the readings, the last held
 #   until end_date (legacy held it for only 6 days, C3).
 #
-# check flags readings that disagree with the curve (percent cover only): see #check.
+# check flags readings that disagree with the curve (percent cover only): see #check. PlantingTasks
+# words it for the field page, dashboard and digest.
 class Canopy
   # Readings this many days ahead of or behind the curve get a warning
   SHIFT_WARNING_DAYS = 7

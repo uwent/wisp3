@@ -1,18 +1,20 @@
-import type { FieldDay, Planting, PlantingSummary } from '@/types/serializers'
+import type { Planting, PlantingSummary } from '@/types/serializers'
 
-import { daysBetween, formatDate, relativeDay } from './dates'
+import { formatDate, relativeDay } from './dates'
 import type { Units } from './units'
 
 // How a planting's water use is modeled, and which readings keep it on track, in words for its
 // field page. The advice follows the legacy WISP user guide (rev. 8/26/14): soil moisture weekly,
 // percent cover from emergence until about 80%, sensors at 25% and 75% of the root zone. The
 // model's behavior is Canopy, CanopyCurve and CanopyModel's (PLAN.md §5.3, Phase 6.7); change them
-// together.
+// together. Which readings are due, and the canopy check, come from PlantingTasks (summary.tasks).
 
-/** How often a reading should be entered, in days */
+/** How often a reading should be entered, in days (PlantingTasks::READING_EVERY) */
 export const READING_EVERY = 7
-/** Percent cover readings can stop once the canopy covers this much of the ground */
+/** Percent cover readings can stop once the canopy covers this much of the ground (PlantingTasks::FULL_COVER_PCT) */
 export const FULL_COVER_PCT = 80
+
+type Task = PlantingSummary['tasks'][number]
 
 export type Reading = {
   label: string
@@ -29,7 +31,7 @@ export type Guidance = {
   paragraphs: string[]
   /** Only while the season is on */
   readings: Reading[]
-  /** When canopy readings disagree with the crop's curve (Canopy#check) */
+  /** When canopy readings disagree with the crop's curve (the canopy_check task) */
   warning: string | null
 }
 
@@ -51,11 +53,11 @@ const CROP_NOTES: Record<string, string> = {
 
 export function guidance(
   planting: GuidedPlanting,
-  days: Pick<FieldDay, 'date' | 'moisture_source' | 'canopy_entered'>[],
   units: Units,
+  /** The planting's tasks (summary.tasks): empty outside the season */
+  tasks: Task[],
   /** Today, while the season is on; null before or after it */
   today: string | null,
-  check: PlantingSummary['canopy_check'] = null,
 ): Guidance {
   const crop = planting.plant_name
   const paragraphs = [methodText(planting)]
@@ -71,8 +73,8 @@ export function guidance(
   return {
     title: `How ${crop.toLowerCase()} is modeled`,
     paragraphs,
-    readings: today ? readings(planting, days, today) : [],
-    warning: check ? warningText(planting, check) : null,
+    readings: today ? tasks.filter((task) => task.kind !== 'canopy_check').map((task) => reading(task, today)) : [],
+    warning: tasks.find((task) => task.kind === 'canopy_check')?.message ?? null,
   }
 }
 
@@ -118,55 +120,9 @@ function methodText(planting: GuidedPlanting): string {
   )
 }
 
-function warningText(planting: GuidedPlanting, check: NonNullable<PlantingSummary['canopy_check']>): string {
-  const crop = planting.plant_name.toLowerCase()
-  const keep =
-    planting.effective_canopy_interpolation === 'curve'
-      ? ' WISP still follows the curve through your readings; you can choose straight lines in setup instead.'
-      : ''
-  if (check.days_ahead !== null) {
-    const days = Math.abs(check.days_ahead)
-    const way = check.days_ahead > 0 ? 'ahead of' : 'behind'
-    return (
-      `Your canopy readings run about ${days} days ${way} the ${crop} curve. If the crop isn't growing that ` +
-      `much ${check.days_ahead > 0 ? 'faster' : 'slower'}, check the emergence date ` +
-      `(${formatDate(planting.emergence_date)}) and the readings.${keep}`
-    )
-  }
-  const drop = check.drop!
-  return (
-    `Your canopy reading on ${formatDate(drop.date)} (${drop.to}%) is lower than the one before it (${drop.from}%), ` +
-    `while the ${crop} curve is still growing or holding. If the canopy didn't really shrink, check the reading.${keep}`
-  )
-}
-
-function readings(
-  planting: Pick<Planting, 'et_method'>,
-  days: Pick<FieldDay, 'date' | 'moisture_source' | 'canopy_entered'>[],
-  today: string,
-): Reading[] {
-  const last = (entered: (day: (typeof days)[number]) => boolean) => days.findLast(entered)
-  const reading = (label: string, day: (typeof days)[number] | undefined): Reading => {
-    const due = !day || daysBetween(day.date, today) > READING_EVERY
-    const last = day ? `${formatDate(day.date)} (${relativeDay(day.date, today)})` : 'None this season'
-    return { label, last, due, note: due ? 'due' : null }
-  }
-
-  const list = [
-    reading(
-      'Soil moisture',
-      last((day) => day.moisture_source !== null),
-    ),
-  ]
-  const canopy = last((day) => day.canopy_entered !== null)
-  if (planting.et_method === 'pct_cover') {
-    const cover = reading('Percent cover', canopy)
-    // Done once the canopy is nearly closed: WISP holds the last reading
-    list.push(
-      canopy && canopy.canopy_entered! >= FULL_COVER_PCT ? { ...cover, due: false, note: 'canopy closed' } : cover,
-    )
-  } else if (canopy) {
-    list.push(reading('LAI', canopy))
-  }
-  return list
+function reading(task: Task, today: string): Reading {
+  const last = task.last_date
+    ? `${formatDate(task.last_date)} (${relativeDay(task.last_date, today)})`
+    : 'None this season'
+  return { label: task.label, last, due: task.due, note: task.note }
 }
