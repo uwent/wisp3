@@ -10,14 +10,9 @@ class PlantingSerializer < ApplicationSerializer
     planting.plant.key
   end
 
-  # Whether the plant has an LAI growth curve (CanopyModel) for LAI plantings without readings
-  attribute :canopy_curve do |planting|
-    planting.plant.canopy_model.present?
-  end
-
   attribute :year do |planting|
     planting.season_year
   end
-  typelize plant_name: :string, plant_key: :string, canopy_curve: :boolean, year: :number,
+  typelize plant_name: :string, plant_key: :string, year: :number,
     et_method: "'pct_cover' | 'lai'"
 end

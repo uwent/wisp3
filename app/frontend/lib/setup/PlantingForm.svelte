@@ -32,6 +32,8 @@
     plantId = id
     const chosen = plants.find((p) => String(p.id) === id)
     if (chosen && !typedDepth) rootDepth = chosen.default_max_root_zone_depth
+    // LAI is offered only for crops with an LAI growth curve
+    if (!chosen?.has_canopy_curve) etMethod = 'pct_cover'
   }
 
   const date = (name: string, label: string, value: string, error?: string | string[]) => ({
@@ -109,16 +111,17 @@
           >Percent cover <span class="text-ink-muted">(enter canopy cover now and then in the daily grid)</span></span
         >
       </label>
-      <label class="flex items-start gap-3 text-sm">
-        <input type="radio" name="planting[et_method]" value="lai" bind:group={etMethod} class="mt-0.5" />
-        <span>
-          Leaf area index
-          <span class="text-ink-muted">
-            {#if plant?.has_canopy_curve}(follows the {plant.name.toLowerCase()} growth curve unless you enter readings)
-            {:else}(this crop has no growth curve: enter LAI readings in the daily grid){/if}
+      {#if plant?.has_canopy_curve}
+        <label class="flex items-start gap-3 text-sm">
+          <input type="radio" name="planting[et_method]" value="lai" bind:group={etMethod} class="mt-0.5" />
+          <span>
+            Leaf area index
+            <span class="text-ink-muted"
+              >(follows the {plant.name.toLowerCase()} growth curve unless you enter readings)</span
+            >
           </span>
-        </span>
-      </label>
+        </label>
+      {/if}
     </fieldset>
     <div class="grid gap-4 sm:grid-cols-2">
       <NumberField

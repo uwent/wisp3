@@ -7,14 +7,12 @@ const corn = {
   plant_name: 'Field Corn',
   plant_key: 'field_corn',
   et_method: 'lai',
-  canopy_curve: true,
   max_root_zone_depth: 32,
 } as const
 const potato = {
   plant_name: 'Potato',
   plant_key: 'potato',
   et_method: 'pct_cover',
-  canopy_curve: false,
   max_root_zone_depth: 16,
 } as const
 const day = (date: string, entered: { moisture?: boolean; canopy?: number } = {}) => ({
@@ -35,10 +33,8 @@ describe('guidance', () => {
     expect(result.readings).toEqual([{ label: 'Soil moisture', last: 'None this season', due: true, note: 'due' }])
   })
 
-  it('warns that LAI without a curve uses no water until the first reading', () => {
-    const result = guidance({ ...potato, et_method: 'lai' }, [], units('metric'), today)
-    expect(result.paragraphs[0]).toContain("There's no LAI growth curve for potato")
-    expect(result.paragraphs[0]).toContain('the crop uses no water in the model')
+  it('asks for LAI readings once the first one replaces the curve', () => {
+    const result = guidance(corn, [day('2026-07-01', { canopy: 2.5 })], units('metric'), today)
     expect(result.readings.map((reading) => [reading.label, reading.due])).toEqual([
       ['Soil moisture', true],
       ['LAI', true],

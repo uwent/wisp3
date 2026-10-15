@@ -3,8 +3,8 @@
 # (http://www.nrcs.usda.gov/Internet/FSE_DOCUMENTS/nrcs141p2_017640.pdf); mint from FAO-56
 # (http://www.fao.org/docrep/x0490e/x0490e0e.htm).
 # canopy_model: the LAI growth curve used when a planting uses the LAI method without entered
-# readings (CanopyModel). Only field corn has a validated curve (PLAN.md Q2); other crops can use
-# LAI only with entered readings.
+# readings (CanopyModel). Only crops with one can use the LAI method (PLAN.md Phase 6.7); so far
+# that's field corn.
 
 - key: potato
   name: Potato

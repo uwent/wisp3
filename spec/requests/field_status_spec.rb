@@ -152,7 +152,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       patch url, params: {day: {canopy: 35}, planting_id: planting.id}
       expect(planting.canopy_observations.sole).to have_attributes(date: Date.new(2026, 7, 8), pct_cover: 35, lai: nil)
 
-      planting.update!(et_method: "lai")
+      planting.update!(plant: create(:plant, canopy_model: "field_corn"), et_method: "lai")
       patch url, params: {day: {canopy: 1.5}, planting_id: planting.id}
       expect(planting.canopy_observations.sole).to have_attributes(pct_cover: nil, lai: 1.5)
 
@@ -315,7 +315,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
 
     it "records percent cover on each member's percent-cover crop, and clears it" do
       lai_field = create(:field, pivot:)
-      lai_planting = create(:planting, field: lai_field, et_method: "lai")
+      lai_planting = create(:planting, field: lai_field, plant: create(:plant, canopy_model: "field_corn"), et_method: "lai")
       gauge = create(:field_group, group:, fields: [field, lai_field])
 
       patch field_group_day_path(gauge, "2026-07-08"), params: {day: {pct_cover: 40}}
