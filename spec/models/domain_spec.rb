@@ -5,6 +5,15 @@ RSpec.describe "Domain models" do
     let(:field) { create(:field) }
     let(:first) { create(:planting, field:, season_start: Date.new(2026, 4, 1), end_date: Date.new(2026, 7, 15)) }
 
+    it "uses LAI only for a crop with an LAI growth curve" do
+      create(:plant, name: "Field Corn", canopy_model: "field_corn")
+      planting = build(:planting, field:, et_method: "lai")
+      expect(planting).not_to be_valid
+      expect(planting.errors[:et_method].sole).to include("(Field Corn)")
+      planting.plant = create(:plant, canopy_model: "field_corn")
+      expect(planting).to be_valid
+    end
+
     it "can't overlap another planting on the field" do
       first
       overlapping = build(:planting, field:, season_start: Date.new(2026, 7, 15), emergence_date: Date.new(2026, 7, 20),

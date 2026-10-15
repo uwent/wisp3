@@ -15,6 +15,7 @@ class Planting < ApplicationRecord
   validates :target_ad_pct, :initial_moisture_pct, numericality: {in: 0..100, message: "must be between 0 and 100"},
     allow_nil: true
   validate :dates_in_order
+  validate :lai_needs_curve
   validate :no_overlap, if: -> { field && season_start && end_date }
 
   normalizes :variety, :notes, with: ->(text) { text.strip.presence }
@@ -37,6 +38,15 @@ class Planting < ApplicationRecord
   def season_year = season_start.year
 
   private
+
+  # LAI is offered only for crops with an LAI growth curve (PLAN.md Phase 6.7): deriving LAI from
+  # percent cover gave 20–40% less ET than the percent cover method (docs/canopy/03-crop-curves.md)
+  def lai_needs_curve
+    return unless et_method == "lai" && plant && plant.canopy_model.nil?
+    errors.add(:et_method, "can be LAI only for crops with an LAI growth curve (#{lai_crops})")
+  end
+
+  def lai_crops = Plant.where.not(canopy_model: nil).order(:name).pluck(:name).to_sentence.presence || "none yet"
 
   def dates_in_order
     return unless season_start && emergence_date && end_date

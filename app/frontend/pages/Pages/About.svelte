@@ -206,8 +206,8 @@
       <li>
         <strong>Canopy:</strong> with percent cover, enter it about weekly from emergence until the canopy covers about
         {FULL_COVER_PCT}% of the ground; WISP holds the last value after that. For row crops, divide the average canopy
-        width by the row spacing. With LAI, field corn follows a growth curve unless you enter readings; other crops use
-        only the LAI you enter, and use no water in the model until the first reading.
+        width by the row spacing. LAI is available for field corn, which follows a growth curve unless you enter
+        readings.
       </li>
       <li>
         <strong>Root zone depth:</strong> the defaults are typical; the depth your crop actually roots to is best measured
@@ -218,10 +218,10 @@
 
     <h2 id="crops">Crops</h2>
     <p>
-      Every crop can use percent cover. LAI with a growth curve is available for field corn; other crops can use LAI
-      only with readings you enter. Default root zone depths are from Table 3.4 of the NRCS National Engineering
-      Handbook, part 652 (mint from FAO-56), and suggested sensor depths are 25% and 75% of them. Every crop starts with
-      MAD
+      Every crop can use percent cover. LAI is available only for crops with an LAI growth curve, so far field corn;
+      curves for more crops will be added as validated ones become available. Default root zone depths are from Table
+      3.4 of the NRCS National Engineering Handbook, part 652 (mint from FAO-56), and suggested sensor depths are 25%
+      and 75% of them. Every crop starts with MAD
       {defaults.mad_pct}% and a season from April 1 to November 30; change any of them for your planting.
     </p>
     <div class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised">
@@ -243,7 +243,7 @@
                 {depth(plant.root_zone_in * 0.25)} and {depth(plant.root_zone_in * 0.75)}
               </td>
               <td class="px-3 py-1.5"
-                >Percent cover; LAI {plant.lai_curve ? 'from a growth curve or readings' : 'from readings only'}</td
+                >{plant.lai_curve ? 'Percent cover; LAI from a growth curve or readings' : 'Percent cover'}</td
               >
             </tr>
           {/each}

@@ -110,10 +110,20 @@ RSpec.describe "Setup", type: :request do
 
     it "updates and deletes a planting" do
       planting = create(:planting, field:, plant: potato)
-      patch planting_path(planting), params: {planting: {variety: " Russet ", target_ad_pct: 40, et_method: "lai"}}
-      expect(planting.reload).to have_attributes(variety: "Russet", target_ad_pct: 40, et_method: "lai")
+      patch planting_path(planting), params: {planting: {variety: " Russet ", target_ad_pct: 40}}
+      expect(planting.reload).to have_attributes(variety: "Russet", target_ad_pct: 40)
       delete planting_path(planting)
       expect(field.plantings).to be_empty
+    end
+
+    it "offers LAI only for crops with an LAI growth curve" do
+      planting = create(:planting, field:, plant: potato)
+      patch planting_path(planting), params: {planting: {et_method: "lai"}}
+      expect(planting.reload.et_method).to eq("pct_cover")
+
+      corn = create(:plant, canopy_model: "field_corn")
+      patch planting_path(planting), params: {planting: {plant_id: corn.id, et_method: "lai"}}
+      expect(planting.reload).to have_attributes(plant: corn, et_method: "lai")
     end
 
     it "exports the season as CSV" do

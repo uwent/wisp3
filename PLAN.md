@@ -200,10 +200,10 @@ The initial AD on `season_start` comes from `initial_moisture_pct` via the same 
 - Interpolation from emergence (0%) to the first observation. Readings dated before emergence are ignored (for perennials, enter the green-up date as emergence).
 - **LAI** (kept, D8): LAI comes from a crop curve by default, and entered LAI observations override it, interpolated the same way as percent cover. Kc = 1.1 × (1 − e^(−1.5·LAI)), with LAI clamped to ≥ 0.
   - **Field corn curve** (from the WIS v6.3.11 spreadsheet): `LAI = 9e-12 × d^7.95 × e^(−0.1 d)`, d = days since emergence. It peaks at LAI 4.07 on day 80 (Kc 1.10) and falls to 0.86 by day 140.
-  - **Which crops get which curve, and whether to switch to degree-day curves, depends on Q2.** Until then, the corn curve is offered only for field corn, and other crops can use LAI only with entered observations.
+  - LAI is offered only for crops with an LAI curve, so far field corn (Phase 6.7; it replaced "LAI with entered readings for any crop", Q2 option B).
   - **Legacy problems (C4, C18):** the corn curve was applied to every crop, and sweet corn's placeholder curve produces **negative ET**.
   - The engine takes a `CanopyModel` per plant, so adding validated curves later is a data change.
-  - With LAI readings entered, they replace the curve entirely (interpolated like percent cover); with none, the curve is used, or LAI 0 (no ET) for plants without one. Revisit blending readings with the curve after Q2.
+  - With LAI readings entered, they replace the curve entirely (interpolated like percent cover); with none, the curve is used. Phase 6.7 revisits blending readings with the curve.
 - **Phase 6.7** proposes a default curve for every crop (percent cover and LAI), readings that scale or replace it, and a per-planting setting for which, documented per crop on the About page.
 
 ### 5.4 Crop ET (percent-cover method, from the A3600 Table C regressions)
@@ -670,7 +670,7 @@ Each step produces a dated note in `docs/canopy/` (sources, data, scripts and re
 - **Readings and the curve:** the curve is scaled a little to fit the readings, and after the last reading the canopy **keeps following the scaled curve**, including its decline; it is not held. If the readings are far from the curve's course (the fitted scale falls outside a band, or the fit is poor), WISP **warns** on the field page and **breaks from the curve**: straight lines between readings, as with the `linear` setting. The backtest (A.4) sets the band and tests whether a time shift should be fitted as well as the scale.
 - **Legacy data:** anonymised readings may be used if they are of good quality. The 30-field golden sample (`tmp/wisp_golden.json`, 2026) shows why filters are needed: 12 of its 23 percent cover fields have no cover readings, the rest have 1–22, and many emergence dates are the May 1 default. Screen out fields with fewer than about 4 readings in the growth period, emergence left at the default, or readings that go down during growth. Only 2026 exists (legacy deleted each season's data on February 15), so the extract checks timing rather than fitting curves (`docs/canopy/01-legacy-readings.md`); the extract itself isn't committed.
 - **Potato decline** (until a researcher's potato model arrives): from August 1, 10 percentage points a week down to 50%, held to the end date (vine kill); later if the canopy hasn't reached its maximum by then. A labelled Wisconsin management rule (`docs/canopy/02-published-curves.md`), so curve definitions need a calendar-date decline (start date, rate, floor) as well as AquaCrop's CDC.
-- **LAI for crops other than field corn** is derived from the percent cover curve through the crop's extinction coefficient, where the literature supports a k for that crop. Potato is managed by canopy cover in practice, so cover is its primary method. Growth after the rows close (LAI rising while cover is near 100%) is beyond what conversion from cover can show, because LAI = −ln(1 − CC)/k has no finite value at full cover. Cap the converted LAI at the crop's published maximum. ET is unaffected either way: Kc is within 1% of its maximum by about LAI 3, as percent cover ET is at et0 from 80% cover.
+- **LAI only for crops with an LAI curve** (revised 2026-10-15, replacing Q2 option B): deriving LAI from cover (k = 1.5) works out to Kc = 1.1 × cover, 20–40% below percent cover ET during canopy development (`docs/canopy/03-crop-curves.md`), so it isn't offered. A planting can use LAI only if its crop has an LAI curve, so far field corn; other plantings on LAI were switched to percent cover (their readings kept). A researcher may supply LAI curves for more crops; each is added to `CanopyModel` with its source. *(Done: `Planting#lai_needs_curve`, the planting form, guidance, About page, migration.)*
 
 ### Phase 7: Map
 
@@ -705,7 +705,7 @@ Each step produces a dated note in `docs/canopy/` (sources, data, scripts and re
 | # | Question | Status | Needed by |
 |---|---|---|---|
 | Q1 | Alert threshold and lead-time defaults | **Resolved**: recommendation adopted | – |
-| Q2 | How LAI should work, and for which crops | **A + B adopted for 2027**; agronomist contacted; curves per crop (option C) researched in Phase 6.7 | Review answers by Phase 4 |
+| Q2 | How LAI should work, and for which crops | **A adopted for 2027** (B dropped in Phase 6.7); agronomist contacted; curves per crop (option C) researched in Phase 6.7 | Review answers by Phase 4 |
 | Q3 | Display units | **Resolved**: inches by default, per-user inch/mm toggle in Settings | – |
 | Q4 | Pivot-level irrigation | **Resolved** → D9, §4 `pivot_irrigations` | – |
 | Q5 | Can the deploy user run `systemd --user` services? | **Resolved**: yes on staging; new production server provisioned with it (D11, §12) | – |
@@ -762,7 +762,7 @@ So 23 of the 29 LAI fields were modeled with a *corn* canopy. Potato is the main
 | B. A + entered LAI observations allowed for any crop | Flexible for advanced users | Needs a good help page on how to measure LAI |
 | C. GDD-based curves per crop | Most realistic | Needs validated curves, which we don't have yet |
 
-**Decision:** ship **A + B** for 2027 (already reflected in §5.3). An agronomist has been contacted with the questions above. **C (curves per crop, by GDD or calendar days) is brought forward to Phase 6.7 (2026-10-15).**
+**Decision:** ship **A + B** for 2027 (already reflected in §5.3). *Revised 2026-10-15 (Phase 6.7): B is dropped; LAI only for crops with an LAI curve.* An agronomist has been contacted with the questions above. **C (curves per crop, by GDD or calendar days) is brought forward to Phase 6.7 (2026-10-15).**
 
 Groundwork in the meantime: Phase 3 stores daily tmax/tmin and calculates daily and cumulative GDD (base 50 °F, 86 °F cap, the standard corn method). GDD-based curves then need no new data plumbing, and GDD can be shown in the UI.
 

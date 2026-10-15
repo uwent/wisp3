@@ -36,7 +36,7 @@ const CROP_NOTES: Record<string, string> = {
 }
 
 export function guidance(
-  planting: Pick<Planting, 'plant_name' | 'plant_key' | 'et_method' | 'canopy_curve' | 'max_root_zone_depth'>,
+  planting: Pick<Planting, 'plant_name' | 'plant_key' | 'et_method' | 'max_root_zone_depth'>,
   days: Pick<FieldDay, 'date' | 'moisture_source' | 'canopy_entered'>[],
   units: Units,
   /** Today, while the season is on; null before or after it */
@@ -60,7 +60,7 @@ export function guidance(
   }
 }
 
-function methodText(planting: Pick<Planting, 'plant_name' | 'et_method' | 'canopy_curve'>): string {
+function methodText(planting: Pick<Planting, 'plant_name' | 'et_method'>): string {
   const crop = planting.plant_name
   if (planting.et_method === 'pct_cover') {
     return (
@@ -74,22 +74,16 @@ function methodText(planting: Pick<Planting, 'plant_name' | 'et_method' | 'canop
   const lai =
     `${crop} water use is modeled from leaf area index (LAI), the leaf area of the crop per unit of ground ` +
     "beneath it: the day's reference ET is scaled by how much of the light the leaves intercept."
-  if (planting.canopy_curve) {
-    return (
-      `${lai} Without readings, WISP projects LAI from the emergence date on a field corn growth curve, which ` +
-      'peaks at about 4 around 80 days after emergence. LAI you enter (from a ceptometer, say) replaces the curve ' +
-      'for the season, and after your last reading WISP holds that value, so once you start, keep entering them.'
-    )
-  }
+  // LAI is offered only for crops with a growth curve (Planting#lai_needs_curve), so far field corn's
   return (
-    `${lai} There's no LAI growth curve for ${crop.toLowerCase()}, so WISP uses only the LAI you enter, and until the ` +
-    'first reading the crop uses no water in the model. Enter LAI readings regularly, or switch this planting to ' +
-    'percent cover in setup.'
+    `${lai} Without readings, WISP projects LAI from the emergence date on a field corn growth curve, which ` +
+    'peaks at about 4 around 80 days after emergence. LAI you enter (from a ceptometer, say) replaces the curve ' +
+    'for the season, and after your last reading WISP holds that value, so once you start, keep entering them.'
   )
 }
 
 function readings(
-  planting: Pick<Planting, 'et_method' | 'canopy_curve'>,
+  planting: Pick<Planting, 'et_method'>,
   days: Pick<FieldDay, 'date' | 'moisture_source' | 'canopy_entered'>[],
   today: string,
 ): Reading[] {
@@ -113,7 +107,7 @@ function readings(
     list.push(
       canopy && canopy.canopy_entered! >= FULL_COVER_PCT ? { ...cover, due: false, note: 'canopy closed' } : cover,
     )
-  } else if (!planting.canopy_curve || canopy) {
+  } else if (canopy) {
     list.push(reading('LAI', canopy))
   }
   return list
