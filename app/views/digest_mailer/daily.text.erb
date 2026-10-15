@@ -1,4 +1,7 @@
 Your fields this morning, <%= @digest.today.strftime("%A, %B %-d") %>
+<% if @digest.context.any? %>
+<%= digest_context(@digest) %>
+<% end %>
 <% if @digest.attention.any? %>
 
 NEEDS ATTENTION
@@ -7,21 +10,35 @@ NEEDS ATTENTION
 - Field: <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_place(entry, @digest) %><%= ": #{entry.outlook.headline}" if entry.outlook %>
 <% end %>
 <% end %>
-<% @digest.operations.each do |operation| %>
+<% if @digest.nothing_listed %>
 
-== OPERATION: <%= operation.group.name.upcase %> ==
-<% operation.zones.each do |zone| %>
+No action needed. <%= @digest.nothing_listed %>
+<% end %>
+<% @digest.operations.each do |operation| %>
+<% if @digest.several_groups? %>
+
+=== OPERATION: <%= operation.group.name.upcase %> ===
+<% end %>
+<% operation.farms.each do |farm_section| %>
+<% if @digest.several_farms? %>
+
+== FARM: <%= farm_section.farm.name.upcase %> ==
+<% end %>
+<% farm_section.zones.each do |zone| %>
 
 -- <%= digest_zone(zone) %> --
 <% digest_weather(zone, @digest).each do |line| %>
    <%= line %>
 <% end %>
    Pivots in this zone: <%= digest_zone_pivots(zone) %>
-<% zone.pivots.each do |pivot_section| %>
+<% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
 
-   Pivot: <%= pivot_section.pivot.name %> · <%= pivot_section.pivot.farm.name %>
+   Pivot: <%= pivot_section.pivot.name %>
 <% pivot_section.entries.each do |entry| %>
 
+<% if !entry.active? %>
+     Field: <%= entry.field.name %> [<%= status_label(:off) %>] <%= digest_off_season(entry) %>
+<% else %>
      Field: <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_crop(entry) %> · <%= digest_ad(entry, @digest, short: !entry.attention?) %>
 <% if entry.attention? && entry.outlook %>
      <%= entry.outlook.headline %>. <%= entry.outlook.detail %><%= " #{entry.outlook.chance}" if entry.outlook.chance %><%= " #{entry.outlook.dry}" if entry.outlook.dry %>
@@ -37,7 +54,10 @@ NEEDS ATTENTION
 <% end %>
 <% end %>
 <% end %>
+<% end %>
+<% end %>
 
+<%= digest_counts(@digest) %>
 <%= digest_reason(@user, test: @test) %>
 Change how often and which fields: <%= @alerts_url %>
 Unsubscribe: <%= @unsubscribe_url %>

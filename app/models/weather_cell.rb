@@ -16,11 +16,21 @@ class WeatherCell < ApplicationRecord
     retry
   end
 
-  # Cells with a pivot whose fields have a planting this season (or one still running)
+  # Cells with a pivot whose fields have a planting this season (or one still running), and cells
+  # whose weather a daily digest shows out of season
   def self.active(today = Date.current)
-    where(id: Pivot.joins(fields: :plantings)
+    planted = Pivot.joins(fields: :plantings)
       .where("plantings.end_date >= ? OR plantings.season_start >= ?", today, today.beginning_of_year)
-      .select(:weather_cell_id))
+      .select(:weather_cell_id)
+    where(id: planted).or(where(id: digest_cell_ids))
+  end
+
+  # Cells of the pivots in digests that list fields out of season too (every included field, or
+  # every morning all year)
+  def self.digest_cell_ids
+    User.where.not(digest_frequency: "never").where.not(confirmed_at: nil)
+      .where("digest_scope = 'all' OR digest_frequency = 'daily_all_year'")
+      .flat_map { |user| user.digest_fields.joins(:pivot).distinct.pluck("pivots.weather_cell_id") }.uniq
   end
 
   # Cells with a pivot (inactive ones too), for a refresh asked for by hand

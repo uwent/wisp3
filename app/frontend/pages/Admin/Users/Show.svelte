@@ -26,7 +26,12 @@
     return `${plural(farms, 'farm')}, ${plural(pivots, 'pivot')}, ${plural(fields, 'field')}`
   }
 
-  const digestFrequencies = { never: 'Never', daily: 'Daily during season', needed: 'Only when irrigation is needed' }
+  const digestFrequencies = {
+    never: 'Never',
+    daily: 'Daily during season',
+    daily_all_year: 'Daily all year',
+    needed: 'Only when irrigation is needed',
+  }
 
   const attributes = $derived<[string, string][]>([
     ['Name', user.display_name === user.email ? '—' : user.display_name],

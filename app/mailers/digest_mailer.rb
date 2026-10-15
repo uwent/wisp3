@@ -2,20 +2,21 @@
 # Takes a DailyDigest, which the job and the previews build first to check there's something to send.
 class DigestMailer < ApplicationMailer
   helper :digest
-  helper_method :field_link, :pivot_link, :status_label, :status_style
+  helper_method :field_link, :pivot_link, :status_label, :status_style, :entry_status
 
   # The app's --color-status-* tokens in hex, with an icon so color isn't the only cue (StatusBadge)
   STATUSES = {
     irrigate: {label: "▲ Irrigate", color: "#cc2827", text: "#ffffff"},
     caution: {label: "! Caution", color: "#e49e22", text: "#141b24"},
     ok: {label: "✓ OK", color: "#0e9254", text: "#ffffff"},
-    full: {label: "● Full", color: "#0077c2", text: "#ffffff"}
+    full: {label: "● Full", color: "#0077c2", text: "#ffffff"},
+    off: {label: "– Off season", color: "#e5e7eb", text: "#141b24"}
   }.freeze
 
   # What a user's digest would be today, for the previews on the Alerts page and admin user page:
-  # the email whenever a field is in season, and why it wouldn't be sent, if it wouldn't
+  # the email whenever a field is included, and why it wouldn't be sent, if it wouldn't
   def self.preview(digest)
-    mail = daily(digest) if digest.entries.any?
+    mail = daily(digest) if digest.all_entries.any?
     {skip_reason: digest.skip_reason, subject: mail&.subject, html: mail&.html_part&.body&.decoded}
   end
 
@@ -43,6 +44,9 @@ class DigestMailer < ApplicationMailer
   def pivot_link(pivot) = pivot_url(pivot, operation: pivot.farm.group_id)
 
   def status_label(status) = STATUSES.dig(status, :label) || "No status"
+
+  # A listed field's badge: its status in season, otherwise off season
+  def entry_status(entry) = entry.active? ? entry.status.status : :off
 
   # Inline styles for a status badge (email clients ignore stylesheets)
   def status_style(status)

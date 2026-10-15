@@ -9,19 +9,23 @@
   import { LEAD_DAYS } from '@/lib/outlook'
   import { alerts } from '@/routes'
 
-  type Frequency = 'never' | 'daily' | 'needed'
-  type DigestField = { id: number; name: string; pivot: string }
-  type DigestFarm = { id: number; name: string; fields: DigestField[] }
+  type Frequency = 'never' | 'daily' | 'daily_all_year' | 'needed'
+  type Scope = 'all' | 'in_season' | 'needs_action' | 'needs_irrigation'
+  type DigestField = { id: number; name: string }
+  type DigestPivot = { id: number; name: string; fields: DigestField[] }
+  type DigestFarm = { id: number; name: string; pivots: DigestPivot[] }
   type DigestGroup = { id: number; name: string; farms: DigestFarm[] }
 
   let {
     frequency,
+    scope,
     field_ids,
     groups,
     test_wait,
     preview,
   }: {
     frequency: Frequency
+    scope: Scope
     field_ids: number[]
     groups: DigestGroup[]
     test_wait: number
@@ -37,21 +41,52 @@
       hint: 'Every morning while a field has a crop in season, whether or not anything needs doing.',
     },
     {
+      value: 'daily_all_year',
+      label: 'Daily all year',
+      hint: 'Every morning, all year: weather for your pivots even when nothing is in season.',
+    },
+    {
       value: 'needed',
       label: 'Only when irrigation is needed',
       hint: `Only on mornings when a field needs irrigation now or within ${LEAD_DAYS} days (Irrigate or Caution).`,
     },
   ]
 
+  const scopes: { value: Scope; label: string; hint: string }[] = [
+    {
+      value: 'all',
+      label: 'All the fields it covers',
+      hint: 'Every field below, in season or not, with its pivot’s weather.',
+    },
+    {
+      value: 'in_season',
+      label: 'Fields with a crop in season',
+      hint: 'Every field below that has a crop in season today.',
+    },
+    {
+      value: 'needs_action',
+      label: 'Fields needing irrigation or readings',
+      hint: `Fields to irrigate now or within ${LEAD_DAYS} days, or with a soil moisture or canopy reading due.`,
+    },
+    {
+      value: 'needs_irrigation',
+      label: 'Only fields needing irrigation',
+      hint: `Fields to irrigate now or within ${LEAD_DAYS} days (Irrigate or Caution).`,
+    },
+  ]
+
   // The form's state, reset from the props after each save
   let chosen = $state<Frequency>('daily')
+  let chosenScope = $state<Scope>('in_season')
   const picked = new SvelteSet<number>()
   $effect.pre(() => {
     chosen = frequency
+    chosenScope = scope
     picked.clear()
     for (const id of field_ids) picked.add(id)
   })
-  const groupFields = (group: DigestGroup) => group.farms.flatMap((farm) => farm.fields)
+  const farmFields = (farm: DigestFarm) => farm.pivots.flatMap((pivot) => pivot.fields)
+  const groupFields = (group: DigestGroup) => group.farms.flatMap(farmFields)
   const allFields = $derived(groups.flatMap(groupFields))
   // Operations get their own checkbox only when there's more than one with fields
   const severalGroups = $derived(groups.filter((group) => groupFields(group).length).length > 1)
@@ -79,7 +114,7 @@
   // Both forms keep the page's state and reload only the props they change, in the same request as
   // the save, so the flash message stays. Saving settings rebuilds an open preview; a test send
   // leaves it as it is.
-  const settingsProps = ['frequency', 'field_ids', 'groups', 'test_wait']
+  const settingsProps = ['frequency', 'scope', 'field_ids', 'groups', 'test_wait']
   const saveOptions = $derived({
     preserveScroll: true,
     preserveState: true,
@@ -103,9 +138,9 @@
 <div>
   <h1 class="text-2xl font-semibold">Alerts</h1>
   <p class="text-sm text-ink-muted">
-    A morning email at about 6 am with your fields by operation, weather zone (pivots sharing the same weather) and
-    pivot, each zone's weather for the past and coming week, which fields to irrigate or watch, with when and how much,
-    and the readings due on each field.
+    A morning email at about 6 am with your fields by operation, farm, weather zone (pivots sharing the same weather)
+    and pivot, each zone's weather for the past and coming week, which fields to irrigate or watch, with when and how
+    much, and the readings due on each field.
   </p>
 </div>
 
@@ -121,12 +156,20 @@
         hint={frequencies.find((option) => option.value === chosen)?.hint}
         error={errors.digest_frequency}
       />
+      <SelectField
+        label="Fields in the email"
+        name="digest[scope]"
+        options={scopes}
+        bind:value={chosenScope}
+        hint={scopes.find((option) => option.value === chosenScope)?.hint}
+        error={errors.digest_scope}
+      />
       <input type="hidden" name="digest[field_ids][]" value="" />
       {#if allFields.length}
         <fieldset class="space-y-3 {chosen === 'never' ? 'opacity-60' : ''}">
           <legend class="text-sm font-medium">Fields it covers</legend>
           <p class="text-sm text-ink-muted">
-            New fields are included, unless their farm or operation is left out entirely.
+            New fields are included, unless their pivot, farm or operation is left out entirely.
             {pickedCount(allFields)} of {allFields.length} included.
           </p>
           {#each groups as group (group.id)}
@@ -141,35 +184,51 @@
                       {@attach mixed(fields)}
                       onchange={(event) => pickAll(fields, event.currentTarget.checked)}
                     />
-                    {group.name}
+                    <span><span class="font-normal text-ink-muted">Operation:</span> {group.name}</span>
                   </label>
                 {/if}
                 {#each group.farms as farm (farm.id)}
-                  {#if farm.fields.length}
+                  {@const fields = farmFields(farm)}
+                  {#if fields.length}
                     <div class="space-y-1 {severalGroups ? 'pl-6' : ''}">
                       <label class="flex items-center gap-2 text-sm font-medium">
                         <input
                           type="checkbox"
-                          checked={pickedCount(farm.fields) === farm.fields.length}
-                          {@attach mixed(farm.fields)}
-                          onchange={(event) => pickAll(farm.fields, event.currentTarget.checked)}
+                          checked={pickedCount(fields) === fields.length}
+                          {@attach mixed(fields)}
+                          onchange={(event) => pickAll(fields, event.currentTarget.checked)}
                         />
-                        {farm.name}
+                        <span><span class="font-normal text-ink-muted">Farm:</span> {farm.name}</span>
                       </label>
-                      <div class="grid gap-1 pl-6 sm:grid-cols-2">
-                        {#each farm.fields as field (field.id)}
-                          <label class="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              name="digest[field_ids][]"
-                              value={field.id}
-                              checked={picked.has(field.id)}
-                              onchange={(event) => pickAll([field], event.currentTarget.checked)}
-                            />
-                            <span>{field.name} <span class="text-ink-muted">· {field.pivot}</span></span>
-                          </label>
-                        {/each}
-                      </div>
+                      {#each farm.pivots as pivot (pivot.id)}
+                        {#if pivot.fields.length}
+                          <div class="space-y-1 pl-6">
+                            <label class="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={pickedCount(pivot.fields) === pivot.fields.length}
+                                {@attach mixed(pivot.fields)}
+                                onchange={(event) => pickAll(pivot.fields, event.currentTarget.checked)}
+                              />
+                              <span><span class="text-ink-muted">Pivot:</span> {pivot.name}</span>
+                            </label>
+                            <div class="grid gap-1 pl-6 sm:grid-cols-2">
+                              {#each pivot.fields as field (field.id)}
+                                <label class="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    name="digest[field_ids][]"
+                                    value={field.id}
+                                    checked={picked.has(field.id)}
+                                    onchange={(event) => pickAll([field], event.currentTarget.checked)}
+                                  />
+                                  {field.name}
+                                </label>
+                              {/each}
+                            </div>
+                          </div>
+                        {/if}
+                      {/each}
                     </div>
                   {/if}
                 {/each}

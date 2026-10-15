@@ -12,5 +12,5 @@ class AdminUserDetailSerializer < ApplicationSerializer
   typelize display_name: :string, unit_system: "'imperial' | 'metric'", created_at: :string, updated_at: :string,
     confirmed_at: "string | null", confirmation_sent_at: "string | null", current_sign_in_at: "string | null",
     last_sign_in_at: "string | null", remember_created_at: "string | null", reset_password_sent_at: "string | null",
-    digest_frequency: "'never' | 'daily' | 'needed'", digest_sent_on: "string | null"
+    digest_frequency: "'never' | 'daily' | 'daily_all_year' | 'needed'", digest_sent_on: "string | null"
 end

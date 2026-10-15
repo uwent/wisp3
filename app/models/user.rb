@@ -6,9 +6,13 @@ class User < ApplicationRecord
   MAGIC_LINK_TTL = 15.minutes
   SIGN_IN_CODE_ATTEMPTS = 5
   SIGN_IN_CODE_RESEND_AFTER = 60.seconds
-  # How often the daily digest is sent: never, every morning a field is in season, or only on
-  # mornings a field needs irrigation within PlantingStatus::LEAD_DAYS (DailyDigest#skip_reason)
-  DIGEST_FREQUENCIES = %w[never daily needed].freeze
+  # How often the daily digest is sent: never, every morning a field is in season, every morning all
+  # year (weather even with nothing in season), or only on mornings a field needs irrigation within
+  # PlantingStatus::LEAD_DAYS (DailyDigest#skip_reason)
+  DIGEST_FREQUENCIES = %w[never daily daily_all_year needed].freeze
+  # Which of the included fields the digest lists: all of them (in season or not), those with a crop
+  # in season, those needing irrigation or a reading, or only those needing irrigation
+  DIGEST_SCOPES = %w[all in_season needs_action needs_irrigation].freeze
   DIGEST_TEST_COOLDOWN = 5.minutes
 
   has_many :memberships, dependent: :destroy
@@ -17,6 +21,7 @@ class User < ApplicationRecord
 
   validates :unit_system, inclusion: {in: UNIT_SYSTEMS}
   validates :digest_frequency, inclusion: {in: DIGEST_FREQUENCIES}
+  validates :digest_scope, inclusion: {in: DIGEST_SCOPES}
   validates :first_name, :last_name, length: {maximum: 100}
   validate :email_domain_allowed
 
@@ -51,33 +56,35 @@ class User < ApplicationRecord
   end
 
   # The fields the daily digest covers: every field in the user's operations, less the operations,
-  # farms and fields they've left out
+  # farms, pivots and fields they've left out
   def digest_fields
     excluded = digest_exclusions.pluck(:subject_type, :subject_id).group_by(&:first).transform_values { |pairs| pairs.map(&:last) }
     Field.joins(pivot: :farm)
       .where(farms: {group_id: memberships.select(:group_id)})
       .where.not(farms: {group_id: excluded.fetch("Group", [])})
       .where.not(farms: {id: excluded.fetch("Farm", [])})
+      .where.not(pivot_id: excluded.fetch("Pivot", []))
       .where.not(id: excluded.fetch("Field", []))
   end
 
-  # Includes exactly these fields of the user's operations in the digest. A farm or operation with
-  # none of its fields picked is left out as a whole, so fields added to it later stay out too; one
-  # with all of them picked takes in new fields.
+  # Includes exactly these fields of the user's operations in the digest. An operation, farm or
+  # pivot with none of its fields picked is left out as a whole, so fields added to it later stay out
+  # too; one with all of them picked takes in new fields.
   def digest_field_ids=(ids)
     picked = ids.map(&:to_i).to_set
+    none_picked = ->(fields) { fields.any? && fields.none? { |field| picked.include?(field.id) } }
     transaction do
       digest_exclusions.delete_all
       groups.includes(farms: {pivots: :fields}).find_each do |group|
-        fields = group.farms.flat_map { |farm| farm.pivots.flat_map(&:fields) }
-        next digest_exclusions.create!(subject: group) if fields.any? && fields.none? { |field| picked.include?(field.id) }
+        next digest_exclusions.create!(subject: group) if none_picked.call(group.farms.flat_map { |farm| farm.pivots.flat_map(&:fields) })
 
         group.farms.each do |farm|
-          fields = farm.pivots.flat_map(&:fields)
-          if fields.any? && fields.none? { |field| picked.include?(field.id) }
-            digest_exclusions.create!(subject: farm)
-          else
-            fields.reject { |field| picked.include?(field.id) }.each { |field| digest_exclusions.create!(subject: field) }
+          next digest_exclusions.create!(subject: farm) if none_picked.call(farm.pivots.flat_map(&:fields))
+
+          farm.pivots.each do |pivot|
+            next digest_exclusions.create!(subject: pivot) if none_picked.call(pivot.fields)
+
+            pivot.fields.reject { |field| picked.include?(field.id) }.each { |field| digest_exclusions.create!(subject: field) }
           end
         end
       end

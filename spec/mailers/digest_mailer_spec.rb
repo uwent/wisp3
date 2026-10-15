@@ -8,7 +8,7 @@ RSpec.describe DigestMailer do
 
   around { |example| travel_to(digest_today) { example.run } }
 
-  it "lists fields needing attention first, then every field by operation, weather zone and pivot" do
+  it "lists fields needing attention first, then every field by weather zone and pivot, with one operation and farm on a line" do
     soon = digest_field(pivot, "Soon", 12)
     digest_field(pivot, "Fine", 15)
 
@@ -20,10 +20,13 @@ RSpec.describe DigestMailer do
     expect(text).to include("NEEDS ATTENTION\n\n- Field: Soon [! Caution] Home › Pivot 1: Irrigate by Wed, Jul 22\n")
     cell = pivot.weather_cell
     zone = format("Weather zone 1 (%.2f°N, %.2f°W)", cell.latitude, -cell.longitude)
-    expect(text).to include("== OPERATION: #{user.groups.first.name.upcase} ==\n\n-- #{zone} --\n" \
+    expect(text).to start_with("Your fields this morning, Monday, July 20\nOperation: #{user.groups.first.name} · Farm: Home\n")
+    expect(text).not_to include("OPERATION:", "FARM:")
+    expect(text).to include("\n-- #{zone} --\n" \
       "   Past 7 days: 0.00 in rain · 1.40 in ET · highs 85°F, lows 60°F\n" \
       "   Next 7 days: 0.00 in rain · 1.40 in ET · highs 88°F, lows 62°F\n" \
-      "   Pivots in this zone: Pivot 1\n\n   Pivot: Pivot 1 · Home\n")
+      "   Pivots in this zone: Pivot 1\n\n   Pivot: Pivot 1\n")
+    expect(text).to include("This email lists 2 fields on 1 pivot, of the 2 fields on 1 pivot your alerts cover (2 with a crop this season).")
     expect(text).to include("     Field: Fine [✓ OK] Potato · AD 1.00 in\n     Irrigate by Sat, Jul 25\n")
     expect(text).to include("     Field: Soon [! Caution] Potato · AD 0.28 in of 1.20 in · 11.2% moisture\n     Irrigate by Wed, Jul 22. Projected")
     expect(text).to include("Last rain: None · Last irrigation: None")
@@ -55,9 +58,18 @@ RSpec.describe DigestMailer do
     create(:membership, user:, group: partners)
     digest_field(create(:pivot, farm: create(:farm, group: partners, name: "Far"), weather_cell: pivot.weather_cell), "Away", 15)
     text = described_class.daily(DailyDigest.new(user)).text_part.body.decoded
-    expect(text).to include("== OPERATION: PARTNERS ==")
-    expect(text).to include("== OPERATION: #{user.groups.first.name.upcase} ==")
+    expect(text).to include("=== OPERATION: PARTNERS ===\n\n== FARM: FAR ==")
+    expect(text).to include("=== OPERATION: #{user.groups.first.name.upcase} ===\n\n== FARM: HOME ==")
     expect(text.scan("-- Weather zone 1").size).to eq(2)
+
+    # Out of season, under "all the fields it covers"
+    user.update!(digest_scope: "all")
+    away = Field.find_by!(name: "Away")
+    away.plantings.sole.update!(end_date: Date.new(2026, 7, 10))
+    text = described_class.daily(DailyDigest.new(user)).text_part.body.decoded
+    expect(text).to include("     Field: Away [– Off season] Potato · season ended Jul 10\n")
+    html = described_class.daily(DailyDigest.new(user)).html_part.body.decoded
+    expect(html).to include("– Off season", "Potato · season ended Jul 10")
   end
 
   it "marks a test email, and says how often the real one comes" do
@@ -77,6 +89,15 @@ RSpec.describe DigestMailer do
     expect(User.find_by_token_for(:digest_unsubscribe, token)).to eq(user)
     expect(mail.header["List-Unsubscribe-Post"].value).to eq("List-Unsubscribe=One-Click")
     expect(mail.text_part.body.decoded).to include("Unsubscribe: #{url}")
+  end
+
+  it "says when nothing needs doing" do
+    digest_field(pivot, "Fine", 15)
+    user.update!(digest_scope: "needs_irrigation")
+    mail = described_class.daily(DailyDigest.new(user))
+    expect(mail.text_part.body.decoded).to include("No action needed. No field needs irrigation now or within 3 days.")
+    expect(mail.text_part.body.decoded).to include("Pivots in this zone: Pivot 1")
+    expect(mail.text_part.body.decoded).not_to include("Field: Fine")
   end
 
   it "uses the reader's units" do
