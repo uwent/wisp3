@@ -204,6 +204,7 @@ The initial AD on `season_start` comes from `initial_moisture_pct` via the same 
   - **Legacy problems (C4, C18):** the corn curve was applied to every crop, and sweet corn's placeholder curve produces **negative ET**.
   - The engine takes a `CanopyModel` per plant, so adding validated curves later is a data change.
   - With LAI readings entered, they replace the curve entirely (interpolated like percent cover); with none, the curve is used, or LAI 0 (no ET) for plants without one. Revisit blending readings with the curve after Q2.
+- **Phase 6.7** proposes a default curve for every crop (percent cover and LAI), readings that scale or replace it, and a per-planting setting for which, documented per crop on the About page.
 
 ### 5.4 Crop ET (percent-cover method, from the A3600 Table C regressions)
 
@@ -619,6 +620,57 @@ Decided 2026-10-07 (Ben): some growers want the balance to use only the rain the
 - [x] Playwright: switch a field to entered-only, see the badge, totals and dry line change, switch back.
 - **Exit:** switching a demo field to entered-only and back restores the same balance; its projection shows both cases; the precipitation chart and the details card agree with the daily grid.
 
+### Phase 6.7: Crop canopy curves
+
+Proposed 2026-10-15 (Ben): every crop gets a default canopy curve (percent cover, and LAI where it has one) that runs from emergence through the season. Readings the grower enters scale it or take over from it, and each planting chooses how readings and the curve combine. Brings Q2 option C forward from "After launch". Not a perfect growth model: growers are still asked for readings about weekly. The aim is plausible growth and decline rates between and without readings, and documentation of every curve's source on the About page.
+
+**What happens now (§5.3, `Canopy`, `CanopyModel`):**
+- **Percent cover:** 0 at emergence, a straight line to the first reading and between readings, the last reading held to `end_date`, then 0. **With no readings the cover is 0% all season**, so the planting only loses bare-soil evaporation (A3600 Table C at 0%). Percent cover has no curve.
+- **LAI:** field corn follows the WIS curve (by days since emergence) until a reading is entered. After that the readings replace the curve for the whole season (straight lines, ramp from 0, held after the last). Every other crop has LAI 0 (no ET) until its first reading.
+- ET only responds to cover up to 80% (`CropEt`: ET = et0 from 80% cover), and to LAI up to about 3 (Kc ≈ 1.09). So a curve matters most during canopy development, and in the decline before `end_date` for crops that senesce in the field (potato, field corn, soybean, wheat).
+
+#### A. Research plan
+
+Each step produces a dated note in `docs/canopy/` (sources, data, scripts and results) so the reasoning stays public with the code.
+
+*Progress:* `01-legacy-readings.md` (A.2; first look at A.3: GDD doesn't explain the 2026 spread), `02-published-curves.md` (A.1 for potato, field corn, soybean, snap bean and sweet corn: AquaCrop's calendar-day defaults match Wisconsin 2026 within a few days for potato, corn and snap bean; FAO-56 Table 11 rows for the rest).
+
+1. **Survey the published curve families**, recording for each the equation, driver (calendar days or degree-days, with base and upper temperatures), parameters per crop, how it was calibrated, and its licence or citation.
+   - **FAO AquaCrop** canopy cover model (Steduto et al. 2009, Raes et al. 2009, *Agron. J.* 101; reference manual ch. 3): exponential growth from CC0 at rate CGC to a maximum CCx, then decline at rate CDC from the start of senescence. It can run on calendar days or GDD, and its crop files have calibrated parameters for maize, potato, soybean, wheat, barley, tomato, cabbage, onion, sunflower, alfalfa and more. **This is the leading candidate for percent cover:** the curve family is published and peer reviewed, needs only a few parameters per crop, and covers senescence.
+   - **FAO-56** (Allen et al. 1998) Table 11 stage lengths and the cover-based Kc (Allen & Pereira 2009, *Irrig. Sci.* 28): use it as the fallback for crops without AquaCrop files (mint, asparagus, celery, beets, cucurbits) and as a check on the others' timing.
+   - **Crop-model LAI** for the LAI method: CERES-Maize and Hybrid-Maize (Yang et al. 2004) for corn, SUBSTOR-Potato, and CROPGRO for soybean and snap bean (dry bean). Compare them with the WIS corn curve, whose origin is still to be confirmed (Q2 question 1).
+   - **Canopy extinction coefficient k** per crop, to convert between cover and LAI (CC = 1 − e^(−k·LAI)). This lets one curve per crop serve both methods, and it also answers Q2 question 2 about the 1.5 used in `CropEt`.
+   - **Upper Midwest and Wisconsin sources** for timing and maximum cover: UW potato canopy and irrigation work in the Central Sands, the processing-vegetable literature (sweet corn, snap bean, peas), Iowa State/Ritchie corn and soybean stage-GDD tables, and A3600 itself. Use them to adjust AquaCrop or FAO timings to Wisconsin cultivars and planting dates.
+2. **Mine the legacy readings (the best Wisconsin data we have).** Legacy production holds several seasons of percent cover readings entered by growers, with crop, emergence date and location. Export them read-only and **aggregated, with no user, farm or field identifiers**: crop, year, days after emergence, cover, and the O1280 cell. Attach daily GDD from `weather_days` (or backfill those cells), and screen out implausible values. Also run the LAI-reading query, though few or none are expected. Only the anonymised extract and the fitting scripts are committed. Check with Ben that this use of legacy data is acceptable before exporting.
+3. **Choose the driver for each crop from the data.** Fit each candidate family to each crop's legacy readings, by days after emergence and by GDD with the crop's base temperature (for example 50 °F for corn, about 45 °F for potato, 40 °F for peas and cool-season crops). Keep GDD where it explains clearly more of the variation between years and planting dates; otherwise use calendar days, which are simpler to explain. Days ahead of today take GDD from the forecast, and beyond the forecast, a climatological normal.
+4. **Choose how readings combine with the curve** by backtesting on the legacy series: hide every other reading, predict the hidden ones with each method, and compare the errors (in cover, and in the season's crop ET through `CropEt`). Candidates:
+   - **Linear:** today's behavior, kept as an option.
+   - **Scaled curve:** the ratio of each reading to the curve, interpolated between readings and multiplied by the curve, with the curve's shape kept after the last reading. This needs a guard where the curve is near 0 early in the season.
+   - **Shifted curve:** each reading maps to the point on the rising curve with the same value (the crop is *n* days or GDD ahead or behind), interpolated between readings. This is stable early but undefined above the curve's maximum and after the peak, so it switches to scaling there.
+   - After the last reading the scaled curve is followed (decided below); the backtest measures how well that predicts later readings, and sets how far off the readings can be before WISP warns and falls back to straight lines. Readings at or above 80% cover change nothing in ET, so for percent cover the main question is the early-season ramp.
+5. **Write a crop card for every crop in `plants.yml`**: driver and base temperature, parameters, maximum cover/LAI, days or GDD to full cover and to senescence, sources, the fit to legacy data, and a confidence rating (*fitted to Wisconsin data* / *published, unvalidated here* / *borrowed from a similar crop*). Do the crops in order of how much they're grown and how much the curve matters: **potato, field corn, sweet corn, soybean, snap bean**; then peas, onion, carrot, cabbage/broccoli, cucurbits, pepper/tomato, wheat/barley, alfalfa, mint, asparagus; then the rest. Similar crops can share a curve (cucurbits, brassicas, leafy greens), with the sharing noted on their cards. Perennials and cut crops (alfalfa, asparagus, mint) may need curves that restart at green-up or cutting, or no curve. For **Other**, use no curve: linear readings only, as now.
+6. **Agronomy review:** send the crop cards and the backtest results to the agronomist contacted for Q2. Nothing becomes a default without a source; if a crop's card is weak, that crop ships with no curve (today's behavior) rather than a guessed one.
+
+**Research exit:** a crop card for every crop, the backtest choosing a method for combining readings and the curve, and the review's answers recorded in Q2.
+
+#### B. Implementation (after A; details may change with its results)
+
+- [ ] **Curve definitions in one data file** (`db/reference/canopy_curves.yml`) read by `CanopyModel`: family (`aquacrop`, `wis_lai`, or `table` for weekly checkpoints when a source gives only those), driver and base/upper temperatures, parameters, LAI conversion (k), sources and confidence. The engine, the field page and the About page all read from it. `plants.canopy_model` names the curve.
+- [ ] **`Canopy` takes a curve position per day** (days since emergence, or cumulative GDD from emergence with the crop's base temperature), so it stays pure. `Weather::DegreeDays` gains a base-temperature argument. GDD needs tmax/tmin from `DailyInputs` and the forecast, which `DailyInputs.preload` / `FieldStatuses` must preload. The forecast's GDD feeds the projection's canopy.
+- [ ] **Per-planting setting** `plantings.canopy_interpolation` (`linear` | `curve`, NULL = the crop's default: `curve` if it has one): how readings combine with the curve. With no readings, a crop with a curve follows it under either setting. Under `curve`, readings far from the curve's course switch the planting to straight lines and show a warning ("Your readings don't follow the potato curve, so WISP is drawing straight lines between them") with the fitted scale; `PlantingStatus` exposes it so the dashboard and digest can flag it too. Changing it recalculates the season on read, like the rain setting (Phase 6.6). Planting form and quick setup offer "Between readings: straight lines / follow the crop's curve".
+- [ ] **Engine change:** percent cover without readings follows the curve instead of 0%, and readings combine by the chosen method. This is a canopy-series change, so it gets a new §9 fix ID (C20) and an entry in `LegacyEngine::CANOPY_FIXES`, and `legacy_engine_spec` keeps passing. Unit specs per curve family (values at checkpoints, never negative, cover within 0–100, 0 before emergence and after `end_date`) and per method (scaled and shifted, early-season guard, readings above the curve's maximum, the last reading and after it).
+- [ ] **Field page:** the canopy chart shows the crop's curve (dashed), the readings (points), and the canopy the balance uses. The tooltip says which: entered, interpolated, or curve. The guidance (`lib/guidance.ts`) describes the planting's method and curve, and the readings card stops treating "no readings" as no water use for crops with a curve.
+- [ ] **About page, per crop** (WISP is open-source academic software, so every curve and its source is public): the Crops section gains a canopy card for each crop, generated from `canopy_curves.yml`. It shows the curve as a small chart in the shared scale (small multiples), its equation and parameters, its driver and base temperature, its sources (with DOIs), its confidence, and whether readings scale or replace it. A "How the canopy is modeled" section explains the curve families, the two ways readings combine, holding versus following after the last reading, and the cover ↔ LAI conversion. The crop table's "Canopy methods" column follows the YAML. Glossary entries: canopy curve, degree-days (GDD), base temperature.
+- [ ] `docs/canopy/` (research notes, fitting scripts, anonymised extract) linked from the About page's methods section for agronomists.
+- [ ] Demo seed: a few plantings with no readings or sparse readings, so the curve is visible.
+- **Exit:** every crop in `plants.yml` either has a sourced curve or is documented as having none. A demo potato planting with no readings has a plausible cover and ET season, and adding readings moves it as the chosen method says. The About page's crop cards match `canopy_curves.yml`, and `legacy_engine_spec` passes with C20 off.
+
+**Decided 2026-10-15 (Ben):**
+- **No readings:** a crop with a curve follows it from emergence.
+- **Readings and the curve:** the curve is scaled a little to fit the readings, and after the last reading the canopy **keeps following the scaled curve**, including its decline; it is not held. If the readings are far from the curve's course (the fitted scale falls outside a band, or the fit is poor), WISP **warns** on the field page and **breaks from the curve**: straight lines between readings, as with the `linear` setting. The backtest (A.4) sets the band and tests whether a time shift should be fitted as well as the scale.
+- **Legacy data:** anonymised readings may be used if they are of good quality. The 30-field golden sample (`tmp/wisp_golden.json`, 2026) shows why filters are needed: 12 of its 23 percent cover fields have no cover readings, the rest have 1–22, and many emergence dates are the May 1 default. Screen out fields with fewer than about 4 readings in the growth period, emergence left at the default, or readings that go down during growth. Only 2026 exists (legacy deleted each season's data on February 15), so the extract checks timing rather than fitting curves (`docs/canopy/01-legacy-readings.md`); the extract itself isn't committed.
+- **LAI for crops other than field corn** is derived from the percent cover curve through the crop's extinction coefficient, where the literature supports a k for that crop. Potato is managed by canopy cover in practice, so cover is its primary method. Growth after the rows close (LAI rising while cover is near 100%) is beyond what conversion from cover can show, because LAI = −ln(1 − CC)/k has no finite value at full cover. Cap the converted LAI at the crop's published maximum. ET is unaffected either way: Kc is within 1% of its maximum by about LAI 3, as percent cover ET is at et0 from 80% cover.
+
 ### Phase 7: Map
 
 - [ ] MapLibre map, USGS imagery + OpenFreeMap streets, pivot circles and arcs colored by status.
@@ -643,7 +695,6 @@ Decided 2026-10-07 (Ben): some growers want the balance to use only the rain the
 
 - Forecast accuracy tracking (stored forecasts vs finalized weather).
 - PWA / offline-friendly daily entry.
-- **GDD-driven canopy curves** (Q2 option C), starting with potato and corn, using the agronomist's input.
 - Validated LAI or canopy curves for more crops; sensor integrations; a future AgWeather 2 provider.
 
 ---
@@ -653,7 +704,7 @@ Decided 2026-10-07 (Ben): some growers want the balance to use only the rain the
 | # | Question | Status | Needed by |
 |---|---|---|---|
 | Q1 | Alert threshold and lead-time defaults | **Resolved**: recommendation adopted | – |
-| Q2 | How LAI should work, and for which crops | **A + B adopted for 2027**; agronomist contacted; GDD curves on the post-launch list | Review answers by Phase 4 |
+| Q2 | How LAI should work, and for which crops | **A + B adopted for 2027**; agronomist contacted; curves per crop (option C) researched in Phase 6.7 | Review answers by Phase 4 |
 | Q3 | Display units | **Resolved**: inches by default, per-user inch/mm toggle in Settings | – |
 | Q4 | Pivot-level irrigation | **Resolved** → D9, §4 `pivot_irrigations` | – |
 | Q5 | Can the deploy user run `systemd --user` services? | **Resolved**: yes on staging; new production server provisioned with it (D11, §12) | – |
@@ -710,7 +761,7 @@ So 23 of the 29 LAI fields were modeled with a *corn* canopy. Potato is the main
 | B. A + entered LAI observations allowed for any crop | Flexible for advanced users | Needs a good help page on how to measure LAI |
 | C. GDD-based curves per crop | Most realistic | Needs validated curves, which we don't have yet |
 
-**Decision:** ship **A + B** for 2027 (already reflected in §5.3). An agronomist has been contacted with the questions above. **C (GDD-driven curves) stays on the post-launch list.**
+**Decision:** ship **A + B** for 2027 (already reflected in §5.3). An agronomist has been contacted with the questions above. **C (curves per crop, by GDD or calendar days) is brought forward to Phase 6.7 (2026-10-15).**
 
 Groundwork in the meantime: Phase 3 stores daily tmax/tmin and calculates daily and cumulative GDD (base 50 °F, 86 °F cap, the standard corn method). GDD-based curves then need no new data plumbing, and GDD can be shown in the UI.
 

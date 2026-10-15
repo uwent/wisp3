@@ -32,8 +32,8 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Phase 6.6: field rain setting and season details
 
-- [ ] **Deploy to staging** (`bundle exec cap staging deploy`); it runs the new migration (`fields.use_model_precip`).
-- [ ] **Exit check:** on staging, pick a field with a few weeks of rain gauge readings (or enter some), then:
+- [x] **Deploy to staging** (`bundle exec cap staging deploy`); it runs the new migration (`fields.use_model_precip`).
+- [x] **Exit check:** on staging, pick a field with a few weeks of rain gauge readings (or enter some), then:
   - At the bottom of its page, switch it to "Only the rain you enter" and save. The summary card should say "Rain: only what you enter…", and the season details show the modeled rain left out of the balance.
   - Check the projection shows both cases: the dotted "If no rain falls" line on the soil-water chart, the "AD if no rain" column in the forecast table, and "If no rain falls: irrigate by …" in the outlook (and in the daily email) when that's sooner.
   - Check the precipitation chart (weather section) and the season details agree with the daily grid: entered rain beside the model's, outlined modeled rain where it isn't used.
