@@ -65,12 +65,21 @@ Parameters (calendar files; t in days since emergence):
    Lowering CGC fixes both, a WI adjustment noted on the crop card: soybean CGC ≈ 0.087/day (50% / 80% on
    days 40 / 51) and sweet corn ≈ 0.124/day (38 / 46) put the 80% day at the 2026 medians. Two sweet corn series are too few to
    adjust from; the literature has to support any change.
-3. **Potato decline:** AquaCrop's potato barely declines (88% cover at maturity). Wisconsin
-   readings decline from about day 55–62, to 50% by day 69, and in one field to 5% by day 76.
-   That's probably vine kill and early dying, not the crop file's natural senescence. Options:
-   start the decline earlier, around day 60, with a CDC fitted to those two series; or leave the
-   decline to readings and the end date. The decline doesn't affect ET until cover falls below 80%,
-   but then it matters, which is why the potato decline needs to be right.
+3. **Potato decline:** AquaCrop's potato starts declining 74 days after emergence (about
+   Aug 1 for mid-May emergence), but so slowly that it still has 88% cover at maturity. In 2026,
+   most Wisconsin fields read 75–80% in early to mid August. Two fields (probably one grower's
+   early variety) fell from 80% at day 55 to 50% by day 69, and one to 5% by day 76 (late July).
+   **Decided (Ben, 2026-10-15), until a researcher's potato model arrives:** a Central Wisconsin
+   management rule. Senescence begins before vine-kill sprays, which typically go on from
+   mid to late August, later if conditions favour bulking. So the canopy declines **from
+   August 1 by 10 percentage points a week, down to 50%**, and holds there until the planting's
+   end date (vine kill), after which it's 0. If the canopy hasn't reached its maximum by
+   August 1 (emergence after about late June), the decline starts when it does. From CCx 92% the
+   rule reaches 80%, where ET starts to fall, around Aug 9, and 50% around Aug 30. Against 2026
+   readings: about 87% on Aug 4 and 77% on Aug 11, compared with 75–80% read. Early varieties and
+   early kill are left to readings, which pull the curve down or trigger the break to straight
+   lines. The crop card labels it *Wisconsin management rule (expert judgment)*, not a fitted
+   curve.
 4. **Maximum cover** (CCx 92–99%) can't be checked against Wisconsin readings, because growers
    stop at 80% (note 01). ET doesn't depend on it under percent cover, which is at et0 from 80%.
 5. **The WIS field corn LAI curve, under WISP's Beer's-law formula (k = 1.5), matches the cover
@@ -137,7 +146,7 @@ don't define every crop's development stage the same way.
 - Build the FAO-56-derived curves for the remaining crops and check how plausible they are.
   Find Upper Midwest timings for onion, carrot, cabbage and the cucurbits where extension or
   processing-crop literature has them.
-- Potato decline: fit the start and rate to the two 2026 series that decline, and look for UW
-  potato vine-kill and early-dying canopy data.
+- Potato decline: the Aug 1 rule above for now; replace it with the researcher's potato model
+  when it arrives.
 - Ask the agronomist (Q2) whether k = 1.5 is the right way to derive LAI from cover.
 - Then step A.4: backtest how readings scale the curve, with the curves above.
