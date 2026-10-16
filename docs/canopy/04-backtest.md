@@ -104,3 +104,7 @@ straight lines (0.155 against 0.126), because its curve is still uncertain. One 
   curve. Growers who prefer straight lines can still choose `linear` per planting.
 - The decision recorded earlier (warn **and** break from the curve when readings are far off) is
   replaced by this, pending Ben.
+
+**Implemented (2026-10-15):** ratio between readings in `Canopy` (the `curve` setting), the warning
+as `Canopy#check`, shown through `PlantingTasks` on the field page, dashboard and daily email.
+Ben agreed to the warning in place of an automatic switch to straight lines.
