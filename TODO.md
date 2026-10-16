@@ -39,6 +39,19 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
   - Check the precipitation chart (weather section) and the season details agree with the daily grid: entered rain beside the model's, outlined modeled rain where it isn't used.
   - Switch back to "The operation's setting" and check the balance and season totals return to what they were.
 
+## Phase 6.7: canopy curves, tasks and the daily email
+
+- [ ] **Deploy to staging** (`bundle exec cap staging deploy`). Three migrations run: non-corn LAI plantings switch to percent cover (their readings kept), `plantings.canopy_interpolation`, and `users.digest_scope` with the new "Daily all year" frequency.
+- [ ] **Exit check on staging:**
+  - A percent cover planting with no readings now follows its crop's curve (the dashed line on the field page's canopy panel), and its water use rises with it. Fields that had no readings will show more ET than before.
+  - Enter a few readings and check the canopy passes through them; enter one that runs well ahead of the curve, or drops, and check the warning on the field page, the dashboard card and the email.
+  - Read the About page's "Canopy curves" section and the crop cards, and the "How … is modeled" text on a field page. Change any wording you don't like (the curves' notes are in `db/reference/canopy_curves.yml`).
+  - On the Alerts page, try each "Fields in the email" choice and "Daily all year", and check the preview: the hierarchy, the collapsed operation/farm line, the to-do lines and the counts in the footer.
+- [ ] **Potato canopy model from the researcher:** when it arrives, send it to the next session. It replaces the AquaCrop potato curve and the August 1 decline rule (`db/reference/canopy_curves.yml`, `potato`), checked against the 2026 readings (`docs/canopy/`) and documented on the About page with its source.
+- [ ] **LAI curves from the other researcher:** each one goes into `CanopyModel` (`app/services/canopy_model.rb`) with its source, and the crop's `canopy_model` in `db/reference/plants.yml`; that crop then gets the LAI option. Say which crops and what each curve is driven by (days since emergence or degree-days).
+- [ ] **Agronomist review** of the curves: the questions under "For the agronomist" in `docs/canopy/03-crop-curves.md` (onion, the k = 1.5 LAI formula, winter wheat). An answer replaces a curve or its confidence label; nothing needs to wait for it.
+- [ ] You can delete `tmp/legacy_wisp/` (the legacy cover readings export; what it showed is in `docs/canopy/01-legacy-readings.md`).
+
 ## Staging (non-blocking)
 
 - [x] **Add the Open-Meteo key to staging credentials** before deploying: `bin/rails credentials:edit --environment staging`, add
@@ -66,7 +79,7 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
   - Do mails from these hosts get DKIM-signed for `cals.wisc.edu`?
   - Does SPF cover these hosts?
   - Is a daily digest to a few hundred recipients OK?
-- [ ] **Agronomist, LAI (Q2):** the five questions in PLAN.md §15 Q2. The most valuable answer is a potato canopy curve. Ideally get answers before Phase 4 (Dec–Jan).
+- [ ] **Agronomist, LAI (Q2):** the five questions in PLAN.md §15 Q2, now with the Phase 6.7 research (see the Phase 6.7 section above). The potato curve may come from your researcher contact instead.
 
 ## Decisions still open
 
