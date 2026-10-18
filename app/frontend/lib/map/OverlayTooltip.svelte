@@ -2,7 +2,6 @@
   import type { Units } from '@/lib/units'
 
   import type { Probe, ProbeValue } from './mapOverlays.svelte'
-  import { NONE_COLOR } from './overlays'
 
   // What the shown layers have under the pointer or a tap (MapOverlays.probe), next to it, kept
   // inside the map
@@ -18,7 +17,7 @@
     if (value === 'loading') return { text: '…', muted: true }
     if (value === 'unavailable') return { text: 'Unavailable', muted: true }
     if (value === 'outside') return { text: 'No data outside the US', muted: true }
-    if (value.kind === 'none') return { text: none, color: NONE_COLOR }
+    if (value.kind === 'none') return { text: none }
     if (value.kind === 'text') return { text: value.text, color: value.color }
     if (value.upTo === undefined) return { text: `About ${depth(value.inches)}` }
     if (value.upTo === null) return { text: `${depth(value.inches)} or more` }

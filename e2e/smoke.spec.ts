@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { expect, type Page, test } from '@playwright/test'
 
 // Smoke tests over the demo account seeded by e2e/seed.rb: every page renders without script
@@ -200,7 +202,6 @@ test("tapping the map gives the rain layer's value there", async ({ page }) => {
   await page.getByRole('button', { name: 'Layers' }).click()
   const layers = page.getByRole('dialog', { name: 'Map layers' })
   await layers.getByRole('radio', { name: /last 24 hours/ }).check()
-  await expect(layers.getByText('No rain')).toBeVisible() // the gray "none" class in the legend
   await page.getByRole('button', { name: 'Close map layers' }).click()
 
   // A tap away from the pivots (the map's lower left corner)
@@ -209,6 +210,24 @@ test("tapping the map gives the rain layer's value there", async ({ page }) => {
   await map.click({ position: { x: 30, y: box.height - 60 } })
   const tooltip = page.getByRole('status').filter({ hasText: 'Rain, last 24 hours' })
   await expect(tooltip).toContainText('About 0.74 in')
+})
+
+test('the radar layer gives the reflectivity under a tap', async ({ page }) => {
+  // Every radar tile a solid 20 dBZ, in IEM's palette
+  const tile = readFileSync(new URL('./fixtures/radar-20dbz.png', import.meta.url))
+  await page.route('**/nexrad-n0q-900913/**', (route) => route.fulfill({ body: tile, contentType: 'image/png' }))
+  await page.goto('/map')
+  await page.getByRole('button', { name: 'Layers' }).click()
+  await page
+    .getByRole('dialog', { name: 'Map layers' })
+    .getByRole('radio', { name: /Radar now/ })
+    .check()
+  await page.getByRole('button', { name: 'Close map layers' }).click()
+
+  const map = page.getByRole('application', { name: /Map of the operation/ })
+  const box = (await map.boundingBox())!
+  await map.click({ position: { x: 30, y: box.height - 60 } })
+  await expect(page.getByRole('status').filter({ hasText: 'Radar now' })).toContainText('Light rain (20 dBZ)')
 })
 
 test('quick setup suggests the soil from the soil survey under the pivot', async ({ page }) => {

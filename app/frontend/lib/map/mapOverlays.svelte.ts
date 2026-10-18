@@ -10,7 +10,6 @@ import {
   droughtAt,
   droughtDate,
   droughtUrl,
-  NONE_COLOR,
   OVERLAY_ORDER,
   type OverlayId,
   type OverlayValue,
@@ -28,16 +27,13 @@ const overlayOf = (source: string | undefined) => {
   const id = source?.startsWith('overlay-') ? source.slice('overlay-'.length) : null
   return OVERLAYS.some((overlay) => overlay.id === id) ? (id as OverlayId) : null
 }
-/** The light gray over the US under the overlays: where a layer has nothing */
-const NONE_LAYER = 'overlay-none'
-const NONE_OPACITY = 0.45
 /** Hovering this long over one spot asks the layers for their values */
 const HOVER_MS = 300
 
 type Outline = { geometry: { coordinates: LngLat[][][] } }
 let outline: Promise<Outline> | undefined
 // A simplified outline of the US (us-atlas 3.0.1, from the Census Bureau's cartographic boundaries),
-// loaded the first time a layer is shown
+// loaded the first time the tooltip asks, to say when a point is outside the layers' coverage
 const loadOutline = () =>
   (outline ??= import('./us-outline.json').then((module) => module.default as unknown as Outline))
 
@@ -165,8 +161,7 @@ export class MapOverlays {
         else if (overlay.kind === 'raster') this.#showRaster(map, overlay)
         else this.#showDrought(map)
       }
-      if (shown.length) this.#showNone(map)
-      else this.#hideNone(map)
+      if (!shown.length) this.#clearProbe()
     } catch {
       // The style is still loading (a basemap change): try again when it's done
       map.once('idle', () => this.sync(this.#shown, this.#opacity))
@@ -221,35 +216,6 @@ export class MapOverlays {
         this.#before(map, overlay.id),
       )
     }
-  }
-
-  /** The gray "none" over the US, under every overlay */
-  #showNone(map: MapLibreMap) {
-    if (map.getLayer(NONE_LAYER)) return
-    loadOutline()
-      .then((us) => {
-        if (!this.#shown.length || map.getLayer(NONE_LAYER)) return
-        if (!map.getSource(NONE_LAYER)) map.addSource(NONE_LAYER, { type: 'geojson', data: us as never })
-        const lowest = OVERLAY_ORDER.map(sourceId).find((layer) => map.getLayer(layer))
-        map.addLayer(
-          {
-            id: NONE_LAYER,
-            type: 'fill',
-            source: NONE_LAYER,
-            paint: { 'fill-color': NONE_COLOR, 'fill-opacity': NONE_OPACITY },
-          },
-          lowest ?? (map.getLayer(PIVOT_LAYER) ? PIVOT_LAYER : undefined),
-        )
-      })
-      .catch(() => {
-        // Without the outline there's no gray; the layers still work
-      })
-  }
-
-  #hideNone(map: MapLibreMap) {
-    if (map.getLayer(NONE_LAYER)) map.removeLayer(NONE_LAYER)
-    if (map.getSource(NONE_LAYER)) map.removeSource(NONE_LAYER)
-    this.#clearProbe()
   }
 
   #refresh(overlay: RasterOverlay) {

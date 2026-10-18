@@ -1,9 +1,10 @@
 import { type LngLat, pointInPolygon } from '@/lib/geo'
 
+import { reflectivityAt } from './radar'
+
 // Optional public layers for the map (PLAN.md Phase 7 E), loaded by the browser from their
 // providers, never by our server. Each can fail or be slow; the map marks a failing one
-// unavailable and carries on. Where a layer has nothing (no rain, no drought) the map shows a light
-// gray over the US, its "none" class; valueAt says what a layer has at a point, for the tooltip.
+// unavailable and carries on. valueAt says what a layer has at a point, for the tooltip.
 
 export type OverlayId = 'radar' | 'rain24' | 'rain72' | 'qpf1' | 'qpf3' | 'qpf7' | 'drought'
 
@@ -29,7 +30,7 @@ type Base = {
   /** For the map's attribution control */
   attribution: string
   legend: Legend
-  /** The gray class where the layer has nothing */
+  /** What the tooltip says where the layer has nothing */
   none: string
   opacity: number
   /** How often to reload it while it's shown */
@@ -45,9 +46,6 @@ export type RasterOverlay = Base & {
 /** The drought layer's polygons are loaded whole, so its values are looked up in the browser */
 export type VectorOverlay = Base & { kind: 'drought' }
 export type Overlay = RasterOverlay | VectorOverlay
-
-/** The light gray drawn over the US under any layer, where it has nothing */
-export const NONE_COLOR = '#c9cdd3'
 
 async function json(url: string, signal?: AbortSignal) {
   const response = await fetch(url, { signal })
@@ -78,10 +76,9 @@ async function identify(service: string, at: LngLat, mosaicRule: object | null, 
   return data?.value === undefined || data.value === 'NoData' || Number.isNaN(value) ? null : value
 }
 
-// Radar: the Iowa Environmental Mesonet's tiles (fast, cached) for the picture, NOAA's image
-// service for the value at a point
+// Radar: the Iowa Environmental Mesonet's tiles, for the picture and (from the same tile's colors,
+// radar.ts) the value at a point
 const IEM = 'https://mesonet.agron.iastate.edu'
-const RADAR_SERVICE = `${NOAA}/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer`
 
 /** What a reflectivity means for rain, roughly (NWS guidance) */
 export function describeReflectivity(dbz: number): string {
@@ -266,7 +263,7 @@ export const RAIN_OVERLAYS: RasterOverlay[] = [
     // The stamp makes a refresh fetch new tiles rather than the browser's cached ones
     tiles: (stamp) => [`${IEM}/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png?t=${stamp}`],
     valueAt: async (at, signal) => {
-      const dbz = await identify(RADAR_SERVICE, at, null, signal)
+      const dbz = await reflectivityAt(at, signal)
       return dbz === null || dbz < 5
         ? { kind: 'none' }
         : { kind: 'text', text: `${describeReflectivity(dbz)} (${Math.round(dbz)} dBZ)` }

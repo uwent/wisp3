@@ -732,7 +732,7 @@ Each overlay lives in a registry (`lib/map/overlays.ts`: id, name, tile URL buil
 | Overlay | Source | Notes |
 |---|---|---|
 | **Radar now** | Iowa Environmental Mesonet NEXRAD composite tiles (`mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png`) | Every 5 minutes; the panel shows the time. A loop over the last hour (IEM's `-m05m`…`-m55m` layers) is a stretch goal |
-| **Rain, last 24 h / 72 h** (radar estimate) | IEM MRMS accumulation tiles (`q2-p24h`, `q2-p72h`) | Good next to WISP's own numbers: did the gauge, the model and the radar agree? |
+| **Rain, last 24 h / 72 h** (radar estimate) | IEM MRMS accumulation tiles (`q2-p24h`, `q2-p72h`); *as built (H): NOAA's MRMS image service (`obs/mrms_qpe`)* | Good next to WISP's own numbers: did the gauge, the model and the radar agree? |
 | **Forecast rain**, day 1 / days 1–3 / days 1–7 | NOAA WPC QPF (`mapservices.weather.noaa.gov/vector/rest/services/precip/wpc_qpf/MapServer`, `export` with `{bbox-epsg-3857}`) | A human forecaster's product; it can differ from the Open-Meteo forecast WISP uses, and the legend says so |
 | **Drought Monitor** | USDM current polygons (`services5.arcgis.com/0OTVzJS4K09zlixn/.../USDM_current/FeatureServer/0/query`, GeoJSON; as built, loaded once for the area 3° around the operation's pivots) | Weekly (Thursday); the panel shows the map date. USDM's standard D0–D4 colors |
 
@@ -746,6 +746,11 @@ USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free a
 - [x] **Texture mapping** to our eleven soil types, as a table in `lib/soils.ts`, unit tested: each USDA texture to its class, with modifiers dropped (fine sand and coarse sand → Sand, loamy fine sand → Loamy Sand, fine sandy loam → Sandy Loam), muck and mucky peat → Muck, and no suggestion for peat or textures we don't have (silty clay, sandy clay).
 - [x] Failure is quiet: no suggestion and a short "Soil survey unavailable" note; setup never waits on it. Outside the survey's coverage (Canada) there's no suggestion.
 - [ ] *Maybe:* show the survey's available water capacity next to the soil type's default field capacity and wilting point, as a check. Not used in the balance.
+
+#### H. Revisions after trying it (Ben, 2026-10-17)
+- [x] **No soil layer on the Map tab.** The survey's map unit codes meant little and loaded slowly. The pivot picker's layer shows **WISP's soil types** instead: the survey's polygons around the pivot (or the view, zoomed in), colored coarse to fine and labeled by the type each unit's surface texture suggests, with the unit's name on hover and a legend of the types present (`lib/soils.ts` `fetchSoilAreas`, about 5–7 s for the area around a pivot).
+- [x] **Values under the pointer:** resting the mouse on the map (or tapping it, off the pivots) shows each shown layer's value there (`MapOverlays.probe`, `OverlayTooltip`). Radar: read from the same Iowa Environmental Mesonet tile the map draws, whose colors are IEM's N0Q palette (index 1 is −32 dBZ, 0.5 dBZ an index; `lib/map/radar.ts`), described as light to very heavy rain. NOAA's radar image service was tried first, but it stores rendered colors with no table back to dBZ, and its default raster is the oldest. Recent rain: NOAA's MRMS image service (`obs/mrms_qpe`), which the 24- and 72-hour layers now come from too, drawn with NOAA's own classes so the picture and the value agree (its pixel values are millimeters, checked against WISP's weather at North 160). Forecast rain: a point query on WPC's layer, giving its class (0.25–0.50 in). Drought: the loaded polygons. Where a layer has nothing, the tooltip says so ("No rain", "No drought"); outside the US, "No data outside the US" (a simplified outline, us-atlas 3.0.1 from Census Bureau boundaries, `lib/map/us-outline.json`, loaded on first use).
+- [x] ~~"None" shown as light gray over the US~~: tried and removed (Ben): with values under the pointer, the gray only dimmed the map.
 
 #### G. Ideas for later (Phase 8 polish or after launch)
 - Field sectors (above).

@@ -1,10 +1,9 @@
 <script lang="ts">
   import type { Units } from '@/lib/units'
 
-  import { type Legend, NONE_COLOR } from './overlays'
+  import type { Legend } from './overlays'
 
-  // An overlay's legend, with its "none" class: the light gray the map shows where it has nothing
-  let { legend, none, units }: { legend: Legend; none: string; units: Units } = $props()
+  let { legend, units }: { legend: Legend; units: Units } = $props()
 </script>
 
 <div class="space-y-1.5">
@@ -36,8 +35,4 @@
       {/each}
     </ul>
   {/if}
-  <p class="flex items-center gap-1.5 text-xs">
-    <span class="size-3 rounded-sm border border-line" style:background={NONE_COLOR}></span>{none}
-    <span class="text-ink-muted">(light gray)</span>
-  </p>
 </div>

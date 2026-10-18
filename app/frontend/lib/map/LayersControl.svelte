@@ -30,7 +30,7 @@
       </p>
     {/if}
     {#if overlays.times[overlay.id]}<p class="text-xs font-medium">{overlays.times[overlay.id]}</p>{/if}
-    <OverlayLegend legend={overlay.legend} none={overlay.none} {units} />
+    <OverlayLegend legend={overlay.legend} {units} />
     <p class="text-xs text-ink-muted">{overlay.description}</p>
     <label class="flex items-center gap-2 text-xs">
       <span class="text-ink-muted">Opacity</span>
