@@ -19,6 +19,10 @@ class PagesController < AuthenticatedController
          lai_curve: plant.canopy_model.present?, cover_curve: CanopyCurve.for(plant.key).present?}
       end,
       canopy_curves: canopy_curves,
+      soil_types: SoilType.order(:field_capacity, :perm_wilting_pt).map do |soil|
+        {key: soil.key, name: soil.name, field_capacity: soil.field_capacity, perm_wilting_pt: soil.perm_wilting_pt,
+         basis: SoilType.bases[soil.key]}
+      end,
       defaults: {
         mad_pct: (Planting::DEFAULT_MAD_FRAC * 100).round,
         lead_days: PlantingStatus::LEAD_DAYS,

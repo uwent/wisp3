@@ -52,6 +52,12 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 - [ ] **Agronomist review** of the curves: the questions under "For the agronomist" in `docs/canopy/03-crop-curves.md` (onion, the k = 1.5 LAI formula, winter wheat). An answer replaces a curve or its confidence label; nothing needs to wait for it.
 - [ ] You can delete `tmp/legacy_wisp/` (the legacy cover readings export; what it showed is in `docs/canopy/01-legacy-readings.md`).
 
+## Phase 7: map and soil types
+
+- [ ] **Deploy to staging** (`bundle exec cap staging deploy`; no migrations). The deploy reloads the soil types: four new ones, and new values for sandy loam, loam, silt loam and clay loam, so staging fields on those soils that don't set their own values change (PLAN.md Phase 7 F).
+- [ ] **Exit check on staging:** the Map tab shows every pivot with its fields' badges; selecting a field in the list and a pivot on the map select each other; "Needs water within 7 days" dims the rest; each layer loads with its legend and time, and pointing at the map gives its value (compare "Rain, last 24 hours" with a gauge you trust). In setup, place a pivot you know and check the suggested soil and the Soil types layer.
+- [ ] **About page:** read the new Soils section and its table, and the Map entry under Day to day.
+
 ## Staging (non-blocking)
 
 - [x] **Add the Open-Meteo key to staging credentials** before deploying: `bin/rails credentials:edit --environment staging`, add

@@ -745,6 +745,7 @@ USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free a
 - [x] **Soil types reviewed** (Ben, 2026-10-17): Loamy Sand, Sandy Clay Loam, Silty Clay Loam and Muck added, and sandy loam, loam, silt loam and clay loam updated, from Wisconsin SSURGO medians and Saxton & Rawls (2006). The legacy values had no known source. Each entry in `soil_types.yml` gives both sources' values and the legacy one.
 - [x] **Texture mapping** to our eleven soil types, as a table in `lib/soils.ts`, unit tested: each USDA texture to its class, with modifiers dropped (fine sand and coarse sand → Sand, loamy fine sand → Loamy Sand, fine sandy loam → Sandy Loam), muck and mucky peat → Muck, and no suggestion for peat or textures we don't have (silty clay, sandy clay).
 - [x] Failure is quiet: no suggestion and a short "Soil survey unavailable" note; setup never waits on it. Outside the survey's coverage (Canada) there's no suggestion.
+- [x] **About page:** a Soils section: what the soil type sets, the setup suggestion, and a table of every type's field capacity, wilting point, available water and where its values come from (`basis` in `soil_types.yml`). The Day to day section describes the Map tab.
 - [ ] *Maybe:* show the survey's available water capacity next to the soil type's default field capacity and wilting point, as a check. Not used in the balance.
 
 #### H. Revisions after trying it (Ben, 2026-10-17)

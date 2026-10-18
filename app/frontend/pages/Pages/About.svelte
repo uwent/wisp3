@@ -10,7 +10,8 @@
   import { units as unitsFor } from '@/lib/units'
 
   // The About page (PLAN.md Phase 6.5): WISP's documentation, replacing the legacy PDF user guide.
-  // Public; the crop table comes from the plants table, the glossary from lib/glossary.ts and the
+  // Public; the crop table comes from the plants table, the soil table from soil_types (with each
+  // value's basis from db/reference/soil_types.yml), the glossary from lib/glossary.ts and the
   // reading advice from lib/guidance.ts, so they stay in step with the app.
 
   type Plant = { key: string; name: string; root_zone_in: number; lai_curve: boolean; cover_curve: boolean }
@@ -31,13 +32,22 @@
     covers: number[]
     sources: { citation: string; url: string }[]
   }
+  type Soil = {
+    key: string
+    name: string
+    field_capacity: number
+    perm_wilting_pt: number
+    basis: 'wi_survey' | 'saxton_rawls' | 'legacy' | 'legacy_confirmed'
+  }
   let {
     plants,
     canopy_curves: curves,
+    soil_types: soils,
     defaults,
   }: {
     plants: Plant[]
     canopy_curves: CanopyCurve[]
+    soil_types: Soil[]
     defaults: {
       mad_pct: number
       lead_days: number
@@ -65,12 +75,25 @@
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const depth = (inches: number) => units.format('rootDepth', inches)
 
+  const BASES: Record<Soil['basis'], string> = {
+    wi_survey: 'Wisconsin soil survey',
+    saxton_rawls: 'Saxton and Rawls (2006)',
+    legacy: 'Original WISP',
+    legacy_confirmed: 'Original WISP; the Wisconsin survey agrees',
+  }
+  // Water the soil holds for the crop between field capacity and the wilting point, per foot (or meter) of root zone
+  const availableWater = (soil: Soil) => {
+    const fraction = soil.field_capacity - soil.perm_wilting_pt
+    return units.system === 'metric' ? `${Math.round(fraction * 1000)} mm/m` : `${(fraction * 12).toFixed(2)} in/ft`
+  }
+
   const sections = [
     { id: 'introduction', title: 'What WISP is' },
     { id: 'how-it-works', title: 'How it works' },
     { id: 'getting-started', title: 'Getting started' },
     { id: 'day-to-day', title: 'Day to day' },
     { id: 'ground-truthing', title: 'Keeping the model on track' },
+    { id: 'soils', title: 'Soils' },
     { id: 'crops', title: 'Crops' },
     { id: 'canopy', title: 'Canopy curves' },
     { id: 'glossary', title: 'Glossary' },
@@ -182,8 +205,9 @@
       </li>
       <li>
         <strong>Field:</strong> the land under a pivot that's managed alike, with one crop and one soil. A pivot split
-        between two crops is two fields. The soil type sets field capacity and wilting point; if you know better values
-        for your field, from the
+        between two crops is two fields. The soil type sets field capacity and wilting point (see
+        <a href="#soils">Soils</a>); when you place the pivot, WISP suggests one from the USDA soil survey. If you know
+        better values for your field, from the
         <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a> or your own measurements,
         enter them instead.
       </li>
@@ -205,6 +229,13 @@
       <li>
         <strong>Dashboard:</strong> every field by farm and pivot, with its status, AD and outlook, and the last rain and
         irrigation.
+      </li>
+      <li>
+        <strong>Map:</strong> every pivot where it is, in the color of its most urgent field, with each field's status at
+        its center, and the fields listed beside it, most urgent first or north to south. Choose "Needs water within 3 days"
+        (or 7) to see which pivots to irrigate this week. Click a pivot, or a field in the list, for its fields and its weather.
+        Layers add radar, rain over the last 24 or 72 hours, the Weather Service's forecast rain, and the U.S. Drought Monitor;
+        point at the map, or tap it, to see their values there.
       </li>
       <li>
         <strong>Daily entry:</strong> rain, irrigation and soil moisture for every field on one day. Irrigation can be entered
@@ -262,6 +293,55 @@
       </li>
     </ul>
     <p>Each field's page shows when soil moisture and canopy were last entered, and flags them when one is due.</p>
+
+    <h2 id="soils">Soils</h2>
+    <p>
+      A field's soil type sets how much water its root zone can hold: from <Term id="field_capacity"
+        >field capacity</Term
+      >, as wet as it stays once it has drained, down to the <Term id="wilting_point">wilting point</Term>, where the
+      crop can take no more. Both are shares of the soil's volume, and the difference between them, over the root zone
+      depth, is the water available to the crop. If you know better values for a field, from the
+      <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a> or your own measurements,
+      enter them for the field and they replace its soil type's.
+    </p>
+    <p>
+      When you place a pivot, WISP looks up the USDA soil survey under it and suggests the soil type that covers most of
+      it, from the surface layer of each map unit's main soil; the pivot map's <strong>Soil types</strong> button shows them
+      around the pivot. It's a suggestion: check it against what you know of the field.
+    </p>
+    <div class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised">
+      <table class="w-full text-sm">
+        <thead class="border-b border-line text-left text-xs text-ink-muted">
+          <tr>
+            <th class="px-3 py-2 font-medium">Soil</th>
+            <th class="px-3 py-2 text-right font-medium">Field capacity</th>
+            <th class="px-3 py-2 text-right font-medium">Wilting point</th>
+            <th class="px-3 py-2 text-right font-medium">Available water</th>
+            <th class="px-3 py-2 font-medium">Values from</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {#each soils as soil (soil.key)}
+            <tr>
+              <th scope="row" class="px-3 py-1.5 text-left font-normal">{soil.name}</th>
+              <td class="px-3 py-1.5 text-right tabular-nums">{pct(soil.field_capacity)}</td>
+              <td class="px-3 py-1.5 text-right tabular-nums">{pct(soil.perm_wilting_pt)}</td>
+              <td class="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">{availableWater(soil)}</td>
+              <td class="px-3 py-1.5">{BASES[soil.basis]}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      The values were reviewed in 2026. Most are medians of the surface layers in Wisconsin's soil survey (USDA NRCS
+      SSURGO, every county), from dozens to thousands of soils for each texture. Sandy clay loam, which Wisconsin's
+      survey has only below the surface, takes the texture averages of
+      <a href="https://doi.org/10.2136/sssaj2005.0117" target="_blank" rel="noopener">Saxton and Rawls (2006)</a>. Silt
+      and clay keep WISP's original values, as Wisconsin has too few of them to set new ones; sand's original values
+      match the survey. Muck holds far more water than any mineral soil, but drained, farmed muck changes over the
+      years, so a soil moisture reading is worth more there.
+    </p>
 
     <h2 id="crops">Crops</h2>
     <p>

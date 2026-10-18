@@ -33,6 +33,17 @@ RSpec.describe "Public pages", type: :request do
     expect(curves.first[:sources].map { |source| source[:url] }).to include("https://doi.org/10.2134/agronj2008.0139s")
   end
 
+  it "tabulates the soil types with where their values come from" do
+    ReferenceData.load!
+    get about_path
+    soils = inertia.props[:soil_types]
+    expect(soils.size).to eq(11)
+    sand = {key: "sand", name: "Sand", field_capacity: 0.1, perm_wilting_pt: 0.04, basis: "legacy_confirmed"}
+    expect(soils.first).to eq(sand.stringify_keys)
+    expect(soils.find { |soil| soil[:key] == "muck" }).to include(field_capacity: 0.53, basis: "wi_survey")
+    expect(soils.map { |soil| soil[:basis] }).to all(be_present)
+  end
+
   it "keeps the signed-in user's operation on the About page" do
     user = create(:user)
     other = create(:group, name: "Partners")
