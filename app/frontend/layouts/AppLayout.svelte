@@ -16,6 +16,7 @@
     dashboard,
     fieldGroups,
     groups,
+    map,
     newUserRegistration,
     newUserSession,
     settings,
@@ -33,6 +34,7 @@
       ? [
           // A pivot's and a field's pages are reached from the dashboard; creating and editing them is setup
           { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields)\/\d+(\?|$)/] },
+          { label: 'Map', route: map.show() },
           { label: 'Daily entry', route: dailyEntries.show() },
           { label: 'Alerts', route: alerts.show() },
           {
@@ -51,6 +53,9 @@
       : [{ label: 'About', route: about() }],
   )
 
+  // The map takes the whole window below the header, with no footer
+  const wide = $derived(page.component.startsWith('Map/'))
+
   const isCurrent = (url: string, also: (string | RegExp)[] = []) =>
     page.url === url ||
     page.url.startsWith(`${url}?`) ||
@@ -67,7 +72,7 @@
     'flex cursor-pointer select-none items-center rounded px-3 py-2 data-highlighted:bg-brand-50 focus:outline-none'
 </script>
 
-<div class="flex min-h-dvh flex-col">
+<div class="flex flex-col {wide ? 'h-dvh' : 'min-h-dvh'}">
   <BrandBar />
   <header class="border-b border-line bg-surface-raised">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
@@ -170,12 +175,19 @@
     </div>
   </header>
 
-  <main class="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 py-6">
-    <FlashMessages />
-    {@render children()}
-  </main>
+  {#if wide}
+    <main class="flex min-h-0 flex-1 flex-col">
+      <FlashMessages />
+      {@render children()}
+    </main>
+  {:else}
+    <main class="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 py-6">
+      <FlashMessages />
+      {@render children()}
+    </main>
 
-  <footer class="border-t border-line py-4 text-center text-xs text-ink-muted">
-    Wisconsin Irrigation Scheduling Program
-  </footer>
+    <footer class="border-t border-line py-4 text-center text-xs text-ink-muted">
+      Wisconsin Irrigation Scheduling Program
+    </footer>
+  {/if}
 </div>

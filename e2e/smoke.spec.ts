@@ -58,6 +58,7 @@ test('every page renders without errors or sideways scrolling', async ({ page })
 
   const paths = [
     '/',
+    '/map',
     field,
     '/setup',
     '/daily',
@@ -102,6 +103,32 @@ test('the dashboard shows field cards with a status', async ({ page }) => {
   await page.getByRole('link', { name: `View ${name}` }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Pivot: ${name}`)
   await expect(page.getByRole('heading', { name: /^Weather at this pivot/ })).toBeVisible()
+})
+
+test('the map lists the fields and selects a pivot from the list', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/map')
+  await expect(page.getByRole('heading', { name: 'Map', level: 1 })).toBeVisible()
+  const list = page.getByRole('complementary', { name: 'Fields' })
+  await expect(list.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
+
+  // Selecting a field opens its pivot's panel over the map and marks the card
+  const select = list.getByRole('button', { name: /on the map$/ }).first()
+  await select.click()
+  await expect(select).toHaveAttribute('aria-pressed', 'true')
+  const panel = page.getByRole('region', { name: /^Pivot: / })
+  await expect(panel).toBeVisible()
+  await expect(panel.getByRole('link', { name: 'View pivot' })).toBeVisible()
+
+  // Escape closes it; the list's link opens the field
+  await page.keyboard.press('Escape')
+  await expect(panel).toBeHidden()
+  await list
+    .getByRole('link', { name: /^Open / })
+    .first()
+    .click()
+  await expect(page).toHaveURL(/\/fields\/\d+/)
+  expect(errors).toEqual([])
 })
 
 test('a grid cell saves on Enter, and Escape cancels without saving', async ({ page }) => {
