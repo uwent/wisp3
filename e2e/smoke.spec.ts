@@ -186,6 +186,31 @@ test('the Drought Monitor layer gives the category at the selected pivot', async
   await expect(page.getByRole('region', { name: /^Pivot: / })).toContainText('D1 Moderate drought')
 })
 
+test("tapping the map gives the rain layer's value there", async ({ page }) => {
+  // A blank tile for the picture, and 18.9 mm from NOAA's MRMS at any point
+  const blank = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64',
+  )
+  await page.route('**/mrms_qpe/ImageServer/exportImage**', (route) =>
+    route.fulfill({ body: blank, contentType: 'image/png' }),
+  )
+  await page.route('**/mrms_qpe/ImageServer/identify**', (route) => route.fulfill({ json: { value: '18.9' } }))
+  await page.goto('/map')
+  await page.getByRole('button', { name: 'Layers' }).click()
+  const layers = page.getByRole('dialog', { name: 'Map layers' })
+  await layers.getByRole('radio', { name: /last 24 hours/ }).check()
+  await expect(layers.getByText('No rain')).toBeVisible() // the gray "none" class in the legend
+  await page.getByRole('button', { name: 'Close map layers' }).click()
+
+  // A tap away from the pivots (the map's lower left corner)
+  const map = page.getByRole('application', { name: /Map of the operation/ })
+  const box = (await map.boundingBox())!
+  await map.click({ position: { x: 30, y: box.height - 60 } })
+  const tooltip = page.getByRole('status').filter({ hasText: 'Rain, last 24 hours' })
+  await expect(tooltip).toContainText('About 0.74 in')
+})
+
 test('quick setup suggests the soil from the soil survey under the pivot', async ({ page }) => {
   // The survey's answer for a Central Sands pivot: mostly Plainfield sand, some Coloma loamy sand
   await page.route('**/Tabular/post.rest', (route) =>

@@ -1,14 +1,19 @@
-import type { Map as MapLibreMap, MapSourceDataEvent, RasterTileSource } from 'maplibre-gl'
+import type { Map as MapLibreMap, MapMouseEvent, MapSourceDataEvent, RasterTileSource } from 'maplibre-gl'
+
+import { type LngLat, pointInPolygon } from '@/lib/geo'
 
 import { PIVOT_LAYER } from './OverviewMap.svelte'
 import {
   type Bounds,
   DROUGHT_CATEGORIES,
   type DroughtData,
+  droughtAt,
   droughtDate,
   droughtUrl,
+  NONE_COLOR,
   OVERLAY_ORDER,
   type OverlayId,
+  type OverlayValue,
   OVERLAYS,
   type RasterOverlay,
 } from './overlays'
@@ -19,8 +24,26 @@ export type OverlayStatus = 'loading' | 'ready' | 'unavailable'
 type MapError = { sourceId?: string; error?: { message?: string } }
 
 const sourceId = (id: OverlayId) => `overlay-${id}`
-const overlayOf = (source: string | undefined) =>
-  source?.startsWith('overlay-') ? (source.slice('overlay-'.length) as OverlayId) : null
+const overlayOf = (source: string | undefined) => {
+  const id = source?.startsWith('overlay-') ? source.slice('overlay-'.length) : null
+  return OVERLAYS.some((overlay) => overlay.id === id) ? (id as OverlayId) : null
+}
+/** The light gray over the US under the overlays: where a layer has nothing */
+const NONE_LAYER = 'overlay-none'
+const NONE_OPACITY = 0.45
+/** Hovering this long over one spot asks the layers for their values */
+const HOVER_MS = 300
+
+type Outline = { geometry: { coordinates: LngLat[][][] } }
+let outline: Promise<Outline> | undefined
+// A simplified outline of the US (us-atlas 3.0.1, from the Census Bureau's cartographic boundaries),
+// loaded the first time a layer is shown
+const loadOutline = () =>
+  (outline ??= import('./us-outline.json').then((module) => module.default as unknown as Outline))
+
+export type ProbeValue = OverlayValue | 'loading' | 'unavailable' | 'outside'
+/** The shown layers' values at a point on the map, for the tooltip; x and y are in the map's pixels */
+export type Probe = { x: number; y: number; items: { id: OverlayId; name: string; none: string; value: ProbeValue }[] }
 
 /** Tile errors before an overlay with no tiles loaded counts as unavailable (one bad tile isn't) */
 const ERRORS_TO_FAIL = 3
@@ -39,6 +62,8 @@ export class MapOverlays {
   notice: string | null = $state(null)
   /** The Drought Monitor's polygons around the pivots, once loaded */
   drought: DroughtData | null = $state(null)
+  /** What the shown layers have under the pointer or a tap, or null */
+  probe: Probe | null = $state(null)
 
   #map?: MapLibreMap
   #shown: OverlayId[] = []
@@ -48,6 +73,8 @@ export class MapOverlays {
   #timers: Partial<Record<OverlayId, ReturnType<typeof setInterval>>> = {}
   #noticeTimer?: ReturnType<typeof setTimeout>
   #droughtRequest?: AbortController
+  #probeRequest?: AbortController
+  #hoverTimer?: ReturnType<typeof setTimeout>
 
   constructor(private readonly droughtArea: () => Bounds) {}
 
@@ -60,7 +87,70 @@ export class MapOverlays {
       const id = overlayOf(event.sourceId)
       if (id && event.tile) this.#loaded(id)
     })
+    // Values under the mouse when it rests (on devices that hover), and where a tap lands off the pivots
+    if (matchMedia('(hover: hover)').matches) {
+      map.on('mousemove', (event) => {
+        clearTimeout(this.#hoverTimer)
+        if (this.probe) this.#clearProbe()
+        this.#hoverTimer = setTimeout(() => this.probeAt(event), HOVER_MS)
+      })
+      map.on('mouseout', () => {
+        clearTimeout(this.#hoverTimer)
+        this.#clearProbe()
+      })
+    }
+    map.on('click', (event) => {
+      if (map.getLayer(PIVOT_LAYER) && map.queryRenderedFeatures(event.point, { layers: [PIVOT_LAYER] }).length) return
+      this.probeAt(event)
+    })
+    map.on('movestart', () => this.#clearProbe())
     this.sync(this.#shown, this.#opacity)
+  }
+
+  /** Asks each shown layer for its value at a point */
+  probeAt(event: Pick<MapMouseEvent, 'point' | 'lngLat'>) {
+    const shown = OVERLAYS.filter((overlay) => this.#shown.includes(overlay.id))
+    if (!shown.length) return this.#clearProbe()
+    this.#probeRequest?.abort()
+    const request = (this.#probeRequest = new AbortController())
+    const at: LngLat = [event.lngLat.lng, event.lngLat.lat]
+    this.probe = {
+      x: event.point.x,
+      y: event.point.y,
+      items: shown.map((overlay) => ({ id: overlay.id, name: overlay.name, none: overlay.none, value: 'loading' })),
+    }
+    const probe = this.probe
+    const set = (id: OverlayId, value: ProbeValue) => {
+      if (this.#probeRequest !== request) return
+      const item = probe.items.find((i) => i.id === id)
+      if (item) item.value = value
+    }
+    loadOutline()
+      .then(({ geometry }) => geometry.coordinates.some((polygon) => pointInPolygon(at, polygon)))
+      .catch(() => true)
+      .then((inside) => {
+        for (const overlay of shown) {
+          if (!inside) set(overlay.id, 'outside')
+          else if (overlay.kind === 'drought') set(overlay.id, this.#droughtValue(at))
+          else
+            overlay
+              .valueAt(at, request.signal)
+              .then((value) => set(overlay.id, value))
+              .catch((error: Error) => error.name !== 'AbortError' && set(overlay.id, 'unavailable'))
+        }
+      })
+  }
+
+  #droughtValue(at: LngLat): ProbeValue {
+    if (!this.drought) return this.status.drought === 'unavailable' ? 'unavailable' : 'loading'
+    const category = droughtAt(this.drought, at)
+    return category ? { kind: 'text', text: category.label, color: category.color } : { kind: 'none' }
+  }
+
+  #clearProbe() {
+    this.#probeRequest?.abort()
+    this.#probeRequest = undefined
+    this.probe = null
   }
 
   /** Shows these overlays (at their opacity, or the default) and hides the rest */
@@ -75,6 +165,8 @@ export class MapOverlays {
         else if (overlay.kind === 'raster') this.#showRaster(map, overlay)
         else this.#showDrought(map)
       }
+      if (shown.length) this.#showNone(map)
+      else this.#hideNone(map)
     } catch {
       // The style is still loading (a basemap change): try again when it's done
       map.once('idle', () => this.sync(this.#shown, this.#opacity))
@@ -82,6 +174,8 @@ export class MapOverlays {
   }
 
   destroy() {
+    clearTimeout(this.#hoverTimer)
+    this.#probeRequest?.abort()
     Object.values(this.#timers).forEach((timer) => clearInterval(timer))
     this.#timers = {}
     clearTimeout(this.#noticeTimer)
@@ -107,7 +201,6 @@ export class MapOverlays {
         tiles: overlay.tiles(Date.now()),
         tileSize: 256,
         attribution: overlay.attribution,
-        ...(overlay.minzoom ? { minzoom: overlay.minzoom } : {}),
       })
       this.#loadTime(overlay.id)
       if (overlay.refreshMinutes) {
@@ -123,12 +216,40 @@ export class MapOverlays {
           id,
           type: 'raster',
           source: id,
-          ...(overlay.minzoom ? { minzoom: overlay.minzoom } : {}),
           paint: { 'raster-opacity': this.#opacityOf(overlay.id), 'raster-fade-duration': 0 },
         },
         this.#before(map, overlay.id),
       )
     }
+  }
+
+  /** The gray "none" over the US, under every overlay */
+  #showNone(map: MapLibreMap) {
+    if (map.getLayer(NONE_LAYER)) return
+    loadOutline()
+      .then((us) => {
+        if (!this.#shown.length || map.getLayer(NONE_LAYER)) return
+        if (!map.getSource(NONE_LAYER)) map.addSource(NONE_LAYER, { type: 'geojson', data: us as never })
+        const lowest = OVERLAY_ORDER.map(sourceId).find((layer) => map.getLayer(layer))
+        map.addLayer(
+          {
+            id: NONE_LAYER,
+            type: 'fill',
+            source: NONE_LAYER,
+            paint: { 'fill-color': NONE_COLOR, 'fill-opacity': NONE_OPACITY },
+          },
+          lowest ?? (map.getLayer(PIVOT_LAYER) ? PIVOT_LAYER : undefined),
+        )
+      })
+      .catch(() => {
+        // Without the outline there's no gray; the layers still work
+      })
+  }
+
+  #hideNone(map: MapLibreMap) {
+    if (map.getLayer(NONE_LAYER)) map.removeLayer(NONE_LAYER)
+    if (map.getSource(NONE_LAYER)) map.removeSource(NONE_LAYER)
+    this.#clearProbe()
   }
 
   #refresh(overlay: RasterOverlay) {

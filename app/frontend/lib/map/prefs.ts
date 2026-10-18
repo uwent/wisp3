@@ -2,6 +2,7 @@ import type { LngLat } from '@/lib/geo'
 import type { SortOrder } from '@/lib/overview'
 
 import type { Basemap } from './basemaps'
+import { OVERLAYS } from './overlays'
 
 // The map page's settings, remembered per operation in this browser: the view, basemap, overlays,
 // list order and whether the list is open. Storage can be blocked or cleared, so every read and
@@ -35,7 +36,15 @@ const key = (groupId: number | undefined) => `wisp-map:${groupId ?? 'none'}`
 export function loadPrefs(groupId: number | undefined): MapPrefs {
   try {
     const saved = JSON.parse(localStorage.getItem(key(groupId)) ?? 'null')
-    return saved && typeof saved === 'object' ? { ...DEFAULT_PREFS, ...saved } : { ...DEFAULT_PREFS }
+    if (!saved || typeof saved !== 'object') return { ...DEFAULT_PREFS }
+    // Layers saved earlier that the map no longer has are dropped
+    const known = (id: unknown) => OVERLAYS.some((overlay) => overlay.id === id)
+    return {
+      ...DEFAULT_PREFS,
+      ...saved,
+      rain: known(saved.rain) ? saved.rain : null,
+      overlays: Array.isArray(saved.overlays) ? saved.overlays.filter(known) : [],
+    }
   } catch {
     return { ...DEFAULT_PREFS }
   }

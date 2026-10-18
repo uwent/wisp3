@@ -8,6 +8,7 @@
   import type { LngLat } from '@/lib/geo'
   import LayersControl from '@/lib/map/LayersControl.svelte'
   import { MapOverlays } from '@/lib/map/mapOverlays.svelte'
+  import OverlayTooltip from '@/lib/map/OverlayTooltip.svelte'
   import OverviewMap from '@/lib/map/OverviewMap.svelte'
   import PivotPanel from '@/lib/map/PivotPanel.svelte'
   import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
@@ -35,6 +36,8 @@
   let selectedPivotId = $state<number | null>(null)
   let selectedFieldId = $state<number | null>(null)
   let overview = $state<OverviewMap>()
+  let mapWidth = $state(0)
+  let mapHeight = $state(0)
 
   // Optional public layers; the drought polygons are loaded around all the operation's pivots
   const overlays = new MapOverlays(() =>
@@ -261,7 +264,11 @@
       >
     {/if}
 
-    <div class="relative order-1 min-h-[50%] flex-1 md:order-2 md:min-h-0">
+    <div
+      class="relative order-1 min-h-[50%] flex-1 md:order-2 md:min-h-0"
+      bind:clientWidth={mapWidth}
+      bind:clientHeight={mapHeight}
+    >
       <OverviewMap
         bind:this={overview}
         pivots={mapPivots}
@@ -286,6 +293,9 @@
           aria-expanded={prefs.listOpen}
           onclick={() => (prefs.listOpen = !prefs.listOpen)}>{prefs.listOpen ? '‹' : '›'}</button
         >
+        {#if overlays.probe}
+          <OverlayTooltip probe={overlays.probe} {units} width={mapWidth} height={mapHeight} />
+        {/if}
         {#if overlays.notice}
           <div
             class="absolute top-14 left-1/2 z-20 flex w-[min(24rem,calc(100%-1rem))] -translate-x-1/2 items-start gap-2

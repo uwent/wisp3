@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { LngLat } from '@/lib/geo'
 
@@ -12,8 +12,8 @@ import {
   OVERLAYS,
   parseWpcTime,
   RAIN_OVERLAYS,
-  type RasterOverlay,
-  SOIL_OVERLAY,
+  qpfValue,
+  describeReflectivity,
 } from './overlays'
 
 const square = (west: number, south: number, east: number, north: number): LngLat[] => [
@@ -40,9 +40,37 @@ describe('overlays', () => {
     expect(url).toContain('layers=show:11')
   })
 
-  it('asks the soil survey for map units in the tile, only zoomed in', () => {
-    expect((SOIL_OVERLAY as RasterOverlay).tiles(1)[0]).toContain('LAYERS=mapunitpoly')
-    expect(SOIL_OVERLAY.minzoom).toBeGreaterThanOrEqual(12)
+  it("asks NOAA's MRMS service for the period's estimate, drawn with NOAA's classes", () => {
+    const day = RAIN_OVERLAYS.find((o) => o.id === 'rain24')!
+    const url = new URL(day.tiles(1)[0].replace('{bbox-epsg-3857}', '0,0,1,1'))
+    expect(url.pathname).toContain('/obs/mrms_qpe/ImageServer/exportImage')
+    expect(JSON.parse(url.searchParams.get('mosaicRule')!).where).toBe("name='conus_QPE_24H'")
+    expect(JSON.parse(url.searchParams.get('renderingRule')!).rasterFunction).toBe('rft_24hr')
+  })
+
+  it('reads the MRMS value at a point as millimeters, and below 0.01 in as none', async () => {
+    const day = RAIN_OVERLAYS.find((o) => o.id === 'rain72')!
+    const answer = (value: string) =>
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ value })))
+    answer('18.9')
+    expect(await day.valueAt([-89.5, 44.1])).toEqual({ kind: 'depth', inches: 18.9 / 25.4 })
+    answer('0.1')
+    expect(await day.valueAt([-89.5, 44.1])).toEqual({ kind: 'none' })
+    answer('NoData')
+    expect(await day.valueAt([-89.5, 44.1])).toEqual({ kind: 'none' })
+    vi.restoreAllMocks()
+  })
+
+  it("gives the forecast's class at a point, up to the next one", () => {
+    expect(qpfValue([])).toEqual({ kind: 'none' })
+    expect(qpfValue([0.25])).toEqual({ kind: 'depth', inches: 0.25, upTo: 0.5 })
+    expect(qpfValue([20])).toEqual({ kind: 'depth', inches: 20, upTo: null })
+  })
+
+  it('says what a reflectivity means for rain', () => {
+    expect(describeReflectivity(15)).toMatch(/light/i)
+    expect(describeReflectivity(35)).toBe('Moderate rain')
+    expect(describeReflectivity(55)).toMatch(/hail/)
   })
 
   it("reads WPC's issue time as UTC", () => {

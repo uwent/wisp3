@@ -3,11 +3,11 @@
 
   import type { MapOverlays } from './mapOverlays.svelte'
   import OverlayLegend from './OverlayLegend.svelte'
-  import { DROUGHT_OVERLAY, type Overlay, type OverlayId, RAIN_OVERLAYS, SOIL_OVERLAY } from './overlays'
+  import { DROUGHT_OVERLAY, type Overlay, type OverlayId, RAIN_OVERLAYS } from './overlays'
   import type { MapPrefs } from './prefs'
 
   // The map's Layers button and panel: one rain layer at a time (radar, recent rain, forecast
-  // rain), the Drought Monitor and the soil survey, each with its legend, time, opacity and source
+  // rain) and the Drought Monitor, each with its legend, time, opacity and source
   let { prefs, overlays, units }: { prefs: MapPrefs; overlays: MapOverlays; units: Units } = $props()
 
   let open = $state(false)
@@ -30,7 +30,7 @@
       </p>
     {/if}
     {#if overlays.times[overlay.id]}<p class="text-xs font-medium">{overlays.times[overlay.id]}</p>{/if}
-    <OverlayLegend legend={overlay.legend} {units} />
+    <OverlayLegend legend={overlay.legend} none={overlay.none} {units} />
     <p class="text-xs text-ink-muted">{overlay.description}</p>
     <label class="flex items-center gap-2 text-xs">
       <span class="text-ink-muted">Opacity</span>
@@ -122,7 +122,7 @@
         {#if rain}{@render details(rain)}{/if}
       </fieldset>
 
-      {#each [DROUGHT_OVERLAY, SOIL_OVERLAY] as overlay (overlay.id)}
+      {#each [DROUGHT_OVERLAY] as overlay (overlay.id)}
         {@const on = prefs.overlays.includes(overlay.id)}
         <div>
           <label class="flex items-center gap-2">
@@ -135,7 +135,8 @@
       {/each}
 
       <p class="text-xs text-ink-muted">
-        These layers come straight from public services, not from WISP, and can be slow or unavailable at times.
+        Point at the map, or tap it, to see the layers' values there. They come straight from public services, not from
+        WISP, and can be slow or unavailable at times.
       </p>
     </div>
   {/if}
