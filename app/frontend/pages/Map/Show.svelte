@@ -1,11 +1,16 @@
 <script lang="ts">
+  import { onDestroy, untrack } from 'svelte'
   import { Link, page } from '@inertiajs/svelte'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
+  import type { LngLat } from '@/lib/geo'
+  import LayersControl from '@/lib/map/LayersControl.svelte'
+  import { MapOverlays } from '@/lib/map/mapOverlays.svelte'
   import OverviewMap from '@/lib/map/OverviewMap.svelte'
   import PivotPanel from '@/lib/map/PivotPanel.svelte'
+  import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
   import type { MapPivot } from '@/lib/map/pivots'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
   import { type FarmGroup, type ListItem, needsWaterWithin, sortItems } from '@/lib/overview'
@@ -30,6 +35,18 @@
   let selectedPivotId = $state<number | null>(null)
   let selectedFieldId = $state<number | null>(null)
   let overview = $state<OverviewMap>()
+
+  // Optional public layers; the drought polygons are loaded around all the operation's pivots
+  const overlays = new MapOverlays(() =>
+    droughtBounds(farms.flatMap((farm) => farm.pivots.map((pivot): LngLat => [pivot.longitude, pivot.latitude]))),
+  )
+  // The controller records each overlay's status as it goes, so it runs untracked here
+  $effect(() => {
+    const shown = [...(prefs.rain ? [prefs.rain] : []), ...prefs.overlays] as OverlayId[]
+    const opacity = { ...prefs.opacity }
+    untrack(() => overlays.sync(shown, opacity))
+  })
+  onDestroy(() => overlays.destroy())
   let list = $state<HTMLElement>()
 
   const shown = $derived(farms.filter((farm) => farmId === 'all' || farm.id === farmId))
@@ -63,6 +80,12 @@
   )
   const selectedPivot = $derived(mapPivots.find((pivot) => pivot.id === selectedPivotId) ?? null)
   const anyPivots = $derived(farms.some((farm) => farm.pivots.length))
+  // The Drought Monitor's category at the selected pivot, when that layer is on
+  const panelNotes = $derived.by(() => {
+    if (!selectedPivot || !prefs.overlays.includes('drought') || !overlays.drought) return []
+    const category = droughtAt(overlays.drought, [selectedPivot.longitude, selectedPivot.latitude])
+    return [{ label: 'Drought Monitor', value: category?.label ?? 'None', swatch: category?.color }]
+  })
 
   const WINDOWS = [
     { days: null, label: 'Any time' },
@@ -250,7 +273,11 @@
         onselect={selectPivot}
         onbasemap={(basemap) => (prefs.basemap = basemap)}
         onviewchange={(view) => (prefs.view = view)}
+        onload={(map) => overlays.attach(map)}
       >
+        {#snippet toolbar()}
+          <LayersControl {prefs} {overlays} {units} />
+        {/snippet}
         <button
           type="button"
           class="absolute top-1/2 left-0 hidden -translate-y-1/2 rounded-r-md border border-l-0 border-line bg-surface-raised
@@ -259,6 +286,22 @@
           aria-expanded={prefs.listOpen}
           onclick={() => (prefs.listOpen = !prefs.listOpen)}>{prefs.listOpen ? '‹' : '›'}</button
         >
+        {#if overlays.notice}
+          <div
+            class="absolute top-14 left-1/2 z-20 flex w-[min(24rem,calc(100%-1rem))] -translate-x-1/2 items-start gap-2
+              rounded-md border border-line bg-surface-raised px-3 py-2 text-sm shadow-lg"
+            role="status"
+          >
+            <span aria-hidden="true" class="text-status-caution">!</span>
+            <p class="flex-1">{overlays.notice}</p>
+            <button
+              type="button"
+              class="text-ink-muted hover:text-ink"
+              aria-label="Dismiss"
+              onclick={() => overlays.dismiss()}>×</button
+            >
+          </div>
+        {/if}
         {#if selectedPivot}
           <div
             class="pointer-events-none absolute inset-x-2 bottom-8 z-10 flex max-h-[60%] flex-col sm:inset-x-auto sm:top-2
@@ -269,6 +312,7 @@
               farmName={farmOf.get(selectedPivot.id)?.name ?? ''}
               {today}
               {units}
+              notes={panelNotes}
               onclose={clearSelection}
             />
           </div>

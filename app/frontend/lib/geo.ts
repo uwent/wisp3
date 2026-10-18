@@ -86,3 +86,19 @@ export function edgePointer(
   const scale = Math.min(Math.abs((cx - margin) / dx) || Infinity, Math.abs((cy - margin) / dy) || Infinity)
   return { x: cx + dx * scale, y: cy + dy * scale, angle: (Math.atan2(dy, dx) * 180) / Math.PI }
 }
+
+/** Whether a point is inside a polygon (its outer ring, and none of its holes), by ray casting */
+export function pointInPolygon(point: LngLat, polygon: LngLat[][]): boolean {
+  const [outer, ...holes] = polygon
+  return !!outer && inRing(point, outer) && !holes.some((hole) => inRing(point, hole))
+}
+
+function inRing([x, y]: LngLat, ring: LngLat[]): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
+}

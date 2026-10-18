@@ -131,6 +131,61 @@ test('the map lists the fields and selects a pivot from the list', async ({ page
   expect(errors).toEqual([])
 })
 
+test('a map layer that fails says so, and the rest of the map carries on', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.route('**/mesonet.agron.iastate.edu/**', (route) => route.abort())
+  await page.goto('/map')
+  await page.getByRole('button', { name: 'Layers' }).click()
+  const layers = page.getByRole('dialog', { name: 'Map layers' })
+  await layers.getByRole('radio', { name: /Radar now/ }).check()
+  await expect(page.getByRole('status').filter({ hasText: "Radar now isn't loading" })).toBeVisible()
+  await expect(layers.getByText('Unavailable', { exact: true })).toBeVisible()
+
+  // Pivots still select
+  await page
+    .getByRole('complementary', { name: 'Fields' })
+    .getByRole('button', { name: /on the map$/ })
+    .first()
+    .click()
+  await expect(page.getByRole('region', { name: /^Pivot: / })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('the Drought Monitor layer gives the category at the selected pivot', async ({ page }) => {
+  // A moderate drought over all of Wisconsin, so the test doesn't depend on this week's map
+  const wisconsin = [
+    [-93, 42],
+    [-86, 42],
+    [-86, 47.5],
+    [-93, 47.5],
+    [-93, 42],
+  ]
+  await page.route('**/USDM_current/FeatureServer/0/query**', (route) =>
+    route.fulfill({
+      json: {
+        type: 'FeatureCollection',
+        features: [1, 0].map((dm) => ({
+          type: 'Feature',
+          properties: { DM: dm, ValidStart: Date.UTC(2026, 9, 13) },
+          geometry: { type: 'Polygon', coordinates: [wisconsin] },
+        })),
+      },
+    }),
+  )
+  await page.goto('/map')
+  await page.getByRole('button', { name: 'Layers' }).click()
+  const layers = page.getByRole('dialog', { name: 'Map layers' })
+  await layers.getByRole('checkbox', { name: /Drought Monitor/ }).check()
+  await expect(layers.getByText('Map for Oct 13')).toBeVisible()
+
+  await page
+    .getByRole('complementary', { name: 'Fields' })
+    .getByRole('button', { name: /on the map$/ })
+    .first()
+    .click()
+  await expect(page.getByRole('region', { name: /^Pivot: / })).toContainText('D1 Moderate drought')
+})
+
 test('a grid cell saves on Enter, and Escape cancels without saving', async ({ page }) => {
   await page.goto(await firstFieldPath(page))
   const note = `Checked gauge ${Date.now()}`

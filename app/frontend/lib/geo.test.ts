@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { bearing, destination, distanceM, edgePointer, pivotAcres, pivotRing, sweep, type LngLat } from './geo'
+import {
+  bearing,
+  destination,
+  distanceM,
+  edgePointer,
+  pivotAcres,
+  pivotRing,
+  pointInPolygon,
+  sweep,
+  type LngLat,
+} from './geo'
 
 const center: LngLat = [-89.5213, 44.1335]
 
@@ -51,5 +61,19 @@ describe('edgePointer', () => {
     const corner = edgePointer({ x: -1000, y: 1350 }, 400, 300)! // down and left at 45°
     expect(corner.y).toBeCloseTo(276)
     expect(corner.angle).toBeCloseTo(135)
+  })
+
+  it('finds a point inside a polygon but not in its hole', () => {
+    const square = (min: number, max: number): LngLat[] => [
+      [min, min],
+      [max, min],
+      [max, max],
+      [min, max],
+      [min, min],
+    ]
+    expect(pointInPolygon([5, 5], [square(0, 10)])).toBe(true)
+    expect(pointInPolygon([11, 5], [square(0, 10)])).toBe(false)
+    expect(pointInPolygon([5, 5], [square(0, 10), square(4, 6)])).toBe(false)
+    expect(pointInPolygon([2, 2], [square(0, 10), square(4, 6)])).toBe(true)
   })
 })
