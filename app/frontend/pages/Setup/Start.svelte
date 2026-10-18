@@ -128,7 +128,7 @@
           placeholder="e.g. North 160"
           error={error(e, 'pivot.name')}
         />
-        <PivotMap bind:latitude bind:longitude bind:radiusFt />
+        <PivotMap bind:latitude bind:longitude bind:radiusFt soilTypes={soil_types} />
         <SoilSurvey
           center={latitude !== null && longitude !== null ? [longitude, latitude] : null}
           {radiusFt}

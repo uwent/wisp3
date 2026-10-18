@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { pivotRing } from './geo'
-import { parseSoilTable, soilKeyFor, soilQuery, suggestSoil } from './soils'
+import { parseSoilAreas, parseSoilTable, soilAreaQuery, soilKeyFor, soilQuery, suggestSoil, wktPolygons } from './soils'
 
 // Soil Data Access's answer for the demo's North 160 pivot (44.1335, −89.5213, 1300 ft), 2026-10-17
 const NORTH_160 = {
@@ -80,5 +80,51 @@ describe('the soil survey under a pivot', () => {
 
   it('reads an empty answer (outside the survey) as no map units', () => {
     expect(parseSoilTable({})).toEqual([])
+  })
+})
+
+describe('soil types around a pivot', () => {
+  it('reads polygons from WKT, leaving out lines and points', () => {
+    expect(wktPolygons('POLYGON ((0 0, 1 0, 1 1, 0 0))')).toEqual([
+      [
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 0],
+        ],
+      ],
+    ])
+    const multi = wktPolygons(
+      'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 0)), ((5 5, 6 5, 6 6, 5 5), (5.1 5.1, 5.2 5.1, 5.2 5.2, 5.1 5.1)))',
+    )
+    expect(multi).toHaveLength(2)
+    expect(multi[1]).toHaveLength(2)
+    const collection = wktPolygons(
+      'GEOMETRYCOLLECTION (POLYGON ((0 0, 1 0, 1 1, 0 0)), LINESTRING (0 0, 2 2), POINT (3 3), POLYGON EMPTY)',
+    )
+    expect(collection).toHaveLength(1)
+    expect(wktPolygons('POLYGON ((-89.5 44.1, -89.4 44.1, -89.4 44.2, -89.5 44.1))')[0][0][1]).toEqual([-89.4, 44.1])
+  })
+
+  it("turns the survey's table into soil type areas", () => {
+    const areas = parseSoilAreas({
+      Table: [
+        ['mukey', 'wkt', 'muname', 'texdesc'],
+        ['1', 'POLYGON ((0 0, 1 0, 1 1, 0 0))', 'Coloma loamy sand, 6 to 12 percent slopes', 'Loamy sand'],
+        ['2', 'LINESTRING (0 0, 1 1)', 'Plainfield sand', 'Sand'],
+        ['3', 'POLYGON ((0 0, 1 0, 1 1, 0 0))', 'Water', null],
+      ],
+    })
+    expect(areas.features.map((f) => f.properties)).toEqual([
+      { key: 'loamy_sand', unit: 'Coloma loamy sand, 6 to 12 percent slopes', texture: 'Loamy sand' },
+      { key: null, unit: 'Water', texture: null },
+    ])
+  })
+
+  it('asks for the map units in the area, simplified', () => {
+    const query = soilAreaQuery([-89.55, 44.11, -89.49, 44.15])
+    expect(query).toContain('POLYGON((-89.550000 44.110000, -89.490000 44.110000')
+    expect(query).toContain('STAsText()')
   })
 })

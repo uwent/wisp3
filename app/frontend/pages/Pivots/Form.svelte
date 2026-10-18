@@ -85,6 +85,7 @@
           arcStart={isArc ? arcStart : null}
           arcEnd={isArc ? arcEnd : null}
           others={other_pivots}
+          soilTypes={soil_types}
         />
         <SoilSurvey
           center={latitude !== null && longitude !== null ? [longitude, latitude] : null}
