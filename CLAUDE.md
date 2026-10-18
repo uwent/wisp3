@@ -24,7 +24,7 @@ bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weath
 ## Architecture
 
 - Public pages (Phase 6.5): signed out, `/` is the landing page (`PagesController#home`), signed in the dashboard (Devise `authenticated` route); `/about` is the documentation, public. Both use `AppLayout`, whose nav is just About when signed out. The landing page and About share `lib/docs/Introduction.svelte`.
-- Rails controllers render Svelte pages with Inertia: `render inertia: "Folder/Page", props: {...}` maps to `app/frontend/pages/Folder/Page.svelte`. Pages under `Auth/` use `AuthLayout`; everything else uses `AppLayout` (`app/frontend/entrypoints/inertia.ts`).
+- Rails controllers render Svelte pages with Inertia: `render inertia: "Folder/Page", props: {...}` maps to `app/frontend/pages/Folder/Page.svelte`. Pages under `Auth/` use `AuthLayout`; everything else uses `AppLayout` (`app/frontend/entrypoints/inertia.ts`), which goes full width with no footer for `Map/` pages.
 - Shared props (`auth.user`, `auth.group`, `auth.owner`, `auth.groups`) come from `InertiaController`; `page.flash` carries `notice` and `alert`.
 - Page props are built with Alba serializers in `app/serializers`; Typelizer generates their TypeScript types (`@/types/serializers`) and typed route helpers (`@/routes`, returning `{url, method}` for `<Form action>` and `<Link href>`).
 - Forms: use Inertia's `<Form>` component with Rails-style input names (`user[email]`). On validation failure, controllers redirect back with `redirect_with_errors(path, record)`.
@@ -51,3 +51,42 @@ bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weath
 - **Engine:** the water balance lives in plain-Ruby services (`WaterBalance`, `CropEt`, `Canopy`, `DailyInputs`, `PlantingBalance`), recalculated on read, never stored. A change to the balance must keep `spec/services/legacy_engine_spec.rb` passing; a deliberate change from legacy gets a fix ID in PLAN.md §9 and a switch in `LegacyEngine`. Pages running many balances preload their inputs (`DailyInputs.preload`, `WeatherDay.balance_inputs_by_cell`, `WeatherForecast.ensemble.latest_by_cell`; `FieldStatuses.for(fields)` does all of it) instead of querying per field. Days without stored weather (today and ahead) take the latest forecast; `PlantingStatus` runs the projection (`forecast_days`, `crossing`, `ensemble`), and planned irrigation is an irrigation entry on a future date.
 - **Weather:** Open-Meteo only, fetched by jobs (never in a request) into `weather_days` per O1280 grid cell (`Weather::Grid`); values stored in inches/°F/mph, soil moisture as m³/m³. Specs never hit the network (WebMock; `spec/support/fake_open_meteo.rb`, recorded responses in `spec/fixtures/files/open_meteo`).
 - Ruby style is Standard; prefer small, plain-Ruby service objects for domain math (no ActiveRecord callbacks cascading recalculation).
+
+## Gotchas
+
+Frontend:
+
+- **Inertia v3** is newer than most training data: check `node_modules/@inertiajs/svelte/dist/*.d.ts` and `@inertiajs/core/types/types.d.ts` rather than guessing. `<Form>` errors come back keyed exactly as the server sends them (`errors['fields.0.name']`); `onBefore` returning false cancels the request.
+- **Svelte trims whitespace** at the start of `{#if}` blocks and inside elements, so "Pivot{#if x} · Crop{/if}" renders "Pivot· Crop": put separators and trailing spaces in expressions (``{` · ${crop}`}``, `{'Within '}`). When part of a button's text is hidden on small screens, give it an `aria-label` so its accessible name stays whole.
+- **An `$effect` that calls code writing state it also reads** loops; run that call in `untrack` (see `MapOverlays.sync` in `pages/Map/Show.svelte`).
+- **Tailwind v4 only emits theme variables some class uses.** Tokens read from JavaScript (chart colors) are in an `@theme static` block in `application.css`.
+- **ECharts and MapLibre can't parse `oklch()`**: get colors through `readPalette()` (`lib/charts/palette.ts`), which converts the tokens to rgb on a canvas.
+- **MapLibre** sets `position: relative` on its container, so size the container (`h-full w-full`) rather than positioning it absolutely. Load it with `loadMapLibre()` (its worker URL breaks under Vite otherwise; `worker.format: 'es'` in `vite.config.ts`).
+- **Chromium fires `blur` on a focused input that's removed**; jsdom doesn't, so component tests of edit/cancel flows fire it themselves (`EditableCell.test.ts`).
+- **Playwright dismisses dialogs by default**, so a stray `confirm` (unsaved changes) cancels a navigation in a test; handle it with `page.once('dialog', …)`.
+- **lint-staged runs Prettier on committed JSON.** Large data files go in `.prettierignore` (`lib/map/us-outline.json`), or they're expanded to thousands of lines.
+
+Rails and tests:
+
+- **Typelizer** only records `typelize` hints in development unless `TYPELIZER=1` is set (`config/ci.rb` sets it for the freshness check).
+- **Devise's test `sign_in`** takes effect on the next request; if that request raises (a 404 spec), the session isn't saved, so make a normal request first.
+- **The test environment** records jobs instead of running them (`queue_adapter = :test`), uses a memory cache cleared before each example (rate limits), and `spec/rails_helper.rb` clears `OPEN_METEO_API_KEY` and the reference data (`db:prepare` seeds it into a new test database). Rack::Attack safelists localhost.
+- **`Object#blank?` calls `empty?`** when it exists, so don't define `empty?` on a model (`DailyEntry#nothing_entered?`).
+- **Checkbox lists:** a form with every box unchecked sends nothing, which Rails can't tell from "not sent". The field checkboxes send a blank sentinel (`name="…[field_ids][]" value=""`); `PivotIrrigation.normalize_field_ids` treats `[]` as invalid and "not sent" as all fields.
+- **Zeitwerk:** one constant per file, error classes included (`weather/error.rb`, `transient_error.rb`, `rate_limited.rb`).
+- CSV export is in inches whatever the user's units, as stored.
+
+Deploy:
+
+- **`systemctl --user` over SSH** needs `XDG_RUNTIME_DIR` ("Failed to connect to bus" without it); `lib/capistrano/tasks/systemd.rake` sets it, so check by hand with `XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user …`.
+- Vite builds to `public/vite` (`set :assets_prefix, "vite"` in `config/deploy.rb`). Capistrano loads `deploy.rb` before the stage file, so per-stage `linked_files` go in `config/deploy/<stage>.rb`. `production.rb` defaults `APP_HOST` to `localhost` so local commands boot; servers get it from Capistrano and the systemd units.
+
+Outside services:
+
+- **Open-Meteo:** the forecast API reaches only ~92 days back (older days need the historical-forecast API or the archive). best_match, GFS and NBM have no soil variables over North America; ECMWF IFS does. Multi-model requests suffix each variable with the model name; multi-location requests return a list (one location, an object). Coastal points snap to a land cell, so the API's coordinates can differ from `Weather::Grid` there.
+- **Nominatim** (place search) forbids search-as-you-type: `PlaceSearch` searches only on Enter or Go. Proxy it or switch providers if use grows.
+- **Map layers** (`lib/map/overlays.ts`): NOAA's MRMS image service labels its values inches but returns millimeters; NOAA's radar image service stores rendered colors (and defaults to its oldest raster), so radar values come from IEM's tiles (`lib/map/radar.ts`).
+
+Working here:
+
+- `pkill -f` with a pattern that's also in the command line kills the shell running it; stop dev servers by port or PID.
