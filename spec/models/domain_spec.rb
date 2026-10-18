@@ -116,9 +116,9 @@ RSpec.describe "Domain models" do
     it "loads plants and soil types, and can run again" do
       2.times { described_class.load! }
       expect(Plant.count).to eq(27)
-      expect(SoilType.count).to eq(7)
+      expect(SoilType.count).to eq(11)
       expect(Plant.find_by(key: "field_corn").canopy_model).to eq("field_corn")
-      expect(SoilType.default.field_capacity).to eq(0.15)
+      expect(SoilType.default.field_capacity).to eq(0.17)
     end
   end
 end

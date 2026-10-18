@@ -1,30 +1,98 @@
-# Default water-holding fractions by soil texture, carried over from the legacy app
-# (../wisp/db/soil_types.yml). Fields can override both values.
+# Default water-holding fractions by soil texture (volumetric, m³/m³): field capacity (−33 kPa)
+# and permanent wilting point (−1500 kPa). Fields can override both values. Reviewed 2026-10-17;
+# each entry gives its values in the two sources below and the legacy value it replaced.
+#
+# Sources:
+# - WI survey: medians of the surface horizon (major components, representative values
+#   `wthirdbar_r` / `wfifteenbar_r`) of every Wisconsin soil survey area in SSURGO, by surface
+#   texture, from USDA NRCS Soil Data Access (https://sdmdataaccess.sc.egov.usda.gov), queried
+#   2026-10-17. n is the number of component records; IQR the interquartile range.
+# - S&R: Saxton, K.E. and Rawls, W.J. (2006). Soil water characteristic estimates by texture and
+#   organic matter for hydrologic solutions. Soil Sci. Soc. Am. J. 70:1569–1578,
+#   doi:10.2136/sssaj2005.0117. Texture class averages at 2.5% organic matter, as tabulated by
+#   SDSU Extension, "How Soil Holds Water" (Table 1, 2024).
+# - Legacy: carried over from the legacy app (../wisp/db/soil_types.yml), source unknown.
+#
+# A value was changed from legacy where the WI survey (with enough records) and S&R agree it's off;
+# the WI survey is used where they differ, as the local data. New types take the WI survey median,
+# or S&R where Wisconsin has no data. Changing a value moves every field on that soil that doesn't
+# override it.
+
+# Unchanged: legacy matches the WI survey (available water 0.06 in both).
+# WI survey 0.112 / 0.045 (n 297; IQR 0.09–0.13 / 0.03–0.06). S&R 0.10 / 0.05.
 - key: sand
   name: Sand
   field_capacity: 0.10
   perm_wilting_pt: 0.04
+# New (2026-10-17): WI survey median; the most common surface texture on Central Sands pivots.
+# WI survey 0.146 / 0.059 (n 755; IQR 0.14–0.16 / 0.05–0.07). S&R 0.12 / 0.05.
+# (Loamy fine sand: 0.154 / 0.066, n 230.)
+- key: loamy_sand
+  name: Loamy Sand
+  field_capacity: 0.15
+  perm_wilting_pt: 0.06
+# Changed (2026-10-17) from legacy 0.15 / 0.05: both sources put field capacity and wilting point
+# higher, with about the same available water (0.09–0.10).
+# WI survey 0.170 / 0.082 (n 1419; IQR 0.16–0.18 / 0.07–0.09). S&R 0.18 / 0.08.
+# (Fine sandy loam: 0.179 / 0.090, n 634.)
 - key: sandy_loam
   name: Sandy Loam
-  field_capacity: 0.15
-  perm_wilting_pt: 0.05
+  field_capacity: 0.17
+  perm_wilting_pt: 0.08
+# Changed (2026-10-17) from legacy 0.24 / 0.08: both sources put the wilting point higher, so
+# available water is 0.15 instead of 0.16.
+# WI survey 0.264 / 0.112 (n 853; IQR 0.25–0.28 / 0.10–0.14). S&R 0.28 / 0.14.
 - key: loam
   name: Loam
-  field_capacity: 0.24
-  perm_wilting_pt: 0.08
+  field_capacity: 0.26
+  perm_wilting_pt: 0.11
+# Changed (2026-10-17) from legacy 0.30 / 0.16: both sources put the wilting point near 0.11–0.12.
+# Field capacity differs (S&R 0.31), and the WI survey has the most records of any texture.
+# WI survey 0.274 / 0.124 (n 3388; IQR 0.26–0.30 / 0.10–0.15). S&R 0.31 / 0.11.
 - key: silt_loam
   name: Silt Loam
-  field_capacity: 0.30
-  perm_wilting_pt: 0.16
+  field_capacity: 0.27
+  perm_wilting_pt: 0.12
+# New (2026-10-17): S&R, as Wisconsin has no surface horizons of this texture with water data (it
+# occurs as subsoil, e.g. in Pecatonica). WI survey: none. S&R 0.27 / 0.17.
+- key: sandy_clay_loam
+  name: Sandy Clay Loam
+  field_capacity: 0.27
+  perm_wilting_pt: 0.17
+# Unchanged: rare, with no WI survey data; S&R is close in field capacity but has a much lower
+# wilting point (available water 0.24 against 0.21).
+# WI survey: none. S&R 0.30 / 0.06.
 - key: silt
   name: Silt
   field_capacity: 0.31
   perm_wilting_pt: 0.10
+# Changed (2026-10-17) from legacy 0.34 / 0.15: both sources put the wilting point near 0.19–0.22,
+# so available water is 0.13 instead of 0.19.
+# WI survey 0.321 / 0.191 (n 41; IQR 0.29–0.35 / 0.17–0.25). S&R 0.36 / 0.22.
 - key: clay_loam
   name: Clay Loam
+  field_capacity: 0.32
+  perm_wilting_pt: 0.19
+# New (2026-10-17): WI survey median.
+# WI survey 0.337 / 0.213 (n 154; IQR 0.32–0.34 / 0.19–0.24). S&R 0.38 / 0.22.
+- key: silty_clay_loam
+  name: Silty Clay Loam
   field_capacity: 0.34
-  perm_wilting_pt: 0.15
+  perm_wilting_pt: 0.21
+# Unchanged: the WI survey has too few records to rely on (its 0.35 wilting point leaves almost no
+# available water), and S&R alone isn't enough to move it.
+# WI survey 0.370 / 0.349 (n 12; IQR 0.32–0.41 / 0.30–0.35). S&R 0.42 / 0.30.
 - key: clay
   name: Clay
   field_capacity: 0.37
   perm_wilting_pt: 0.20
+# New (2026-10-17): WI survey median of the muck surface horizons (Houghton, Adrian, Cathro, Lupton,
+# Palms and others; about 0.39 in/in available, matching the survey's own AWC of 0.40). Organic
+# soils aren't covered by S&R; NRCS's Irrigation Guide (NEH 652 ch. 2) notes they hold more
+# available water than mineral soils. Drained, cultivated muck subsides and changes over time, so a
+# probe reading is worth more here than on mineral soils.
+# WI survey 0.533 / 0.139 (n 500; IQR 0.52–0.54 / 0.14–0.15). S&R: not covered.
+- key: muck
+  name: Muck
+  field_capacity: 0.53
+  perm_wilting_pt: 0.14

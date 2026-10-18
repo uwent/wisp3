@@ -5,7 +5,7 @@ class QuickSetupsController < AuthenticatedController
     render inertia: "Setup/Start", props: {
       farms: Current.group.farms.order(:name).map { |farm| {id: farm.id, name: farm.name} },
       plants: PlantSerializer.new(Plant.order(:name)).to_h,
-      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity)).to_h,
+      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h,
       default_soil_type_id: SoilType.find_by(key: SoilType::DEFAULT_KEY)&.id,
       year: Date.current.year
     }
