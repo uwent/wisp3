@@ -186,6 +186,26 @@ test('the Drought Monitor layer gives the category at the selected pivot', async
   await expect(page.getByRole('region', { name: /^Pivot: / })).toContainText('D1 Moderate drought')
 })
 
+test('quick setup suggests the soil from the soil survey under the pivot', async ({ page }) => {
+  // The survey's answer for a Central Sands pivot: mostly Plainfield sand, some Coloma loamy sand
+  await page.route('**/Tabular/post.rest', (route) =>
+    route.fulfill({
+      json: {
+        Table: [
+          ['mukey', 'share', 'muname', 'compname', 'texdesc'],
+          ['423976', '0.55', 'Plainfield sand, 2 to 6 percent slopes', 'Plainfield', 'Sand'],
+          ['423954', '0.45', 'Coloma loamy sand, 6 to 12 percent slopes', 'Coloma', 'Loamy sand'],
+        ],
+      },
+    }),
+  )
+  await page.goto('/setup/start')
+  await page.getByRole('application', { name: /place the pivot center/ }).click()
+  await expect(page.getByText(/Soil survey:\s*mostly Sand/)).toBeVisible()
+  await expect(page.getByLabel('Soil').locator('option:checked')).toHaveText('Sand')
+  await expect(page.getByText('From the soil survey')).toBeVisible()
+})
+
 test('a grid cell saves on Enter, and Escape cancels without saving', async ({ page }) => {
   await page.goto(await firstFieldPath(page))
   const note = `Checked gauge ${Date.now()}`

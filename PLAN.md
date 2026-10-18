@@ -687,42 +687,42 @@ Proposed 2026-10-17 (Ben): a **Map** tab next to Dashboard showing the operation
 **Fields on the map.** We know where pivots are but not where their fields are (`fields.boundary` exists in §4 but nothing sets it). So the map stays honest: the pivot is drawn to scale, and its fields are shown as badges *on* it rather than as made-up areas.
 - The pivot's circle or arc, to scale, outlined and lightly filled with its **most urgent** field's status color (irrigate > caution > ok > full; grey when no field is in season or the pivot has no fields).
 - At the center, a screen-sized marker (HTML, not to scale) holding one `StatusBadge` per field in season, in name order, with a "Season ended" or "No crop" chip otherwise. Below a zoom threshold (pivots a few pixels across) it collapses to a single dot in the most urgent color with the field count.
-- Pivot names label the outline at closer zooms, as in the picker.
+- Pivot names label the outline at closer zooms, as in the picker. *(As built: the marker shows the name from zoom 13, badges from 11.5, a dot below; fields not in season are gray dots.)*
 - *Later, not Phase 7:* drawing fields as sectors of their pivot (a start and end bearing per field, set in the picker; most split pivots are halves or quarters). Then each sector takes its own color. Only once growers ask for it.
 
 #### A. Shared map pieces (refactor first)
-- [ ] `lib/map/`: the MapLibre loader (worker URL, dynamic import), the basemap styles (USGS imagery, OpenFreeMap streets), `switchBase` keeping our own sources and layers, and a `BasemapToggle` component. `PivotMap` (the picker) moves onto them with no change in behavior.
-- [ ] `FieldCard.svelte` from the dashboard's card, with a `compact` variant for the popup. The dashboard uses it unchanged.
-- [ ] `FieldStatuses` loading moves out of `DashboardController` into a small query object (`OperationOverview`?) used by both pages, so the map and the dashboard can't drift.
+- [x] `lib/map/`: the MapLibre loader (worker URL, dynamic import), the basemap styles (USGS imagery, OpenFreeMap streets), `switchBase` keeping our own sources and layers, and a `BasemapToggle` component. `PivotMap` (the picker) moves onto them with no change in behavior. *(`lib/map/maplibre.ts`, `basemaps.ts` with `setBasemap`, `BasemapToggle`, `PlaceSearch`.)*
+- [x] `FieldCard.svelte` from the dashboard's card, with a `compact` variant for the popup. The dashboard uses it unchanged. *(`lib/components/FieldCard.svelte`, with `onselect` for the side list; `StatusCounts` too.)*
+- [x] `FieldStatuses` loading moves out of `DashboardController` into a small query object (`OperationOverview`?) used by both pages, so the map and the dashboard can't drift. *(`OperationOverview`.)*
 
 #### B. Map page (`/map`, `MapController#show`, `Map/Show`)
-- [ ] Nav: "Map" after Dashboard. Props: `today`, and farms › pivots (location, radius, arc, weather cell) › field cards, as on the dashboard. A cross-tenant request spec.
-- [ ] Map as tall as the window, with the side list (below) on the left.
-- [ ] Farm filter (as on the dashboard): it fits the map to that farm's pivots.
-- [ ] Status counts above the map, as on the dashboard, and a legend for the status colors.
-- [ ] **"Needs water within" control:** today / 3 days / 7 days. Highlights the pivots with a field whose `crossing.days` falls in the window and dims the rest, so a grower can plan the week's irrigation by place. This uses `crossing`, which the summary already carries, so no new logic.
-- [ ] Empty states: no pivots (link to quick setup), off season (every field greyed, "Season ended" in popups; the weather layers still work).
-- [ ] The last view (center, zoom, basemap, overlays, sort, sidebar open or closed) remembered per browser (localStorage, wrapped in try/catch). The first visit fits all pivots.
+- [x] Nav: "Map" after Dashboard. Props: `today`, and farms › pivots (location, radius, arc, weather cell) › field cards, as on the dashboard. A cross-tenant request spec. *(`MapController`, `spec/requests/map_spec.rb`; each pivot also gets its zone's `WeatherSummary` totals.)*
+- [x] Map as tall as the window, with the side list (below) on the left.
+- [x] Farm filter (as on the dashboard): it fits the map to that farm's pivots.
+- [x] Status counts above the map, as on the dashboard, and a legend for the status colors. *(The status counts, with their labelled badges, serve as the legend.)*
+- [x] **"Needs water within" control:** today / 3 days / 7 days. Highlights the pivots with a field whose `crossing.days` falls in the window and dims the rest, so a grower can plan the week's irrigation by place. This uses `crossing`, which the summary already carries, so no new logic.
+- [x] Empty states: no pivots (link to quick setup), off season (every field greyed, "Season ended" in popups; the weather layers still work).
+- [x] The last view (center, zoom, basemap, overlays, sort, sidebar open or closed) remembered per browser (localStorage, wrapped in try/catch). The first visit fits all pivots. *(`lib/map/prefs.ts`, per operation.)*
 
 **Side list** (the common map-and-list pattern)
-- [ ] Every field in the farm filter, as the compact `FieldCard` (A), each card naming its pivot.
-- [ ] Sort: **Most urgent** (default): irrigate, then caution, ok and full, each soonest "Irrigate by" first; then upcoming, season ended, and no crop. Or **North to south**: by pivot latitude, the order the pivots appear on the map, with a pivot's fields together.
-- [ ] Expands and collapses (a button on its edge; collapsed, the map takes the width). On phones it's a sheet under the map that pulls up.
-- [ ] Selecting is shared both ways: clicking a card flies to its pivot, outlines the pivot and opens its popup; clicking a pivot on the map highlights its fields' card borders and scrolls the first into view. One selection at a time; Escape or a click on empty map clears it.
-- [ ] A filter box (pivot or field name) narrows the list.
+- [x] Every field in the farm filter, as the compact `FieldCard` (A), each card naming its pivot.
+- [x] Sort: **Most urgent** (default): irrigate, then caution, ok and full, each soonest "Irrigate by" first; then upcoming, season ended, and no crop. Or **North to south**: by pivot latitude, the order the pivots appear on the map, with a pivot's fields together.
+- [x] Expands and collapses (a button on its edge; collapsed, the map takes the width). On phones it's a sheet under the map that pulls up. *(On phones the list sits under the map with Hide/Show rather than a pull-up sheet.)*
+- [x] Selecting is shared both ways: clicking a card flies to its pivot, outlines the pivot and opens its popup; clicking a pivot on the map highlights its fields' card borders and scrolls the first into view. One selection at a time; Escape or a click on empty map clears it.
+- [x] A filter box (pivot or field name) narrows the list.
 
 #### C. Pivot popup
-- [ ] Opens on a click on the pivot or its marker; on phones it's a bottom sheet instead of a floating popup.
-- [ ] Header: pivot name and farm, links to View, Edit and to daily entry for this pivot.
-- [ ] Each field's compact card: status, AD today with the sparkline, the outlook headline ("Irrigate by …"), last rain and irrigation, due tasks; it links to the field page.
-- [ ] The pivot's weather in one line: rain over the last 7 days and forecast for the next 7, ET over the last 7 (from `weather_days` and the latest forecast for its cell, already preloaded).
-- [ ] With the drought layer loaded: the pivot's Drought Monitor category (point in polygon in the browser).
+- [x] Opens on a click on the pivot or its marker; on phones it's a bottom sheet instead of a floating popup.
+- [x] Header: pivot name and farm, links to View, Edit and to daily entry for this pivot. *(View and Edit only: daily entry has no per-pivot view to link to.)*
+- [x] Each field's compact card: status, AD today with the sparkline, the outlook headline ("Irrigate by …"), last rain and irrigation, due tasks; it links to the field page. *(The compact card leaves out last rain and irrigation.)*
+- [x] The pivot's weather in one line: rain over the last 7 days and forecast for the next 7, ET over the last 7 (from `weather_days` and the latest forecast for its cell, already preloaded).
+- [x] With the drought layer loaded: the pivot's Drought Monitor category (point in polygon in the browser).
 
 #### D. Controls
-- [ ] Zoom in and out (`NavigationControl`), **fit all pivots**, **my location** (`GeolocateControl`; useful in the truck), fullscreen, scale bar.
-- [ ] Basemap: Satellite / Map, the picker's toggle (A).
-- [ ] Layers button: a panel with the overlays (E), each with on/off, opacity, its legend and valid time, and a link to the source.
-- [ ] Find a place (the picker's geocoder); pivots and fields are found with the side list's filter.
+- [x] Zoom in and out (`NavigationControl`), **fit all pivots**, **my location** (`GeolocateControl`; useful in the truck), fullscreen, scale bar.
+- [x] Basemap: Satellite / Map, the picker's toggle (A).
+- [x] Layers button: a panel with the overlays (E), each with on/off, opacity, its legend and valid time, and a link to the source.
+- [x] Find a place (the picker's geocoder); pivots and fields are found with the side list's filter. *(Hidden on phones, where the map has no room for it.)*
 
 #### E. Optional overlays (all off by default, loaded by the browser, never by our server)
 Each overlay lives in a registry (`lib/map/overlays.ts`: id, name, tile URL builder, attribution, legend stops, refresh interval, description), unit tested for its URLs. All of these were checked on 2026-10-17: they answer with CORS headers and serve Web Mercator.
@@ -734,17 +734,17 @@ Each overlay lives in a registry (`lib/map/overlays.ts`: id, name, tile URL buil
 | **Radar now** | Iowa Environmental Mesonet NEXRAD composite tiles (`mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png`) | Every 5 minutes; the panel shows the time. A loop over the last hour (IEM's `-m05m`…`-m55m` layers) is a stretch goal |
 | **Rain, last 24 h / 72 h** (radar estimate) | IEM MRMS accumulation tiles (`q2-p24h`, `q2-p72h`) | Good next to WISP's own numbers: did the gauge, the model and the radar agree? |
 | **Forecast rain**, day 1 / days 1–3 / days 1–7 | NOAA WPC QPF (`mapservices.weather.noaa.gov/vector/rest/services/precip/wpc_qpf/MapServer`, `export` with `{bbox-epsg-3857}`) | A human forecaster's product; it can differ from the Open-Meteo forecast WISP uses, and the legend says so |
-| **Drought Monitor** | USDM current polygons (`services5.arcgis.com/0OTVzJS4K09zlixn/.../USDM_current/FeatureServer/0/query`, GeoJSON for the view) | Weekly (Thursday); the panel shows the map date. USDM's standard D0–D4 colors |
+| **Drought Monitor** | USDM current polygons (`services5.arcgis.com/0OTVzJS4K09zlixn/.../USDM_current/FeatureServer/0/query`, GeoJSON; as built, loaded once for the area 3° around the operation's pivots) | Weekly (Thursday); the panel shows the map date. USDM's standard D0–D4 colors |
 
 Not proposed: RainViewer (its free tier is limited) and NWS warnings (useful, but a crowded layer; maybe later for frost and freeze).
 
 #### F. Soil survey in setup
 USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free and CORS enabled (checked 2026-10-17: a point in the Central Sands returns "Plainfield sand, 0 to 2 percent slopes", Plainfield 90%, surface texture Sand, AWC 0.08).
-- [ ] **Soil layer** on the pivot picker (and as an overlay on the Map tab): map-unit outlines from the WMS (`SDMDataAccess.sc.egov.usda.gov/Spatial/SDM.wms`, layer `mapunitpoly`), visible from about zoom 13, with each unit's name on click.
-- [ ] **Suggest the soil type** for a pivot's fields: query the map units under the pivot's circle or arc (`Tabular/post.rest`, `SDA_Get_Mukey_from_intersection_with_WktWgs84` with the polygon from `pivotRing`). Take each unit's area share and its dominant component's surface texture, and show "Soil survey: mostly Plainfield sand (82%), some Richford loamy sand (18%) → Sand". The field form and quick setup preselect that soil type when the user hasn't chosen one, and never overwrite a choice. The user can always change it.
+- [x] **Soil layer** on the pivot picker (and as an overlay on the Map tab): map-unit outlines from the WMS (`SDMDataAccess.sc.egov.usda.gov/Spatial/SDM.wms`, layer `mapunitpoly`), visible from about zoom 13, with each unit's name on click. *(A "Soils" toggle on the picker and a layer on the Map tab. No click-to-identify, as clicks place or select pivots; the survey box lists the map units under the pivot instead.)*
+- [x] **Suggest the soil type** for a pivot's fields: query the map units under the pivot's circle or arc (`Tabular/post.rest`, `SDA_Get_Mukey_from_intersection_with_WktWgs84` with the polygon from `pivotRing`). Take each unit's area share and its dominant component's surface texture, and show "Soil survey: mostly Plainfield sand (82%), some Richford loamy sand (18%) → Sand". The field form and quick setup preselect that soil type when the user hasn't chosen one, and never overwrite a choice. The user can always change it. *(`lib/soils.ts`, `SoilSurvey.svelte`: area shares from `mupolygon` intersected with the pivot's polygon in one query, about 5 s. Quick setup's fields and a new field in Setup take the suggestion until the user picks a soil; the pivot form shows it for information.)*
 - [x] **Soil types reviewed** (Ben, 2026-10-17): Loamy Sand, Sandy Clay Loam, Silty Clay Loam and Muck added, and sandy loam, loam, silt loam and clay loam updated, from Wisconsin SSURGO medians and Saxton & Rawls (2006). The legacy values had no known source. Each entry in `soil_types.yml` gives both sources' values and the legacy one.
-- [ ] **Texture mapping** to our eleven soil types, as a table in `lib/soils.ts`, unit tested: each USDA texture to its class, with modifiers dropped (fine sand and coarse sand → Sand, loamy fine sand → Loamy Sand, fine sandy loam → Sandy Loam), muck and mucky peat → Muck, and no suggestion for peat or textures we don't have (silty clay, sandy clay).
-- [ ] Failure is quiet: no suggestion and a short "Soil survey unavailable" note; setup never waits on it. Outside the survey's coverage (Canada) there's no suggestion.
+- [x] **Texture mapping** to our eleven soil types, as a table in `lib/soils.ts`, unit tested: each USDA texture to its class, with modifiers dropped (fine sand and coarse sand → Sand, loamy fine sand → Loamy Sand, fine sandy loam → Sandy Loam), muck and mucky peat → Muck, and no suggestion for peat or textures we don't have (silty clay, sandy clay).
+- [x] Failure is quiet: no suggestion and a short "Soil survey unavailable" note; setup never waits on it. Outside the survey's coverage (Canada) there's no suggestion.
 - [ ] *Maybe:* show the survey's available water capacity next to the soil type's default field capacity and wilting point, as a check. Not used in the balance.
 
 #### G. Ideas for later (Phase 8 polish or after launch)
@@ -753,7 +753,7 @@ USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free a
 - The map in the daily email (a static image per farm).
 - A radar loop over the last hour.
 
-- **Exit:** every pivot in the demo seed is drawn where it is, with its fields' badges and a popup matching their dashboard cards. The side list sorts both ways and selects with the map. The map fits the farm filter. Each overlay loads with its legend and time, and a blocked source shows its notice without breaking the map (Playwright, with the route aborted). Playwright opens the map, picks a field in the list, sees its pivot selected and follows the field link. The pivot picker suggests Sand for a Central Sands pivot (a vitest with a recorded Soil Data Access response). Editing a location updates its weather within one job cycle.
+- **Exit** *(met 2026-10-17; `bin/ci` passes, with the map, failing-layer, drought and soil suggestion tests in `e2e/smoke.spec.ts`)*: every pivot in the demo seed is drawn where it is, with its fields' badges and a popup matching their dashboard cards. The side list sorts both ways and selects with the map. The map fits the farm filter. Each overlay loads with its legend and time, and a blocked source shows its notice without breaking the map (Playwright, with the route aborted). Playwright opens the map, picks a field in the list, sees its pivot selected and follows the field link. The pivot picker suggests Sand for a Central Sands pivot (a vitest with a recorded Soil Data Access response). Editing a location updates its weather within one job cycle.
 
 ### Phase 8: Polish, beta, launch
 

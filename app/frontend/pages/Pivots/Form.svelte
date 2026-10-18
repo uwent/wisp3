@@ -6,12 +6,13 @@
   import NumberField from '@/lib/components/NumberField.svelte'
   import PivotMap from '@/lib/components/PivotMap.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
+  import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { DEFAULT_RADIUS_FT, pivotAcres } from '@/lib/geo'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { pivots, setup } from '@/routes'
-  import type { Pivot } from '@/types/serializers'
+  import type { Pivot, SoilType } from '@/types/serializers'
 
   type Outline = Pick<Pivot, 'id' | 'name' | 'latitude' | 'longitude' | 'radius_ft' | 'arc_start_deg' | 'arc_end_deg'>
 
@@ -19,8 +20,13 @@
     pivot,
     farms,
     other_pivots,
-  }: { pivot: Partial<Omit<Pivot, 'fields'>>; farms: { id: number; name: string }[]; other_pivots: Outline[] } =
-    $props()
+    soil_types,
+  }: {
+    pivot: Partial<Omit<Pivot, 'fields'>>
+    farms: { id: number; name: string }[]
+    other_pivots: Outline[]
+    soil_types: SoilType[]
+  } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const editing = $derived(pivot.id !== undefined)
@@ -79,6 +85,13 @@
           arcStart={isArc ? arcStart : null}
           arcEnd={isArc ? arcEnd : null}
           others={other_pivots}
+        />
+        <SoilSurvey
+          center={latitude !== null && longitude !== null ? [longitude, latitude] : null}
+          {radiusFt}
+          arcStart={isArc ? arcStart : null}
+          arcEnd={isArc ? arcEnd : null}
+          soilTypes={soil_types}
         />
         <div class="grid gap-4 sm:grid-cols-3">
           <NumberField label="Latitude" name="pivot[latitude]" bind:value={latitude} error={errors.latitude} />

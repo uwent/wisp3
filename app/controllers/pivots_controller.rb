@@ -71,14 +71,16 @@ class PivotsController < AuthenticatedController
       :equipment, :pump_capacity_gpm, :notes])
   end
 
-  # The pivot, the farms it can belong to, and the group's other pivots to show on the map
+  # The pivot, the farms it can belong to, the group's other pivots to show on the map, and the soil
+  # types to name the soil survey's suggestion
   def form_props(pivot)
     {
       pivot: pivot.new_record? ? pivot.attributes.slice("farm_id") : PivotSerializer.new(pivot).to_h.except("fields"),
       farms: Current.group.farms.order(:name).map { |farm| {id: farm.id, name: farm.name} },
       other_pivots: Current.group.pivots.where.not(id: pivot.id).map do |other|
         other.slice(:id, :name, :latitude, :longitude, :radius_ft, :arc_start_deg, :arc_end_deg)
-      end
+      end,
+      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h
     }
   end
 end

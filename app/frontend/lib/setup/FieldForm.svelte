@@ -5,9 +5,10 @@
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
+  import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { fields } from '@/routes'
-  import type { Field, SoilType } from '@/types/serializers'
+  import type { Field, Pivot, SoilType } from '@/types/serializers'
 
   // Create a field under a pivot, or edit one (including moving it to another pivot)
   let {
@@ -19,7 +20,9 @@
   }: {
     field?: Field
     pivotId: number
-    pivots: { id: number; name: string }[]
+    /** With their location, a new field gets the soil survey's suggestion for its pivot */
+    pivots: (Pick<Pivot, 'id' | 'name'> &
+      Partial<Pick<Pivot, 'latitude' | 'longitude' | 'radius_ft' | 'arc_start_deg' | 'arc_end_deg'>>)[]
     soilTypes: SoilType[]
     ondone: () => void
   } = $props()
@@ -29,6 +32,20 @@
     untrack(() => String(field?.soil_type_id ?? soilTypes.find((s) => s.key === 'sandy_loam')?.id ?? soilTypes[0]?.id)),
   )
   const soil = $derived(soilTypes.find((s) => String(s.id) === soilTypeId))
+
+  // A new field takes the soil survey's suggestion for its pivot until the user picks a soil
+  let pivotChoice = $state(untrack(() => String(field?.pivot_id ?? pivotId)))
+  let soilChosen = $state(false)
+  let fromSurvey = $state(false)
+  const pivot = $derived(pivots.find((p) => String(p.id) === pivotChoice))
+  const center = $derived(
+    !field && pivot?.latitude != null && pivot.longitude != null ? ([pivot.longitude, pivot.latitude] as const) : null,
+  )
+  function suggestSoil(suggested: SoilType | null) {
+    if (soilChosen || !suggested) return
+    soilTypeId = String(suggested.id)
+    fromSurvey = true
+  }
   const pct = (fraction: number | undefined) => (fraction === undefined ? '' : `${Math.round(fraction * 1000) / 10}%`)
 </script>
 
@@ -44,7 +61,7 @@
       <SelectField
         label="Pivot"
         name="field[pivot_id]"
-        value={String(field?.pivot_id ?? pivotId)}
+        bind:value={pivotChoice}
         options={pivots.map((p) => ({ value: String(p.id), label: p.name }))}
       />
       <NumberField
@@ -59,9 +76,24 @@
       label="Soil"
       name="field[soil_type_id]"
       bind:value={soilTypeId}
+      onchange={() => {
+        soilChosen = true
+        fromSurvey = false
+      }}
       options={soilTypes.map((s) => ({ value: String(s.id), label: s.name }))}
       error={errors.soil_type}
+      hint={fromSurvey ? 'From the soil survey' : undefined}
     />
+    {#if center}
+      <SoilSurvey
+        center={[center[0], center[1]]}
+        radiusFt={pivot?.radius_ft ?? null}
+        arcStart={pivot?.arc_start_deg ?? null}
+        arcEnd={pivot?.arc_end_deg ?? null}
+        {soilTypes}
+        onsuggest={suggestSoil}
+      />
+    {/if}
     <details class="text-sm" open={field?.field_capacity !== null && field?.field_capacity !== undefined}>
       <summary class="cursor-pointer text-ink-muted">Override the soil's water-holding values</summary>
       <div class="mt-3 grid gap-4 sm:grid-cols-2">

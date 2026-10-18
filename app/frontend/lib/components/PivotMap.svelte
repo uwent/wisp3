@@ -17,6 +17,7 @@
   import { basemapStyle, LABEL_FONT, setBasemap, type Basemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { loadMapLibre } from '@/lib/map/maplibre'
+  import { SOIL_OVERLAY } from '@/lib/map/overlays'
   import PlaceSearch from '@/lib/map/PlaceSearch.svelte'
 
   type Outline = {
@@ -56,13 +57,14 @@
   const PIVOT_ZOOM = 14
 
   // Our sources, carried over when the basemap changes
-  const OWN_SOURCES = ['others', 'pivot']
+  const OWN_SOURCES = ['others', 'pivot', 'overlay-soil']
 
   let container: HTMLDivElement
   let map: MapLibreMap | undefined = $state()
   let centerMarker: Marker | undefined
   let edgeMarker: Marker | undefined
   let basemap = $state<Basemap>('imagery')
+  let soils = $state(false)
   let locating = $state(false)
   let locateError = $state<string | null>(null)
   let pointer = $state<{ x: number; y: number; angle: number } | null>(null)
@@ -197,6 +199,28 @@
     updatePointer()
   })
 
+  // The soil survey's map units under the pivots (PLAN.md Phase 7 F), shown when zoomed in
+  function toggleSoils() {
+    if (!map) return
+    soils = !soils
+    if (!soils) {
+      if (map.getLayer('overlay-soil')) map.removeLayer('overlay-soil')
+      if (map.getSource('overlay-soil')) map.removeSource('overlay-soil')
+      return
+    }
+    map.addSource('overlay-soil', {
+      type: 'raster',
+      tiles: SOIL_OVERLAY.tiles(Date.now()),
+      tileSize: 256,
+      minzoom: SOIL_OVERLAY.minzoom,
+      attribution: SOIL_OVERLAY.attribution,
+    })
+    map.addLayer(
+      { id: 'overlay-soil', type: 'raster', source: 'overlay-soil', minzoom: SOIL_OVERLAY.minzoom },
+      map.getLayer('others-line') ? 'others-line' : undefined,
+    )
+  }
+
   async function switchBase(to: Basemap) {
     if (!map) return
     basemap = to
@@ -272,7 +296,17 @@
     ></div>
 
     <div class="absolute top-2 left-2">
-      <BasemapToggle value={basemap} onchange={switchBase} />
+      <div class="flex gap-2">
+        <BasemapToggle value={basemap} onchange={switchBase} />
+        <button
+          type="button"
+          class="rounded-md border border-line px-2.5 py-1.5 text-xs shadow
+            {soils ? 'bg-brand-600 text-white dark:text-surface' : 'bg-surface-raised hover:bg-surface'}"
+          aria-pressed={soils}
+          title="Soil survey map units (zoom in to see them)"
+          onclick={toggleSoils}>Soils</button
+        >
+      </div>
     </div>
 
     {#if !center}

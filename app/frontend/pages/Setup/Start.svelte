@@ -6,6 +6,7 @@
   import NumberField from '@/lib/components/NumberField.svelte'
   import PivotMap from '@/lib/components/PivotMap.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
+  import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { DEFAULT_RADIUS_FT, pivotAcres } from '@/lib/geo'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
@@ -34,15 +35,29 @@
   let longitude = $state<number | null>(null)
   let radiusFt = $state<number | null>(DEFAULT_RADIUS_FT)
 
+  // A field's soil follows the soil survey's suggestion until the user picks one
+  let suggestedSoilId = $state<number | null>(null)
+  const defaultSoilId = () => String(suggestedSoilId ?? default_soil_type_id ?? soil_types[0]?.id ?? '')
   let nextKey = 1
-  const newRow = () => ({ key: nextKey++, name: '', area: null as number | null })
+  const newRow = () => ({
+    key: nextKey++,
+    name: '',
+    area: null as number | null,
+    soilTypeId: defaultSoilId(),
+    soilChosen: false,
+  })
   let rows = $state([newRow()])
 
   const plantOptions = $derived([
     { value: '', label: 'Choose a crop' },
     ...plants.map((p) => ({ value: p.id, label: p.name })),
   ])
-  const soilOptions = $derived(soil_types.map((s) => ({ value: s.id, label: s.name })))
+  const soilOptions = $derived(soil_types.map((s) => ({ value: String(s.id), label: s.name })))
+
+  function suggestSoil(soil: SoilType | null) {
+    suggestedSoilId = soil?.id ?? null
+    for (const row of rows) if (!row.soilChosen) row.soilTypeId = defaultSoilId()
+  }
   const pivotArea = $derived(radiusFt ? pivotAcres(radiusFt) : null)
 
   // Ask before leaving with anything entered, and before saving a pivot with no fields
@@ -114,6 +129,12 @@
           error={error(e, 'pivot.name')}
         />
         <PivotMap bind:latitude bind:longitude bind:radiusFt />
+        <SoilSurvey
+          center={latitude !== null && longitude !== null ? [longitude, latitude] : null}
+          {radiusFt}
+          soilTypes={soil_types}
+          onsuggest={suggestSoil}
+        />
         <div class="grid gap-4 sm:grid-cols-4">
           <NumberField
             label="Latitude"
@@ -179,8 +200,10 @@
             <SelectField
               label="Soil"
               name="setup[fields][{i}][soil_type_id]"
-              value={default_soil_type_id ?? soil_types[0]?.id}
+              bind:value={row.soilTypeId}
+              onchange={() => (row.soilChosen = true)}
               options={soilOptions}
+              hint={!row.soilChosen && suggestedSoilId !== null ? 'From the soil survey' : undefined}
             />
             <SelectField
               label="Crop"
