@@ -1,17 +1,12 @@
 <script lang="ts">
   import { Link, page } from '@inertiajs/svelte'
 
-  import Sparkline from '@/lib/components/Sparkline.svelte'
-  import StatusBadge from '@/lib/components/StatusBadge.svelte'
-  import { formatDate, relativeDay } from '@/lib/dates'
-  import { LEAD_DAYS, outlook } from '@/lib/outlook'
+  import FieldCard from '@/lib/components/FieldCard.svelte'
+  import StatusCounts from '@/lib/components/StatusCounts.svelte'
+  import { formatDate } from '@/lib/dates'
+  import type { FarmGroup, FieldCard as Card } from '@/lib/overview'
   import { units as unitsFor } from '@/lib/units'
-  import { dailyEntries, fields, newQuickSetup, pivots, setup } from '@/routes'
-  import type { PlantingSummary } from '@/types/serializers'
-
-  type FieldCard = { id: number; name: string; summary: PlantingSummary | null }
-  type PivotGroup = { id: number; name: string; fields: FieldCard[] }
-  type FarmGroup = { id: number; name: string; pivots: PivotGroup[] }
+  import { dailyEntries, newQuickSetup, pivots, setup } from '@/routes'
 
   let { today, farms }: { today: string; farms: FarmGroup[] } = $props()
 
@@ -20,8 +15,8 @@
 
   // Fields whose season has ended go after the rest, and so do pivots and farms with only ended fields
   // (the sort is stable, so names stay in order otherwise)
-  const ended = (card: FieldCard) => card.summary?.phase === 'ended'
-  const allEnded = (cards: FieldCard[]) => cards.length > 0 && cards.every(ended)
+  const ended = (card: Card) => card.summary?.phase === 'ended'
+  const allEnded = (cards: Card[]) => cards.length > 0 && cards.every(ended)
   const endedLast = <T,>(items: T[], isEnded: (item: T) => boolean) =>
     items.toSorted((a, b) => Number(isEnded(a)) - Number(isEnded(b)))
   const sorted = $derived(
@@ -40,34 +35,9 @@
   const shown = $derived(sorted.filter((farm) => farmId === 'all' || farm.id === farmId))
   const cards = $derived(shown.flatMap((farm) => farm.pivots.flatMap((pivot) => pivot.fields)))
   const anyFields = $derived(farms.some((farm) => farm.pivots.some((pivot) => pivot.fields.length)))
-
-  // "3 days ago" during the season; a plain date once it's over
-  const when = (summary: PlantingSummary, date: string) =>
-    summary.phase === 'active' ? relativeDay(date, today) : formatDate(date)
-
-  const counts = $derived(
-    (['irrigate', 'caution', 'ok', 'full'] as const).map((status) => ({
-      status,
-      count: cards.filter((card) => card.summary?.phase === 'active' && card.summary.status === status).length,
-    })),
-  )
-  const endedCount = $derived(cards.filter(ended).length)
-
-  const fieldCount = (count: number) => `${count} field${count === 1 ? '' : 's'}`
-  const countTips = {
-    irrigate: (count: number) => `${fieldCount(count)} at or below the irrigation point today`,
-    caution: (count: number) =>
-      `${fieldCount(count)} running low, or projected to need irrigation within ${LEAD_DAYS} days`,
-    ok: (count: number) => `${fieldCount(count)} with enough water for now`,
-    full: (count: number) => `${fieldCount(count)} near field capacity`,
-  }
 </script>
 
 <svelte:head><title>Dashboard · WISP</title></svelte:head>
-
-{#snippet seasonEnded()}
-  <span class="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted">Season ended</span>
-{/snippet}
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
@@ -117,20 +87,7 @@
       <Link href={setup.show()} class="mt-4 inline-block text-sm text-brand-600 hover:underline">Go to setup</Link>
     </section>
   {:else}
-    <div class="flex flex-wrap gap-2 text-sm" aria-label="Fields by status">
-      {#each counts as { status, count } (status)}
-        {#if count}
-          <span class="flex items-center gap-1.5" title={countTips[status](count)}
-            ><StatusBadge {status} size="sm" /> {count}</span
-          >
-        {/if}
-      {/each}
-      {#if endedCount}
-        <span class="flex items-center gap-1.5" title="{fieldCount(endedCount)} whose season has ended"
-          >{@render seasonEnded()} {endedCount}</span
-        >
-      {/if}
-    </div>
+    <StatusCounts {cards} />
   {/if}
 
   {#each shown as farm (farm.id)}
@@ -165,100 +122,7 @@
           {:else}
             <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {#each pivot.fields as card (card.id)}
-                {@const summary = card.summary}
-                {@const look = summary && outlook(summary, units)}
-                <li>
-                  <Link
-                    href={fields.show(card.id)}
-                    class="block h-full space-y-3 rounded-lg border border-line bg-surface-raised p-4 hover:border-brand-500"
-                  >
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <h4 class="truncate font-medium">
-                          <span class="font-normal text-ink-muted">Field:</span>
-                          {card.name}
-                        </h4>
-                        {#if summary}
-                          <p class="truncate text-xs text-ink-muted">
-                            {summary.plant_name}{#if summary.variety}{` (${summary.variety})`}{/if}
-                          </p>
-                        {/if}
-                      </div>
-                      {#if summary?.phase === 'active'}
-                        <StatusBadge status={summary.status} size="sm" />
-                      {:else if summary?.phase === 'ended'}
-                        {@render seasonEnded()}
-                      {/if}
-                    </div>
-
-                    {#if !summary}
-                      <p class="text-sm text-ink-muted">No crop this season. Add a planting in setup.</p>
-                    {:else if summary.weather_pending}
-                      <p class="text-sm text-ink-muted">
-                        Weather for this pivot is on the way; the water balance fills in once it arrives.
-                      </p>
-                    {:else if summary.phase === 'upcoming'}
-                      <p class="text-sm text-ink-muted">Season starts {formatDate(summary.season_start)}</p>
-                    {:else}
-                      <div class="flex items-end justify-between gap-3">
-                        <div>
-                          <div class="text-xs text-ink-muted">
-                            AD {summary.phase === 'ended' ? `at season end (${formatDate(summary.end_date)})` : 'today'}
-                          </div>
-                          <div class="text-xl font-semibold tabular-nums">{units.format('depth', summary.ad)}</div>
-                          <div class="text-xs text-ink-muted">
-                            of {units.format('depth', summary.ad_max)} · {summary.pct_moisture?.toFixed(1)}% moisture
-                          </div>
-                        </div>
-                        <Sparkline
-                          class="max-w-32"
-                          values={summary.recent.map((day) => day.ad)}
-                          projected={summary.phase === 'active' ? summary.projection.map((day) => day.ad) : []}
-                          max={summary.ad_max}
-                          min={summary.ad_pwp}
-                          label="Allowable depletion over the last {summary.recent.length} days{summary.phase ===
-                            'active' && summary.projection.length
-                            ? `, and the ${summary.projection.length} days ahead`
-                            : ''}"
-                        />
-                      </div>
-                      {#if look}
-                        <p class="text-sm {look.urgent ? 'font-medium text-status-irrigate' : ''}">{look.headline}</p>
-                      {/if}
-                      <dl class="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <dt class="text-ink-muted">Last rain</dt>
-                          <dd>
-                            {#if summary.last_rain}{units.format('depth', summary.last_rain.inches)}, {when(
-                                summary,
-                                summary.last_rain.date,
-                              )}{:else}None{/if}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt class="text-ink-muted">Last irrigation</dt>
-                          <dd>
-                            {#if summary.last_irrigation}{units.format('depth', summary.last_irrigation.inches)}, {when(
-                                summary,
-                                summary.last_irrigation.date,
-                              )}{:else}None{/if}
-                          </dd>
-                        </div>
-                      </dl>
-                      {@const todo = summary.tasks.filter((task) => task.due)}
-                      {#if todo.length}
-                        <ul class="space-y-1 border-t border-line pt-2 text-xs" aria-label="To do">
-                          {#each todo as task (task.kind)}
-                            <li class="flex gap-1.5" title={task.message ?? undefined}>
-                              <span aria-hidden="true" class="text-status-caution">○</span>
-                              <span>{task.todo}</span>
-                            </li>
-                          {/each}
-                        </ul>
-                      {/if}
-                    {/if}
-                  </Link>
-                </li>
+                <li><FieldCard {card} {today} {units} /></li>
               {/each}
             </ul>
           {/if}
