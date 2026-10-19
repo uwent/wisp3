@@ -293,9 +293,14 @@ test('a linear move is sized by dragging a corner and turned by its handle', asy
   await dragHandle(page, 'Drag to turn the linear', 60, 0)
   await expect(direction).not.toHaveValue('0')
   await page.getByRole('button', { name: 'Add pivot' }).click()
-  await expect(page.getByRole('heading', { name }).locator('..')).toContainText(
-    /linear, 1,300 ft machine, travels [\d,]+ ft at \d+°/,
-  )
+  const row = page.getByRole('heading', { name }).locator('../..')
+  await expect(row).toContainText(/linear, 1,300 ft machine, travels [\d,]+ ft at \d+°/)
+
+  // Delete it again: a new pivot sorts first on the dashboard, and its weather cell has no seeded
+  // weather, so leaving it would change what later tests open
+  page.once('dialog', (dialog) => dialog.accept())
+  await row.getByRole('button', { name: 'Delete' }).click()
+  await expect(page.getByRole('heading', { name })).toHaveCount(0)
 })
 
 test("a partial circle's arc is set by dragging its ends", async ({ page }) => {
