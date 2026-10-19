@@ -25,8 +25,8 @@ RSpec.describe "Map", type: :request do
     get map_path
     expect_inertia.to render_component("Map/Show")
     shown = inertia.props[:farms].sole[:pivots].sole
-    expect(shown).to include(id: pivot.id, name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300,
-      arc_start_deg: 30, arc_end_deg: 300)
+    expect(shown).to include(id: pivot.id, name: "North 160", latitude: 44.1335, longitude: -89.5213, kind: "center",
+      radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300, length_ft: nil, travel_ft: nil, travel_bearing_deg: nil)
     expect(shown[:weather][:past]).to include(days: 7, precip: 0.5)
     expect(shown[:weather][:past][:et0]).to be_within(1e-9).of(1.4)
     expect(shown[:weather][:ahead]).to be_nil # no forecast stored

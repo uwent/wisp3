@@ -28,7 +28,8 @@ class QuickSetupsController < AuthenticatedController
     params.expect(setup: [
       :farm_id,
       farm: [:name],
-      pivot: [:name, :latitude, :longitude, :radius_ft, :pump_capacity_gpm],
+      pivot: [:name, :kind, :latitude, :longitude, :radius_ft, :arc_start_deg, :arc_end_deg, :length_ft,
+        :travel_ft, :travel_bearing_deg, :pump_capacity_gpm],
       fields: [[:name, :area_acres, :soil_type_id, :plant_id, :emergence_date]]
     ])
   end

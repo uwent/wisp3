@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DEFAULT_RADIUS_FT, type LngLat, pivotRing } from '@/lib/geo'
+  import { pivotOutline, type PivotShape } from '@/lib/geo'
   import { fetchSoilSurvey, type MapUnit, soilKeyFor, type SoilSuggestion, suggestSoil } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
 
@@ -7,17 +7,12 @@
   // Phase 7 F). Looked up when the pivot is placed or moved; it never holds up the form, and a
   // failure just says so.
   let {
-    center,
-    radiusFt,
-    arcStart = null,
-    arcEnd = null,
+    shape,
     soilTypes,
     onsuggest,
   }: {
-    center: LngLat | null
-    radiusFt: number | null
-    arcStart?: number | null
-    arcEnd?: number | null
+    /** The pivot, or null until it's placed */
+    shape: PivotShape | null
     soilTypes: SoilType[]
     /** The suggested soil type (or null for none), each time the survey answers */
     onsuggest?: (soilType: SoilType | null) => void
@@ -39,12 +34,12 @@
 
   // Look the pivot up again when it moves or changes size, once it settles
   $effect(() => {
-    if (!center) {
+    if (!shape) {
       lookup = 'idle'
       suggestion = null
       return
     }
-    const ring = pivotRing(center, radiusFt ?? DEFAULT_RADIUS_FT, arcStart, arcEnd, 48)
+    const ring = pivotOutline(shape, 48)
     const request = new AbortController()
     const timer = setTimeout(() => {
       lookup = 'loading'

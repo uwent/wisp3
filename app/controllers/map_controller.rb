@@ -8,9 +8,9 @@ class MapController < AuthenticatedController
     render inertia: "Map/Show", props: {
       today: overview.today,
       farms: overview.props do |pivot|
-        {latitude: pivot.latitude, longitude: pivot.longitude, radius_ft: pivot.radius_ft,
-         arc_start_deg: pivot.arc_start_deg, arc_end_deg: pivot.arc_end_deg,
-         weather: weather[pivot.weather_cell_id]&.transform_values { |span| span && totals(span) }}
+        pivot.slice(*PivotSerializer::SHAPE).symbolize_keys.merge(
+          weather: weather[pivot.weather_cell_id]&.transform_values { |span| span && totals(span) }
+        )
       end
     }
   end

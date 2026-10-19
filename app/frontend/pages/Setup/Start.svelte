@@ -1,16 +1,14 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { Form, page } from '@inertiajs/svelte'
+  import { Form } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
-  import PivotMap from '@/lib/components/PivotMap.svelte'
+  import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
-  import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import { DEFAULT_RADIUS_FT, pivotAcres } from '@/lib/geo'
+  import { shapeDraft } from '@/lib/geo'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
-  import { units as unitsFor } from '@/lib/units'
   import { quickSetups } from '@/routes'
   import type { Plant, SoilType } from '@/types/serializers'
 
@@ -28,12 +26,8 @@
     year: number
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
-
   let farmId = $state<string>(untrack(() => (farms[0] ? String(farms[0].id) : '')))
-  let latitude = $state<number | null>(null)
-  let longitude = $state<number | null>(null)
-  let radiusFt = $state<number | null>(DEFAULT_RADIUS_FT)
+  let shape = $state(shapeDraft())
 
   // A field's soil follows the soil survey's suggestion until the user picks one
   let suggestedSoilId = $state<number | null>(null)
@@ -58,12 +52,11 @@
     suggestedSoilId = soil?.id ?? null
     for (const row of rows) if (!row.soilChosen) row.soilTypeId = defaultSoilId()
   }
-  const pivotArea = $derived(radiusFt ? pivotAcres(radiusFt) : null)
 
   // Ask before leaving with anything entered, and before saving a pivot with no fields
   let edited = $state(false)
   let saved = $state(false)
-  confirmUnsavedChanges(() => !saved && (edited || latitude !== null))
+  confirmUnsavedChanges(() => !saved && (edited || shape.latitude !== null))
   const confirmNoFields = () =>
     rows.some((row) => row.name.trim()) ||
     confirm(
@@ -128,34 +121,14 @@
           placeholder="e.g. North 160"
           error={error(e, 'pivot.name')}
         />
-        <PivotMap bind:latitude bind:longitude bind:radiusFt soilTypes={soil_types} />
-        <SoilSurvey
-          center={latitude !== null && longitude !== null ? [longitude, latitude] : null}
-          {radiusFt}
+        <PivotShapeFields
+          bind:shape
+          prefix="setup[pivot]"
+          error={(attribute) => error(e, `pivot.${attribute}`)}
           soilTypes={soil_types}
           onsuggest={suggestSoil}
         />
-        <div class="grid gap-4 sm:grid-cols-4">
-          <NumberField
-            label="Latitude"
-            name="setup[pivot][latitude]"
-            bind:value={latitude}
-            error={error(e, 'pivot.latitude')}
-          />
-          <NumberField
-            label="Longitude"
-            name="setup[pivot][longitude]"
-            bind:value={longitude}
-            error={error(e, 'pivot.longitude')}
-          />
-          <NumberField
-            label="Radius"
-            name="setup[pivot][radius_ft]"
-            quantity="distance"
-            bind:value={radiusFt}
-            error={error(e, 'pivot.radius_ft')}
-            hint={pivotArea ? `About ${units.format('area', pivotArea)}` : undefined}
-          />
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <NumberField
             label="Pump capacity"
             name="setup[pivot][pump_capacity_gpm]"

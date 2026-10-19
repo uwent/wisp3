@@ -1,20 +1,18 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { Form, Link, page } from '@inertiajs/svelte'
+  import { Form, Link } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
-  import PivotMap from '@/lib/components/PivotMap.svelte'
+  import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
-  import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import { DEFAULT_RADIUS_FT, pivotAcres } from '@/lib/geo'
+  import { draftShape, type PivotShape, shapeDraft } from '@/lib/geo'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
-  import { units as unitsFor } from '@/lib/units'
   import { pivots, setup } from '@/routes'
   import type { Pivot, SoilType } from '@/types/serializers'
 
-  type Outline = Pick<Pivot, 'id' | 'name' | 'latitude' | 'longitude' | 'radius_ft' | 'arc_start_deg' | 'arc_end_deg'>
+  type Outline = PivotShape & Pick<Pivot, 'id' | 'name'>
 
   let {
     pivot,
@@ -28,27 +26,17 @@
     soil_types: SoilType[]
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const editing = $derived(pivot.id !== undefined)
 
   // The map and the inputs edit the same values
-  let latitude = $state<number | null>(untrack(() => pivot.latitude ?? null))
-  let longitude = $state<number | null>(untrack(() => pivot.longitude ?? null))
-  let radiusFt = $state<number | null>(untrack(() => pivot.radius_ft ?? DEFAULT_RADIUS_FT))
-  let isArc = $state(untrack(() => pivot.arc_start_deg !== null && pivot.arc_start_deg !== undefined))
-  let arcStart = $state<number | null>(untrack(() => pivot.arc_start_deg ?? 0))
-  let arcEnd = $state<number | null>(untrack(() => pivot.arc_end_deg ?? 270))
+  let shape = $state(untrack(() => shapeDraft(pivot)))
 
-  // Unsaved changes: anything typed in the form, or the pivot moved on the map
-  const initial = untrack(() => ({ latitude, longitude, radiusFt }))
+  // Unsaved changes: anything typed in the form, or the pivot moved or resized on the map
+  const initial = untrack(() => JSON.stringify(draftShape(shape)))
   let edited = $state(false)
   let saved = $state(false)
-  const moved = $derived(
-    latitude !== initial.latitude || longitude !== initial.longitude || radiusFt !== initial.radiusFt,
-  )
+  const moved = $derived(JSON.stringify(draftShape(shape)) !== initial)
   confirmUnsavedChanges(() => !saved && (edited || moved))
-
-  const area = $derived(radiusFt ? pivotAcres(radiusFt, isArc ? arcStart : null, isArc ? arcEnd : null) : null)
 </script>
 
 <svelte:head><title>{editing ? `Edit ${pivot.name}` : 'Add a pivot'} · WISP</title></svelte:head>
@@ -78,59 +66,13 @@
             error={errors.farm}
           />
         </div>
-        <PivotMap
-          bind:latitude
-          bind:longitude
-          bind:radiusFt
-          arcStart={isArc ? arcStart : null}
-          arcEnd={isArc ? arcEnd : null}
+        <PivotShapeFields
+          bind:shape
+          prefix="pivot"
+          error={(attribute) => errors[attribute]}
           others={other_pivots}
           soilTypes={soil_types}
         />
-        <SoilSurvey
-          center={latitude !== null && longitude !== null ? [longitude, latitude] : null}
-          {radiusFt}
-          arcStart={isArc ? arcStart : null}
-          arcEnd={isArc ? arcEnd : null}
-          soilTypes={soil_types}
-        />
-        <div class="grid gap-4 sm:grid-cols-3">
-          <NumberField label="Latitude" name="pivot[latitude]" bind:value={latitude} error={errors.latitude} />
-          <NumberField label="Longitude" name="pivot[longitude]" bind:value={longitude} error={errors.longitude} />
-          <NumberField
-            label="Radius"
-            name="pivot[radius_ft]"
-            quantity="distance"
-            bind:value={radiusFt}
-            error={errors.radius_ft}
-            hint={area ? `Irrigates about ${units.format('area', area)}` : undefined}
-          />
-        </div>
-        <label class="flex items-center gap-3 text-sm">
-          <input type="checkbox" bind:checked={isArc} class="rounded" />
-          Partial circle (the pivot sweeps an arc rather than a full circle)
-        </label>
-        {#if isArc}
-          <div class="grid gap-4 sm:grid-cols-2">
-            <NumberField
-              label="Arc starts at"
-              name="pivot[arc_start_deg]"
-              unitLabel="° from north"
-              bind:value={arcStart}
-              error={errors.arc_start_deg}
-            />
-            <NumberField
-              label="Arc ends at"
-              name="pivot[arc_end_deg]"
-              unitLabel="° (clockwise)"
-              bind:value={arcEnd}
-              error={errors.arc_end_deg}
-            />
-          </div>
-        {:else}
-          <input type="hidden" name="pivot[arc_start_deg]" value="" />
-          <input type="hidden" name="pivot[arc_end_deg]" value="" />
-        {/if}
       </section>
 
       <section class="grid gap-4 rounded-lg border border-line bg-surface-raised p-6 sm:grid-cols-2">

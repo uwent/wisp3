@@ -1,4 +1,4 @@
-import { DEFAULT_RADIUS_FT, pivotRing, type LngLat } from '@/lib/geo'
+import { type LngLat, pivotOutline, type PivotShape } from '@/lib/geo'
 import { type PivotGroup, pivotStatus, type Status } from '@/lib/overview'
 
 // The map page's pivots (MapController): the dashboard's pivot with its location and its weather
@@ -7,14 +7,7 @@ import { type PivotGroup, pivotStatus, type Status } from '@/lib/overview'
 export type WeatherTotals = { days: number; precip: number | null; et0: number | null }
 export type PivotWeather = { past: WeatherTotals | null; ahead: WeatherTotals | null }
 
-export type MapPivot = PivotGroup & {
-  latitude: number
-  longitude: number
-  radius_ft: number | null
-  arc_start_deg: number | null
-  arc_end_deg: number | null
-  weather: PivotWeather | null
-}
+export type MapPivot = PivotGroup & PivotShape & { weather: PivotWeather | null }
 
 export type PivotProperties = {
   id: number
@@ -34,13 +27,7 @@ export type PolygonFeature<P> = {
 }
 export type FeatureCollection<P> = { type: 'FeatureCollection'; features: PolygonFeature<P>[] }
 
-export const ring = (pivot: MapPivot) =>
-  pivotRing(
-    [pivot.longitude, pivot.latitude],
-    pivot.radius_ft ?? DEFAULT_RADIUS_FT,
-    pivot.arc_start_deg,
-    pivot.arc_end_deg,
-  )
+export const ring = (pivot: MapPivot) => pivotOutline(pivot)
 
 /** highlighted: the pivots in the "needs water within" window, or null when there's no window */
 export function pivotFeatures(
@@ -65,7 +52,7 @@ export function pivotFeatures(
   }
 }
 
-/** [[west, south], [east, north]] around the pivots' whole circles, or null without pivots */
+/** [[west, south], [east, north]] around the pivots' whole outlines, or null without pivots */
 export function pivotBounds(pivots: MapPivot[]): [LngLat, LngLat] | null {
   const points = pivots.flatMap(ring)
   if (!points.length) return null

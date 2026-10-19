@@ -34,6 +34,12 @@
   // Only owners delete farms, pivots and fields (Q8)
   const owner = $derived(page.props.auth.owner)
   const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
+  const pivotSize = (pivot: (typeof allPivots)[number]) =>
+    pivot.kind === 'linear' && pivot.length_ft && pivot.travel_ft
+      ? `linear, ${units.format('distance', pivot.length_ft)} machine, travels ${units.format('distance', pivot.travel_ft)} at ${pivot.travel_bearing_deg}°`
+      : pivot.radius_ft
+        ? `radius ${units.format('distance', pivot.radius_ft)}`
+        : null
   const seasonPlantings = (field: Field) => field.plantings.filter((planting) => planting.year === year)
   const hasLastSeason = $derived(
     allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
@@ -146,8 +152,8 @@
             <h3 class="font-medium">{pivot.name}</h3>
             <p class="text-xs text-ink-muted">
               {pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}
-              {#if pivot.radius_ft}
-                · radius {units.format('distance', pivot.radius_ft)}{/if}
+              {#if pivotSize(pivot)}
+                · {pivotSize(pivot)}{/if}
               {#if pivot.pump_capacity_gpm}
                 · pump {units.format('flow', pivot.pump_capacity_gpm)}{/if}
               {#if pivot.equipment}

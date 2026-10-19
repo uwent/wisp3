@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { distanceM } from '@/lib/geo'
+import { bearing, distanceM } from '@/lib/geo'
 import type { FieldCard } from '@/lib/overview'
 import type { PlantingSummary } from '@/types/serializers'
 
@@ -17,9 +17,13 @@ const pivot = (id: number, latitude: number, fields: FieldCard[] = [], radius_ft
   name: `Pivot ${id}`,
   latitude,
   longitude: -89.5,
+  kind: 'center',
   radius_ft,
   arc_start_deg: null,
   arc_end_deg: null,
+  length_ft: null,
+  travel_ft: null,
+  travel_bearing_deg: null,
   weather: null,
   fields,
 })
@@ -41,6 +45,23 @@ describe('pivotFeatures', () => {
   it('draws the circle at its radius, or the default without one', () => {
     const [feature] = pivotFeatures([pivot(1, 44.1, [], null)], null, null).features
     expect(distanceM([-89.5, 44.1], feature.geometry.coordinates[0][0])).toBeCloseTo(1300 / 3.28084, 0)
+  })
+
+  it('draws a linear move as its rectangle', () => {
+    const linear = {
+      ...pivot(1, 44.1),
+      kind: 'linear' as const,
+      radius_ft: null,
+      length_ft: 1300,
+      travel_ft: 2640,
+      travel_bearing_deg: 45,
+    }
+    const [feature] = pivotFeatures([linear], null, null).features
+    const corners = feature.geometry.coordinates[0]
+    expect(corners).toHaveLength(5)
+    expect(distanceM(corners[0], corners[1]) * 3.28084).toBeCloseTo(1300, 0)
+    expect(distanceM(corners[1], corners[2]) * 3.28084).toBeCloseTo(2640, 0)
+    expect(bearing(corners[2], corners[1])).toBeCloseTo(45, 0) // turned to its direction of travel
   })
 })
 

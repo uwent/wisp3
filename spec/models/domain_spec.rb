@@ -67,6 +67,41 @@ RSpec.describe "Domain models" do
       expect(build(:pivot, latitude: 36.7, longitude: -119.8)).to be_valid # California
       expect(build(:pivot, latitude: 50.4, longitude: -104.6)).to be_valid # Saskatchewan
     end
+
+    it "is no larger than the longest center pivots" do
+      expect(build(:pivot, radius_ft: 3000)).to be_valid
+      pivot = build(:pivot, radius_ft: 3001)
+      expect(pivot).not_to be_valid
+      expect(pivot.errors[:radius_ft].sole).to include("longer than any center pivot")
+    end
+
+    it "is a linear move with its length, travel and direction, within a machine's size" do
+      linear = ->(**shape) { build(:pivot, kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 0, **shape) }
+      expect(linear.call).to be_valid
+      expect(linear.call(length_ft: 3300, travel_ft: 5280, travel_bearing_deg: 179)).to be_valid
+      expect(linear.call(travel_ft: nil)).not_to be_valid
+      expect(linear.call(travel_bearing_deg: nil)).not_to be_valid
+      expect(linear.call(length_ft: 3400).tap(&:validate).errors.attribute_names).to eq([:length_ft])
+      expect(linear.call(travel_ft: 6000).tap(&:validate).errors.attribute_names).to eq([:travel_ft])
+      expect(linear.call(travel_bearing_deg: 180)).not_to be_valid # the same line as 0
+      expect(linear.call(travel_bearing_deg: "30.5")).not_to be_valid # whole degrees
+      expect(build(:pivot, kind: "lateral")).not_to be_valid
+    end
+
+    it "keeps only its own kind's dimensions" do
+      pivot = create(:pivot, radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300)
+      pivot.update!(kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30)
+      expect(pivot.reload).to have_attributes(radius_ft: nil, arc_start_deg: nil, arc_end_deg: nil)
+      pivot.update!(kind: "center", radius_ft: 1300)
+      expect(pivot.reload).to have_attributes(length_ft: nil, travel_ft: nil, travel_bearing_deg: nil)
+    end
+
+    it "is held to its shape in the database too" do
+      pivot = create(:pivot)
+      write = ->(changes) { Pivot.transaction(requires_new: true) { pivot.update_columns(changes) } }
+      expect { write.call(radius_ft: 5000) }.to raise_error(ActiveRecord::StatementInvalid, /pivots_radius_max/)
+      expect { write.call(kind: "linear") }.to raise_error(ActiveRecord::StatementInvalid, /pivots_linear_shape/)
+    end
   end
 
   describe CanopyObservation do

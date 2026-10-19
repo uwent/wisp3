@@ -2,53 +2,54 @@
   import 'maplibre-gl/dist/maplibre-gl.css'
 
   import { onMount } from 'svelte'
-  import type { GeoJSONSource, Map as MapLibreMap, Marker } from 'maplibre-gl'
+  import type { GeoJSONSource, Map as MapLibreMap, Marker as MarkerClass } from 'maplibre-gl'
 
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
   import {
+    bearing,
     DEFAULT_RADIUS_FT,
     destination,
     distanceM,
+    draftShape,
     edgePointer,
     FEET_PER_METER,
-    pivotRing,
+    MAX_RADIUS_FT,
+    MIN_SIZE_FT,
+    pivotOutline,
+    linearCorners,
+    linearOf,
+    offset,
+    resizeLinear,
+    snapBearing,
+    sweep,
+    travelArrow,
     type LngLat,
+    type PivotShape,
+    type ShapeDraft,
   } from '@/lib/geo'
   import { basemapStyle, LABEL_FONT, setBasemap, type Basemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
+  import { resizeCursor, ROTATE_CURSOR } from '@/lib/map/cursors'
   import { loadMapLibre } from '@/lib/map/maplibre'
   import PlaceSearch from '@/lib/map/PlaceSearch.svelte'
   import { type Bounds, fetchSoilAreas, SOIL_COLORS, type SoilAreas } from '@/lib/soils'
 
-  type Outline = {
-    id: number
-    name: string
-    latitude: number
-    longitude: number
-    radius_ft: number | null
-    arc_start_deg: number | null
-    arc_end_deg: number | null
-  }
+  type Outline = PivotShape & { id: number; name: string }
 
   // The pivot location picker (PLAN.md §4): click the map to place the pivot's center, drag the
-  // center or the edge handle to adjust it. The group's other pivots are drawn for reference. A
-  // place search moves the map (it doesn't place the pivot), and an arrow at the edge points back
-  // to the pivot when it's out of view.
+  // center or the handles to adjust it. A center pivot has a handle on its edge for the radius and,
+  // for a partial circle, one at each end of the arc; a linear move has handles on two opposite
+  // corners (its front left and back right, facing its direction of travel) and one past its front
+  // end that turns it. The group's other pivots are drawn for reference. A place search moves
+  // the map (it doesn't place the pivot), and an arrow at the edge points back to the pivot when
+  // it's out of view.
   let {
-    latitude = $bindable(null),
-    longitude = $bindable(null),
-    radiusFt = $bindable(null),
-    arcStart = null,
-    arcEnd = null,
+    shape = $bindable(),
     others = [],
     soilTypes = [],
     height = '24rem',
   }: {
-    latitude?: number | null
-    longitude?: number | null
-    radiusFt?: number | null
-    arcStart?: number | null
-    arcEnd?: number | null
+    shape: ShapeDraft
     others?: Outline[]
     /** Names for the soil types layer */
     soilTypes?: { key: string; name: string }[]
@@ -58,6 +59,8 @@
   // Wisconsin's Central Sands, where most WISP pivots are
   const DEFAULT_VIEW = { center: [-89.5, 44.25] as LngLat, zoom: 8 }
   const PIVOT_ZOOM = 14
+  // The least an arc can sweep with its handles
+  const MIN_SWEEP_DEG = 5
 
   // Our sources, carried over when the basemap changes
   const OWN_SOURCES = ['others', 'pivot', 'soil-types']
@@ -65,10 +68,14 @@
   const SOIL_ZOOM = 13
   const SOIL_MARGIN_M = 900
 
+  type Handle = 'radius' | 'start' | 'end' | 'frontLeft' | 'backRight' | 'rotate'
+
   let container: HTMLDivElement
   let map: MapLibreMap | undefined = $state()
-  let centerMarker: Marker | undefined
-  let edgeMarker: Marker | undefined
+  let Marker: typeof MarkerClass | undefined
+  let centerMarker: MarkerClass | undefined
+  let handles: Partial<Record<Handle, MarkerClass>> = {}
+  let handleSet = ''
   let basemap = $state<Basemap>('imagery')
   let soils = $state(false)
   let soilStatus = $state<'loading' | 'ready' | 'error' | 'zoom'>('zoom')
@@ -81,19 +88,31 @@
   let pointer = $state<{ x: number; y: number; angle: number } | null>(null)
   let placeSearch: PlaceSearch | undefined = $state()
 
-  const center = $derived<LngLat | null>(latitude !== null && longitude !== null ? [longitude, latitude] : null)
-  const radiusM = $derived((radiusFt ?? DEFAULT_RADIUS_FT) / FEET_PER_METER)
-  // The edge handle sits on the arc's middle bearing, or due east for a full circle
-  const handleBearing = $derived(
-    arcStart !== null && arcEnd !== null ? arcStart + ((((arcEnd - arcStart) % 360) + 360) % 360 || 360) / 2 : 90,
+  const linear = $derived(shape.kind === 'linear')
+  const outline = $derived(draftShape(shape))
+  const center = $derived<LngLat | null>(outline && [outline.longitude, outline.latitude])
+  const radiusM = $derived((shape.radiusFt ?? DEFAULT_RADIUS_FT) / FEET_PER_METER)
+  const machine = $derived(
+    linearOf({ length_ft: shape.lengthFt, travel_ft: shape.travelFt, travel_bearing_deg: shape.travelBearing }),
   )
+  // How far the pivot reaches from its center
+  const reachM = $derived(linear ? Math.hypot(machine.lengthFt, machine.travelFt) / 2 / FEET_PER_METER : radiusM)
+  // The turning handle sits past the end of the linear nearer where it was last dragged
+  let rotateBack = $state(false)
+  const rotatePosition = $derived.by(() => {
+    if (!center) return null
+    const travelM = machine.travelFt / FEET_PER_METER
+    return offset(center, travelM / 2 + Math.max(travelM * 0.1, 40), 0, machine.bearingDeg + (rotateBack ? 180 : 0))
+  })
+  const arc = $derived(outline?.arc_start_deg != null && outline.arc_end_deg != null)
+  // The radius handle sits on the arc's middle bearing, or due east for a full circle
+  const handleBearing = $derived(arc ? shape.arcStart! + sweep(shape.arcStart, shape.arcEnd) / 2 : 90)
 
   const round = (value: number) => Math.round(value * 1e6) / 1e6
 
   function setCenter([lng, lat]: LngLat) {
-    longitude = round(lng)
-    latitude = round(lat)
-    radiusFt ??= DEFAULT_RADIUS_FT
+    shape.longitude = round(lng)
+    shape.latitude = round(lat)
   }
 
   function feature(ring: LngLat[], name = '') {
@@ -109,17 +128,7 @@
       type: 'geojson',
       data: {
         type: 'FeatureCollection',
-        features: others.map((other) =>
-          feature(
-            pivotRing(
-              [other.longitude, other.latitude],
-              other.radius_ft ?? DEFAULT_RADIUS_FT,
-              other.arc_start_deg,
-              other.arc_end_deg,
-            ),
-            other.name,
-          ),
-        ),
+        features: others.map((other) => feature(pivotOutline(other), other.name)),
       },
     })
     m.addLayer({
@@ -146,7 +155,8 @@
       id: 'pivot-line',
       type: 'line',
       source: 'pivot',
-      paint: { 'line-color': '#3987e5', 'line-width': 2.5 },
+      paint: { 'line-color': '#3987e5', 'line-width': ['match', ['get', 'role'], 'arrow', 2, 2.5] },
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
     })
     drawPivot()
   }
@@ -154,19 +164,136 @@
   function drawPivot() {
     const source = map?.getSource<GeoJSONSource>('pivot')
     if (!map || !source) return
+    const line = (coordinates: LngLat[], role: string) => ({
+      type: 'Feature' as const,
+      properties: { role },
+      geometry: { type: 'LineString' as const, coordinates },
+    })
+    // A linear's turning handle hangs on a line from the middle of its end, and an arrow along its
+    // travel shows which way it runs
+    const extras =
+      linear && center && rotatePosition
+        ? [
+            line(
+              [
+                offset(center, machine.travelFt / FEET_PER_METER / 2, 0, machine.bearingDeg + (rotateBack ? 180 : 0)),
+                rotatePosition,
+              ],
+              'stalk',
+            ),
+            ...travelArrow(center, machine).map((part) => line(part, 'arrow')),
+          ]
+        : []
     source.setData({
       type: 'FeatureCollection',
-      features: center ? [feature(pivotRing(center, radiusFt ?? DEFAULT_RADIUS_FT, arcStart, arcEnd))] : [],
+      features: outline ? [feature(pivotOutline(outline)), ...extras] : [],
     })
   }
 
-  async function placeMarkers() {
-    if (!map) return
-    const { Marker } = await import('maplibre-gl')
+  // Where each of the shape's handles goes
+  function handlePositions(): Partial<Record<Handle, LngLat>> {
+    if (!center) return {}
+    if (linear) {
+      const [frontLeft, , backRight] = linearCorners(center, machine)
+      return { frontLeft, backRight, rotate: rotatePosition! }
+    }
+    const positions: Partial<Record<Handle, LngLat>> = { radius: destination(center, radiusM, handleBearing) }
+    if (arc) {
+      positions.start = destination(center, radiusM, shape.arcStart!)
+      positions.end = destination(center, radiusM, shape.arcEnd!)
+    }
+    return positions
+  }
+
+  const HANDLE_STYLE: Record<Handle, { className: string; title: string }> = {
+    radius: { className: 'rounded-full bg-[#1c5cab]', title: 'Drag to set the radius' },
+    start: { className: 'rounded-full bg-white', title: 'Drag to set where the arc starts' },
+    end: { className: 'rounded-full bg-white', title: 'Drag to set where the arc ends' },
+    frontLeft: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear' },
+    backRight: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear' },
+    rotate: { className: 'rounded-full bg-white', title: 'Drag to turn the linear' },
+  }
+
+  // Each handle's cursor: circling arrows for those that turn about the center, and a double arrow
+  // along the drag for those that resize, turned with the map
+  function handleCursor(name: Handle, position: LngLat): string {
+    if (name === 'start' || name === 'end' || name === 'rotate') return ROTATE_CURSOR
+    const along = name === 'radius' ? handleBearing : bearing(center!, position)
+    return resizeCursor(along - (map?.getBearing() ?? 0))
+  }
+
+  // A handle was dragged to a point: change the shape to follow it
+  function dragHandle(handle: Handle, point: LngLat, fixedCorner: LngLat | null) {
+    if (!center) return
+    if (handle === 'radius') {
+      const feet = Math.round(distanceM(center, point) * FEET_PER_METER)
+      shape.radiusFt = Math.min(MAX_RADIUS_FT, Math.max(MIN_SIZE_FT, feet))
+    } else if (handle === 'start' || handle === 'end') {
+      const angle = Math.round(bearing(center, point)) % 360
+      const [start, end] = handle === 'start' ? [angle, shape.arcEnd] : [shape.arcStart, angle]
+      const swept = sweep(start, end)
+      if (swept < MIN_SWEEP_DEG || swept > 360 - MIN_SWEEP_DEG) return
+      if (handle === 'start') shape.arcStart = angle
+      else shape.arcEnd = angle
+    } else if (handle === 'rotate') {
+      // Whole degrees 0–179, snapped to north–south or east–west; the handle stays at the end it's
+      // dragged around
+      const raw = (bearing(center, point) + 360) % 360
+      const snapped = snapBearing(raw)
+      shape.travelBearing = snapped
+      rotateBack = Math.abs(((raw - snapped + 540) % 360) - 180) > 90
+    } else if (fixedCorner) {
+      const resized = resizeLinear(fixedCorner, point, machine.bearingDeg, handle as 'frontLeft' | 'backRight')
+      setCenter(resized.center)
+      shape.lengthFt = Math.round(resized.lengthFt)
+      shape.travelFt = Math.round(resized.travelFt)
+    }
+  }
+
+  // Handles aren't MapLibre's draggable markers, which follow the pointer and would flicker between
+  // it and the shape: a drag changes the shape, and the handle is only ever put where the shape puts it
+  function followPointer(element: HTMLElement, name: Handle) {
+    // A corner is dragged against the opposite one, where it was when the drag began
+    let fixedCorner: LngLat | null = null
+    // Keep the map from panning, or placing the pivot on the click that ends a drag
+    const keep = (event: Event) => event.stopPropagation()
+    element.addEventListener('mousedown', keep)
+    element.addEventListener('touchstart', keep, { passive: true })
+    element.addEventListener('click', keep)
+    element.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return
+      event.preventDefault()
+      event.stopPropagation()
+      element.setPointerCapture(event.pointerId)
+      const opposite = { frontLeft: 'backRight', backRight: 'frontLeft' }[name as string] as Handle | undefined
+      fixedCorner = (opposite && handlePositions()[opposite]) ?? null
+    })
+    element.addEventListener('pointermove', (event) => {
+      if (!map || !element.hasPointerCapture(event.pointerId)) return
+      const box = map.getCanvasContainer().getBoundingClientRect()
+      const { lng, lat } = map.unproject([event.clientX - box.left, event.clientY - box.top])
+      dragHandle(name, [lng, lat], fixedCorner)
+    })
+    const end = (event: PointerEvent) => {
+      if (element.hasPointerCapture(event.pointerId)) element.releasePointerCapture(event.pointerId)
+      fixedCorner = null
+    }
+    element.addEventListener('pointerup', end)
+    element.addEventListener('pointercancel', end)
+  }
+
+  function placeMarkers() {
+    if (!map || !Marker) return
+    const positions = handlePositions()
+    const set = Object.keys(positions).join(' ')
+    if (set !== handleSet || !center) {
+      Object.values(handles).forEach((marker) => marker.remove())
+      handles = {}
+      handleSet = ''
+    }
     if (!center) {
       centerMarker?.remove()
-      edgeMarker?.remove()
-      centerMarker = edgeMarker = undefined
+      centerMarker = undefined
       return
     }
     if (!centerMarker) {
@@ -175,24 +302,28 @@
         const { lng, lat } = centerMarker!.getLngLat()
         setCenter([lng, lat])
       })
-      const handle = document.createElement('div')
-      handle.className = 'size-4 rounded-full border-2 border-white bg-[#1c5cab] shadow cursor-ew-resize'
-      handle.title = 'Drag to set the radius'
-      edgeMarker = new Marker({ element: handle, draggable: true })
-        .setLngLat(destination(center, radiusM, handleBearing))
-        .addTo(map)
-      edgeMarker.on('drag', () => {
-        if (!center) return
-        const { lng, lat } = edgeMarker!.getLngLat()
-        radiusFt = Math.max(50, Math.round(distanceM(center, [lng, lat]) * FEET_PER_METER))
-      })
-      edgeMarker.on('dragend', () => {
-        if (center) edgeMarker?.setLngLat(destination(center, radiusM, handleBearing))
-      })
     } else {
       centerMarker.setLngLat(center)
-      edgeMarker?.setLngLat(destination(center, radiusM, handleBearing))
     }
+    for (const [name, position] of Object.entries(positions) as [Handle, LngLat][]) {
+      const cursor = handleCursor(name, position)
+      const existing = handles[name]
+      if (existing) {
+        existing.setLngLat(position)
+        const element = existing.getElement()
+        if (element.style.cursor !== cursor) element.style.cursor = cursor
+        continue
+      }
+      const element = document.createElement('div')
+      element.className = `size-4 touch-none border-2 border-white shadow ${HANDLE_STYLE[name].className}`
+      if (name === 'start' || name === 'end' || name === 'rotate')
+        element.classList.replace('border-white', 'border-[#1c5cab]')
+      element.title = HANDLE_STYLE[name].title
+      element.style.cursor = cursor
+      followPointer(element, name)
+      handles[name] = new Marker({ element }).setLngLat(position).addTo(map)
+    }
+    handleSet = set
   }
 
   // An arrow at the map's edge when the pivot is placed but scrolled out of view
@@ -202,9 +333,9 @@
     pointer = edgePointer(point, container.clientWidth, container.clientHeight, 28)
   }
 
-  // Redraw when the center, radius or arc change, whether from the map or the form's inputs
+  // Redraw when the shape changes, whether from the map or the form's inputs
   $effect(() => {
-    void [center, radiusFt, arcStart, arcEnd, handleBearing]
+    void [outline, handleBearing, rotatePosition]
     drawPivot()
     placeMarkers()
     updatePointer()
@@ -218,7 +349,7 @@
 
   function soilArea(): Bounds | null {
     if (center) {
-      const margin = radiusM + SOIL_MARGIN_M
+      const margin = reachM + SOIL_MARGIN_M
       const [west, south] = destination(destination(center, margin, 270), margin, 180)
       const [east, north] = destination(destination(center, margin, 90), margin, 0)
       return [west, south, east, north]
@@ -321,7 +452,7 @@
 
   // Load again when the pivot moves out of the loaded area
   $effect(() => {
-    void [center, radiusM]
+    void [center, reachM]
     if (soils) loadSoils()
   })
 
@@ -356,8 +487,10 @@
 
   onMount(() => {
     let disposed = false
-    loadMapLibre().then(({ Map, NavigationControl, LngLatBounds, AttributionControl }) => {
+    loadMapLibre().then((maplibre) => {
       if (disposed) return
+      const { Map, NavigationControl, LngLatBounds, AttributionControl } = maplibre
+      Marker = maplibre.Marker
       const m = new Map({ container, style: basemapStyle(basemap), ...DEFAULT_VIEW, attributionControl: false })
       m.addControl(new AttributionControl({ compact: true, customAttribution: GEOCODER_ATTRIBUTION }), 'bottom-right')
       m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
@@ -386,11 +519,21 @@
       m.on('mouseleave', 'soil-types-fill', () => (soilHover = null))
       m.on('move', updatePointer)
       m.on('resize', updatePointer)
+      m.on('rotate', placeMarkers)
       m.on('click', (event) => {
         placeSearch?.close()
-        // A click away from the pivot moves it; clicks on the markers are drags
-        if (!center || distanceM(center, [event.lngLat.lng, event.lngLat.lat]) > radiusM * 0.15) {
-          setCenter([event.lngLat.lng, event.lngLat.lat])
+        // A click away from the pivot moves it; clicks on the markers are drags. Placing it zooms in
+        // to fit it, handles and all, so they're apart and in view.
+        const point: LngLat = [event.lngLat.lng, event.lngLat.lat]
+        if (!center) {
+          setCenter(point)
+          const bounds = new LngLatBounds()
+          for (const corner of [...pivotOutline(draftShape(shape)!), ...Object.values(handlePositions())]) {
+            bounds.extend(corner)
+          }
+          if (m.getZoom() < PIVOT_ZOOM - 1) m.fitBounds(bounds, { padding: 40, maxZoom: PIVOT_ZOOM, duration: 600 })
+        } else if (distanceM(center, point) > reachM * 0.15) {
+          setCenter(point)
         }
       })
       map = m
@@ -429,7 +572,9 @@
       <p
         class="pointer-events-none absolute top-12 right-12 left-2 mx-auto max-w-xs rounded-md bg-black/60 px-3 py-2 text-center text-sm text-white"
       >
-        Click the map at the center of the pivot
+        {linear
+          ? 'Click the map in the middle of the area the linear irrigates'
+          : 'Click the map at the center of the pivot'}
       </p>
     {/if}
 
@@ -486,7 +631,11 @@
     </button>
     {#if locateError}<span class="text-status-irrigate">{locateError}</span>{/if}
     {#if center}<span class="text-ink-muted"
-        >Drag the pin to move the pivot, or the round handle to set its radius.</span
+        >{linear
+          ? 'Drag the pin to move the linear, the square corner handles to resize it, or the round handle to turn it.'
+          : arc
+            ? 'Drag the pin to move the pivot, the blue handle to set its radius, or the white handles to set the ends of its arc.'
+            : 'Drag the pin to move the pivot, or the round handle to set its radius.'}</span
       >{/if}
   </div>
   {#if soils}

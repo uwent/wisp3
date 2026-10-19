@@ -7,6 +7,7 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import TextField from '@/lib/components/TextField.svelte'
+  import type { PivotShape } from '@/lib/geo'
   import { fields } from '@/routes'
   import type { Field, Pivot, SoilType } from '@/types/serializers'
 
@@ -21,8 +22,7 @@
     field?: Field
     pivotId: number
     /** With their location, a new field gets the soil survey's suggestion for its pivot */
-    pivots: (Pick<Pivot, 'id' | 'name'> &
-      Partial<Pick<Pivot, 'latitude' | 'longitude' | 'radius_ft' | 'arc_start_deg' | 'arc_end_deg'>>)[]
+    pivots: (Pick<Pivot, 'id' | 'name'> & Partial<PivotShape>)[]
     soilTypes: SoilType[]
     ondone: () => void
   } = $props()
@@ -38,8 +38,8 @@
   let soilChosen = $state(false)
   let fromSurvey = $state(false)
   const pivot = $derived(pivots.find((p) => String(p.id) === pivotChoice))
-  const center = $derived(
-    !field && pivot?.latitude != null && pivot.longitude != null ? ([pivot.longitude, pivot.latitude] as const) : null,
+  const shape = $derived(
+    !field && pivot?.latitude != null && pivot.longitude != null ? ({ kind: 'center', ...pivot } as PivotShape) : null,
   )
   function suggestSoil(suggested: SoilType | null) {
     if (soilChosen || !suggested) return
@@ -84,15 +84,8 @@
       error={errors.soil_type}
       hint={fromSurvey ? 'From the soil survey' : undefined}
     />
-    {#if center}
-      <SoilSurvey
-        center={[center[0], center[1]]}
-        radiusFt={pivot?.radius_ft ?? null}
-        arcStart={pivot?.arc_start_deg ?? null}
-        arcEnd={pivot?.arc_end_deg ?? null}
-        {soilTypes}
-        onsuggest={suggestSoil}
-      />
+    {#if shape}
+      <SoilSurvey {shape} {soilTypes} onsuggest={suggestSoil} />
     {/if}
     <details class="text-sm" open={field?.field_capacity !== null && field?.field_capacity !== undefined}>
       <summary class="cursor-pointer text-ink-muted">Override the soil's water-holding values</summary>

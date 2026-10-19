@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_15_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_19_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -158,10 +158,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_140000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "weather_cell_id"
+    t.string "kind", default: "center", null: false
+    t.float "length_ft"
+    t.float "travel_ft"
+    t.integer "travel_bearing_deg"
     t.index ["farm_id"], name: "index_pivots_on_farm_id"
     t.index ["weather_cell_id"], name: "index_pivots_on_weather_cell_id"
     t.check_constraint "(arc_start_deg IS NULL) = (arc_end_deg IS NULL)", name: "pivots_arc_both_or_neither"
+    t.check_constraint "kind::text = 'center'::text OR radius_ft IS NULL AND arc_start_deg IS NULL AND length_ft IS NOT NULL AND travel_ft IS NOT NULL AND travel_bearing_deg IS NOT NULL AND length_ft > 0::double precision AND length_ft <= 3300::double precision AND travel_ft > 0::double precision AND travel_ft <= 5280::double precision AND travel_bearing_deg >= 0 AND travel_bearing_deg <= 179", name: "pivots_linear_shape"
+    t.check_constraint "kind::text = 'linear'::text OR length_ft IS NULL AND travel_ft IS NULL AND travel_bearing_deg IS NULL", name: "pivots_center_shape"
+    t.check_constraint "kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying]::text[])", name: "pivots_kind"
     t.check_constraint "pump_capacity_gpm IS NULL OR pump_capacity_gpm > 0::double precision", name: "pivots_pump_capacity_positive"
+    t.check_constraint "radius_ft IS NULL OR radius_ft <= 3000::double precision", name: "pivots_radius_max"
     t.check_constraint "radius_ft IS NULL OR radius_ft > 0::double precision", name: "pivots_radius_positive"
   end
 
@@ -184,7 +192,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_140000) do
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
     t.check_constraint "canopy_interpolation::text = ANY (ARRAY['linear'::character varying, 'curve'::character varying]::text[])", name: "plantings_canopy_interpolation"
-    t.check_constraint "et_method::text = ANY (ARRAY['pct_cover'::character varying::text, 'lai'::character varying::text])", name: "plantings_et_method"
+    t.check_constraint "et_method::text = ANY (ARRAY['pct_cover'::character varying, 'lai'::character varying]::text[])", name: "plantings_et_method"
     t.check_constraint "initial_moisture_pct IS NULL OR initial_moisture_pct >= 0::double precision AND initial_moisture_pct <= 100::double precision", name: "plantings_initial_moisture_range"
     t.check_constraint "mad_frac >= 0.05::double precision AND mad_frac <= 0.95::double precision", name: "plantings_mad_frac_range"
     t.check_constraint "max_root_zone_depth > 0::double precision", name: "plantings_mrzd_positive"
@@ -314,7 +322,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_140000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["weather_cell_id", "issued_at"], name: "index_weather_forecasts_on_weather_cell_id_and_issued_at"
-    t.check_constraint "kind::text = ANY (ARRAY['deterministic'::character varying::text, 'ensemble'::character varying::text])", name: "weather_forecasts_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['deterministic'::character varying, 'ensemble'::character varying]::text[])", name: "weather_forecasts_kind"
   end
 
   add_foreign_key "canopy_observations", "plantings"

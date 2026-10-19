@@ -53,6 +53,20 @@ RSpec.describe "Setup", type: :request do
       expect(WeatherUpdateJob).to have_been_enqueued.with(pivot.weather_cell_id)
     end
 
+    it "creates a linear move" do
+      post pivots_path, params: {pivot: {farm_id: farm.id, name: "Ditch linear", kind: "linear", latitude: 44.11,
+                                         longitude: -89.54, length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30,
+                                         radius_ft: 1300}}
+      expect(farm.pivots.sole).to have_attributes(kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30,
+        radius_ft: nil)
+    end
+
+    it "sends back a pivot too large to be real" do
+      post pivots_path, params: {pivot: {farm_id: farm.id, name: "Huge", latitude: 44.11, longitude: -89.54, radius_ft: 4000}}
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("radius_ft")
+    end
+
     it "requires a location" do
       post pivots_path, params: {pivot: {farm_id: farm.id, name: "Nowhere"}}
       expect(response).to redirect_to(new_pivot_path(farm_id: farm.id))
@@ -159,7 +173,8 @@ RSpec.describe "Setup", type: :request do
 
       post quick_setup_path, params: {setup: {
         farm: {name: "Hancock Sands"},
-        pivot: {name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300},
+        pivot: {name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300, arc_start_deg: 30,
+                arc_end_deg: 300},
         fields: {
           "0" => {name: "North potatoes", area_acres: 70, soil_type_id: sand.id, plant_id: potato.id, emergence_date: "2026-05-20"},
           "1" => {name: "North corn", area_acres: 55, soil_type_id: sand.id, plant_id: corn.id}
@@ -167,6 +182,7 @@ RSpec.describe "Setup", type: :request do
       }}
       expect(response).to redirect_to(root_path)
       pivot = group.farms.sole.pivots.sole
+      expect(pivot).to have_attributes(kind: "center", arc_start_deg: 30, arc_end_deg: 300)
       expect(pivot.fields.map(&:name)).to eq(["North corn", "North potatoes"])
       expect(pivot.fields.flat_map(&:plantings).map { |p| [p.plant.name, p.emergence_date] })
         .to contain_exactly(["Field Corn", Date.new(2026, 5, 1)], ["Potato", Date.new(2026, 5, 20)])

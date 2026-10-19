@@ -67,8 +67,8 @@ class PivotsController < AuthenticatedController
   end
 
   def pivot_params
-    params.expect(pivot: [:farm_id, :name, :latitude, :longitude, :radius_ft, :arc_start_deg, :arc_end_deg,
-      :equipment, :pump_capacity_gpm, :notes])
+    params.expect(pivot: [:farm_id, :name, :kind, :latitude, :longitude, :radius_ft, :arc_start_deg, :arc_end_deg,
+      :length_ft, :travel_ft, :travel_bearing_deg, :equipment, :pump_capacity_gpm, :notes])
   end
 
   # The pivot, the farms it can belong to, the group's other pivots to show on the map, and the soil
@@ -78,7 +78,7 @@ class PivotsController < AuthenticatedController
       pivot: pivot.new_record? ? pivot.attributes.slice("farm_id") : PivotSerializer.new(pivot).to_h.except("fields"),
       farms: Current.group.farms.order(:name).map { |farm| {id: farm.id, name: farm.name} },
       other_pivots: Current.group.pivots.where.not(id: pivot.id).map do |other|
-        other.slice(:id, :name, :latitude, :longitude, :radius_ft, :arc_start_deg, :arc_end_deg)
+        other.slice(:id, :name, *PivotSerializer::SHAPE)
       end,
       soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h
     }

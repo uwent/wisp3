@@ -250,6 +250,64 @@ test('quick setup suggests the soil from the soil survey under the pivot', async
   await expect(page.getByText('From the soil survey')).toBeVisible()
 })
 
+/** Drags a map handle (a marker, found by its title) by dx, dy pixels, once the map has settled */
+/** Clicks the pivot picker's map once MapLibre is ready for it */
+async function placePivot(page: Page) {
+  const map = page.getByRole('application', { name: /place the pivot center/ })
+  await expect(map.locator('canvas')).toBeVisible()
+  await map.click()
+}
+
+async function dragHandle(page: Page, title: string, dx: number, dy: number) {
+  const handle = page.getByTitle(title, { exact: true }).first()
+  await handle.scrollIntoViewIfNeeded()
+  let box = await handle.boundingBox()
+  await expect
+    .poll(async () => {
+      const last = box
+      box = await handle.boundingBox()
+      return JSON.stringify(box) === JSON.stringify(last)
+    })
+    .toBe(true)
+  box = box!
+  const [x, y] = [box.x + box.width / 2, box.y + box.height / 2]
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x + dx / 2, y + dy / 2, { steps: 5 })
+  await page.mouse.move(x + dx, y + dy, { steps: 5 })
+  await page.mouse.up()
+}
+
+test('a linear move is sized by dragging a corner and turned by its handle', async ({ page }) => {
+  const name = `Ditch linear ${Date.now()}`
+  await page.goto('/pivots/new')
+  await page.getByLabel('Name').fill(name)
+  await page.getByLabel(/Linear move/).check()
+  await placePivot(page)
+  const travel = page.getByLabel('Travel distance')
+  const before = await travel.inputValue()
+  await dragHandle(page, 'Drag to resize the linear', 0, 20)
+  await expect(travel).not.toHaveValue(before)
+  const direction = page.getByLabel('Direction of travel')
+  await expect(direction).toHaveValue('0')
+  await dragHandle(page, 'Drag to turn the linear', 60, 0)
+  await expect(direction).not.toHaveValue('0')
+  await page.getByRole('button', { name: 'Add pivot' }).click()
+  await expect(page.getByRole('heading', { name }).locator('..')).toContainText(
+    /linear, 1,300 ft machine, travels [\d,]+ ft at \d+°/,
+  )
+})
+
+test("a partial circle's arc is set by dragging its ends", async ({ page }) => {
+  await page.goto('/pivots/new')
+  await placePivot(page)
+  await page.getByLabel(/Partial circle/).check()
+  const arcEnd = page.getByLabel('Arc ends at')
+  await expect(arcEnd).toHaveValue('270')
+  await dragHandle(page, 'Drag to set where the arc ends', 0, -80)
+  await expect(arcEnd).not.toHaveValue('270')
+})
+
 test('a grid cell saves on Enter, and Escape cancels without saving', async ({ page }) => {
   await page.goto(await firstFieldPath(page))
   const note = `Checked gauge ${Date.now()}`
