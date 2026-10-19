@@ -7,6 +7,17 @@ import type { LngLat } from './geo'
 
 const ENDPOINT = 'https://SDMDataAccess.sc.egov.usda.gov/Tabular/post.rest'
 
+// The main component's surface texture (as tg.texdesc): its top horizon for an organic soil
+// (Histosols: Markey, Seelyeville), and otherwise its first mineral horizon. Mineral soils are often
+// recorded with a few centimeters of leaf litter or muck on top (Friendship loamy sand: 2 cm of
+// "moderately decomposed plant material" over the loamy sand), which would suggest Muck.
+const SURFACE_TEXTURE =
+  'OUTER APPLY (SELECT TOP 1 t.texdesc FROM chorizon h ' +
+  "JOIN chtexturegrp t ON t.chkey = h.chkey AND t.rvindicator = 'Yes' " +
+  "WHERE h.cokey = c.cokey AND (c.taxorder = 'Histosols' OR " +
+  "(t.texdesc NOT IN ('Muck', 'Peat', 'Mucky peat') AND t.texdesc NOT LIKE '%plant material')) " +
+  'ORDER BY h.hzdept_r) tg '
+
 export type MapUnit = {
   mukey: string
   /** Share of the pivot's area, 0–1 */
@@ -59,8 +70,7 @@ export function soilQuery(ring: LngLat[]): string {
     'FROM areas a JOIN mapunit mu ON mu.mukey = a.mukey ' +
     'LEFT JOIN component c ON c.cokey = ' +
     '(SELECT TOP 1 c2.cokey FROM component c2 WHERE c2.mukey = a.mukey ORDER BY c2.comppct_r DESC) ' +
-    'LEFT JOIN chorizon h ON h.cokey = c.cokey AND h.hzdept_r = 0 ' +
-    "LEFT JOIN chtexturegrp tg ON tg.chkey = h.chkey AND tg.rvindicator = 'Yes' " +
+    SURFACE_TEXTURE +
     'ORDER BY share DESC'
   )
 }
@@ -162,8 +172,7 @@ export function soilAreaQuery([west, south, east, north]: Bounds): string {
     'FROM mupolygon p CROSS JOIN aoi JOIN mapunit mu ON mu.mukey = p.mukey ' +
     'LEFT JOIN component c ON c.cokey = ' +
     '(SELECT TOP 1 c2.cokey FROM component c2 WHERE c2.mukey = p.mukey ORDER BY c2.comppct_r DESC) ' +
-    'LEFT JOIN chorizon h ON h.cokey = c.cokey AND h.hzdept_r = 0 ' +
-    "LEFT JOIN chtexturegrp tg ON tg.chkey = h.chkey AND tg.rvindicator = 'Yes' " +
+    SURFACE_TEXTURE +
     'WHERE p.mupolygongeo.STIntersects(aoi.g) = 1'
   )
 }

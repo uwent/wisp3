@@ -28,7 +28,7 @@ const NORTH_160 = {
       'Newson mucky loamy sand, 0 to 1 percent slopes',
       'Newson',
       '90',
-      'Highly decomposed plant material',
+      'Mucky loamy sand',
     ],
   ],
 }
@@ -40,6 +40,7 @@ describe('soilKeyFor', () => {
     expect(soilKeyFor('Loamy fine sand')).toBe('loamy_sand')
     expect(soilKeyFor('Very fine sandy loam')).toBe('sandy_loam')
     expect(soilKeyFor('Gravelly silt loam')).toBe('silt_loam')
+    expect(soilKeyFor('Mucky loamy sand')).toBe('loamy_sand') // a mineral soil with some organic matter
     expect(soilKeyFor('Mucky peat')).toBe('muck')
     expect(soilKeyFor('Highly decomposed plant material')).toBe('muck')
     expect(soilKeyFor('Silty clay')).toBeNull()
@@ -53,7 +54,7 @@ describe('the soil survey under a pivot', () => {
     const query = soilQuery(pivotRing([-89.5213, 44.1335], 1300))
     expect(query).toContain("STGeomFromText('POLYGON((-89.5213")
     expect(query).toContain('mupolygongeo.STIntersection')
-    expect(query).toContain('h.hzdept_r = 0')
+    expect(query).toContain("c.taxorder = 'Histosols'") // past a mineral soil's thin organic layer
   })
 
   it('reads the table and suggests the soil covering the most of the pivot', () => {
