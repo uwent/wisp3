@@ -425,7 +425,7 @@ Every ported method is checked against this list. Items marked **Hotfix** should
 |---|---|
 | OS | Current Ubuntu LTS (24.04) or the campus-standard equivalent |
 | Size | 2 vCPU, 4 GB RAM, 40 GB disk is ample (the data is small; the largest table is weather cache rows) |
-| Packages | nginx, PostgreSQL 16+ (server and `libpq-dev`), build tools for rbenv/ruby-build (Ruby 4.0.x), Node.js 24 LTS, git |
+| Packages | nginx, PostgreSQL 16+ (server and `libpq-dev`), build tools for rbenv/ruby-build (Ruby 4.0.x), **`rustc`** (so ruby-build includes YJIT, which Rails turns on in production; the dashboard's balances are Ruby arithmetic), Node.js 24 LTS, git |
 | `deploy` user | SSH key access (port 216 as today), owns `/home/deploy/wisp3`, **`loginctl enable-linger deploy`**, a working `systemctl --user` |
 | Network | Inbound 80/443 (and SSH). Outbound HTTPS to `*.open-meteo.com` (API) and GitHub (deploys). Map tiles are loaded by browsers, not the server |
 | TLS | Certificate for the production hostname (campus CA or Let's Encrypt via certbot) |
