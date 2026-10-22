@@ -134,7 +134,10 @@
     if (pivotId === null || !prefs.listOpen) return
     // Bring its fields' cards into view in the list
     requestAnimationFrame(() =>
-      list?.querySelector(`[data-pivot="${pivotId}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
+      list?.querySelector(`[data-pivot="${pivotId}"]`)?.scrollIntoView({
+        block: 'nearest',
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      }),
     )
   }
 

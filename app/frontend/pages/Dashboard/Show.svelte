@@ -122,7 +122,7 @@
               >.
             </p>
           {:else}
-            <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {#each pivot.fields as card (card.id)}
                 <li><FieldCard {card} {today} {units} /></li>
               {/each}

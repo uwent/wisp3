@@ -87,3 +87,28 @@ test('signed-in pages', async ({ page }) => {
     await scan(page, path)
   }
 })
+
+test('every page reflows at 320 px wide and at 200% text', async ({ page }) => {
+  test.skip(test.info().project.name !== 'desktop', 'one run covers both sizes')
+  test.setTimeout(120_000)
+  await signIn(page)
+  const field = await firstFieldPath(page)
+  const pivot = await firstLinkPath(page, field, 'a[href*="/pivots/"]')
+  const paths = ['/', '/map', field, '/setup', '/setup/start', '/daily', pivot, '/field_groups', '/alerts', '/about']
+  const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+
+  // WCAG 1.4.10: 320 CSS px wide with no sideways page scroll (grids and tables scroll inside themselves)
+  await page.setViewportSize({ width: 320, height: 640 })
+  for (const path of paths) {
+    await page.goto(path)
+    await expect(page.locator('main h1').first()).toBeVisible()
+    expect.soft(await overflow(), `${path} scrolls sideways at 320 px`).toBeLessThanOrEqual(0)
+  }
+  // WCAG 1.4.4: text at 200%
+  await page.setViewportSize({ width: 1280, height: 800 })
+  for (const path of paths) {
+    await page.goto(path)
+    await page.addStyleTag({ content: 'html { font-size: 200% !important }' })
+    expect.soft(await overflow(), `${path} scrolls sideways with 200% text`).toBeLessThanOrEqual(0)
+  }
+})

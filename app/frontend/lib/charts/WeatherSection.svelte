@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte'
   import { slide } from 'svelte/transition'
 
+  import { motion } from '../motion'
   import type { Units } from '../units'
   import ChartCard from './ChartCard.svelte'
   import { panelSummary, panelTable, weatherChartOption, type WeatherPanel } from './weatherCharts'
@@ -34,7 +35,7 @@
       </button>
     </div>
     {#if open}
-      <div class="space-y-3" transition:slide={{ duration: 200 }}>
+      <div class="space-y-3" transition:slide={{ duration: motion(200) }}>
         <p class="text-xs text-ink-muted">
           Modeled by Open-Meteo for the pivot's grid cell, with the forecast shaded. Scroll or pinch a chart to see more
           of the season; the (i) on each chart explains what it shows. {@render children?.()}

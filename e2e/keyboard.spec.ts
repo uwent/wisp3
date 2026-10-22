@@ -92,3 +92,14 @@ test('setup dialogs and the account menu work from the keyboard', async ({ page 
   await expect(page.getByRole('menu')).toBeHidden()
   await expect(account).toBeFocused()
 })
+
+test('a glossary term opens from the keyboard, and describes itself by its definition', async ({ page }) => {
+  await page.goto(await firstFieldPath(page))
+  const term = page.getByRole('button', { name: 'allowable depletion' }).first()
+  await term.focus()
+  await page.keyboard.press('Enter')
+  await expect(term).toHaveAccessibleDescription(/allowable depletion/i)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('tooltip')).toBeHidden()
+  await expect(term).toBeFocused()
+})

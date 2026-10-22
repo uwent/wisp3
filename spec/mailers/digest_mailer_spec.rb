@@ -41,6 +41,18 @@ RSpec.describe DigestMailer do
     expect(html).to include("http://example.com/alerts")
   end
 
+  it "is a document in English titled by its subject, whose headings don't skip a level" do
+    digest_field(pivot, "Soon", 12)
+
+    mail = described_class.daily(DailyDigest.new(user))
+    html = Nokogiri::HTML(mail.html_part.body.decoded)
+    expect(html.at("html")["lang"]).to eq("en")
+    expect(html.at("title").text).to eq(mail.subject)
+    levels = html.css("h1, h2, h3, h4, h5, h6").map { |heading| heading.name[1].to_i }
+    expect(levels.first).to eq(1)
+    expect(levels.each_cons(2).map { |a, b| b - a }.max).to be <= 1
+  end
+
   it "lists each field's readings to enter and checks to make" do
     field = digest_field(pivot, "Stale", 15)
     field.field_entries.update_all(date: Date.new(2026, 7, 10))

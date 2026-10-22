@@ -8,7 +8,7 @@ class DigestMailer < ApplicationMailer
   STATUSES = {
     irrigate: {label: "▲ Irrigate", color: "#cc2827", text: "#ffffff"},
     caution: {label: "! Caution", color: "#e49e22", text: "#141b24"},
-    ok: {label: "✓ OK", color: "#0e9254", text: "#ffffff"},
+    ok: {label: "✓ OK", color: "#008246", text: "#ffffff"},
     full: {label: "● Full", color: "#0077c2", text: "#ffffff"},
     off: {label: "– Off season", color: "#e5e7eb", text: "#141b24"}
   }.freeze

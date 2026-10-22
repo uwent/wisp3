@@ -1,5 +1,8 @@
 <% muted = "color:#5b6470" %>
 <% rule = "border-top:1px solid #e3e6ea" %>
+<%# Heading levels follow the sections shown, so none is skipped (operation, farm, then zone and pivot) %>
+<% farm_level = @digest.several_groups? ? 3 : 2 %>
+<% zone_level = farm_level + (@digest.several_farms? ? 1 : 0) %>
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#141b24;max-width:600px;font-size:14px;line-height:1.45">
   <h1 style="font-size:20px;margin:0 0 4px">Your fields this morning</h1>
   <p style="margin:0 0 <%= @digest.context.any? ? 6 : 20 %>px;<%= muted %>"><%= @digest.today.strftime("%A, %B %-d") %> · water balance through today, projected with the latest forecast</p>
@@ -35,17 +38,17 @@
     <% end %>
     <% operation.farms.each do |farm_section| %>
       <% if @digest.several_farms? %>
-        <h3 style="font-size:16px;margin:20px 0 10px;padding-bottom:3px;border-bottom:1px solid #141b24"><span style="font-weight:400;<%= muted %>">Farm:</span> <%= farm_section.farm.name %></h3>
+        <%= content_tag "h#{farm_level}", style: "font-size:16px;margin:20px 0 10px;padding-bottom:3px;border-bottom:1px solid #141b24" do %><span style="font-weight:400;<%= muted %>">Farm:</span> <%= farm_section.farm.name %><% end %>
       <% end %>
       <% farm_section.zones.each do |zone| %>
         <div style="border-left:3px solid #c9d1da;padding:0 0 4px 12px;margin:0 0 20px">
-          <h4 style="font-size:14px;margin:0 0 4px;<%= muted %>"><%= digest_zone(zone) %></h4>
+          <%= content_tag "h#{zone_level}", digest_zone(zone), style: "font-size:14px;margin:0 0 4px;#{muted}" %>
           <div style="font-size:12px;<%= muted %>;background:#f4f6f8;border-radius:4px;padding:6px 10px;margin:0 0 4px">
             <%= safe_join(digest_weather(zone, @digest), tag.br) %>
           </div>
           <p style="font-size:12px;margin:0 0 8px;<%= muted %>">Pivots in this zone: <%= digest_zone_pivots(zone) %></p>
           <% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
-            <h5 style="font-size:15px;margin:14px 0 4px"><span style="font-weight:400;<%= muted %>">Pivot:</span> <%= email_link_to pivot_section.pivot.name, pivot_link(pivot_section.pivot) %></h5>
+            <%= content_tag "h#{zone_level + 1}", style: "font-size:15px;margin:14px 0 4px" do %><span style="font-weight:400;<%= muted %>">Pivot:</span> <%= email_link_to pivot_section.pivot.name, pivot_link(pivot_section.pivot) %><% end %>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px">
               <% pivot_section.entries.each do |entry| %>
                 <tr>

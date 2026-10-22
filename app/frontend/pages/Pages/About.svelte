@@ -97,6 +97,7 @@
     { id: 'crops', title: 'Crops' },
     { id: 'canopy', title: 'Canopy curves' },
     { id: 'glossary', title: 'Glossary' },
+    { id: 'accessibility', title: 'Accessibility' },
     { id: 'contact', title: 'Credits and contact' },
   ]
 </script>
@@ -482,6 +483,36 @@ t: days since emergence; t′: days since the decline starts</code
         <dd>{entry.definition}</dd>
       {/each}
     </dl>
+
+    <h2 id="accessibility">Accessibility</h2>
+    <p>
+      WISP aims to meet the Web Content Accessibility Guidelines (WCAG) 2.1 at level AA, and is checked against them
+      with automated tests on every page, in light and dark mode, and by hand.
+    </p>
+    <ul>
+      <li>
+        Everything works from the keyboard. "Skip to main content" is the first stop on each page, and in the daily
+        grids the arrow keys move between cells, Enter or typing edits one, and Escape cancels.
+      </li>
+      <li>
+        Each weather chart has a "Summary and data" link with the chart in words and its daily values as a table. The
+        field chart's values are in the daily table below it.
+      </li>
+      <li>
+        Field status is shown with an icon and a word as well as a color. Pages follow your system's dark mode and
+        reduced motion settings, and work with text enlarged to 200% and on screens as narrow as 320 pixels.
+      </li>
+      <li>
+        The pivot map needs a pointer to drag a pivot's handles; every handle has a typed field below the map that does
+        the same. The optional map layers (radar, rain, drought) are images from outside services and are described by
+        their legends and by the values shown under the pointer.
+      </li>
+    </ul>
+    <p>
+      If something in WISP is hard to use with your browser, screen reader or other assistive technology, please tell us
+      at <a href="mailto:agweather@cals.wisc.edu">agweather@cals.wisc.edu</a>, with the page and what happened. We'll
+      fix it, or help you get the same information another way.
+    </p>
 
     <h2 id="contact">Credits and contact</h2>
     <p>

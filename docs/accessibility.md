@@ -59,8 +59,38 @@ WCAG 1.1.1 asks for a text alternative to each chart; a table of its values serv
 "Summary and data" is closed by default and is for everyone who wants exact numbers, not only screen reader users. A new weather panel gets both from its series with no extra code.
 
 - [x] Charts: a table alternative and a text summary for each.
-- [ ] Not by color alone: status, provenance, forecast shading, soil types.
-- [ ] Screen readers: NVDA or Orca on desktop, VoiceOver on a phone. Known already: a `Term`'s definition has no role and isn't tied to the term (`aria-describedby`), so a screen reader announces "expanded" but not the definition.
-- [ ] Reflow at 320 px and 200% text; `prefers-reduced-motion`.
-- [ ] Emails.
-- [ ] Accessibility statement on the About page.
+### Color, reflow, motion, emails (2026-10-22)
+
+| WCAG | Where | Found | Fix |
+|---|---|---|---|
+| 1.4.1 Use of color | Map, zoomed out | Each pivot became a dot colored by its most urgent field's status, and nothing else | The dot is the status badge's icon (▲ ! ✓ ●) |
+| 1.4.10 Reflow | Dashboard at 320 px | A field card 44 px too wide: the card grid's implicit column grew to its truncated text | `grid-cols-1` below `sm`; `e2e/accessibility.spec.ts` now checks every page at 320 px and with 200% text |
+| 2.3.3 Animation from interactions | Show/hide slides, the map list's scrolling | They animated whatever the system setting | CSS transitions and animations end at once under `prefers-reduced-motion`; Svelte's slides (Web Animations, not CSS) take their duration from `lib/motion.ts`; the list scrolls without smoothing. MapLibre already jumps instead of flying |
+| 3.1.1, 2.4.2, 1.3.1 | Emails | No `lang` or title; the digest's headings skipped from h1 to h4 when it covered one operation and farm | The mail layout has `lang="en"`, a viewport and the subject as its title; heading levels follow the sections shown (`spec/mailers/digest_mailer_spec.rb`) |
+| 1.4.3 Contrast | Digest | White on the OK green, 4.0:1 | The green matches the app's darker one (#008246, 5.0:1) |
+| 4.1.2 Name, role, value | Glossary terms | The definition had no role and wasn't tied to the term, so a screen reader announced "expanded" but not the definition | The popup is a tooltip, and the term is described by it while it's open (`e2e/keyboard.spec.ts`) |
+
+Already fine: status badges (icon and word), grid provenance (entered values bold, modeled muted, "model", "pivot" and "group" in words), entered and modeled rain on the chart (solid and outlined), forecast shading (labeled "Forecast"; table rows marked), the soil types layer (labels and a legend), and the "Needs water within" dimming (a difference in lightness, not hue). Chart lines are told apart by color and their legends; their values are also in "Summary and data".
+
+An accessibility statement is on the About page (About › Accessibility), with the contact address for problems.
+
+- [x] Not by color alone.
+- [x] Reflow at 320 px and 200% text; `prefers-reduced-motion`.
+- [x] Emails.
+- [x] Accessibility statement on the About page.
+- [ ] Screen readers (below).
+
+### Screen reader check (to do, by hand)
+
+Needs a person with NVDA (Windows, free) and VoiceOver (iPhone: Settings › Accessibility › VoiceOver; Mac: Cmd+F5). About an hour. Note anything that's silent, confusing or read twice.
+
+1. **Sign in** with a magic link code: labels read, errors announced when the code is wrong.
+2. **Dashboard:** headings list (NVDA: Insert+F7; VoiceOver rotor) shows Dashboard › farms › pivots › fields in order. Each card reads its field, status ("Irrigate"), AD and outlook.
+3. **Skip link:** first Tab says "Skip to main content"; Enter lands at the page heading.
+4. **Field page:** the summary card reads sensibly; a glossary term (dotted underline) reads its definition when opened with Enter. In the daily grid, arrow keys announce "Rain, Wed, Jul 21: 0.45"; Enter, type, Enter saves and the new value is read; a bad value ("abc") announces its error.
+5. **Weather charts:** each is read as its title and summary; "Summary and data" opens a table whose headers are read with each cell.
+6. **Daily entry:** each pivot's Irrigation input is read with the pivot's name; saving announces the result.
+7. **Setup:** "Edit North 160", "Delete Cabbage" and so on; a dialog takes focus, and Escape returns to the button.
+8. **Map:** a field's "Show … on the map" moves to the pivot's panel and reads it; Escape returns. The layers panel's radio buttons read their names.
+9. **Phone (VoiceOver):** the menu, a field page and daily entry by swiping.
+10. **Digest email** in a mail app: headings navigable, links say where they go.

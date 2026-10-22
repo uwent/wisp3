@@ -16,13 +16,6 @@
   }: { pivot: MapPivot; selected: boolean; dimmed: boolean; onselect: () => void } = $props()
 
   const LABELS: Record<Status, string> = { irrigate: 'Irrigate', caution: 'Caution', ok: 'OK', full: 'Full' }
-  const DOTS: Record<Status | 'none', string> = {
-    irrigate: 'bg-status-irrigate',
-    caution: 'bg-status-caution',
-    ok: 'bg-status-ok',
-    full: 'bg-status-full',
-    none: 'bg-gray-400',
-  }
 
   const status = $derived(pivotStatus(pivot.fields))
   const idle = (card: FieldCard) => {
@@ -66,10 +59,16 @@
       <span class="px-1.5 text-[0.65rem] text-white">No fields</span>
     {/each}
   </span>
+  <!-- Zoomed out, the most urgent status with its icon, not color alone -->
   <span
-    class="hidden size-3.5 rounded-full ring-2 ring-white group-data-far/map:block {DOTS[status ?? 'none']}
-      {selected ? 'outline-2 outline-offset-2 outline-white' : ''}"
-  ></span>
+    class="hidden rounded-full group-data-far/map:block {selected ? 'outline-2 outline-offset-2 outline-white' : ''}"
+  >
+    {#if status}
+      <StatusBadge {status} size="icon" title="{pivot.name}: {LABELS[status]}" />
+    {:else}
+      <span class="block size-3.5 rounded-full bg-gray-400 ring-2 ring-white"></span>
+    {/if}
+  </span>
   <span
     class="max-w-40 truncate text-xs font-semibold text-white [text-shadow:0_0_3px_#000,0_0_2px_#000]
       group-data-far/map:hidden group-data-mid/map:hidden">{pivot.name}</span

@@ -191,3 +191,16 @@
 .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner a {
   text-decoration: underline;
 }
+
+/* Reduced motion (WCAG 2.3.3): transitions and animations, Svelte's slides included, end at once.
+   MapLibre jumps instead of flying on its own; smooth scrolling checks the setting where it's used */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

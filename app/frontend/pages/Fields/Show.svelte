@@ -14,6 +14,7 @@
   import Term from '@/lib/components/Term.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
   import { guidance as guidanceFor } from '@/lib/guidance'
+  import { motion } from '@/lib/motion'
   import { outlook as outlookFor } from '@/lib/outlook'
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
@@ -437,7 +438,7 @@
           </button>
         </div>
         {#if forecastOpen}
-          <div class="space-y-2" transition:slide={{ duration: 200 }}>
+          <div class="space-y-2" transition:slide={{ duration: motion(200) }}>
             <p class="text-xs text-ink-muted">
               The forecast for this pivot run through the water balance. Plan irrigation by entering it on a future day;
               it counts as applied when the day comes, so change or clear it if plans change. Depths in {units.label(
@@ -535,7 +536,7 @@
         </button>
       </div>
       {#if dailyOpen}
-        <div class="space-y-2" transition:slide={{ duration: 200 }}>
+        <div class="space-y-2" transition:slide={{ duration: motion(200) }}>
           <p class="text-xs text-ink-muted">
             Click a rain, irrigation, moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value; Enter saves and moves
             down. Clear a cell to go back to the modeled or pivot value. Depths in {units.label('depth')}. From the
