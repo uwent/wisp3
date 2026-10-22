@@ -48,6 +48,14 @@ class DailyEntriesController < AuthenticatedController
 
   private
 
+  # {"id" => {attribute => value}} for the pivots or fields sent, with only these attributes; an id
+  # sent without a hash of values is dropped
+  def by_id(key, attributes)
+    values = params[key]
+    return {} unless values.is_a?(ActionController::Parameters)
+    values.permit(values.keys.index_with { attributes }).to_h
+  end
+
   def parse_date(value)
     Date.iso8601(value.to_s) if value.present?
   rescue Date::Error
@@ -56,9 +64,9 @@ class DailyEntriesController < AuthenticatedController
 
   # A pivot sent with neither inches nor run hours has its irrigation for the day removed
   def record_pivots(date, errors)
-    values = params.fetch(:pivots, {}).permit!.to_h
+    values = by_id(:pivots, [:inches, :run_hours, :notes, field_ids: []])
     Current.group.pivots.where(id: values.keys).find_each do |pivot|
-      submitted = values[pivot.id.to_s].slice("inches", "run_hours", "field_ids", "notes")
+      submitted = values[pivot.id.to_s]
       irrigation = pivot.pivot_irrigations.find_or_initialize_by(date:)
       if submitted["inches"].blank? && submitted["run_hours"].blank?
         irrigation.destroy! if irrigation.persisted?
@@ -71,9 +79,9 @@ class DailyEntriesController < AuthenticatedController
   end
 
   def record_fields(date, errors)
-    values = params.fetch(:fields, {}).permit!.to_h
+    values = by_id(:fields, DailyEntry::VALUES)
     Current.group.fields.where(id: values.keys).find_each do |field|
-      entry = FieldEntry.record(field.field_entries, date, values[field.id.to_s].slice(*DailyEntry::VALUES.map(&:to_s)))
+      entry = FieldEntry.record(field.field_entries, date, values[field.id.to_s])
       entry.errors.to_hash(true).each { |attribute, messages| errors["fields.#{field.id}.#{attribute}"] = messages }
     end
   end

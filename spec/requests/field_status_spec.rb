@@ -300,6 +300,13 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(field.field_entries).to be_empty
     end
 
+    it "ignores a pivot or field sent without values" do
+      patch daily_entry_path, params: {date: "2026-07-15", pivots: {pivot.id => "1"}, fields: {field.id => "0.3"}}
+      expect(response).to redirect_to(daily_entry_path(date: "2026-07-15"))
+      expect(pivot.pivot_irrigations).to be_empty
+      expect(field.field_entries).to be_empty
+    end
+
     it "saves nothing when any value is invalid" do
       patch daily_entry_path, params: {date: "2026-07-15", pivots: {pivot.id => {inches: 0.5}},
                                        fields: {field.id => {soil_moisture_pct: 140}}}
