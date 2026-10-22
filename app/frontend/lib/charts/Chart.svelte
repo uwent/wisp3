@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte'
 
-  import { echarts, type ChartView, type EChartsCoreOption } from './echarts'
+  import type { ECharts } from 'echarts/core'
+
+  import type { ChartView, EChartsCoreOption } from './echarts'
   import { onThemeChange } from '../theme'
   import { readPalette, type Palette } from './palette'
 
@@ -23,7 +25,7 @@
   } = $props()
 
   let element: HTMLDivElement
-  let chart: echarts.ECharts | undefined = $state()
+  let chart: ECharts | undefined = $state()
   let palette: Palette | undefined = $state()
   // The user's zoom (percent of the x range) and legend choices, kept when the data reloads after an edit
   let zoom: { start: number; end: number } | undefined
@@ -55,8 +57,23 @@
     if (chart && palette) chart.setOption(build(palette), { notMerge: true })
   }
 
+  // ECharts is the largest chunk on the pages with charts, so it loads after the page renders
+  // (the chart's box keeps its height meanwhile)
   onMount(() => {
-    chart = echarts.init(element, null, { renderer: 'canvas' })
+    let destroyed = false
+    let cleanup: (() => void) | undefined
+    import('./echarts').then(({ echarts }) => {
+      if (destroyed) return
+      cleanup = start(echarts.init(element, null, { renderer: 'canvas' }))
+    })
+    return () => {
+      destroyed = true
+      cleanup?.()
+    }
+  })
+
+  function start(instance: ECharts) {
+    chart = instance
     palette = readPalette()
     chart.on('datazoom', () => {
       const option = chart?.getOption()
@@ -82,7 +99,7 @@
       observer.disconnect()
       chart?.dispose()
     }
-  })
+  }
 
   $effect(() => {
     if (chart && palette) chart.setOption(withState(build(palette, view)), { notMerge: true, lazyUpdate: true })
