@@ -39,6 +39,18 @@ RSpec.describe "Sign-in links and codes", type: :request do
       expect(last_mail.html_part.body.decoded).to include("<a ses:no-track href=")
     end
 
+    it "keeps the link and code out of the job log" do
+      log = StringIO.new
+      logger = ActiveJob::Base.logger
+      ActiveJob::Base.logger = ActiveSupport::TaggedLogging.new(Logger.new(log))
+      request_email
+      expect(log.string).to include("Enqueued")
+      expect(log.string).not_to include(emailed_code)
+      expect(log.string).not_to include(emailed_token)
+    ensure
+      ActiveJob::Base.logger = logger
+    end
+
     it "gives the same response for unknown addresses and sends nothing" do
       request_email("nobody@example.com")
       expect(response).to redirect_to(sign_in_code_path)

@@ -1,4 +1,7 @@
 class MagicLinkMailer < ApplicationMailer
+  # The token and code are secrets, so they're kept out of the job log
+  self.delivery_job = SecretMailDeliveryJob
+
   def sign_in_link(user, token, code)
     @user = user
     @url = magic_link_url(token:)
