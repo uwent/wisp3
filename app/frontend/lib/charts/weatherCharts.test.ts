@@ -6,7 +6,15 @@ import { addDays } from '../dates'
 import { units } from '../units'
 import { DEFAULT_WINDOW_DAYS } from './fieldChart'
 import type { Palette } from './palette'
-import { defaultView, type FieldRain, runningTotal, weatherChartOption, weatherPanels } from './weatherCharts'
+import {
+  defaultView,
+  type FieldRain,
+  panelSummary,
+  panelTable,
+  runningTotal,
+  weatherChartOption,
+  weatherPanels,
+} from './weatherCharts'
 
 const palette: Palette = {
   ink: '#000',
@@ -304,5 +312,33 @@ describe('weather charts', () => {
     expect(html.indexOf('Reference ET<')).toBeLessThan(html.indexOf('Reference ET total'))
     expect(html).toContain('0.20 in')
     expect(html).toContain('—')
+  })
+})
+
+describe('weather charts in words and tables', () => {
+  it('adds up amounts over the last 7 days and the forecast', () => {
+    // It rains every 10th day: none in the last 7 observed days (53–59), and on day 60, the first forecast day
+    expect(panelSummary(panel('precipitation'), days, units('imperial'))).toBe(
+      'Last 7 days: Rain 0.00, Snow and other 0.00 in. Next 5 days (forecast): Rain 0.40, Snow and other 0.10 in.',
+    )
+  })
+
+  it('gives levels on the latest observed day and their range', () => {
+    const changing = days.map((day, i) => ({ ...day, tmax_f: 70 + i }))
+    expect(panelSummary(panel('air_temperature'), changing, units('imperial'))).toBe(
+      'Jul 30: High 129.0, Low 60.0 °F. Last 7 days: High 123.0 to 129.0, Low 60.0 °F. ' +
+        'Next 5 days (forecast): High 130.0 to 134.0, Low 60.0 °F.',
+    )
+  })
+
+  it('says so when there are no values', () => {
+    expect(panelSummary(panel('air_temperature'), [], units('imperial'))).toBe('No values yet.')
+  })
+
+  it('lists the daily values newest first, in the user units', () => {
+    const table = panelTable(panel('air_temperature', 'metric'), days)
+    expect(table.columns).toEqual(['High', 'Low'])
+    expect(table.rows[0]).toEqual({ date: days[64].date, forecast: true, values: ['26.7', '15.6'] })
+    expect(table.rows).toHaveLength(65)
   })
 })

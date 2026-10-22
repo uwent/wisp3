@@ -473,6 +473,14 @@ test('a weather chart explains itself, and resets after zooming', async ({ page 
   await expect(reset).toBeVisible()
   await reset.click()
   await expect(reset).toBeHidden()
+
+  // Its summary and daily values, for reading the numbers (and its text alternative)
+  await expect(card.getByRole('img', { name: /^Precipitation\. Last 7 days: Rain / })).toBeVisible()
+  await card.getByText('Summary and data').click()
+  await expect(card.getByText(/^Last 7 days: Rain /)).toBeVisible()
+  const table = card.getByRole('table', { name: /^Precipitation by day/ })
+  await expect(table.getByRole('columnheader', { name: 'Rain (in)', exact: true })).toBeVisible()
+  await expect(table.getByRole('rowheader', { name: /\(forecast\)$/ }).first()).toBeVisible()
   expect(errors).toEqual([])
 })
 

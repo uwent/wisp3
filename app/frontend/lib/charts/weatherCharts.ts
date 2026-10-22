@@ -538,3 +538,68 @@ function tooltip(params: unknown, unit: string, digits: number, sparse: Set<stri
   })
   return `<strong>${formatDate(all[0].axisValue, { weekday: true })}</strong><table>${rows.join('')}</table>`
 }
+
+/** Decimals for a panel's values in words and tables, as in its tooltip: two for amounts, one for levels */
+const digitsFor = (panel: WeatherPanel) => (panel.bars || panel.totals?.length ? 2 : 1)
+
+/**
+ * The panel in words, for the chart's text alternative and its summary: amounts (bars) added up over
+ * the last 7 observed days and the next 7 forecast; levels (lines) on the latest observed day, then
+ * their range over each
+ */
+export function panelSummary(panel: WeatherPanel, days: WeatherPanelDay[], units: Units): string {
+  const series = shownSeries(panel, days)
+  const digits = digitsFor(panel)
+  const unit = panel.unit(units)
+  const observed = days.filter((day) => !day.forecast)
+  const past = observed.slice(-7)
+  const ahead = days.filter((day) => day.forecast).slice(0, 7)
+  const valuesIn = (s: Series, period: WeatherPanelDay[]) =>
+    period.map((day) => valueOn(s, day)).filter((value): value is number => value !== null)
+  const listed = (parts: (string | null)[]) => {
+    const kept = parts.filter((part) => part !== null)
+    return kept.length ? `${kept.join(', ')} ${unit}` : null
+  }
+  const total = (s: Series, period: WeatherPanelDay[]) => {
+    const values = valuesIn(s, period)
+    return values.length ? `${s.name} ${values.reduce((sum, value) => sum + value, 0).toFixed(digits)}` : null
+  }
+  const range = (s: Series, period: WeatherPanelDay[]) => {
+    const values = valuesIn(s, period)
+    if (!values.length) return null
+    const [low, high] = [Math.min(...values), Math.max(...values)].map((value) => value.toFixed(digits))
+    return low === high ? `${s.name} ${low}` : `${s.name} ${low} to ${high}`
+  }
+  const summarize = panel.bars ? total : range
+
+  const sentences: string[] = []
+  const latest = observed.at(-1)
+  if (!panel.bars && latest) {
+    const values = listed(
+      series.map((s) => {
+        const value = valueOn(s, latest)
+        return value === null ? null : `${s.name} ${value.toFixed(digits)}`
+      }),
+    )
+    if (values) sentences.push(`${formatDate(latest.date)}: ${values}.`)
+  }
+  const pastText = past.length ? listed(series.map((s) => summarize(s, past))) : null
+  if (pastText) sentences.push(`Last ${past.length} days: ${pastText}.`)
+  const aheadText = ahead.length ? listed(series.map((s) => summarize(s, ahead))) : null
+  if (aheadText) sentences.push(`Next ${ahead.length} days (forecast): ${aheadText}.`)
+  return sentences.join(' ') || 'No values yet.'
+}
+
+/** The panel's daily values as a table, newest first: one column per series it shows */
+export function panelTable(panel: WeatherPanel, days: WeatherPanelDay[]) {
+  const series = shownSeries(panel, days)
+  const digits = digitsFor(panel)
+  return {
+    columns: series.map((s) => s.name),
+    rows: days.toReversed().map((day) => ({
+      date: day.date,
+      forecast: day.forecast,
+      values: series.map((s) => valueOn(s, day)?.toFixed(digits) ?? null),
+    })),
+  }
+}

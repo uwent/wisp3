@@ -45,7 +45,20 @@ Checked and fine: dialogs (bits-ui: focus moves in, is held, Escape closes and r
 
 - [x] Keyboard: every page by Tab alone (visible focus, sensible order, no traps), the grids, menus, the map's popups and phone sheets, the side list, the overlay panel, a skip link.
 - [x] Pivot picker: the typed fields cover everything the handles do.
-- [ ] Charts: a table alternative and a text summary for each.
+### Charts (2026-10-22)
+
+WCAG 1.1.1 asks for a text alternative to each chart; a table of its values serves those who need the numbers.
+
+| Chart | Text alternative | Data |
+|---|---|---|
+| Field page: soil water, inputs and canopy | The summary card above it (AD, status, outlook, season totals); its name points to the daily table | The daily values grid and the forecast table below it hold the same values |
+| Weather panels (field and pivot pages) | Generated from each panel's definition (`panelSummary` in `lib/charts/weatherCharts.ts`): amounts added up over the last 7 days and the next 7 forecast, levels on the latest day and their ranges. It's the chart's name, and is shown under "Summary and data" | Under "Summary and data": every day, newest first, forecast days marked (`panelTable`). Built only when opened |
+| About page: canopy curves | Each plot's name gives days to 50% and 80% cover; the card beside it has the parameters | The card's figures |
+| Field cards: AD sparkline | Its name describes the trend; AD today is beside it as text | – |
+
+"Summary and data" is closed by default and is for everyone who wants exact numbers, not only screen reader users. A new weather panel gets both from its series with no extra code.
+
+- [x] Charts: a table alternative and a text summary for each.
 - [ ] Not by color alone: status, provenance, forecast shading, soil types.
 - [ ] Screen readers: NVDA or Orca on desktop, VoiceOver on a phone. Known already: a `Term`'s definition has no role and isn't tied to the term (`aria-describedby`), so a screen reader announces "expanded" but not the definition.
 - [ ] Reflow at 320 px and 200% text; `prefers-reduced-motion`.

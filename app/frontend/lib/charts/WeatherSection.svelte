@@ -4,7 +4,7 @@
 
   import type { Units } from '../units'
   import ChartCard from './ChartCard.svelte'
-  import { weatherChartOption, type WeatherPanel } from './weatherCharts'
+  import { panelSummary, panelTable, weatherChartOption, type WeatherPanel } from './weatherCharts'
   import type { WeatherPanelDay } from '@/types/serializers'
 
   // The weather panels for a pivot's cell (on a field's page or the pivot's), with a show/hide
@@ -46,6 +46,9 @@
               info={panel.info}
               height={panel.totals ? '17rem' : '12rem'}
               build={(palette, view) => weatherChartOption(panel, days, units, palette, view)}
+              summary={panelSummary(panel, days, units)}
+              table={() => panelTable(panel, days)}
+              unit={panel.unit(units)}
             >
               {#snippet subtitle()}<span class="font-normal text-ink-muted">({panel.unit(units)})</span>{/snippet}
             </ChartCard>
