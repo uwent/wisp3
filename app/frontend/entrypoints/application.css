@@ -23,11 +23,16 @@
   --color-brand-600: oklch(52% 0.13 238);
   --color-brand-700: oklch(45% 0.12 240);
 
-  /* Field water status (see plan §5.5) */
+  /* Field water status (see plan §5.5). Fills take white text, except caution, which takes
+     on-caution in both modes. As text on a surface, irrigate and caution use their -ink colors,
+     which are lighter in dark mode (WCAG AA, 4.5:1) */
   --color-status-full: oklch(55% 0.15 245);
-  --color-status-ok: oklch(58% 0.14 155);
+  --color-status-ok: oklch(53% 0.14 155);
   --color-status-caution: oklch(75% 0.15 75);
   --color-status-irrigate: oklch(55% 0.2 27);
+  --color-on-caution: oklch(22% 0.02 250);
+  --color-status-irrigate-ink: oklch(55% 0.2 27);
+  --color-status-caution-ink: oklch(50% 0.12 75);
 
   /* University of Wisconsin–Madison red, for the branding bar; the darker red in dark mode */
   --color-uw-red: #cf0a1b;
@@ -72,6 +77,8 @@
     --color-ink: oklch(94% 0.01 250);
     --color-ink-muted: oklch(72% 0.015 250);
     --color-line: oklch(32% 0.015 250);
+    --color-status-irrigate-ink: oklch(70% 0.17 27);
+    --color-status-caution-ink: oklch(80% 0.15 75);
     --color-brand-50: oklch(28% 0.05 235);
     --color-brand-100: oklch(33% 0.06 235);
     --color-brand-500: oklch(70% 0.12 232);
@@ -96,6 +103,8 @@
   --color-ink: oklch(94% 0.01 250);
   --color-ink-muted: oklch(72% 0.015 250);
   --color-line: oklch(32% 0.015 250);
+  --color-status-irrigate-ink: oklch(70% 0.17 27);
+  --color-status-caution-ink: oklch(80% 0.15 75);
   --color-brand-50: oklch(28% 0.05 235);
   --color-brand-100: oklch(33% 0.06 235);
   --color-brand-500: oklch(70% 0.12 232);
@@ -175,4 +184,10 @@
   --tw-prose-code: var(--color-ink);
   --tw-prose-th-borders: var(--color-line);
   --tw-prose-td-borders: var(--color-line);
+}
+
+/* Map attribution links stand out from its text by more than color (WCAG 1.4.1); specific enough
+   to win over MapLibre's stylesheet, which loads after this one */
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner a {
+  text-decoration: underline;
 }

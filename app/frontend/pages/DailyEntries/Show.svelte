@@ -93,7 +93,9 @@
   <section
     class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted"
   >
-    No pivots yet. <Link href={newQuickSetup()} class="text-brand-600 hover:underline">Set up your first pivot</Link>.
+    No pivots yet. <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2"
+      >Set up your first pivot</Link
+    >.
   </section>
 {:else}
   {#key date}
@@ -172,7 +174,7 @@
                             </label>
                           {/each}
                         </div>
-                        {#if e(errs, `pivots.${pivot.id}.field_ids`)}<p class="text-xs text-status-irrigate">
+                        {#if e(errs, `pivots.${pivot.id}.field_ids`)}<p class="text-xs text-status-irrigate-ink">
                             {e(errs, `pivots.${pivot.id}.field_ids`)}
                           </p>{/if}
                       </fieldset>
@@ -245,7 +247,7 @@
         >
           <Button type="submit" disabled={processing}>Save {formatDate(date)}</Button>
           <p class="text-sm text-ink-muted">
-            {#if Object.keys(errs).length}<span class="text-status-irrigate"
+            {#if Object.keys(errs).length}<span class="text-status-irrigate-ink"
                 >Nothing was saved; please fix the highlighted values.</span
               >
             {:else if isDirty || dirty}Unsaved changes{:else}Leave rain blank to use the modeled value; enter 0 if your

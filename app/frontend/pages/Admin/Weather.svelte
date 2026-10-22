@@ -49,7 +49,7 @@
 
   const badge = {
     ok: 'bg-status-ok text-white',
-    caution: 'bg-status-caution text-ink',
+    caution: 'bg-status-caution text-on-caution',
     irrigate: 'bg-status-irrigate text-white',
   }
 </script>
@@ -90,7 +90,13 @@
   {/each}
 </section>
 
-<section class="overflow-x-auto rounded-lg border border-line bg-surface-raised">
+<!-- Focusable so keyboard users can scroll it (WCAG 2.1.1) -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<section
+  class="overflow-x-auto rounded-lg border border-line bg-surface-raised"
+  tabindex="0"
+  aria-label="Weather cells"
+>
   {#if cells.length === 0}
     <p class="p-6 text-center text-sm text-ink-muted">No weather cells yet. Cells are created when pivots are.</p>
   {:else}
@@ -118,7 +124,7 @@
             <td class="px-3 py-2">
               <span class="rounded-full px-2 py-0.5 text-xs whitespace-nowrap {badge[tone]}">{label}</span>
               {#if cell.last_error}
-                <div class="mt-1 max-w-xs text-xs text-status-irrigate">
+                <div class="mt-1 max-w-xs text-xs text-status-irrigate-ink">
                   {cell.last_error} ({ago(cell.last_error_at)})
                 </div>
               {/if}

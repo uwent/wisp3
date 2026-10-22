@@ -35,7 +35,7 @@
     {...rest}
   />
   {#if message}
-    <p id="{id}-error" class="text-sm text-status-irrigate">{message}</p>
+    <p id="{id}-error" class="text-sm text-status-irrigate-ink">{message}</p>
   {:else if hint}
     <p id="{id}-hint" class="text-sm text-ink-muted">{hint}</p>
   {/if}

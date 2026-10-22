@@ -411,7 +411,9 @@
         >the WISP source code</a
       >.
     </p>
-    <pre class="text-xs"><code
+    <!-- Focusable so keyboard users can scroll it (WCAG 2.1.1) -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <pre class="text-xs" tabindex="0" aria-label="Canopy curve equations"><code
         >growth:  CC = CC₀ · e^(CGC·t)                   while CC ≤ CCx/2
          CC = CCx − ¼ · CCx² / CC₀ · e^(−CGC·t)  after, up to CCx
 decline: CC = CCx · [1 − 0.05 · (e^(3.33·CDC·t′ / (CCx + 2.29)) − 1)]

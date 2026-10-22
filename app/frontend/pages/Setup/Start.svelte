@@ -148,7 +148,7 @@
             1. You can also add fields later.
           </p>
         </div>
-        {#if error(e, 'fields')}<p class="text-sm text-status-irrigate">{error(e, 'fields')}</p>{/if}
+        {#if error(e, 'fields')}<p class="text-sm text-status-irrigate-ink">{error(e, 'fields')}</p>{/if}
         {#each rows as row, i (row.key)}
           <fieldset
             class="grid gap-3 border-t border-line pt-4 first-of-type:border-0 first-of-type:pt-0 sm:grid-cols-6"
@@ -195,7 +195,7 @@
                 max="{year}-12-31"
                 class="block w-full rounded-md shadow-sm sm:text-sm"
               />
-              {#if error(e, `fields.${i}.emergence_date`)}<p class="text-sm text-status-irrigate">
+              {#if error(e, `fields.${i}.emergence_date`)}<p class="text-sm text-status-irrigate-ink">
                   {error(e, `fields.${i}.emergence_date`)}
                 </p>{/if}
             </div>
@@ -203,7 +203,7 @@
               <div class="sm:col-span-6">
                 <button
                   type="button"
-                  class="text-sm text-status-irrigate hover:underline"
+                  class="text-sm text-status-irrigate-ink hover:underline"
                   onclick={() => (rows = rows.filter((r) => r.key !== row.key))}
                 >
                   Remove this field
@@ -217,7 +217,9 @@
 
       <div class="flex items-center gap-3">
         <Button type="submit" disabled={processing}>Save and start tracking</Button>
-        {#if Object.keys(e).length}<p class="text-sm text-status-irrigate">Please fix the highlighted fields.</p>{/if}
+        {#if Object.keys(e).length}<p class="text-sm text-status-irrigate-ink">
+            Please fix the highlighted fields.
+          </p>{/if}
       </div>
     </div>
   {/snippet}

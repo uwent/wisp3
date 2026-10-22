@@ -25,7 +25,7 @@
   {@const status = overlays.status[overlay.id]}
   <div class="mt-2 space-y-2 border-l-2 border-line pl-3">
     {#if status === 'unavailable'}
-      <p class="text-xs text-status-irrigate">
+      <p class="text-xs text-status-irrigate-ink">
         Not loading right now. Switch it off and on to try again, or try later.
       </p>
     {/if}
@@ -55,7 +55,7 @@
 {#snippet mark(id: OverlayId)}
   {@const status = overlays.status[id]}
   {#if status && STATUS_TEXT[status]}
-    <span class="ml-auto text-xs {status === 'unavailable' ? 'text-status-irrigate' : 'text-ink-muted'}"
+    <span class="ml-auto text-xs {status === 'unavailable' ? 'text-status-irrigate-ink' : 'text-ink-muted'}"
       >{STATUS_TEXT[status]}</span
     >
   {/if}

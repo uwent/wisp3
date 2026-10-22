@@ -101,7 +101,7 @@
         {#if user.id === me}<span class="text-xs text-ink-muted">(you)</span>{/if}
         {#if user.admin}<span class="ml-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">admin</span>{/if}
       {:else if column.key === 'confirmed'}
-        <span class={user.confirmed ? '' : 'font-medium text-status-caution'}>{user.confirmed ? 'Yes' : 'No'}</span>
+        <span class={user.confirmed ? '' : 'font-medium text-status-caution-ink'}>{user.confirmed ? 'Yes' : 'No'}</span>
       {:else if column.key === 'signed_in'}
         <span class="whitespace-nowrap" title={formatTimestamp(user.current_sign_in_at)}
           >{formatDate(user.current_sign_in_at, { year: true })}</span

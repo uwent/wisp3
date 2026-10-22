@@ -12,7 +12,7 @@
   const styles = {
     full: { label: 'Full', icon: '●', class: 'bg-status-full text-white' },
     ok: { label: 'OK', icon: '✓', class: 'bg-status-ok text-white' },
-    caution: { label: 'Caution', icon: '!', class: 'bg-status-caution text-ink' },
+    caution: { label: 'Caution', icon: '!', class: 'bg-status-caution text-on-caution' },
     irrigate: { label: 'Irrigate', icon: '▲', class: 'bg-status-irrigate text-white' },
   }
   const style = $derived(status ? styles[status] : null)

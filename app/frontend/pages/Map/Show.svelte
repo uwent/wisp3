@@ -302,7 +302,7 @@
               rounded-md border border-line bg-surface-raised px-3 py-2 text-sm shadow-lg"
             role="status"
           >
-            <span aria-hidden="true" class="text-status-caution">!</span>
+            <span aria-hidden="true" class="text-status-caution-ink">!</span>
             <p class="flex-1">{overlays.notice}</p>
             <button
               type="button"

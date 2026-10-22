@@ -82,7 +82,9 @@
             required
             class="block w-full rounded-md text-sm {d.error ? 'border-status-irrigate' : ''}"
           />
-          {#if d.error}<p class="text-sm text-status-irrigate">{Array.isArray(d.error) ? d.error[0] : d.error}</p>{/if}
+          {#if d.error}<p class="text-sm text-status-irrigate-ink">
+              {Array.isArray(d.error) ? d.error[0] : d.error}
+            </p>{/if}
         </div>
       {/each}
     </div>
@@ -178,7 +180,7 @@
         >{planting?.notes ?? ''}</textarea
       >
     </div>
-    {#if errors.base}<p class="text-sm text-status-irrigate">{errors.base}</p>{/if}
+    {#if errors.base}<p class="text-sm text-status-irrigate-ink">{errors.base}</p>{/if}
     <Button type="submit" disabled={processing}>{planting ? 'Save crop' : 'Add crop'}</Button>
   {/snippet}
 </Form>

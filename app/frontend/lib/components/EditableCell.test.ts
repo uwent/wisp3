@@ -19,8 +19,8 @@ describe('EditableCell', () => {
   it('opens an input on click and saves the edited text on Enter', async () => {
     const onsave = vi.fn().mockResolvedValue(null)
     render(EditableCell, props(onsave))
-    await fireEvent.click(screen.getByRole('button', { name: 'Rain, Wed, Jul 1' }))
-    const input = screen.getByRole('textbox', { name: 'Rain, Wed, Jul 1' })
+    await fireEvent.click(screen.getByRole('button', { name: /^Rain, Wed, Jul 1/ }))
+    const input = screen.getByRole('textbox', { name: /^Rain, Wed, Jul 1/ })
     expect(input).toHaveValue('0.5')
     await fireEvent.input(input, { target: { value: '0.8' } })
     await fireEvent.keyDown(input, { key: 'Enter' })

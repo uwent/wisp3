@@ -136,13 +136,14 @@
     data-grid={grid}
     data-row={row}
     data-col={col}
-    aria-label={label}
     onclick={() => start()}
     onkeydown={onCellKey}
-    class="block w-full min-w-16 rounded px-1.5 py-1 tabular-nums hover:bg-brand-50
+    class="relative block w-full min-w-16 rounded px-1.5 py-1 tabular-nums hover:bg-brand-50
       {align === 'right' ? 'text-right' : 'text-left'}
       focus-visible:outline-2 focus-visible:outline-brand-500 {className}"
   >
+    <!-- The label leads the button's name, which also carries what the cell shows (WCAG 2.5.3) -->
+    <span class="sr-only">{label}:</span>
     {@render children()}
   </button>
 {/if}

@@ -9,7 +9,7 @@
 </script>
 
 <BrandBar />
-<div class="flex min-h-[calc(100dvh-2.25rem)] flex-col items-center justify-center px-4 py-10">
+<main class="flex min-h-[calc(100dvh-2.25rem)] flex-col items-center justify-center px-4 py-10">
   <div class="w-full max-w-md space-y-6">
     <div class="text-center">
       <Logo class="text-2xl" />
@@ -22,4 +22,4 @@
       {@render children()}
     </div>
   </div>
-</div>
+</main>

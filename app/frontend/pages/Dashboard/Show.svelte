@@ -117,7 +117,9 @@
           </div>
           {#if pivot.fields.length === 0}
             <p class="text-sm text-ink-muted">
-              No fields yet. <Link href={setup.show()} class="text-brand-600 hover:underline">Add them in setup</Link>.
+              No fields yet. <Link href={setup.show()} class="text-brand-600 underline underline-offset-2"
+                >Add them in setup</Link
+              >.
             </p>
           {:else}
             <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -130,7 +132,9 @@
       {/each}
       {#if farm.pivots.length === 0}
         <p class="text-sm text-ink-muted">
-          No pivots yet. <Link href={setup.show()} class="text-brand-600 hover:underline">Add one in setup</Link>.
+          No pivots yet. <Link href={setup.show()} class="text-brand-600 underline underline-offset-2"
+            >Add one in setup</Link
+          >.
         </p>
       {/if}
     </section>

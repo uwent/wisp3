@@ -20,7 +20,9 @@
     {#if errors.reset_password_token}
       <p class="rounded-md bg-status-irrigate/10 px-3 py-2 text-sm" role="alert">
         This reset link is invalid or has expired.
-        <Link href={usersPasswords.new()} class="font-medium text-brand-600 hover:underline">Request a new one</Link>.
+        <Link href={usersPasswords.new()} class="font-medium text-brand-600 underline underline-offset-2"
+          >Request a new one</Link
+        >.
       </p>
     {/if}
     <input type="hidden" name="user[reset_password_token]" value={reset_password_token} />

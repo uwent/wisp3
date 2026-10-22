@@ -98,7 +98,7 @@
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
                 class="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-surface"
-                aria-label="Switch farm operation"
+                aria-label="{auth.group?.name}, switch farm operation"
               >
                 {auth.group?.name} ▾
               </DropdownMenu.Trigger>
@@ -135,7 +135,7 @@
           <DropdownMenu.Root>
             <DropdownMenu.Trigger
               class="rounded-full bg-brand-100 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
-              aria-label="Account menu"
+              aria-label="{auth.user?.display_name}, account menu"
             >
               {auth.user?.display_name}
             </DropdownMenu.Trigger>

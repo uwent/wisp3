@@ -17,7 +17,7 @@
     secondary: 'border border-line bg-surface-raised text-ink hover:bg-surface',
     danger: 'bg-status-irrigate text-white hover:opacity-90',
     ghost: 'text-brand-600 hover:bg-brand-50',
-    'danger-ghost': 'text-status-irrigate hover:bg-status-irrigate/10',
+    'danger-ghost': 'text-status-irrigate-ink hover:bg-status-irrigate/10',
   }
 </script>
 

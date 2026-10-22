@@ -73,9 +73,9 @@
       Farm: {farm.name} · Fields:
       {#each pivot.fields as field, i (field.id)}{i ? ', ' : ''}<Link
           href={fieldRoutes.show(field.id)}
-          class="text-brand-600 hover:underline">{field.name}</Link
+          class="text-brand-600 underline underline-offset-2">{field.name}</Link
         >{:else}none yet{/each}
-      · <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline">Edit pivot</Link>
+      · <Link href={pivots.edit(pivot.id)} class="text-brand-600 underline underline-offset-2">Edit pivot</Link>
     </p>
   </div>
   <select
@@ -116,7 +116,7 @@
               required
               class="block w-full rounded-md text-sm"
             />
-            {#if errors.date}<p class="text-sm text-status-irrigate">{errors.date}</p>{/if}
+            {#if errors.date}<p class="text-sm text-status-irrigate-ink">{errors.date}</p>{/if}
             {#if existing}
               <p class="text-sm" role="status">
                 ⚠ {formatDate(existing.date)} already has {units.format('depth', existing.applied_inches)}; saving
@@ -174,7 +174,7 @@
                 </label>
               {/each}
             </div>
-            {#if errors.field_ids}<p class="text-sm text-status-irrigate">{errors.field_ids}</p>{/if}
+            {#if errors.field_ids}<p class="text-sm text-status-irrigate-ink">{errors.field_ids}</p>{/if}
           </fieldset>
         {/if}
         <div class="space-y-1">

@@ -77,7 +77,7 @@
     </ul>
   {/if}
   {#if searchError}
-    <p class="mb-1 rounded-md bg-surface-raised px-3 py-1.5 text-xs text-status-irrigate shadow">{searchError}</p>
+    <p class="mb-1 rounded-md bg-surface-raised px-3 py-1.5 text-xs text-status-irrigate-ink shadow">{searchError}</p>
   {/if}
   <div class="flex overflow-hidden rounded-md border border-line bg-surface-raised shadow">
     <input

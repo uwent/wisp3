@@ -629,7 +629,7 @@
     >
       {locating ? 'Finding you…' : 'Use my location'}
     </button>
-    {#if locateError}<span class="text-status-irrigate">{locateError}</span>{/if}
+    {#if locateError}<span class="text-status-irrigate-ink">{locateError}</span>{/if}
     {#if center}<span class="text-ink-muted"
         >{linear
           ? 'Drag the pin to move the linear, the square corner handles to resize it, or the round handle to turn it.'

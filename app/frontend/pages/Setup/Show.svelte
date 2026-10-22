@@ -244,7 +244,9 @@
   <section
     class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted"
   >
-    No farms yet. <Link href={newQuickSetup()} class="text-brand-600 hover:underline">Set up your first pivot</Link>.
+    No farms yet. <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2"
+      >Set up your first pivot</Link
+    >.
   </section>
 {/each}
 
@@ -303,7 +305,7 @@
     {#if dialog.planting}
       <button
         type="button"
-        class="mt-4 text-sm text-status-irrigate hover:underline"
+        class="mt-4 text-sm text-status-irrigate-ink hover:underline"
         onclick={() => {
           if (dialog?.kind !== 'planting' || !dialog.planting) return
           if (

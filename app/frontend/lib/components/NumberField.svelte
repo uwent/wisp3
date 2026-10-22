@@ -87,7 +87,7 @@
   </div>
   <input type="hidden" {name} value={value ?? ''} />
   {#if message}
-    <p id="{id}-error" class="text-xs text-status-irrigate sm:text-sm">{message}</p>
+    <p id="{id}-error" class="text-xs text-status-irrigate-ink sm:text-sm">{message}</p>
   {:else if hint}
     <p id="{id}-hint" class="text-sm text-ink-muted">{hint}</p>
   {/if}

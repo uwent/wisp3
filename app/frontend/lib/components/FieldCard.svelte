@@ -106,7 +106,7 @@
       />
     </div>
     {#if look}
-      <p class="text-sm {look.urgent ? 'font-medium text-status-irrigate' : ''}">{look.headline}</p>
+      <p class="text-sm {look.urgent ? 'font-medium text-status-irrigate-ink' : ''}">{look.headline}</p>
     {/if}
     {#if !compact}
       <dl class="grid grid-cols-2 gap-2 text-xs">
@@ -134,7 +134,7 @@
       <ul class="space-y-1 border-t border-line pt-2 text-xs" aria-label="To do">
         {#each todo as task (task.kind)}
           <li class="flex gap-1.5" title={task.message ?? undefined}>
-            <span aria-hidden="true" class="text-status-caution">○</span>
+            <span aria-hidden="true" class="text-status-caution-ink">○</span>
             <span>{task.todo}</span>
           </li>
         {/each}
@@ -159,7 +159,7 @@
     <Link
       href={fields.show(card.id)}
       class="relative mt-2 inline-block text-xs font-medium text-brand-600 hover:underline"
-      aria-label="Open {card.name}">Open field →</Link
+      aria-label="Open field: {card.name}">Open field →</Link
     >
   </div>
 {:else}

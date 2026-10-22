@@ -2,11 +2,10 @@ import { readFileSync } from 'node:fs'
 
 import { expect, type Page, test } from '@playwright/test'
 
+import { firstFieldPath, signIn } from './session'
+
 // Smoke tests over the demo account seeded by e2e/seed.rb: every page renders without script
 // errors or sideways scrolling, and the main ways of entering data save.
-
-const EMAIL = 'e2e@example.com'
-const PASSWORD = 'e2e-password-1'
 
 /** Uncaught errors and console errors, except resources that failed to load (map tiles in CI) */
 function watchErrors(page: Page): string[] {
@@ -18,29 +17,6 @@ function watchErrors(page: Page): string[] {
     }
   })
   return errors
-}
-
-async function signIn(page: Page) {
-  await page.goto('/account/sign_in')
-  await page.getByLabel('Email').fill(EMAIL)
-  await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible()
-
-  // The demo farms are a second group; the user's own (empty) group is the default. The switcher
-  // is its own menu on wider screens, and part of the account menu on phones.
-  if ((await page.getByRole('heading', { name: 'Dashboard' }).locator('..').textContent())?.includes('Demo farms'))
-    return
-  const switcher = page.getByRole('button', { name: 'Switch farm operation' })
-  await ((await switcher.isVisible()) ? switcher : page.getByRole('button', { name: 'Account menu' })).click()
-  await page.getByRole('menuitem', { name: 'Demo farms' }).click()
-  await expect(page.getByRole('heading', { name: 'Dashboard' }).locator('..')).toContainText('Demo farms')
-}
-
-async function firstFieldPath(page: Page): Promise<string> {
-  await page.goto('/')
-  const href = await page.locator('main ul li a').first().getAttribute('href')
-  return new URL(href!, page.url()).pathname
 }
 
 test.beforeEach(async ({ page }) => {

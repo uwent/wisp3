@@ -181,7 +181,7 @@
 <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
   <div class="flex flex-wrap items-baseline justify-between gap-2">
     <h2 class="text-lg font-medium">Daily email</h2>
-    <p class="text-sm {saveState === 'failed' ? 'text-status-irrigate' : 'text-ink-muted'}" role="status">
+    <p class="text-sm {saveState === 'failed' ? 'text-status-irrigate-ink' : 'text-ink-muted'}" role="status">
       {#if saveState === 'failed'}{saveError}{:else if saved}Changes save automatically{:else}Saving…{/if}
     </p>
   </div>

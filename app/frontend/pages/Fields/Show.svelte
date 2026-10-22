@@ -164,7 +164,7 @@
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div class="min-w-0">
     <p class="text-sm text-ink-muted">
-      {farm.name} · <Link href={pivots.show(pivot.id)} class="hover:underline">{pivot.name}</Link>
+      {farm.name} · <Link href={pivots.show(pivot.id)} class="underline underline-offset-2">{pivot.name}</Link>
     </p>
     <h1 class="text-2xl font-semibold">{field.name}</h1>
     <p class="text-sm text-ink-muted">
@@ -175,7 +175,7 @@
       {#if field_groups.length}
         · in {#each field_groups as group, i (group.id)}{i ? ', ' : ''}<Link
             href={fieldGroups.show(group.id)}
-            class="text-brand-600 hover:underline">{group.name}</Link
+            class="text-brand-600 underline underline-offset-2">{group.name}</Link
           >{/each}
       {/if}
     </p>
@@ -322,7 +322,7 @@
       {#if !summary.use_model_precip}
         <p class="mt-2 text-xs">
           Rain: <Term id="entered_rain_only">only what you enter</Term>, and the forecast's ahead ·
-          <a href="#season-details" class="text-brand-600 hover:underline">change</a>
+          <a href="#season-details" class="text-brand-600 underline underline-offset-2">change</a>
         </p>
       {/if}
       {#if summary.totals.entered_rain_days}
@@ -332,7 +332,7 @@
             'depth',
             summary.totals.entered_rain_model,
           )}.
-          <a href="#season-details" class="text-brand-600 hover:underline">Compare day by day</a>
+          <a href="#season-details" class="text-brand-600 underline underline-offset-2">Compare day by day</a>
         </p>
       {/if}
     </div>
@@ -492,14 +492,14 @@
                           {/if}
                         </EditableCell>
                       </td>
-                      <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate' : ''}"
+                      <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate-ink' : ''}"
                         >{depth(day.ad)}</td
                       >
                       {#if hasDry}
                         {@const dryAd = band?.dry_ad ?? null}
                         <td
                           class="px-2 py-1 text-ink-muted tabular-nums {dryAd !== null && dryAd <= 0
-                            ? 'text-status-irrigate'
+                            ? 'text-status-irrigate-ink'
                             : ''}">{depth(dryAd)}</td
                         >
                       {/if}
@@ -643,7 +643,7 @@
                         {:else}<span class="text-ink-muted">{formatNumber(day.canopy, lai ? 2 : 0)}</span>{/if}
                       </EditableCell>
                     </td>
-                    <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate' : ''}"
+                    <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate-ink' : ''}"
                       >{depth(day.ad)}</td
                     >
                     <td class="px-2 py-1 tabular-nums">{formatNumber(day.pct_moisture, 1)}</td>
@@ -671,8 +671,9 @@
           <p class="text-xs text-ink-muted">
             Muted rain is modeled for the pivot's location; bold values were entered. Irrigation marked “pivot” is
             entered on the
-            <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline">pivot's irrigation page</Link> or in
-            daily entry. * Crop ET estimated from the past week because the day's weather is missing. {lai
+            <Link href={pivots.show(pivot.id)} class="text-brand-600 underline underline-offset-2"
+              >pivot's irrigation page</Link
+            > or in daily entry. * Crop ET estimated from the past week because the day's weather is missing. {lai
               ? 'LAI'
               : 'Cover'} in muted text is estimated: {planting?.effective_canopy_interpolation === 'curve'
               ? "the crop's curve, scaled through your readings"

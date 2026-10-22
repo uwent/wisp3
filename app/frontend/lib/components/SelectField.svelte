@@ -36,7 +36,7 @@
     {/each}
   </select>
   {#if message}
-    <p class="text-sm text-status-irrigate">{message}</p>
+    <p class="text-sm text-status-irrigate-ink">{message}</p>
   {:else if hint}
     <p class="text-sm text-ink-muted">{hint}</p>
   {/if}

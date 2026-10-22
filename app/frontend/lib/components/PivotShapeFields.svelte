@@ -49,7 +49,7 @@
       </label>
     {/each}
   </div>
-  {#if error('kind')}<p class="text-sm text-status-irrigate">{error('kind')}</p>{/if}
+  {#if error('kind')}<p class="text-sm text-status-irrigate-ink">{error('kind')}</p>{/if}
 </fieldset>
 
 <PivotMap bind:shape {others} {soilTypes} />
