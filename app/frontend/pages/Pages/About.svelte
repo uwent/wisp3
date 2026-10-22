@@ -82,10 +82,7 @@
     legacy_confirmed: 'Original WISP; the Wisconsin survey agrees',
   }
   // Water the soil holds for the crop between field capacity and the wilting point, per foot (or meter) of root zone
-  const availableWater = (soil: Soil) => {
-    const fraction = soil.field_capacity - soil.perm_wilting_pt
-    return units.system === 'metric' ? `${Math.round(fraction * 1000)} mm/m` : `${(fraction * 12).toFixed(2)} in/ft`
-  }
+  const availableWater = (soil: Soil) => units.format('availableWater', soil.field_capacity - soil.perm_wilting_pt)
 
   const sections = [
     { id: 'introduction', title: 'What WISP is' },

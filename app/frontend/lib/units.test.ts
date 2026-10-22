@@ -51,6 +51,11 @@ describe('units', () => {
     expect(metric.format('degreeDays', 900)).toBe('500 °C·d')
   })
 
+  it('converts the water a soil holds per depth, stored as a volume fraction', () => {
+    expect(units('imperial').format('availableWater', 0.08)).toBe('0.96 in/ft')
+    expect(units('metric').format('availableWater', 0.08)).toBe('80 mm/m')
+  })
+
   it('converts area, flow, root depth and radius', () => {
     expect(metric.format('area', 100)).toBe('40.5 ha')
     expect(metric.format('flow', 900)).toBe('56.8 L/s')

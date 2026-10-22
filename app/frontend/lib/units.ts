@@ -13,6 +13,7 @@ export type Quantity =
   | 'temperature' // °F ↔ °C
   | 'degreeDays' // growing degree days (°F·d ↔ °C·d)
   | 'speed' // wind (mph ↔ km/h)
+  | 'availableWater' // water a soil holds per depth, stored as a volume fraction (in/ft ↔ mm/m)
 
 type Unit = {
   label: string
@@ -41,6 +42,7 @@ const UNITS: Record<Quantity, Record<UnitSystem, Unit>> = {
   },
   degreeDays: { imperial: same('°F·d', 0), metric: scaled('°C·d', 0, 5 / 9) },
   speed: { imperial: same('mph', 0), metric: scaled('km/h', 0, 1.609344) },
+  availableWater: { imperial: scaled('in/ft', 2, 12), metric: scaled('mm/m', 0, 1000) },
 }
 
 export type ParseResult = { ok: true; value: number | null } | { ok: false; error: string }

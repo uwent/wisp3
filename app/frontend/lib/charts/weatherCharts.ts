@@ -87,10 +87,11 @@ export function weatherPanels(
     fieldRain?: FieldRain
   } = {},
 ): WeatherPanel[] {
+  // Soil depths ("3–11 in") in the user's units, as root zone depths are
   const depthName = (label: string) =>
-    units.system === 'metric'
-      ? label.replace(/(\d+)/g, (n) => String(Math.round(Number(n) * 2.54))).replace('in', 'cm')
-      : label
+    label
+      .replace(/\d+/g, (n) => String(Math.round(units.toDisplay('rootDepth', Number(n))!)))
+      .replace('in', units.label('rootDepth'))
   const temp = (f: number) => units.format('temperature', f)
   const depth = (value: number | null) => converted(units, 'depth', value)
   // The rain the grower entered (on the field or its group), and whether the balance left the model's out
