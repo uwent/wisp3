@@ -2,6 +2,6 @@
 class WeatherPanelDaySerializer < ApplicationSerializer
   attributes :date, :forecast, :gdd, :gdd_since_emergence, *WeatherPanel::COLUMNS
 
-  typelize date: :string, forecast: :boolean, gdd: "number | null", gdd_since_emergence: :number,
+  typelize date: :string, forecast: :boolean, gdd: "number | null", gdd_since_emergence: "number | null",
     **WeatherPanel::COLUMNS.index_with { "number | null" }
 end

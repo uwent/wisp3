@@ -109,7 +109,9 @@ const mrmsTiles = (hours: 24 | 72) => (stamp: number) => [
 ]
 async function mrmsValue(hours: 24 | 72, at: LngLat, signal?: AbortSignal): Promise<OverlayValue> {
   const mm = await identify(MRMS_SERVICE, at, mrmsMosaic(hours), signal)
-  const inches = mm === null ? 0 : mm / MM_PER_INCH
+  // The service gives dry ground as 0, so NoData (or no answer) means the estimate is missing there
+  if (mm === null) return { kind: 'text', text: 'No data here' }
+  const inches = mm / MM_PER_INCH
   return inches < 0.01 ? { kind: 'none' } : { kind: 'depth', inches }
 }
 // NOAA's classes for the 24- and 72-hour estimates (lower bounds, inches), the lower ones

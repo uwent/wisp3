@@ -57,7 +57,8 @@ class PlantingSummarySerializer < ApplicationSerializer
     field_capacity_pct: :number, wilting_point_pct: :number, pct_at_ad_zero: :number,
     last_rain: "{ date: string; inches: number } | null", last_irrigation: "{ date: string; inches: number } | null",
     recent: "{ date: string; ad: number }[]",
-    totals: "{ rain: number; irrigation: number; adj_et: number; deep_drainage: number; rain_model: number; " \
+    totals: "{ rain: number | null; irrigation: number; adj_et: number | null; deep_drainage: number; " \
+      "rain_model: number | null; " \
       "entered_rain_days: number; entered_rain: number; entered_rain_model: number }",
     threshold: :number, crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     use_model_precip: :boolean, dry_crossing: "{ date: string; days: number; ad: number; refill: number } | null",

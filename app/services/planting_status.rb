@@ -113,9 +113,9 @@ class PlantingStatus
   def totals
     entered = days.select { |day| %i[entered group].include?(day.inputs.rain_source) && day.inputs.rain_model }
     Totals.new(
-      rain: sum(days) { |day| day.inputs.rain }, irrigation: sum(days) { |day| day.inputs.irrigation },
-      adj_et: sum(days) { |day| day.result.adj_et }, deep_drainage: sum(days) { |day| day.result.deep_drainage },
-      rain_model: sum(days) { |day| day.inputs.rain_model }, entered_rain_days: entered.size,
+      rain: measured(days) { |day| day.inputs.rain }, irrigation: sum(days) { |day| day.inputs.irrigation },
+      adj_et: measured(days) { |day| day.result.adj_et }, deep_drainage: sum(days) { |day| day.result.deep_drainage },
+      rain_model: measured(days) { |day| day.inputs.rain_model }, entered_rain_days: entered.size,
       entered_rain: sum(entered) { |day| day.inputs.rain }, entered_rain_model: sum(entered) { |day| day.inputs.rain_model }
     )
   end
@@ -146,5 +146,13 @@ class PlantingStatus
     @ensemble_members
   end
 
+  # A total of what was entered, where a day without one had none (irrigation)
   def sum(days, &) = days.sum { |day| yield(day).to_f }.round(WaterBalance::PRECISION)
+
+  # A total of what comes from the weather, over the days that have it; nil (missing, not zero)
+  # when none does, e.g. a new pivot before its weather arrives
+  def measured(days, &)
+    values = days.filter_map(&)
+    values.sum.round(WaterBalance::PRECISION) if values.any?
+  end
 end

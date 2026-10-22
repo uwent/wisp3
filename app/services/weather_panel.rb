@@ -27,7 +27,7 @@ class WeatherPanel
       gdd = Weather::DegreeDays.daily(values[:tmax_f], values[:tmin_f])
       gdd_total += gdd.to_f if date >= @emergence_date
       Day.new(date:, forecast: forecast.key?(date), gdd: gdd&.round(1),
-        gdd_since_emergence: (date >= @emergence_date) ? gdd_total.round(1) : 0.0, **values)
+        gdd_since_emergence: (date >= @emergence_date) ? gdd_total.round(1) : nil, **values)
     end
   end
 end

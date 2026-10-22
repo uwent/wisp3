@@ -48,7 +48,7 @@ describe('overlays', () => {
     expect(JSON.parse(url.searchParams.get('renderingRule')!).rasterFunction).toBe('rft_24hr')
   })
 
-  it('reads the MRMS value at a point as millimeters, and below 0.01 in as none', async () => {
+  it('reads the MRMS value at a point as millimeters, below 0.01 in as none, and NoData as missing', async () => {
     const day = RAIN_OVERLAYS.find((o) => o.id === 'rain72')!
     const answer = (value: string) =>
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ value })))
@@ -56,8 +56,10 @@ describe('overlays', () => {
     expect(await day.valueAt([-89.5, 44.1])).toEqual({ kind: 'depth', inches: 18.9 / 25.4 })
     answer('0.1')
     expect(await day.valueAt([-89.5, 44.1])).toEqual({ kind: 'none' })
-    answer('NoData')
+    answer('0')
     expect(await day.valueAt([-89.5, 44.1])).toEqual({ kind: 'none' })
+    answer('NoData')
+    expect(await day.valueAt([-89.5, 44.1])).toEqual({ kind: 'text', text: 'No data here' })
     vi.restoreAllMocks()
   })
 

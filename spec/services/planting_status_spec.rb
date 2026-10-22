@@ -48,6 +48,11 @@ RSpec.describe PlantingStatus do
       entered_rain_model: 0.5, irrigation: 0.0)
     expect(totals.adj_et).to be > 0
   end
+
+  it "gives no weather totals, not zeros, before any weather arrives (missing is nil)" do
+    totals = described_class.new(planting, today: Date.new(2026, 7, 10), weather: {}).totals
+    expect(totals).to have_attributes(rain: nil, rain_model: nil, adj_et: nil, irrigation: 0.0)
+  end
 end
 
 RSpec.describe PlantingStatus, "projection" do

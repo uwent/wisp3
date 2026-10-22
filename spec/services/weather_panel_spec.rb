@@ -18,7 +18,7 @@ RSpec.describe WeatherPanel do
   it "joins stored days and the forecast after them, with GDD since emergence" do
     days = described_class.new(cell, Date.new(2026, 7, 1)..Date.new(2026, 7, 10), emergence_date: Date.new(2026, 7, 2)).days
     expect(days.map { |day| [day.date.day, day.forecast, day.gdd, day.gdd_since_emergence] })
-      .to eq([[1, false, 20.0, 0.0], [2, false, 20.0, 20.0], [3, false, 20.0, 40.0], [4, true, 28.0, 68.0]]) # the high is capped at 86 °F
+      .to eq([[1, false, 20.0, nil], [2, false, 20.0, 20.0], [3, false, 20.0, 40.0], [4, true, 28.0, 68.0]]) # the high is capped at 86 °F
     expect(days.first.soil_moisture_0_7cm).to eq(0.123)
   end
 
