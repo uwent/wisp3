@@ -824,6 +824,7 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 #### D. Beta and launch
 
 - [ ] Empty states and an onboarding tour (once the beta shows where people get stuck).
+- [ ] **Data downloads where they fit** (Ben, 2026-10-22): a CSV link in each weather chart's "Summary and data" (that panel's table), and one for all weather variables for the pivot's cell in a single CSV; look for other tables that would benefit (the field page already has Export CSV). In inches and °F as stored, like the field export.
 - [ ] Methods detail for the About page (Phase 6.5 "Later").
 - [ ] Closed beta with a handful of growers or extension agents on staging, each setting up their own operation from scratch (this validates onboarding as well as the app).
 - [ ] New production server provisioned (§12), deploy rehearsed, backups and restore tested.
