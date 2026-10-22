@@ -19,30 +19,18 @@ WISP 3 is a rewrite of the [original WISP](https://github.com/uwent/wisp). See [
 - Devise for accounts, with one-time sign-in links
 - RSpec, Vitest, Standard
 
-## Development setup
+## Development
 
-Requirements: Ruby 4.0.5 (rbenv), Node 24, PostgreSQL 16+.
+[DEVELOPMENT.md](DEVELOPMENT.md) walks through setting up a machine (Ruby, Node, PostgreSQL), the day-to-day commands and tests, credentials, and deployment. In short, once the prerequisites are installed:
 
 ```bash
 bin/setup          # installs gems and pnpm packages, prepares the database, starts the app
 bin/dev            # Rails on http://localhost:3000 plus the Vite dev server
+bin/ci             # everything CI runs: lint, type checks, frontend, Rails and browser tests
 ```
 
-The database connects to `localhost` as `postgres`/`password` by default; override with `DB_HOST`, `DB_USER`, `DB_PWD`. Mail sent in development opens at http://localhost:3000/letter_opener.
-
-## Common commands
-
-```bash
-bin/ci                            # everything CI runs: lint, type checks, frontend and Rails tests
-bundle exec rspec                 # Rails tests
-pnpm test                         # frontend component tests (Vitest)
-pnpm check                      # svelte-check + TypeScript
-bundle exec standardrb            # Ruby lint
-bin/rails typelizer:generate      # regenerate TS types (app/frontend/types/serializers) and route helpers (app/frontend/routes)
-```
-
-Generated types and route helpers are committed; CI fails if they are out of date.
+Conventions for working in the code are in [CLAUDE.md](CLAUDE.md).
 
 ## Deployment
 
-Capistrano deploys to staging (dev.wisp.cals.wisc.edu) and, from the 2027 season, a new production server. See [docs/deployment.md](docs/deployment.md).
+Capistrano deploys to staging (dev.wisp.cals.wisc.edu) and, from the 2027 season, a new production server. See [docs/deployment.md](docs/deployment.md), and DEVELOPMENT.md for credentials.
