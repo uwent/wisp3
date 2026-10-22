@@ -124,6 +124,39 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_field.field_entries).to be_empty
   end
 
+  it "won't apply my pivot's irrigation to another group's field" do
+    post pivot_irrigations_path(my_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1, field_ids: [their_field.id]}}
+    patch daily_entry_path, params: {date: "2026-07-03", pivots: {my_pivot.id => {inches: 1, field_ids: [their_field.id]}}}
+    expect(my_pivot.pivot_irrigations).to be_empty
+  end
+
+  it "won't move another group's fields into my field group" do
+    group = create(:field_group, group: user.groups.first, fields: [my_field])
+    patch field_group_path(group), params: {field_group: {field_ids: [my_field.id, their_field.id]}}
+    expect(group.reload.fields).to eq([my_field])
+  end
+
+  it "won't show another group's planting on my field's page" do
+    their_planting
+    get field_path(my_field, planting_id: their_planting.id)
+    expect(response).to have_http_status(:ok)
+    expect(inertia.props[:planting]).to be_nil
+  end
+
+  it "won't preselect another group's farm on the pivot form" do
+    my_farm
+    get new_pivot_path(farm_id: their_farm.id)
+    expect(inertia.props[:pivot]["farm_id"]).to be_nil
+    expect(inertia.props[:farms].pluck(:id)).to eq([my_farm.id])
+  end
+
+  it "copies only my group's plantings to the next season" do
+    create(:planting, field: their_field, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 15),
+      end_date: Date.new(2025, 9, 30))
+    post season_copy_path(year: 2026)
+    expect(their_field.plantings.in_season(2026)).to be_empty
+  end
+
   it "won't use another group's farm in the guided setup" do
     post quick_setup_path, params: {setup: {farm_id: their_farm.id, pivot: {name: "P", latitude: 44, longitude: -89}}}
     expect_not_found
