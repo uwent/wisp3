@@ -1,0 +1,15 @@
+WISP health check, <%= @now.strftime("%A, %B %-d, %-l:%M %p %Z") %>: <%= pluralize(@problems.size, "problem") %> found
+<% @problems.each do |problem| %>
+
+<%= problem.summary.upcase %>
+
+<% problem.details.each do |detail| %>
+- <%= detail.text %><%= " (#{admin_user_url(detail.user_id)})" if detail.user_id %>
+<% end %>
+<% if problem.kind == :stale_weather %>
+
+Weather status: <%= @weather_url %>
+<% end %>
+<% end %>
+
+Sent to WISP's admins each morning when something needs attention. The same list is at the top of the weather status page: <%= @weather_url %>

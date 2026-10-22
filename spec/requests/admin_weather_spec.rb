@@ -36,7 +36,17 @@ RSpec.describe "Admin weather status", type: :request do
       expect(inertia.props[:cells].sole).to include(pivot_count: 1, active: true, season_start: "2026-07-10",
         days_stored: 8, missing_days: 2, provisional_days: 5, latest_date: "2026-07-17",
         forecast_through: "2026-08-04", last_error: "Open-Meteo 503")
+      # The health check's problems, as the morning email lists them
+      problem = inertia.props[:problems].sole
+      expect(problem).to include(kind: "stale_weather", summary: "1 weather cell stale or failing")
+      expect(problem[:details].sole[:text]).to include("weather stored only through 2026-07-17", "fetch failed")
     end
+  end
+
+  it "shows no problems when there are none" do
+    sign_in admin
+    get admin_weather_path
+    expect(inertia.props[:problems]).to eq([])
   end
 
   it "queues a refresh" do

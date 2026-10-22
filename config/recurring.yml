@@ -21,6 +21,10 @@ production: &production
   daily_digest:
     class: DailyDigestJob
     schedule: at 6am every day America/Chicago
+  # After the digest (PLAN.md Phase 8 B): emails the admins failed jobs, stale weather and unsent digests
+  health_check:
+    class: HealthCheckJob
+    schedule: at 7am every day America/Chicago
   forecast_prune:
     class: ForecastPruneJob
     schedule: at 4am every sunday America/Chicago

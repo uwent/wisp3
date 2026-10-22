@@ -1,16 +1,24 @@
 <script lang="ts">
-  import { Form, router } from '@inertiajs/svelte'
+  import { Form, Link, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
-  import { adminWeather } from '@/routes'
+  import { adminUsers, adminWeather } from '@/routes'
   import type { WeatherCellStatus } from '@/types/serializers'
 
   type Period = 'minute' | 'hour' | 'day'
+  // HealthCheck's problems, as the morning email lists them
+  type Problem = {
+    kind: 'failed_jobs' | 'stale_weather' | 'digest_not_sent'
+    summary: string
+    details: { text: string; user_id: number | null }[]
+  }
   let {
+    problems,
     api,
     cells,
     pending_jobs,
   }: {
+    problems: Problem[]
     api: {
       mode: 'free' | 'customer'
       model: string
@@ -77,6 +85,36 @@
     </Form>
   </div>
 </div>
+
+<section
+  class="space-y-2 rounded-lg border bg-surface-raised p-4 {problems.length
+    ? 'border-status-irrigate/60'
+    : 'border-line'}"
+  aria-labelledby="problems-heading"
+>
+  <h2 id="problems-heading" class="font-medium">Problems</h2>
+  {#if problems.length === 0}
+    <p class="text-sm text-ink-muted">No problems: no failed jobs, stale weather or unsent daily emails.</p>
+  {:else}
+    <p class="text-sm text-ink-muted">The admins are emailed this list each morning at 7.</p>
+    {#each problems as problem (problem.kind)}
+      <div>
+        <h3 class="text-sm font-semibold text-status-irrigate-ink">{problem.summary}</h3>
+        <ul class="list-disc pl-5 text-sm">
+          {#each problem.details as detail, i (i)}
+            <li>
+              {#if detail.user_id}
+                <Link href={adminUsers.show(detail.user_id)} class="text-brand-600 hover:underline">{detail.text}</Link>
+              {:else}
+                {detail.text}
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/each}
+  {/if}
+</section>
 
 <section class="grid grid-cols-3 gap-3" aria-label="API usage">
   {#each periods as period (period)}

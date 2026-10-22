@@ -1,0 +1,21 @@
+<% muted = "color:#5b6470" %>
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#141b24;max-width:600px;font-size:14px;line-height:1.45">
+  <h1 style="font-size:20px;margin:0 0 4px">WISP health check</h1>
+  <p style="margin:0 0 20px;<%= muted %>"><%= @now.strftime("%A, %B %-d, %-l:%M %p %Z") %> · <%= pluralize(@problems.size, "problem") %> found</p>
+
+  <% @problems.each do |problem| %>
+    <div style="border:1px solid #e3e6ea;border-radius:6px;padding:12px 14px;margin:0 0 16px">
+      <h2 style="font-size:16px;margin:0 0 6px"><%= problem.summary %></h2>
+      <ul style="margin:0 0 6px;padding-left:20px;font-size:13px">
+        <% problem.details.each do |detail| %>
+          <li style="margin:0 0 4px"><%= detail.user_id ? email_link_to(detail.text, admin_user_url(detail.user_id)) : detail.text %></li>
+        <% end %>
+      </ul>
+      <% if problem.kind == :stale_weather %>
+        <p style="margin:0;font-size:13px"><%= email_link_to "Weather status", @weather_url %></p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <p style="margin:24px 0 0;font-size:12px;<%= muted %>">Sent to WISP's admins each morning when something needs attention. The same list is at the top of <%= email_link_to "the weather status page", @weather_url %>.</p>
+</div>
