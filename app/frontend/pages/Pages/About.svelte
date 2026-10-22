@@ -26,7 +26,7 @@
     growth: { cc0: number; ccx: number; cgc: number }
     decline:
       | { type: 'aquacrop'; start_day: number; cdc: number }
-      | { type: 'rule'; date: string; per_week: number; floor: number }
+      | { type: 'rule'; date: string; days: number; floor: number }
       | null
     days_to: { 50: number | null; 80: number | null }
     covers: number[]
@@ -67,8 +67,8 @@
     const [month, day] = decline.date.split('-').map(Number)
     const date = new Date(2000, month - 1, day).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
     return (
-      `From ${date} (or once the canopy is full, if later), down ${decline.per_week} points a week to ` +
-      `${decline.floor}%, then holds until the end date.`
+      `From ${date} (or once the canopy is full, if later), eases down to ${decline.floor}% over ` +
+      `${decline.days} days, fastest halfway, then holds until the end date.`
     )
   }
 

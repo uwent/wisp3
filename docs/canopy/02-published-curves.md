@@ -80,6 +80,23 @@ Parameters (calendar files; t in days since emergence):
    early kill are left to readings, which pull the curve down or trigger the break to straight
    lines. The crop card labels it *Wisconsin management rule (expert judgment)*, not a fitted
    curve.
+   **Revised (Ben, 2026-10-22): an S-curve instead of a straight line.** No other curve has
+   corners, and senescence starts slowly and speeds up. Unpublished vine biomass data show this:
+   three seasons of Clearwater Russet in the Columbia Basin (Pavek, personal communication; cubic
+   fits only, 180 days from planting to vine kill), where vine mass falls about 1 point a week
+   just after its peak and 10–12 a week near the end. That season is too long to take the timing
+   from, so the curve keeps the rule's August values. It eases down from **July 25 to 50% over
+   42 days**, CC = CCx − (CCx − 50%) · (3x² − 2x³) with x = days since the start ÷ 42, and is
+   level at both ends:
+
+   | | Jul 25 | Aug 1 | Aug 4 | Aug 8 | Aug 11 | Aug 15 | Aug 18 | Aug 22 | Aug 25 | Aug 30 | Sep 5 |
+   |---|---|---|---|---|---|---|---|---|---|---|---|
+   | Straight line from Aug 1 (until 2026-10-22) | 92 | 92 | 88 | 82 | 78 | 72 | 68 | 62 | 58 | 51 | 50 |
+   | S-curve from Jul 25 over 42 days | 92 | 89 | 86 | 81 | 77 | 71 | 67 | 61 | 57 | 52 | 50 |
+
+   It stays within 2 points of the straight line through August, so the 2026 comparison above
+   still holds. Its steepest week, in mid-August, loses about 10.5 points. The decline starts
+   once the canopy is full if that's later than July 25 (emergence after about mid-June).
 4. **Maximum cover** (CCx 92–99%) can't be checked against Wisconsin readings, because growers
    stop at 80% (note 01). ET doesn't depend on it under percent cover, which is at et0 from 80%.
 5. **The WIS field corn LAI curve, under WISP's Beer's-law formula (k = 1.5), matches the cover
@@ -146,7 +163,7 @@ don't define every crop's development stage the same way.
 - Build the FAO-56-derived curves for the remaining crops and check how plausible they are.
   Find Upper Midwest timings for onion, carrot, cabbage and the cucurbits where extension or
   processing-crop literature has them.
-- Potato decline: the Aug 1 rule above for now; replace it with the researcher's potato model
+- Potato decline: the late-summer rule above for now; replace it with the researcher's potato model
   when it arrives.
 - Ask the agronomist (Q2) whether k = 1.5 is the right way to derive LAI from cover.
 - Then step A.4: backtest how readings scale the curve, with the curves above.

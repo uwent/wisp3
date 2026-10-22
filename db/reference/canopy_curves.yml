@@ -9,8 +9,9 @@
 # Decline, if any:
 #   aquacrop: from start_day after emergence, CC = ccx · [1 − 0.05 · (e^(3.33·cdc·t′ / (ccx + 2.29)) − 1)],
 #             t′ = days since start_day
-#   rule:     from a calendar date (or when the canopy reaches 98% of ccx, if later), down by
-#             per_week percentage points a week to floor percent
+#   rule:     from a calendar date (or when the canopy reaches 98% of ccx, if later), an S-curve
+#             down to floor percent over the given days, then holding there:
+#             CC = ccx − (ccx − floor/100) · (3x² − 2x³), x = days since the start ÷ days, at most 1
 # Without a decline the canopy holds ccx until the planting's end date.
 #
 # confidence: matches_wi (published, matches Wisconsin 2026 readings), adjusted_wi (published,
@@ -38,16 +39,17 @@ sources:
 crops:
   potato:
     growth: {cc0: 0.006, ccx: 0.92, cgc: 0.18896}
-    decline: {type: rule, date: "08-01", per_week: 10, floor: 50}
+    decline: {type: rule, date: "07-25", days: 42, floor: 50}
     basis: AquaCrop potato crop file (calendar days)
     confidence: matches_wi
     sources: [aquacrop, aquacrop_crop_files, wisp_2026]
     notes: >-
       Reaches 50% cover about 24 days after emergence and 80% about 31 days after (Wisconsin 2026:
       22 and 32). The decline is a Central Wisconsin management rule (expert judgment, until a
-      researcher's potato model is available): the canopy senesces from early August, before vine
-      kill in mid to late August, so it declines from August 1 by 10 points a week to 50% and holds
-      there until the planting's end date (set it to vine kill).
+      researcher's potato model is available): the canopy senesces from late July, before vine kill
+      in mid to late August. It eases down from July 25 to 50% over six weeks, fastest in
+      mid-August (about 10 points a week; 81% on August 8, 71% on August 15), and holds there until
+      the planting's end date (set it to vine kill).
   field_corn:
     growth: {cc0: 0.0049, ccx: 0.96, cgc: 0.16312}
     decline: {type: aquacrop, start_day: 101, cdc: 0.11691}

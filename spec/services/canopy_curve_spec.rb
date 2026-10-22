@@ -27,20 +27,25 @@ RSpec.describe CanopyCurve do
     expect(described_class.for("potato").cover(emergence, emergence - 1)).to eq(0.0)
   end
 
-  it "declines potato from August 1 by 10 points a week to 50%" do
-    potato = described_class.for("potato")
-    expect(potato.cover(emergence, Date.new(2026, 8, 1))).to be_within(0.01).of(92)
-    expect(potato.cover(emergence, Date.new(2026, 8, 15))).to be_within(0.01).of(72)
-    expect(potato.cover(emergence, Date.new(2026, 9, 15))).to eq(50.0)
+  it "declines potato along an S-curve from July 25 to 50% over six weeks" do
+    expect(potato_on(7, 25)).to be_within(0.01).of(92)
+    expect(potato_on(8, 15)).to be_within(0.01).of(71) # halfway
+    expect(potato_on(9, 5)).to eq(50.0)
+    expect(potato_on(9, 15)).to eq(50.0)
+    # No corners: it barely moves on the first and last days
+    expect(potato_on(7, 25) - potato_on(7, 26)).to be < 0.1
+    expect(potato_on(9, 4) - potato_on(9, 5)).to be < 0.1
   end
+
+  def potato_on(month, day) = described_class.for("potato").cover(emergence, Date.new(2026, month, day))
 
   it "starts potato's decline once the canopy is full, for a late planting" do
     potato = described_class.for("potato")
     late = Date.new(2026, 7, 1)
     full = late + potato.full_day
-    expect(full).to be > Date.new(2026, 8, 1)
+    expect(full).to be > Date.new(2026, 7, 25)
     expect(potato.cover(late, full)).to be >= 0.98 * 92
-    expect(potato.cover(late, full + 7)).to be_within(0.01).of(92 - 10)
+    expect(potato.cover(late, full + 21)).to be_within(0.01).of(71)
   end
 
   it "declines by AquaCrop's equation from its start day" do

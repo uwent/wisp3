@@ -59,7 +59,7 @@ Percent cover curve; LAI for every crop except field corn comes from the cover c
 
 | Crop | Growth | Decline | Confidence |
 |---|---|---|---|
-| Potato | AquaCrop Potato (calendar) | Wisconsin rule: from Aug 1, −10 points/week to 50%, then end date | Published; matches WI 2026 (note 02). Decline: expert judgment |
+| Potato | AquaCrop Potato (calendar) | Wisconsin rule: S-curve from Jul 25 to 50% over 42 days, then end date | Published; matches WI 2026 (note 02). Decline: expert judgment |
 | Field corn | AquaCrop Maize (calendar); LAI: WIS curve, unchanged | AquaCrop (from day 101) | Published; matches WI 2026 |
 | Sweet corn | AquaCrop Maize with CGC 0.124/day | End date (harvested green) | WI-adjusted: 2 WI series and FAO-56 rows (80% at day 37–52) agree |
 | Soybean | AquaCrop Soybean with CGC 0.087/day | AquaCrop (from day 95) | WI-adjusted: published curve was 6 days early in WI 2026 |
@@ -101,7 +101,7 @@ cover is the method to recommend for every crop but field corn.
 
 1. The AquaCrop calendar defaults for potato, maize, soybean and dry bean, with the Wisconsin
    adjustments for soybean and sweet corn (note 02).
-2. Potato decline: the Aug 1 rule until the researcher's potato model arrives.
+2. Potato decline: the late-summer rule (an S-curve from July 25 to 50%) until the researcher's potato model arrives.
 3. A source for onion canopy development (and maximum cover) in the Upper Midwest.
 4. LAI from cover with k = 1.5, i.e. Kc = 1.1 × cover, which gives 20–40% less ET than the
    percent cover method during canopy development.

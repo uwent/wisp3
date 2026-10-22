@@ -1,6 +1,6 @@
 # A crop's default percent cover curve (PLAN.md Phase 6.7), from db/reference/canopy_curves.yml:
 # FAO AquaCrop's canopy growth by days since emergence, then an AquaCrop decline or a calendar rule
-# (potato's August decline). The file documents the equations and each crop's sources; Canopy
+# (potato's late-summer decline). The file documents the equations and each crop's sources; Canopy
 # combines a curve with the readings a grower enters.
 class CanopyCurve
   FILE = Rails.root.join("db/reference/canopy_curves.yml")
@@ -83,7 +83,9 @@ class CanopyCurve
       month, day = decline.fetch(:date).split("-").map(&:to_i)
       start = [Date.new(date.year, month, day), emergence_date + full_day].max
       return if date <= start
-      [ccx - decline.fetch(:per_week) / 100.0 * (date - start) / 7, decline.fetch(:floor) / 100.0].max
+      # Smoothstep: level at both ends, so it leaves full cover and meets the floor without a corner
+      x = [(date - start).to_f / decline.fetch(:days), 1.0].min
+      ccx - (ccx - decline.fetch(:floor) / 100.0) * (3 * x**2 - 2 * x**3)
     end
   end
 end

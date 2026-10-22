@@ -28,7 +28,7 @@ RSpec.describe "Public pages", type: :request do
     curves = inertia.props[:canopy_curves]
     expect(curves.map { |curve| curve[:key] }).to eq(["potato"])
     expect(curves.first).to include(confidence: "matches_wi", days_to: {"50" => 24, "80" => 31},
-      decline: {"type" => "rule", "date" => "08-01", "per_week" => 10, "floor" => 50})
+      decline: {"type" => "rule", "date" => "07-25", "days" => 42, "floor" => 50})
     expect(curves.first[:covers].size).to eq(PagesController::CURVE_DAYS + 1)
     expect(curves.first[:sources].map { |source| source[:url] }).to include("https://doi.org/10.2134/agronj2008.0139s")
   end

@@ -23,7 +23,7 @@ test('the landing page introduces WISP and leads to the About page and sign-up',
   await expect(
     potato.getByRole('img', { name: /Potato canopy cover by day since emergence: 50% on day 24/ }),
   ).toBeVisible()
-  await expect(potato).toContainText('From August 1')
+  await expect(potato).toContainText('From July 25')
   if (process.env.SHOT_DIR)
     await page.screenshot({ path: `${process.env.SHOT_DIR}/about-${test.info().project.name}.png`, fullPage: true })
 
