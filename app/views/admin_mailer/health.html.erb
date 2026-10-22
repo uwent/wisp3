@@ -8,10 +8,10 @@
       <h2 style="font-size:16px;margin:0 0 6px"><%= problem.summary %></h2>
       <ul style="margin:0 0 6px;padding-left:20px;font-size:13px">
         <% problem.details.each do |detail| %>
-          <li style="margin:0 0 4px"><%= detail.user_id ? email_link_to(detail.text, admin_user_url(detail.user_id)) : detail.text %></li>
+          <li style="margin:0 0 4px"><%= detail %></li>
         <% end %>
       </ul>
-      <% if problem.kind == :stale_weather %>
+      <% if problem.kind == :missing_weather %>
         <p style="margin:0;font-size:13px"><%= email_link_to "Weather status", @weather_url %></p>
       <% end %>
     </div>

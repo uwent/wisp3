@@ -1,35 +1,57 @@
-# What needs an admin's attention (PLAN.md Phase 8 B): failed background jobs, stale or failing
-# weather, and daily digests that were due this morning but not sent. Read from what's already
-# stored; HealthCheckJob emails the problems to the admins each morning, and the admin weather page
-# shows the same list.
+# What needs an admin's attention (PLAN.md Phase 8 B): background jobs that failed since the last
+# check, and weather that's missing for the cells in use. It reports the state of the data, which
+# clears itself once the data arrives, rather than every failure along the way. HealthCheckJob runs
+# it each morning and stores the result, which the admin weather page and /up show.
 class HealthCheck
-  # details: Detail rows, with the user's id for a row about one user (linked to their admin page)
   Problem = Data.define(:kind, :summary, :details)
-  Detail = Data.define(:text, :user_id) do
-    def initialize(text:, user_id: nil) = super
-  end
+  # A run, as stored
+  Result = Data.define(:checked_at, :problems)
 
-  # DailyDigestJob runs at 6 am Central (config/recurring.yml); by this time it has finished
-  DIGEST_CHECKED_FROM = {hour: 6, min: 30}.freeze
-  # Users listed by email when digests weren't sent
-  DIGEST_USERS_LISTED = 5
+  CACHE_KEY = "health_check/last"
   RECENT = 24.hours
+  # Weather is checked over the days before today
+  WEATHER_DAYS = 7
+  # The morning run (7 am) counts as missed once the last result is this old
+  OVERDUE = 26.hours
 
-  attr_reader :now
-
-  def initialize(now: Time.current)
-    @now = now
+  # Checks now and stores the result. Failed jobs are counted since the previous run.
+  def self.run(now: Time.current)
+    problems = new(now:, since: last&.checked_at).problems
+    Rails.cache.write(CACHE_KEY, {checked_at: now, problems: problems.map(&:to_h)})
+    Result.new(checked_at: now, problems:)
   end
 
-  def problems = [failed_jobs, stale_weather, digest_not_sent].compact
+  # The last stored run, or nil
+  def self.last
+    stored = Rails.cache.read(CACHE_KEY) or return
+    Result.new(checked_at: stored[:checked_at], problems: stored[:problems].map { |problem| Problem.new(**problem) })
+  end
 
-  # [[job class, error class, error message, failed at]], or none where Solid Queue isn't the queue
-  # adapter (development and test; its tables are in the queue database on the servers)
+  # Whether the morning run has been missed, where jobs run (Solid Queue, on the servers)
+  def self.overdue?(now: Time.current)
+    solid_queue? && (last.nil? || last.checked_at < now - OVERDUE)
+  end
+
+  def self.solid_queue? = ActiveJob::Base.queue_adapter_name == "solid_queue"
+
+  attr_reader :now, :since
+
+  def initialize(now: Time.current, since: nil)
+    @now = now
+    @since = since || now - RECENT
+  end
+
+  def problems = [failed_jobs, missing_weather].compact
+
+  # [[job class, error class, error message, failed at]] since the last check, or none where Solid
+  # Queue isn't the queue adapter (development and test; its tables are in the queue database on the
+  # servers). Failed executions older than a week are discarded (config/recurring.yml).
   def failed_executions
-    return [] unless ActiveJob::Base.queue_adapter_name == "solid_queue"
+    return [] unless self.class.solid_queue?
 
-    SolidQueue::FailedExecution.includes(:job).order(:created_at).map do |failed|
-      [failed.job.class_name, failed.exception_class, failed.message, failed.created_at]
+    SolidQueue::FailedExecution.includes(:job).where(created_at: since..).order(:created_at).map do |failed|
+      error = failed.error || {}
+      [failed.job.class_name, error["exception_class"], error["message"], failed.created_at]
     end
   end
 
@@ -39,69 +61,46 @@ class HealthCheck
     failed = failed_executions
     return if failed.empty?
 
-    recent = failed.count { |*, at| at > now - RECENT }
     details = failed.group_by(&:first).map do |job_class, rows|
       _, error_class, message, at = rows.max_by(&:last)
-      count = rows.size
-      fresh = rows.count { |*, failed_at| failed_at > now - RECENT }
-      Detail.new(text: "#{job_class}: #{count} failed (#{fresh} in the last 24 h), latest #{ago(at)}: " \
-        "#{[error_class, message.to_s.lines.first&.strip].compact_blank.join(": ")}")
+      "#{job_class}: #{rows.size} failed, latest #{ago(at)}: " \
+        "#{[error_class, message.to_s.lines.first&.strip].compact_blank.join(": ")}"
     end
-    Problem.new(kind: :failed_jobs, summary: "#{count(failed.size, "failed job")}, #{recent} new in the last 24 h",
-      details:)
+    Problem.new(kind: :failed_jobs, summary: "#{count(failed.size, "job")} failed since the last check", details:)
   end
 
-  # Active cells missing yesterday's weather, not fetched or without a forecast for a day, and any
-  # cell whose fetch failed in the last day
-  def stale_weather
-    active = WeatherCell.active(now.to_date).pluck(:id)
-    cells = WeatherCell.where(id: active).or(WeatherCell.where(last_error_at: (now - RECENT)..)).order(:id).to_a
-    latest_day = WeatherDay.where(weather_cell_id: active).group(:weather_cell_id).maximum(:date)
-    latest_forecast = WeatherForecast.deterministic.where(weather_cell_id: active).group(:weather_cell_id)
+  # Cells in use with days missing or without ET or precipitation in the last week, or without a
+  # forecast for a day; and any cell whose fetch failed in the last day
+  def missing_weather
+    today = now.to_date
+    window = (today - WEATHER_DAYS)..(today - 1)
+    active = WeatherCell.active(today).order(:id).to_a
+    failing = WeatherCell.where(last_error_at: (now - RECENT)..).where.not(id: active.map(&:id)).order(:id).to_a
+    days = WeatherDay.where(weather_cell_id: active.map(&:id), date: window).group(:weather_cell_id)
+      .pluck(:weather_cell_id, Arel.sql("count(*)"),
+        Arel.sql("count(*) FILTER (WHERE et0_in IS NULL OR precip_in IS NULL)"))
+      .to_h { |id, *counts| [id, counts] }
+    forecasts = WeatherForecast.deterministic.where(weather_cell_id: active.map(&:id)).group(:weather_cell_id)
       .maximum(:issued_at)
 
-    details = cells.filter_map do |cell|
+    details = (active + failing).filter_map do |cell|
       failures = []
-      if active.include?(cell.id)
-        yesterday = now.in_time_zone(cell.time_zone).to_date - 1
-        day = latest_day[cell.id]
-        failures << (day ? "weather stored only through #{day}" : "no weather stored") if day.nil? || day < yesterday
-        if cell.last_fetched_at.nil? || cell.last_fetched_at < now - RECENT
-          failures << (cell.last_fetched_at ? "last fetched #{ago(cell.last_fetched_at)}" : "never fetched")
-        end
-        forecast = latest_forecast[cell.id]
-        if forecast.nil? || forecast < now - RECENT
-          failures << (forecast ? "forecast issued #{ago(forecast)}" : "no forecast")
-        end
+      if active.include?(cell)
+        stored, empty = days.fetch(cell.id, [0, 0])
+        missing = window.count - stored
+        failures << "#{count(missing, "day")} missing in the last #{WEATHER_DAYS}" if missing.positive?
+        failures << "#{count(empty, "day")} without ET or precipitation" if empty.positive?
+        forecast = forecasts[cell.id]
+        failures << (forecast ? "forecast issued #{ago(forecast)}" : "no forecast") if !forecast || forecast < now - RECENT
       end
-      if cell.last_error_at && cell.last_error_at > now - RECENT
-        failures << "fetch failed #{ago(cell.last_error_at)}: #{cell.last_error}"
-      end
+      failures << "fetch failed #{ago(cell.last_error_at)}: #{cell.last_error}" if cell.last_error_at&.after?(now - RECENT)
       next if failures.empty?
 
-      Detail.new(text: "Cell #{cell.id} (#{format("%.4f, %.4f", cell.latitude, cell.longitude)}): " \
-        "#{failures.join("; ")}")
+      "Cell #{cell.id} (#{format("%.4f, %.4f", cell.latitude, cell.longitude)}): #{failures.join("; ")}"
     end
     return if details.empty?
 
-    Problem.new(kind: :stale_weather, summary: "#{count(details.size, "weather cell")} stale or failing", details:)
-  end
-
-  # The users DailyDigestJob would have sent today's digest to but didn't, once it has run
-  def digest_not_sent
-    central = now.in_time_zone("America/Chicago")
-    return if central < central.change(**DIGEST_CHECKED_FROM)
-
-    today = central.to_date
-    users = User.where.not(digest_frequency: "never").where.not(confirmed_at: nil)
-      .where("digest_sent_on IS NULL OR digest_sent_on < ?", today).order(:email)
-      .select { |user| DailyDigest.new(user, today:).deliverable? }
-    return if users.empty?
-
-    details = users.first(DIGEST_USERS_LISTED).map { |user| Detail.new(text: user.email, user_id: user.id) }
-    details << Detail.new(text: "and #{users.size - DIGEST_USERS_LISTED} more") if users.size > DIGEST_USERS_LISTED
-    Problem.new(kind: :digest_not_sent, summary: "#{count(users.size, "user")} didn't get today's daily email",
-      details:)
+    Problem.new(kind: :missing_weather, summary: "#{count(details.size, "weather cell")} missing weather", details:)
   end
 
   def count(n, noun) = "#{n} #{noun.pluralize(n)}"

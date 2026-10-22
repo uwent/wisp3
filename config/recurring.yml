@@ -21,13 +21,17 @@ production: &production
   daily_digest:
     class: DailyDigestJob
     schedule: at 6am every day America/Chicago
-  # After the digest (PLAN.md Phase 8 B): emails the admins failed jobs, stale weather and unsent digests
+  # After the digest (PLAN.md Phase 8 B): emails the admins failed jobs and missing weather
   health_check:
     class: HealthCheckJob
     schedule: at 7am every day America/Chicago
   forecast_prune:
     class: ForecastPruneJob
     schedule: at 4am every sunday America/Chicago
+  # Failed jobs are reported by the health check the morning after; kept a week for a retry
+  discard_old_failed_jobs:
+    command: "SolidQueue::FailedExecution.where(created_at: ...7.days.ago).discard_all_in_batches"
+    schedule: at 4:30am every day America/Chicago
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12

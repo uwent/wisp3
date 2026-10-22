@@ -68,6 +68,8 @@ Rails.application.routes.draw do
     resource :weather, only: :show, controller: "weather" do
       post :refresh
     end
+    # Re-running the morning health check (shown on the weather page)
+    resource :health_check, only: :create
   end
   # Returning to admin from signing in as someone else (Admin::ImpersonationsController#create)
   resource :impersonation, only: :destroy
@@ -84,7 +86,7 @@ Rails.application.routes.draw do
   root "pages#home"
   get "about", to: "pages#about"
 
-  get "up", to: "rails/health#show", as: :rails_health_check
+  get "up", to: "health#show", as: :up
 
   if Rails.env.development?
     mount LetterOpenerWeb::Engine, at: "/letter_opener"

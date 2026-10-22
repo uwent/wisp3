@@ -36,14 +36,17 @@ RSpec.describe DailyDigestJob do
     expect(user.reload.digest_sent_on).to eq(Date.new(2026, 7, 20))
   end
 
-  it "carries on past a user whose digest fails" do
+  it "carries on past a user whose digest fails, then fails itself so the job is listed as failed" do
     other = create(:user, digest_frequency: "daily")
     create(:membership, user: other, group: user.groups.first)
     allow(DigestMailer).to receive(:daily).and_call_original
     allow(DigestMailer).to receive(:daily).with(having_attributes(user:)).and_raise("boom")
     expect(Rails.error).to receive(:report).with(an_instance_of(RuntimeError), context: {user_id: user.id})
 
-    expect { described_class.perform_now }.to change { ActionMailer::Base.deliveries.size }.by(1)
+    expect { described_class.perform_now }.to raise_error(DailyDigestJob::Incomplete,
+      "1 of 2 daily emails failed (users #{user.id}); first error: RuntimeError: boom")
+      .and change { ActionMailer::Base.deliveries.size }.by(1)
     expect(user.reload.digest_sent_on).to be_nil
+    expect(other.reload.digest_sent_on).to eq(Date.new(2026, 7, 20))
   end
 end

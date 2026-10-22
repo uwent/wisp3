@@ -10,6 +10,8 @@ RSpec.describe "Admin weather status", type: :request do
     expect(response).to have_http_status(:not_found)
     post refresh_admin_weather_path
     expect(response).to have_http_status(:not_found)
+    post admin_health_check_path
+    expect(response).to have_http_status(:not_found)
   end
 
   it "requires signing in" do
@@ -36,17 +38,25 @@ RSpec.describe "Admin weather status", type: :request do
       expect(inertia.props[:cells].sole).to include(pivot_count: 1, active: true, season_start: "2026-07-10",
         days_stored: 8, missing_days: 2, provisional_days: 5, latest_date: "2026-07-17",
         forecast_through: "2026-08-04", last_error: "Open-Meteo 503")
-      # The health check's problems, as the morning email lists them
-      problem = inertia.props[:problems].sole
-      expect(problem).to include(kind: "stale_weather", summary: "1 weather cell stale or failing")
-      expect(problem[:details].sole[:text]).to include("weather stored only through 2026-07-17", "fetch failed")
+      # Not checked yet: the page shows the stored result rather than checking on each visit
+      expect(inertia.props[:health_check]).to include(checked_at: nil, overdue: false, problems: [])
     end
   end
 
-  it "shows no problems when there are none" do
+  it "shows the last health check, and re-runs it without emailing" do
     sign_in admin
-    get admin_weather_path
-    expect(inertia.props[:problems]).to eq([])
+    travel_to(Time.zone.parse("2026-07-20 12:00")) do
+      cell = create(:pivot).reload.weather_cell
+      cell.update!(last_error: "Open-Meteo 503", last_error_at: 1.hour.ago)
+
+      expect { post admin_health_check_path }.not_to change { ActionMailer::Base.deliveries.size }
+      expect(response).to redirect_to(admin_weather_path)
+      get admin_weather_path
+      health = inertia.props[:health_check]
+      expect(health).to include(checked_at: "2026-07-20T12:00:00-05:00", overdue: false)
+      expect(health[:problems].sole).to include(kind: "missing_weather", summary: "1 weather cell missing weather")
+      expect(health[:problems].sole[:details].sole).to end_with("fetch failed 1 h ago: Open-Meteo 503")
+    end
   end
 
   it "queues a refresh" do

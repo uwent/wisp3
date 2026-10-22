@@ -1,24 +1,22 @@
 <script lang="ts">
-  import { Form, Link, router } from '@inertiajs/svelte'
+  import { Form, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
-  import { adminUsers, adminWeather } from '@/routes'
+  import { formatTimestamp } from '@/lib/dates'
+  import { adminHealthChecks, adminWeather } from '@/routes'
   import type { WeatherCellStatus } from '@/types/serializers'
 
   type Period = 'minute' | 'hour' | 'day'
-  // HealthCheck's problems, as the morning email lists them
-  type Problem = {
-    kind: 'failed_jobs' | 'stale_weather' | 'digest_not_sent'
-    summary: string
-    details: { text: string; user_id: number | null }[]
-  }
+  // The last health check (HealthCheckJob, each morning at 7, or re-run here), as the email lists it
+  type Problem = { kind: 'failed_jobs' | 'missing_weather'; summary: string; details: string[] }
+  type Health = { checked_at: string | null; overdue: boolean; problems: Problem[] }
   let {
-    problems,
+    health_check: check,
     api,
     cells,
     pending_jobs,
   }: {
-    problems: Problem[]
+    health_check: Health
     api: {
       mode: 'free' | 'customer'
       model: string
@@ -87,28 +85,38 @@
 </div>
 
 <section
-  class="space-y-2 rounded-lg border bg-surface-raised p-4 {problems.length
+  class="space-y-2 rounded-lg border bg-surface-raised p-4 {check.problems.length || check.overdue
     ? 'border-status-irrigate/60'
     : 'border-line'}"
-  aria-labelledby="problems-heading"
+  aria-labelledby="health-heading"
 >
-  <h2 id="problems-heading" class="font-medium">Problems</h2>
-  {#if problems.length === 0}
-    <p class="text-sm text-ink-muted">No problems: no failed jobs, stale weather or unsent daily emails.</p>
-  {:else}
-    <p class="text-sm text-ink-muted">The admins are emailed this list each morning at 7.</p>
-    {#each problems as problem (problem.kind)}
+  <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    <h2 id="health-heading" class="font-medium">Health check</h2>
+    <Form action={adminHealthChecks.create()} class="text-sm text-ink-muted">
+      {#snippet children({ processing })}
+        {check.checked_at ? `Last checked ${formatTimestamp(check.checked_at)} · ` : 'Not checked yet · '}
+        <button type="submit" class="text-brand-600 underline underline-offset-2" disabled={processing}
+          >{processing ? 'Checking…' : 'Re-run health check'}</button
+        >
+      {/snippet}
+    </Form>
+  </div>
+  {#if check.overdue}
+    <p class="text-sm font-medium text-status-irrigate-ink">
+      The morning check hasn't run{check.checked_at ? ` since ${formatTimestamp(check.checked_at)}` : ''}: the job
+      runner may be stopped.
+    </p>
+  {/if}
+  {#if check.checked_at && check.problems.length === 0}
+    <p class="text-sm text-ink-muted">No problems: no failed jobs, and no missing weather.</p>
+  {:else if check.problems.length}
+    <p class="text-sm text-ink-muted">The admins are emailed what the check finds each morning at 7.</p>
+    {#each check.problems as problem (problem.kind)}
       <div>
         <h3 class="text-sm font-semibold text-status-irrigate-ink">{problem.summary}</h3>
         <ul class="list-disc pl-5 text-sm">
           {#each problem.details as detail, i (i)}
-            <li>
-              {#if detail.user_id}
-                <Link href={adminUsers.show(detail.user_id)} class="text-brand-600 hover:underline">{detail.text}</Link>
-              {:else}
-                {detail.text}
-              {/if}
-            </li>
+            <li>{detail}</li>
           {/each}
         </ul>
       </div>

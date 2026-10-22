@@ -76,6 +76,6 @@ Add a `wisp3` site in `/etc/nginx/sites-available` (enabled in `sites-enabled`) 
 
 ### 6. Verify
 
-- `curl https://dev.wisp.cals.wisc.edu/up` returns 200
+- `curl https://dev.wisp.cals.wisc.edu/up` returns 200 with JSON: `status` is `ok`, or `degraded` once the morning health check (7 am) finds problems or is overdue; `database` is `ok`; `version` is the deployed commit. An uptime monitor can alert on a non-200 response or on `"status":"degraded"`
 - Sign up, receive the confirmation email (sent with the host's `sendmail`), and sign in with both a password and an emailed link
 - `cap staging systemd:status` shows both services active
