@@ -13,8 +13,6 @@ class WeatherDay < ApplicationRecord
 
   validates :date, :model, :hours, :fetched_at, presence: true
 
-  def degree_days = Weather::DegreeDays.daily(tmax_f, tmin_f)
-
   # {date => {et0:, precip:}} for the water balance (DailyInputs) over a range of dates. Days not
   # stored yet (today, and the days ahead) come from the cell's latest forecast, marked
   # forecast: true; dates with neither are absent.

@@ -8,9 +8,4 @@ RSpec.describe Weather::DegreeDays do
     expect(described_class.daily(45, 30)).to eq(0.0)
     expect(described_class.daily(nil, 30)).to be_nil
   end
-
-  it "accumulates in date order, carrying over missing days" do
-    days = {Date.new(2026, 6, 2) => [nil, nil], Date.new(2026, 6, 1) => [80, 60], Date.new(2026, 6, 3) => [70, 50]}
-    expect(described_class.cumulative(days).values).to eq([20.0, 20.0, 30.0])
-  end
 end

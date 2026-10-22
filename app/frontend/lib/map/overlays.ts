@@ -303,8 +303,6 @@ export const DROUGHT_OVERLAY: VectorOverlay = {
 
 export const OVERLAYS: Overlay[] = [...RAIN_OVERLAYS, DROUGHT_OVERLAY]
 
-export const overlayById = (id: string) => OVERLAYS.find((overlay) => overlay.id === id)
-
 /** Bottom to top; each overlay is drawn under the ones after it, and all under the pivots */
 export const OVERLAY_ORDER: OverlayId[] = ['drought', 'radar', 'rain24', 'rain72', 'qpf1', 'qpf3', 'qpf7']
 

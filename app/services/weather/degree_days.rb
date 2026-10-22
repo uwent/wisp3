@@ -14,14 +14,5 @@ module Weather
       low = tmin_f.clamp(base, cap)
       (high + low) / 2 - base
     end
-
-    # {date => cumulative GDD} from the first date, skipping (but not resetting on) missing days
-    def cumulative(days)
-      total = 0.0
-      days.sort_by(&:first).to_h do |date, (tmax_f, tmin_f)|
-        total += daily(tmax_f, tmin_f) || 0.0
-        [date, total]
-      end
-    end
   end
 end
