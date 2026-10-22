@@ -32,7 +32,7 @@
       WISP will stop sending you the morning summary of your fields. You can turn it back on in your settings.
     </p>
   </div>
-  <Form action={digestUnsubscribes.create({ token })}>
+  <Form action={digestUnsubscribes.create({ query: { token } })}>
     {#snippet children({ processing })}
       <Button type="submit" class="w-full" disabled={processing}>Unsubscribe</Button>
     {/snippet}

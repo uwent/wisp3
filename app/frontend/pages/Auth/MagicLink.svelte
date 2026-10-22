@@ -14,7 +14,7 @@
     <h1 class="text-xl font-semibold">Sign in to WISP</h1>
     <p class="mt-1 text-sm text-ink-muted">This link signs you in once.</p>
   </div>
-  <Form action={magicLinks.redeem({ token })}>
+  <Form action={magicLinks.redeem({ query: { token } })}>
     {#snippet children({ processing })}
       <Button type="submit" class="w-full" disabled={processing}>Sign in</Button>
     {/snippet}

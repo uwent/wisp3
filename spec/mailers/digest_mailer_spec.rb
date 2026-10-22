@@ -97,7 +97,7 @@ RSpec.describe DigestMailer do
     digest_field(pivot, "Fine", 15)
     mail = described_class.daily(DailyDigest.new(user))
     url = mail.header["List-Unsubscribe"].value[/<(.+)>/, 1]
-    token = url[%r{/digest/unsubscribe/(.+)\z}, 1]
+    token = CGI.unescape(url[%r{/digest/unsubscribe\?token=(.+)\z}, 1])
     expect(User.find_by_token_for(:digest_unsubscribe, token)).to eq(user)
     expect(mail.header["List-Unsubscribe-Post"].value).to eq("List-Unsubscribe=One-Click")
     expect(mail.text_part.body.decoded).to include("Unsubscribe: #{url}")

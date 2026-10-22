@@ -10,7 +10,7 @@ RSpec.describe "Sign-in links and codes", type: :request do
   def last_mail = ActionMailer::Base.deliveries.last
 
   def emailed_token
-    last_mail.html_part.body.decoded[%r{/account/sign_in_link/([^"\s]+)}, 1]
+    CGI.unescape(last_mail.html_part.body.decoded[%r{/account/sign_in_link/open\?token=([^"\s&]+)}, 1])
   end
 
   def emailed_code
@@ -139,6 +139,20 @@ RSpec.describe "Sign-in links and codes", type: :request do
       expect(response).to redirect_to(root_path)
       follow_redirect!
       expect_inertia.to render_component("Dashboard/Show")
+    end
+
+    it "keeps its token out of the request log, as a filtered query parameter" do
+      request_email
+      token = emailed_token
+      log = StringIO.new
+      logger = Rails.logger
+      Rails.logger = ActiveSupport::TaggedLogging.new(Logger.new(log))
+      get magic_link_path(token:)
+      post redeem_magic_link_path(token:)
+      expect(log.string).to include("/account/sign_in_link/open?token=[FILTERED]")
+      expect(log.string).not_to include(token, CGI.escape(token))
+    ensure
+      Rails.logger = logger
     end
 
     it "does not sign in on GET, so link scanners can't use it up" do

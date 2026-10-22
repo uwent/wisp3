@@ -18,13 +18,14 @@ Rails.application.routes.draw do
   end
 
   # Passwordless sign-in: each request emails a one-time link and a six-digit code. The link's
-  # GET only shows a confirm button, so link scanners can't use them up.
+  # GET only shows a confirm button, so link scanners can't use them up. Its token is a query
+  # parameter, which the request log filters (filter_parameters); in the path it would be logged.
   scope "account" do
     post "sign_in_link", to: "magic_links#create", as: :magic_links
     get "sign_in_code", to: "magic_links#code", as: :sign_in_code
     post "sign_in_code", to: "magic_links#verify"
-    get "sign_in_link/:token", to: "magic_links#show", as: :magic_link
-    post "sign_in_link/:token", to: "magic_links#redeem", as: :redeem_magic_link
+    get "sign_in_link/open", to: "magic_links#show", as: :magic_link
+    post "sign_in_link/open", to: "magic_links#redeem", as: :redeem_magic_link
   end
 
   resource :settings, only: [:show, :update]
@@ -33,10 +34,10 @@ Rails.application.routes.draw do
     post :test_email
   end
 
-  # The daily digest's unsubscribe link. Its GET only shows a button; the POST also takes mail
-  # providers' one-click unsubscribe (List-Unsubscribe-Post).
-  get "digest/unsubscribe/:token", to: "digest_unsubscribes#show", as: :digest_unsubscribe
-  post "digest/unsubscribe/:token", to: "digest_unsubscribes#create"
+  # The daily digest's unsubscribe link (?token=, kept out of the log as above). Its GET only shows
+  # a button; the POST also takes mail providers' one-click unsubscribe (List-Unsubscribe-Post).
+  get "digest/unsubscribe", to: "digest_unsubscribes#show", as: :digest_unsubscribe
+  post "digest/unsubscribe", to: "digest_unsubscribes#create"
 
   # Setup: farms → pivots → fields → plantings, the guided first run, and copying last season
   resource :setup, only: :show, controller: "setup"
