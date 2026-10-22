@@ -32,10 +32,19 @@ RSpec.describe User do
   end
 
   describe "#confirm_by_magic_link!" do
-    it "confirms a never-confirmed account" do
-      user = create(:user, :unconfirmed)
-      user.confirm_by_magic_link!
+    it "confirms a never-confirmed account, clearing the password whoever signed up chose" do
+      # Someone signs up with another person's email; that person later uses a sign-in link
+      user = create(:user, :unconfirmed, password: "attacker-password-1")
+      expect(user.confirm_by_magic_link!).to be(true)
       expect(user.reload).to be_confirmed
+      expect(user.valid_password?("attacker-password-1")).to be(false)
+      expect(user.valid_password?("")).to be(false)
+    end
+
+    it "leaves a confirmed account's password alone" do
+      user = create(:user, password: "grower-password-1")
+      expect(user.confirm_by_magic_link!).to be(false)
+      expect(user.reload.valid_password?("grower-password-1")).to be(true)
     end
 
     it "does not confirm a pending email change" do

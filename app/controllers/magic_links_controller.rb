@@ -98,11 +98,17 @@ class MagicLinksController < InertiaController
   end
 
   def sign_in_from_email(user)
-    user.confirm_by_magic_link!
+    confirmed = user.confirm_by_magic_link!
     session.delete(:sign_in_email)
     session.delete(:sign_in_requested_at)
     sign_in(:user, user) # updates current_sign_in_at, which invalidates the link and the code
-    redirect_to after_sign_in_path_for(user), notice: "Signed in", status: :see_other
+    notice = if confirmed
+      "Signed in, and your email is confirmed. To sign in with a password as well, set one with " \
+        "\"Forgot your password?\" on the sign-in page."
+    else
+      "Signed in"
+    end
+    redirect_to after_sign_in_path_for(user), notice:, status: :see_other
   end
 
   # Seconds until this browser may request another email

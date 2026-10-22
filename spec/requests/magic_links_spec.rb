@@ -189,6 +189,19 @@ RSpec.describe "Sign-in links and codes", type: :request do
       post redeem_magic_link_path(token: emailed_token)
       expect(response).to redirect_to(root_path)
       expect(unconfirmed.reload).to be_confirmed
+      expect(flash[:notice]).to include("set one with \"Forgot your password?\"")
+    end
+
+    it "shuts out whoever signed up with someone else's email and their own password" do
+      squatter = create(:user, :unconfirmed, email: "grower@example.com", password: "squatter-password-1")
+      ActionMailer::Base.deliveries.clear
+      request_email(squatter.email) # the real owner of the address asks for a link
+      post redeem_magic_link_path(token: emailed_token)
+      delete destroy_user_session_path
+
+      post user_session_path, params: {user: {email: "grower@example.com", password: "squatter-password-1"}}
+      get setup_path
+      expect(response).to redirect_to(new_user_session_path)
     end
   end
 

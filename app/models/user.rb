@@ -132,9 +132,18 @@ class User < ApplicationRecord
 
   # Called when a sign-in link is used: following a link sent to this address proves the
   # user controls it. Only applies to accounts that have never been confirmed; a pending
-  # email *change* (unconfirmed_email) still needs its own confirmation.
+  # email *change* (unconfirmed_email) still needs its own confirmation. Confirming that way
+  # also clears the password, which whoever signed up chose: otherwise someone could sign up
+  # with another person's email, wait for them to use a link, and sign in with their own
+  # password. Returns true when it confirmed (and cleared) the account.
   def confirm_by_magic_link!
-    confirm unless confirmed? || unconfirmed_email.present?
+    return false if confirmed? || unconfirmed_email.present?
+
+    transaction do
+      confirm
+      update_column(:encrypted_password, "") # matches no password; "Forgot your password?" sets one
+    end
+    true
   end
 
   # A new, empty group the user owns. Every account starts with one, and gets another if it's
