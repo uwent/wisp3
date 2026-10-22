@@ -2,6 +2,8 @@
 # which of those it lists,
 # with a preview of today's email (loaded on request) and a test send, once per cooldown
 class AlertsController < AuthenticatedController
+  before_action :forbid_while_impersonating, only: :test_email
+
   def show
     groups = current_user.groups.order(:name).includes(farms: {pivots: :fields})
     render inertia: "Alerts/Show", props: {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
-  import { Link, page, router } from '@inertiajs/svelte'
+  import { Form, Link, page, router } from '@inertiajs/svelte'
   import { DropdownMenu } from 'bits-ui'
   import { MediaQuery } from 'svelte/reactivity'
 
@@ -17,6 +17,7 @@
     dashboard,
     fieldGroups,
     groups,
+    impersonations,
     map,
     newUserRegistration,
     newUserSession,
@@ -57,6 +58,22 @@
       : [{ label: 'About', route: about() }],
   )
 
+  // While an admin is signed in as someone else, every tab's title says whose WISP it is. Pages set
+  // their titles in <svelte:head>, so this re-adds the prefix whenever a page changes its title.
+  const titlePrefix = $derived(auth.impersonator && auth.user ? `As ${auth.user.email} · ` : null)
+  $effect(() => {
+    void page.url
+    const prefix = titlePrefix
+    if (!prefix) return
+    const apply = () => {
+      if (!document.title.startsWith(prefix)) document.title = prefix + document.title
+    }
+    apply()
+    const observer = new MutationObserver(apply)
+    observer.observe(document.head, { childList: true, subtree: true, characterData: true })
+    return () => observer.disconnect()
+  })
+
   // The map takes the whole window below the header, with no footer
   const wide = $derived(page.component.startsWith('Map/'))
 
@@ -80,9 +97,31 @@
   <!-- The first stop for keyboard users, past the branding and the nav (WCAG 2.4.1) -->
   <a
     href="#main"
-    class="sr-only rounded-md bg-surface-raised px-3 py-2 text-sm font-medium text-brand-600 shadow-lg focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50"
+    class="sr-only rounded-md bg-surface-raised px-3 py-2 text-sm font-medium text-brand-600 shadow-lg focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-60"
     >Skip to main content</a
   >
+  {#if auth.impersonator && auth.user}
+    <!-- Signed in as someone else for support: stays at the top as the page scrolls (PLAN.md Phase 8 B) -->
+    <div role="status" class="sticky top-0 z-50 bg-impersonation text-on-impersonation">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 text-sm">
+        <p>
+          Signed in as <strong>{auth.user.display_name}</strong>{auth.user.display_name === auth.user.email
+            ? ''
+            : ` (${auth.user.email})`} for support
+        </p>
+        <Form action={impersonations.destroy()}>
+          {#snippet children({ processing })}
+            <button
+              type="submit"
+              disabled={processing}
+              class="rounded-md border border-on-impersonation px-3 py-1 font-medium hover:bg-on-impersonation/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-impersonation disabled:opacity-70"
+              >Return to admin</button
+            >
+          {/snippet}
+        </Form>
+      </div>
+    </div>
+  {/if}
   <BrandBar />
   <header class="border-b border-line bg-surface-raised">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">

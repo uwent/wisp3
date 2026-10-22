@@ -1,14 +1,19 @@
 <script lang="ts">
-  import { Link, page, router } from '@inertiajs/svelte'
+  import { Form, Link, page, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
   import { formatDate, formatTimestamp } from '@/lib/dates'
   import { units as unitsFor } from '@/lib/units'
-  import { adminUsers } from '@/routes'
+  import { adminImpersonations, adminUsers } from '@/routes'
   import type { AdminGroup, AdminUserDetail, Field } from '@/types/serializers'
 
-  let { user, groups, deletable }: { user: AdminUserDetail; groups: AdminGroup[]; deletable: boolean } = $props()
+  let {
+    user,
+    groups,
+    deletable,
+    impersonatable,
+  }: { user: AdminUserDetail; groups: AdminGroup[]; deletable: boolean; impersonatable: boolean } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const isMe = $derived(page.props.auth.user?.id === user.id)
@@ -65,6 +70,9 @@
       ? `${latest.plant_name}${latest.variety ? ` (${latest.variety})` : ''} ${latest.year}`
       : 'no plantings'
   }
+
+  // Returning false from onBefore cancels the request
+  const confirmImpersonate = () => confirm(`You'll see WISP as ${user.display_name} until you return to admin.`)
 
   let dialogOpen = $state(false)
   let processing = $state(false)
@@ -123,7 +131,7 @@
               <span>
                 {#if member.id === user.id}{member.email}{:else}<Link
                     href={adminUsers.show(member.id)}
-                    class="text-brand-600 hover:underline">{member.email}</Link
+                    class="text-brand-600 underline underline-offset-2">{member.email}</Link
                   >{/if}
                 {#if member.owner}<span class="text-ink-muted">(owner)</span>{/if}{i < group.members.length - 1
                   ? ','
@@ -190,6 +198,13 @@
 
   <section class="space-y-2">
     <h2 class="font-medium">Actions</h2>
+    {#if impersonatable}
+      <Form action={adminImpersonations.create(user.id)} onBefore={confirmImpersonate}>
+        {#snippet children({ processing })}
+          <Button type="submit" variant="secondary" disabled={processing}>Sign in as this user</Button>
+        {/snippet}
+      </Form>
+    {/if}
     {#if deletable}
       <Button variant="danger" onclick={() => (dialogOpen = true)}>Delete this account</Button>
     {:else}

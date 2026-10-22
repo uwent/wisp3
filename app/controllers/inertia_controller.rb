@@ -8,7 +8,9 @@ class InertiaController < ApplicationController
         group: Current.group && GroupSerializer.new(Current.group).to_h,
         # Whether the user owns the current group (Q8), so pages can hide what only owners can do
         owner: Current.owner?,
-        groups: current_user ? GroupSerializer.new(current_user.groups.order(:name)).to_h : []
+        groups: current_user ? GroupSerializer.new(current_user.groups.order(:name)).to_h : [],
+        # The admin signed in as this user for support, for the bar across the top of every page
+        impersonator: impersonator && {name: impersonator.display_name, email: impersonator.email}
       }
     }
   end

@@ -4,6 +4,7 @@ module Users
     include InertiaDeviseResponses
 
     before_action :permit_profile_params
+    before_action :forbid_while_impersonating, only: [:update, :destroy]
 
     def new
       render inertia: "Auth/SignUp", props: {minimum_password_length: resource_class.password_length.min}

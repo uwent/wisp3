@@ -17,7 +17,9 @@ module Admin
       render inertia: "Admin/Users/Show", props: {
         user: AdminUserDetailSerializer.new(user).serializable_hash,
         groups: AdminGroupSerializer.new(groups).serializable_hash,
-        deletable: deletable?(user)
+        deletable: deletable?(user),
+        # Signing in as the user (Admin::ImpersonationsController) has the same limits as deleting
+        impersonatable: deletable?(user)
       }
     end
 

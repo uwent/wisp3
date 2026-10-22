@@ -2,11 +2,20 @@
 # from April 1 through today, so pages render with a full season and no network.
 EMAIL = "e2e@example.com"
 PASSWORD = "e2e-password-1"
+GROWER_EMAIL = "jane@example.com"
 
 ReferenceData.load!
 DemoSeed.new(email: EMAIL, password: PASSWORD).run
 # An admin, so the smoke tests cover the admin pages
 User.find_by!(email: EMAIL).update!(password: PASSWORD, admin: true, digest_frequency: "daily", digest_test_sent_at: nil)
+
+# A grower in the demo farms who isn't an admin, for the admin to sign in as (and only in them, so
+# that's the operation shown)
+demo = User.find_by!(email: EMAIL).groups.find_by!(name: DemoSeed::GROUP_NAME)
+grower = User.find_or_initialize_by(email: GROWER_EMAIL)
+grower.update!(first_name: "Jane", last_name: "Grower", password: SecureRandom.base58(16), confirmed_at: Time.current)
+grower.memberships.find_or_create_by!(group: demo)
+grower.groups.where.not(id: demo.id).destroy_all
 
 today = Date.current
 now = Time.current

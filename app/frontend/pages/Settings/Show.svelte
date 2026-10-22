@@ -8,6 +8,8 @@
   let { unit_systems, pending_email }: { unit_systems: string[]; pending_email: string | null } = $props()
 
   const user = $derived(page.props.auth.user!)
+  // An admin signed in as this user for support can't change their email or password, or delete them
+  const impersonating = $derived(!!page.props.auth.impersonator)
 
   const unitLabels: Record<string, { name: string; detail: string }> = {
     imperial: { name: 'US units', detail: 'inches, °F, acres, gpm' },
@@ -49,70 +51,79 @@
   </Form>
 </section>
 
-<section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
-  <div>
-    <h2 class="text-lg font-medium">Email and password</h2>
-    <p class="text-sm text-ink-muted">Enter your current password to change either one.</p>
-  </div>
-  {#if pending_email}
-    <p class="rounded-md bg-status-caution/15 px-3 py-2 text-sm">
-      Waiting for you to confirm <strong>{pending_email}</strong>. Check that inbox for the confirmation link.
+{#if impersonating}
+  <section class="space-y-2 rounded-lg border border-line bg-surface-raised p-6">
+    <h2 class="text-lg font-medium">Email, password and account</h2>
+    <p class="text-sm text-ink-muted">
+      Changing the email or password and deleting the account are turned off while you're signed in as someone else.
     </p>
-  {/if}
-  <Form
-    action={usersRegistrations.update()}
-    class="max-w-xl space-y-4"
-    options={{ preserveScroll: true }}
-    resetOnSuccess={['user[password]', 'user[password_confirmation]', 'user[current_password]']}
-    resetOnError={['user[password]', 'user[password_confirmation]', 'user[current_password]']}
-  >
-    {#snippet children({ errors, processing })}
-      <TextField
-        label="Email"
-        name="user[email]"
-        type="email"
-        autocomplete="email"
-        value={user.email}
-        error={errors.email}
-      />
-      <div class="grid gap-4 sm:grid-cols-2">
+  </section>
+{:else}
+  <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
+    <div>
+      <h2 class="text-lg font-medium">Email and password</h2>
+      <p class="text-sm text-ink-muted">Enter your current password to change either one.</p>
+    </div>
+    {#if pending_email}
+      <p class="rounded-md bg-status-caution/15 px-3 py-2 text-sm">
+        Waiting for you to confirm <strong>{pending_email}</strong>. Check that inbox for the confirmation link.
+      </p>
+    {/if}
+    <Form
+      action={usersRegistrations.update()}
+      class="max-w-xl space-y-4"
+      options={{ preserveScroll: true }}
+      resetOnSuccess={['user[password]', 'user[password_confirmation]', 'user[current_password]']}
+      resetOnError={['user[password]', 'user[password_confirmation]', 'user[current_password]']}
+    >
+      {#snippet children({ errors, processing })}
         <TextField
-          label="New password"
-          name="user[password]"
-          type="password"
-          autocomplete="new-password"
-          hint="Leave blank to keep your current password"
-          error={errors.password}
+          label="Email"
+          name="user[email]"
+          type="email"
+          autocomplete="email"
+          value={user.email}
+          error={errors.email}
         />
+        <div class="grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="New password"
+            name="user[password]"
+            type="password"
+            autocomplete="new-password"
+            hint="Leave blank to keep your current password"
+            error={errors.password}
+          />
+          <TextField
+            label="Confirm new password"
+            name="user[password_confirmation]"
+            type="password"
+            autocomplete="new-password"
+            error={errors.password_confirmation}
+          />
+        </div>
         <TextField
-          label="Confirm new password"
-          name="user[password_confirmation]"
+          label="Current password"
+          name="user[current_password]"
           type="password"
-          autocomplete="new-password"
-          error={errors.password_confirmation}
+          autocomplete="current-password"
+          required
+          error={errors.current_password}
         />
-      </div>
-      <TextField
-        label="Current password"
-        name="user[current_password]"
-        type="password"
-        autocomplete="current-password"
-        required
-        error={errors.current_password}
-      />
-      <Button type="submit" disabled={processing}>Update email or password</Button>
-    {/snippet}
-  </Form>
-</section>
+        <Button type="submit" disabled={processing}>Update email or password</Button>
+      {/snippet}
+    </Form>
+  </section>
 
-<section class="space-y-3 rounded-lg border border-status-irrigate/40 bg-surface-raised p-6">
-  <h2 class="text-lg font-medium">Delete account</h2>
-  <p class="text-sm text-ink-muted">
-    Permanently deletes your account. Farm operations shared with other people stay with them.
-  </p>
-  <Form action={usersRegistrations.destroy()} onBefore={confirmDelete}>
-    {#snippet children({ processing })}
-      <Button type="submit" variant="danger" disabled={processing}>Delete my account</Button>
-    {/snippet}
-  </Form>
-</section>
+  <section class="space-y-3 rounded-lg border border-status-irrigate/40 bg-surface-raised p-6">
+    <h2 class="text-lg font-medium">Delete account</h2>
+    <p class="text-sm text-ink-muted">
+      Permanently deletes your account. Farm operations shared with other people stay with them.
+    </p>
+    <Form action={usersRegistrations.destroy()} onBefore={confirmDelete}>
+      {#snippet children({ processing })}
+        <Button type="submit" variant="danger" disabled={processing}>Delete my account</Button>
+      {/snippet}
+    </Form>
+  </section>
+{/if}

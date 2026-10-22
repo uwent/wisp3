@@ -62,11 +62,15 @@ Rails.application.routes.draw do
   namespace :admin do
     resources :users, only: [:index, :show, :destroy] do
       get :digest, on: :member
+      # Signing in as the user for support; ended by DELETE /impersonation
+      resource :impersonation, only: :create
     end
     resource :weather, only: :show, controller: "weather" do
       post :refresh
     end
   end
+  # Returning to admin from signing in as someone else (Admin::ImpersonationsController#create)
+  resource :impersonation, only: :destroy
   resource :current_group, only: :update, path: "group"
   # The current farm operation (Current.group) and its members; creating another
   resource :group, only: [:show, :update, :destroy], path: "operation"

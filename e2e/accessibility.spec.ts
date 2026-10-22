@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
 
-import { firstFieldPath, firstLinkPath, signIn } from './session'
+import { firstFieldPath, firstLinkPath, impersonateGrower, signIn } from './session'
 
 // WCAG 2.1 A and AA checks (axe) on every page, in light (desktop) and dark (phone). Every page is
 // scanned before the test fails, and A11Y_REPORT=path writes the violations found as JSON.
@@ -86,6 +86,11 @@ test('signed-in pages', async ({ page }) => {
   ]) {
     await scan(page, path)
   }
+})
+
+test('the bar shown while signed in as someone else', async ({ page }) => {
+  await impersonateGrower(page)
+  await scan(page, '/')
 })
 
 test('every page reflows at 320 px wide and at 200% text', async ({ page }) => {

@@ -13,5 +13,7 @@ export type SharedProps = {
     group: Group | null
     owner: boolean
     groups: Group[]
+    // The admin signed in as this user for support (PLAN.md Phase 8 B), or null
+    impersonator: { name: string; email: string } | null
   }
 }

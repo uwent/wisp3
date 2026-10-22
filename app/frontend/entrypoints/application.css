@@ -38,6 +38,11 @@
   --color-uw-red: #cf0a1b;
   --color-uw-red-dark: #a3030e;
 
+  /* The bar shown while an admin is signed in as someone else, in a violet no status uses; text on
+     it is 8.3:1 (light) and 9.0:1 (dark) */
+  --color-impersonation: oklch(45% 0.2 300);
+  --color-on-impersonation: oklch(100% 0 0);
+
   /* Surfaces and text, switched for dark mode below */
   --color-surface: oklch(98.5% 0.003 240);
   --color-surface-raised: oklch(100% 0 0);
@@ -79,6 +84,8 @@
     --color-line: oklch(32% 0.015 250);
     --color-status-irrigate-ink: oklch(70% 0.17 27);
     --color-status-caution-ink: oklch(80% 0.15 75);
+    --color-impersonation: oklch(78% 0.12 300);
+    --color-on-impersonation: oklch(18% 0.015 250);
     --color-brand-50: oklch(28% 0.05 235);
     --color-brand-100: oklch(33% 0.06 235);
     --color-brand-500: oklch(70% 0.12 232);
@@ -105,6 +112,8 @@
   --color-line: oklch(32% 0.015 250);
   --color-status-irrigate-ink: oklch(70% 0.17 27);
   --color-status-caution-ink: oklch(80% 0.15 75);
+  --color-impersonation: oklch(78% 0.12 300);
+  --color-on-impersonation: oklch(18% 0.015 250);
   --color-brand-50: oklch(28% 0.05 235);
   --color-brand-100: oklch(33% 0.06 235);
   --color-brand-500: oklch(70% 0.12 232);

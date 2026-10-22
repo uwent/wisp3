@@ -4,6 +4,8 @@ import { expect, type Page } from '@playwright/test'
 
 export const EMAIL = 'e2e@example.com'
 export const PASSWORD = 'e2e-password-1'
+// A grower in the demo farms, not an admin, for signing in as someone else
+export const GROWER_EMAIL = 'jane@example.com'
 
 export async function signIn(page: Page) {
   await page.goto('/account/sign_in')
@@ -32,4 +34,15 @@ export async function firstFieldPath(page: Page): Promise<string> {
 export async function firstLinkPath(page: Page, from: string, selector: string): Promise<string> {
   await page.goto(from)
   return new URL((await page.locator(`main ${selector}`).first().getAttribute('href'))!, page.url()).pathname
+}
+
+/** Signs in as the admin, then as the demo grower from her admin page (PLAN.md Phase 8 B) */
+export async function impersonateGrower(page: Page) {
+  await signIn(page)
+  await page.goto('/admin/users')
+  await page.getByRole('link', { name: GROWER_EMAIL }).first().click()
+  await expect(page.getByRole('heading', { name: GROWER_EMAIL })).toBeVisible()
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Sign in as this user' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'for support' })).toBeVisible()
 }
