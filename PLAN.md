@@ -773,12 +773,58 @@ USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free a
 
 ### Phase 8: Polish, beta, launch
 
-- [ ] Accessibility pass (keyboard grid, contrast, chart table alternative), performance pass, empty states, onboarding tour.
-- [ ] Methods detail for the About page (Phase 6.5 "Later").
+**Order (Ben, 2026-10-22):** accessibility first (A), then the admin additions (B), then a performance check and code audit (C), before the beta. Long-lead items run alongside from now: the server request to the sysadmin ([Phase 1](#phase-1-foundation)) and recruiting beta testers.
+
+Done so far:
 - [x] Admin users list (`/admin/users`): a searchable, sortable table (`DataTable`) of every account with its farm, pivot and field counts; delete unconfirmed accounts from the list. Each account's page shows its attributes (not its secrets), its groups and members, and its farms, pivots and fields, with a delete button (with confirmation) except for your own or another admin's account.
-- [ ] Admin (§11): CSV export of users, announcements (shown in the app, replacing the legacy blog), impersonation for support.
-- [ ] Monitoring (§12): a daily email to admins when a job failed or a cell's weather is more than 24 h stale.
 - [x] Group members (A8, Q8): an operation page (`/operation`) for the current group, with its name and rainfall setting (moved from Setup), its members, your other operations, creating one, and deleting it. Owners add people by the email they sign in with (an existing, confirmed account; no invitation tokens) and they get an email; owners change roles and remove members; anyone can leave. A group always keeps an owner, and someone left with no group gets a new one of their own.
+
+#### A. Accessibility (WCAG 2.1 AA)
+
+UW–Madison is a public entity, so the DOJ's ADA Title II rule (2024) applies: WCAG 2.1 AA for web content, due April 2026 for large public entities. WISP 3 launches conforming. Done before the beta so testers see the final interface. Audit first, writing the findings to `docs/accessibility.md` (page, issue, WCAG criterion, fix), then fix them.
+
+- [ ] **Automated checks in CI:** `@axe-core/playwright` in the e2e suite, scanning every page (public, auth, dashboard, map, field, daily entry, setup, field groups, alerts, operation, settings, admin) in light and dark, with the WCAG 2.1 A/AA rules. No violations, or each exception listed with its reason.
+- [ ] **Keyboard:** every action reachable and visible focus everywhere. In particular the `EditableCell` grids (move between cells, edit, Escape, save), `DataTable` sort headers, the map's popups and phone sheets (focus moves in, Escape closes, focus returns), the side list and the overlay panel, menus and the operation switcher. A skip link to the main content.
+- [ ] **The pivot picker:** typed coordinates, sizes and angles (`PivotShapeFields`) are the keyboard alternative to the handles; check they cover everything the handles do and say so in the picker.
+- [ ] **Charts:** a table alternative for each chart (the field chart, weather panels, canopy plots), as a "Show as table" toggle or a visually hidden table, plus a text summary (`aria-label`) on each chart.
+- [ ] **Not by color alone:** status badges, pivot fills and the "Needs water within" dimming, provenance (entered vs modeled), forecast shading, soil-type colors. Each also has a label, a pattern or text.
+- [ ] **Contrast:** text, including muted text ("model 0.35"), placeholders and disabled controls, at 4.5:1; controls, focus rings and chart lines at 3:1, in light and dark.
+- [ ] **Screen readers** (NVDA or Orca, and VoiceOver on a phone): page titles, heading order, landmarks, form labels and errors tied to their inputs (`NumberField`'s unit), flash messages and grid saves announced (live region), the glossary `Term` tooltips reachable, and icons labeled.
+- [ ] **Reflow and zoom:** 320 px wide and 200% text with no lost content or sideways page scroll; the grids may scroll inside themselves.
+- [ ] **Motion:** map fly-tos and transitions respect `prefers-reduced-motion`.
+- [ ] Emails: the digest and account emails readable without images, with real headings and link text.
+- [ ] An accessibility statement on the About page with a contact for problems.
+- **Exit:** axe passes in CI on every page, the keyboard and screen reader walkthroughs in `docs/accessibility.md` find nothing open, and every chart has its table.
+
+#### B. Admin: monitoring and impersonation
+
+- [ ] **Health check:** `AdminHealthJob` (daily, early morning, after the 05:00 weather refresh) emails the admins only when something's wrong: Solid Queue jobs that failed since the last check (class, error, count), an active cell whose weather is more than 24 h stale or whose latest forecast is older than a day, and a digest run that didn't finish. The same checks shown on `/admin/weather` (renamed or linked as a status page), so the email and the page agree. A spec per condition, and none sent when everything is fine.
+- [ ] **Impersonation** (support): an admin's user page gets "Sign in as this user", and the admin then sees WISP as that user, with that user's operations and roles.
+  - The admin's id is kept in the session (`session[:impersonator_id]`), and the user is signed in with Devise. Signing in as another admin isn't allowed, nor as yourself. Ending it ("Return to admin") signs the admin back in and returns to the user's admin page; signing out ends both.
+  - **A persistent header while impersonating:** a full-width bar above the nav on every page (`AppLayout`, from a shared prop `auth.impersonator`), in a color unlike any status, that doesn't scroll away: "You're signed in as Jane Grower (jane@…) · Return to admin". It's also in the page title, so a second tab shows it.
+  - While impersonating: no changes to the user's email, password or sign-in methods, no account deletion, and no emails sent to them (test digest). Data entry and setup are allowed (that's the support case), and each start and end is logged with both ids.
+  - Request specs: only admins can start it, the header prop is set throughout, the blocked actions are refused, and returning restores the admin. A Playwright test for the header.
+- [ ] CSV export of users, and announcements (shown in the app, replacing the legacy blog): after the beta, if still wanted.
+- **Exit:** a failed job or a stale cell on staging sends the email the next morning; an admin can sign in as a beta tester, sees the header on every page, and returns to the admin pages.
+
+#### C. Performance check and code audit
+
+Measure first; fix what the numbers show. The app already feels fast enough (Ben, 2026-10-22), so the targets below are nice to have, not launch requirements: a miss gets a note here, and a fix only if it's cheap or users notice.
+- [ ] **A large operation:** a seed (`demo:seed`-style) with 100 fields on 60 pivots across 4 farms, with a season of entries. Time the dashboard, map, field page, daily entry and digest build, and count queries (none per field: `FieldStatuses.for` preloads). Targets: dashboard and map server time under 500 ms, a field page under 300 ms.
+- [ ] **The browser:** Lighthouse with mobile throttling (rural connections) on the landing page, dashboard, field page and map. Bundle sizes from `vite build` (ECharts imports only what's used, MapLibre stays on demand, the `routes` chunk size), and fonts and images. Targets: LCP under 2.5 s on throttled 4G, no main bundle over about 300 kB gzipped.
+- [ ] **Database:** indexes for the lookups the pages use (EXPLAIN on the slowest queries), and `weather_forecasts` pruning working.
+- [ ] **Code audit:**
+  - Tenancy: every controller loads group records through `Current.group` and has its cross-tenant spec; owner-only actions have `require_owner`.
+  - Brakeman and `bundle audit`, `pnpm audit`; Rack::Attack limits on sign-in, codes and magic links.
+  - Dead code and unused components, and TODOs.
+  - Duplicated logic between Ruby and TypeScript (`Outlook`/`lib/outlook.ts`, pivot size limits) still matching, ideally with a shared spec fixture.
+  - CLAUDE.md and the docs matching the code.
+- **Exit:** the large operation is measured against the targets (misses noted), Lighthouse findings are fixed or listed, and the audit's findings are fixed or have an entry here.
+
+#### D. Beta and launch
+
+- [ ] Empty states and an onboarding tour (once the beta shows where people get stuck).
+- [ ] Methods detail for the About page (Phase 6.5 "Later").
 - [ ] Closed beta with a handful of growers or extension agents on staging, each setting up their own operation from scratch (this validates onboarding as well as the app).
 - [ ] New production server provisioned (§12), deploy rehearsed, backups and restore tested.
 - [ ] Legacy goes read-only (sign-ups disabled, banner) and moves to its legacy hostname; DNS switch; **launch by ~Mar 20, 2027** (§13).
