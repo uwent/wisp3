@@ -25,7 +25,7 @@ bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weath
 
 - Public pages (Phase 6.5): signed out, `/` is the landing page (`PagesController#home`), signed in the dashboard (Devise `authenticated` route); `/about` is the documentation, public. Both use `AppLayout`, whose nav is just About when signed out. The landing page and About share `lib/docs/Introduction.svelte`.
 - Rails controllers render Svelte pages with Inertia: `render inertia: "Folder/Page", props: {...}` maps to `app/frontend/pages/Folder/Page.svelte`. Pages under `Auth/` use `AuthLayout`; everything else uses `AppLayout` (`app/frontend/entrypoints/inertia.ts`), which goes full width with no footer for `Map/` pages.
-- Shared props (`auth.user`, `auth.group`, `auth.owner`, `auth.groups`) come from `InertiaController`; `page.flash` carries `notice` and `alert`.
+- Shared props (`auth.user`, `auth.group`, `auth.owner`, `auth.groups`, and `auth.impersonator` while an admin is signed in as someone else) come from `InertiaController`; `page.flash` carries `notice` and `alert`.
 - Page props are built with Alba serializers in `app/serializers`; Typelizer generates their TypeScript types (`@/types/serializers`) and typed route helpers (`@/routes`, returning `{url, method}` for `<Form action>` and `<Link href>`).
 - Forms: use Inertia's `<Form>` component with Rails-style input names (`user[email]`). On validation failure, controllers redirect back with `redirect_with_errors(path, record)`.
 - Units: format and parse every quantity through `app/frontend/lib/units.ts` (`units(user.unit_system)`); form inputs in user units use `NumberField`, which submits the stored unit in a hidden input. Dates from Rails are ISO strings; use `lib/dates.ts`.
@@ -78,6 +78,7 @@ Rails and tests:
 - **The test environment** records jobs instead of running them (`queue_adapter = :test`), uses a memory cache cleared before each example (rate limits), and `spec/rails_helper.rb` clears `OPEN_METEO_API_KEY` and the reference data (`db:prepare` seeds it into a new test database). Rack::Attack safelists localhost.
 - **`Object#blank?` calls `empty?`** when it exists, so don't define `empty?` on a model (`DailyEntry#nothing_entered?`).
 - **Checkbox lists:** a form with every box unchecked sends nothing, which Rails can't tell from "not sent". The field checkboxes send a blank sentinel (`name="…[field_ids][]" value=""`); `PivotIrrigation.normalize_field_ids` treats `[]` as invalid and "not sent" as all fields.
+- **Active Job logs job arguments**, so mail whose arguments are secrets (the sign-in link's token and code) is sent through `SecretMailDeliveryJob` (`self.delivery_job` in `MagicLinkMailer`).
 - **Zeitwerk:** one constant per file, error classes included (`weather/error.rb`, `transient_error.rb`, `rate_limited.rb`).
 - CSV export is in inches whatever the user's units, as stored.
 
