@@ -126,13 +126,20 @@
       <div class="flex gap-1 text-sm">
         <Link
           href={pivots.new({ query: { farm_id: farm.id } })}
-          class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50">Add pivot</Link
+          class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
+          aria-label="Add pivot to {farm.name}">Add pivot</Link
         >
-        <Button variant="ghost" class="px-3 py-1.5" onclick={() => open({ kind: 'farm', farm })}>Edit</Button>
+        <Button
+          variant="ghost"
+          class="px-3 py-1.5"
+          aria-label="Edit {farm.name}"
+          onclick={() => open({ kind: 'farm', farm })}>Edit</Button
+        >
         {#if owner}
           <Button
             variant="danger-ghost"
             class="px-3 py-1.5"
+            aria-label="Delete {farm.name}"
             onclick={() => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its pivots and fields`)}
           >
             Delete
@@ -161,18 +168,27 @@
             </p>
           </div>
           <div class="flex flex-wrap gap-1 text-sm">
-            <Link href={pivots.show(pivot.id)} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
-              >Irrigation</Link
+            <Link
+              href={pivots.show(pivot.id)}
+              class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
+              aria-label="Irrigation, {pivot.name}">Irrigation</Link
             >
-            <Link href={pivots.edit(pivot.id)} class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
-              >Edit</Link
+            <Link
+              href={pivots.edit(pivot.id)}
+              class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
+              aria-label="Edit {pivot.name}">Edit</Link
             >
-            <Button variant="ghost" class="px-3 py-1.5" onclick={() => open({ kind: 'field', pivot })}>Add field</Button
+            <Button
+              variant="ghost"
+              class="px-3 py-1.5"
+              aria-label="Add field to {pivot.name}"
+              onclick={() => open({ kind: 'field', pivot })}>Add field</Button
             >
             {#if owner}
               <Button
                 variant="danger-ghost"
                 class="px-3 py-1.5"
+                aria-label="Delete {pivot.name}"
                 onclick={() => destroy(pivots.destroy(pivot.id), `${pivot.name} and its fields`)}
               >
                 Delete
@@ -213,20 +229,25 @@
                   {:else}
                     <span class="text-xs text-ink-muted">No {year} crop</span>
                   {/each}
-                  <Button variant="ghost" class="px-2 py-1 text-xs" onclick={() => open({ kind: 'planting', field })}
-                    >+ Crop</Button
+                  <Button
+                    variant="ghost"
+                    class="px-2 py-1 text-xs"
+                    aria-label="+ Crop for {field.name}"
+                    onclick={() => open({ kind: 'planting', field })}>+ Crop</Button
                   >
                 </div>
                 <div class="flex gap-1 text-xs">
                   <Button
                     variant="ghost"
                     class="px-2 py-1 text-xs"
+                    aria-label="Edit {field.name}"
                     onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button
                   >
                   {#if owner}
                     <Button
                       variant="danger-ghost"
                       class="px-2 py-1 text-xs"
+                      aria-label="Delete {field.name}"
                       onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its records`)}
                     >
                       Delete

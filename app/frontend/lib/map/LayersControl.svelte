@@ -11,6 +11,7 @@
   let { prefs, overlays, units }: { prefs: MapPrefs; overlays: MapOverlays; units: Units } = $props()
 
   let open = $state(false)
+  let button: HTMLButtonElement | undefined = $state()
   const shownCount = $derived((prefs.rain ? 1 : 0) + prefs.overlays.length)
   const rain = $derived(RAIN_OVERLAYS.find((overlay) => overlay.id === prefs.rain) ?? null)
 
@@ -66,6 +67,7 @@
     type="button"
     class="flex items-center gap-1.5 rounded-md border border-line bg-surface-raised px-2.5 py-1.5 text-xs shadow
       hover:bg-surface {open ? 'ring-2 ring-brand-500' : ''}"
+    bind:this={button}
     aria-expanded={open}
     aria-controls="map-layers"
     onclick={() => (open = !open)}
@@ -84,12 +86,20 @@
   </button>
 
   {#if open}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions (Escape from any control inside) -->
     <div
       id="map-layers"
       class="absolute top-full left-0 z-20 mt-1 max-h-[min(70vh,32rem)] w-72 space-y-4 overflow-y-auto rounded-md border
         border-line bg-surface-raised p-3 text-sm shadow-lg"
-      role="dialog"
+      role="group"
       aria-label="Map layers"
+      onkeydown={(event) => {
+        // A panel that follows its button in the tab order; Escape closes it and goes back there
+        if (event.key !== 'Escape') return
+        event.stopPropagation()
+        open = false
+        button?.focus()
+      }}
     >
       <div class="flex items-center justify-between">
         <h2 class="font-medium">Map layers</h2>
@@ -97,7 +107,10 @@
           type="button"
           class="rounded px-1.5 text-lg leading-none text-ink-muted hover:text-ink"
           aria-label="Close map layers"
-          onclick={() => (open = false)}>×</button
+          onclick={() => {
+            open = false
+            button?.focus()
+          }}>×</button
         >
       </div>
 

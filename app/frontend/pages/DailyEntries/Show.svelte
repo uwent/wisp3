@@ -117,10 +117,15 @@
             <section class="space-y-3">
               <h3 class="font-medium text-ink-muted">{farm.name}</h3>
               {#each farm.pivots as pivot (pivot.id)}
-                <div class="rounded-lg border border-line bg-surface-raised">
+                <!-- A group named for the pivot, so its Irrigation and Run hours say whose they are -->
+                <div
+                  role="group"
+                  aria-labelledby="pivot-{pivot.id}-name"
+                  class="rounded-lg border border-line bg-surface-raised"
+                >
                   <div class="flex flex-wrap items-start gap-x-6 gap-y-3 border-b border-line p-4">
                     <div class="min-w-32">
-                      <h4 class="font-medium">{pivot.name}</h4>
+                      <h4 id="pivot-{pivot.id}-name" class="font-medium">{pivot.name}</h4>
                       <p class="text-xs text-ink-muted">Pivot irrigation, for all its fields or some</p>
                     </div>
                     <div class="w-40">

@@ -114,7 +114,7 @@ test('a map layer that fails says so, and the rest of the map carries on', async
   await page.route('**/mesonet.agron.iastate.edu/**', (route) => route.abort())
   await page.goto('/map')
   await page.getByRole('button', { name: 'Layers' }).click()
-  const layers = page.getByRole('dialog', { name: 'Map layers' })
+  const layers = page.getByRole('group', { name: 'Map layers' })
   await layers.getByRole('radio', { name: /Radar now/ }).check()
   await expect(page.getByRole('status').filter({ hasText: "Radar now isn't loading" })).toBeVisible()
   await expect(layers.getByText('Unavailable', { exact: true })).toBeVisible()
@@ -152,7 +152,7 @@ test('the Drought Monitor layer gives the category at the selected pivot', async
   )
   await page.goto('/map')
   await page.getByRole('button', { name: 'Layers' }).click()
-  const layers = page.getByRole('dialog', { name: 'Map layers' })
+  const layers = page.getByRole('group', { name: 'Map layers' })
   await layers.getByRole('checkbox', { name: /Drought Monitor/ }).check()
   await expect(layers.getByText('Map for Oct 13')).toBeVisible()
 
@@ -176,7 +176,7 @@ test("tapping the map gives the rain layer's value there", async ({ page }) => {
   await page.route('**/mrms_qpe/ImageServer/identify**', (route) => route.fulfill({ json: { value: '18.9' } }))
   await page.goto('/map')
   await page.getByRole('button', { name: 'Layers' }).click()
-  const layers = page.getByRole('dialog', { name: 'Map layers' })
+  const layers = page.getByRole('group', { name: 'Map layers' })
   await layers.getByRole('radio', { name: /last 24 hours/ }).check()
   await page.getByRole('button', { name: 'Close map layers' }).click()
 
@@ -195,7 +195,7 @@ test('the radar layer gives the reflectivity under a tap', async ({ page }) => {
   await page.goto('/map')
   await page.getByRole('button', { name: 'Layers' }).click()
   await page
-    .getByRole('dialog', { name: 'Map layers' })
+    .getByRole('group', { name: 'Map layers' })
     .getByRole('radio', { name: /Radar now/ })
     .check()
   await page.getByRole('button', { name: 'Close map layers' }).click()
@@ -220,7 +220,7 @@ test('quick setup suggests the soil from the soil survey under the pivot', async
     }),
   )
   await page.goto('/setup/start')
-  await page.getByRole('application', { name: /place the pivot center/ }).click()
+  await page.getByRole('application', { name: /click to place the pivot/ }).click()
   await expect(page.getByText(/Soil survey:\s*mostly Sand/)).toBeVisible()
   await expect(page.getByLabel('Soil').locator('option:checked')).toHaveText('Sand')
   await expect(page.getByText('From the soil survey')).toBeVisible()
@@ -229,7 +229,7 @@ test('quick setup suggests the soil from the soil survey under the pivot', async
 /** Drags a map handle (a marker, found by its title) by dx, dy pixels, once the map has settled */
 /** Clicks the pivot picker's map once MapLibre is ready for it */
 async function placePivot(page: Page) {
-  const map = page.getByRole('application', { name: /place the pivot center/ })
+  const map = page.getByRole('application', { name: /click to place the pivot/ })
   await expect(map.locator('canvas')).toBeVisible()
   await map.click()
 }

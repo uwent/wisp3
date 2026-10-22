@@ -66,4 +66,32 @@ describe('EditableCell', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Enter a number')
     expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
   })
+
+  describe('as a grid', () => {
+    const cell = (col: number, onsave = vi.fn().mockResolvedValue(null)) =>
+      render(EditableCell, { ...props(onsave), label: `Col ${col}`, col })
+    const button = (col: number) => screen.getByRole('button', { name: new RegExp(`^Col ${col}`) })
+
+    it('is one tab stop, which follows the focused cell', async () => {
+      cell(0)
+      cell(1)
+      cell(2)
+      expect([0, 1, 2].map((col) => button(col).tabIndex)).toEqual([0, -1, -1])
+      button(2).focus()
+      expect([0, 1, 2].map((col) => button(col).tabIndex)).toEqual([-1, -1, 0])
+    })
+
+    it('saves on Tab and moves to the next cell in the row, without opening it', async () => {
+      const onsave = vi.fn().mockResolvedValue(null)
+      cell(0, onsave)
+      cell(1)
+      await fireEvent.click(button(0))
+      await fireEvent.input(screen.getByRole('textbox'), { target: { value: '0.8' } })
+      await fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Tab' })
+      await vi.waitFor(() => expect(button(1)).toHaveFocus())
+      expect(onsave).toHaveBeenCalledWith('0.8')
+      expect(screen.queryByRole('textbox')).toBeNull()
+      expect(button(1).tabIndex).toBe(0)
+    })
+  })
 })

@@ -442,7 +442,7 @@
               The forecast for this pivot run through the water balance. Plan irrigation by entering it on a future day;
               it counts as applied when the day comes, so change or clear it if plans change. Depths in {units.label(
                 'depth',
-              )}.
+              )}. From the keyboard, the arrow keys move between cells, and Enter or typing edits one.
             </p>
             <div class="overflow-auto rounded-lg border border-line bg-surface-raised">
               <table class="w-full text-sm">
@@ -538,7 +538,8 @@
         <div class="space-y-2" transition:slide={{ duration: 200 }}>
           <p class="text-xs text-ink-muted">
             Click a rain, irrigation, moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value; Enter saves and moves
-            down. Clear a cell to go back to the modeled or pivot value. Depths in {units.label('depth')}.
+            down. Clear a cell to go back to the modeled or pivot value. Depths in {units.label('depth')}. From the
+            keyboard, the arrow keys move between cells, and Enter or typing edits one.
           </p>
           <div class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised">
             <table class="w-full text-sm">

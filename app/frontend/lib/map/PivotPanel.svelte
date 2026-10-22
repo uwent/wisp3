@@ -38,8 +38,11 @@
 </script>
 
 <section
-  class="pointer-events-auto flex max-h-full flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-xl"
+  class="pointer-events-auto flex max-h-full flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-xl
+    focus-visible:outline-2 focus-visible:outline-brand-500"
   aria-labelledby="pivot-panel-title"
+  tabindex="-1"
+  data-pivot-panel
 >
   <header class="flex items-start justify-between gap-2 border-b border-line bg-surface-raised px-3 py-2">
     <div class="min-w-0">

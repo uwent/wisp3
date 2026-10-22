@@ -121,7 +121,7 @@
 <p class="text-xs text-ink-muted">
   Click a cell to enter a value for every field in the group; Enter saves and moves down. Depths in {units.label(
     'depth',
-  )}.
+  )}. From the keyboard, the arrow keys move between cells, and Enter or typing edits one.
   {#if has_cover}Cover is saved as a reading on each member field's percent-cover crop.{/if}
 </p>
 <div class="max-h-[40rem] overflow-auto rounded-lg border border-line bg-surface-raised">

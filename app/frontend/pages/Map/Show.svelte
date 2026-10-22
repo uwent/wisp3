@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte'
+  import { onDestroy, tick, untrack } from 'svelte'
   import { Link, page } from '@inertiajs/svelte'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
@@ -109,15 +109,28 @@
     if (inWindow.length) overview?.fit(inWindow)
   }
 
+  // From the keyboard, selecting a pivot moves focus to its panel, and closing the panel returns
+  // focus to the marker or card that opened it (pointer users stay where they are)
+  let keyboard = false
+  let opener: HTMLElement | null = null
+
+  function focusPanel() {
+    if (!keyboard) return
+    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    tick().then(() => document.querySelector<HTMLElement>('[data-pivot-panel]')?.focus())
+  }
+
   function selectField(item: ListItem) {
     selectedPivotId = item.pivot.id
     selectedFieldId = item.card.id
     overview?.show(item.pivot.id)
+    focusPanel()
   }
 
   function selectPivot(pivotId: number | null) {
     selectedPivotId = pivotId
     selectedFieldId = null
+    if (pivotId !== null) focusPanel()
     if (pivotId === null || !prefs.listOpen) return
     // Bring its fields' cards into view in the list
     requestAnimationFrame(() =>
@@ -126,8 +139,11 @@
   }
 
   function clearSelection() {
+    const fromPanel = document.querySelector('[data-pivot-panel]')?.contains(document.activeElement)
     selectedPivotId = null
     selectedFieldId = null
+    if (fromPanel) opener?.focus()
+    opener = null
   }
 
   const isSelected = (item: ListItem) =>
@@ -135,7 +151,13 @@
 </script>
 
 <svelte:head><title>Map · WISP</title></svelte:head>
-<svelte:window onkeydown={(event) => event.key === 'Escape' && clearSelection()} />
+<svelte:window
+  onkeydown={(event) => {
+    keyboard = true
+    if (event.key === 'Escape') clearSelection()
+  }}
+  onpointerdown={() => (keyboard = false)}
+/>
 
 {#if !anyPivots}
   <div class="mx-auto w-full max-w-6xl px-4 py-6">

@@ -550,7 +550,7 @@
     <div
       bind:this={container}
       class="h-full w-full"
-      aria-label="Map: click to place the pivot center"
+      aria-label="Map: click to place the pivot, or enter its coordinates and size in the fields below"
       role="application"
     ></div>
 
@@ -573,8 +573,8 @@
         class="pointer-events-none absolute top-12 right-12 left-2 mx-auto max-w-xs rounded-md bg-black/60 px-3 py-2 text-center text-sm text-white"
       >
         {linear
-          ? 'Click the map in the middle of the area the linear irrigates'
-          : 'Click the map at the center of the pivot'}
+          ? 'Click the map in the middle of the area the linear irrigates, or enter its coordinates below'
+          : 'Click the map at the center of the pivot, or enter its coordinates below'}
       </p>
     {/if}
 

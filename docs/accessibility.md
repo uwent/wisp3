@@ -24,10 +24,27 @@ Status colors as fills keep their values apart from the OK green; the chart pale
 
 ## Manual checks
 
-To do, in this order (PLAN.md Phase 8 A). Record each finding here with the page, the WCAG criterion and the fix.
+In this order (PLAN.md Phase 8 A). Each finding is recorded with the page, the WCAG criterion and the fix.
 
-- [ ] Keyboard: every page by Tab alone (visible focus, sensible order, no traps), the grids, menus, the map's popups and phone sheets, the side list, the overlay panel, a skip link.
-- [ ] Pivot picker: the typed fields cover everything the handles do.
+### Keyboard (2026-10-22)
+
+Every signed-in page, the landing page, About and sign-in were tabbed through in a script that recorded each stop (its element, name, focus style and whether it was hidden). No traps, no focus on hidden elements, and a focus style on every stop. `e2e/keyboard.spec.ts` keeps the fixes below working.
+
+| WCAG | Where | Found | Fix |
+|---|---|---|---|
+| 2.4.1 Bypass blocks | Every signed-in page | 13 stops (branding, theme, nav, menus) before the page's content | A "Skip to main content" link, the first stop, shown when focused |
+| 2.1.1 Keyboard, 2.4.3 Focus order | Field page, field groups | Every grid cell was a tab stop: about 1,000 on a field page, between the summary and everything below the grid | A grid is one tab stop (roving tabindex): the cell last focused, else the first; arrow keys move inside it and Tab moves past. Tab while editing still saves and moves along the row. The grid notes say how |
+| 2.1.1 | Account menu (desktop) | The arrow keys stopped on the operation switcher's items, which are hidden on wider screens, so Settings and Sign out couldn't be reached | Those items are left out of the menu on wider screens rather than hidden with CSS |
+| 2.4.3 Focus order | Map | Selecting a pivot from the list or its marker opened its panel, but focus stayed behind, far from the panel in the tab order; closing it lost focus | From the keyboard, focus moves to the panel, and Escape or Close returns it to the card or marker that opened it. Pointer users stay where they are |
+| 2.1.1, 4.1.2 | Map layers panel | Marked as a dialog without behaving like one; Escape didn't close it | A group that follows its button in the tab order; Escape and × close it and return focus to the button |
+| 2.4.6 Headings and labels | Setup | "Edit", "Delete", "Add field", "Irrigation" and "+ Crop" repeated for every farm, pivot and field with nothing to say which | Names say what they act on ("Edit North 160", "Delete Cabbage"), starting with the visible text |
+| 2.4.6, 1.3.1 | Daily entry | Each pivot's "Irrigation" and "Run hours" inputs had the same names | Each pivot's block is a group named by its heading |
+| 2.1.1 | Pivot picker | The handles need a pointer | Already covered: latitude, longitude, radius, arc ends, length, travel and direction are all typed fields. The picker's prompt and the map's name now say so |
+
+Checked and fine: dialogs (bits-ui: focus moves in, is held, Escape closes and returns it), the glossary's `Term` popovers and `InfoTip`s (Enter or Space, Escape), menus once fixed, and the map's markers, controls and side list.
+
+- [x] Keyboard: every page by Tab alone (visible focus, sensible order, no traps), the grids, menus, the map's popups and phone sheets, the side list, the overlay panel, a skip link.
+- [x] Pivot picker: the typed fields cover everything the handles do.
 - [ ] Charts: a table alternative and a text summary for each.
 - [ ] Not by color alone: status, provenance, forecast shading, soil types.
 - [ ] Screen readers: NVDA or Orca on desktop, VoiceOver on a phone.

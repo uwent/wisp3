@@ -3,7 +3,8 @@
   import { tick } from 'svelte'
 
   // A spreadsheet-style cell. Click, Enter or start typing to edit; Enter saves and moves down,
-  // Tab saves and moves on, Escape cancels; arrow keys move between cells of the same grid.
+  // Tab saves and moves along the row, Escape cancels; arrow keys move between cells of the same
+  // grid. A grid is one tab stop (the cell last focused, else its first), so Tab moves past it.
   // onsave gets the typed text and resolves with an error message, or null once saved.
   let {
     text,
@@ -45,12 +46,24 @@
     if (initial === undefined) input?.select()
   }
 
-  async function commit(move?: 'down') {
+  /** Where to go once an edit ends: the cell below opens for editing, the one beside is focused */
+  type Move = { row: number; col: number; open: boolean }
+
+  function go(move: Move) {
+    const cell = cellAt(move.row, move.col)
+    if (move.open) cell?.click()
+    else cell?.focus()
+  }
+
+  async function commit(move?: Move) {
     // Chromium blurs an input as it's removed, so a cancelled or finished edit can arrive here too
     if (saving || !editing) return
     if (draft.trim() === text.trim()) {
       editing = false
-      if (move) cellAt(row + 1, col)?.click()
+      if (move) {
+        await tick()
+        go(move)
+      }
       return
     }
     saving = true
@@ -63,19 +76,45 @@
     editing = false
     if (move) {
       await tick()
-      cellAt(row + 1, col)?.click()
+      go(move)
     }
   }
 
   function onInputKey(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       event.preventDefault()
-      commit('down')
+      commit({ row: row + 1, col, open: true })
+    } else if (event.key === 'Tab') {
+      // Past the row's end, Tab leaves the grid as usual (and the blur saves)
+      const next = col + (event.shiftKey ? -1 : 1)
+      if (!cellAt(row, next)) return
+      event.preventDefault()
+      commit({ row, col: next, open: false })
     } else if (event.key === 'Escape') {
       event.preventDefault()
       editing = false
       error = null
       cellAt(row, col)?.focus()
+    }
+  }
+
+  // Roving tab stop: a cell joins the tab order when it's focused, and the first cell mounted takes
+  // it when no other cell of the grid has it (also after the cell holding it goes)
+  const stopOf = () => document.querySelector(`button[data-grid="${grid}"][tabindex="0"]`)
+
+  function rove(cell: HTMLButtonElement) {
+    cell.tabIndex = stopOf() ? -1 : 0
+    const take = () => {
+      for (const other of document.querySelectorAll<HTMLButtonElement>(`button[data-grid="${grid}"]`))
+        other.tabIndex = other === cell ? 0 : -1
+    }
+    cell.addEventListener('focus', take)
+    return () => {
+      cell.removeEventListener('focus', take)
+      queueMicrotask(() => {
+        const first = document.querySelector<HTMLButtonElement>(`button[data-grid="${grid}"]`)
+        if (first && !stopOf()) first.tabIndex = 0
+      })
     }
   }
 
@@ -136,6 +175,7 @@
     data-grid={grid}
     data-row={row}
     data-col={col}
+    {@attach rove}
     onclick={() => start()}
     onkeydown={onCellKey}
     class="relative block w-full min-w-16 rounded px-1.5 py-1 tabular-nums hover:bg-brand-50

@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte'
   import { Link, page, router } from '@inertiajs/svelte'
   import { DropdownMenu } from 'bits-ui'
+  import { MediaQuery } from 'svelte/reactivity'
 
   import BrandBar from '@/lib/components/BrandBar.svelte'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
@@ -27,6 +28,9 @@
   let { children }: { children: Snippet } = $props()
 
   const auth = $derived(page.props.auth)
+  // Wider screens have the operation switcher beside the account menu; narrower ones put it in
+  // the menu. Left out rather than hidden, as the menu's arrow keys would stop on hidden items.
+  const wideNav = new MediaQuery('min-width: 640px')
 
   // Signed out (the landing and About pages), the nav is just About
   const nav = $derived(
@@ -73,6 +77,12 @@
 </script>
 
 <div class="flex flex-col {wide ? 'h-dvh' : 'min-h-dvh'}">
+  <!-- The first stop for keyboard users, past the branding and the nav (WCAG 2.4.1) -->
+  <a
+    href="#main"
+    class="sr-only rounded-md bg-surface-raised px-3 py-2 text-sm font-medium text-brand-600 shadow-lg focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50"
+    >Skip to main content</a
+  >
   <BrandBar />
   <header class="border-b border-line bg-surface-raised">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
@@ -141,8 +151,8 @@
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
-                {#if auth.groups.length > 1}
-                  <DropdownMenu.Group class="sm:hidden" aria-label="Farm operation">
+                {#if auth.groups.length > 1 && !wideNav.current}
+                  <DropdownMenu.Group aria-label="Farm operation">
                     <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted"
                       >Farm operation</DropdownMenu.GroupHeading
                     >
@@ -176,12 +186,12 @@
   </header>
 
   {#if wide}
-    <main class="flex min-h-0 flex-1 flex-col">
+    <main id="main" tabindex="-1" class="flex min-h-0 flex-1 flex-col outline-none">
       <FlashMessages />
       {@render children()}
     </main>
   {:else}
-    <main class="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 py-6">
+    <main id="main" tabindex="-1" class="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 py-6 outline-none">
       <FlashMessages />
       {@render children()}
     </main>
