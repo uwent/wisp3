@@ -30,6 +30,27 @@ class Rack::Attack
     req.ip if req.post? && req.path == "/account/password"
   end
 
+  # Password guesses at one account from many addresses, which the per-IP limits don't catch. A
+  # limit rather than a lockout, so nobody can lock a grower out by failing on purpose; sign-in
+  # links and codes still work meanwhile.
+  throttle("sign_in/email", limit: 10, period: 15.minutes) do |req|
+    sign_in_email(req) if req.post? && req.path == "/account/sign_in"
+  end
+
+  # The email in a sign-in POST, normalized. Inertia sends forms as JSON, which Rack doesn't parse.
+  def self.sign_in_email(req)
+    params = if req.media_type == "application/json"
+      body = req.body.read
+      req.body.rewind
+      JSON.parse(body)
+    else
+      req.POST
+    end
+    params.is_a?(Hash) && params.dig("user", "email").to_s.strip.downcase.presence
+  rescue JSON::ParserError
+    nil
+  end
+
   blocklist("login scrapers") do |req|
     Allow2Ban.filter(req.ip, maxretry: 20, findtime: 1.minute, bantime: 1.hour) do
       req.post? && req.path == "/account/sign_in"
@@ -55,6 +76,13 @@ class Rack::Attack
       %w[database.yml secrets.yml .env].any? { |s| req.path.include?(s) }
   end
 
-  self.throttled_responder = ->(_req) { [429, {"content-type" => "text/plain"}, ["Too many requests. Please wait a moment and try again.\n"]] }
+  self.throttled_responder = lambda do |req|
+    message = if req.env["rack.attack.matched"] == "sign_in/email"
+      "Too many sign-in attempts for this account. Wait 15 minutes, or sign in with an emailed link instead.\n"
+    else
+      "Too many requests. Please wait a moment and try again.\n"
+    end
+    [429, {"content-type" => "text/plain"}, [message]]
+  end
   self.blocklisted_responder = ->(_req) { [403, {"content-type" => "text/plain"}, ["Forbidden\n"]] }
 end
