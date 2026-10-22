@@ -1,38 +1,37 @@
-# Be sure to restart your server when you modify this file.
+# Content Security Policy (PLAN.md Phase 8 C, the code audit). Scripts come only from WISP itself,
+# so injected markup can't run code; the one inline script (the theme, in the layout) carries this
+# request's nonce. The map's tiles and data and the soil survey come from many public services,
+# loaded by the browser (lib/map/overlays.ts, basemaps.ts, lib/soils.ts), so images and connections
+# allow any https source rather than a list that a new layer would quietly break. Svelte, MapLibre
+# and ECharts set inline styles, hence 'unsafe-inline' for styles only. The smoke tests fail on any
+# console error, a violation included.
+Rails.application.configure do
+  config.content_security_policy do |policy|
+    policy.default_src :self
+    policy.script_src :self
+    policy.style_src :self, :unsafe_inline
+    policy.img_src :self, :data, :blob, :https
+    policy.font_src :self, :data
+    policy.connect_src :self, :https
+    policy.worker_src :self, :blob
+    policy.object_src :none
+    policy.base_uri :self
+    policy.form_action :self
+    policy.frame_ancestors :none
 
-# Define an application-wide content security policy.
-# See the Securing Rails Applications Guide for more information:
-# https://guides.rubyonrails.org/security.html#content-security-policy-header
+    # The Vite dev server: its client, hot reloading over a websocket, and the modules, fonts and
+    # images it serves (built assets come from WISP itself)
+    if Rails.env.development?
+      vite = "http://#{ViteRuby.config.host_with_port}"
+      policy.script_src :self, :unsafe_eval, vite
+      policy.style_src :self, :unsafe_inline, vite
+      policy.font_src :self, :data, vite
+      policy.img_src :self, :data, :blob, :https, vite
+      policy.connect_src :self, :https, vite, vite.sub("http:", "ws:")
+      policy.worker_src :self, :blob, vite
+    end
+  end
 
-# Rails.application.configure do
-#   config.content_security_policy do |policy|
-#     policy.default_src :self, :https
-#     policy.font_src    :self, :https, :data
-#     policy.img_src     :self, :https, :data
-#     policy.object_src  :none
-#     policy.script_src  :self, :https
-# Allow @vite/client to hot reload javascript changes in development
-#    policy.script_src *policy.script_src, :unsafe_eval, "http://#{ ViteRuby.config.host_with_port }" if Rails.env.development?
-
-# You may need to enable this in production as well depending on your setup.
-#    policy.script_src *policy.script_src, :blob if Rails.env.test?
-
-#     policy.style_src   :self, :https
-# Allow @vite/client to hot reload style changes in development
-#    policy.style_src *policy.style_src, :unsafe_inline if Rails.env.development?
-
-#     # Specify URI for violation reports
-#     # policy.report_uri "/csp-violation-report-endpoint"
-#   end
-#
-#   # Generate session nonces for permitted importmap, inline scripts, and inline styles.
-#   config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
-#   config.content_security_policy_nonce_directives = %w(script-src style-src)
-#
-#   # Automatically add `nonce` to `javascript_tag`, `javascript_include_tag`, and `stylesheet_link_tag`
-#   # if the corresponding directives are specified in `content_security_policy_nonce_directives`.
-#   # config.content_security_policy_nonce_auto = true
-#
-#   # Report violations without enforcing the policy.
-#   # config.content_security_policy_report_only = true
-# end
+  config.content_security_policy_nonce_generator = ->(_request) { SecureRandom.base64(16) }
+  config.content_security_policy_nonce_directives = %w[script-src]
+end

@@ -10,7 +10,7 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
 
     <%# The light/dark choice from the theme toggle (app/frontend/lib/theme.ts), applied before the page paints %>
-    <script>
+    <script nonce="<%= content_security_policy_nonce %>">
       try {
         var theme = localStorage.getItem("wisp-theme");
         if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
