@@ -41,13 +41,13 @@ Every signed-in page, the landing page, About and sign-in were tabbed through in
 | 2.4.6, 1.3.1 | Daily entry | Each pivot's "Irrigation" and "Run hours" inputs had the same names | Each pivot's block is a group named by its heading |
 | 2.1.1 | Pivot picker | The handles need a pointer | Already covered: latitude, longitude, radius, arc ends, length, travel and direction are all typed fields. The picker's prompt and the map's name now say so |
 
-Checked and fine: dialogs (bits-ui: focus moves in, is held, Escape closes and returns it), the glossary's `Term` popovers and `InfoTip`s (Enter or Space, Escape), menus once fixed, and the map's markers, controls and side list.
+Checked and fine: dialogs (bits-ui: focus moves in, is held, Escape closes and returns it), the glossary's `Term` popovers (Enter or Space opens, Escape closes, focus stays on the term), menus once fixed, and the map's markers, controls and side list.
 
 - [x] Keyboard: every page by Tab alone (visible focus, sensible order, no traps), the grids, menus, the map's popups and phone sheets, the side list, the overlay panel, a skip link.
 - [x] Pivot picker: the typed fields cover everything the handles do.
 - [ ] Charts: a table alternative and a text summary for each.
 - [ ] Not by color alone: status, provenance, forecast shading, soil types.
-- [ ] Screen readers: NVDA or Orca on desktop, VoiceOver on a phone.
+- [ ] Screen readers: NVDA or Orca on desktop, VoiceOver on a phone. Known already: a `Term`'s definition has no role and isn't tied to the term (`aria-describedby`), so a screen reader announces "expanded" but not the definition.
 - [ ] Reflow at 320 px and 200% text; `prefers-reduced-motion`.
 - [ ] Emails.
 - [ ] Accessibility statement on the About page.
