@@ -23,9 +23,9 @@
 <div>
   <h1 class="text-xl font-semibold">Check your email</h1>
   <p class="mt-1 text-sm text-ink-muted">
-    If there's an account for <span class="font-medium text-ink">{email}</span>, we've sent it a 6-digit code and a
-    sign-in link. Enter the code here, or open the link on the device where you read the email. Both work once and
-    expire in {ttl_minutes} minutes.
+    If there's an account for <span class="font-medium text-ink">{email}</span>, we've sent it a six-digit code and a
+    sign-in link. Enter the code here, or open the link on the device where you read the email. Each can be used once
+    and expires in {ttl_minutes} minutes.
   </p>
 </div>
 
@@ -58,6 +58,6 @@
 
 <p class="text-center text-sm">
   <Link href={usersSessions.new({ query: { email } })} class="text-brand-600 hover:underline">
-    Use a different email or a password
+    Use a different email address, or sign in with a password
   </Link>
 </p>

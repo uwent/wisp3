@@ -18,24 +18,26 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Allowable depletion (AD)',
     matches: ['allowable depletion', 'AD'],
     definition:
-      'The water left in the root zone that the crop can use without stress. It is highest at field capacity ' +
-      'and 0 at the irrigation point; below 0 the crop is increasingly stressed, down to the wilting point.',
+      'The water left in the root zone that the crop can use without stress. It’s at its highest when the soil ' +
+      'is at field capacity and 0 at the irrigation point. Below 0 the crop is increasingly stressed, down to ' +
+      'the wilting point.',
   },
   {
     id: 'mad',
     term: 'MAD (allowable depletion fraction)',
     matches: ['MAD'],
     definition:
-      'The share of the root zone’s available water (between field capacity and the wilting point) the crop can ' +
-      'use before stress begins. 50% suits most crops; use less for crops very sensitive to water stress.',
+      'The share of the root zone’s available water (between field capacity and the wilting point) that the crop ' +
+      'can use before stress begins. 50% suits most crops; use a lower value for crops that are very sensitive ' +
+      'to water stress.',
   },
   {
     id: 'field_capacity',
     term: 'Field capacity',
     matches: ['field capacity'],
     definition:
-      'The soil moisture once a soaked soil has drained, about a day after heavy rain or irrigation. Water ' +
-      'above it drains below the root zone.',
+      'The water a soil holds once it has drained after being soaked, about a day after heavy rain or ' +
+      'irrigation. Water above that level drains below the root zone.',
   },
   {
     id: 'wilting_point',
@@ -57,13 +59,13 @@ export const GLOSSARY: GlossaryEntry[] = [
     matches: ['reference ET', 'ET0'],
     definition:
       'The water a well-watered reference grass would use in a day, calculated from the weather (FAO-56 ' +
-      'Penman-Monteith). Crop ET scales it by the crop’s canopy.',
+      'Penman-Monteith). Crop ET is this amount adjusted for the crop’s canopy.',
   },
   {
     id: 'crop_et',
     term: 'Crop ET',
     matches: ['crop ET', 'adjusted ET'],
-    definition: 'The water the crop uses in a day: reference ET times a crop coefficient from its canopy.',
+    definition: 'The water the crop uses in a day: reference ET multiplied by a crop coefficient based on its canopy.',
   },
   {
     id: 'et',
@@ -77,7 +79,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     matches: ['crop coefficient', 'Kc'],
     definition:
       'The fraction of reference ET the crop uses, from 0 for bare soil to about 1.1 at full canopy. WISP ' +
-      'works it out from percent cover or LAI.',
+      'calculates it from percent cover or LAI.',
   },
   {
     id: 'percent_cover',
@@ -100,9 +102,8 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Canopy curve',
     matches: ['canopy curve', 'crop curve'],
     definition:
-      'A crop’s typical percent cover (or LAI) by day since emergence. WISP follows it when no readings are ' +
-      'entered, and scales it through the readings you enter. Each crop’s curve and its source are on the ' +
-      'About page.',
+      'A crop’s typical percent cover (or LAI) by day since emergence. WISP follows it until you enter ' +
+      'readings, then adjusts it to pass through them. Each crop’s curve and its source are on the About page.',
   },
   {
     id: 'deep_drainage',
@@ -117,10 +118,10 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Entered rain only',
     matches: ['only the rain you enter', 'only the rain we enter'],
     definition:
-      'A rainfall setting for an operation or a single field: the balance counts only the rain you enter, and ' +
-      'days without a reading as dry, instead of the modeled rain. The days ahead still use the forecast’s rain, ' +
-      'and the outlook also says when the field would need water if none fell. For a gauge you read every day it ' +
-      'rains; nothing is deleted, so you can switch back.',
+      'A rainfall setting for an operation or a single field. Instead of the modeled rain, the balance counts ' +
+      'only the rain you enter and treats days with no entry as dry. The days ahead still use the forecast’s ' +
+      'rain, and the outlook also says when the field would need water if no rain fell. Use it if you read a ' +
+      'gauge every day it rains. Nothing is deleted, so you can switch back at any time.',
   },
 ]
 

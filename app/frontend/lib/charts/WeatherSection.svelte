@@ -37,8 +37,8 @@
     {#if open}
       <div class="space-y-3" transition:slide={{ duration: motion(200) }}>
         <p class="text-xs text-ink-muted">
-          Modeled by Open-Meteo for the pivot's grid cell, with the forecast shaded. Scroll or pinch a chart to see more
-          of the season; the (i) on each chart explains what it shows. {@render children?.()}
+          Modeled by Open-Meteo for the area around this pivot, with the forecast shaded. Scroll or pinch a chart to see
+          more of the season, and select the (i) on a chart to learn what it shows. {@render children?.()}
         </p>
         <div class="grid gap-3 md:grid-cols-2">
           {#each panels as panel (panel.key)}

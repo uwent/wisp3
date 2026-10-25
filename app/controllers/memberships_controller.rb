@@ -7,16 +7,17 @@ class MembershipsController < AuthenticatedController
     email = params.expect(membership: [:email])[:email].to_s.strip.downcase
     user = User.find_by(email:)
     error =
-      if email.blank? then "Enter the email they sign in with"
+      if email.blank? then "Enter the email address they use to sign in to WISP."
       elsif user.nil? then "No WISP account uses #{email}. Ask them to create one, then add them."
-      elsif !user.confirmed? then "#{email} hasn't confirmed their account yet"
+      elsif !user.confirmed? then "#{email} hasn't confirmed their email address yet. Ask them to open the confirmation link, then add them again."
       elsif Current.group.users.include?(user) then "#{user.display_name} is already a member"
       end
     return redirect_with_errors(group_path, {email: [error]}) if error
 
     membership = Current.group.memberships.create!(user:, owner: params.dig(:membership, :owner) == "true")
     MembershipMailer.added(membership, current_user).deliver_later
-    redirect_to group_path, notice: "Added #{user.display_name}. They'll get an email, and can switch to #{Current.group.name} from the menu."
+    redirect_to group_path, notice: "Added #{user.display_name}. We've emailed them, and they can switch to " \
+      "#{Current.group.name} from the operation menu."
   end
 
   def update

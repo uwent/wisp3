@@ -31,9 +31,11 @@ describe('guidance', () => {
     const result = guidance(corn, units('imperial'), [task('soil_moisture', 'Soil moisture', null, true)], today)
     expect(result.title).toBe('How field corn is modeled')
     expect(result.paragraphs[0]).toMatch(/^Field Corn water use is modeled from leaf area index \(LAI\)/)
-    expect(result.paragraphs[0]).toContain('on a field corn growth curve')
+    expect(result.paragraphs[0]).toContain('using a field corn growth curve')
     expect(result.paragraphs.at(-1)).toContain('(8 in and 24 in deep)')
-    expect(result.readings).toEqual([{ label: 'Soil moisture', last: 'None this season', due: true, note: 'due' }])
+    expect(result.readings).toEqual([
+      { label: 'Soil moisture', last: 'None entered this season', due: true, note: 'due' },
+    ])
   })
 
   it("lists the planting's readings with when each was last entered, and crop notes", () => {
@@ -63,7 +65,7 @@ describe('guidance', () => {
   it('explains how readings combine with the curve, or that there is none', () => {
     const curve = guidance(potato, units('imperial'), [], today).paragraphs[0]
     expect(curve).toContain('WISP follows a potato canopy curve from the emergence date')
-    expect(curve).toContain('Your readings scale the curve')
+    expect(curve).toContain('Your readings adjust the curve')
     const lines = guidance({ ...potato, effective_canopy_interpolation: 'linear' }, units('imperial'), [], today)
     expect(lines.paragraphs[0]).toContain('draws straight lines between your readings instead')
     const none = guidance(

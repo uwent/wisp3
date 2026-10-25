@@ -46,7 +46,7 @@ export function thresholds({
     mode === 'ad' ? (units.toDisplay('depth', ad) ?? 0) : summary.pct_at_ad_zero + (ad / rootZoneDepth) * 100
   const lines: Threshold[] = [
     { name: 'Field capacity', value: value(summary.ad_max), color: palette.status.full, dashed: true },
-    { name: 'Irrigate (MAD)', value: value(0), color: palette.status.irrigate, dashed: false },
+    { name: 'Irrigation point', value: value(0), color: palette.status.irrigate, dashed: false },
     { name: 'Wilting point', value: value(summary.ad_pwp), color: palette.inkMuted, dashed: true },
   ]
   if (summary.target_in !== null) {
@@ -67,7 +67,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   const level = (ad: number | null) =>
     ad === null ? null : round(mode === 'ad' ? depth(ad) : summary.pct_at_ad_zero + (ad / rootZoneDepth) * 100)
   const lines = thresholds(input)
-  const zeroLine = lines.find((line) => line.name.startsWith('Irrigate'))!.value
+  const zeroLine = lines.find((line) => line.name === 'Irrigation point')!.value
   const wiltingLine = lines[lines.length - 1].value
   const forecastOnly = <T>(value: (day: FieldDay, i: number) => T) =>
     all.map((day, i) => (i < observed ? null : value(day, i)))
@@ -585,13 +585,13 @@ function tooltip(
     ...(band?.chance != null
       ? [
           [
-            summary.target_in === null ? 'Chance at 0 AD by now' : 'Chance below target by now',
+            summary.target_in === null ? 'Chance of reaching 0 AD by now' : 'Chance of falling below target by now',
             `${Math.round(band.chance * 100)}%`,
           ],
         ]
       : []),
     ['Soil moisture', `${day.pct_moisture.toFixed(1)}%`],
-    ['Adjusted ET', `${depth(day.adj_et)} ${source(ET_SOURCE_LABELS[day.et_source])}`],
+    ['Crop ET', `${depth(day.adj_et)} ${source(ET_SOURCE_LABELS[day.et_source])}`],
     [
       'Rain',
       `${depth(day.rain)} ${source(SOURCE_LABELS[day.rain_source])}` +

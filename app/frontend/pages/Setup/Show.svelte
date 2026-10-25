@@ -36,7 +36,7 @@
   const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
   const pivotSize = (pivot: (typeof allPivots)[number]) =>
     pivot.kind === 'linear' && pivot.length_ft && pivot.travel_ft
-      ? `linear, ${units.format('distance', pivot.length_ft)} machine, travels ${units.format('distance', pivot.travel_ft)} at ${pivot.travel_bearing_deg}°`
+      ? `linear move, ${units.format('distance', pivot.length_ft)} long, travels ${units.format('distance', pivot.travel_ft)} at ${pivot.travel_bearing_deg}° from north`
       : pivot.radius_ft
         ? `radius ${units.format('distance', pivot.radius_ft)}`
         : null
@@ -149,7 +149,7 @@
     </div>
 
     {#if farm.pivots.length === 0}
-      <p class="text-sm text-ink-muted">No pivots yet.</p>
+      <p class="text-sm text-ink-muted">No pivots on this farm yet.</p>
     {/if}
 
     {#each farm.pivots as pivot (pivot.id)}
@@ -198,7 +198,7 @@
         </div>
 
         {#if pivot.fields.length === 0}
-          <p class="px-3 py-3 text-sm text-ink-muted">No fields yet.</p>
+          <p class="px-3 py-3 text-sm text-ink-muted">No fields on this pivot yet.</p>
         {:else}
           <ul class="divide-y divide-line">
             {#each pivot.fields as field (field.id)}
@@ -207,10 +207,11 @@
                   <Link href={fields.show(field.id)} class="font-medium hover:underline">{field.name}</Link>
                   <p class="text-xs text-ink-muted">
                     {units.format('area', field.area_acres)} · {field.soil_type_name}
-                    {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(custom FC/PWP){/if}
+                    {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(own field capacity and wilting
+                      point){/if}
                     {#if field.use_model_precip !== null}· {field.use_model_precip
                         ? 'modeled rain'
-                        : 'entered rain only'}{/if}
+                        : 'only the rain you enter'}{/if}
                   </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -232,7 +233,7 @@
                   <Button
                     variant="ghost"
                     class="px-2 py-1 text-xs"
-                    aria-label="+ Crop for {field.name}"
+                    aria-label="Add crop to {field.name}"
                     onclick={() => open({ kind: 'planting', field })}>+ Crop</Button
                   >
                 </div>
@@ -248,7 +249,7 @@
                       variant="danger-ghost"
                       class="px-2 py-1 text-xs"
                       aria-label="Delete {field.name}"
-                      onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its records`)}
+                      onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its crops and entries`)}
                     >
                       Delete
                     </Button>

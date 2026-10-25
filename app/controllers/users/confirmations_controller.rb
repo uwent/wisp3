@@ -28,7 +28,8 @@ module Users
         redirect_to new_user_session_path, notice: "Your email address is already confirmed. You can sign in.", status: :see_other
       else
         redirect_to new_user_confirmation_path, status: :see_other,
-          alert: "That confirmation link is invalid. Request a new one below, or sign in if you've already confirmed."
+          alert: "That confirmation link didn't work. It may be from an older email. Request a new one below, " \
+            "or sign in if you've already confirmed."
       end
     end
 

@@ -34,7 +34,7 @@
   } = $props()
 
   const frequencies: { value: Frequency; label: string; hint: string }[] = [
-    { value: 'never', label: 'Never', hint: 'WISP won’t email you about your fields.' },
+    { value: 'never', label: 'Never', hint: 'WISP won’t send you the daily email.' },
     {
       value: 'daily',
       label: 'Daily during season',
@@ -43,12 +43,12 @@
     {
       value: 'daily_all_year',
       label: 'Daily all year',
-      hint: 'Every morning, all year: weather for your pivots even when nothing is in season.',
+      hint: 'Every morning all year, with weather for your pivots even when nothing is in season.',
     },
     {
       value: 'needed',
       label: 'Only when irrigation is needed',
-      hint: `Only on mornings when a field needs irrigation now or within ${LEAD_DAYS} days (Irrigate or Caution).`,
+      hint: `Only on mornings when a field needs irrigation now or within ${LEAD_DAYS} days (fields marked Irrigate or Caution).`,
     },
   ]
 
@@ -71,7 +71,7 @@
     {
       value: 'needs_irrigation',
       label: 'Only fields needing irrigation',
-      hint: `Fields to irrigate now or within ${LEAD_DAYS} days (Irrigate or Caution).`,
+      hint: `Fields to irrigate now or within ${LEAD_DAYS} days (fields marked Irrigate or Caution).`,
     },
   ]
 
@@ -130,7 +130,8 @@
         },
         onError: (errors) => {
           saveState = 'failed'
-          saveError = [Object.values(errors)[0]].flat()[0] ?? 'Couldn’t save the settings.'
+          saveError =
+            [Object.values(errors)[0]].flat()[0] ?? 'Couldn’t save your settings. Check your connection and try again.'
         },
       },
     )
@@ -172,9 +173,9 @@
 <div>
   <h1 class="text-2xl font-semibold">Alerts</h1>
   <p class="text-sm text-ink-muted">
-    A morning email at about 6 am with your fields by operation, farm, weather zone (pivots sharing the same weather)
-    and pivot, each zone's weather for the past and coming week, which fields to irrigate or watch, with when and how
-    much, and the readings due on each field.
+    WISP can email you each morning at about 6 am. It lists your fields by operation, farm, weather zone (pivots that
+    share the same weather) and pivot, gives each zone's weather for the past and coming week, says which fields to
+    irrigate or watch and when and how much, and lists the readings due on each field.
   </p>
 </div>
 
@@ -204,8 +205,8 @@
       <fieldset class="space-y-3 {chosen === 'never' ? 'opacity-60' : ''}">
         <legend class="text-sm font-medium">Fields it covers</legend>
         <p class="text-sm text-ink-muted">
-          New fields are included, unless their pivot, farm or operation is left out entirely.
-          {pickedCount(allFields)} of {allFields.length} included.
+          New fields are included automatically, unless their pivot, farm or operation is left out entirely.
+          {pickedCount(allFields)} of {allFields.length} fields are included.
         </p>
         {#each groups as group (group.id)}
           {@const fields = groupFields(group)}
@@ -272,7 +273,9 @@
         {/each}
       </fieldset>
     {:else}
-      <p class="text-sm text-ink-muted">Once you've added fields, every one of them is included.</p>
+      <p class="text-sm text-ink-muted">
+        Once you've added fields, they'll all be included, and you can leave some out here.
+      </p>
     {/if}
   </div>
 </section>
@@ -281,8 +284,8 @@
   <div>
     <h2 class="text-lg font-medium">Today's email</h2>
     <p class="text-sm text-ink-muted">
-      See the email your saved settings give with today's data, or send it to {page.props.auth.user?.email} now, whatever
-      the frequency.
+      Preview the email your saved settings would send with today's data, or send it to {page.props.auth.user?.email}
+      now, whatever frequency you chose.
     </p>
   </div>
   <div class="flex flex-wrap gap-2">

@@ -46,7 +46,7 @@
   <h1 class="text-2xl font-semibold">{editing ? `Edit ${pivot.name}` : 'Add a pivot'}</h1>
   <p class="text-sm text-ink-muted">
     Weather comes from the pivot's location. {editing
-      ? 'Moving a pivot refetches its weather.'
+      ? 'If you move the pivot, WISP gets weather for its new location.'
       : 'You can move it or change any of this after it’s created.'}
   </p>
 </div>
@@ -81,7 +81,7 @@
           name="pivot[pump_capacity_gpm]"
           quantity="flow"
           value={pivot.pump_capacity_gpm ?? null}
-          hint="Lets you enter irrigation as run hours"
+          hint="With it, you can enter irrigation as hours the pivot ran."
           error={errors.pump_capacity_gpm}
         />
         <TextField

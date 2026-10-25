@@ -22,7 +22,7 @@ RSpec.describe DailyDigest do
     expect(digest.attention.map(&:field)).to eq([now, soon])
     expect(digest.entries.map { |entry| entry.status.status }).to eq(%i[irrigate caution ok])
     expect(digest.entries[1].outlook).to have_attributes(urgent: true, headline: "Irrigate by Wed, Jul 22")
-    expect(digest.entries[1].outlook.detail).to match(/\AProjected to reach the irrigation point in 2 days; about 1\.\d\d in would refill/)
+    expect(digest.entries[1].outlook.detail).to match(/\AProjected to reach the irrigation point in 2 days, when about 1\.\d\d in would refill/)
     expect(digest.subject).to eq("WISP: 1 field to irrigate, 1 to watch (Mon, Jul 20)")
     expect(digest).to be_deliverable
   end
@@ -63,7 +63,7 @@ RSpec.describe DailyDigest do
   end
 
   it "says why it wouldn't send" do
-    expect(described_class.new(user).skip_reason).to eq("No fields are included.")
+    expect(described_class.new(user).skip_reason).to eq("No fields are included in your daily email.")
     off = digest_field(pivot, "Off", 15)
     off.plantings.sole.update!(end_date: Date.new(2026, 7, 10))
     expect(described_class.new(user).skip_reason).to eq("No included field has a crop in season today.")

@@ -36,7 +36,7 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
   const dryCrossing = summary.dry_crossing ?? null
   const dry =
     dryCrossing && (!crossing || dryCrossing.date < crossing.date)
-      ? `If no rain falls: irrigate by ${formatDate(dryCrossing.date, { weekday: true })} (${relativeDay(dryCrossing.date, today)}).`
+      ? `If no rain falls, irrigate by ${formatDate(dryCrossing.date, { weekday: true })} (${relativeDay(dryCrossing.date, today)}).`
       : null
 
   if (crossing && crossing.days === 0) {
@@ -53,7 +53,7 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
     return {
       urgent: crossing.days <= LEAD_DAYS,
       headline: `Irrigate by ${formatDate(crossing.date, { weekday: true })}`,
-      detail: `Projected to reach ${level} ${relativeDay(crossing.date, today)}; about ${depth(crossing.refill)} would refill it to field capacity then.`,
+      detail: `Projected to reach ${level} ${relativeDay(crossing.date, today)}, when about ${depth(crossing.refill)} would refill the root zone to field capacity.`,
       chance: scenarios && `${scenarios} reach it by then.`,
       dry,
     }
@@ -64,7 +64,7 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
   return {
     urgent: false,
     headline: `No irrigation needed through ${formatDate(last.date, { weekday: true })}`,
-    detail: `Projected to stay above ${level} through the forecast.`,
+    detail: `Projected to stay above ${level} through the end of the forecast.`,
     chance: scenarios && !scenarios.startsWith('0 ') ? `${scenarios} reach it by then.` : null,
     dry,
   }

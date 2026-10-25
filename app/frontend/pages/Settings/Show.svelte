@@ -18,7 +18,7 @@
 
   // Returning false from onBefore cancels the request
   const confirmDelete = () =>
-    confirm('Delete your account? This permanently deletes your account and any farm data only you can access.')
+    confirm("Delete your account? This can't be undone. Farm data that only you can access will be deleted with it.")
 </script>
 
 <svelte:head><title>Settings · WISP</title></svelte:head>
@@ -35,7 +35,9 @@
       </div>
       <fieldset class="space-y-2">
         <legend class="text-sm font-medium">Units</legend>
-        <p class="text-sm text-ink-muted">How values are shown and entered. WISP stores everything in inches.</p>
+        <p class="text-sm text-ink-muted">
+          Choose how amounts are shown and entered. WISP keeps its records in inches and converts them for you.
+        </p>
         {#each unit_systems as system (system)}
           <label class="flex items-center gap-3 text-sm">
             <input type="radio" name="user[unit_system]" value={system} checked={user.unit_system === system} />
@@ -118,7 +120,7 @@
   <section class="space-y-3 rounded-lg border border-status-irrigate/40 bg-surface-raised p-6">
     <h2 class="text-lg font-medium">Delete account</h2>
     <p class="text-sm text-ink-muted">
-      Permanently deletes your account. Farm operations shared with other people stay with them.
+      This permanently deletes your account. Operations you share with other people stay with them.
     </p>
     <Form action={usersRegistrations.destroy()} onBefore={confirmDelete}>
       {#snippet children({ processing })}

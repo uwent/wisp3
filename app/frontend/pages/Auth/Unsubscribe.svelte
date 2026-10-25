@@ -12,7 +12,9 @@
 {#if !valid}
   <div>
     <h1 class="text-xl font-semibold">This link doesn't work</h1>
-    <p class="mt-1 text-sm text-ink-muted">Sign in and turn the daily email off in your settings.</p>
+    <p class="mt-1 text-sm text-ink-muted">
+      This link may be from an older email. Sign in to WISP and turn the daily email off in your settings.
+    </p>
   </div>
   <Link href={settings.show()} class="block text-center font-medium text-brand-600 hover:underline">Go to settings</Link
   >

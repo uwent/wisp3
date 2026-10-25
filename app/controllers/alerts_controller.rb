@@ -42,7 +42,7 @@ class AlertsController < AuthenticatedController
     return redirect_to(alerts_path, alert: cooldown_message) if current_user.digest_test_available_at
 
     if DailyDigest.new(current_user).all_entries.none?
-      redirect_to alerts_path, alert: "There's nothing to send: no fields are included."
+      redirect_to alerts_path, alert: "There's nothing to send because no fields are included. Choose at least one field above."
     elsif current_user.claim_digest_test!
       DigestMailer.test_daily(current_user).deliver_later
       redirect_to alerts_path, notice: "Test email sent to #{current_user.email}"

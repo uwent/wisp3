@@ -43,7 +43,7 @@ class PlantingTasks
     # On LAI the curve stands in for readings until the grower starts entering them
     return if lai && !last
 
-    label = lai ? "LAI" : "Percent cover"
+    label = lai ? "Leaf area index (LAI)" : "Percent cover"
     if !lai && last && last.pct_cover >= FULL_COVER_PCT
       return Task.new(kind: :canopy, label:, last_date: last.date, due: false, note: "canopy closed", todo: nil,
         message: nil)
@@ -62,18 +62,19 @@ class PlantingTasks
     check = @status.canopy.check or return
     crop = @planting.plant.name.downcase
     keep = if @planting.effective_canopy_interpolation == "curve"
-      " WISP still follows the curve through your readings; you can choose straight lines in setup instead."
+      " WISP still follows the typical curve through your readings; you can choose straight lines between " \
+        "readings in Setup instead."
     end
 
     if check.days_ahead
       days, way = check.days_ahead.abs, check.days_ahead.positive? ? "ahead of" : "behind"
-      todo = "Check canopy readings: about #{days} days #{way} the #{crop} curve"
-      message = "Your canopy readings run about #{days} days #{way} the #{crop} curve. If the crop isn't growing " \
-        "that much #{check.days_ahead.positive? ? "faster" : "slower"}, check the emergence date " \
-        "(#{day(@planting.emergence_date)}) and the readings.#{keep}"
+      todo = "Check your canopy readings: they're about #{days} days #{way} the typical #{crop} curve"
+      message = "Your canopy readings run about #{days} days #{way} the typical #{crop} curve. If your crop isn't " \
+        "growing that much #{check.days_ahead.positive? ? "faster" : "slower"}, check the emergence date " \
+        "(#{day(@planting.emergence_date)}) and your readings.#{keep}"
     else
       drop = check.drop
-      todo = "Check the #{day(drop[:date])} canopy reading: lower than the one before"
+      todo = "Check your #{day(drop[:date])} canopy reading, which is lower than the one before"
       message = "Your canopy reading on #{day(drop[:date])} (#{pct(drop[:to])}) is lower than the one before it " \
         "(#{pct(drop[:from])}), while the #{crop} curve is still growing or holding. If the canopy didn't really " \
         "shrink, check the reading.#{keep}"

@@ -134,7 +134,7 @@
             name="setup[pivot][pump_capacity_gpm]"
             quantity="flow"
             value={null}
-            hint="Optional; lets you enter irrigation as run hours"
+            hint="Optional. With it, you can enter irrigation as hours the pivot ran."
             error={error(e, 'pivot.pump_capacity_gpm')}
           />
         </div>
@@ -144,8 +144,8 @@
         <div>
           <h2 class="text-lg font-medium">3. Fields</h2>
           <p class="text-sm text-ink-muted">
-            One field per crop under the pivot; a pivot split between two crops is two fields. Emergence defaults to May
-            1. You can also add fields later.
+            Add one field for each crop under the pivot; a pivot split between two crops is two fields. If you leave the
+            emergence date blank, WISP uses May 1. You can also add fields later.
           </p>
         </div>
         {#if error(e, 'fields')}<p class="text-sm text-status-irrigate-ink">{error(e, 'fields')}</p>{/if}
@@ -218,7 +218,7 @@
       <div class="flex items-center gap-3">
         <Button type="submit" disabled={processing}>Save and start tracking</Button>
         {#if Object.keys(e).length}<p class="text-sm text-status-irrigate-ink">
-            Please fix the highlighted fields.
+            Please correct the highlighted entries.
           </p>{/if}
       </div>
     </div>

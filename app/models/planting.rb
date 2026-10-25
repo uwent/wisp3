@@ -52,7 +52,7 @@ class Planting < ApplicationRecord
   # percent cover gave 20–40% less ET than the percent cover method (docs/canopy/03-crop-curves.md)
   def lai_needs_curve
     return unless et_method == "lai" && plant && plant.canopy_model.nil?
-    errors.add(:et_method, "can be LAI only for crops with an LAI growth curve (#{lai_crops})")
+    errors.add(:et_method, "can be LAI (leaf area index) only for crops that have an LAI growth curve (#{lai_crops})")
   end
 
   def lai_crops = Plant.where.not(canopy_model: nil).order(:name).pluck(:name).to_sentence.presence || "none yet"

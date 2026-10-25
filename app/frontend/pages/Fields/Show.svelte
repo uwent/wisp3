@@ -58,12 +58,12 @@
   const rainSetting = $derived(field.use_model_precip === null ? '' : String(field.use_model_precip))
   // [value, label, hint]: blank follows the operation
   const rainOptions = $derived([
-    ['', `The operation's setting (${operationUsesModel ? 'modeled rain' : 'only rain you enter'})`, null],
-    ['true', 'Modeled rain for this pivot', 'Your own gauge readings replace it on the days you enter them.'],
+    ['', `Follow the operation's setting (${operationUsesModel ? 'modeled rain' : 'only the rain you enter'})`, null],
+    ['true', 'Modeled rain for this pivot', 'Your own rain gauge readings replace it on the days you enter them.'],
     [
       'false',
       'Only the rain you enter',
-      "For a gauge you read every day it rains. Other days count as dry; the projection still takes the forecast's rain, and shows the case with none.",
+      'Best if you read your gauge every day it rains. Days without an entry count as dry. The projection still uses the forecast rain, and also shows what happens if none falls.',
     ],
   ] as const)
   const guidance = $derived(
@@ -85,7 +85,8 @@
       // Storage blocked: only this page view remembers
     }
   }
-  const thresholdName = $derived(summary?.target_in === null ? 'at 0 AD' : 'below target')
+  const thresholdName = $derived(summary?.target_in === null ? 'of reaching 0 AD' : 'of falling below target')
+  const depthUnitName = $derived(units.label('depth') === 'mm' ? 'millimeters' : 'inches')
   let chartMode = $state<FieldChartMode>('ad')
   let forecastOpen = $state(true)
   let dailyOpen = $state(true)
@@ -220,8 +221,8 @@
 {:else}
   {#if summary.weather_pending}
     <p role="status" class="rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm">
-      Weather for this pivot is on the way, usually within a few minutes of adding it. Until it arrives there's no ET,
-      so the water balance below stays flat.
+      Weather for this pivot is on its way, usually within a few minutes of adding it. Until it arrives, WISP can't
+      estimate crop water use, so the numbers below won't change.
     </p>
   {/if}
   <!-- Summary -->
@@ -322,14 +323,14 @@
       </dl>
       {#if !summary.use_model_precip}
         <p class="mt-2 text-xs">
-          Rain: <Term id="entered_rain_only">only what you enter</Term>, and the forecast's ahead ·
-          <a href="#season-details" class="text-brand-600 underline underline-offset-2">change</a>
+          Rain: <Term id="entered_rain_only">only what you enter</Term>, plus the forecast for the days ahead.
+          <a href="#season-details" class="text-brand-600 underline underline-offset-2">Change this</a>
         </p>
       {/if}
       {#if summary.totals.entered_rain_days}
         <p class="mt-2 text-xs text-ink-muted">
-          On the {summary.totals.entered_rain_days} days with entered rain, your gauge read
-          {units.format('depth', summary.totals.entered_rain)} and the model {units.format(
+          On the {summary.totals.entered_rain_days} days you entered rain, your gauge read
+          {units.format('depth', summary.totals.entered_rain)} and the model estimated {units.format(
             'depth',
             summary.totals.entered_rain_model,
           )}.
@@ -411,16 +412,18 @@
         Dots on the line mark soil moisture readings. A dashed outline beside the rain shows the modeled rain where the
         balance didn't use it. The totals add up rain and irrigation from the first day in view, so zooming changes
         them. The bottom panel is the crop's {lai ? 'LAI' : 'canopy cover'} as the balance models it, with dots for your readings{#if planting?.canopy_curve}{' '}and
-          a thin dashed line for the {planting.plant_name.toLowerCase()} curve as it would be without them{/if}.
-        {#if forecast_days.length}
-          After today the dashed line follows the forecast, with planned irrigation; the shaded band is the range of
-          {summary?.ensemble_size
-            ? `${summary.ensemble_size} forecast scenarios (10th to 90th percentile)`
-            : 'forecast scenarios, once they arrive'}.
-          {#if hasDry}The dotted line is the same with no rain at all, since this field counts only the rain you enter.{/if}
-        {/if}
-        Scroll or drag the bar below to see the whole season.
+          a thin dashed line for the {planting.plant_name.toLowerCase()} curve as it would be without them{/if}. Scroll
+        or drag the bar below to see the whole season.
       </p>
+      {#if forecast_days.length}
+        <p class="text-xs text-ink-muted">
+          After today the dashed line follows the forecast, including any irrigation you've planned. The shaded band
+          shows where most of the {summary?.ensemble_size
+            ? `${summary.ensemble_size} forecast scenarios fall (all but the highest and lowest tenth)`
+            : 'forecast scenarios fall, once they are available'}.
+          {#if hasDry}The dotted line is the same with no rain at all, since this field counts only the rain you enter.{/if}
+        </p>
+      {/if}
     </section>
 
     {#if forecast_days.length}
@@ -440,10 +443,10 @@
         {#if forecastOpen}
           <div class="space-y-2" transition:slide={{ duration: motion(200) }}>
             <p class="text-xs text-ink-muted">
-              The forecast for this pivot run through the water balance. Plan irrigation by entering it on a future day;
-              it counts as applied when the day comes, so change or clear it if plans change. Depths in {units.label(
-                'depth',
-              )}. From the keyboard, the arrow keys move between cells, and Enter or typing edits one.
+              This is the forecast for this pivot, run through the water balance. To plan irrigation, enter an amount on
+              a future day. WISP counts it as applied when that day arrives, so change or clear it if your plans change.
+              Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and press
+              Enter or start typing to edit one.
             </p>
             <div class="overflow-auto rounded-lg border border-line bg-surface-raised">
               <table class="w-full text-sm">
@@ -456,7 +459,7 @@
                     <th class="px-2 py-2 font-medium">AD</th>
                     {#if hasDry}<th class="px-2 py-2 font-medium">AD if no rain</th>{/if}
                     {#if summary?.ensemble_size}
-                      <th class="px-2 py-2 font-medium">Range (10–90%)</th>
+                      <th class="px-2 py-2 font-medium">Likely range</th>
                       <th class="px-2 py-2 font-medium">Chance {thresholdName} by then</th>
                     {/if}
                   </tr>
@@ -538,23 +541,23 @@
       {#if dailyOpen}
         <div class="space-y-2" transition:slide={{ duration: motion(200) }}>
           <p class="text-xs text-ink-muted">
-            Click a rain, irrigation, moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value; Enter saves and moves
-            down. Clear a cell to go back to the modeled or pivot value. Depths in {units.label('depth')}. From the
-            keyboard, the arrow keys move between cells, and Enter or typing edits one.
+            Click a rain, irrigation, soil moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value, and press Enter
+            to save and move down. Clear a cell to go back to the modeled or pivot value. Depths are in {depthUnitName}.
+            From the keyboard, use the arrow keys to move between cells, and press Enter or start typing to edit one.
           </p>
           <div class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised">
             <table class="w-full text-sm">
               <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
                 <tr class="text-right">
                   <th class="px-3 py-2 text-left font-medium">Date</th>
-                  <th class="px-2 py-2 font-medium">Ref ET</th>
+                  <th class="px-2 py-2 font-medium">Reference ET</th>
                   <th class="px-2 py-2 font-medium">Crop ET</th>
                   <th class="px-2 py-2 font-medium">Rain</th>
                   <th class="px-2 py-2 font-medium">Irrigation</th>
-                  <th class="px-2 py-2 font-medium">Moisture reading (%)</th>
+                  <th class="px-2 py-2 font-medium">Soil moisture reading (%)</th>
                   <th class="px-2 py-2 font-medium">{lai ? 'LAI' : 'Cover (%)'}</th>
                   <th class="px-2 py-2 font-medium">AD</th>
-                  <th class="px-2 py-2 font-medium">Moisture (%)</th>
+                  <th class="px-2 py-2 font-medium">Soil moisture (%)</th>
                   <th class="px-2 py-2 font-medium">Drainage</th>
                   <th class="px-2 py-2 text-left font-medium">Notes</th>
                 </tr>
@@ -584,9 +587,10 @@
                           <span class="text-ink-muted">{depth(day.rain)}</span>
                         {:else}
                           <span class="font-medium">{depth(day.rain)}</span>
-                          {#if day.rain_source === 'group'}<span class="ml-1 text-xs text-brand-600">group</span>{/if}
+                          {#if day.rain_source === 'group'}<span class="ml-1 text-xs text-brand-600">from group</span
+                            >{/if}
                           {#if rainOverridden(day)}<span class="block text-xs text-ink-muted"
-                              >model {depth(day.rain_model)}</span
+                              >modeled {depth(day.rain_model)}</span
                             >{/if}
                         {/if}
                       </EditableCell>
@@ -604,9 +608,11 @@
                           <span class="text-ink-muted">–</span>
                         {:else}
                           <span class="font-medium">{depth(day.irrigation)}</span>
-                          {#if day.irrigation_source === 'pivot'}<span class="ml-1 text-xs text-brand-600">pivot</span
+                          {#if day.irrigation_source === 'pivot'}<span class="ml-1 text-xs text-brand-600"
+                              >from pivot</span
                             >{/if}
-                          {#if day.irrigation_source === 'group'}<span class="ml-1 text-xs text-brand-600">group</span
+                          {#if day.irrigation_source === 'group'}<span class="ml-1 text-xs text-brand-600"
+                              >from group</span
                             >{/if}
                           {#if day.irrigation_source === 'entered' && day.pivot_inches !== null}
                             <span class="block text-xs text-ink-muted">pivot {depth(day.pivot_inches)}</span>
@@ -625,7 +631,8 @@
                       >
                         {#if day.soil_moisture_pct !== null}
                           <span class="font-medium">{day.soil_moisture_pct}</span>
-                          {#if day.moisture_source === 'group'}<span class="ml-1 text-xs text-brand-600">group</span
+                          {#if day.moisture_source === 'group'}<span class="ml-1 text-xs text-brand-600"
+                              >from group</span
                             >{/if}
                         {:else}<span class="text-ink-muted">–</span>{/if}
                       </EditableCell>
@@ -671,14 +678,13 @@
             </table>
           </div>
           <p class="text-xs text-ink-muted">
-            Muted rain is modeled for the pivot's location; bold values were entered. Irrigation marked “pivot” is
-            entered on the
+            Rain in gray is modeled for the pivot's location; bold values are ones you entered. Irrigation marked “from
+            pivot” was entered on the
             <Link href={pivots.show(pivot.id)} class="text-brand-600 underline underline-offset-2"
               >pivot's irrigation page</Link
-            > or in daily entry. * Crop ET estimated from the past week because the day's weather is missing. {lai
-              ? 'LAI'
-              : 'Cover'} in muted text is estimated: {planting?.effective_canopy_interpolation === 'curve'
-              ? "the crop's curve, scaled through your readings"
+            > or on the Daily entry page. * Crop ET is estimated from the past week because that day's weather is missing.
+            {lai ? 'LAI' : 'Cover'} in gray is estimated: {planting?.effective_canopy_interpolation === 'curve'
+              ? "the crop's typical curve, adjusted to your readings"
               : 'straight lines between your readings'}.
           </p>
         </div>
@@ -713,8 +719,7 @@
         {/each}
       </fieldset>
       <p class="text-xs text-ink-muted">
-        This only changes how the balance reads your data: nothing is copied or deleted, so you can switch back at any
-        time.
+        This only changes which rain the balance uses. Nothing is copied or deleted, so you can switch back at any time.
       </p>
       <Button type="submit" disabled={processing}>Save</Button>
     {/snippet}

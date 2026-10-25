@@ -19,7 +19,7 @@
   {#snippet children({ errors, processing })}
     {#if errors.reset_password_token}
       <p class="rounded-md bg-status-irrigate/10 px-3 py-2 text-sm" role="alert">
-        This reset link is invalid or has expired.
+        This reset link has expired or was already used.
         <Link href={usersPasswords.new()} class="font-medium text-brand-600 underline underline-offset-2"
           >Request a new one</Link
         >.

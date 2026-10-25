@@ -57,7 +57,11 @@
   }
 
   function destroy() {
-    if (confirm(`Delete ${field_group.name} and its entries? The fields themselves stay.`)) {
+    if (
+      confirm(
+        `Delete ${field_group.name} and the values entered for it? The fields and their own entries aren't affected.`,
+      )
+    ) {
       router.delete(fieldGroups.destroy(field_group.id).url)
     }
   }
@@ -119,10 +123,11 @@
 {/if}
 
 <p class="text-xs text-ink-muted">
-  Click a cell to enter a value for every field in the group; Enter saves and moves down. Depths in {units.label(
-    'depth',
-  )}. From the keyboard, the arrow keys move between cells, and Enter or typing edits one.
-  {#if has_cover}Cover is saved as a reading on each member field's percent-cover crop.{/if}
+  Click a cell to enter a value for every field in the group, and press Enter to save and move down. Depths are in
+  {units.label('depth') === 'mm' ? 'millimeters' : 'inches'}. From the keyboard, use the arrow keys to move between
+  cells, and press Enter or start typing to edit one.
+  {#if has_cover}Cover is saved as a percent cover reading for each field in the group whose crop is tracked by percent
+    cover.{/if}
 </p>
 <div class="max-h-[40rem] overflow-auto rounded-lg border border-line bg-surface-raised">
   <table class="w-full text-sm">
@@ -158,7 +163,7 @@
                   >
                 {:else if column === 'pct_cover' && day.pct_cover_mixed}<span
                     class="text-ink-muted"
-                    title="The member fields have different readings">varies</span
+                    title="The fields in this group have different readings">varies</span
                   >
                 {:else if day[column] === null}<span class="text-ink-muted">–</span>
                 {:else if column === 'soil_moisture_pct' || column === 'pct_cover'}{day[column]}

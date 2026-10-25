@@ -60,15 +60,15 @@
 
   const pct = (fraction: number) => `${+(fraction * 100).toFixed(2)}%`
   function declineText(decline: CanopyCurve['decline']): string {
-    if (!decline) return "Holds its maximum until the planting's end date."
+    if (!decline) return "Holds its maximum cover until the planting's end date."
     if (decline.type === 'aquacrop') {
-      return `Declines from day ${decline.start_day} by AquaCrop's equation (CDC ${decline.cdc} a day).`
+      return `Declines from day ${decline.start_day} after emergence, following AquaCrop's equation (CDC ${decline.cdc} a day).`
     }
     const [month, day] = decline.date.split('-').map(Number)
     const date = new Date(2000, month - 1, day).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
     return (
-      `From ${date} (or once the canopy is full, if later), eases down to ${decline.floor}% over ` +
-      `${decline.days} days, fastest halfway, then holds until the end date.`
+      `Starting ${date} (or once the canopy is full, if that comes later), cover eases down to ${decline.floor}% ` +
+      `over ${decline.days} days, fastest at the halfway point, then holds until the end date.`
     )
   }
 
@@ -123,9 +123,10 @@
     <h2 id="how-it-works">How it works</h2>
     <h3>The water balance</h3>
     <p>
-      WISP treats each field's root zone as a single reservoir. Its size depends on the soil and the crop: the water
-      held between <Term id="field_capacity">field capacity</Term> and the <Term id="wilting_point">wilting point</Term
-      >, over the depth of the root zone. Of that, the crop can use a share without stress, set by its
+      WISP treats each field's root zone as a single bucket. How big the bucket is depends on the soil and the crop: it
+      is the water held between <Term id="field_capacity">field capacity</Term> and the <Term id="wilting_point"
+        >wilting point</Term
+      >, over the depth of the root zone. The crop can use a share of that water without stress, set by its
       <Term id="mad">MAD</Term> ({defaults.mad_pct}% unless you change it). WISP tracks how much of that share is left,
       the <Term id="ad">allowable depletion (AD)</Term>, from day to day:
     </p>
@@ -133,8 +134,8 @@
       <li><strong>Rain and irrigation</strong> add to it.</li>
       <li>
         <strong>The crop's water use</strong> (<Term id="crop_et">crop ET</Term>) takes from it. It is the day's
-        <Term id="reference_et">reference ET</Term>, worked out from the weather, scaled by how much of the ground the
-        crop covers (<Term id="percent_cover">percent cover</Term> or <Term id="lai">LAI</Term>).
+        <Term id="reference_et">reference ET</Term>, worked out from the weather, adjusted for how much of the ground
+        the crop covers (<Term id="percent_cover">percent cover</Term> or <Term id="lai">LAI</Term>).
       </li>
       <li>
         Water beyond field capacity drains below the roots and is counted as <Term id="deep_drainage"
@@ -145,18 +146,19 @@
     </ul>
     <p>
       A full root zone has AD at its maximum. At 0 AD the crop has used its allowance and it's time to irrigate; below 0
-      it is increasingly stressed. The balance is worked out afresh from the season's start every time you look, so a
-      value you correct last week flows through to today straight away.
+      it is increasingly stressed. The balance is recalculated from the start of the season every time you open a page,
+      so a value you correct from last week is reflected in today's numbers right away.
     </p>
 
     <h3>Weather</h3>
     <p>
-      Each pivot's weather comes from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> for
-      the roughly 9 km grid cell it sits in, refreshed at 5 am, 11 am and 5 pm Central: rain, reference ET (FAO-56 Penman-Monteith),
-      temperatures, humidity, wind, and modeled soil moisture and temperature. Past days are revised as better data comes
-      in, then fixed. You can use your own rain gauge readings in place of the modeled rain on any day, or, for a whole operation
-      or a single field, use only the rain you enter. The days ahead still use the forecast's rain, and such a field's outlook
-      also says when it would need water if no rain fell.
+      Each pivot's weather comes from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>,
+      for an area about 9 km across around its location. It's updated at 5 am, 11 am and 5 pm Central and includes rain,
+      reference ET (FAO-56 Penman-Monteith), temperature, humidity, wind, and modeled soil moisture and soil
+      temperature. Recent days are revised as better data arrives, then settled. Modeled rain can miss a local storm, so
+      you can enter your own rain gauge readings in its place on any day. For a whole operation or a single field, you
+      can also choose to count only the rain you enter. The days ahead still use the forecast rain, and the outlook for
+      such a field also says when it would need water if no rain fell.
     </p>
 
     <h3>The outlook</h3>
@@ -164,8 +166,8 @@
       WISP runs each field's balance forward through the next {defaults.forecast_days} days of forecast, counting any irrigation
       you've planned, to find the day it would reach 0 AD, or the target you've set for the field. That day is its
       <strong>Irrigate by</strong> date, along with how much water would refill the root zone then. It also runs the balance
-      through 31 forecast scenarios, so you can see how sure that date is: "24 of 31 forecast scenarios reach it by then"
-      means rain could well push it back.
+      through 31 forecast scenarios, slightly different versions of the forecast, so you can see how sure that date is. If
+      "24 of 31 forecast scenarios reach it by then," the other seven don't, so rain could well push the date back.
     </p>
     <p>Each field gets a status for today:</p>
     <table>
@@ -176,11 +178,12 @@
         <tr>
           <td><StatusBadge status="caution" /></td>
           <td>
-            Below its target (or half its maximum AD) but above 0, or projected to reach the irrigation point within
+            Below its target (or half its maximum AD) but still above 0, or expected to reach the irrigation point
+            within
             {defaults.lead_days} days.
           </td>
         </tr>
-        <tr><td><StatusBadge status="irrigate" /></td><td>At or below the irrigation point, 0 AD, today.</td></tr>
+        <tr><td><StatusBadge status="irrigate" /></td><td>At or below the irrigation point (0 AD) today.</td></tr>
       </tbody>
     </table>
 
@@ -188,10 +191,9 @@
     <h3>Your account and operation</h3>
     <p>
       Create an account with your email address. You can sign in with a password, or have WISP email you a sign-in link
-      and code. Your account comes with a farm operation of your own. To work on the same farms as other people, add
-      them to the operation by their email address (Farm operation and members, in the account menu). Every member can
-      set up and enter data; owners can also change the operation's settings and members, and delete farms, pivots and
-      fields.
+      and code. Your account comes with an operation of your own. To work on the same farms as other people, add them to
+      the operation by their email address (Operation and members, in the account menu). Every member can set up fields
+      and enter data. Owners can also change the operation's settings and members, and delete farms, pivots and fields.
     </p>
     <h3>Farms, pivots, fields and crops</h3>
     <p>WISP organizes everything the way irrigation is managed:</p>
@@ -211,8 +213,8 @@
       </li>
       <li>
         <strong>Crop (planting):</strong> a crop on a field for one season, with its emergence date, root zone depth,
-        MAD and canopy method. Defaults for each crop are in the <a href="#crops">table below</a>. A field can have more
-        than one planting a year, for double cropping.
+        MAD and the way its canopy is tracked. Typical values for each crop are in the <a href="#crops">table below</a>.
+        A field can have more than one planting a year, for double cropping.
       </li>
     </ul>
     <p>
@@ -229,19 +231,19 @@
         irrigation.
       </li>
       <li>
-        <strong>Map:</strong> every pivot where it is, in the color of its most urgent field, with each field's status at
-        its center, and the fields listed beside it, most urgent first or north to south. Choose "Needs water within 3 days"
-        (or 7) to see which pivots to irrigate this week. Click a pivot, or a field in the list, for its fields and its weather.
-        Layers add radar, rain over the last 24 or 72 hours, the Weather Service's forecast rain, and the U.S. Drought Monitor;
-        point at the map, or tap it, to see their values there.
+        <strong>Map:</strong> shows each pivot where it is, colored by its most urgent field, with each field's status at
+        its center. The fields are listed beside the map, most urgent first or north to south. Choose "Needs water within
+        3 days" (or 7) to see which pivots to irrigate this week. Click a pivot, or a field in the list, to see its fields
+        and weather. Layers add radar, rain over the last 24 or 72 hours, the National Weather Service's forecast rain, and
+        the U.S. Drought Monitor; point at the map, or tap it, to see their values at that spot.
       </li>
       <li>
         <strong>Daily entry:</strong> rain, irrigation and soil moisture for every field on one day. Irrigation can be entered
-        once for a pivot and its fields. Leave rain blank to use the modeled value; enter 0 if your gauge read nothing.
+        once for a pivot and its fields. Leave rain blank to use the modeled rain. Enter 0 if your gauge showed no rain.
       </li>
       <li>
-        <strong>Field groups</strong> (in Setup): fields that share readings, such as one rain gauge. Values entered for a
-        group apply to each of its fields.
+        <strong>Field groups</strong> (in Setup): fields that share readings, such as the same rain gauge. A value you enter
+        for a group applies to every field in it.
       </li>
       <li>
         <strong>A field's page:</strong> its status and outlook, a chart of the season, the next
@@ -250,11 +252,11 @@
         Export the season as a CSV file.
       </li>
       <li>
-        <strong>Alerts:</strong> a morning email at about 6 am with your fields by operation, farm, weather zone (pivots sharing
-        the same weather) and pivot, each zone's weather, which fields to irrigate or watch, and the readings due. Choose
-        which fields it covers and which of them it lists (all, those in season, those needing irrigation or readings, or
-        only those needing irrigation), and how often it comes: daily during the season, daily all year (weather out of season
-        too), only when a field needs irrigation, or never.
+        <strong>Alerts:</strong> a morning email at about 6 am. It groups your fields by operation, farm, weather zone (pivots
+        that share the same weather) and pivot, and gives each zone's weather, which fields to irrigate or watch, and which
+        readings are due. You choose which fields it covers, which of those it lists (all, only those in season, only those
+        needing irrigation or readings, or only those needing irrigation), and how often it comes: daily during the season,
+        daily all year (with weather out of season too), only when a field needs irrigation, or never.
       </li>
     </ul>
 
@@ -270,9 +272,9 @@
       </li>
       <li>
         <strong>Rain:</strong> rain is patchy, and the weather model's estimate for your pivot can miss a storm or catch one
-        that missed you. A gauge at or near the field, read daily, is the single best correction. If you read it every day
-        it rains, set the field to use only the rain you enter; the season details on its page compare your gauge with the
-        model.
+        that missed you. A rain gauge at or near the field, read daily, is the best way to correct it. If you read it every
+        day it rains, set the field to use only the rain you enter; the season details on its page compare your gauge with
+        the model.
       </li>
       <li>
         <strong>Soil moisture:</strong> a measured root zone moisture resets the balance, correcting any drift. Enter
@@ -282,8 +284,8 @@
       <li>
         <strong>Canopy:</strong> with percent cover, enter it about weekly from emergence until the canopy covers about
         {FULL_COVER_PCT}% of the ground; between and after readings WISP follows the crop's
-        <a href="#canopy">canopy curve</a>, scaled through them. For row crops, divide the average canopy width by the
-        row spacing. LAI is available for field corn, which follows a growth curve unless you enter readings.
+        <a href="#canopy">canopy curve</a>, adjusted to them. For row crops, divide the average canopy width by the row
+        spacing. LAI is available for field corn, which follows a growth curve unless you enter readings.
       </li>
       <li>
         <strong>Root zone depth:</strong> the defaults are typical; the depth your crop actually roots to is best measured
@@ -315,7 +317,7 @@
             <th class="px-3 py-2 text-right font-medium">Field capacity</th>
             <th class="px-3 py-2 text-right font-medium">Wilting point</th>
             <th class="px-3 py-2 text-right font-medium">Available water</th>
-            <th class="px-3 py-2 font-medium">Values from</th>
+            <th class="px-3 py-2 font-medium">Source of values</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-line">
@@ -343,11 +345,11 @@
 
     <h2 id="crops">Crops</h2>
     <p>
-      Every crop can use percent cover. LAI is available only for crops with an LAI growth curve, so far field corn;
-      curves for more crops will be added as validated ones become available. Default root zone depths are from Table
-      3.4 of the NRCS National Engineering Handbook, part 652 (mint from FAO-56), and suggested sensor depths are 25%
-      and 75% of them. Every crop starts with MAD
-      {defaults.mad_pct}% and a season from April 1 to November 30; change any of them for your planting.
+      Every crop can use percent cover. LAI is available only for crops that have an LAI growth curve, so far just field
+      corn; more will be added as validated curves become available. Typical root zone depths are from Table 3.4 of the
+      NRCS National Engineering Handbook, part 652 (mint from FAO-56), and suggested sensor depths are 25% and 75% of
+      the root zone depth. Every crop starts with a MAD of
+      {defaults.mad_pct}% and a season from April 1 to November 30; you can change any of these for your planting.
     </p>
     <div class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised">
       <table class="w-full text-sm">
@@ -381,30 +383,32 @@
     <h2 id="canopy">Canopy curves</h2>
     <p>
       A crop's water use follows its canopy, so WISP needs the canopy every day of the season. Every crop with a card
-      below has a default <Term id="canopy_curve">canopy curve</Term>: percent cover by day since emergence. With no
+      below has a typical <Term id="canopy_curve">canopy curve</Term>: its percent cover by day since emergence. With no
       readings WISP follows it from the emergence date.
     </p>
     <p>
-      <strong>Your readings scale the curve.</strong> At each reading WISP takes the ratio of your reading to the curve, draws
-      straight lines between those ratios (starting from 1 at emergence, and holding the last one), and multiplies the curve
-      by them. The canopy then passes through every reading and keeps the curve's shape between and after them, including
-      its late-season decline. It never goes above the larger of the curve's maximum and your highest reading. In setup, a
-      planting can draw straight lines between readings instead, as WISP used to. Backtested on Wisconsin growers' 2026 readings,
-      following the curve halved the error in the next week's canopy compared with straight lines.
+      <strong>Your readings adjust the curve.</strong> At each reading, WISP compares your reading with the curve to get a
+      ratio. It draws straight lines between those ratios (starting from 1 at emergence and holding the last one) and multiplies
+      the curve by them. The canopy then passes through every reading and keeps the curve's shape between and after them,
+      including its late-season decline. It never goes above the larger of the curve's maximum and your highest reading. In
+      Setup, a planting can use straight lines between readings instead, as earlier versions of WISP did. Tested against Wisconsin
+      growers' 2026 readings, following the curve cut the error in the next week's canopy cover in half compared with straight
+      lines.
     </p>
     <p>
-      <strong>When readings and the curve disagree,</strong> the field page says so: if readings between 10% and 80% run
-      more than {defaults.shift_warning_days} days ahead of or behind the curve (often a sign that the emergence date is off),
-      or a reading falls more than {defaults.drop_warning} points while the curve is still growing or holding. WISP keeps
-      following the curve through your readings either way.
+      <strong>When your readings and the curve disagree,</strong> the field page says so. That happens if readings
+      between 10% and 80% run more than {defaults.shift_warning_days} days ahead of or behind the curve (often a sign that
+      the emergence date is off), or if a reading drops by more than {defaults.drop_warning} points while the curve is still
+      growing or holding steady. Either way, WISP keeps following the curve through your readings.
     </p>
     <p>
       <strong>How the curves were made.</strong> Growth follows the canopy cover equations of FAO's AquaCrop model, with
       three numbers per crop: the cover just after emergence (CC₀), the maximum cover (CCx), and a growth rate (CGC).
-      Some crops also decline late in the season. Where FAO's AquaCrop has a crop file, its calendar-day values are
-      used; they matched Wisconsin 2026 readings within a few days for potato, field corn and snap bean, and were
-      adjusted to them for soybean and sweet corn. Other crops' timings come from FAO-56's stage lengths. Each card says
-      which, and how far it has been checked. The research notes, data screening and scripts are in
+      Some crops also decline late in the season. Where FAO's AquaCrop has a crop file, WISP uses its values by calendar
+      day. They matched Wisconsin 2026 readings within a few days for potato, field corn and snap bean, and were
+      adjusted to match for soybean and sweet corn. For other crops the timing comes from the stage lengths in FAO-56.
+      Each card says which source was used and how well it has been checked. The research notes, data screening and
+      scripts are in
       <a href="https://github.com/uwent/wisp3/tree/main/docs/canopy" target="_blank" rel="noopener"
         >the WISP source code</a
       >.
@@ -418,18 +422,19 @@ decline: CC = CCx · [1 − 0.05 · (e^(3.33·CDC·t′ / (CCx + 2.29)) − 1)]
 t: days since emergence; t′: days since the decline starts</code
       ></pre>
     <p>
-      <strong>Crops without a curve</strong> ({withoutCurve.join(', ')}) use only the cover you enter: straight lines
-      between readings, and no cover until the first one. Onion has no published canopy parameters we could check;
-      alfalfa and mint are cut and regrown during the season; asparagus has no source for fern growth after harvest.
+      <strong>Crops without a curve</strong> ({withoutCurve.join(', ')}) use only the cover you enter: WISP draws
+      straight lines between your readings and assumes no cover until the first one. We found no published canopy values
+      for onion to check against; alfalfa and mint are cut and regrow during the season; and we found no source for
+      asparagus fern growth after harvest.
     </p>
     <p>
       <strong>LAI</strong> is offered only for crops with an LAI curve, so far field corn, whose curve comes from the Wisconsin
-      Irrigation Scheduler (WIS v6.3.11) spreadsheet and peaks at about 4 around 80 days after emergence. Deriving LAI from
-      percent cover would put crop water use 20–40% below the percent cover method while the canopy develops, so it isn't
-      offered.
+      Irrigation Scheduler (WIS v6.3.11) spreadsheet and peaks at about 4 around 80 days after emergence. Estimating LAI from
+      percent cover would put crop water use 20 to 40% below the percent cover method while the canopy develops, so WISP doesn't
+      offer it.
     </p>
     <p class="text-sm text-ink-muted">
-      Each curve is drawn for a May 15 emergence, over {curves[0]?.covers.length - 1} days.
+      Each curve is drawn for a crop that emerges on May 15, over {curves[0]?.covers.length - 1} days.
     </p>
     <div class="not-prose grid gap-4 sm:grid-cols-2">
       {#each curves as curve (curve.key)}
@@ -453,7 +458,8 @@ t: days since emergence; t′: days since the decline starts</code
               80% on day {curve.days_to[80]}{/if}. {declineText(curve.decline)}
           </p>
           <p class="text-ink-muted">
-            {curve.basis}. CC₀ {pct(curve.growth.cc0)}, CCx {pct(curve.growth.ccx)}, CGC {curve.growth.cgc} a day.
+            {curve.basis}. Starting cover (CC₀) {pct(curve.growth.cc0)}, maximum cover (CCx) {pct(curve.growth.ccx)},
+            growth rate (CGC) {curve.growth.cgc} a day.
           </p>
           {#if curve.notes}<p class="text-ink-muted">{curve.notes}</p>{/if}
           <details class="text-xs text-ink-muted">
@@ -500,9 +506,9 @@ t: days since emergence; t′: days since the decline starts</code
         reduced motion settings, and work with text enlarged to 200% and on screens as narrow as 320 pixels.
       </li>
       <li>
-        The pivot map needs a pointer to drag a pivot's handles; every handle has a typed field below the map that does
-        the same. The optional map layers (radar, rain, drought) are images from outside services and are described by
-        their legends and by the values shown under the pointer.
+        Dragging a pivot's handles on the map needs a mouse or touch, but every handle also has a box below the map
+        where you can type the same values. The optional map layers (radar, rain, drought) are images from outside
+        services and are described by their legends and by the values shown under the pointer.
       </li>
     </ul>
     <p>

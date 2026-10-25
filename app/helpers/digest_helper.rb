@@ -21,18 +21,19 @@ module DigestHelper
   # The pivots of a weather zone in this email: "North 160, South 80"
   def digest_zone_pivots(zone) = zone.pivots.map { |section| section.pivot.name }.join(", ")
 
-  # "AD 0.45 in of 1.20 in · 9.5% moisture", or just "AD 0.45 in"
+  # "Allowable depletion 0.45 in of 1.20 in · 9.5% soil moisture", or just "Allowable depletion 0.45 in"
   def digest_ad(entry, digest, short: false)
     result = entry.status.current.result
-    return "AD #{digest.depth(result.ad)}" if short
+    return "Allowable depletion #{digest.depth(result.ad)}" if short
 
-    "AD #{digest.depth(result.ad)} of #{digest.depth(entry.status.params.ad_max)} · #{format("%.1f", result.pct_moisture)}% moisture"
+    "Allowable depletion #{digest.depth(result.ad)} of #{digest.depth(entry.status.params.ad_max)} · " \
+      "#{format("%.1f", result.pct_moisture)}% soil moisture"
   end
 
-  # The latest rain or irrigation: "0.40 in, Oct 1", or "None"
+  # The latest rain or irrigation: "0.40 in, Oct 1", or "none recorded"
   def digest_last(entry, digest, kind)
     day = (kind == :rain) ? entry.status.last_rain : entry.status.last_irrigation
-    day ? "#{digest.depth(day.inputs.public_send(kind))}, #{day.inputs.date.strftime("%b %-d")}" : "None"
+    day ? "#{digest.depth(day.inputs.public_send(kind))}, #{day.inputs.date.strftime("%b %-d")}" : "none recorded"
   end
 
   # What's due for a field (PlantingTasks): ["Enter a soil moisture reading (last Oct 1)", …]
@@ -52,20 +53,20 @@ module DigestHelper
   # Farm: Hancock"
   def digest_context(digest) = digest.context.map { |label, name| "#{label}: #{name}" }.join(" · ")
 
-  # "This email lists 2 fields on 2 pivots, of the 13 fields on 8 pivots your alerts cover (5 with a
-  # crop this season)."
+  # "This email lists 2 fields on 2 pivots, out of the 13 fields on 8 pivots in your alert settings (5
+  # have a crop this season)."
   def digest_counts(digest)
     c = digest.counts
-    "This email lists #{pluralize(c.fields, "field")} on #{pluralize(c.pivots, "pivot")}, of the " \
-      "#{pluralize(c.covered_fields, "field")} on #{pluralize(c.covered_pivots, "pivot")} your alerts cover " \
-      "(#{c.planted} with a crop this season)."
+    "This email lists #{pluralize(c.fields, "field")} on #{pluralize(c.pivots, "pivot")}, out of the " \
+      "#{pluralize(c.covered_fields, "field")} on #{pluralize(c.covered_pivots, "pivot")} in your alert " \
+      "settings (#{c.planted} have a crop this season)."
   end
 
   # The one-line outlook for a field that's fine, or why there isn't one
   def digest_summary(entry)
-    if entry.status.weather_pending? then "Weather for this pivot is on the way."
+    if entry.status.weather_pending? then "Weather for this pivot is on its way."
     elsif entry.outlook then entry.outlook.headline
-    else "No forecast yet."
+    else "No forecast is available for this field yet."
     end
   end
 
@@ -79,7 +80,7 @@ module DigestHelper
       temps = [("highs #{digest.temperatures(span.tmax)}" if span.tmax), ("lows #{digest.temperatures(span.tmin)}" if span.tmin)]
       parts = [("#{digest.depth(span.precip)} rain" if span.precip), ("#{digest.depth(span.et0)} ET" if span.et0),
         temps.compact.join(", ").presence].compact
-      "#{label} #{span.days} #{"day".pluralize(span.days)}: #{parts.any? ? parts.join(" · ") : "no data"}"
+      "#{label} #{span.days} #{"day".pluralize(span.days)}: #{parts.any? ? parts.join(" · ") : "not available yet"}"
     end
     lines.presence || ["Weather for these pivots is on the way."]
   end

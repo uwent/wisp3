@@ -195,8 +195,7 @@ const qpfTime = (layer: number) => async () => {
   return issued ? `Issued ${describeTime(parseWpcTime(issued))}` : null
 }
 
-const QPF_NOTE =
-  "A forecaster's product from the National Weather Service; WISP's own forecast (Open-Meteo) can differ."
+const QPF_NOTE = "Prepared by National Weather Service forecasters. WISP's own forecast, from Open-Meteo, can differ."
 
 const qpf = (id: 'qpf1' | 'qpf3' | 'qpf7', name: string, description: string): RasterOverlay => ({
   id,
@@ -237,7 +236,7 @@ export const RAIN_OVERLAYS: RasterOverlay[] = [
     id: 'radar',
     kind: 'raster',
     name: 'Radar now',
-    description: 'Base reflectivity across the US, updated every 5 minutes.',
+    description: 'Radar showing where rain is falling across the US, updated every 5 minutes.',
     credit: { name: 'Iowa Environmental Mesonet, NOAA', url: 'https://mesonet.agron.iastate.edu/ogc/' },
     attribution: 'Radar: <a href="https://mesonet.agron.iastate.edu/">Iowa Environmental Mesonet</a>, NOAA',
     legend: {

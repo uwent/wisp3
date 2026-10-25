@@ -12,7 +12,9 @@
 {#if status === 'pending'}
   <div>
     <h1 class="text-xl font-semibold">Confirm your email</h1>
-    <p class="mt-1 text-sm text-ink-muted">One click and you can sign in to WISP.</p>
+    <p class="mt-1 text-sm text-ink-muted">
+      Confirm this address with the button below, and then you can sign in to WISP.
+    </p>
   </div>
   <Form action={usersConfirmations.confirm()}>
     {#snippet children({ processing })}
@@ -30,7 +32,8 @@
   <div>
     <h1 class="text-xl font-semibold">This link doesn't work</h1>
     <p class="mt-1 text-sm text-ink-muted">
-      It may be from an older email. Request a new confirmation link, or sign in if you've already confirmed.
+      It may be from an older email. You can ask for a new confirmation link, or sign in if you've already confirmed
+      your address.
     </p>
   </div>
   <Link href={usersConfirmations.new()} class="block text-center font-medium text-brand-600 hover:underline">

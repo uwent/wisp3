@@ -18,7 +18,7 @@ export async function signIn(page: Page) {
   // is its own menu on wider screens, and part of the account menu on phones.
   if ((await page.getByRole('heading', { name: 'Dashboard' }).locator('..').textContent())?.includes('Demo farms'))
     return
-  const switcher = page.getByRole('button', { name: 'Switch farm operation' })
+  const switcher = page.getByRole('button', { name: 'Switch operation' })
   await ((await switcher.isVisible()) ? switcher : page.getByRole('button', { name: 'Account menu' })).click()
   await page.getByRole('menuitem', { name: 'Demo farms' }).click()
   await expect(page.getByRole('heading', { name: 'Dashboard' }).locator('..')).toContainText('Demo farms')

@@ -122,7 +122,7 @@ class DailyDigest
     elsif !user.confirmed?
       "The email address isn't confirmed."
     elsif all_entries.none?
-      "No fields are included."
+      "No fields are included in your daily email."
     elsif user.digest_frequency == "daily_all_year"
       nil
     elsif entries.none?

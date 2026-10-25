@@ -55,7 +55,7 @@
         required
         bind:value={emailValue}
         error={errors.email}
-        hint="We'll email you a 6-digit code and a one-click sign-in link. No password needed."
+        hint="We'll email you a six-digit code and a sign-in link. You won't need a password."
       />
       <Button type="submit" class="w-full" disabled={processing}>Email me a code</Button>
     {/snippet}

@@ -14,17 +14,17 @@
     },
     {
       title: 'Weather comes in',
-      text: 'Each pivot gets its own rain and reference ET three times a day, with a 16-day forecast.',
+      text: 'Each pivot gets its own rain and reference ET (the water use of a grass crop, worked out from the weather) updated three times a day, along with a 16-day forecast.',
       anchor: 'how-it-works',
     },
     {
       title: 'Enter what you measure',
-      text: 'Rain gauges, irrigation and soil moisture readings keep each field’s balance true.',
+      text: 'Your rain gauge readings, irrigation and soil moisture readings keep each field’s water balance accurate.',
       anchor: 'ground-truthing',
     },
     {
       title: 'Know when to irrigate',
-      text: 'The dashboard and a morning email show which fields need water, by when, and how much.',
+      text: 'The dashboard and a morning email show which fields need water, when they need it by, and how much.',
       anchor: 'day-to-day',
     },
   ]

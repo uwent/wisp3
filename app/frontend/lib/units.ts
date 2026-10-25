@@ -102,7 +102,7 @@ export function parseNumber(text: string): ParseResult {
   const trimmed = text.trim().replace(/,/g, '')
   if (trimmed === '') return { ok: true, value: null }
   const value = Number(trimmed)
-  if (!Number.isFinite(value)) return { ok: false, error: 'Enter a number' }
+  if (!Number.isFinite(value)) return { ok: false, error: 'Enter a number, such as 0.5' }
   return { ok: true, value }
 }
 

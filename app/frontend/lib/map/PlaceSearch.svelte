@@ -23,11 +23,11 @@
         query.trim(),
         view && [view.getWest(), view.getSouth(), view.getEast(), view.getNorth()],
       )
-      if (found.length === 0) searchError = 'No places found'
+      if (found.length === 0) searchError = 'No places found. Try adding the state, such as Hancock, WI.'
       else if (found.length === 1) goTo(found[0])
       else places = found
     } catch {
-      searchError = 'Search is unavailable right now'
+      searchError = "Place search isn't responding right now. Please try again in a moment."
     } finally {
       searching = false
     }

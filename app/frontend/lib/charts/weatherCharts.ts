@@ -111,7 +111,7 @@ export function weatherPanels(
       unit: (u) => u.label('depth'),
       info:
         'Precipitation is all the water that fell: rain plus the water in snow, sleet and showers ("snow and other" ' +
-        "is the part not reported as rain). The field's balance uses this unless you enter a rain gauge reading. " +
+        "is the part the weather model doesn't count as rain). The field's balance uses this unless you enter a rain gauge reading. " +
         'The lower panel adds it up from the first day in view, so zooming changes the total. When there is snow, ' +
         'the gray bars are snowfall (the depth of new snow) and the gray line is the snow on the ground, both ' +
         'measured as snow, not water: 10 inches of snow holds roughly an inch of water, less when it is light and dry.' +
@@ -204,7 +204,7 @@ export function weatherPanels(
     {
       key: 'soil_moisture',
       title: 'Modeled soil moisture',
-      unit: () => '% by volume',
+      unit: () => '% of soil volume',
       info:
         "The weather model's own estimate of the water in the soil at four depths, as a percent of the soil's " +
         "volume (ECMWF IFS). It isn't a field's balance and doesn't know about irrigation" +
@@ -260,7 +260,7 @@ export function weatherPanels(
         `Counted from ${gddSince}; crop stages are often predicted from this total.`,
       series: [
         {
-          name: 'GDD (50/86)',
+          name: 'Degree days (50/86)',
           color: (p) => p.warm,
           value: (day) => converted(units, 'degreeDays', day.gdd_since_emergence),
         },
@@ -286,7 +286,7 @@ export function weatherPanels(
         "How much more water vapor the air could hold: the air's drying power, and a driver of transpiration. About " +
         '0.4–1.5 kPa suits most crops. Above 1.5 kPa plants close their stomata to save water, which slows growth; ' +
         "below 0.4 kPa transpiration and nutrient uptake slow. This is the day's highest value, usually mid-afternoon.",
-      series: [{ name: 'VPD', color: (p) => p.warm, value: (day) => day.vpd_max_kpa }],
+      series: [{ name: 'Vapor pressure deficit', color: (p) => p.warm, value: (day) => day.vpd_max_kpa }],
       lines: [
         { name: '0.4 kPa', value: 0.4 },
         { name: '1.5 kPa', value: 1.5 },
@@ -588,7 +588,7 @@ export function panelSummary(panel: WeatherPanel, days: WeatherPanelDay[], units
   if (pastText) sentences.push(`Last ${past.length} days: ${pastText}.`)
   const aheadText = ahead.length ? listed(series.map((s) => summarize(s, ahead))) : null
   if (aheadText) sentences.push(`Next ${ahead.length} days (forecast): ${aheadText}.`)
-  return sentences.join(' ') || 'No values yet.'
+  return sentences.join(' ') || 'No weather values yet.'
 }
 
 /** The panel's daily values as a table, newest first: one column per series it shows */

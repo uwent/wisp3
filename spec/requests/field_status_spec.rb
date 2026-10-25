@@ -52,7 +52,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       CanopyObservation.record(planting, Date.new(2026, 7, 16), 50)
       get field_path(field)
       check = inertia.props[:summary][:tasks].last
-      expect(check).to include(kind: "canopy_check", due: true, todo: match(/days ahead of the potato curve/))
+      expect(check).to include(kind: "canopy_check", due: true, todo: match(/days ahead of the typical potato curve/))
     end
 
     it "sets the field's rainfall setting, and clears it to follow the operation's (Q7)" do

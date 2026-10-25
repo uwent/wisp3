@@ -5,7 +5,7 @@
 <% zone_level = farm_level + (@digest.several_farms? ? 1 : 0) %>
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#141b24;max-width:600px;font-size:14px;line-height:1.45">
   <h1 style="font-size:20px;margin:0 0 4px">Your fields this morning</h1>
-  <p style="margin:0 0 <%= @digest.context.any? ? 6 : 20 %>px;<%= muted %>"><%= @digest.today.strftime("%A, %B %-d") %> · water balance through today, projected with the latest forecast</p>
+  <p style="margin:0 0 <%= @digest.context.any? ? 6 : 20 %>px;<%= muted %>"><%= @digest.today.strftime("%A, %B %-d") %> · soil water balance through today, with a projection from the latest forecast</p>
   <% if @digest.context.any? %>
     <p style="margin:0 0 20px"><%= safe_join(@digest.context.map { |label, name| safe_join([tag.span("#{label}:", style: muted), " ", tag.strong(name)]) }, " · ") %></p>
   <% end %>
@@ -29,7 +29,7 @@
   <% end %>
 
   <% if @digest.nothing_listed %>
-    <p style="margin:0 0 16px;font-weight:600">No action needed. <span style="font-weight:400"><%= @digest.nothing_listed %></span></p>
+    <p style="margin:0 0 16px;font-weight:600">Nothing needs your attention today. <span style="font-weight:400"><%= @digest.nothing_listed %></span></p>
   <% end %>
 
   <% @digest.operations.each do |operation| %>
@@ -83,6 +83,6 @@
   <p style="margin:24px 0 0;font-size:12px;<%= muted %>">
     <%= digest_counts(@digest) %>
     <%= digest_reason(@user, test: @test) %>
-    <%= email_link_to "Change how often and which fields", @alerts_url %> or <%= email_link_to "unsubscribe", @unsubscribe_url %>.
+    <%= email_link_to "Change how often you get this email and which fields it covers", @alerts_url %>, or <%= email_link_to "unsubscribe", @unsubscribe_url %>.
   </p>
 </div>

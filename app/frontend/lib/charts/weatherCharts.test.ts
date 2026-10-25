@@ -332,7 +332,7 @@ describe('weather charts in words and tables', () => {
   })
 
   it('says so when there are no values', () => {
-    expect(panelSummary(panel('air_temperature'), [], units('imperial'))).toBe('No values yet.')
+    expect(panelSummary(panel('air_temperature'), [], units('imperial'))).toBe('No weather values yet.')
   })
 
   it('lists the daily values newest first, in the user units', () => {

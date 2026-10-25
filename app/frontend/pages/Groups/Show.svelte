@@ -69,7 +69,7 @@
 <div>
   <h1 class="text-2xl font-semibold">{group.name}</h1>
   <p class="text-sm text-ink-muted">
-    Farm operation · {setupSummary} · you're {owner ? 'an owner' : 'a member'}
+    Operation · {setupSummary} · you're {owner ? 'an owner' : 'a member'}
   </p>
 </div>
 
@@ -90,7 +90,7 @@
               class="mt-0.5"
             />
             <span>
-              Modeled rainfall for each pivot's location
+              Modeled rain for each pivot's location
               <span class="block text-ink-muted">Your own gauge readings replace it on the days you enter them.</span>
             </span>
           </label>
@@ -102,7 +102,7 @@
               checked={!group.use_model_precip}
               class="mt-0.5"
             />
-            <span>Only the rain we enter</span>
+            <span>Only the rain you enter</span>
           </label>
           <p class="text-xs text-ink-muted">
             A field can have its own setting, on its page. The forecast's rain counts in the days ahead either way.
@@ -116,8 +116,8 @@
       <dt class="text-ink-muted">Rainfall</dt>
       <dd>
         {group.use_model_precip
-          ? "Modeled for each pivot's location, replaced by gauge readings when entered"
-          : 'Only the rain entered'}
+          ? "Modeled for each pivot's location, and replaced by your gauge readings on the days you enter them"
+          : 'Only the rain you enter'}
       </dd>
     </dl>
     <p class="text-sm text-ink-muted">

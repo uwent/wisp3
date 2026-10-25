@@ -22,7 +22,7 @@ RSpec.describe User do
     it "rejects .ru addresses" do
       user = build(:user, email: "someone@mail.ru")
       expect(user).not_to be_valid
-      expect(user.errors[:email]).to include("can't be from a .ru domain")
+      expect(user.errors[:email]).to include("can't be used to create a WISP account")
     end
 
     it "only allows known unit systems" do

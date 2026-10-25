@@ -86,7 +86,7 @@
         {/each}
       </ul>
     {:else}
-      <p class="text-sm text-ink-muted">No fields on this pivot yet.</p>
+      <p class="text-sm text-ink-muted">No fields on this pivot yet. Add them in Setup.</p>
     {/if}
   </div>
 </section>

@@ -98,7 +98,7 @@ RSpec.describe "Sign-in links and codes", type: :request do
       start = Time.zone.parse("2026-10-03 13:20")
       5.times { |i| travel_to(start + i.minutes) { request_email } }
       travel_to(start + 5.minutes) { request_email }
-      expect(flash[:alert]).to eq("Too many sign-in emails requested. Please try again in 35 minutes.")
+      expect(flash[:alert]).to eq("We've sent several sign-in emails already. Please try again in 35 minutes.")
     end
 
     it "lifts the per-address limit when the user signs in" do
@@ -203,7 +203,7 @@ RSpec.describe "Sign-in links and codes", type: :request do
       post redeem_magic_link_path(token: emailed_token)
       expect(response).to redirect_to(root_path)
       expect(unconfirmed.reload).to be_confirmed
-      expect(flash[:notice]).to include("set one with \"Forgot your password?\"")
+      expect(flash[:notice]).to include("choose \"Forgot your password?\" on the sign-in page to set one")
     end
 
     it "shuts out whoever signed up with someone else's email and their own password" do
@@ -240,7 +240,7 @@ RSpec.describe "Sign-in links and codes", type: :request do
       request_email
       20.times { post sign_in_code_path, params: {code: wrong_code} }
       post sign_in_code_path, params: {code: emailed_code}
-      expect(flash[:alert]).to match(/Too many sign-in attempts. Please try again in \d+ minutes?\./)
+      expect(flash[:alert]).to match(/There have been several sign-in attempts. Please try again in \d+ minutes?\./)
     end
 
     it "stops working after 5 wrong tries" do

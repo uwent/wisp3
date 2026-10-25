@@ -10,13 +10,13 @@ en:
       field_group_entry: *daily_entry
       canopy_observation:
         pct_cover: Percent cover
-        lai: LAI
+        lai: Leaf area index (LAI)
       planting:
         plant: Crop
         max_root_zone_depth: Root zone depth
-        mad_frac: MAD
+        mad_frac: Allowable depletion fraction (MAD)
         et_method: Canopy method
-        target_ad_pct: Target AD
+        target_ad_pct: Target allowable depletion
         initial_moisture_pct: Starting soil moisture
         season_start: Season start
         emergence_date: Emergence

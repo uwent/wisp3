@@ -34,7 +34,7 @@
       </div>
       {#if !useModelPrecip}
         <div>
-          <dt class="text-ink-muted">Modeled, left out of the balance</dt>
+          <dt class="text-ink-muted">Modeled rain not used in the balance</dt>
           <dd class="tabular-nums">{daysOf(stats.leftOut)}</dd>
         </div>
       {/if}
@@ -55,7 +55,7 @@
         </div>
         {#if comparison.both.typicalAdjustment !== null}
           <div>
-            <dt class="text-ink-muted">Typical correction (gauge − model)</dt>
+            <dt class="text-ink-muted">Typical difference (your gauge minus the model)</dt>
             <dd class="tabular-nums">
               {signed(comparison.both.typicalAdjustment)}{#if comparison.both.ratio !== null}; your gauge read {Math.round(
                   comparison.both.ratio * 100,
@@ -64,15 +64,15 @@
           </div>
         {/if}
         <div>
-          <dt class="text-ink-muted">You had rain, the model none</dt>
+          <dt class="text-ink-muted">Days you had rain and the model didn't</dt>
           <dd class="tabular-nums">{daysOf(comparison.missed)}</dd>
         </div>
         <div>
-          <dt class="text-ink-muted">You entered 0, the model had rain</dt>
+          <dt class="text-ink-muted">Days you entered 0 and the model had rain</dt>
           <dd class="tabular-nums">{daysOf(comparison.zeroed)}</dd>
         </div>
         <div>
-          <dt class="text-ink-muted">Model rain, no reading</dt>
+          <dt class="text-ink-muted">Days with modeled rain and no gauge reading</dt>
           <dd class="tabular-nums">{daysOf(comparison.noReading)}</dd>
         </div>
       </dl>
@@ -110,7 +110,8 @@
   </div>
 </div>
 <p class="text-xs text-ink-muted">
-  The season through today ({days(stats.days)}). A rain day has at least {units.format('depth', RAIN_DAY)}. Gauge and
-  model disagree when they differ by more than {units.format('depth', DISAGREE_IN)} or a quarter of the model's amount; typical
-  values are medians. "No reading" may mean no rain, or a gauge nobody read.
+  The season through today ({days(stats.days)}). A rain day has at least {units.format('depth', RAIN_DAY)}. Your gauge
+  and the model count as disagreeing when they differ by more than {units.format('depth', DISAGREE_IN)} or by more than a
+  quarter of the modeled amount. Typical values are medians (the middle value). A day with no reading may mean it didn't rain,
+  or that no one read the gauge.
 </p>

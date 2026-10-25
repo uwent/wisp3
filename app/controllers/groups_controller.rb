@@ -29,7 +29,7 @@ class GroupsController < AuthenticatedController
 
   def update
     if Current.group.update(params.expect(group: [:name, :use_model_precip]))
-      redirect_to group_path, notice: "Saved"
+      redirect_to group_path, notice: "Saved your changes to #{Current.group.name}."
     else
       redirect_with_errors group_path, Current.group
     end

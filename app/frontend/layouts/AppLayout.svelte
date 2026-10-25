@@ -147,7 +147,7 @@
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
                 class="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-surface"
-                aria-label="{auth.group?.name}, switch farm operation"
+                aria-label="{auth.group?.name}, switch operation"
               >
                 {auth.group?.name} ▾
               </DropdownMenu.Trigger>
@@ -191,9 +191,9 @@
             <DropdownMenu.Portal>
               <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
                 {#if auth.groups.length > 1 && !wideNav.current}
-                  <DropdownMenu.Group aria-label="Farm operation">
+                  <DropdownMenu.Group aria-label="Operation">
                     <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted"
-                      >Farm operation</DropdownMenu.GroupHeading
+                      >Operation</DropdownMenu.GroupHeading
                     >
                     {#each auth.groups as group (group.id)}
                       <DropdownMenu.Item class={menuItem} onSelect={() => switchGroup(group.id)}>
@@ -204,7 +204,7 @@
                   </DropdownMenu.Group>
                 {/if}
                 <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(groups.show().url)}>
-                  Farm operation and members
+                  Operation and members
                 </DropdownMenu.Item>
                 <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(settings.show().url)}>
                   Settings

@@ -15,7 +15,7 @@
     sort = $bindable<{ key: string; direction: SortDirection } | null>(null),
     cell,
     rowClass,
-    empty = 'Nothing here yet.',
+    empty = 'Nothing to show yet.',
   }: {
     rows: T[]
     columns: Column<T>[]
@@ -121,7 +121,7 @@
         {:else}
           <tr>
             <td colspan={columns.length} class="px-3 py-6 text-center text-ink-muted"
-              >{query.trim() ? 'No matches.' : empty}</td
+              >{query.trim() ? 'Nothing matches your search.' : empty}</td
             >
           </tr>
         {/each}

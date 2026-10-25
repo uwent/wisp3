@@ -170,7 +170,7 @@ class User < ApplicationRecord
 
   # Carried over from the legacy app, which saw spam sign-ups from these domains
   def email_domain_allowed
-    errors.add(:email, "can't be from a .ru domain") if email.to_s.match?(/\.ru\z/i)
+    errors.add(:email, "can't be used to create a WISP account") if email.to_s.match?(/\.ru\z/i)
   end
 
   # Deleting an account deletes the farm data only it could reach; shared groups stay, and one

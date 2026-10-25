@@ -13,7 +13,8 @@
 <div>
   <h1 class="text-xl font-semibold">Resend confirmation email</h1>
   <p class="mt-1 text-sm text-ink-muted">
-    You can also sign in with a one-time link from the sign-in page; using it confirms your email.
+    Enter your email address and we'll send a new confirmation link. You can also skip this step: signing in with an
+    emailed code or link from the sign-in page confirms your address too.
   </p>
 </div>
 

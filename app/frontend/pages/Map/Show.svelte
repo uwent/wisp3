@@ -273,7 +273,7 @@
             {:else if query.trim()}
               No fields match "{query.trim()}".
             {:else}
-              No fields yet.
+              No fields yet. Add them in Setup.
             {/if}
           </li>
         {/each}

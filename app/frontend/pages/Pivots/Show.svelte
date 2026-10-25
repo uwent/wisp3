@@ -74,7 +74,7 @@
       {#each pivot.fields as field, i (field.id)}{i ? ', ' : ''}<Link
           href={fieldRoutes.show(field.id)}
           class="text-brand-600 underline underline-offset-2">{field.name}</Link
-        >{:else}none yet{/each}
+        >{:else}no fields yet{/each}
       · <Link href={pivots.edit(pivot.id)} class="text-brand-600 underline underline-offset-2">Edit pivot</Link>
     </p>
   </div>
@@ -119,8 +119,8 @@
             {#if errors.date}<p class="text-sm text-status-irrigate-ink">{errors.date}</p>{/if}
             {#if existing}
               <p class="text-sm" role="status">
-                ⚠ {formatDate(existing.date)} already has {units.format('depth', existing.applied_inches)}; saving
-                replaces it.
+                {formatDate(existing.date)} already has {units.format('depth', existing.applied_inches)} of irrigation. Saving
+                will replace it.
                 <button type="button" class="text-brand-600 underline" onclick={() => edit(existing)}
                   >Edit that one instead</button
                 >
@@ -152,7 +152,9 @@
                 <input type="checkbox" bind:checked={byHours} class="rounded" /> Enter run hours
               </label>
             {:else}
-              <span class="text-ink-muted">Add pump capacity and field areas to enter run hours.</span>
+              <span class="text-ink-muted"
+                >To enter run hours, add this pivot's pump capacity and an area for each field.</span
+              >
             {/if}
           </div>
         </div>
@@ -197,7 +199,7 @@
 
 <section class="overflow-x-auto rounded-lg border border-line bg-surface-raised">
   {#if irrigations.length === 0}
-    <p class="p-6 text-center text-sm text-ink-muted">No irrigation entered for {year}.</p>
+    <p class="p-6 text-center text-sm text-ink-muted">No irrigation entered for {year} yet.</p>
   {:else}
     <table class="w-full text-sm">
       <thead class="border-b border-line text-left text-xs text-ink-muted">
@@ -216,7 +218,7 @@
             <td class="px-4 py-2 text-right whitespace-nowrap tabular-nums">
               {units.format('depth', irrigation.applied_inches)}
               {#if irrigation.inches === null}<span class="block text-xs text-ink-muted"
-                  >{irrigation.run_hours} h run</span
+                  >{irrigation.run_hours} hours</span
                 >{/if}
             </td>
             <td class="px-4 py-2">{fieldNames(irrigation.field_ids)}</td>

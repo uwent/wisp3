@@ -18,7 +18,7 @@ type Task = PlantingSummary['tasks'][number]
 
 export type Reading = {
   label: string
-  /** "Sep 28 (7 days ago)", or "None this season" */
+  /** "Sep 28 (7 days ago)", or "None entered this season" */
   last: string
   /** Due for another one: none yet, or older than READING_EVERY days */
   due: boolean
@@ -65,8 +65,8 @@ export function guidance(
 
   const depth = planting.max_root_zone_depth
   paragraphs.push(
-    'A measured soil moisture resets the balance to it from that day on, which corrects any drift in the ' +
-      `model. Enter one about once a week, from sensors at about 25% and 75% of the root zone ` +
+    'A soil moisture reading resets the balance to the measured value from that day on, which corrects any ' +
+      `drift in the model. Enter a reading about once a week, from sensors at about 25% and 75% of the root zone depth ` +
       `(${units.format('rootDepth', depth * 0.25)} and ${units.format('rootDepth', depth * 0.75)} deep).`,
   )
 
@@ -85,12 +85,13 @@ function interpolationText(planting: GuidedPlanting): string {
   }
   if (planting.effective_canopy_interpolation === 'curve') {
     return (
-      'Your readings scale the curve: it passes through each one and keeps its shape between and after them, ' +
-      'including its decline late in the season.'
+      'Your readings adjust the curve so that it passes through each one, and it keeps its shape between and ' +
+      'after them, including its decline late in the season.'
     )
   }
   return (
-    'This planting draws straight lines between your readings instead, and holds the last one, as chosen in ' + 'setup.'
+    'This planting draws straight lines between your readings instead, and holds the last one, as you chose in ' +
+    'Setup.'
   )
 }
 
@@ -100,22 +101,23 @@ function methodText(planting: GuidedPlanting): string {
     const curve = planting.canopy_curve
       ? `Without readings, WISP follows a ${crop.toLowerCase()} canopy curve from the emergence date (its source is ` +
         'on the About page). '
-      : `There's no canopy curve for ${crop.toLowerCase()}, so until your first reading the crop has no cover in ` +
-        'the model and loses only bare-soil evaporation. '
+      : `There's no canopy curve for ${crop.toLowerCase()}, so until you enter your first reading, the model ` +
+        'treats the field as bare soil and counts only evaporation from the soil. '
     return (
       `${crop} water use is modeled from percent canopy cover, the share of the ground shaded by the crop: the ` +
-      `day's reference ET is scaled by it. ${curve}${interpolationText(planting)} Enter percent cover about ` +
+      `day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${interpolationText(planting)} Enter percent cover about ` +
       `weekly from emergence until the canopy covers about ${FULL_COVER_PCT}% of the ground. For row crops, divide ` +
       'the average canopy width by the row spacing: 18 in wide on 36 in rows is 50%.'
     )
   }
   const lai =
     `${crop} water use is modeled from leaf area index (LAI), the leaf area of the crop per unit of ground ` +
-    "beneath it: the day's reference ET is scaled by how much of the light the leaves intercept."
+    "beneath it: the day's reference ET is adjusted for how much of the light the leaves intercept."
   // LAI is offered only for crops with a growth curve (Planting#lai_needs_curve), so far field corn's
   return (
-    `${lai} Without readings, WISP projects LAI from the emergence date on a field corn growth curve, which ` +
-    'peaks at about 4 around 80 days after emergence. LAI you enter (from a ceptometer, say) adjusts it. ' +
+    `${lai} Without readings, WISP estimates LAI from the emergence date using a field corn growth curve, ` +
+    'which peaks at about 4 around 80 days after emergence. LAI readings you enter (from a ceptometer, for ' +
+    'example) adjust the curve. ' +
     interpolationText(planting)
   )
 }
@@ -123,6 +125,6 @@ function methodText(planting: GuidedPlanting): string {
 function reading(task: Task, today: string): Reading {
   const last = task.last_date
     ? `${formatDate(task.last_date)} (${relativeDay(task.last_date, today)})`
-    : 'None this season'
+    : 'None entered this season'
   return { label: task.label, last, due: task.due, note: task.note }
 }

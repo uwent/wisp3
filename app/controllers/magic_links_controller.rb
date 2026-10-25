@@ -25,7 +25,7 @@ class MagicLinksController < InertiaController
       limits = [self.class.email_limit(email), self.class.ip_limit(request.remote_ip)]
       if (limit = limits.find(&:exceeded?))
         return redirect_to (resending ? sign_in_code_path : new_user_session_path),
-          alert: "Too many sign-in emails requested. #{limit.retry_message}"
+          alert: "We've sent several sign-in emails already. #{limit.retry_message}"
       end
       limits.each(&:allow!)
 
@@ -35,7 +35,7 @@ class MagicLinksController < InertiaController
       end
       session[:sign_in_email] = email
       session[:sign_in_requested_at] = Time.current.to_i
-      flash[:notice] = "We've sent a new code. Only the newest code works." if resending
+      flash[:notice] = "We've sent a new code. Use the newest one; earlier codes no longer work." if resending
     end
 
     redirect_to sign_in_code_path
@@ -57,14 +57,15 @@ class MagicLinksController < InertiaController
 
     limit = self.class.verify_limit(request.remote_ip)
     unless limit.allow!
-      return redirect_to sign_in_code_path, alert: "Too many sign-in attempts. #{limit.retry_message}"
+      return redirect_to sign_in_code_path, alert: "There have been several sign-in attempts. #{limit.retry_message}"
     end
 
     user = User.find_by(email: session[:sign_in_email])
     unless user&.redeem_sign_in_code!(params[:code])
       return redirect_to sign_in_code_path, inertia: {errors: {code: [
-        "That code is wrong or has expired. Codes expire after #{User::MAGIC_LINK_TTL.in_minutes.to_i} minutes " \
-        "and stop working after #{User::SIGN_IN_CODE_ATTEMPTS} wrong tries; you can send a new one below."
+        "That code didn't work. It may have a typo, or it may have expired. Codes expire after " \
+        "#{User::MAGIC_LINK_TTL.in_minutes.to_i} minutes and stop working after #{User::SIGN_IN_CODE_ATTEMPTS} " \
+        "wrong tries, so you can send a new one below."
       ]}}
     end
 
@@ -103,10 +104,10 @@ class MagicLinksController < InertiaController
     session.delete(:sign_in_requested_at)
     sign_in(:user, user) # updates current_sign_in_at, which invalidates the link and the code
     notice = if confirmed
-      "Signed in, and your email is confirmed. To sign in with a password as well, set one with " \
-        "\"Forgot your password?\" on the sign-in page."
+      "You're signed in, and your email address is confirmed. If you'd like a password too, choose " \
+        "\"Forgot your password?\" on the sign-in page to set one."
     else
-      "Signed in"
+      "You're signed in."
     end
     redirect_to after_sign_in_path_for(user), notice:, status: :see_other
   end

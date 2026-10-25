@@ -39,7 +39,7 @@
 </script>
 
 <fieldset class="space-y-2">
-  <legend class="text-sm font-medium">System</legend>
+  <legend class="text-sm font-medium">Irrigation system</legend>
   <input type="hidden" name="{prefix}[kind]" value={shape.kind} />
   <div class="flex flex-wrap gap-x-6 gap-y-2">
     {#each KINDS as kind (kind.value)}
@@ -93,7 +93,7 @@
       unitLabel="° from north"
       bind:value={shape.travelBearing}
       error={error('travel_bearing_deg')}
-      hint="0 to 179: 0 travels north and south, 90 east and west"
+      hint="A whole number from 0 to 179: 0 means the machine travels north and south, 90 east and west."
     />
   </div>
 {/if}

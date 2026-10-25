@@ -209,9 +209,9 @@
     radius: { className: 'rounded-full bg-[#1c5cab]', title: 'Drag to set the radius' },
     start: { className: 'rounded-full bg-white', title: 'Drag to set where the arc starts' },
     end: { className: 'rounded-full bg-white', title: 'Drag to set where the arc ends' },
-    frontLeft: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear' },
-    backRight: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear' },
-    rotate: { className: 'rounded-full bg-white', title: 'Drag to turn the linear' },
+    frontLeft: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear move' },
+    backRight: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear move' },
+    rotate: { className: 'rounded-full bg-white', title: 'Drag to turn the linear move' },
   }
 
   // Each handle's cursor: circling arrows for those that turn about the center, and a double arrow
@@ -468,7 +468,8 @@
   }
 
   function locate() {
-    if (!navigator.geolocation) return (locateError = 'Location is not available in this browser')
+    if (!navigator.geolocation)
+      return (locateError = "This browser can't share your location. Click the map or search for a place instead.")
     locating = true
     locateError = null
     navigator.geolocation.getCurrentPosition(
@@ -479,7 +480,7 @@
       },
       () => {
         locating = false
-        locateError = 'Could not get your location'
+        locateError = "Couldn't get your location. Check that location sharing is allowed, or click the map instead."
       },
       { enableHighAccuracy: true, timeout: 10_000 },
     )
@@ -562,7 +563,7 @@
           class="rounded-md border border-line px-2.5 py-1.5 text-xs shadow
             {soils ? 'bg-brand-600 text-white dark:text-surface' : 'bg-surface-raised hover:bg-surface'}"
           aria-pressed={soils}
-          title="WISP's soil types from the USDA soil survey"
+          title="Shade the map by soil type, from the USDA soil survey"
           onclick={toggleSoils}>Soil types</button
         >
       </div>
@@ -573,7 +574,7 @@
         class="pointer-events-none absolute top-12 right-12 left-2 mx-auto max-w-xs rounded-md bg-black/60 px-3 py-2 text-center text-sm text-white"
       >
         {linear
-          ? 'Click the map in the middle of the area the linear irrigates, or enter its coordinates below'
+          ? 'Click the map in the middle of the area the linear move irrigates, or enter its coordinates below'
           : 'Click the map at the center of the pivot, or enter its coordinates below'}
       </p>
     {/if}
@@ -632,7 +633,7 @@
     {#if locateError}<span class="text-status-irrigate-ink">{locateError}</span>{/if}
     {#if center}<span class="text-ink-muted"
         >{linear
-          ? 'Drag the pin to move the linear, the square corner handles to resize it, or the round handle to turn it.'
+          ? 'Drag the pin to move the linear move, the square corner handles to resize it, or the round handle to turn it.'
           : arc
             ? 'Drag the pin to move the pivot, the blue handle to set its radius, or the white handles to set the ends of its arc.'
             : 'Drag the pin to move the pivot, or the round handle to set its radius.'}</span
@@ -644,7 +645,7 @@
       {#if soilStatus === 'loading'}
         <span class="text-ink-muted">loading from the soil survey…</span>
       {:else if soilStatus === 'error'}
-        <span class="text-ink-muted">the soil survey isn't answering right now.</span>
+        <span class="text-ink-muted">the soil survey can't be reached right now.</span>
       {:else if soilStatus === 'zoom'}
         <span class="text-ink-muted">place the pivot, or zoom in, to see them.</span>
       {:else}
@@ -654,7 +655,7 @@
             ></span>{type.name}</span
           >
         {:else}
-          <span class="text-ink-muted">none matched here.</span>
+          <span class="text-ink-muted">no soil types matched here.</span>
         {/each}
         <span class="text-ink-muted"
           >From each map unit's main soil in the <a

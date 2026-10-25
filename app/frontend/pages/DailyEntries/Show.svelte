@@ -65,7 +65,9 @@
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
     <h1 class="text-2xl font-semibold">Daily entry</h1>
-    <p class="text-sm text-ink-muted">Rain, irrigation and soil moisture readings for every field on one day.</p>
+    <p class="text-sm text-ink-muted">
+      Enter rain, irrigation and soil moisture readings for all your fields on one day.
+    </p>
   </div>
   <div class="flex items-center gap-1">
     <Button variant="secondary" class="px-3" onclick={() => go(addDays(date, -1))} aria-label="Previous day">‹</Button>
@@ -93,9 +95,9 @@
   <section
     class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted"
   >
-    No pivots yet. <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2"
+    You haven't added a pivot yet. <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2"
       >Set up your first pivot</Link
-    >.
+    > to start entering rain and irrigation.
   </section>
 {:else}
   {#key date}
@@ -126,7 +128,9 @@
                   <div class="flex flex-wrap items-start gap-x-6 gap-y-3 border-b border-line p-4">
                     <div class="min-w-32">
                       <h4 id="pivot-{pivot.id}-name" class="font-medium">{pivot.name}</h4>
-                      <p class="text-xs text-ink-muted">Pivot irrigation, for all its fields or some</p>
+                      <p class="text-xs text-ink-muted">
+                        Irrigation applied by this pivot, to all its fields or only some
+                      </p>
                     </div>
                     <div class="w-40">
                       {#if hours(pivot)}
@@ -192,8 +196,8 @@
                         <tr class="text-left">
                           <th class="px-4 py-2 font-medium">Field</th>
                           <th class="px-2 py-2 font-medium">Rain ({units.label('depth')})</th>
-                          <th class="px-2 py-2 font-medium">Own irrigation ({units.label('depth')})</th>
-                          <th class="px-2 py-2 font-medium">Moisture reading (%)</th>
+                          <th class="px-2 py-2 font-medium">Field's own irrigation ({units.label('depth')})</th>
+                          <th class="px-2 py-2 font-medium">Soil moisture reading (%)</th>
                         </tr>
                       </thead>
                       <tbody class="divide-y divide-line">
@@ -212,7 +216,7 @@
                                 value={field.entry?.rain_in ?? null}
                                 placeholder={field.rain_model === null
                                   ? ''
-                                  : `model ${units.format('depth', field.rain_model, { unit: false })}`}
+                                  : `modeled ${units.format('depth', field.rain_model, { unit: false })}`}
                                 error={e(errs, `fields.${field.id}.rain_in`)}
                               />
                             </td>
@@ -253,10 +257,10 @@
           <Button type="submit" disabled={processing}>Save {formatDate(date)}</Button>
           <p class="text-sm text-ink-muted">
             {#if Object.keys(errs).length}<span class="text-status-irrigate-ink"
-                >Nothing was saved; please fix the highlighted values.</span
+                >Nothing was saved. Please correct the highlighted entries and save again.</span
               >
-            {:else if isDirty || dirty}Unsaved changes{:else}Leave rain blank to use the modeled value; enter 0 if your
-              gauge read nothing.{/if}
+            {:else if isDirty || dirty}You have unsaved changes{:else}Leave rain blank to use the modeled rain. Enter 0
+              if your gauge showed no rain.{/if}
           </p>
         </div>
       {/snippet}

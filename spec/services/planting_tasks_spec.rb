@@ -42,7 +42,7 @@ RSpec.describe PlantingTasks do
     planting.update!(plant: create(:plant, canopy_model: "field_corn"), et_method: "lai")
     expect(tasks.map(&:kind)).to eq([:soil_moisture])
     create(:canopy_observation, planting:, date: Date.new(2026, 7, 10), pct_cover: nil, lai: 2.0)
-    expect(tasks.last).to have_attributes(kind: :canopy, label: "LAI", due: true)
+    expect(tasks.last).to have_attributes(kind: :canopy, label: "Leaf area index (LAI)", due: true)
   end
 
   it "adds a check when canopy readings run ahead of the crop's curve" do
@@ -54,8 +54,8 @@ RSpec.describe PlantingTasks do
     end
     check = tasks.last
     expect(check).to have_attributes(kind: :canopy_check, due: true,
-      todo: "Check canopy readings: about 9 days ahead of the potato curve")
-    expect(check.message).to include("check the emergence date (Jul 1)", "WISP still follows the curve")
+      todo: "Check your canopy readings: they're about 9 days ahead of the typical potato curve")
+    expect(check.message).to include("check the emergence date (Jul 1)", "WISP still follows the typical curve")
   end
 
   it "adds a check when a reading falls while the curve grows" do
@@ -63,9 +63,9 @@ RSpec.describe PlantingTasks do
     create(:canopy_observation, planting:, date: Date.new(2026, 7, 12), pct_cover: 30)
     create(:canopy_observation, planting:, date: Date.new(2026, 7, 18), pct_cover: 22.5)
     check = tasks.last
-    expect(check.todo).to eq("Check the Jul 18 canopy reading: lower than the one before")
+    expect(check.todo).to eq("Check your Jul 18 canopy reading, which is lower than the one before")
     expect(check.message).to include("(22.5%) is lower than the one before it (30%)")
-    expect(check.message).not_to include("WISP still follows the curve")
+    expect(check.message).not_to include("WISP still follows the typical curve")
   end
 
   it "has nothing to do outside the season" do

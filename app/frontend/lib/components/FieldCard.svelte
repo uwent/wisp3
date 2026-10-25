@@ -67,13 +67,13 @@
   </div>
 
   {#if !summary}
-    <p class="text-sm text-ink-muted">No crop this season. Add a planting in setup.</p>
+    <p class="text-sm text-ink-muted">No crop this season. Add one in Setup.</p>
   {:else if summary.weather_pending}
     <p class="text-sm text-ink-muted">
-      Weather for this pivot is on the way; the water balance fills in once it arrives.
+      Weather for this pivot is on its way. The water balance will appear when it arrives.
     </p>
   {:else if summary.phase === 'upcoming'}
-    <p class="text-sm text-ink-muted">Season starts {formatDate(summary.season_start)}</p>
+    <p class="text-sm text-ink-muted">The season starts {formatDate(summary.season_start)}.</p>
   {:else}
     <div class="flex items-end justify-between gap-3">
       <div>
@@ -131,7 +131,7 @@
       </dl>
     {/if}
     {#if todo.length}
-      <ul class="space-y-1 border-t border-line pt-2 text-xs" aria-label="To do">
+      <ul class="space-y-1 border-t border-line pt-2 text-xs" aria-label="Readings and checks due">
         {#each todo as task (task.kind)}
           <li class="flex gap-1.5" title={task.message ?? undefined}>
             <span aria-hidden="true" class="text-status-caution-ink">○</span>

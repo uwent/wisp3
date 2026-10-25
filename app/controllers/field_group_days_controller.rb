@@ -28,7 +28,7 @@ class FieldGroupDaysController < AuthenticatedController
   def record_cover(group, date, value)
     plantings = group.fields.includes(:plantings).filter_map { |field| field.planting_on(date) }
       .select { |planting| planting.et_method == "pct_cover" }
-    return {pct_cover: ["can't be entered: no field in this group has a percent-cover crop on this date"]} if plantings.empty?
+    return {pct_cover: ["can't be entered because no field in this group has a crop tracked by percent cover on this date"]} if plantings.empty?
 
     messages = plantings.flat_map { |planting| CanopyObservation.record(planting, date, value).errors.full_messages }
     messages.any? ? {pct_cover: messages.uniq} : {}

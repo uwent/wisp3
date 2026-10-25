@@ -27,7 +27,7 @@ RSpec.describe "Authentication", type: :request do
     it "creates an unconfirmed account and emails a confirmation link" do
       expect { post user_registration_path, params: }.to change(User, :count).by(1)
       expect(response).to redirect_to(new_user_session_path)
-      expect(flash[:notice]).to match(/confirmation link/i)
+      expect(flash[:notice]).to match(/link to confirm your address/i)
 
       mail = ActionMailer::Base.deliveries.last
       expect(mail.to).to eq(["pat@example.com"])
@@ -62,7 +62,7 @@ RSpec.describe "Authentication", type: :request do
 
       post confirm_user_confirmation_path, params: {confirmation_token: "bogus"}
       expect(response).to redirect_to(new_user_confirmation_path)
-      expect(flash[:alert]).to match(/invalid/)
+      expect(flash[:alert]).to match(/didn't work/)
     end
 
     it "tells someone using a link a second time that they can sign in" do

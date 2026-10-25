@@ -32,7 +32,7 @@ describe('units', () => {
   })
 
   it('rejects text that is not a number', () => {
-    expect(imperial.parse('depth', 'lots')).toEqual({ ok: false, error: 'Enter a number' })
+    expect(imperial.parse('depth', 'lots')).toEqual({ ok: false, error: 'Enter a number, such as 0.5' })
     expect(parseNumber('1,250')).toEqual({ ok: true, value: 1250 })
   })
 

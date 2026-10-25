@@ -34,7 +34,7 @@ class Pivot < ApplicationRecord
                                          message: "is longer than any linear machine (at most 3,300 ft, 1,006 m)"}
     validates :travel_ft, presence: true, numericality: {greater_than: 0}
     validates :travel_ft, numericality: {less_than_or_equal_to: MAX_LINEAR_TRAVEL_FT,
-                                         message: "is farther than WISP models (at most a mile, 1,609 m)"}
+                                         message: "is farther than WISP can model (at most a mile, 1,609 m)"}
     validates :travel_bearing_deg, presence: true, numericality: {only_integer: true, in: 0..179,
                                                                   message: "must be a whole number of degrees from 0 to 179"}
   end
@@ -71,7 +71,7 @@ class Pivot < ApplicationRecord
   end
 
   def arc_complete
-    errors.add(:arc_end_deg, "is needed with a start angle") if arc_start_deg && !arc_end_deg
-    errors.add(:arc_start_deg, "is needed with an end angle") if arc_end_deg && !arc_start_deg
+    errors.add(:arc_end_deg, "is needed when a start angle is set") if arc_start_deg && !arc_end_deg
+    errors.add(:arc_start_deg, "is needed when an end angle is set") if arc_end_deg && !arc_start_deg
   end
 end

@@ -27,7 +27,7 @@
   <div class="mt-2 space-y-2 border-l-2 border-line pl-3">
     {#if status === 'unavailable'}
       <p class="text-xs text-status-irrigate-ink">
-        Not loading right now. Switch it off and on to try again, or try later.
+        This layer isn't loading right now. Switch it off and on to try again, or check back later.
       </p>
     {/if}
     {#if overlays.times[overlay.id]}<p class="text-xs font-medium">{overlays.times[overlay.id]}</p>{/if}

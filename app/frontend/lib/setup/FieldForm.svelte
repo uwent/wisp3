@@ -88,7 +88,7 @@
       <SoilSurvey {shape} {soilTypes} onsuggest={suggestSoil} />
     {/if}
     <details class="text-sm" open={field?.field_capacity !== null && field?.field_capacity !== undefined}>
-      <summary class="cursor-pointer text-ink-muted">Override the soil's water-holding values</summary>
+      <summary class="cursor-pointer text-ink-muted">Use your own field capacity and wilting point</summary>
       <div class="mt-3 grid gap-4 sm:grid-cols-2">
         <NumberField
           label="Field capacity"
@@ -96,7 +96,7 @@
           scale={100}
           unitLabel="%"
           value={field?.field_capacity ?? null}
-          hint="Blank uses {soil?.name ?? 'the soil'}: {pct(soil?.field_capacity)}"
+          hint="Leave blank to use {soil?.name ?? 'the soil'} ({pct(soil?.field_capacity)})"
           error={errors.field_capacity}
         />
         <NumberField
@@ -105,7 +105,7 @@
           scale={100}
           unitLabel="%"
           value={field?.perm_wilting_pt ?? null}
-          hint="Blank uses {soil?.name ?? 'the soil'}: {pct(soil?.perm_wilting_pt)}"
+          hint="Leave blank to use {soil?.name ?? 'the soil'} ({pct(soil?.perm_wilting_pt)})"
           error={errors.perm_wilting_pt}
         />
       </div>

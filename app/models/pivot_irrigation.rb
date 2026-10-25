@@ -37,16 +37,16 @@ class PivotIrrigation < ApplicationRecord
   private
 
   def amount_given
-    errors.add(:inches, "or run hours must be entered") if inches.nil? && run_hours.nil?
+    errors.add(:inches, "or run hours is needed") if inches.nil? && run_hours.nil?
   end
 
   def fields_under_pivot
     return if field_ids.nil? || pivot.nil?
-    errors.add(:field_ids, "must be fields under this pivot") if field_ids.empty? || (field_ids - pivot.field_ids).any?
+    errors.add(:field_ids, "must be fields on this pivot") if field_ids.empty? || (field_ids - pivot.field_ids).any?
   end
 
   def run_hours_convertible
     return if pivot.nil? || applied_inches
-    errors.add(:run_hours, "need the pivot's pump capacity and the field areas; enter inches instead")
+    errors.add(:run_hours, "can be used only when the pivot's pump capacity and the field areas are set; enter inches instead")
   end
 end

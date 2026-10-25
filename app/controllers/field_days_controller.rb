@@ -14,7 +14,7 @@ class FieldDaysController < AuthenticatedController
       future = values.to_h.symbolize_keys.except(*FUTURE_VALUES).select { |_, value| value.present? }
       if future.any?
         return redirect_with_errors(request.referer || field_path(field),
-          future.keys.to_h { |key| [key, ["can't be entered for a future day"]] })
+          future.keys.to_h { |key| [key, ["can't be entered for a future date; only planned irrigation and notes can"]] })
       end
     end
 

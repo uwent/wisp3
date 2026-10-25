@@ -124,7 +124,7 @@ RSpec.describe "Daily digest", type: :request do
 
     it "doesn't send, or start the cooldown, with no fields included" do
       expect { post test_email_alerts_path }.not_to have_enqueued_mail(DigestMailer)
-      expect(flash[:alert]).to eq("There's nothing to send: no fields are included.")
+      expect(flash[:alert]).to eq("There's nothing to send because no fields are included. Choose at least one field above.")
       expect(user.reload.digest_test_sent_at).to be_nil
     end
   end
@@ -197,7 +197,7 @@ RSpec.describe "Daily digest", type: :request do
     it "says why nothing would be sent" do
       sign_in admin
       get digest_admin_user_path(user)
-      expect(inertia.props[:preview]).to include(skip_reason: "No fields are included.", html: nil)
+      expect(inertia.props[:preview]).to include(skip_reason: "No fields are included in your daily email.", html: nil)
     end
 
     it "is hidden from users who aren't admins" do

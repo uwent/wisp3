@@ -26,10 +26,10 @@ RSpec.describe DigestMailer do
       "   Past 7 days: 0.00 in rain · 1.40 in ET · highs 85°F, lows 60°F\n" \
       "   Next 7 days: 0.00 in rain · 1.40 in ET · highs 88°F, lows 62°F\n" \
       "   Pivots in this zone: Pivot 1\n\n   Pivot: Pivot 1\n")
-    expect(text).to include("This email lists 2 fields on 1 pivot, of the 2 fields on 1 pivot your alerts cover (2 with a crop this season).")
-    expect(text).to include("     Field: Fine [✓ OK] Potato · AD 1.00 in\n     Irrigate by Sat, Jul 25\n")
-    expect(text).to include("     Field: Soon [! Caution] Potato · AD 0.28 in of 1.20 in · 11.2% moisture\n     Irrigate by Wed, Jul 22. Projected")
-    expect(text).to include("Last rain: None · Last irrigation: None")
+    expect(text).to include("This email lists 2 fields on 1 pivot, out of the 2 fields on 1 pivot in your alert settings (2 have a crop this season).")
+    expect(text).to include("     Field: Fine [✓ OK] Potato · Allowable depletion 1.00 in\n     Irrigate by Sat, Jul 25\n")
+    expect(text).to include("     Field: Soon [! Caution] Potato · Allowable depletion 0.28 in of 1.20 in · 11.2% soil moisture\n     Irrigate by Wed, Jul 22. Projected")
+    expect(text).to include("Last rain: none recorded · Last irrigation: none recorded")
     # In the tree, fields are in name order
     expect(text.index("Field: Fine")).to be < text.index("     Field: Soon")
     expect(text).to include("You get this email from WISP each morning while your fields are in season.")
@@ -107,7 +107,7 @@ RSpec.describe DigestMailer do
     digest_field(pivot, "Fine", 15)
     user.update!(digest_scope: "needs_irrigation")
     mail = described_class.daily(DailyDigest.new(user))
-    expect(mail.text_part.body.decoded).to include("No action needed. No field needs irrigation now or within 3 days.")
+    expect(mail.text_part.body.decoded).to include("Nothing needs your attention today. No field needs irrigation now or within 3 days.")
     expect(mail.text_part.body.decoded).to include("Pivots in this zone: Pivot 1")
     expect(mail.text_part.body.decoded).not_to include("Field: Fine")
   end
@@ -115,6 +115,6 @@ RSpec.describe DigestMailer do
   it "uses the reader's units" do
     user.update!(unit_system: "metric")
     digest_field(pivot, "Fine", 15)
-    expect(described_class.daily(DailyDigest.new(user)).text_part.body.decoded).to include("AD 25.4 mm")
+    expect(described_class.daily(DailyDigest.new(user)).text_part.body.decoded).to include("Allowable depletion 25.4 mm")
   end
 end

@@ -15,7 +15,7 @@ class PlantingsController < AuthenticatedController
   def update
     planting = Current.group.plantings.find(params[:id])
     if planting.update(planting_params.except(:field_id))
-      redirect_back_or_to setup_path(year: planting.season_year), notice: "Saved"
+      redirect_back_or_to setup_path(year: planting.season_year), notice: "Saved #{planting.plant.name} on #{planting.field.name}."
     else
       redirect_with_errors(request.referer || setup_path, planting)
     end

@@ -24,7 +24,7 @@
           </li>
         {/each}
       </ul>
-      <p class="text-xs text-ink-muted">At least this much, in {units.label('depth')}</p>
+      <p class="text-xs text-ink-muted">Each color starts at the amount shown, in {units.label('depth')}</p>
     </div>
   {:else}
     <ul class="space-y-0.5 text-xs">

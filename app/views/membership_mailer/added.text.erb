@@ -1,9 +1,9 @@
 Hello <%= @user.display_name %>,
 
-<%= @added_by.display_name %> (<%= @added_by.email %>) added you to <%= @group.name %> on WISP as <%= @owner ? "an owner" : "a member" %>. You can now see and work on its farms, pivots and fields.
+<%= @added_by.display_name %> (<%= @added_by.email %>) added you to <%= @group.name %> on WISP as <%= @owner ? "an owner" : "a member" %>. You can now view and update its farms, pivots and fields.
 
-Once you've signed in, switch to <%= @group.name %> with the farm operation menu at the top of the page.
+Once you've signed in, switch to <%= @group.name %> with the operation menu at the top of the page.
 
 <%= @url %>
 
-If you don't know why you were added, you can leave the operation from its page in WISP.
+If you weren't expecting this, you can leave the operation from its page in WISP.

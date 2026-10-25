@@ -24,8 +24,8 @@
   <Link href={setup.show()} class="text-sm text-brand-600 hover:underline">← Setup</Link>
   <h1 class="text-2xl font-semibold">Field groups</h1>
   <p class="max-w-2xl text-sm text-ink-muted">
-    Fields that share readings, such as one rain gauge for several fields. Values entered for a group apply to each of
-    its fields, unless the field has its own entry or pivot irrigation for that day.
+    Use a field group when several fields share the same readings, such as one rain gauge. Values you enter for a group
+    apply to every field in it, except on days when a field has its own entry or pivot irrigation.
   </p>
 </div>
 
@@ -37,7 +37,9 @@
           <Link href={fieldGroups.show(group.id)} class="font-medium hover:underline">{group.name}</Link>
           <p class="text-xs text-ink-muted">{names(group.field_ids) || 'No fields'}</p>
         </div>
-        <Link href={fieldGroups.show(group.id)} class="text-sm text-brand-600 hover:underline">Enter values</Link>
+        <Link href={fieldGroups.show(group.id)} class="text-sm text-brand-600 hover:underline"
+          >Enter shared readings</Link
+        >
       </li>
     {/each}
   </ul>
@@ -46,7 +48,7 @@
 <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
   <h2 class="text-lg font-medium">New field group</h2>
   {#if fields.length === 0}
-    <p class="text-sm text-ink-muted">Add fields in setup first.</p>
+    <p class="text-sm text-ink-muted">Add fields in Setup before creating a group.</p>
   {:else}
     <Form action={fieldGroups.create()} class="space-y-4" resetOnSuccess>
       {#snippet children({ errors, processing })}

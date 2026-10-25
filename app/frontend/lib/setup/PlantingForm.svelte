@@ -99,12 +99,12 @@
         />
       </div>
       <NumberField
-        label="Allowable depletion (MAD)"
+        label="Allowable depletion fraction (MAD)"
         name="planting[mad_frac]"
         scale={100}
         unitLabel="%"
         bind:value={madFrac}
-        hint="Share of the available water used before irrigating"
+        hint="How much of the available water the crop can use before you irrigate. 50% suits most crops."
         error={errors.mad_frac}
       />
     </div>
@@ -113,7 +113,9 @@
       <label class="flex items-start gap-3 text-sm">
         <input type="radio" name="planting[et_method]" value="pct_cover" bind:group={etMethod} class="mt-0.5" />
         <span
-          >Percent cover <span class="text-ink-muted">(enter canopy cover now and then in the daily grid)</span></span
+          >Percent cover <span class="text-ink-muted"
+            >(enter canopy cover in the daily grid about weekly until the canopy closes)</span
+          ></span
         >
       </label>
       {#if plant?.has_lai_curve}
@@ -152,17 +154,17 @@
             bind:group={interpolation}
             class="mt-0.5"
           />
-          <span>Straight lines <span class="text-ink-muted">(and hold the last reading)</span></span>
+          <span>Straight lines <span class="text-ink-muted">(keeping the last reading after it)</span></span>
         </label>
       </fieldset>
     {/if}
     <div class="grid gap-4 sm:grid-cols-2">
       <NumberField
-        label="Target AD"
+        label="Target allowable depletion (AD)"
         name="planting[target_ad_pct]"
         unitLabel="%"
         value={planting?.target_ad_pct ?? null}
-        hint="Optional: irrigate before AD falls below this share of its maximum"
+        hint="Optional. Irrigate before allowable depletion falls below this share of its maximum."
         error={errors.target_ad_pct}
       />
       <NumberField
@@ -170,7 +172,7 @@
         name="planting[initial_moisture_pct]"
         unitLabel="%"
         value={planting?.initial_moisture_pct ?? null}
-        hint="Blank starts the season at field capacity"
+        hint="Leave blank to start the season at field capacity"
         error={errors.initial_moisture_pct}
       />
     </div>

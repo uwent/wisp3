@@ -24,13 +24,13 @@ class Outlook
     elsif crossing
       scenarios = chance_by(crossing.date)
       Result.new(urgent: crossing.days <= PlantingStatus::LEAD_DAYS, headline: "Irrigate by #{Outlook.day(crossing.date)}",
-        detail: "Projected to reach #{level} #{relative_day(crossing.date)}; about #{@depth.call(crossing.refill)} " \
-          "would refill it to field capacity then.",
+        detail: "Projected to reach #{level} #{relative_day(crossing.date)}, when about " \
+          "#{@depth.call(crossing.refill)} would refill the root zone to field capacity.",
         chance: scenarios && "#{scenarios} reach it by then.", dry:)
     elsif (last = @status.forecast_days.last)
       scenarios = chance_by(last.inputs.date)
       Result.new(urgent: false, headline: "No irrigation needed through #{Outlook.day(last.inputs.date)}",
-        detail: "Projected to stay above #{level} through the forecast.",
+        detail: "Projected to stay above #{level} through the end of the forecast.",
         chance: (scenarios && !scenarios.start_with?("0 ")) ? "#{scenarios} reach it by then." : nil, dry:)
     end
   end
@@ -47,7 +47,7 @@ class Outlook
     sooner = dry_crossing && (crossing.nil? || dry_crossing.date < crossing.date)
     return unless sooner
 
-    "If no rain falls: irrigate by #{Outlook.day(dry_crossing.date)} (#{relative_day(dry_crossing.date)})."
+    "If no rain falls, irrigate by #{Outlook.day(dry_crossing.date)} (#{relative_day(dry_crossing.date)})."
   end
 
   def level = target? ? "its target" : "the irrigation point"

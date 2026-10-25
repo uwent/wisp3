@@ -58,7 +58,7 @@ const day = (date: string, overrides: Partial<FieldDay> = {}): FieldDay => ({
 describe('field chart', () => {
   it('draws thresholds in display units', () => {
     const lines = thresholds({ summary, rootZoneDepth: 16, units: units('metric'), mode: 'ad', palette })
-    expect(lines.map((line) => line.name)).toEqual(['Field capacity', 'Target', 'Irrigate (MAD)', 'Wilting point'])
+    expect(lines.map((line) => line.name)).toEqual(['Field capacity', 'Target', 'Irrigation point', 'Wilting point'])
     expect(lines[0].value).toBeCloseTo(12.192)
   })
 

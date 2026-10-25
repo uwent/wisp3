@@ -124,7 +124,7 @@ RSpec.describe PlantingStatus, "projection" do
       expect(projection.dry_projection.map(&:date)).to eq(projection.forecast_days.map { |day| day.inputs.date })
       expect(projection.dry_crossing).to have_attributes(date: today + 2, ad: 0.0, refill: 1.2)
       expect(Outlook.for(projection, depth: ->(inches) { "#{inches} in" }).dry)
-        .to eq("If no rain falls: irrigate by Sun, Jul 12 (in 2 days).")
+        .to eq("If no rain falls, irrigate by Sun, Jul 12 (in 2 days).")
     end
 
     it "keeps planned irrigation in the dry case" do

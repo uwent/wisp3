@@ -13,7 +13,8 @@
 <div>
   <h1 class="text-xl font-semibold">Create an account</h1>
   <p class="mt-1 text-sm text-ink-muted">
-    WISP 3 is a fresh start: accounts from the previous version of WISP don't carry over.
+    This is a new version of WISP. Accounts from the previous version don't carry over, so you'll need to create a new
+    one.
   </p>
 </div>
 

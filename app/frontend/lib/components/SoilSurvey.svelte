@@ -29,7 +29,7 @@
   const describe = (unit: MapUnit) => {
     const key = soilKeyFor(unit.texture)
     const type = key && soilTypes.find((s) => s.key === key)
-    return `${unit.name} (${pct(unit.share)})${type ? ` → ${type.name}` : ''}`
+    return `${unit.name} (${pct(unit.share)})${type ? `, counted as ${type.name}` : ''}`
   }
 
   // Look the pivot up again when it moves or changes size, once it settles
@@ -66,9 +66,11 @@
     {#if lookup === 'loading'}
       <p class="text-ink-muted">Checking the soil survey…</p>
     {:else if lookup === 'error'}
-      <p class="text-ink-muted">The soil survey isn't answering right now; choose the soil yourself.</p>
+      <p class="text-ink-muted">The soil survey can't be reached right now. Please choose the soil yourself.</p>
     {:else if suggestion && suggestion.units.length === 0}
-      <p class="text-ink-muted">The soil survey has no map units here.</p>
+      <p class="text-ink-muted">
+        The soil survey has no soil information for this spot. Please choose the soil yourself.
+      </p>
     {:else if suggestion}
       <p>
         <span class="font-medium">Soil survey:</span>
@@ -88,7 +90,7 @@
           target="_blank"
           rel="noopener"
           class="text-brand-600 hover:underline">USDA Web Soil Survey</a
-        >). A suggestion: check it against what you know of the field.
+        >). Treat this as a starting point, and check it against what you know of the field.
       </p>
     {/if}
   </div>

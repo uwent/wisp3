@@ -9,6 +9,6 @@ class FieldGroupMember < ApplicationRecord
 
   def same_group
     return unless field_group && field
-    errors.add(:field, "belongs to another account") unless field.farm.group_id == field_group.group_id
+    errors.add(:field, "isn't in this operation") unless field.farm.group_id == field_group.group_id
   end
 end

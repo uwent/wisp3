@@ -12,7 +12,7 @@
 {#if valid}
   <div>
     <h1 class="text-xl font-semibold">Sign in to WISP</h1>
-    <p class="mt-1 text-sm text-ink-muted">This link signs you in once.</p>
+    <p class="mt-1 text-sm text-ink-muted">This link works once. Use the button below to sign in.</p>
   </div>
   <Form action={magicLinks.redeem({ query: { token } })}>
     {#snippet children({ processing })}
@@ -23,7 +23,7 @@
   <div>
     <h1 class="text-xl font-semibold">This link has expired</h1>
     <p class="mt-1 text-sm text-ink-muted">
-      Sign-in links work once and expire after {ttl_minutes} minutes.
+      It may have expired or already been used. Sign-in links work once and expire after {ttl_minutes} minutes.
     </p>
   </div>
   <Link href={usersSessions.new()} class="block text-center font-medium text-brand-600 hover:underline">
