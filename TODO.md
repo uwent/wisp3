@@ -11,7 +11,7 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 - [x] **First `cap staging deploy`** (2026-10-03). Puma is answering on `127.0.0.1:3100`.
 - [x] **Switch the nginx site** for `dev.wisp.cals.wisc.edu` to Puma on `127.0.0.1:3100` (new `sites-available/wisp3`; the legacy site's config is kept).
 - [x] Sign up on staging and check that the confirmation and sign-in-link emails arrive (sent with the host's `sendmail`). Confirmation arrives; scanners using up the link is fixed.
-- [ ] **Turn off SES click/open tracking.** Postfix on the staging host relays through Amazon SES (`email-smtp.us-west-2.amazonaws.com`), which rewrites every link through `awstrack.me`. Ad blockers flag that, and it affects ag-weather's daily emails too. In the SES configuration set the mail uses (likely the identity's default), remove the **Click** and **Open** event types from its event destination; keep Bounce, Complaint and Delivery. Bounce handling and the suppression list don't depend on tracking.
+- [x] **Turn off SES click/open tracking.** Postfix on the staging host relays through Amazon SES (`email-smtp.us-west-2.amazonaws.com`), which rewrites every link through `awstrack.me`. Ad blockers flag that, and it affects ag-weather's daily emails too. In the SES configuration set the mail uses (likely the identity's default), remove the **Click** and **Open** event types from its event destination; keep Bounce, Complaint and Delivery. Bounce handling and the suppression list don't depend on tracking.
 
 ## Legacy WISP
 
@@ -28,7 +28,7 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 - [x] **Deploy and check the digest on staging.** It goes out at 6 am Central to every confirmed user with a field in season (daily by default; users can pick "Only when irrigation is needed" or "Never" on the Alerts page). Before the first morning, preview it and send yourself a test from the Alerts page; admins can preview anyone's from their user page.
 - [x] **SPF and DKIM (Q6):** in Gmail, open the digest → "Show original" and check SPF and DKIM both say PASS. If not, ask campus IT (PLAN.md Q6). Also try the one-click "Unsubscribe" Gmail shows next to the sender.
-- [ ] **Exit check:** on staging, set up test fields for a rain refill, a sudden heat spell, and planned irrigation pushing back "Irrigate by", and check the digests read right.
+- [x] **Exit check:** on staging, set up test fields for a rain refill, a sudden heat spell, and planned irrigation pushing back "Irrigate by", and check the digests read right.
 
 ## Phase 6.6: field rain setting and season details
 
@@ -41,7 +41,7 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Phase 6.7: canopy curves, tasks and the daily email
 
-- [ ] **Deploy to staging** (`bundle exec cap staging deploy`). Three migrations run: non-corn LAI plantings switch to percent cover (their readings kept), `plantings.canopy_interpolation`, and `users.digest_scope` with the new "Daily all year" frequency.
+- [x] **Deploy to staging** (`bundle exec cap staging deploy`). Three migrations run: non-corn LAI plantings switch to percent cover (their readings kept), `plantings.canopy_interpolation`, and `users.digest_scope` with the new "Daily all year" frequency.
 - [ ] **Exit check on staging:**
   - A percent cover planting with no readings now follows its crop's curve (the dashed line on the field page's canopy panel), and its water use rises with it. Fields that had no readings will show more ET than before.
   - Enter a few readings and check the canopy passes through them; enter one that runs well ahead of the curve, or drops, and check the warning on the field page, the dashboard card and the email.
@@ -54,9 +54,9 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Phase 7: map and soil types
 
-- [ ] **Deploy to staging** (`bundle exec cap staging deploy`; no migrations). The deploy reloads the soil types: four new ones, and new values for sandy loam, loam, silt loam and clay loam, so staging fields on those soils that don't set their own values change (PLAN.md Phase 7 F).
-- [ ] **Exit check on staging:** the Map tab shows every pivot with its fields' badges; selecting a field in the list and a pivot on the map select each other; "Needs water within 7 days" dims the rest; each layer loads with its legend and time, and pointing at the map gives its value (compare "Rain, last 24 hours" with a gauge you trust). In setup, place a pivot you know and check the suggested soil and the Soil types layer.
-- [ ] **About page:** read the new Soils section and its table, and the Map entry under Day to day.
+- [x] **Deploy to staging** (`bundle exec cap staging deploy`; no migrations). The deploy reloads the soil types: four new ones, and new values for sandy loam, loam, silt loam and clay loam, so staging fields on those soils that don't set their own values change (PLAN.md Phase 7 F).
+- [x] **Exit check on staging:** the Map tab shows every pivot with its fields' badges; selecting a field in the list and a pivot on the map select each other; "Needs water within 7 days" dims the rest; each layer loads with its legend and time, and pointing at the map gives its value (compare "Rain, last 24 hours" with a gauge you trust). In setup, place a pivot you know and check the suggested soil and the Soil types layer.
+- [x] **About page:** read the new Soils section and its table, and the Map entry under Day to day.
 
 ## Staging (non-blocking)
 
