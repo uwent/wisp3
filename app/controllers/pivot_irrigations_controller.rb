@@ -2,6 +2,14 @@
 class PivotIrrigationsController < AuthenticatedController
   before_action :set_pivot
 
+  # The year's irrigation (?year=) as CSV
+  def index
+    year = params.fetch(:year, Date.current.year).to_i
+    irrigations = @pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(:date)
+    csv = PivotIrrigationCsv.new(@pivot, year, irrigations, exported_by: current_user, about_url:).to_csv
+    send_data csv, filename: "wisp-irrigation-#{@pivot.name.parameterize}-#{year}.csv", type: "text/csv; charset=utf-8"
+  end
+
   def create
     save(@pivot.pivot_irrigations.find_or_initialize_by(date: irrigation_params[:date]))
   end
@@ -18,7 +26,7 @@ class PivotIrrigationsController < AuthenticatedController
   private
 
   def set_pivot
-    @pivot = Current.group.pivots.find(params[:pivot_id])
+    @pivot = Current.group.pivots.includes(:fields, farm: :group).find(params[:pivot_id])
   end
 
   def save(irrigation)

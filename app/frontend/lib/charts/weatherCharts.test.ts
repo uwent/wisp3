@@ -9,6 +9,7 @@ import type { Palette } from './palette'
 import {
   defaultView,
   type FieldRain,
+  panelCsvRows,
   panelSummary,
   panelTable,
   runningTotal,
@@ -340,5 +341,14 @@ describe('weather charts in words and tables', () => {
     expect(table.columns).toEqual(['High', 'Low'])
     expect(table.rows[0]).toEqual({ date: days[64].date, forecast: true, values: ['26.7', '15.6'] })
     expect(table.rows).toHaveLength(65)
+  })
+
+  it('gives the daily values for a CSV oldest first, as stored, with zeros kept', () => {
+    const rows = panelCsvRows(panel('precipitation'), days, 'in')
+    expect(rows[0]).toEqual(['Date', 'Forecast', 'Rain (in)', 'Snow and other (in)'])
+    expect(rows[1]).toEqual(['2026-06-01', 'no', 0.4, 0.1])
+    expect(rows[2]).toEqual(['2026-06-02', 'no', 0, 0])
+    expect(rows.at(-1)).toEqual([days[64].date, 'yes', 0, 0])
+    expect(rows).toHaveLength(66)
   })
 })

@@ -14,7 +14,8 @@
 
   // A chart in a card: its title, then (top right) a reset button once the chart has been zoomed
   // or had series toggled, and an (i) explaining what it shows. Below it, a closed "Summary and
-  // data": the chart in words (also its text alternative) and its daily values as a table.
+  // data": the chart in words (also its text alternative), its daily values as a table, and (given
+  // download) a button saving them as CSV.
   let {
     title,
     info,
@@ -24,6 +25,7 @@
     table,
     unit,
     subtitle,
+    download,
   }: {
     title: string
     info: string
@@ -33,6 +35,7 @@
     table: () => ChartTable
     unit: string
     subtitle?: Snippet
+    download?: () => void
   } = $props()
 
   let chart: Chart | undefined = $state()
@@ -76,6 +79,14 @@
   <details bind:open class="mt-1 text-xs">
     <summary class="cursor-pointer text-brand-600 hover:underline">Summary and data</summary>
     <p class="mt-1 text-ink-muted">{summary}</p>
+    {#if download}
+      <button
+        type="button"
+        class="mt-1 cursor-pointer text-brand-600 hover:underline"
+        aria-label="Download CSV of the {title} data"
+        onclick={download}>Download CSV</button
+      >
+    {/if}
     {#if rows}
       <!-- Focusable so keyboard users can scroll it (WCAG 2.1.1) -->
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->

@@ -43,9 +43,13 @@ Rails.application.routes.draw do
   resource :setup, only: :show, controller: "setup"
   resource :quick_setup, only: [:new, :create], path: "setup/start", path_names: {new: ""}
   resource :season_copy, only: :create, path: "setup/copy_season"
+  # The operation's season as one CSV (?year=): its fields' totals, irrigation by pivot, weather by zone
+  resource :season_report, only: :show, path: "setup/report", defaults: {format: :csv}
   resources :farms, only: [:create, :update, :destroy]
   resources :pivots, only: [:show, :new, :create, :edit, :update, :destroy] do
-    resources :irrigations, only: [:create, :update, :destroy], controller: "pivot_irrigations"
+    # The pivot's weather (?year=) as CSV; its irrigation list (index) is a CSV too
+    get :weather, on: :member, defaults: {format: :csv}
+    resources :irrigations, only: [:index, :create, :update, :destroy], controller: "pivot_irrigations"
   end
   resources :fields, only: [:show, :create, :update, :destroy] do
     resources :days, only: :update, controller: "field_days", param: :date

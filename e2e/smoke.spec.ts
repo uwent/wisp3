@@ -481,7 +481,38 @@ test('a weather chart explains itself, and resets after zooming', async ({ page 
   const table = card.getByRole('table', { name: /^Precipitation by day/ })
   await expect(table.getByRole('columnheader', { name: 'Rain (in)', exact: true })).toBeVisible()
   await expect(table.getByRole('rowheader', { name: /\(forecast\)$/ }).first()).toBeVisible()
+
+  // Its values download as a CSV, opening with frontmatter (built in the browser)
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    card.getByRole('button', { name: 'Download CSV of the Precipitation data' }).click(),
+  ])
+  expect(download.suggestedFilename()).toMatch(/^wisp-.+-precipitation\.csv$/)
+  const csv = readFileSync(await download.path(), 'utf8')
+  expect(csv).toMatch(/^\uFEFF"?WISP weather chart: Precipitation, /)
+  expect(csv).toContain('\r\nDate,Forecast,Rain (in)')
   expect(errors).toEqual([])
+})
+
+test('setup downloads the season report, and a pivot its weather', async ({ page }) => {
+  await page.goto('/setup')
+  const [report] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('link', { name: /season report \(CSV\)$/ }).click(),
+  ])
+  expect(report.suggestedFilename()).toMatch(/^wisp-season-.+\.csv$/)
+  const csv = readFileSync(await report.path(), 'utf8')
+  expect(csv).toMatch(/^\uFEFF"?WISP season report, \d{4}/)
+  expect(csv).toContain('Irrigation by pivot')
+
+  await page.goto(await firstFieldPath(page))
+  const weather = page.getByRole('heading', { name: 'Weather at this pivot' }).locator('..').getByRole('button')
+  if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
+  const [all] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('link', { name: "download all of this pivot's weather" }).click(),
+  ])
+  expect(readFileSync(await all.path(), 'utf8')).toMatch(/^\uFEFF"?WISP weather, /)
 })
 
 test('alerts previews today’s email and sends a test, then waits', async ({ page }) => {

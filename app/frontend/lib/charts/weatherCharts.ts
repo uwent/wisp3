@@ -1,5 +1,6 @@
 import type { FieldDay, WeatherPanelDay } from '@/types/serializers'
 
+import type { CsvValue } from '../csv'
 import { formatDate } from '../dates'
 import type { Quantity, Units } from '../units'
 import type { ChartView, EChartsCoreOption } from './echarts'
@@ -603,4 +604,19 @@ export function panelTable(panel: WeatherPanel, days: WeatherPanelDay[]) {
       values: series.map((s) => valueOn(s, day)?.toFixed(digits) ?? null),
     })),
   }
+}
+
+/**
+ * The panel's daily values for a CSV file, oldest first: a header (Date, Forecast, then each series it
+ * shows with its unit), then a row per day. Build the panel with imperial units to get the values
+ * as stored. Unlike the table, a zero stays a zero (no snow is 0, not missing), and values keep
+ * three decimals.
+ */
+export function panelCsvRows(panel: WeatherPanel, days: WeatherPanelDay[], unit: string): CsvValue[][] {
+  const series = shownSeries(panel, days)
+  const rounded = (value: number | null) => (value === null ? null : Number(value.toFixed(3)))
+  return [
+    ['Date', 'Forecast', ...series.map((s) => `${s.name} (${unit})`)],
+    ...days.map((day) => [day.date, day.forecast ? 'yes' : 'no', ...series.map((s) => rounded(s.value(day)))]),
+  ]
 }

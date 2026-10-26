@@ -5,9 +5,10 @@
   import WeatherSection from '@/lib/charts/WeatherSection.svelte'
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
+  import { fileSlug } from '@/lib/csv'
   import { formatDate } from '@/lib/dates'
-  import { units as unitsFor } from '@/lib/units'
-  import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots } from '@/routes'
+  import { units as unitsFor, type Units } from '@/lib/units'
+  import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots, weatherPivot } from '@/routes'
   import type { Pivot, PivotIrrigation, WeatherPanelDay } from '@/types/serializers'
 
   let {
@@ -28,7 +29,7 @@
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const today = new Date().toLocaleDateString('en-CA')
-  const panels = $derived(weatherPanels(units, { gddSince: formatDate(weather_from) }))
+  const panels = $derived((u: Units) => weatherPanels(u, { gddSince: formatDate(weather_from) }))
   const canUseHours = $derived(
     pivot.pump_capacity_gpm !== null && pivot.fields.every((field) => field.area_acres !== null),
   )
@@ -197,6 +198,18 @@
   </section>
 {/key}
 
+{#if irrigations.length}
+  <div class="flex justify-end text-sm">
+    <a
+      href={pivotIrrigations.index(pivot.id, { query: { year } }).url}
+      class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
+      download
+    >
+      Export {year} irrigation (CSV)
+    </a>
+  </div>
+{/if}
+
 <section class="overflow-x-auto rounded-lg border border-line bg-surface-raised">
   {#if irrigations.length === 0}
     <p class="p-6 text-center text-sm text-ink-muted">No irrigation entered for {year} yet.</p>
@@ -235,6 +248,16 @@
   {/if}
 </section>
 
-<WeatherSection title="Weather at this pivot, {year}" {panels} days={weather} {units}>
+<WeatherSection
+  title="Weather at this pivot, {year}"
+  {panels}
+  days={weather}
+  {units}
+  exports={{
+    place: `${farm.name} / ${pivot.name}`,
+    file: `wisp-${fileSlug(pivot.name)}-${year}`,
+    href: weatherPivot(pivot.id, { query: { year } }).url,
+  }}
+>
   Each field's crop ET and soil water are on its own page.
 </WeatherSection>

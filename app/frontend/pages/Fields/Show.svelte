@@ -19,8 +19,9 @@
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
   import { seasonStats } from '@/lib/seasonStats'
-  import { formatNumber, parseNumber, units as unitsFor } from '@/lib/units'
-  import { exportPlanting, fieldDays, fieldGroups, fields, pivots, setup } from '@/routes'
+  import { fileSlug } from '@/lib/csv'
+  import { formatNumber, parseNumber, units as unitsFor, type Units } from '@/lib/units'
+  import { exportPlanting, fieldDays, fieldGroups, fields, pivots, setup, weatherPivot } from '@/routes'
   import type { Field, FieldDay, Planting, PlantingSummary, WeatherPanelDay } from '@/types/serializers'
 
   let {
@@ -104,15 +105,17 @@
       })),
     ),
   )
+  // In some units: the user's for the charts, imperial (as stored) for their CSVs (WeatherSection)
   const panels = $derived.by(() => {
     const balance: Pick<FieldDay, 'date' | 'adj_et' | 'rain' | 'rain_source' | 'rain_model'>[] = JSON.parse(balanceJson)
-    return weatherPanels(units, {
-      field: { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt },
-      cropEt: Object.fromEntries(balance.map((day) => [day.date, day.adj_et])),
-      fieldRain: Object.fromEntries(
-        balance.map(({ date, rain, rain_source, rain_model }) => [date, { rain, rain_source, rain_model }]),
-      ),
-    })
+    return (u: Units) =>
+      weatherPanels(u, {
+        field: { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt },
+        cropEt: Object.fromEntries(balance.map((day) => [day.date, day.adj_et])),
+        fieldRain: Object.fromEntries(
+          balance.map(({ date, rain, rain_source, rain_model }) => [date, { rain, rain_source, rain_model }]),
+        ),
+      })
   })
 
   // What it takes to refill the root zone to field capacity today
@@ -692,7 +695,16 @@
     </section>
   {/if}
 
-  <WeatherSection {panels} days={weather} {units}>
+  <WeatherSection
+    {panels}
+    days={weather}
+    {units}
+    exports={{
+      place: `${farm.name} / ${pivot.name} / ${field.name}`,
+      file: `wisp-${fileSlug(field.name)}-${planting?.year}`,
+      href: weatherPivot(pivot.id, { query: { year: planting?.year } }).url,
+    }}
+  >
     Precipitation also shows the rain you entered for this field, with the modeled rain its balance doesn't use
     outlined. Soil moisture is the model's own estimate, not this field's balance; it's shown against the field's
     capacity and wilting point for comparison.

@@ -91,6 +91,21 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_planting.reload.variety).not_to eq("Mine now")
   end
 
+  it "hides other groups' pivot weather and irrigation exports" do
+    get weather_pivot_path(their_pivot)
+    expect_not_found
+    get pivot_irrigations_path(their_pivot)
+    expect_not_found
+  end
+
+  it "leaves other groups' fields out of the season report" do
+    create(:planting, field: their_field)
+    create(:planting, field: my_field)
+    get season_report_path(year: 2026)
+    expect(response.body).to include(my_field.name)
+    expect(response.body).not_to include(their_field.name)
+  end
+
   it "hides other groups' pivot irrigation" do
     post pivot_irrigations_path(their_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1}}
     expect_not_found

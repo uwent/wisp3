@@ -1,12 +1,11 @@
-require "csv"
-
-# A planting's season as CSV: a header block describing the farm, field and crop, one row per day
-# through today, and season totals. Columns follow the legacy export, plus the source of each
-# input. Depths are in inches, as stored. Names typed by the grower are escaped so a spreadsheet
-# doesn't run them as formulas.
+# A planting's season as CSV: frontmatter (CsvExport), a header block describing the farm, field and
+# crop, one row per day through today, and season totals. Columns follow the legacy export, plus
+# the source of each input. Depths are in inches, as stored.
 class PlantingCsv
-  def initialize(status)
-    @status = status
+  include CsvExport
+
+  def initialize(status, exported_by: nil, about_url: nil)
+    @status, @exported_by, @about_url = status, exported_by, about_url
   end
 
   def to_csv
@@ -14,9 +13,13 @@ class PlantingCsv
     field = planting.field
     canopy = (planting.et_method == "lai") ? "Leaf area index" : "Percent cover"
 
-    CSV.generate do |csv|
-      csv << ["WISP daily report, #{planting.season_year} season"]
-      csv << []
+    generate do |csv|
+      days = @status.days
+      frontmatter(csv, "WISP daily report, #{planting.season_year} season", {
+        "Operation" => field.pivot.farm.group.name,
+        "Field" => "#{field.pivot.farm.name} / #{field.pivot.name} / #{field.name}",
+        "Days" => days.any? ? "#{days.first.inputs.date} to #{days.last.inputs.date}, one row each" : "none yet"
+      }, exported_by: @exported_by, about_url: @about_url)
       csv << ["Farm", "Pivot", "Equipment", "Field", "Area (acres)"]
       csv << [text(field.pivot.farm.name), text(field.pivot.name), text(field.pivot.equipment), text(field.name),
         field.area_acres]
@@ -31,7 +34,7 @@ class PlantingCsv
       csv << ["Date", "Reference ET (in)", "AD (in)", "Percent moisture", canopy, "Rainfall (in)", "Rain source",
         "Modeled rain (in)", "Irrigation (in)", "Irrigation source", "Soil moisture reading (%)", "Adjusted ET (in)",
         "ET source", "Deep drainage (in)"]
-      @status.days.each do |day|
+      days.each do |day|
         inputs, result = day.inputs, day.result
         csv << [inputs.date, num(inputs.et0), num(result.ad), num(result.pct_moisture), num(day.canopy),
           num(inputs.rain), inputs.rain_source, num(inputs.rain_model), num(inputs.irrigation),
@@ -44,12 +47,4 @@ class PlantingCsv
         nil, num(totals.adj_et), nil, num(totals.deep_drainage)]
     end
   end
-
-  private
-
-  def num(value) = value && format("%.4f", value)
-
-  # Text a spreadsheet would read as a formula (=, +, -, @, or a leading tab or return) gets a quote
-  def text(value) = (value.is_a?(String) && value.match?(/\A[=+\-@\t\r]/)) ? "'#{value}" : value
-  def pct(fraction) = (fraction * 100).round(2)
 end

@@ -156,11 +156,33 @@ RSpec.describe "Setup", type: :request do
       get export_planting_path(planting)
       expect(response.media_type).to eq("text/csv")
       expect(response.headers["Content-Disposition"]).to include("wisp-field-")
-      rows = CSV.parse(response.body)
+      rows = CSV.parse(response.body.delete_prefix(CsvExport::BOM))
       header = rows.index { |row| row.first == "Date" }
       expect(rows[header]).to include("Reference ET (in)", "AD (in)", "Rain source", "Deep drainage (in)")
       expect(rows[header + 3]).to include("2026-07-03", "0.5000", "entered")
       expect(rows.last.first).to eq("Totals")
+    end
+
+    it "exports the operation's season, its pivots' weather and their irrigation as CSV" do
+      field = create(:field, pivot:, name: "East", soil_type: sand)
+      create(:planting, field:, plant: potato, season_start: Date.new(2026, 7, 1))
+      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 3), inches: 0.5)
+
+      get season_report_path(year: 2026)
+      expect(response.media_type).to eq("text/csv")
+      expect(response.headers["Content-Disposition"]).to include("wisp-season-")
+      rows = CSV.parse(response.body.delete_prefix(CsvExport::BOM))
+      expect(rows.first).to eq(["WISP season report, 2026"])
+      expect(rows).to include(["Exported by: #{user.name} (#{user.email})"], ["Details: http://www.example.com/about"])
+      expect(rows.find { |row| row.include?("East") }).to include("Hancock", "North", "Potato")
+
+      get weather_pivot_path(pivot, year: 2026)
+      expect(response.headers["Content-Disposition"]).to include("wisp-weather-north-2026.csv")
+      expect(CSV.parse(response.body.delete_prefix(CsvExport::BOM))).to include(["WISP weather, North, 2026"])
+
+      get pivot_irrigations_path(pivot, year: 2026)
+      expect(response.headers["Content-Disposition"]).to include("wisp-irrigation-north-2026.csv")
+      expect(CSV.parse(response.body.delete_prefix(CsvExport::BOM)).last).to eq(["2026-07-03", "0.5000", nil, "0.5000", "All fields", nil])
     end
   end
 

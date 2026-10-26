@@ -20,6 +20,16 @@ class PivotsController < AuthenticatedController
     }
   end
 
+  # The pivot's weather over the same days as its page, as CSV
+  def weather
+    pivot = Current.group.pivots.includes(:weather_cell, farm: :group, fields: :plantings).find(params[:id])
+    year = params.fetch(:year, Date.current.year).to_i
+    dates = weather_dates(pivot, year)
+    days = WeatherPanel.new(pivot.weather_cell, dates, emergence_date: dates.first).days
+    send_data WeatherCsv.new(pivot, year, days, exported_by: current_user, about_url:).to_csv,
+      filename: "wisp-weather-#{pivot.name.parameterize}-#{year}.csv", type: "text/csv; charset=utf-8"
+  end
+
   def new
     farm = Current.group.farms.find_by(id: params[:farm_id])
     render inertia: "Pivots/Form", props: form_props(Pivot.new(farm:))

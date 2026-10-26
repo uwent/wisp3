@@ -17,6 +17,7 @@
     pivots,
     plantings,
     seasonCopies,
+    seasonReport,
     setup,
   } from '@/routes'
   import type { Farm, Field, Pivot, Plant, Planting, SoilType } from '@/types/serializers'
@@ -41,6 +42,7 @@
         ? `radius ${units.format('distance', pivot.radius_ft)}`
         : null
   const seasonPlantings = (field: Field) => field.plantings.filter((planting) => planting.year === year)
+  const hasSeason = $derived(allPivots.some((p) => p.fields.some((f) => seasonPlantings(f).length)))
   const hasLastSeason = $derived(
     allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
   )
@@ -286,6 +288,16 @@
   >
     Operation settings and members
   </Link>
+  {#if hasSeason}
+    <a
+      href={seasonReport({ query: { year } }).url}
+      class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
+      title="Every field's {year} season, irrigation by pivot and weather by zone, as one CSV"
+      download
+    >
+      {year} season report (CSV)
+    </a>
+  {/if}
 </div>
 
 <Dialog bind:open={dialogOpen} title={dialogTitle} wide={dialog?.kind === 'planting'}>

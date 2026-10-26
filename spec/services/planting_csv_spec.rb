@@ -9,12 +9,18 @@ RSpec.describe PlantingCsv do
       end_date: Date.new(2026, 7, 31))
   end
   let(:weather) { (Date.new(2026, 7, 1)..Date.new(2026, 7, 31)).to_h { |date| [date, {et0: 0.2, precip: 0.0}] } }
-  let(:rows) { CSV.parse(described_class.new(PlantingStatus.new(planting, today: Date.new(2026, 7, 10), weather:)).to_csv) }
+  let(:csv) { described_class.new(PlantingStatus.new(planting, today: Date.new(2026, 7, 10), weather:)).to_csv }
+  let(:rows) { CSV.parse(csv.delete_prefix(CsvExport::BOM)) }
 
   before { field.field_entries.create!(date: Date.new(2026, 7, 3), rain_in: 0.5, irrigation_in: 0.4) }
 
+  it "starts with a byte order mark, so Excel reads it as UTF-8" do
+    expect(csv).to start_with(CsvExport::BOM)
+  end
+
   it "describes the field and crop, then one row per day through today, then totals" do
     expect(rows.first).to eq(["WISP daily report, 2026 season"])
+    expect(rows).to include(["Days: 2026-07-01 to 2026-07-10, one row each"])
     header = rows.index { |row| row.first == "Date" }
     days = rows[(header + 1)..].take_while(&:any?)
     expect(days.size).to eq(10)
@@ -32,7 +38,8 @@ RSpec.describe PlantingCsv do
   end
 
   it "escapes names a spreadsheet would run as formulas, but not numbers" do
-    expect(rows[3]).to eq(["Hancock", "'=HYPERLINK(\"http://example.com\")", "'+Zimmatic", "North", "60.0"])
-    expect(rows[7][1]).to eq("'@Russet")
+    farm_row = rows.index(["Farm", "Pivot", "Equipment", "Field", "Area (acres)"]) + 1
+    expect(rows[farm_row]).to eq(["Hancock", "'=HYPERLINK(\"http://example.com\")", "'+Zimmatic", "North", "60.0"])
+    expect(rows[farm_row + 4][1]).to eq("'@Russet")
   end
 end
