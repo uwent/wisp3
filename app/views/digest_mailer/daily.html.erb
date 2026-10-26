@@ -1,88 +1,105 @@
-<% muted = "color:#5b6470" %>
-<% rule = "border-top:1px solid #e3e6ea" %>
+<% c = EmailHelper::COLORS %>
+<% muted = email_style(:muted) %>
+<% rule = email_style(:rule) %>
 <%# Heading levels follow the sections shown, so none is skipped (operation, farm, then zone and pivot) %>
 <% farm_level = @digest.several_groups? ? 3 : 2 %>
 <% zone_level = farm_level + (@digest.several_farms? ? 1 : 0) %>
-<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#141b24;max-width:600px;font-size:14px;line-height:1.45">
-  <h1 style="font-size:20px;margin:0 0 4px">Your fields this morning</h1>
-  <p style="margin:0 0 <%= @digest.context.any? ? 6 : 20 %>px;<%= muted %>"><%= @digest.today.strftime("%A, %B %-d") %> · soil water balance through today, with a projection from the latest forecast</p>
-  <% if @digest.context.any? %>
-    <p style="margin:0 0 20px"><%= safe_join(@digest.context.map { |label, name| safe_join([tag.span("#{label}:", style: muted), " ", tag.strong(name)]) }, " · ") %></p>
-  <% end %>
+<h1 style="<%= email_style(:h1) %>">Your fields this morning</h1>
+<p style="margin:0 0 <%= @digest.context.any? ? 6 : 24 %>px;font-size:14px;<%= muted %>"><%= @digest.today.strftime("%A, %B %-d") %> · soil water balance through today, with a projection from the latest forecast</p>
+<% if @digest.context.any? %>
+  <p style="margin:0 0 24px;font-size:14px"><%= safe_join(@digest.context.map { |label, name| safe_join([tag.span("#{label}:", style: muted), " ", tag.strong(name)]) }, " · ") %></p>
+<% end %>
 
-  <% if @digest.attention.any? %>
-    <div style="border:1px solid #e3e6ea;border-radius:6px;padding:12px 14px;margin:0 0 24px">
-      <h2 style="font-size:16px;margin:0 0 8px">Needs attention</h2>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px">
-        <% @digest.attention.each do |entry| %>
-          <tr>
-            <td width="1" style="padding:6px 10px 6px 0;<%= rule %>;white-space:nowrap;vertical-align:top"><span style="<%= status_style(entry.status.status) %>"><%= status_label(entry.status.status) %></span></td>
-            <td style="padding:6px 0;<%= rule %>">
-              <span style="<%= muted %>">Field:</span> <%= email_link_to entry.field.name, field_link(entry) %>
-              <span style="<%= muted %>">· <%= digest_place(entry, @digest) %></span><br>
-              <% if entry.outlook %><span style="font-weight:600;<%= "color:#cc2827" if entry.outlook.urgent %>"><%= entry.outlook.headline %></span><% end %>
-            </td>
-          </tr>
-        <% end %>
-      </table>
-    </div>
-  <% end %>
-
-  <% if @digest.nothing_listed %>
-    <p style="margin:0 0 16px;font-weight:600">Nothing needs your attention today. <span style="font-weight:400"><%= @digest.nothing_listed %></span></p>
-  <% end %>
-
-  <% @digest.operations.each do |operation| %>
-    <% if @digest.several_groups? %>
-      <h2 style="font-size:18px;margin:28px 0 10px;padding-bottom:4px;border-bottom:2px solid #141b24"><span style="font-weight:400;<%= muted %>">Operation:</span> <%= operation.group.name %></h2>
-    <% end %>
-    <% operation.farms.each do |farm_section| %>
-      <% if @digest.several_farms? %>
-        <%= content_tag "h#{farm_level}", style: "font-size:16px;margin:20px 0 10px;padding-bottom:3px;border-bottom:1px solid #141b24" do %><span style="font-weight:400;<%= muted %>">Farm:</span> <%= farm_section.farm.name %><% end %>
-      <% end %>
-      <% farm_section.zones.each do |zone| %>
-        <div style="border-left:3px solid #c9d1da;padding:0 0 4px 12px;margin:0 0 20px">
-          <%= content_tag "h#{zone_level}", digest_zone(zone), style: "font-size:14px;margin:0 0 4px;#{muted}" %>
-          <div style="font-size:12px;<%= muted %>;background:#f4f6f8;border-radius:4px;padding:6px 10px;margin:0 0 4px">
-            <%= safe_join(digest_weather(zone, @digest), tag.br) %>
-          </div>
-          <p style="font-size:12px;margin:0 0 8px;<%= muted %>">Pivots in this zone: <%= digest_zone_pivots(zone) %></p>
-          <% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
-            <%= content_tag "h#{zone_level + 1}", style: "font-size:15px;margin:14px 0 4px" do %><span style="font-weight:400;<%= muted %>">Pivot:</span> <%= email_link_to pivot_section.pivot.name, pivot_link(pivot_section.pivot) %><% end %>
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px">
-              <% pivot_section.entries.each do |entry| %>
-                <tr>
-                  <td width="1" style="padding:8px 10px 8px 0;<%= rule %>;white-space:nowrap;vertical-align:top"><span style="<%= status_style(entry_status(entry)) %>"><%= status_label(entry_status(entry)) %></span></td>
-                  <td style="padding:8px 0;<%= rule %>">
-                    <span style="<%= muted %>">Field:</span> <span style="font-weight:600"><%= email_link_to entry.field.name, field_link(entry) %></span>
-                    <% if !entry.active? %>
-                      <span style="<%= muted %>">· <%= digest_off_season(entry) %></span>
-                    <% else %>
-                      <span style="<%= muted %>">· <%= digest_crop(entry) %> · <%= digest_ad(entry, @digest, short: !entry.attention?) %></span><br>
-                      <% if entry.attention? && entry.outlook %>
-                        <span style="font-weight:600;<%= "color:#cc2827" if entry.outlook.urgent %>"><%= entry.outlook.headline %></span><br>
-                        <%= entry.outlook.detail %><% if entry.outlook.chance %> <%= entry.outlook.chance %><% end %><% if entry.outlook.dry %> <%= entry.outlook.dry %><% end %><br>
-                        <span style="<%= muted %>">Last rain: <%= digest_last(entry, @digest, :rain) %> · Last irrigation: <%= digest_last(entry, @digest, :irrigation) %></span>
-                      <% else %>
-                        <span style="<%= muted %>"><%= digest_summary(entry) %></span>
-                      <% end %>
-                      <% if (tasks = digest_tasks(entry)).any? %>
-                        <br><span style="font-size:12px">To do: <%= tasks.join(" · ") %></span>
-                      <% end %>
-                    <% end %>
-                  </td>
-                </tr>
-              <% end %>
-            </table>
+<% if @digest.attention.any? %>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="<%= email_style(:card) %>;border-left:4px solid <%= c[:irrigate] %>">
+    <tr>
+      <td style="<%= email_style(:card_header) %>">
+        <h2 style="font-size:16px;line-height:1.3;margin:0">Needs attention</h2>
+      </td>
+    </tr>
+    <tr>
+      <td style="<%= email_style(:card_body) %>">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px">
+          <% @digest.attention.each_with_index do |entry, index| %>
+            <% border = index.zero? ? "" : rule %>
+            <tr>
+              <td width="1" style="padding:10px 10px 8px 0;<%= border %>;white-space:nowrap;vertical-align:top"><span style="<%= status_style(entry.status.status) %>"><%= status_label(entry.status.status) %></span></td>
+              <td style="padding:8px 0;<%= border %>">
+                <span style="<%= muted %>">Field:</span> <span style="font-weight:600"><%= email_link_to entry.field.name, field_link(entry) %></span>
+                <span style="<%= muted %>">· <%= digest_place(entry, @digest) %></span><br>
+                <% if entry.outlook %><span style="font-weight:600;<%= "color:#{c[:irrigate]}" if entry.outlook.urgent %>"><%= entry.outlook.headline %></span><% end %>
+              </td>
+            </tr>
           <% end %>
-        </div>
-      <% end %>
+        </table>
+      </td>
+    </tr>
+  </table>
+<% end %>
+
+<% if @digest.nothing_listed %>
+  <p style="margin:0 0 20px;font-weight:600">Nothing needs your attention today. <span style="font-weight:400"><%= @digest.nothing_listed %></span></p>
+<% end %>
+
+<% @digest.operations.each do |operation| %>
+  <% if @digest.several_groups? %>
+    <h2 style="font-size:18px;line-height:1.3;margin:32px 0 12px;padding-bottom:4px;border-bottom:2px solid <%= c[:ink] %>"><span style="font-weight:400;<%= muted %>">Operation:</span> <%= operation.group.name %></h2>
+  <% end %>
+  <% operation.farms.each do |farm_section| %>
+    <% if @digest.several_farms? %>
+      <%= content_tag "h#{farm_level}", style: "font-size:16px;line-height:1.3;margin:24px 0 12px;padding-bottom:3px;border-bottom:1px solid #{c[:ink]}" do %><span style="font-weight:400;<%= muted %>">Farm:</span> <%= farm_section.farm.name %><% end %>
+    <% end %>
+    <% farm_section.zones.each do |zone| %>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="<%= email_style(:card) %>">
+        <tr>
+          <td style="<%= email_style(:card_header) %>">
+            <%= content_tag "h#{zone_level}", digest_zone(zone), style: "font-size:14px;line-height:1.3;margin:0 0 4px" %>
+            <p style="margin:0;font-size:12px;line-height:1.5;<%= muted %>">
+              <%= safe_join(digest_weather(zone, @digest), tag.br) %><br>
+              Pivots in this zone: <%= digest_zone_pivots(zone) %>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="<%= email_style(:card_body) %>">
+            <% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
+              <%= content_tag "h#{zone_level + 1}", style: "font-size:15px;line-height:1.3;margin:12px 0 4px" do %><span style="font-weight:400;<%= muted %>">Pivot:</span> <%= email_link_to pivot_section.pivot.name, pivot_link(pivot_section.pivot) %><% end %>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px">
+                <% pivot_section.entries.each do |entry| %>
+                  <tr>
+                    <td width="1" style="padding:10px 10px 8px 0;<%= rule %>;white-space:nowrap;vertical-align:top"><span style="<%= status_style(entry_status(entry)) %>"><%= status_label(entry_status(entry)) %></span></td>
+                    <td style="padding:8px 0;<%= rule %>">
+                      <span style="<%= muted %>">Field:</span> <span style="font-weight:600"><%= email_link_to entry.field.name, field_link(entry) %></span>
+                      <% if !entry.active? %>
+                        <span style="<%= muted %>">· <%= digest_off_season(entry) %></span>
+                      <% else %>
+                        <span style="<%= muted %>">· <%= digest_crop(entry) %> · <%= digest_ad(entry, @digest, short: !entry.attention?) %></span><br>
+                        <% if entry.attention? && entry.outlook %>
+                          <span style="font-weight:600;<%= "color:#{c[:irrigate]}" if entry.outlook.urgent %>"><%= entry.outlook.headline %></span><br>
+                          <%= entry.outlook.detail %><% if entry.outlook.chance %> <%= entry.outlook.chance %><% end %><% if entry.outlook.dry %> <%= entry.outlook.dry %><% end %><br>
+                          <span style="font-size:13px;<%= muted %>">Last rain: <%= digest_last(entry, @digest, :rain) %> · Last irrigation: <%= digest_last(entry, @digest, :irrigation) %></span>
+                        <% else %>
+                          <span style="<%= muted %>"><%= digest_summary(entry) %></span>
+                        <% end %>
+                        <% if (tasks = digest_tasks(entry)).any? %>
+                          <br><span style="font-size:13px"><strong>To do:</strong> <%= tasks.join(" · ") %></span>
+                        <% end %>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </table>
+            <% end %>
+          </td>
+        </tr>
+      </table>
     <% end %>
   <% end %>
+<% end %>
 
-  <p style="margin:24px 0 0;font-size:12px;<%= muted %>">
-    <%= digest_counts(@digest) %>
-    <%= digest_reason(@user, test: @test) %>
-    <%= email_link_to "Change how often you get this email and which fields it covers", @alerts_url %>, or <%= email_link_to "unsubscribe", @unsubscribe_url %>.
-  </p>
-</div>
+<p style="margin:8px 0 0;font-size:13px;<%= muted %>"><%= digest_counts(@digest) %></p>
+
+<% content_for :footer do %>
+  <%= digest_reason(@user, test: @test) %>
+  <%= email_link_to "Change how often you get this email and which fields it covers", @alerts_url %>, or <%= email_link_to "unsubscribe", @unsubscribe_url %>.
+<% end %>

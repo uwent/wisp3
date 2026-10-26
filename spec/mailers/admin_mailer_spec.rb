@@ -15,7 +15,7 @@ RSpec.describe AdminMailer do
 
     html = mail.html_part.body.decoded
     expect(html).to include("<h1", "<h2", "1 weather cell missing weather", "Cell 4 (44.1200, -89.5300): no forecast")
-    expect(html).to include(%(<a ses:no-track href="http://example.com/admin/weather">Weather status</a>))
+    expect(Nokogiri::HTML(html).at_css("a[href='http://example.com/admin/weather']").text).to eq("Weather status")
     expect(html).to include(%(<html lang="en">))
 
     text = mail.text_part.body.decoded

@@ -38,8 +38,9 @@ Rails.application.configure do
   # (bin/e2e) must not call Open-Meteo
   config.active_job.queue_adapter = :test
 
-  # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = {host: "example.com"}
+  # Set host to be used by links generated in mailer templates. The e2e server's are its own, since the
+  # Alerts page's preview loads the email's logo (and the CSP blocks other http images)
+  config.action_mailer.default_url_options = ENV["E2E"] ? {host: "localhost", port: 3200} : {host: "example.com"}
 
   # Print deprecation notices to the stderr.
   config.active_support.deprecation = :stderr

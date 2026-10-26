@@ -4,13 +4,15 @@ class DigestMailer < ApplicationMailer
   helper :digest
   helper_method :field_link, :pivot_link, :status_label, :status_style, :entry_status
 
-  # The app's --color-status-* tokens in hex, with an icon so color isn't the only cue (StatusBadge)
+  # The app's --color-status-* tokens (EmailHelper::COLORS), with an icon so color isn't the only cue
+  # (StatusBadge)
+  COLORS = EmailHelper::COLORS
   STATUSES = {
-    irrigate: {label: "▲ Irrigate", color: "#cc2827", text: "#ffffff"},
-    caution: {label: "! Caution", color: "#e49e22", text: "#141b24"},
-    ok: {label: "✓ OK", color: "#008246", text: "#ffffff"},
-    full: {label: "● Full", color: "#0077c2", text: "#ffffff"},
-    off: {label: "– Off season", color: "#e5e7eb", text: "#141b24"}
+    irrigate: {label: "▲ Irrigate", color: COLORS[:irrigate], text: COLORS[:white]},
+    caution: {label: "! Caution", color: COLORS[:caution], text: COLORS[:ink]},
+    ok: {label: "✓ OK", color: COLORS[:ok], text: COLORS[:white]},
+    full: {label: "● Full", color: COLORS[:full], text: COLORS[:white]},
+    off: {label: "– Off season", color: COLORS[:off], text: COLORS[:ink]}
   }.freeze
 
   # What a user's digest would be today, for the previews on the Alerts page and admin user page:
@@ -50,7 +52,7 @@ class DigestMailer < ApplicationMailer
 
   # Inline styles for a status badge (email clients ignore stylesheets)
   def status_style(status)
-    style = STATUSES[status] || {color: "#e5e7eb", text: "#141b24"}
+    style = STATUSES[status] || STATUSES[:off]
     "background:#{style[:color]};color:#{style[:text]};border-radius:999px;padding:2px 8px;font-size:12px;" \
       "font-weight:600;white-space:nowrap"
   end

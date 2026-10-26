@@ -235,8 +235,13 @@
       {@render children()}
     </main>
 
-    <footer class="border-t border-line py-4 text-center text-xs text-ink-muted">
-      Wisconsin Irrigation Scheduling Program
+    <footer class="space-y-1 border-t border-line px-4 py-4 text-center text-xs text-ink-muted">
+      <p>Wisconsin Irrigation Scheduling Program</p>
+      <p>
+        Developed by the <a href="https://cals.wisc.edu/" class="underline hover:text-ink"
+          >College of Agricultural and Life Sciences</a
+        > at the University of Wisconsin–Madison.
+      </p>
     </footer>
   {/if}
 </div>

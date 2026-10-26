@@ -61,7 +61,7 @@ RSpec.describe DigestMailer do
     mail = described_class.daily(DailyDigest.new(user))
     todo = "To do: Enter a soil moisture reading (last Jul 10) · Enter a percent cover reading (last Jul 1)"
     expect(mail.text_part.body.decoded).to include("\n     #{todo}\n")
-    expect(mail.html_part.body.decoded).to include(todo)
+    expect(Nokogiri::HTML(mail.html_part.body.decoded).text.squish).to include(todo)
   end
 
   it "gives each operation its own section, and each its weather zones" do

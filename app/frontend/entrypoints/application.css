@@ -34,9 +34,19 @@
   --color-status-irrigate-ink: oklch(55% 0.2 27);
   --color-status-caution-ink: oklch(50% 0.12 75);
 
-  /* University of Wisconsin–Madison red, for the branding bar; the darker red in dark mode */
+  /* University of Wisconsin–Madison colors (UW theme, _uw_vars.scss), for the branding bar and email.
+     The reds are the CALS theme's (UW's own are #c5050c and #9b0000); the darker red is for dark
+     mode. WISP's own color is the brand blue: keep the red to the branding bar, where it can't be
+     mistaken for the irrigate status. The email palette mirrors these in EmailHelper::COLORS */
   --color-uw-red: #cf0a1b;
   --color-uw-red-dark: #a3030e;
+  --color-uw-gray-dark: #282728;
+  --color-uw-gray-light: #e1e5e7;
+  --color-uw-gray-lightest: #f3f3f3;
+  --color-uw-border: #cfcfcf;
+  --color-uw-black: #121212;
+  --color-uw-link: #036796;
+  --color-uw-link-dark: #023d54;
 
   /* The bar shown while an admin is signed in as someone else, in a violet no status uses; text on
      it is 8.3:1 (light) and 9.0:1 (dark) */
