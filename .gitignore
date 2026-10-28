@@ -29,8 +29,6 @@
 # Ignore key files for decrypting credentials and more.
 /config/credentials/*.key
 
-
-
 # Playwright (bin/e2e)
 /test-results/
 /playwright-report/
