@@ -1,0 +1,43 @@
+# Production on the EC2 server (docs/deployment.md, Production). `bin/production deploy` copies this
+# to /opt/wisp/compose.yaml beside the .env it writes from SSM (/wisp/prod/*, plus TAG, the image
+# to run). Compose reads that .env for ${…} below, and env_file passes it into the containers.
+name: wisp3
+
+x-app: &app
+  image: 702627367783.dkr.ecr.us-east-1.amazonaws.com/wisp3:${TAG:?set TAG in .env with bin/production deploy}
+  env_file: .env
+  restart: unless-stopped
+
+x-env: &env
+  RAILS_ENV: production
+  # RDS requires TLS; check its certificate against the bundle in the image
+  DB_SSLMODE: verify-full
+  DB_SSLROOTCERT: /rails/config/rds-global-bundle.pem
+
+services:
+  # Thruster on 80 and 443 (Let's Encrypt for APP_HOST, renewed by itself) in front of Puma
+  web:
+    <<: *app
+    environment:
+      <<: *env
+      TLS_DOMAIN: ${APP_HOST:?set APP_HOST in SSM}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - thruster:/rails/storage/thruster
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:3000/up"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+
+  # Solid Queue: weather refreshes, the daily digest, the health check (config/recurring.yml)
+  jobs:
+    <<: *app
+    environment:
+      <<: *env
+    command: ["./bin/jobs"]
+
+volumes:
+  thruster:

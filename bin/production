@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Production: build the image and push it to ECR, then deploy it on the EC2 server with Docker
+# Compose. Staging still deploys with Capistrano. See docs/deployment.md, Production.
+#
+#   bin/production push             build HEAD's image (linux/amd64) and push it to ECR
+#   bin/production deploy [TAG]     deploy a pushed image (default HEAD's); an older TAG rolls back
+#   bin/production status           containers, the deployed tag and /up
+#   bin/production logs [service]   follow logs (web, jobs; default both)
+#   bin/production console          a Rails console
+#   bin/production rails ARGS…      any bin/rails command, e.g. rails runner '…'
+#   bin/production ssh              a shell on the server, in /opt/wisp
+#
+# `push` needs AWS credentials that can push to ECR (AWS_PROFILE); the server reads SSM and pulls
+# from ECR with its instance role. PRODUCTION_SSH overrides the SSH host (default wisp-prod, from
+# ~/.ssh/config).
+set -euo pipefail
+
+REGION=us-east-1
+REGISTRY=702627367783.dkr.ecr.us-east-1.amazonaws.com
+IMAGE=$REGISTRY/wisp3
+HOST=${PRODUCTION_SSH:-wisp-prod}
+DIR=/opt/wisp
+
+cd "$(dirname "$0")/.."
+
+head_tag() { git rev-parse --short=12 HEAD; }
+
+remote() { ssh "$HOST" "cd $DIR && $*"; }
+remote_tty() { ssh -t "$HOST" "cd $DIR && $*"; }
+
+push() {
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "The working tree has changes; commit them so the image matches its tag." >&2
+    exit 1
+  fi
+  local tag
+  tag=$(head_tag)
+  if aws ecr describe-images --region $REGION --repository-name wisp3 --image-ids imageTag="$tag" >/dev/null 2>&1; then
+    echo "$IMAGE:$tag is already in ECR (tags can't be overwritten)."
+    return
+  fi
+  aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY
+  docker build --platform linux/amd64 --build-arg REVISION="$(git rev-parse HEAD)" -t "$IMAGE:$tag" .
+  docker push "$IMAGE:$tag"
+  echo "Pushed $IMAGE:$tag. Deploy it with: bin/production deploy $tag"
+}
+
+deploy() {
+  local tag=${1:-$(head_tag)}
+  scp -q config/deploy/compose.production.yaml "$HOST:$DIR/compose.yaml"
+  # On the server: write .env from SSM (single-quoted, so Compose takes values literally), pull,
+  # migrate and load the reference data, then replace the containers
+  ssh "$HOST" bash -s -- "$tag" "$REGION" "$DIR" <<'REMOTE'
+set -euo pipefail
+tag=$1 region=$2 dir=$3
+cd "$dir"
+umask 077
+aws ssm get-parameters-by-path --region "$region" --path /wisp/prod/ --with-decryption \
+  --query 'Parameters[*].[Name,Value]' --output text \
+  | sed -E "s#^/wisp/prod/([^\t]+)\t(.*)\$#\1='\2'#" > .env.new
+for name in RAILS_MASTER_KEY WISP3_DATABASE_PASSWORD DB_HOST APP_HOST; do
+  grep -q "^$name=" .env.new || { echo "Missing SSM parameter /wisp/prod/$name" >&2; rm .env.new; exit 1; }
+done
+echo "TAG='$tag'" >> .env.new
+mv .env.new .env
+docker compose pull --quiet
+docker compose run --rm web bin/rails db:prepare db:seed
+docker compose up -d --remove-orphans
+docker image prune -af --filter until=168h >/dev/null
+docker compose ps
+REMOTE
+  echo "Deployed $tag."
+}
+
+case "${1:-}" in
+  push) push ;;
+  deploy) shift; deploy "$@" ;;
+  status) remote "grep ^TAG= .env; docker compose ps; docker compose exec -T web curl -fsS http://localhost:3000/up; echo" ;;
+  logs) shift; remote_tty "docker compose logs -f --tail=200 $*" ;;
+  console) remote_tty "docker compose exec web bin/rails console" ;;
+  rails) shift; remote_tty "docker compose exec web bin/rails $(printf '%q ' "$@")" ;;
+  ssh) ssh -t "$HOST" "cd $DIR && exec \$SHELL -l" ;;
+  *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

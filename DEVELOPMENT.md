@@ -22,7 +22,7 @@ sudo apt install -y build-essential git curl libssl-dev libyaml-dev zlib1g-dev l
   libreadline-dev libpq-dev rustc
 ```
 
-`rustc` is optional in development. With it, ruby-build includes YJIT, Ruby's JIT, which Rails turns on in production. Install it on servers so production gets YJIT (PLAN.md §12). In development it only makes the app a bit faster.
+`rustc` is optional in development. With it, ruby-build includes YJIT, Ruby's JIT, which Rails turns on in production. The production image's Ruby already has it; install `rustc` on the staging host so staging gets it too. In development it only makes the app a bit faster.
 
 ### Ruby
 
@@ -103,38 +103,31 @@ bin/rails demo:seed            # rebuild the demo account
 | Environment | Where secrets live |
 |---|---|
 | development, test | `.env` (gitignored), read by dotenv; only `OPEN_METEO_API_KEY`, which is optional |
-| staging | `config/credentials/staging.yml.enc`, decrypted by `config/credentials/staging.key` |
-| production | `config/credentials/production.yml.enc` and `production.key`, to be created for the new server |
+| staging | `config/credentials/staging.yml.enc` (`database.password`, `open_meteo.api_key`, `secret_key_base`), decrypted by `config/credentials/staging.key` |
+| production | AWS SSM Parameter Store, `/wisp/prod/*`: the database password, the Open-Meteo key, SMTP and `RAILS_MASTER_KEY`. Each deploy writes them into the server's `/opt/wisp/.env`. The master key is `config/credentials/production.key`, which decrypts `config/credentials/production.yml.enc`, holding only `secret_key_base` |
 
-Keys are never committed. Keep each in the team's password manager. A server gets its key copied to `~/wisp3/shared/config/credentials/` (docs/deployment.md, step 3).
+Keys are never committed. Keep both `.key` files in the team's password manager. Staging's is copied to the server (docs/deployment.md, Staging step 3); production's is the `RAILS_MASTER_KEY` parameter.
 
-The credentials hold `database.password` (the `wisp3` Postgres role) and, optionally, `open_meteo.api_key`. To create production's:
-
-```bash
-bin/rails credentials:edit --environment production    # writes production.yml.enc and production.key
-```
-
-```yaml
-database:
-  password: <a long random password; the same one goes into CREATE ROLE on the server>
-open_meteo:
-  api_key: <optional: the commercial key; without it the free endpoints are used>
-```
-
-Commit `production.yml.enc`, store `production.key` in the password manager, and copy it to the server.
+Settings read from the environment (`WISP3_DATABASE_PASSWORD`, `OPEN_METEO_API_KEY`) take precedence over credentials, so production needs nothing else in its credentials file.
 
 ## 5. Deployment
 
-Capistrano deploys `main` (or `BRANCH=…`) to each server, where Puma and the Solid Queue worker run as systemd user services owned by `deploy`. Each deploy installs packages, builds the Vite assets, runs migrations and restarts both services.
+| Stage | How | Command |
+|---|---|---|
+| staging (`dev.wisp.cals.wisc.edu`) | Capistrano: Puma and the Solid Queue worker as systemd user services owned by `deploy` | `cap staging deploy` |
+| production (AWS: EC2 and RDS) | Docker Compose: an image per commit in ECR, run as `web` (Thruster and Puma) and `jobs` | `bin/production push`, then `bin/production deploy` |
 
 ```bash
-cap staging deploy
+cap staging deploy                 # installs packages, builds assets, migrates, restarts
 cap staging systemd:status
-PRODUCTION_HOST=<hostname> cap production deploy     # once the new server exists
+
+bin/production push                # build HEAD's image and push it to ECR (needs AWS_PROFILE)
+bin/production deploy [TAG]        # deploy it; an earlier TAG rolls back
+bin/production status | logs | console | rails … | ssh
 ```
 
-- **Routine deploys, first-time server setup** (database role, credentials key, services, nginx) **and verifying a deploy:** [docs/deployment.md](docs/deployment.md).
-- **What the new production server needs** (packages including `rustc`, the `deploy` user with linger, network, TLS, mail, backups): PLAN.md §12.
+- **Routine deploys, first-time setup of either server, and verifying a deploy:** [docs/deployment.md](docs/deployment.md).
+- **Building the production image locally:** `docker build --platform linux/amd64 -t wisp3:test .`. To run it, it needs a Postgres, `RAILS_MASTER_KEY`, `WISP3_DATABASE_PASSWORD`, `DB_HOST` and `APP_HOST`.
 - **After a deploy,** `https://<host>/up` returns JSON with `status` (`ok`, `degraded` or `down`), the deployed `version` and the morning health check's result. An uptime monitor can watch it.
 
 ## 6. Troubleshooting
@@ -144,4 +137,6 @@ PRODUCTION_HOST=<hostname> cap production deploy     # once the new server exist
 - **Playwright can't launch Chromium:** rerun `pnpm exec playwright install --with-deps chromium`. The `--with-deps` part needs sudo for the system libraries.
 - **Stopping a dev server:** stop it by port or PID (`lsof -i :3000`). `pkill -f` with a pattern that also matches your own command line kills the shell running it.
 - **`systemctl --user` over SSH says "Failed to connect to bus":** set `XDG_RUNTIME_DIR=/run/user/$(id -u)` first. Capistrano's tasks do this.
+- **`bin/production` times out connecting to the server:** SSH is open only to known IP addresses; send Eric your current public IP.
+- **`bin/production push` says "no basic auth credentials" or "expired token":** sign in again (`aws sso login` or `aws login`) with `AWS_PROFILE` set.
 - **CI says generated types or routes are out of date:** run `bin/rails typelizer:generate` and commit the changes.

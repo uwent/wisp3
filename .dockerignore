@@ -1,0 +1,24 @@
+# Kept out of the production image (Dockerfile). Secrets reach the container from SSM, never the image.
+/.git
+/.github
+/.husky
+/.vscode
+/.env*
+/config/master.key
+/config/credentials/*.key
+
+/node_modules
+/public/vite*
+/coverage
+/log/*
+/tmp/*
+/storage/*
+/test-results
+/playwright-report
+
+/spec
+/e2e
+/docs
+/script
+/Dockerfile
+/.dockerignore

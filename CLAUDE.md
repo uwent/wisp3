@@ -19,6 +19,8 @@ bin/rails typelizer:generate     # after changing serializers or routes; commit 
 bin/rails demo:seed              # demo account with farms, fields and entries (EMAIL, PASSWORD, YEAR)
 bin/rails weather:refresh        # fetch weather for active cells now (needs network; OPEN_METEO_API_KEY in .env optional)
 bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weather-comparison.md
+cap staging deploy               # staging (Capistrano)
+bin/production push|deploy       # production (Docker image to ECR, Compose on EC2; also status, logs, console)
 ```
 
 ## Architecture
@@ -88,7 +90,11 @@ Rails and tests:
 Deploy:
 
 - **`systemctl --user` over SSH** needs `XDG_RUNTIME_DIR` ("Failed to connect to bus" without it); `lib/capistrano/tasks/systemd.rake` sets it, so check by hand with `XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user …`.
-- Vite builds to `public/vite` (`set :assets_prefix, "vite"` in `config/deploy.rb`). Capistrano loads `deploy.rb` before the stage file, so per-stage `linked_files` go in `config/deploy/<stage>.rb`. `production.rb` defaults `APP_HOST` to `localhost` so local commands boot; servers get it from Capistrano and the systemd units.
+- **Two deploy paths** (`docs/deployment.md`): staging is Capistrano on a shared host; production is AWS (EC2, RDS, ECR, SSM), one image per commit (`Dockerfile`) run by `config/deploy/compose.production.yaml` as `web` (Thruster with Let's Encrypt, then Puma) and `jobs`. Production's settings and secrets are SSM parameters under `/wisp/prod/`, written to the server's `/opt/wisp/.env` by `bin/production deploy`; a new setting the app reads from `ENV` goes there, not in credentials (production's hold only `secret_key_base`).
+- Vite builds to `public/vite` (`set :assets_prefix, "vite"` in `config/deploy.rb`). Capistrano loads `deploy.rb` before the stage file, so per-stage `linked_files` go in `config/deploy/<stage>.rb`. `production.rb` defaults `APP_HOST` to `localhost` so local commands boot; staging gets it from Capistrano and the systemd units, production from SSM.
+- **Production's database is RDS**, reachable only from the server, with TLS checked against `config/rds-global-bundle.pem` (`DB_SSLMODE`/`DB_SSLROOTCERT`, set by the compose file). Staging inherits the production block in `database.yml`, so a production-only setting there needs an `ENV` default that suits staging.
+- **Production mail is SMTP** (`SMTP_ADDRESS` etc.; the container has no sendmail and EC2 blocks port 25); staging uses the host's sendmail.
+- **Build the image for `linux/amd64`** (the server is x86_64); ECR tags can't be overwritten, so `bin/production push` refuses a dirty tree and skips a tag already pushed.
 
 Outside services:
 

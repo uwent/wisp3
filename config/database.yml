@@ -16,14 +16,18 @@ test:
   # bin/e2e runs the browser smoke tests on their own database
   database: <%= ENV["E2E"] ? "wisp3_e2e" : "wisp3_test" %>
 
-# Staging and production run on hosts with a local Postgres; the app connects as "wisp3" with
-# the password from that environment's Rails credentials (database.password).
+# The app connects as "wisp3". Staging uses the host's local Postgres, with the password from its
+# Rails credentials (database.password). Production uses RDS (DB_HOST, DB_PORT), with the password
+# in WISP3_DATABASE_PASSWORD and TLS checked against the RDS certificate bundle, both set by the
+# container (config/deploy/compose.production.yaml).
 production:
   primary: &primary_production
     <<: *default
     database: wisp3_production
     username: wisp3
     password: <%= ENV["WISP3_DATABASE_PASSWORD"] || Rails.application.credentials.dig(:database, :password) %>
+    sslmode: <%= ENV.fetch("DB_SSLMODE") { "prefer" } %>
+    sslrootcert: <%= ENV["DB_SSLROOTCERT"] %>
   cache:
     <<: *primary_production
     database: wisp3_production_cache

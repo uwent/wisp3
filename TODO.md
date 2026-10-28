@@ -2,6 +2,29 @@
 
 Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN.md) and [docs/deployment.md](docs/deployment.md).
 
+## Production on AWS (next)
+
+The steps are in [docs/deployment.md](docs/deployment.md), Production. You've done the database role and databases (step 2); nothing you ran from Eric's doc needs undoing.
+
+**Ask Eric** (your SSO role gets "access denied" in the console and CloudShell):
+- [ ] **Your SSO role's permissions:** `ssm:PutParameter`, `ssm:GetParameter*` and `ssm:DeleteParameter` on `/wisp/prod/*`, KMS use of the key SSM encrypts with (`aws/ssm` by default), and ECR push to `wisp3` (`ecr:GetAuthorizationToken`, `ecr:BatchCheckLayerAvailability`, `ecr:InitiateLayerUpload`, `ecr:UploadLayerPart`, `ecr:CompleteLayerUpload`, `ecr:PutImage`, `ecr:DescribeImages`, `ecr:ListImages`).
+- [ ] **CLI sign-in:** ask how the SSO link reaches AWS, so you know which CLI sign-in to use.
+  - **Through an IAM Identity Center access portal** (`….awsapps.com/start`): get the start URL, then use `aws configure sso`.
+  - **Straight into the console:** ask him to add the `SignInLocalDevelopmentAccess` permissions so `aws login` works. Its 400 is probably this.
+- [ ] **The server's instance role:** `ssm:GetParametersByPath` on `/wisp/prod/` with `kms:Decrypt`, and ECR pull. His doc says it has them; step 5 checks.
+- [ ] **The security group:** inbound 80 and 443 from anywhere, for Let's Encrypt and browsers.
+- [ ] **A temporary hostname** for production before launch (e.g. `new.wisp.cals.wisc.edu`), with a DNS A record to 54.159.70.187. `wisp.cals.wisc.edu` moves at launch.
+- [ ] **Mail:** SES (and in which account and region; staging's Postfix uses SES in us-west-2) or the campus relay on 587, with credentials. Until it's set, production can't send mail, sign-up confirmations included.
+
+**Then you:**
+- [ ] **Back up the production credentials key.** `config/credentials/production.key` (new, 2026-10-28) exists only on this machine. Put it in your password manager beside the staging key.
+- [ ] **Check the CLI:** `export AWS_PROFILE=…` and `aws sts get-caller-identity` (account 702627367783).
+- [ ] **SSM parameters** (step 3): `RAILS_MASTER_KEY` (the contents of `production.key`), `WISP3_DATABASE_PASSWORD` (the `wisp3` password you set), `OPEN_METEO_API_KEY`, `DB_HOST`, `APP_HOST` (the temporary hostname), later `SMTP_ADDRESS`/`SMTP_PORT`/`SMTP_USERNAME`/`SMTP_PASSWORD`. Skip `DB_PORT` (defaults to 5432) and `MAILER_FROM` unless the sender changes. If you made any parameters while following Eric's doc, list them with `aws ssm get-parameters-by-path --path /wisp/prod/ --query 'Parameters[*].Name'` and fix or delete strays.
+- [ ] **Prepare the server** (step 5): the AWS CLI, the ECR credential helper, `/opt/wisp`, and check the server can read SSM.
+- [ ] **First deploy** (step 6): `bin/production push`, `bin/production deploy`, `bin/production status`; then `https://<hostname>/up`, and make yourself an admin with `bin/production rails runner …`.
+- [ ] **After the next weather refresh** (5 am, 11 am, 5 pm Central), `/admin/weather` shows data; with mail working, sign up and sign in by link.
+- [ ] **Before launch:** restore an RDS snapshot to a scratch instance once (Eric may need to), and ask Eric about a GitHub Actions OIDC role so CI can push images.
+
 ## Staging deploy (blocks seeing WISP 3 on dev.wisp)
 
 - [x] **Back up the staging credentials key.** `config/credentials/staging.key` exists only on this machine and is not in git. Put a copy in your password manager.
@@ -80,7 +103,7 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 
 ## Waiting on other people (start early)
 
-- [ ] **Sysadmin:** send the new production server requirements (PLAN.md §12 table). Target: ready by February.
+- [x] **Sysadmin:** production server requirements. *(CALS IT set up AWS instead: EC2, RDS, ECR, SSM; see Production on AWS above.)*
 - [x] **Campus IT, email (Q6):**
   - Do mails from these hosts get DKIM-signed for `cals.wisc.edu`?
   - Does SPF cover these hosts?
@@ -90,5 +113,5 @@ Things only you can do, roughly in order. Details for each are in [PLAN.md](PLAN
 ## Decisions still open
 
 - [ ] **Group member roles** (PLAN.md Q8): owner vs member, before group invitations.
-- [ ] Production hostname for the new server (set as `PRODUCTION_HOST` when deploying).
+- [ ] Production's temporary hostname before launch (`APP_HOST` in SSM; see Production on AWS above).
 - [ ] Legacy hostname after launch (PLAN.md suggests `legacy.wisp.cals.wisc.edu`).

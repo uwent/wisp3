@@ -3,6 +3,7 @@ source "https://rubygems.org"
 gem "rails", "~> 8.1.3"
 gem "pg", "~> 1.1"
 gem "puma", ">= 5.0"
+gem "thruster", "~> 0.1.27", require: false # HTTPS (Let's Encrypt) in front of Puma in the production container
 gem "bootsnap", require: false
 gem "tzinfo-data", platforms: %i[windows jruby]
 

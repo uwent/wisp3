@@ -1,5 +1,5 @@
-# Deploy with `cap staging deploy` (or `cap production deploy`). First-time server setup is in
-# docs/deployment.md.
+# Deploys staging with `cap staging deploy` (production runs in Docker: bin/production). First-time
+# server setup is in docs/deployment.md.
 set :application, "wisp3"
 set :repo_url, "https://github.com/uwent/wisp3.git"
 set :branch, ENV.fetch("BRANCH", "main")
