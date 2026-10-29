@@ -105,6 +105,10 @@ straight lines (0.155 against 0.126), because its curve is still uncertain. One 
 - The decision recorded earlier (warn **and** break from the curve when readings are far off) is
   replaced by this, pending Ben.
 
+**Revised 2026-10-29 (note 06):** the curve is now fitted to the readings first, and the last
+reading's ratio eases back to 1 over 14 days instead of being held, which cut the error over the
+rest of the season by about 40%.
+
 **Implemented (2026-10-15):** ratio between readings in `Canopy` (the `curve` setting), the warning
 as `Canopy#check`, shown through `PlantingTasks` on the field page, dashboard and daily email.
 Ben agreed to the warning in place of an automatic switch to straight lines.

@@ -163,7 +163,9 @@
           />
           <span
             >Follow the {plant!.name.toLowerCase()} curve
-            <span class="text-ink-muted">(scaled through your readings, including its late-season decline)</span></span
+            <span class="text-ink-muted"
+              >(fitted to your readings and passing through each one, including its late-season decline)</span
+            ></span
           >
         </label>
         <label class="flex items-start gap-3 text-sm">

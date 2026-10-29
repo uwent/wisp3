@@ -17,6 +17,8 @@ class CanopyCurve
   Source = Data.define(:id, :citation, :url)
 
   attr_reader :key, :cc0, :ccx, :cgc, :decline, :basis, :confidence, :sources, :notes
+  # Changes with the curve's definition, so fits to it are redone (CanopyFit.fetch)
+  attr_reader :digest
 
   # Whether plantings of the crop take a vine kill date (potato): the canopy ramps down from it while
   # the balance runs on to harvest
@@ -43,6 +45,7 @@ class CanopyCurve
     @cc0, @ccx, @cgc = growth.fetch("cc0"), growth.fetch("ccx"), growth.fetch("cgc")
     @decline = definition["decline"]&.symbolize_keys
     @basis, @notes = definition.fetch("basis"), definition["notes"]
+    @digest = Digest::SHA256.hexdigest(definition.slice("growth", "decline").to_json).first(12)
     @vine_kill = definition.fetch("vine_kill", false)
     @confidence = definition.fetch("confidence")
     raise ArgumentError, "#{key}: unknown confidence #{@confidence}" unless CONFIDENCE.key?(@confidence)
@@ -51,15 +54,19 @@ class CanopyCurve
 
   def confidence_label = CONFIDENCE.fetch(confidence)
 
-  # Percent cover on date for a crop that emerged on emergence_date (0 before it)
-  def cover(emergence_date, date)
+  # Percent cover on date for a crop that emerged on emergence_date (0 before it). Fitted to a
+  # planting's readings (CanopyFit), the curve can run shift days later (earlier if negative), grow
+  # stretch times slower and reach height times its cover (up to 100%); potato's calendar decline
+  # keeps its date.
+  def cover(emergence_date, date, shift: 0, stretch: 1.0, height: 1.0)
     t = (date - emergence_date).to_i
     return 0.0 if t.negative?
-    100 * [growth(t), declined(emergence_date, date, t)].compact.min
+    tau = (t - shift) / stretch.to_f
+    [100 * [growth(tau), declined(emergence_date, date, tau, shift:, stretch:)].compact.min * height, 100.0].min
   end
 
   # The curve as a function of date, for Canopy
-  def from(emergence_date) = ->(date) { cover(emergence_date, date) }
+  def from(emergence_date, **fit) = ->(date) { cover(emergence_date, date, **fit) }
 
   # Days from emergence until the canopy is full (FULL of its maximum)
   def full_day = (Math.log(ccx / (4 * (1 - FULL) * cc0)) / cgc).ceil
@@ -72,8 +79,8 @@ class CanopyCurve
     cc.clamp(0.0, ccx)
   end
 
-  # The decline's cover (fraction) on date, or nil before it starts
-  def declined(emergence_date, date, t)
+  # The decline's cover (fraction) on date, or nil before it starts. t: days of growth (after any fit).
+  def declined(emergence_date, date, t, shift:, stretch:)
     case decline&.fetch(:type)
     when "aquacrop"
       since = t - decline.fetch(:start_day)
@@ -81,7 +88,7 @@ class CanopyCurve
       (ccx * (1 - 0.05 * (Math.exp(3.33 * decline.fetch(:cdc) * since / (ccx + 2.29)) - 1))).clamp(0.0, ccx)
     when "rule"
       month, day = decline.fetch(:date).split("-").map(&:to_i)
-      start = [Date.new(date.year, month, day), emergence_date + full_day].max
+      start = [Date.new(date.year, month, day), emergence_date + (shift + stretch * full_day).round].max
       return if date <= start
       # Smoothstep: level at both ends, so it leaves full cover and meets the floor without a corner
       x = [(date - start).to_f / decline.fetch(:days), 1.0].min

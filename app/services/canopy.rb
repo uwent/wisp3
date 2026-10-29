@@ -5,11 +5,14 @@
 # dated before emergence are ignored (for perennials, use the green-up date as emergence).
 #
 # With readings, by the planting's setting:
-# - following the curve (the default where there is one): the curve times a ratio, reading ÷
-#   curve at each reading and 1 at emergence, linear between readings and held after the last. It
-#   passes through every reading and keeps the curve's shape between and after them (including its
-#   decline); backtested in docs/canopy/04-backtest.md. It never exceeds the larger of the curve's
-#   peak and the highest reading.
+# - following the curve (the default where there is one): first the curve is fitted to the readings
+#   (CanopyFit: a shift, stretch and height, held toward the typical curve, so a reading or two barely
+#   move it and many fit it closely). Then the fitted curve times a ratio, reading ÷ fitted curve at
+#   each reading and 1 at emergence, linear between readings and easing back to 1 over FADE_DAYS
+#   after the last. It passes through every reading and keeps the curve's shape between them
+#   (including its decline), and after the last reading it returns to the fitted curve rather than
+#   carrying one reading's ratio all season. Backtested in docs/canopy/04-backtest.md and
+#   06-fitting.md. It never exceeds the larger of the fitted curve's peak and the highest reading.
 # - straight lines (or no curve): linear from 0 at emergence through the readings, the last held
 #   until end_date (legacy held it for only 6 days, C3).
 #
@@ -31,21 +34,34 @@ class Canopy
   MAX_SHIFT = 30
   # Days from vine kill until the canopy is gone (desiccant; it varies a little by cultivar)
   VINE_KILL_DAYS = 14
+  # Days after the last reading for its ratio to ease back to the fitted curve
+  FADE_DAYS = 14
 
   # days_ahead: how many days ahead of the curve the readings run (negative: behind), when beyond
   # SHIFT_WARNING_DAYS. drop: {date:, from:, to:}, the first reading that fell while the curve grew.
   Check = Data.define(:days_ahead, :drop)
 
-  attr_reader :curve
+  # curve: the crop's typical curve. fit: the CanopyFit::Fit to the readings, when the canopy
+  # follows the curve and has readings (nil otherwise).
+  attr_reader :curve, :fit
 
-  # curve: date → value, or nil. floor: the curve value below which a reading's ratio is taken
-  # against this instead (the curve is near 0 just after emergence).
-  def initialize(emergence_date:, end_date:, observations: [], curve: nil, follow_curve: true, floor: 1.0,
-    check: false, vine_kill: nil)
+  # curve: date → value, or nil. fit_curve: ->(shift:, stretch:, height:) { date → value }, the curve
+  # adjusted, to fit it to the readings (without it the typical curve is used as is); fit_key
+  # identifies it for caching the fit (CanopyFit.fetch; without one it's fitted each time). noise and
+  # censor_at: CanopyFit's. floor: the curve value below which a reading's ratio is taken against this
+  # instead (the curve is near 0 just after emergence).
+  def initialize(emergence_date:, end_date:, observations: [], curve: nil, fit_curve: nil, fit_key: nil,
+    follow_curve: true, floor: 1.0, noise: CanopyFit::COVER_NOISE, censor_at: CanopyFit::COVER_CENSOR, check: false,
+    vine_kill: nil)
     @emergence_date, @end_date, @curve, @floor, @check, @vine_kill = emergence_date, end_date, curve, floor, check, vine_kill
     readings = observations.select { |date, _| date >= emergence_date }.sort_by(&:first)
     @readings, @kill_readings = readings.partition { |date, _| vine_kill.nil? || date < vine_kill }
     @follow = curve && follow_curve && @readings.any?
+    if @follow && fit_curve
+      @fit = fit_key ? CanopyFit.fetch(fit_key, @readings, curve: fit_curve, noise:, censor_at:) :
+        CanopyFit.run(@readings, curve: fit_curve, noise:, censor_at:)
+    end
+    @fitted = @fit ? fit_curve.call(**@fit.to_h) : curve
     @anchors = @follow ? ratio_anchors : linear_anchors
   end
 
@@ -54,14 +70,20 @@ class Canopy
     lai = planting.et_method == "lai"
     attribute = lai ? :lai : :pct_cover
     observations = planting.canopy_observations.filter_map { |obs| [obs.date, obs[attribute]] if obs[attribute] }
-    curve = if lai
-      CanopyModel.from(planting.plant.canopy_model, planting.emergence_date)
+    emergence = planting.emergence_date
+    if lai
+      key = planting.plant.canopy_model
+      fit_curve = ->(**fit) { CanopyModel.from(key, emergence, **fit) } if key
+      fit_key = ["lai", key, CanopyModel::VERSION, emergence]
     else
-      CanopyCurve.for(planting.plant.key)&.from(planting.emergence_date)
+      crop_curve = CanopyCurve.for(planting.plant.key)
+      fit_curve = ->(**fit) { crop_curve.from(emergence, **fit) } if crop_curve
+      fit_key = ["cover", crop_curve&.key, crop_curve&.digest, emergence]
     end
-    new(emergence_date: planting.emergence_date, end_date: planting.end_date, observations:, curve:,
-      follow_curve: planting.canopy_interpolation != "linear", floor: lai ? 0.05 : 1.0, check: !lai,
-      vine_kill: planting.vine_kill_date)
+    new(emergence_date: emergence, end_date: planting.end_date, observations:, curve: fit_curve&.call, fit_curve:, fit_key:,
+      follow_curve: planting.canopy_interpolation != "linear", floor: lai ? 0.05 : 1.0,
+      noise: lai ? CanopyFit::LAI_NOISE : CanopyFit::COVER_NOISE, censor_at: lai ? nil : CanopyFit::COVER_CENSOR,
+      check: !lai, vine_kill: planting.vine_kill_date)
   end
 
   def on(date)
@@ -91,7 +113,7 @@ class Canopy
   # The canopy before vine kill: the curve, the readings, or both
   def living(date)
     return curve_on(date) || 0.0 if @readings.empty?
-    return [interpolate(date) * curve_on(date), cap].min if @follow
+    return [interpolate(date, fade: FADE_DAYS) * @fitted.call(date), cap].min if @follow
 
     interpolate(date)
   end
@@ -106,10 +128,14 @@ class Canopy
     [value * (1 - (date - start).to_f / remaining), 0.0].max
   end
 
-  # [[date, value]] interpolated linearly in time and held after the last
-  def interpolate(date)
+  # [[date, value]] interpolated linearly in time; after the last, held, or easing to 1 over fade days
+  def interpolate(date, fade: nil)
     after = @anchors.index { |anchor_date, _| anchor_date >= date }
-    return @anchors.last.last unless after
+    unless after
+      last_date, last = @anchors.last
+      return last unless fade
+      return last + (1 - last) * [(date - last_date).to_f / fade, 1.0].min
+    end
     return @anchors[after].last if @anchors[after].first == date
 
     (date0, value0), (date1, value1) = @anchors[after - 1], @anchors[after]
@@ -123,13 +149,13 @@ class Canopy
   end
 
   def ratio_anchors
-    anchors = @readings.map { |date, value| [date, value / [curve.call(date), @floor].max] }
+    anchors = @readings.map { |date, value| [date, value / [@fitted.call(date), @floor].max] }
     anchors.unshift([@emergence_date, 1.0]) if anchors.first.first > @emergence_date
     anchors
   end
 
   def cap
-    @cap ||= [(@emergence_date..@end_date).map { |date| curve.call(date) }.max, @readings.map(&:last).max].max
+    @cap ||= [(@emergence_date..@end_date).map { |date| @fitted.call(date) }.max, @readings.map(&:last).max].max
   end
 
   # Days the readings between 10% and 80% run ahead of the curve, if beyond SHIFT_WARNING_DAYS: the

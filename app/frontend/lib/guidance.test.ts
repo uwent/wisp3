@@ -79,6 +79,21 @@ describe('guidance', () => {
     expect(guidance(corn, units('imperial'), [], today).paragraphs.join(' ')).not.toContain('vine kill')
   })
 
+  it('says how the curve has been fitted to the readings so far', () => {
+    const fitted = (fit: { shift: number; stretch: number; height: number } | null) =>
+      guidance(potato, units('imperial'), [], today, fit).paragraphs[0]
+    expect(fitted(null)).not.toContain('So far')
+    expect(fitted({ shift: 0, stretch: 1, height: 1 })).toContain(
+      'So far your readings match the typical potato curve, so WISP follows it as it is.',
+    )
+    expect(fitted({ shift: -4, stretch: 0.905, height: 1.051 })).toContain(
+      'So far, fitted to your readings, the potato curve runs about 4 days ahead of the typical one, grows 10% faster ' +
+        'and is 5% fuller.',
+    )
+    expect(fitted({ shift: 1, stretch: 1.0, height: 1.02 })).toContain('runs about 1 day behind the typical one.')
+    expect(fitted({ shift: 0, stretch: 1.105, height: 1 })).toContain('the potato curve grows 10% slower.')
+  })
+
   it('leaves out reminders outside the season', () => {
     expect(guidance(potato, units('imperial'), [], null).readings).toEqual([])
   })

@@ -62,10 +62,12 @@ RSpec.describe Canopy do
       expect(corn.on(emergence + 80)).to be_within(0.01).of(4.07)
     end
 
-    it "is followed through readings, never above the curve's peak or the highest reading" do
-      c = canopy([[Date.new(2026, 7, 1), 3.0]], curve:, floor: 0.05)
-      expect(c.on(Date.new(2026, 7, 1))).to be_within(1e-9).of(3.0)
-      expect(c.on(Date.new(2026, 8, 15))).to be_within(0.01).of(4.07)
+    it "is followed through readings, and back to it two weeks after the last" do
+      july1 = Date.new(2026, 7, 1)
+      c = canopy([[july1, 3.0]], curve:, floor: 0.05)
+      expect(c.on(july1)).to be_within(1e-9).of(3.0)
+      expect(c.on(july1 + 14)).to be_within(1e-9).of(curve.call(july1 + 14))
+      expect(c.on(Date.new(2026, 8, 15))).to be_within(1e-9).of(curve.call(Date.new(2026, 8, 15)))
     end
 
     it "is replaced by readings with straight lines" do
@@ -90,7 +92,7 @@ RSpec.describe Canopy do
       expect(c.curve_on(emergence + 31)).to eq(c.on(emergence + 31))
     end
 
-    it "passes through each reading and keeps the curve's shape between and after them" do
+    it "passes through each reading, keeps the curve's shape between them, and eases back to it after the last" do
       june10, june24 = Date.new(2026, 6, 10), Date.new(2026, 6, 24)
       c = cover([[june10, 40.0], [june24, 85.0]])
       expect(c.on(june10)).to be_within(1e-9).of(40.0)
@@ -98,9 +100,12 @@ RSpec.describe Canopy do
       # The ratio to the curve is interpolated: between them, the curve times a ratio between the two
       ratio = c.on(june10 + 7) / curve.call(june10 + 7)
       expect(ratio).to be_between(40.0 / curve.call(june10), 85.0 / curve.call(june24))
-      # After the last reading the ratio is held, so the canopy follows potato's August decline
-      expect(c.on(Date.new(2026, 8, 20)) / curve.call(Date.new(2026, 8, 20))).to be_within(1e-9).of(85.0 / curve.call(june24))
-      expect(c.on(Date.new(2026, 8, 20))).to be < 85.0
+      # After the last reading its ratio eases back to 1 over two weeks: halfway after one, the curve after two
+      last_ratio = 85.0 / curve.call(june24)
+      expect(c.on(june24 + 7) / curve.call(june24 + 7)).to be_within(1e-9).of((last_ratio + 1) / 2)
+      expect(c.on(june24 + 14)).to be_within(1e-9).of(curve.call(june24 + 14))
+      # and so follows potato's August decline
+      expect(c.on(Date.new(2026, 8, 20))).to be_within(1e-9).of(curve.call(Date.new(2026, 8, 20)))
     end
 
     it "rises from the curve at emergence to the first reading" do
@@ -113,12 +118,17 @@ RSpec.describe Canopy do
       # The curve is 0.7% the day after emergence: 3% against it would be a ratio of 4, not 3
       expect(curve.call(emergence + 1)).to be < 1.0
       c = cover([[emergence + 1, 3.0]])
-      expect(c.on(emergence + 20)).to be_within(1e-9).of(3.0 * curve.call(emergence + 20))
+      # A week on, the ratio has eased halfway from 3 to 1
+      expect(c.on(emergence + 8)).to be_within(1e-9).of(2.0 * curve.call(emergence + 8))
     end
 
     it "never goes above the curve's peak or the highest reading" do
-      c = cover([[emergence + 10, 30.0]]) # far ahead of the curve (4% on day 10)
-      expect(c.on(emergence + 60)).to be_within(0.01).of(potato.ccx * 100)
+      c = cover([[emergence + 20, 80.0]]) # far ahead of the curve (26% on day 20): a ratio of 3
+      # Five days on the curve is about 50% and the ratio still over 2, but the canopy stops at the curve's peak
+      peak = (emergence..end_date).map { |date| curve.call(date) }.max
+      expect(peak).to be_within(0.01).of(potato.ccx * 100)
+      expect(curve.call(emergence + 25) * 2).to be > peak
+      expect(c.on(emergence + 25)).to eq(peak)
     end
 
     it "draws straight lines when the planting says so" do

@@ -8,7 +8,7 @@ RSpec.describe "Public pages", type: :request do
     expect(inertia.props[:plants]).to include({key: "field_corn", name: "Field Corn", root_zone_in: 33.0, lai_curve: true,
       cover_curve: true})
     expect(inertia.props[:defaults]).to eq("mad_pct" => 50, "lead_days" => 3, "forecast_days" => 16,
-      "shift_warning_days" => 7, "drop_warning" => 5)
+      "shift_warning_days" => 7, "drop_warning" => 5, "fade_days" => 14, "fit_shift_days" => 5, "fit_noise_pct" => 10)
   end
 
   it "documents each crop's canopy curve, with its sources" do

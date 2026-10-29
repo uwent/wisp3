@@ -26,4 +26,8 @@ RSpec.describe "Constants mirrored in the frontend" do
   it "has Canopy's vine kill ramp in lib/guidance.ts" do
     expect(frontend_constant("guidance.ts", "VINE_KILL_DAYS")).to eq(Canopy::VINE_KILL_DAYS)
   end
+
+  it "has Canopy's fade after the last reading in lib/guidance.ts" do
+    expect(frontend_constant("guidance.ts", "FADE_DAYS")).to eq(Canopy::FADE_DAYS)
+  end
 end

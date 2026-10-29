@@ -28,7 +28,10 @@ class PagesController < AuthenticatedController
         lead_days: PlantingStatus::LEAD_DAYS,
         forecast_days: Weather::Fetcher::FORECAST_DAYS,
         shift_warning_days: Canopy::SHIFT_WARNING_DAYS,
-        drop_warning: Canopy::DROP_WARNING.round
+        drop_warning: Canopy::DROP_WARNING.round,
+        fade_days: Canopy::FADE_DAYS,
+        fit_shift_days: CanopyFit::SHIFT_SD.round,
+        fit_noise_pct: CanopyFit::COVER_NOISE.round
       }
     }
   end

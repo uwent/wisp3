@@ -51,6 +51,10 @@ type GuidedPlanting = Pick<
 
 /** Days from vine kill until the canopy is gone (Canopy::VINE_KILL_DAYS) */
 export const VINE_KILL_DAYS = 14
+/** Days after the last canopy reading for its effect to ease back to the fitted curve (Canopy::FADE_DAYS) */
+export const FADE_DAYS = 14
+
+type CanopyFit = PlantingSummary['canopy_fit']
 
 /** Notes for single crops, added after the method's paragraph */
 const CROP_NOTES: Record<string, string> = {
@@ -64,9 +68,11 @@ export function guidance(
   tasks: Task[],
   /** Today, while the season is on; null before or after it */
   today: string | null,
+  /** How the crop's curve was fitted to the readings (summary.canopy_fit), or null */
+  fit: CanopyFit = null,
 ): Guidance {
   const crop = planting.plant_name
-  const paragraphs = [methodText(planting)]
+  const paragraphs = [methodText(planting, fit)]
   if (CROP_NOTES[planting.plant_key]) paragraphs.push(CROP_NOTES[planting.plant_key])
   if (planting.vine_kill_crop) paragraphs.push(vineKillText(planting))
 
@@ -102,15 +108,18 @@ function vineKillText(planting: GuidedPlanting): string {
   )
 }
 
-/** How readings combine with the crop's curve, in a sentence */
-function interpolationText(planting: GuidedPlanting): string {
+/** How readings combine with the crop's curve, in a sentence or two */
+function interpolationText(planting: GuidedPlanting, fit: CanopyFit): string {
   if (!planting.canopy_curve) {
     return 'Between readings WISP draws a straight line, and after the last one it holds that value.'
   }
   if (planting.effective_canopy_interpolation === 'curve') {
     return (
-      'Your readings adjust the curve so that it passes through each one, and it keeps its shape between and ' +
-      'after them, including its decline late in the season.'
+      'Your readings adjust the curve in two ways. WISP fits the curve to them (earlier or later, faster or ' +
+      'slower, fuller or thinner) only as far as they agree, so one or two readings barely move it and more ' +
+      "readings fit it more closely. The canopy then passes through each reading, keeps the curve's shape between " +
+      `them, and over the ${FADE_DAYS} days after your latest one eases back to the fitted curve, including its ` +
+      `decline late in the season.${fitText(planting, fit)}`
     )
   }
   return (
@@ -119,7 +128,28 @@ function interpolationText(planting: GuidedPlanting): string {
   )
 }
 
-function methodText(planting: GuidedPlanting): string {
+/** What the fit has done so far: " So far, fitted to your readings, the potato curve runs about 4 days ahead…" */
+function fitText(planting: GuidedPlanting, fit: CanopyFit): string {
+  if (!fit) return ''
+  const crop = planting.plant_name.toLowerCase()
+  const parts: string[] = []
+  if (Math.abs(fit.shift) >= 1) {
+    const days = Math.abs(fit.shift)
+    parts.push(
+      `runs about ${days} ${days === 1 ? 'day' : 'days'} ${fit.shift < 0 ? 'ahead of' : 'behind'} the typical one`,
+    )
+  }
+  // Growth runs at 1/stretch of the typical rate
+  const rate = Math.round((1 / fit.stretch - 1) * 100)
+  if (Math.abs(rate) >= 5) parts.push(`grows ${Math.abs(rate)}% ${rate > 0 ? 'faster' : 'slower'}`)
+  const height = Math.round((fit.height - 1) * 100)
+  if (Math.abs(height) >= 5) parts.push(`is ${Math.abs(height)}% ${height > 0 ? 'fuller' : 'thinner'}`)
+  if (!parts.length) return ` So far your readings match the typical ${crop} curve, so WISP follows it as it is.`
+  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
+  return ` So far, fitted to your readings, the ${crop} curve ${list}.`
+}
+
+function methodText(planting: GuidedPlanting, fit: CanopyFit = null): string {
   const crop = planting.plant_name
   if (planting.et_method === 'pct_cover') {
     const curve = planting.canopy_curve
@@ -129,7 +159,7 @@ function methodText(planting: GuidedPlanting): string {
         'treats the field as bare soil and counts only evaporation from the soil. '
     return (
       `${crop} water use is modeled from percent canopy cover, the share of the ground shaded by the crop: the ` +
-      `day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${interpolationText(planting)} Enter percent cover about ` +
+      `day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${interpolationText(planting, fit)} Enter percent cover about ` +
       `weekly from emergence until the canopy covers about ${FULL_COVER_PCT}% of the ground. For row crops, divide ` +
       'the average canopy width by the row spacing: 18 in wide on 36 in rows is 50%.'
     )
@@ -142,7 +172,7 @@ function methodText(planting: GuidedPlanting): string {
     `${lai} Without readings, WISP estimates LAI from the emergence date using a field corn growth curve, ` +
     'which peaks at about 4 around 80 days after emergence. LAI readings you enter (from a ceptometer, for ' +
     'example) adjust the curve. ' +
-    interpolationText(planting)
+    interpolationText(planting, fit)
   )
 }
 

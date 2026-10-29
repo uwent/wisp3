@@ -54,7 +54,7 @@ RSpec.describe PlantingStatus do
 
   it "runs the balance on to harvest after vine kill, on bare-soil evaporation once the vines are gone" do
     planting.update!(plant: create(:plant, key: "potato"), vine_kill_date: Date.new(2026, 7, 10))
-    planting.canopy_observations.create!(date: Date.new(2026, 7, 1), pct_cover: 80)
+    planting.canopy_observations.create!(date: Date.new(2026, 7, 10), pct_cover: 80) # on vine kill: taken as is
     days = status(Date.new(2026, 8, 15)).days.index_by { |day| day.inputs.date }
     expect(days.keys.last).to eq(Date.new(2026, 7, 31)) # the harvest, not vine kill
     expect(days[Date.new(2026, 7, 10)].canopy).to eq(80.0)

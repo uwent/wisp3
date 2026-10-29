@@ -54,6 +54,9 @@
       forecast_days: number
       shift_warning_days: number
       drop_warning: number
+      fade_days: number
+      fit_shift_days: number
+      fit_noise_pct: number
     }
   } = $props()
   const withoutCurve = $derived(plants.filter((plant) => !plant.cover_curve).map((plant) => plant.name))
@@ -387,13 +390,24 @@
       readings WISP follows it from the emergence date.
     </p>
     <p>
-      <strong>Your readings adjust the curve.</strong> At each reading, WISP compares your reading with the curve to get a
-      ratio. It draws straight lines between those ratios (starting from 1 at emergence and holding the last one) and multiplies
-      the curve by them. The canopy then passes through every reading and keeps the curve's shape between and after them,
-      including its late-season decline. It never goes above the larger of the curve's maximum and your highest reading. In
-      Setup, a planting can use straight lines between readings instead, as earlier versions of WISP did. Tested against Wisconsin
-      growers' 2026 readings, following the curve cut the error in the next week's canopy cover in half compared with straight
-      lines.
+      <strong>Your readings adjust the curve, in two steps.</strong> First WISP fits the curve to them: it can run
+      earlier or later, grow faster or slower, and be fuller or thinner. Each change is held back by how much crops
+      typically vary from field to field (about {defaults.fit_shift_days} days in timing), and each reading pulls by how far
+      it is from the curve, allowing about {defaults.fit_noise_pct} points for how precise a reading by eye is. So one or
+      two readings barely move the curve, and as readings add up it fits them more closely. Readings of 80% or more count
+      as "at least 80%", since many growers stop there.
+    </p>
+    <p>
+      Then the canopy passes through every reading. At each one WISP takes the ratio of your reading to the fitted
+      curve, draws straight lines between those ratios (from 1 at emergence), and over the {defaults.fade_days} days after
+      your latest reading eases the ratio back to 1, so the canopy returns to the fitted curve, including its late-season
+      decline. It never goes above the larger of the fitted curve's maximum and your highest reading. In Setup, a planting
+      can use straight lines between readings instead, as earlier versions of WISP did.
+    </p>
+    <p>
+      Tested against Wisconsin growers' 2026 readings, following the curve cut the error in the next week's canopy cover
+      in half compared with straight lines. Fitting the curve and letting each reading's effect fade cut the error over
+      the rest of the season by about 40% compared with holding the last reading's ratio all season.
     </p>
     <p>
       <strong>When your readings and the curve disagree,</strong> the field page says so. That happens if readings
