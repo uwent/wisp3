@@ -177,6 +177,20 @@ describe('field chart', () => {
     expect(series.find((s) => s.id === 'canopy-curve')).toBeUndefined()
   })
 
+  it('marks vine kill on the canopy grid when it falls in the days drawn', () => {
+    const days = [day('2026-09-01'), day('2026-09-02'), day('2026-09-03')]
+    const canopySeries = (vineKill: string | null) =>
+      (
+        fieldChartOption({ days, summary, rootZoneDepth: 16, units: units('imperial'), mode: 'ad', palette, vineKill })
+          .series as { id: string; markLine?: { data: { xAxis: string; label: { formatter: string } }[] } }[]
+      ).find((s) => s.id === 'canopy')!
+    expect(canopySeries('2026-09-02').markLine!.data).toEqual([
+      expect.objectContaining({ xAxis: '2026-09-02', label: expect.objectContaining({ formatter: 'Vine kill' }) }),
+    ])
+    expect(canopySeries('2026-10-01').markLine).toBeUndefined()
+    expect(canopySeries(null).markLine).toBeUndefined()
+  })
+
   it("draws the crop's curve dashed behind the canopy, and names it in the tooltip", () => {
     const days = [
       day('2026-07-01', { canopy: 20, canopy_entered: 20, canopy_curve: 30 }),

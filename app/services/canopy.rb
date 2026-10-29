@@ -13,6 +13,11 @@
 # - straight lines (or no curve): linear from 0 at emergence through the readings, the last held
 #   until end_date (legacy held it for only 6 days, C3).
 #
+# Vine kill (potato): from the vine kill date the canopy ramps down linearly to 0 over VINE_KILL_DAYS,
+# from its value that day, then stays 0 until end_date (harvest). A reading on or after vine kill is
+# taken as is on its day, and the ramp continues from it to the same end. Those readings are left
+# out of the curve and the check, which describe the living canopy.
+#
 # check flags readings that disagree with the curve (percent cover only): see #check. PlantingTasks
 # words it for the field page, dashboard and digest.
 class Canopy
@@ -24,6 +29,8 @@ class Canopy
   # above it growers stop at 80%)
   SHIFT_RANGE = (10.0...80.0)
   MAX_SHIFT = 30
+  # Days from vine kill until the canopy is gone (desiccant; it varies a little by cultivar)
+  VINE_KILL_DAYS = 14
 
   # days_ahead: how many days ahead of the curve the readings run (negative: behind), when beyond
   # SHIFT_WARNING_DAYS. drop: {date:, from:, to:}, the first reading that fell while the curve grew.
@@ -34,9 +41,10 @@ class Canopy
   # curve: date → value, or nil. floor: the curve value below which a reading's ratio is taken
   # against this instead (the curve is near 0 just after emergence).
   def initialize(emergence_date:, end_date:, observations: [], curve: nil, follow_curve: true, floor: 1.0,
-    check: false)
-    @emergence_date, @end_date, @curve, @floor, @check = emergence_date, end_date, curve, floor, check
-    @readings = observations.select { |date, _| date >= emergence_date }.sort_by(&:first)
+    check: false, vine_kill: nil)
+    @emergence_date, @end_date, @curve, @floor, @check, @vine_kill = emergence_date, end_date, curve, floor, check, vine_kill
+    readings = observations.select { |date, _| date >= emergence_date }.sort_by(&:first)
+    @readings, @kill_readings = readings.partition { |date, _| vine_kill.nil? || date < vine_kill }
     @follow = curve && follow_curve && @readings.any?
     @anchors = @follow ? ratio_anchors : linear_anchors
   end
@@ -52,18 +60,19 @@ class Canopy
       CanopyCurve.for(planting.plant.key)&.from(planting.emergence_date)
     end
     new(emergence_date: planting.emergence_date, end_date: planting.end_date, observations:, curve:,
-      follow_curve: planting.canopy_interpolation != "linear", floor: lai ? 0.05 : 1.0, check: !lai)
+      follow_curve: planting.canopy_interpolation != "linear", floor: lai ? 0.05 : 1.0, check: !lai,
+      vine_kill: planting.vine_kill_date)
   end
 
   def on(date)
     return 0.0 if date < @emergence_date || date > @end_date
-    return curve_on(date) || 0.0 if @readings.empty?
-    return [interpolate(date) * curve_on(date), cap].min if @follow
+    return killed(date) if @vine_kill && date >= @vine_kill
 
-    interpolate(date)
+    living(date)
   end
 
-  # The crop's curve on date, within the season (0 outside it), or nil without one
+  # The crop's curve on date, within the season (0 outside it), or nil without one. It doesn't ramp
+  # down at vine kill: it's the typical living canopy, shown beside the modeled one.
   def curve_on(date)
     return unless curve
     (date < @emergence_date || date > @end_date) ? 0.0 : curve.call(date)
@@ -78,6 +87,24 @@ class Canopy
   end
 
   private
+
+  # The canopy before vine kill: the curve, the readings, or both
+  def living(date)
+    return curve_on(date) || 0.0 if @readings.empty?
+    return [interpolate(date) * curve_on(date), cap].min if @follow
+
+    interpolate(date)
+  end
+
+  # From vine kill (or the latest reading since), straight down to 0 at vine kill + VINE_KILL_DAYS
+  def killed(date)
+    start, value = @kill_readings.rfind { |reading_date, _| reading_date <= date } || [@vine_kill, living(@vine_kill)]
+    return value if date == start
+
+    remaining = (@vine_kill + VINE_KILL_DAYS - start).to_i
+    return 0.0 unless remaining.positive?
+    [value * (1 - (date - start).to_f / remaining), 0.0].max
+  end
 
   # [[date, value]] interpolated linearly in time and held after the last
   def interpolate(date)

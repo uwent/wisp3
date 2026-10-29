@@ -47,7 +47,8 @@ class DemoSeed
       pump_capacity_gpm: 900, equipment: "Valley 8000, end gun")
     potato = field(north, "North potatoes", 70, "sand")
     corn = field(north, "North corn", 55, "sand")
-    planting(potato, "potato", variety: "Russet Burbank", emergence: date(5, 20), end_date: date(9, 15), target: 40)
+    planting(potato, "potato", variety: "Russet Burbank", emergence: date(5, 20), end_date: date(9, 15), target: 40,
+      vine_kill: date(8, 28))
     planting(corn, "field_corn", et_method: "lai", emergence: date(5, 12), end_date: date(9, 30))
     pivot_irrigations(north, [[6, 18, 0.8], [6, 29, 0.75], [7, 8, 0.9], [7, 21, 0.85], [8, 3, 0.8]])
     north.pivot_irrigations.create!(date: date(7, 14), run_hours: 20) # inches from pump capacity
@@ -103,10 +104,11 @@ class DemoSeed
   # Percent-cover plantings get readings (days after emergence, cover) that rise to full cover; LAI
   # ones use the plant's curve
   def planting(field, plant_key, emergence:, end_date:, season_start: date(4, 1), et_method: "pct_cover", variety: nil,
-    target: nil, readings: COVER_READINGS)
+    target: nil, readings: COVER_READINGS, vine_kill: nil)
     crop = plant(plant_key)
     planting = field.plantings.create!(Planting.defaults_for(crop, @year).merge(
-      plant: crop, season_start:, emergence_date: emergence, end_date:, et_method:, variety:, target_ad_pct: target
+      plant: crop, season_start:, emergence_date: emergence, end_date:, et_method:, variety:, target_ad_pct: target,
+      vine_kill_date: vine_kill
     ))
     if et_method == "pct_cover"
       readings.each do |days, cover|

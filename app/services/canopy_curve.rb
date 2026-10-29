@@ -18,6 +18,10 @@ class CanopyCurve
 
   attr_reader :key, :cc0, :ccx, :cgc, :decline, :basis, :confidence, :sources, :notes
 
+  # Whether plantings of the crop take a vine kill date (potato): the canopy ramps down from it while
+  # the balance runs on to harvest
+  def vine_kill? = @vine_kill
+
   class << self
     # The curve for a plant key, or nil if the crop has none
     def for(key) = all[key]
@@ -39,6 +43,7 @@ class CanopyCurve
     @cc0, @ccx, @cgc = growth.fetch("cc0"), growth.fetch("ccx"), growth.fetch("cgc")
     @decline = definition["decline"]&.symbolize_keys
     @basis, @notes = definition.fetch("basis"), definition["notes"]
+    @vine_kill = definition.fetch("vine_kill", false)
     @confidence = definition.fetch("confidence")
     raise ArgumentError, "#{key}: unknown confidence #{@confidence}" unless CONFIDENCE.key?(@confidence)
     @sources = definition.fetch("sources").map { |id| sources.fetch(id) }

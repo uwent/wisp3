@@ -1,6 +1,6 @@
 import type { Planting, PlantingSummary } from '@/types/serializers'
 
-import { formatDate, relativeDay } from './dates'
+import { addDays, formatDate, relativeDay } from './dates'
 import type { Units } from './units'
 
 // How a planting's water use is modeled, and which readings keep it on track, in words for its
@@ -22,7 +22,7 @@ export type Reading = {
   last: string
   /** Due for another one: none yet, or older than READING_EVERY days */
   due: boolean
-  /** "due", "canopy closed", or null */
+  /** "due", "canopy closed", "vines killed", or null */
   note: string | null
 }
 
@@ -44,7 +44,13 @@ type GuidedPlanting = Pick<
   | 'canopy_curve'
   | 'effective_canopy_interpolation'
   | 'emergence_date'
+  | 'end_date'
+  | 'vine_kill_crop'
+  | 'vine_kill_date'
 >
+
+/** Days from vine kill until the canopy is gone (Canopy::VINE_KILL_DAYS) */
+export const VINE_KILL_DAYS = 14
 
 /** Notes for single crops, added after the method's paragraph */
 const CROP_NOTES: Record<string, string> = {
@@ -62,6 +68,7 @@ export function guidance(
   const crop = planting.plant_name
   const paragraphs = [methodText(planting)]
   if (CROP_NOTES[planting.plant_key]) paragraphs.push(CROP_NOTES[planting.plant_key])
+  if (planting.vine_kill_crop) paragraphs.push(vineKillText(planting))
 
   const depth = planting.max_root_zone_depth
   paragraphs.push(
@@ -76,6 +83,23 @@ export function guidance(
     readings: today ? tasks.filter((task) => task.kind !== 'canopy_check').map((task) => reading(task, today)) : [],
     warning: tasks.find((task) => task.kind === 'canopy_check')?.message ?? null,
   }
+}
+
+/** What vine kill does to the model: before a date is entered, and once it is */
+function vineKillText(planting: GuidedPlanting): string {
+  const crop = planting.plant_name.toLowerCase()
+  if (!planting.vine_kill_date) {
+    return (
+      `Enter the vine kill date in this ${crop}'s settings in Setup. From it the canopy ramps down to nothing over ` +
+      `${VINE_KILL_DAYS} days, and WISP keeps the water balance going until harvest (the end date), so you can keep ` +
+      'the soil moist through skin set.'
+    )
+  }
+  return (
+    `Vine kill is ${formatDate(planting.vine_kill_date)}: the canopy ramps down to nothing by ` +
+    `${formatDate(addDays(planting.vine_kill_date, VINE_KILL_DAYS))}, and WISP keeps the water balance going until ` +
+    `harvest on ${formatDate(planting.end_date)}. A canopy reading after vine kill is used as entered.`
+  )
 }
 
 /** How readings combine with the crop's curve, in a sentence */

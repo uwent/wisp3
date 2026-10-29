@@ -14,6 +14,12 @@
 #             CC = ccx − (ccx − floor/100) · (3x² − 2x³), x = days since the start ÷ days, at most 1
 # Without a decline the canopy holds ccx until the planting's end date.
 #
+# vine_kill: true for crops whose vines are killed some weeks before harvest while the field is still
+# irrigated (potato, for skin set). Their plantings take a vine kill date: from it the canopy ramps
+# down to 0% over Canopy::VINE_KILL_DAYS, and the balance runs on to the harvest (the end date).
+# Other WISP crops have no such period (sweet potato vines are cut days before digging, after
+# irrigation has stopped; onion tops fall on their own).
+#
 # confidence: matches_wi (published, matches Wisconsin 2026 readings), adjusted_wi (published,
 # adjusted to them), fitted_wi (fitted to them), published (not checked in Wisconsin), fao56
 # (derived from FAO-56 stage lengths, not checked in Wisconsin).
@@ -40,6 +46,7 @@ crops:
   potato:
     growth: {cc0: 0.006, ccx: 0.92, cgc: 0.18896}
     decline: {type: rule, date: "07-25", days: 42, floor: 50}
+    vine_kill: true
     basis: AquaCrop potato crop file (calendar days)
     confidence: matches_wi
     sources: [aquacrop, aquacrop_crop_files, wisp_2026]
@@ -49,8 +56,9 @@ crops:
       based on expert judgment, until a researcher's potato model is available: the canopy starts to
       die back in late July, before vine kill in mid to late August. Cover eases down from July 25 to
       50% over six weeks, fastest in mid-August (about 10 points a week; 81% on August 8, 71% on
-      August 15), and holds there until the planting's end date, so set the end date to your vine
-      kill date.
+      August 15), and holds there until vine kill. From the vine kill date the canopy ramps down to 0%
+      over two weeks, while WISP keeps the water balance going until harvest (the end date), for the
+      irrigation that keeps the soil moist through skin set.
   field_corn:
     growth: {cc0: 0.0049, ccx: 0.96, cgc: 0.16312}
     decline: {type: aquacrop, start_day: 101, cdc: 0.11691}

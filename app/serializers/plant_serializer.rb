@@ -4,5 +4,7 @@ class PlantSerializer < ApplicationSerializer
   # Whether the crop has an LAI curve (only those can use LAI) and a percent cover curve (PLAN.md Phase 6.7)
   attribute(:has_lai_curve) { |plant| !plant.canopy_model.nil? }
   attribute(:has_cover_curve) { |plant| CanopyCurve.for(plant.key).present? }
-  typelize has_lai_curve: :boolean, has_cover_curve: :boolean
+  # Whether its plantings take a vine kill date (potato)
+  attribute(:has_vine_kill) { |plant| CanopyCurve.for(plant.key)&.vine_kill? || false }
+  typelize has_lai_curve: :boolean, has_cover_curve: :boolean, has_vine_kill: :boolean
 end

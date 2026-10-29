@@ -24,6 +24,8 @@ export type FieldChartInput = {
   palette: Palette
   /** What the canopy is measured in: 'cover' (percent) or 'lai' */
   canopy?: 'cover' | 'lai'
+  /** The planting's vine kill date (potato), marked on the canopy grid, where the canopy starts to ramp down */
+  vineKill?: string | null
   /** The days in view (indexes into days then forecastDays), for the running totals; default the opening view */
   view?: ChartView
 }
@@ -56,7 +58,7 @@ export function thresholds({
 }
 
 export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
-  const { days, forecastDays = [], summary, rootZoneDepth, units, mode, palette, canopy = 'cover' } = input
+  const { days, forecastDays = [], summary, rootZoneDepth, units, mode, palette, canopy = 'cover', vineKill } = input
   const base = baseOption(palette)
   const all = [...days, ...forecastDays]
   const dates = all.map((day) => day.date)
@@ -510,6 +512,21 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         symbol: 'none',
         lineStyle: { width: 2, color: palette.canopy },
         itemStyle: { color: palette.canopy },
+        ...(vineKill && all.some((day) => day.date === vineKill)
+          ? {
+              markLine: {
+                silent: true,
+                symbol: 'none',
+                data: [
+                  {
+                    xAxis: vineKill,
+                    lineStyle: { color: palette.inkMuted, type: 'dashed', width: 1 },
+                    label: { formatter: 'Vine kill', position: 'insideEndTop', color: palette.inkMuted, fontSize: 10 },
+                  },
+                ],
+              },
+            }
+          : {}),
       },
       ...(hasCurve
         ? [

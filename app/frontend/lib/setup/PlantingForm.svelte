@@ -28,6 +28,8 @@
   const plant = $derived(plants.find((p) => String(p.id) === plantId))
   // Whether the crop has a canopy curve for the chosen method (Planting#canopy_curve?)
   const hasCurve = $derived(etMethod === 'lai' ? plant?.has_lai_curve : plant?.has_cover_curve)
+  // Potatoes are vine killed some weeks before harvest, and irrigated until it
+  const endLabel = $derived(plant?.has_vine_kill ? 'Harvest' : 'Harvest or kill')
 
   // A new crop brings its default root zone depth unless one was typed
   let typedDepth = false
@@ -71,7 +73,7 @@
       <TextField label="Variety" name="planting[variety]" value={planting?.variety ?? ''} />
     </div>
     <div class="grid gap-4 sm:grid-cols-3">
-      {#each [date('season_start', 'Season start', planting?.season_start ?? `${year}-04-01`, errors.season_start), date('emergence_date', 'Emergence', planting?.emergence_date ?? `${year}-05-01`, errors.emergence_date), date('end_date', 'Harvest or kill', planting?.end_date ?? `${year}-11-30`, errors.end_date)] as d (d.name)}
+      {#each [date('season_start', 'Season start', planting?.season_start ?? `${year}-04-01`, errors.season_start), date('emergence_date', 'Emergence', planting?.emergence_date ?? `${year}-05-01`, errors.emergence_date), date('end_date', endLabel, planting?.end_date ?? `${year}-11-30`, errors.end_date)] as d (d.name)}
         <div class="space-y-1">
           <label class="block text-sm font-medium" for="planting-{d.name}">{d.label}</label>
           <input
@@ -88,6 +90,24 @@
         </div>
       {/each}
     </div>
+    {#if plant?.has_vine_kill}
+      <div class="space-y-1 sm:w-1/3">
+        <label class="block text-sm font-medium" for="planting-vine_kill_date">Vine kill</label>
+        <input
+          id="planting-vine_kill_date"
+          type="date"
+          name="planting[vine_kill_date]"
+          value={planting?.vine_kill_date ?? ''}
+          aria-describedby="planting-vine_kill_date-hint"
+          class="block w-full rounded-md text-sm {errors.vine_kill_date ? 'border-status-irrigate' : ''}"
+        />
+        {#if errors.vine_kill_date}<p class="text-sm text-status-irrigate-ink">{errors.vine_kill_date}</p>{/if}
+        <p id="planting-vine_kill_date-hint" class="text-sm text-ink-muted">
+          Optional. From this date the canopy ramps down to nothing over two weeks, and WISP keeps the water balance
+          going until harvest.
+        </p>
+      </div>
+    {/if}
     <div class="grid gap-4 sm:grid-cols-2">
       <div oninput={() => (typedDepth = true)}>
         <NumberField

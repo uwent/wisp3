@@ -26,10 +26,10 @@ class PlantingCsv
       csv << ["Soil type", "Field capacity (%)", "Wilting point (%)", "Target AD (%)"]
       csv << [field.soil_type.name, pct(params.field_capacity), pct(params.perm_wilting_pt), planting.target_ad_pct]
       csv << ["Crop", "Variety", "Root zone depth (in)", "MAD (%)", "Initial moisture (%)", "Emergence",
-        "AD at field capacity (in)", "Season start", "Harvest or kill"]
+        "AD at field capacity (in)", "Season start", "Vine kill", "Harvest or kill"]
       csv << [planting.plant.name, text(planting.variety), planting.max_root_zone_depth, pct(planting.mad_frac),
         planting.initial_moisture_pct || pct(params.field_capacity), planting.emergence_date, num(params.ad_max),
-        planting.season_start, planting.end_date]
+        planting.season_start, planting.vine_kill_date, planting.end_date]
       csv << []
       csv << ["Date", "Reference ET (in)", "AD (in)", "Percent moisture", canopy, "Rainfall (in)", "Rain source",
         "Modeled rain (in)", "Irrigation (in)", "Irrigation source", "Soil moisture reading (%)", "Adjusted ET (in)",

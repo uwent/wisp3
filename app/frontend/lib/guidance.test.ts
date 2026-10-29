@@ -11,6 +11,9 @@ const corn = {
   canopy_curve: true,
   effective_canopy_interpolation: 'curve',
   emergence_date: '2026-05-12',
+  end_date: '2026-10-15',
+  vine_kill_crop: false,
+  vine_kill_date: null,
 } as const
 const potato = {
   plant_name: 'Potato',
@@ -20,6 +23,9 @@ const potato = {
   canopy_curve: true,
   effective_canopy_interpolation: 'curve',
   emergence_date: '2026-05-15',
+  end_date: '2026-09-30',
+  vine_kill_crop: true,
+  vine_kill_date: null,
 } as const
 type Task = Parameters<typeof guidance>[2][number]
 const task = (kind: Task['kind'], label: string, last_date: string | null, due: boolean, extra: Partial<Task> = {}) =>
@@ -56,6 +62,21 @@ describe('guidance', () => {
       { label: 'Percent cover', last: 'Jul 10 (10 days ago)', due: true, note: 'due' },
     ])
     expect(result.warning).toBeNull()
+  })
+
+  it('explains vine kill for potato, then gives its dates once entered', () => {
+    const before = guidance(potato, units('imperial'), [], today).paragraphs
+    expect(before).toContain(
+      "Enter the vine kill date in this potato's settings in Setup. From it the canopy ramps down to nothing over 14 " +
+        'days, and WISP keeps the water balance going until harvest (the end date), so you can keep the soil moist ' +
+        'through skin set.',
+    )
+    const after = guidance({ ...potato, vine_kill_date: '2026-09-01' }, units('imperial'), [], today).paragraphs
+    expect(after).toContain(
+      'Vine kill is Sep 1: the canopy ramps down to nothing by Sep 15, and WISP keeps the water balance going until ' +
+        'harvest on Sep 30. A canopy reading after vine kill is used as entered.',
+    )
+    expect(guidance(corn, units('imperial'), [], today).paragraphs.join(' ')).not.toContain('vine kill')
   })
 
   it('leaves out reminders outside the season', () => {

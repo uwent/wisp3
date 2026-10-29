@@ -23,6 +23,9 @@ class Planting < ApplicationRecord
   normalizes :variety, :notes, with: ->(text) { text.strip.presence }
   normalizes :canopy_interpolation, with: ->(value) { value.presence }
 
+  # Only crops that are vine killed keep a vine kill date, so changing the crop leaves none behind
+  before_validation { self.vine_kill_date = nil unless vine_kill_crop? }
+
   scope :in_season, ->(year) { where(season_start: Date.new(year).all_year) }
 
   # Defaults for a new planting of plant in year: Apr 1 to Nov 30, as in legacy WISP
@@ -36,6 +39,9 @@ class Planting < ApplicationRecord
       et_method: "pct_cover"
     }
   end
+
+  # Whether the crop takes a vine kill date (potato; canopy_curves.yml)
+  def vine_kill_crop? = plant.present? && CanopyCurve.for(plant.key)&.vine_kill? || false
 
   # Whether the crop has a canopy curve for this planting's method (CanopyCurve, or CanopyModel for LAI)
   def canopy_curve? = (et_method == "lai") ? plant.canopy_model.present? : CanopyCurve.for(plant.key).present?
@@ -61,6 +67,9 @@ class Planting < ApplicationRecord
     return unless season_start && emergence_date && end_date
     errors.add(:end_date, "must be on or after the season start") if end_date < season_start
     errors.add(:end_date, "must be on or after emergence") if end_date < emergence_date
+    return unless vine_kill_date
+    errors.add(:vine_kill_date, "must be on or after emergence") if vine_kill_date < emergence_date
+    errors.add(:vine_kill_date, "must be on or before the harvest date") if vine_kill_date > end_date
   end
 
   def no_overlap

@@ -42,6 +42,27 @@ RSpec.describe "Domain models" do
       expect(build(:planting, emergence_date: Date.new(2026, 10, 1))).not_to be_valid
     end
 
+    it "takes a vine kill date between emergence and harvest, for potato only" do
+      potato = create(:plant, key: "potato")
+      planting = build(:planting, plant: potato, emergence_date: Date.new(2026, 5, 15), end_date: Date.new(2026, 9, 30))
+      expect(planting.tap { |p| p.vine_kill_date = Date.new(2026, 9, 10) }).to be_valid
+      expect(planting.tap { |p| p.vine_kill_date = Date.new(2026, 10, 1) }.tap(&:validate).errors[:vine_kill_date])
+        .to eq(["must be on or before the harvest date"])
+      expect(planting.tap { |p| p.vine_kill_date = Date.new(2026, 5, 1) }.tap(&:validate).errors[:vine_kill_date])
+        .to eq(["must be on or after emergence"])
+
+      # Another crop keeps none, so changing the crop leaves none behind
+      planting.update!(vine_kill_date: Date.new(2026, 9, 10))
+      planting.update!(plant: create(:plant, key: "onion"))
+      expect(planting.reload.vine_kill_date).to be_nil
+    end
+
+    it "is kept to a vine kill date inside the season by the database too" do
+      planting = create(:planting, plant: create(:plant, key: "potato"), end_date: Date.new(2026, 9, 30))
+      expect { planting.update_columns(vine_kill_date: Date.new(2026, 10, 15)) }
+        .to raise_error(ActiveRecord::StatementInvalid, /plantings_vine_kill_order/)
+    end
+
     it "ends on or after the season start" do
       planting = build(:planting, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 3, 1),
         end_date: Date.new(2026, 3, 15))

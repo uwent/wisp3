@@ -72,6 +72,11 @@ RSpec.describe SeasonReportCsv do
       "Adjusted ET (in)" => nil, "AD at end (in)" => nil, "Percent moisture at end" => nil)
   end
 
+  it "gives each field's vine kill date, blank where there's none" do
+    east.plantings.sole.update!(plant: create(:plant, key: "potato"), vine_kill_date: Date.new(2026, 9, 10))
+    expect(section("Fields").map { |row| [row["Field"], row["Vine kill"]] }).to eq([["East", "2026-09-10"], ["West", nil]])
+  end
+
   it "says so for a season without crops" do
     rows = CSV.parse(described_class.new(group, 2030, today:).to_csv.delete_prefix(CsvExport::BOM))
     expect(rows).to include(["Season: no crops entered for 2030"])

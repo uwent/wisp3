@@ -46,6 +46,13 @@ RSpec.describe PlantingCsv do
     expect(header.call(lai)).to include("Leaf area index").and(satisfy { |row| row.none? { |column| column.start_with?("Percent cover") } })
   end
 
+  it "gives the vine kill date with the season's dates" do
+    planting.update!(plant: create(:plant, key: "potato"), vine_kill_date: Date.new(2026, 7, 20))
+    crop_header = rows.index { |row| row.first == "Crop" }
+    crop = rows[crop_header].zip(rows[crop_header + 1]).to_h
+    expect(crop).to include("Season start" => "2026-07-01", "Vine kill" => "2026-07-20", "Harvest or kill" => "2026-07-31")
+  end
+
   it "says there are no days yet before the season starts" do
     upcoming = CSV.parse(described_class.new(PlantingStatus.new(planting, today: Date.new(2026, 6, 20), weather:))
       .to_csv.delete_prefix(CsvExport::BOM))

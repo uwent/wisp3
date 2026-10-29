@@ -22,4 +22,8 @@ RSpec.describe "Constants mirrored in the frontend" do
     expect(frontend_constant("guidance.ts", "READING_EVERY")).to eq(PlantingTasks::READING_EVERY)
     expect(frontend_constant("guidance.ts", "FULL_COVER_PCT")).to eq(PlantingTasks::FULL_COVER_PCT)
   end
+
+  it "has Canopy's vine kill ramp in lib/guidance.ts" do
+    expect(frontend_constant("guidance.ts", "VINE_KILL_DAYS")).to eq(Canopy::VINE_KILL_DAYS)
+  end
 end

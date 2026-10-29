@@ -52,6 +52,17 @@ RSpec.describe PlantingStatus do
     expect(totals.adj_et).to be > 0
   end
 
+  it "runs the balance on to harvest after vine kill, on bare-soil evaporation once the vines are gone" do
+    planting.update!(plant: create(:plant, key: "potato"), vine_kill_date: Date.new(2026, 7, 10))
+    planting.canopy_observations.create!(date: Date.new(2026, 7, 1), pct_cover: 80)
+    days = status(Date.new(2026, 8, 15)).days.index_by { |day| day.inputs.date }
+    expect(days.keys.last).to eq(Date.new(2026, 7, 31)) # the harvest, not vine kill
+    expect(days[Date.new(2026, 7, 10)].canopy).to eq(80.0)
+    expect(days[Date.new(2026, 7, 17)].canopy).to be_within(1e-9).of(40.0)
+    # Gone by Jul 24: et0 0.2 in/day on bare soil evaporates 0.01 in/day (CropEt::BARE_SOIL_STEPS)
+    expect(days[Date.new(2026, 7, 24)]).to have_attributes(canopy: 0.0, result: have_attributes(adj_et: 0.01))
+  end
+
   it "gives no weather totals, not zeros, before any weather arrives (missing is nil)" do
     totals = described_class.new(planting, today: Date.new(2026, 7, 10), weather: {}).totals
     expect(totals).to have_attributes(rain: nil, rain_model: nil, adj_et: nil, irrigation: 0.0)

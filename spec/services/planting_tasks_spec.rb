@@ -33,6 +33,13 @@ RSpec.describe PlantingTasks do
     expect(tasks.find { |task| task.kind == :canopy }).to have_attributes(due: false, note: "canopy closed")
   end
 
+  it "stops asking for percent cover at vine kill, but not soil moisture" do
+    planting.update!(plant: create(:plant, key: "potato", name: "Potato"), vine_kill_date: Date.new(2026, 7, 18))
+    expect(tasks.map { |task| [task.kind, task.due, task.note] }).to eq([
+      [:soil_moisture, true, "due"], [:canopy, false, "vines killed"]
+    ])
+  end
+
   it "asks for canopy readings only from emergence" do
     planting.update!(emergence_date: Date.new(2026, 7, 25))
     expect(tasks.map(&:kind)).to eq([:soil_moisture])

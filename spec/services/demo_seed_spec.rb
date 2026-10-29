@@ -13,6 +13,7 @@ RSpec.describe DemoSeed do
     expect(group.pivots.map { |pivot| pivot.fields.size }.max).to eq(8)
     expect(PivotIrrigation.where(pivot: group.pivots).where.not(run_hours: nil)).to exist
     expect(group.field_groups.sole.fields.size).to eq(2)
+    expect(group.plantings.where.not(vine_kill_date: nil).map { |planting| planting.plant.key }).to eq(["potato"])
   end
 
   it "rebuilds rather than duplicating, and keeps the user's password" do

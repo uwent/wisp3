@@ -21,6 +21,7 @@ en:
         season_start: Season start
         emergence_date: Emergence
         end_date: Harvest or kill date
+        vine_kill_date: Vine kill date
       field:
         area_acres: Area
         soil_type: Soil

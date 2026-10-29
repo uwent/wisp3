@@ -25,7 +25,7 @@ class SeasonCopy
   def copy(planting)
     attributes = planting.attributes.slice(*%w[field_id plant_id variety max_root_zone_depth mad_frac et_method
       canopy_interpolation target_ad_pct initial_moisture_pct notes])
-    dates = %w[season_start emergence_date end_date].to_h { |column| [column, planting[column].next_year] }
+    dates = %w[season_start emergence_date end_date vine_kill_date].to_h { |column| [column, planting[column]&.next_year] }
     Planting.new(attributes.merge(dates)).tap(&:save)
   end
 end

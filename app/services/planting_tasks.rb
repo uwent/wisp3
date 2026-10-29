@@ -10,8 +10,8 @@ class PlantingTasks
   FULL_COVER_PCT = 80
 
   # kind: :soil_moisture, :canopy or :canopy_check. last_date: the latest reading, if any. due:
-  # whether it's to do now. note: "due", "canopy closed" or nil. todo: what to do, in a line (when
-  # due). message: more about it, for the canopy check.
+  # whether it's to do now. note: "due", "canopy closed", "vines killed" or nil. todo: what to do, in
+  # a line (when due). message: more about it, for the canopy check.
   Task = Data.define(:kind, :label, :last_date, :due, :note, :todo, :message)
 
   def initialize(status)
@@ -44,6 +44,11 @@ class PlantingTasks
     return if lai && !last
 
     label = lai ? "Leaf area index (LAI)" : "Percent cover"
+    # From vine kill the canopy ramps down on its own; soil moisture readings carry on to harvest
+    if @planting.vine_kill_date && @today >= @planting.vine_kill_date
+      return Task.new(kind: :canopy, label:, last_date: last&.date, due: false, note: "vines killed", todo: nil,
+        message: nil)
+    end
     if !lai && last && last.pct_cover >= FULL_COVER_PCT
       return Task.new(kind: :canopy, label:, last_date: last.date, due: false, note: "canopy closed", todo: nil,
         message: nil)

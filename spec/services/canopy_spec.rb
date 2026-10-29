@@ -126,6 +126,45 @@ RSpec.describe Canopy do
       expect(c.on(Date.new(2026, 8, 20))).to eq(40.0)
     end
 
+    describe "vine kill" do
+      let(:kill) { Date.new(2026, 8, 20) }
+
+      def killed(observations = [], **) = cover(observations, vine_kill: kill, **)
+
+      it "ramps from the canopy that day down to 0 over two weeks, then stays 0 to the end date" do
+        at_kill = cover.on(kill)
+        expect(at_kill).to be > 50
+        c = killed
+        expect(c.on(kill - 1)).to eq(cover.on(kill - 1))
+        expect(c.on(kill)).to eq(at_kill)
+        expect(c.on(kill + 7)).to be_within(1e-9).of(at_kill / 2)
+        expect([c.on(kill + 14), c.on(kill + 20), c.on(end_date)]).to eq([0.0, 0.0, 0.0])
+        expect(c.curve_on(kill + 20)).to eq(cover.on(kill + 20)) # the crop's curve is still drawn as is
+      end
+
+      it "takes a reading after vine kill as entered, and ramps on from it to the same end" do
+        c = killed([[kill + 4, 40.0]])
+        expect(c.on(kill + 4)).to eq(40.0)
+        expect(c.on(kill + 9)).to be_within(1e-9).of(20.0) # halfway through the 10 days left
+        expect(c.on(kill + 14)).to eq(0.0)
+        late = killed([[kill + 16, 5.0]]) # green left after the ramp: on its day, then gone
+        expect([late.on(kill + 16), late.on(kill + 17)]).to eq([5.0, 0.0])
+      end
+
+      it "keeps readings after vine kill out of the living canopy and the check" do
+        june10 = Date.new(2026, 6, 10)
+        before = killed([[june10, 40.0]])
+        with_kill_reading = killed([[june10, 40.0], [kill + 2, 10.0]])
+        expect(with_kill_reading.on(kill - 1)).to eq(before.on(kill - 1))
+        # A fall from 60% to 40% while the curve still grows is flagged while the canopy lives, but not after
+        # vine kill (an early one here, before the curve's decline)
+        june17, june22 = Date.new(2026, 6, 17), Date.new(2026, 6, 22)
+        expect(curve.call(june22)).to be > curve.call(june17)
+        expect(cover([[june17, 60.0], [june22, 40.0]]).check.drop).to be_present
+        expect(cover([[june17, 60.0], [june22, 40.0]], vine_kill: june22).check).to be_nil
+      end
+    end
+
     describe "#check" do
       it "is nil when the readings follow the curve" do
         readings = [20, 27, 34].map { |day| [emergence + day, potato.cover(emergence, emergence + day)] }
@@ -179,6 +218,13 @@ RSpec.describe Canopy do
       CanopyObservation.record(planting, emergence + 47, 40)
       expect(CanopyModel.lai("field_corn", 47)).to be > CanopyModel.lai("field_corn", 40)
       expect(described_class.for(planting.reload).check).to be_nil
+    end
+
+    it "takes the planting's vine kill date" do
+      planting = create(:planting, plant: create(:plant, key: "potato"), emergence_date: emergence, end_date:,
+        vine_kill_date: Date.new(2026, 9, 1))
+      expect(described_class.for(planting).on(Date.new(2026, 9, 15))).to eq(0.0)
+      expect(described_class.for(planting).on(Date.new(2026, 8, 31))).to be > 40
     end
 
     it "has no curve for a crop without one" do

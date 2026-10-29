@@ -238,10 +238,9 @@
         {#if summary.phase === 'active'}<StatusBadge status={summary.status} />{/if}
       </div>
       <p class="text-sm text-ink-muted">
-        Emerged {formatDate(planting.emergence_date)} · season {formatDate(planting.season_start)} – {formatDate(
-          planting.end_date,
-          { year: true },
-        )}
+        Emerged {formatDate(planting.emergence_date)}{planting.vine_kill_date
+          ? ` · vine kill ${formatDate(planting.vine_kill_date)}`
+          : ''} · season {formatDate(planting.season_start)} – {formatDate(planting.end_date, { year: true })}
       </p>
       {#if summary.phase === 'upcoming'}
         <p class="text-sm">The season starts {formatDate(summary.season_start, { year: true })}.</p>
@@ -408,6 +407,7 @@
             mode: chartMode,
             palette,
             canopy: lai ? 'lai' : 'cover',
+            vineKill: planting!.vine_kill_date,
             view,
           })}
       />

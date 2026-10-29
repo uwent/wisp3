@@ -44,7 +44,7 @@ class SeasonReportCsv
   def fields_section(csv)
     csv << ["Fields"]
     csv << ["Farm", "Pivot", "Equipment", "Field", "Area (acres)", "Crop", "Variety", "Soil type", "Season start",
-      "Emergence", "Harvest or kill", "Days counted", "Rainfall (in)", "Modeled rain (in)", "Irrigation (in)",
+      "Emergence", "Vine kill", "Harvest or kill", "Days counted", "Rainfall (in)", "Modeled rain (in)", "Irrigation (in)",
       "Days irrigated", "Adjusted ET (in)", "Deep drainage (in)", "Days at or below AD 0", "AD at end (in)",
       "Percent moisture at end", "Notes"]
     statuses.each do |status|
@@ -52,7 +52,7 @@ class SeasonReportCsv
       field = planting.field
       csv << [text(field.pivot.farm.name), text(field.pivot.name), text(field.pivot.equipment), text(field.name),
         field.area_acres, planting.plant.name, text(planting.variety), field.soil_type.name, planting.season_start,
-        planting.emergence_date, planting.end_date, status.days.size, num(totals.rain), num(totals.rain_model),
+        planting.emergence_date, planting.vine_kill_date, planting.end_date, status.days.size, num(totals.rain), num(totals.rain_model),
         num(totals.irrigation), irrigated_dates(status).size, num(totals.adj_et), num(totals.deep_drainage),
         status.days.count { |day| day.result.ad <= 0 }, num(last&.ad), num(last&.pct_moisture), text(planting.notes)]
     end
