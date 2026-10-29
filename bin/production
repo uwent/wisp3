@@ -51,10 +51,11 @@ else
 fi
 git -C src show "$sha:config/deploy/compose.production.yaml" > compose.yaml
 
-# Migrations run with the new image; if they fail, wisp3:deployed goes back to the running one
+# Migrations run with the new image; if they fail, wisp3:deployed goes back to the running one.
+# This script arrives on stdin, so `run` gets none (-T, /dev/null), or it reads the rest of it
 previous=$(docker image inspect --format '{{.Id}}' wisp3:deployed 2>/dev/null || true)
 docker tag "wisp3:$tag" wisp3:deployed
-if ! docker compose run --rm web bin/rails db:prepare db:seed; then
+if ! docker compose run --rm -T web bin/rails db:prepare db:seed </dev/null; then
   [ -n "$previous" ] && docker tag "$previous" wisp3:deployed
   echo "Migrations failed; the running containers are unchanged." >&2
   exit 1
