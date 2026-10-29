@@ -137,6 +137,6 @@ bin/production status | logs | console | rails … | ssh
 - **Playwright can't launch Chromium:** rerun `pnpm exec playwright install --with-deps chromium`. The `--with-deps` part needs sudo for the system libraries.
 - **Stopping a dev server:** stop it by port or PID (`lsof -i :3000`). `pkill -f` with a pattern that also matches your own command line kills the shell running it.
 - **`systemctl --user` over SSH says "Failed to connect to bus":** set `XDG_RUNTIME_DIR=/run/user/$(id -u)` first. Capistrano's tasks do this.
-- **`bin/production` times out connecting to the server:** SSH is open only to known IP addresses; send Eric your current public IP.
+- **`bin/production` times out connecting to the server:** SSH is open only to known IP addresses; send IT your current public IP.
 - **`bin/production push` says "no basic auth credentials" or "expired token":** sign in again (`aws sso login` or `aws login`) with `AWS_PROFILE` set.
 - **CI says generated types or routes are out of date:** run `bin/rails typelizer:generate` and commit the changes.

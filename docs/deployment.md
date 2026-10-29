@@ -93,7 +93,7 @@ Add a `wisp3` site in `/etc/nginx/sites-available` (enabled in `sites-enabled`) 
 
 ## Production (Docker on EC2)
 
-The AWS resources were set up by Eric Dieckman (CALS IT). Each deploy ships one image, tagged with its commit, built from the [Dockerfile](../Dockerfile) and stored in ECR. On the server, [config/deploy/compose.production.yaml](../config/deploy/compose.production.yaml) (copied to `/opt/wisp/compose.yaml`) runs it as two containers:
+The AWS resources were set up by CALS IT. Each deploy ships one image, tagged with its commit, built from the [Dockerfile](../Dockerfile) and stored in ECR. On the server, [config/deploy/compose.production.yaml](../config/deploy/compose.production.yaml) (copied to `/opt/wisp/compose.yaml`) runs it as two containers:
 
 - `web`: Thruster on ports 80 and 443 in front of Puma. Thruster gets and renews the Let's Encrypt certificate for `APP_HOST` by itself, so there's no nginx or certbot.
 - `jobs`: the Solid Queue worker (`bin/jobs`).
@@ -106,7 +106,7 @@ The AWS resources were set up by Eric Dieckman (CALS IT). Each deploy ships one 
 | Settings and secrets (SSM Parameter Store) | `/wisp/prod/*` | us-east-1 |
 
 - **The database is only reachable from the server** (private subnets; its security group admits the server's). It requires TLS, and the app checks RDS's certificate against [config/rds-global-bundle.pem](../config/rds-global-bundle.pem), which is in the image.
-- **SSH (port 22) is open only to the IP addresses Eric has on file.** If a connection times out from a new place (home, campus, VPN), send him your public IP.
+- **SSH (port 22) is open only to the IP addresses IT has on file.** If a connection times out from a new place (home, campus, VPN), send IT your public IP.
 - **Secrets never go in the image or the repo.** Each deploy writes `/opt/wisp/.env` from SSM, readable only by its owner.
 - **Backups are RDS's:** 14 days of automated backups with point-in-time restore. No `pg_dump` cron job.
 - **Logs:** Docker keeps 5 × 20 MB per container (`bin/production logs`). RDS sends PostgreSQL's logs, including queries slower than 500 ms, to CloudWatch Logs at `/aws/rds/instance/wisp-prod/postgresql`.
@@ -138,33 +138,34 @@ bin/production rails runner 'puts User.count'
 bin/production ssh             # a shell in /opt/wisp
 ```
 
-**Rolling back:** `bin/production deploy <earlier tag>`, where `aws ecr list-images --repository-name wisp3` lists the tags. Migrations aren't rolled back, so a rollback past a migration needs that migration to be backward compatible. ECR keeps the newest 30 tagged images, and tags can't be overwritten.
+**Rolling back:** `bin/production deploy <earlier tag>`, where `aws ecr list-images --repository-name wisp3` (in CloudShell) lists the tags. Migrations aren't rolled back, so a rollback past a migration needs that migration to be backward compatible. ECR keeps the newest 30 tagged images, and tags can't be overwritten.
 
-**Changing a setting or secret:** update it in SSM (see step 3 below, with `--overwrite`), then run `bin/production deploy` with the current tag. Every deploy rewrites `.env`.
+**Changing a setting or secret:** update it in SSM (`put NAME TYPE --overwrite` in step 3 below), then run `bin/production deploy` with the current tag. Every deploy rewrites `.env`.
 
 ### First-time setup
 
-#### 1. AWS access from your machine
+#### 1. AWS access and permissions
 
-You sign in through UW–Madison's SSO link. For the CLI, use the profile that SSO gives you:
-- **The link lands on an AWS access portal** (`….awsapps.com/start`): run `aws configure sso` once, then `aws sso login` before a session.
-- **It goes straight to the console:** use `aws login`. Your role needs the `SignInLocalDevelopmentAccess` permissions for this.
+You sign in to the AWS console through UW–Madison's SSO link (account 702627367783) and do the AWS steps in **CloudShell**, the terminal icon in the console's top bar. It's already signed in as your role, with the AWS CLI installed. Set the console's region to N. Virginia (us-east-1).
 
-Then `export AWS_PROFILE=<profile>` and check with `aws sts get-caller-identity` (account 702627367783). CloudShell in the console also works for the SSM steps.
+Ask IT to grant your role each permission below that you need, or to do that step for you. IT sets up the rest of the list (networking, DNS, the server's role).
 
-Your role needs:
-- `ssm:PutParameter` and `ssm:GetParametersByPath` on `/wisp/prod/*`, and KMS use of the SSM key, for SecureString values.
-- Push access to the `wisp3` ECR repository.
-
-The server's instance role needs:
-- `ssm:GetParametersByPath` on `/wisp/prod/` and `kms:Decrypt`.
-- Pull access to ECR.
-
-Eric sets these up.
+| Permission | Needed for |
+|---|---|
+| CloudShell (`AWSCloudShellFullAccess`) | Running the commands in steps 3 and 4 |
+| `ssm:PutParameter` and `ssm:GetParametersByPath` on `/wisp/prod/*`, plus `kms:Encrypt` and `kms:Decrypt` on the SSM key if it's a customer-managed key | Creating and changing settings and secrets (step 3) |
+| `ses:CreateEmailIdentity`, `ses:GetEmailIdentity`, `ses:TagResource` | Verifying the sending domain and a test address (step 4.1) |
+| `ses:GetAccount`, `ses:PutAccountDetails` | Requesting SES production access (step 4.2) |
+| `iam:CreateUser`, `iam:PutUserPolicy`, `iam:CreateAccessKey`, `iam:TagUser` | Creating the SES SMTP credentials (step 4.3). It creates an IAM user, so IT may prefer to do it and hand you the credentials |
+| ECR push to `wisp3`: `ecr:GetAuthorizationToken`, `ecr:BatchCheckLayerAvailability`, `ecr:InitiateLayerUpload`, `ecr:UploadLayerPart`, `ecr:CompleteLayerUpload`, `ecr:PutImage`, `ecr:DescribeImages`, `ecr:ListImages` | `bin/production push` (step 7 and every deploy) and listing tags to roll back. Push builds the image with Docker on your machine, so this is the one step that needs AWS credentials outside CloudShell |
+| Inbound SSH (port 22) from your IP in the server's security group (IT) | `bin/production` deploy, status, logs and console |
+| Inbound 80 and 443 from anywhere, and a DNS record for `APP_HOST` (IT and campus DNS) | The site and its Let's Encrypt certificate (step 5) |
+| The server's instance role: `ssm:GetParametersByPath` on `/wisp/prod/`, `kms:Decrypt`, and ECR pull (IT) | Each deploy writing `.env` from SSM and pulling the image |
+| An OIDC role for `uwent/wisp3` (IT) | Pushing images from GitHub Actions later, instead of from your machine |
 
 #### 2. The database role and databases (done)
 
-The app connects as `wisp3`, not the admin user `wisp_admin`, whose password Eric sent separately. `wisp_admin` stays out of the app and SSM.
+The app connects as `wisp3`, not the admin user `wisp_admin`, whose password IT sent separately. `wisp_admin` stays out of the app and SSM.
 
 On the server, download the RDS certificate bundle once (`curl -o ~/global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem`), then connect as `wisp_admin`:
 
@@ -199,32 +200,76 @@ One parameter per environment variable, named `/wisp/prod/<VARIABLE>`. Secrets a
 | `WISP3_DATABASE_PASSWORD` | SecureString | the `wisp3` password from step 2 |
 | `OPEN_METEO_API_KEY` | SecureString | the commercial Open-Meteo key (optional; without it the free API is used) |
 | `DB_HOST` | String | `wisp-prod.chjgrhbg1z6x.us-east-1.rds.amazonaws.com` |
-| `APP_HOST` | String | the public hostname (DNS must point at 54.159.70.187; step 4) |
+| `APP_HOST` | String | the public hostname (DNS must point at 54.159.70.187; step 5) |
 | `MAILER_FROM` | String | optional; defaults to `WISP <agweather@cals.wisc.edu>` |
-| `SMTP_ADDRESS`, `SMTP_PORT` | String | the mail relay, once decided (SES or campus, port 587; EC2 blocks 25). Until it's set, production can't send mail, which includes sign-up confirmations |
-| `SMTP_USERNAME`, `SMTP_PASSWORD` | SecureString | the relay's credentials, if it needs them |
+| `SMTP_ADDRESS`, `SMTP_PORT` | String | `email-smtp.us-east-1.amazonaws.com` and `587` (SES, step 4; EC2 blocks 25). Until `SMTP_ADDRESS` is set, production can't send mail, which includes sign-up confirmations |
+| `SMTP_USERNAME`, `SMTP_PASSWORD` | SecureString | the SES SMTP credentials from step 4 |
 
-`DB_PORT` defaults to 5432. Create each one like this; `read -s` keeps the value off the screen and out of shell history:
+`DB_PORT` defaults to 5432.
+
+Set them in CloudShell (step 1). Its home directory and shell history persist between sessions, so read secrets with `read -s`, which keeps them off the screen and out of the history. Define this helper, then run it once per parameter and paste each value when asked:
 
 ```bash
-read -rs VALUE   # paste, then Enter
-aws ssm put-parameter --region us-east-1 --name /wisp/prod/WISP3_DATABASE_PASSWORD \
-  --type SecureString --value "$VALUE" \
-  --tags Key=project,Value=agweather Key=app,Value=wisp Key=env,Value=prod
-unset VALUE
+put() {  # put NAME String|SecureString [--overwrite]
+  local value flags=(--tags Key=project,Value=agweather Key=app,Value=wisp Key=env,Value=prod)
+  [ "${3:-}" = --overwrite ] && flags=(--overwrite)   # tags can't be combined with --overwrite
+  read -rsp "$1: " value; echo
+  aws ssm put-parameter --region us-east-1 --name "/wisp/prod/$1" --type "$2" --value "$value" \
+    "${flags[@]}" >/dev/null && echo saved
+}
+
+put RAILS_MASTER_KEY SecureString          # paste from the password manager (not a file: CloudShell can't see yours)
+put WISP3_DATABASE_PASSWORD SecureString
+put OPEN_METEO_API_KEY SecureString
+put DB_HOST String
+put APP_HOST String
 ```
 
-For the master key: `--value "$(cat config/credentials/production.key)"`. For plain values: `--type String --value …`. To change a value, add `--overwrite` and leave out `--tags`, because the two can't be combined.
+List what's there, without the values, with `aws ssm get-parameters-by-path --region us-east-1 --path /wisp/prod/ --query 'Parameters[*].[Name,Type]' --output table`. To change a value, run `put NAME TYPE --overwrite`, or edit it in the console under Systems Manager → Parameter Store. A new CloudShell session needs the helper defined again.
 
-#### 4. DNS and the firewall
+#### 4. Mail (Amazon SES)
 
-Before the first deploy, ask Eric (and campus DNS) for:
+The app sends mail through SES's SMTP endpoint, which needs nothing in the code beyond the `SMTP_*` parameters. Do this in the SES console (us-east-1) or CloudShell.
+
+1. **Verify the sending domain.** The default sender is `agweather@cals.wisc.edu`, so the identity is `cals.wisc.edu` (ask IT first whether it's already verified in this account):
+
+   ```bash
+   aws sesv2 create-email-identity --region us-east-1 --email-identity cals.wisc.edu \
+     --tags Key=project,Value=agweather Key=app,Value=wisp Key=env,Value=prod \
+     --query 'DkimAttributes.Tokens'
+   ```
+
+   It returns three tokens. Campus DNS adds a CNAME for each: `<token>._domainkey.cals.wisc.edu` → `<token>.dkim.amazonses.com`. SES checks them by itself; `aws sesv2 get-email-identity --region us-east-1 --email-identity cals.wisc.edu --query 'DkimAttributes.Status'` reads `SUCCESS` once they're live. DKIM is what lets the mail pass wisc.edu's DMARC check, so don't send from an unverified domain.
+2. **Leave the sandbox.** A new SES account sends only to verified addresses, 200 a day. Request production access in the console (SES → Account dashboard → Request production access): transactional mail, website `https://<APP_HOST>`, and a use case such as "Sign-up confirmations, sign-in links and an opt-in daily irrigation digest for WISP users, about N emails a day. Bounces and complaints go to the account suppression list." AWS answers within a day or so. Until then, verify your own address to test (`aws sesv2 create-email-identity --region us-east-1 --email-identity you@wisc.edu`, then click the emailed link).
+3. **Create SMTP credentials.** SES → SMTP settings → Create SMTP credentials. This creates an IAM user allowed only `ses:SendRawEmail` (it needs the IAM permissions in step 1, so IT may do it; tag the user). The password is shown once: copy the username and password straight into SSM:
+
+   ```bash
+   put SMTP_ADDRESS String        # email-smtp.us-east-1.amazonaws.com
+   put SMTP_PORT String           # 587
+   put SMTP_USERNAME SecureString
+   put SMTP_PASSWORD SecureString
+   ```
+
+   These are SMTP credentials, not the IAM user's access key: SES derives the SMTP password from the key, so an access key pasted as the password fails to authenticate.
+4. **Deploy and test.** `bin/production deploy` with the current tag, then send yourself a message:
+
+   ```bash
+   bin/production rails runner 'ActionMailer::Base.mail(from: Rails.configuration.x.mailer_from, to: "you@wisc.edu", subject: "WISP test", body: "SES works").deliver_now'
+   ```
+
+   An error names the problem: `535 Authentication Credentials Invalid` (the SMTP credentials), `554 Message rejected: Email address is not verified` (still in the sandbox, or the domain isn't verified yet).
+
+SES's account-level suppression list is on by default for bounces and complaints, so addresses that bounce stop being sent to. Email links carry `ses:no-track`, so a configuration set with click tracking wouldn't rewrite them; none is needed.
+
+#### 5. DNS and the firewall
+
+Before the first deploy, ask IT (and campus DNS) for:
 - **A DNS record:** `APP_HOST` resolving to 54.159.70.187. `wisp.cals.wisc.edu` still serves legacy until launch (PLAN.md §13), so start with a temporary name.
 - **Inbound 80 and 443** from anywhere in the server's security group. Let's Encrypt checks port 80, and browsers use 443.
 
 Thruster asks Let's Encrypt for the certificate on the first HTTPS request. If DNS or the ports aren't ready, HTTPS fails until they are.
 
-#### 5. Prepare the server (once)
+#### 6. Prepare the server (once)
 
 ```bash
 ssh wisp-prod                    # Host wisp-prod in ~/.ssh/config: HostName 54.159.70.187, your user and key
@@ -240,7 +285,7 @@ aws ssm get-parameters-by-path --region us-east-1 --path /wisp/prod/ --query 'Pa
 
 The credential helper logs Docker in to ECR with the instance role, so pulls never need a password.
 
-#### 6. Push, deploy and verify
+#### 7. Push, deploy and verify
 
 ```bash
 bin/production push
@@ -255,4 +300,4 @@ bin/production status
 
 ### Before GitHub Actions deploys
 
-Images are built and pushed from your machine for now. Once Eric sets up an OIDC role for `uwent/wisp3`, a workflow can run `bin/production push` after CI passes on `main`.
+Images are built and pushed from your machine for now. Once IT sets up an OIDC role for `uwent/wisp3`, a workflow can run `bin/production push` after CI passes on `main`.
