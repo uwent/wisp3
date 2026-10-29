@@ -38,7 +38,7 @@ A full rewrite of the Wisconsin Irrigation Scheduling Program (WISP), replacing 
 | D8 | **LAI method is kept**, pending the agronomy review in Q2 |
 | D9 | **Pivot-level irrigation entry**: irrigation entered once on a pivot applies to every field under it (or a chosen subset), with per-field overrides (§4) |
 | D10 | **No data migration.** Users register and set up their farms fresh in WISP 3. Legacy data is used only offline, for engine validation (§10) and the weather comparison (§8.4) |
-| D11 | **New production server** for the 2027 season. Provisioned by CALS IT in AWS (EC2, RDS, ECR, SSM; October 2026) and deployed with Docker; staging stays on Capistrano (§12). The old production box is out of scope |
+| D11 | **New production server** for the 2027 season. Provisioned by CALS IT in AWS (EC2, RDS; October 2026) and deployed with Docker, images built on the server (Ben, 2026-10-29: ECR, SSM and SES dropped, as they needed AWS permissions IT was slow to grant); staging stays on Capistrano (§12). The old production box is out of scope |
 
 ---
 
@@ -414,12 +414,12 @@ Every ported method is checked against this list. Items marked **Hotfix** should
 
 ## 12. Deployment and operations
 
-- **Hosts**: staging (dev.wisp.cals.wisc.edu, existing box; `systemd --user` and linger confirmed) and **production in AWS** (D11), set up by CALS IT in October 2026: an EC2 server (`wisp-prod`, Ubuntu 26.04, t3.medium), RDS PostgreSQL 18, an ECR repository and SSM Parameter Store, all in us-east-1. Details and steps are in `docs/deployment.md`.
+- **Hosts**: staging (dev.wisp.cals.wisc.edu, existing box; `systemd --user` and linger confirmed) and **production in AWS** (D11), set up by CALS IT in October 2026: an EC2 server (`wisp-prod`, Ubuntu 26.04, t3.medium), and RDS PostgreSQL 18 in us-east-1 (IT also made an ECR repository and SSM Parameter Store, unused since 2026-10-29). Details and steps are in `docs/deployment.md`.
 - **Staging**: Capistrano + rbenv, same workflow as legacy. nginx → Puma, with Puma and Solid Queue run as `systemd --user` units owned by `deploy` (`wisp3-web`, `wisp3-jobs`; Puma on 127.0.0.1:3100), restarted by Capistrano hooks without sudo.
-- **Production**: Docker Compose (`config/deploy/compose.production.yaml`). Each commit is built once into an image (`Dockerfile`: Ruby with YJIT, the Vite build, no Node at runtime) and pushed to ECR with the commit as its tag; `bin/production deploy` pulls it, runs `db:prepare db:seed` and replaces the `web` (Thruster on 80/443 with Let's Encrypt, in front of Puma) and `jobs` containers. Rolling back is deploying an earlier tag. Images are pushed from a developer machine until GitHub Actions gets an OIDC role.
+- **Production**: Docker Compose (`config/deploy/compose.production.yaml`). `bin/production deploy` checks out the commit on the server from GitHub, builds its image there (`Dockerfile`: Ruby with YJIT, the Vite build, no Node at runtime; tagged with the commit and `wisp3:deployed`), runs `db:prepare db:seed` and replaces the `web` (Thruster on 80/443 with Let's Encrypt, in front of Puma) and `jobs` containers. Rolling back is deploying an earlier commit; the newest 5 images stay on the server.
 - **Database**: staging, Postgres on the host. Production, RDS (`wisp3_production`, `_cache`, `_queue`, owned by the `wisp3` role), reachable only from the server, TLS verified against the RDS bundle in the image. RDS keeps 14 days of automated backups with point-in-time restore, which replaces the nightly `pg_dump`; test a restore once before launch.
-- **Secrets**: staging, Rails credentials. Production, SSM `/wisp/prod/*`, written to the server's `/opt/wisp/.env` on each deploy; its Rails credentials hold only `secret_key_base` (key in SSM as `RAILS_MASTER_KEY`).
-- **Mail**: staging uses the host's sendmail (Postfix relaying through SES). The production container has no sendmail and EC2 blocks port 25, so production sends through an SMTP relay on 587 (`SMTP_ADDRESS` etc. in SSM): SES or the campus relay, not decided yet. Before alerts launch, confirm SPF and DKIM for the sender domain with campus IT. Add `List-Unsubscribe` and one-click unsubscribe to alert emails.
+- **Secrets**: staging, Rails credentials. Production, the server's `/opt/wisp/.env`, edited by hand and backed up in the password manager; its Rails credentials hold only `secret_key_base` (key in `.env` as `RAILS_MASTER_KEY`).
+- **Mail**: staging uses the host's sendmail (Postfix relaying through SES). The production container has no sendmail and EC2 blocks port 25, so production sends through an SMTP relay on 587 or 465 (`SMTP_ADDRESS` etc. in `.env`): the CALS relay (2026-10-29; to be confirmed with IT). Before alerts launch, confirm SPF and DKIM for the sender domain with campus IT. Add `List-Unsubscribe` and one-click unsubscribe to alert emails.
 - **DNS**: decide the hostname switch at launch: `wisp.cals.wisc.edu` moves to the EC2 server; legacy moves to e.g. `legacy.wisp.cals.wisc.edu` (§13). Until then production runs under a temporary hostname.
 - **Monitoring**: a `/up` health check; an admin weather-status page; a daily job summary emailed to admins when any job fails or a cell's data is more than 24 h stale. Optional: an error tracker such as Honeybadger or Sentry.
 - **Staging**: dev.wisp.cals.wisc.edu runs WISP 3 from Phase 1 onward. The legacy app stays on the old production box until launch.
@@ -836,8 +836,9 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 - [ ] New production server provisioned (§12), deploy rehearsed, backups and restore tested.
   - [x] AWS resources ready (CALS IT, 2026-10-27): EC2, RDS, ECR, SSM. The `wisp3` role and databases created.
   - [x] The Docker deploy (2026-10-28): `Dockerfile`, `config/deploy/compose.production.yaml`, `bin/production` (push, deploy, status, logs, console), production credentials (`secret_key_base` only), RDS TLS in `database.yml`, SMTP from the environment; the image checked against a local Postgres 18 (migrations, reference data, `/up`, assets, the jobs scheduler, YJIT). The Capistrano production stage removed.
-  - [ ] AWS access for Ben, SSM parameters, DNS and ports 80/443, then the first `bin/production deploy` (TODO.md).
-  - [ ] Production mail: SES or the campus relay, `SMTP_*` in SSM, SPF/DKIM checked.
+  - [x] The deploy simplified (2026-10-29): images built on the server from a git checkout, settings in a hand-kept `.env`; no ECR, SSM or SES, so nothing needs AWS permissions beyond SSH.
+  - [ ] `.env` on the server, DNS and ports 80/443, then the first `bin/production deploy` (TODO.md).
+  - [ ] Production mail: the CALS relay (port, how it admits the server), `SMTP_*` in `.env`, SPF/DKIM checked.
   - [ ] Restore an RDS snapshot to a scratch instance once, and check the app against it.
 - [ ] Legacy goes read-only (sign-ups disabled, banner) and moves to its legacy hostname; DNS switch; **launch by ~Mar 20, 2027** (§13).
 - **Exit:** WISP 3 live on the new server before April 1; announcement emailed to legacy users from the legacy app (new address, create a new account, sign-in links, setup guide).

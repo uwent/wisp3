@@ -1,81 +1,80 @@
 #!/usr/bin/env bash
-# Production: build the image and push it to ECR, then deploy it on the EC2 server with Docker
+# Production: build a commit's image on the EC2 server from a git checkout and run it with Docker
 # Compose. Staging still deploys with Capistrano. See docs/deployment.md, Production.
 #
-#   bin/production push             build HEAD's image (linux/amd64) and push it to ECR
-#   bin/production deploy [TAG]     deploy a pushed image (default HEAD's); an older TAG rolls back
-#   bin/production status           containers, the deployed tag and /up
+#   bin/production deploy [REF]     build REF (default HEAD, pushed to GitHub) and deploy it; an
+#                                   earlier commit rolls back (its image is reused if still there)
+#   bin/production images           the images on the server, newest first (for rolling back)
+#   bin/production status           containers and /up (which gives the deployed commit)
 #   bin/production logs [service]   follow logs (web, jobs; default both)
 #   bin/production console          a Rails console
 #   bin/production rails ARGS…      any bin/rails command, e.g. rails runner '…'
 #   bin/production ssh              a shell on the server, in /opt/wisp
 #
-# `push` needs AWS credentials that can push to ECR (AWS_PROFILE); the server reads SSM and pulls
-# from ECR with its instance role. PRODUCTION_SSH overrides the SSH host (default wisp-prod, from
-# ~/.ssh/config).
+# The server's /opt/wisp/.env holds the settings and secrets, edited by hand. PRODUCTION_SSH
+# overrides the SSH host (default wisp-prod, from ~/.ssh/config).
 set -euo pipefail
 
-REGION=us-east-1
-REGISTRY=702627367783.dkr.ecr.us-east-1.amazonaws.com
-IMAGE=$REGISTRY/wisp3
+REPO=https://github.com/uwent/wisp3.git
 HOST=${PRODUCTION_SSH:-wisp-prod}
 DIR=/opt/wisp
 
 cd "$(dirname "$0")/.."
 
-head_tag() { git rev-parse --short=12 HEAD; }
-
 remote() { ssh "$HOST" "cd $DIR && $*"; }
 remote_tty() { ssh -t "$HOST" "cd $DIR && $*"; }
 
-push() {
-  if [ -n "$(git status --porcelain)" ]; then
-    echo "The working tree has changes; commit them so the image matches its tag." >&2
-    exit 1
-  fi
-  local tag
-  tag=$(head_tag)
-  if aws ecr describe-images --region $REGION --repository-name wisp3 --image-ids imageTag="$tag" >/dev/null 2>&1; then
-    echo "$IMAGE:$tag is already in ECR (tags can't be overwritten)."
-    return
-  fi
-  aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY
-  docker build --platform linux/amd64 --build-arg REVISION="$(git rev-parse HEAD)" -t "$IMAGE:$tag" .
-  docker push "$IMAGE:$tag"
-  echo "Pushed $IMAGE:$tag. Deploy it with: bin/production deploy $tag"
-}
-
 deploy() {
-  local tag=${1:-$(head_tag)}
-  scp -q config/deploy/compose.production.yaml "$HOST:$DIR/compose.yaml"
-  # On the server: write .env from SSM (single-quoted, so Compose takes values literally), pull,
-  # migrate and load the reference data, then replace the containers
-  ssh "$HOST" bash -s -- "$tag" "$REGION" "$DIR" <<'REMOTE'
+  local sha
+  sha=$(git rev-parse --verify "${1:-HEAD}^{commit}")
+  # On the server: check .env, build the commit's image unless it's there already, point
+  # wisp3:deployed at it, migrate and load the reference data, then replace the containers
+  ssh "$HOST" bash -s -- "$sha" "$REPO" "$DIR" <<'REMOTE'
 set -euo pipefail
-tag=$1 region=$2 dir=$3
+sha=$1 repo=$2 dir=$3 tag=${1:0:12}
 cd "$dir"
-umask 077
-aws ssm get-parameters-by-path --region "$region" --path /wisp/prod/ --with-decryption \
-  --query 'Parameters[*].[Name,Value]' --output text \
-  | sed -E "s#^/wisp/prod/([^\t]+)\t(.*)\$#\1='\2'#" > .env.new
+[ -f .env ] || { echo "No $dir/.env: create it first (docs/deployment.md, Production)" >&2; exit 1; }
 for name in RAILS_MASTER_KEY WISP3_DATABASE_PASSWORD DB_HOST APP_HOST; do
-  grep -q "^$name=" .env.new || { echo "Missing SSM parameter /wisp/prod/$name" >&2; rm .env.new; exit 1; }
+  grep -q "^$name=." .env || { echo "$dir/.env has no $name" >&2; exit 1; }
 done
-echo "TAG='$tag'" >> .env.new
-mv .env.new .env
-docker compose pull --quiet
-docker compose run --rm web bin/rails db:prepare db:seed
+
+if docker image inspect "wisp3:$tag" >/dev/null 2>&1; then
+  echo "Using the image already built for $tag."
+else
+  [ -d src/.git ] || git clone --quiet "$repo" src
+  git -C src fetch --quiet origin
+  git -C src cat-file -e "$sha^{commit}" 2>/dev/null \
+    || { echo "$tag isn't on GitHub: push it first." >&2; exit 1; }
+  git -C src checkout --quiet --force --detach "$sha"
+  echo "Building $tag…"
+  docker build --build-arg REVISION="$sha" -t "wisp3:$tag" src
+fi
+git -C src show "$sha:config/deploy/compose.production.yaml" > compose.yaml
+
+# Migrations run with the new image; if they fail, wisp3:deployed goes back to the running one
+previous=$(docker image inspect --format '{{.Id}}' wisp3:deployed 2>/dev/null || true)
+docker tag "wisp3:$tag" wisp3:deployed
+if ! docker compose run --rm web bin/rails db:prepare db:seed; then
+  [ -n "$previous" ] && docker tag "$previous" wisp3:deployed
+  echo "Migrations failed; the running containers are unchanged." >&2
+  exit 1
+fi
 docker compose up -d --remove-orphans
-docker image prune -af --filter until=168h >/dev/null
+
+# Keep the newest 5 images for rolling back, and a week of build cache
+docker images wisp3 --format '{{.Tag}}' | grep -vx -e deployed -e "$tag" | tail -n +5 \
+  | xargs -r -I{} docker rmi --force "wisp3:{}" >/dev/null
+docker image prune -f >/dev/null
+docker builder prune -f --filter until=168h >/dev/null
 docker compose ps
 REMOTE
-  echo "Deployed $tag."
+  echo "Deployed ${sha:0:12}."
 }
 
 case "${1:-}" in
-  push) push ;;
   deploy) shift; deploy "$@" ;;
-  status) remote "grep ^TAG= .env; docker compose ps; docker compose exec -T web curl -fsS http://localhost:3000/up; echo" ;;
+  images) remote "docker images wisp3" ;;
+  status) remote "docker compose ps; docker compose exec -T web curl -fsS http://localhost:3000/up; echo" ;;
   logs) shift; remote_tty "docker compose logs -f --tail=200 $*" ;;
   console) remote_tty "docker compose exec web bin/rails console" ;;
   rails) shift; remote_tty "docker compose exec web bin/rails $(printf '%q ' "$@")" ;;

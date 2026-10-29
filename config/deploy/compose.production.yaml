@@ -1,10 +1,12 @@
 # Production on the EC2 server (docs/deployment.md, Production). `bin/production deploy` copies this
-# to /opt/wisp/compose.yaml beside the .env it writes from SSM (/wisp/prod/*, plus TAG, the image
-# to run). Compose reads that .env for ${…} below, and env_file passes it into the containers.
+# to /opt/wisp/compose.yaml beside the .env kept there by hand. Compose reads that .env for ${…}
+# below, and env_file passes it into the containers.
 name: wisp3
 
 x-app: &app
-  image: 702627367783.dkr.ecr.us-east-1.amazonaws.com/wisp3:${TAG:?set TAG in .env with bin/production deploy}
+  # Built on the server; deploy points this tag at the commit's image (wisp3:<commit>)
+  image: wisp3:deployed
+  pull_policy: never
   env_file: .env
   restart: unless-stopped
 
@@ -20,7 +22,7 @@ services:
     <<: *app
     environment:
       <<: *env
-      TLS_DOMAIN: ${APP_HOST:?set APP_HOST in SSM}
+      TLS_DOMAIN: ${APP_HOST:?set APP_HOST in .env}
     ports:
       - "80:80"
       - "443:443"

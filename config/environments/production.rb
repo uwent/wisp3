@@ -55,19 +55,23 @@ Rails.application.configure do
   # config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
-  # Public hostname, set by Capistrano and the systemd units (staging) or SSM (production). The localhost default only exists so
+  # Public hostname, set by Capistrano and the systemd units (staging) or the server's .env (production). The localhost default only exists so
   # local commands (e.g. credentials:edit) can boot; a server missing APP_HOST rejects every request.
   app_host = ENV.fetch("APP_HOST", "localhost")
 
   # Links in emails (confirmation, password reset, sign-in links) point here
   config.action_mailer.default_url_options = {host: app_host, protocol: "https"}
   # Staging sends through the host's sendmail. The production container has none (and EC2 blocks
-  # port 25), so it sends through an SMTP relay on 587 (SES or campus) when SMTP_ADDRESS is set.
+  # port 25), so it sends through an SMTP relay when SMTP_ADDRESS is set: STARTTLS on 587, or
+  # TLS from the start on 465. Without SMTP_USERNAME it sends unauthenticated (a relay that
+  # admits the server by its IP address).
   if ENV["SMTP_ADDRESS"].present?
+    smtp_port = ENV.fetch("SMTP_PORT", 587).to_i
     config.action_mailer.delivery_method = :smtp
     config.action_mailer.smtp_settings = {
       address: ENV["SMTP_ADDRESS"],
-      port: ENV.fetch("SMTP_PORT", 587).to_i,
+      port: smtp_port,
+      tls: (true if smtp_port == 465),
       user_name: ENV["SMTP_USERNAME"].presence,
       password: ENV["SMTP_PASSWORD"].presence,
       authentication: (:plain if ENV["SMTP_USERNAME"].present?),

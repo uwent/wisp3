@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # The production image: Thruster (HTTPS with Let's Encrypt) in front of Puma, or the Solid Queue
-# worker with `bin/jobs`. Built and pushed to ECR by `bin/production push`, run on the EC2 server
-# by config/deploy/compose.production.yaml; see docs/deployment.md, Production.
+# worker with `bin/jobs`. Built on the EC2 server by `bin/production deploy` and run there by
+# config/deploy/compose.production.yaml; see docs/deployment.md, Production.
 
 ARG RUBY_VERSION=4.0.5
 ARG NODE_VERSION=24

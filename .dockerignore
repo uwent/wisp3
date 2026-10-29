@@ -1,4 +1,4 @@
-# Kept out of the production image (Dockerfile). Secrets reach the container from SSM, never the image.
+# Kept out of the production image (Dockerfile). Secrets reach the container from the server's .env, never the image.
 /.git
 /.github
 /.husky
