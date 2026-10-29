@@ -14,11 +14,6 @@ RSpec.describe "Authentication", type: :request do
     expect(response).to redirect_to(new_user_session_path)
   end
 
-  it "renders the sign-in page" do
-    get new_user_session_path
-    expect_inertia.to render_component("Auth/SignIn")
-  end
-
   describe "sign up and confirmation" do
     let(:params) do
       {user: {first_name: "Pat", last_name: "Grower", email: "pat@example.com", password:, password_confirmation: password}}
@@ -109,7 +104,7 @@ RSpec.describe "Authentication", type: :request do
 
     it "redirects Inertia (XHR) requests to sign in instead of returning a bare 401" do
       get setup_path, headers: {"X-Inertia" => "true", "X-Requested-With" => "XMLHttpRequest"}
-      expect(response).to have_http_status(:found).or have_http_status(:conflict)
+      expect(response).to redirect_to(new_user_session_path)
     end
   end
 

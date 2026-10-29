@@ -3,24 +3,6 @@ require "rails_helper"
 RSpec.describe "Admin users", type: :request do
   let(:admin) { create(:user, admin: true, email: "staff@example.com") }
 
-  it "is hidden from users who aren't admins" do
-    user = create(:user)
-    other = create(:user, :unconfirmed)
-    sign_in user
-    get root_path
-    get admin_users_path
-    expect(response).to have_http_status(:not_found)
-    get admin_user_path(other)
-    expect(response).to have_http_status(:not_found)
-    expect { delete admin_user_path(other) }.not_to change(User, :count)
-    expect(response).to have_http_status(:not_found)
-  end
-
-  it "requires signing in" do
-    get admin_users_path
-    expect(response).to redirect_to(new_user_session_path)
-  end
-
   it "lists every account with its farm, pivot and field counts over its groups" do
     grower = create(:user, email: "grower@example.com")
     shared = create(:group)

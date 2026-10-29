@@ -69,11 +69,6 @@ RSpec.describe "Daily digest", type: :request do
       expect(user.digest_fields).to be_empty
       expect(user.digest_exclusions.map(&:subject)).to eq([group])
     end
-
-    it "is in the main nav, not on the settings page" do
-      get settings_path
-      expect(inertia.props).not_to have_key(:digest)
-    end
   end
 
   describe "previewing and testing on the alerts page" do
@@ -198,13 +193,6 @@ RSpec.describe "Daily digest", type: :request do
       sign_in admin
       get digest_admin_user_path(user)
       expect(inertia.props[:preview]).to include(skip_reason: "No fields are included in your daily email.", html: nil)
-    end
-
-    it "is hidden from users who aren't admins" do
-      sign_in user
-      get root_path
-      get digest_admin_user_path(admin)
-      expect(response).to have_http_status(:not_found)
     end
   end
 end

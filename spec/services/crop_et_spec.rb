@@ -58,6 +58,10 @@ RSpec.describe CropEt do
       expect(described_class.from_lai(0.2, 2.0)).to be_within(1e-12).of(0.2 * 1.1 * (1 - Math.exp(-3.0)))
     end
 
+    it "is 0 without reference ET" do
+      expect(described_class.from_lai(0.0, 3.0)).to eq(0.0)
+    end
+
     it "is 0 at LAI 0, tends to 1.1 × et0, and treats negative LAI as 0" do
       expect(described_class.from_lai(0.2, 0)).to eq(0.0)
       expect(described_class.from_lai(0.2, 20)).to be_within(1e-9).of(0.22)

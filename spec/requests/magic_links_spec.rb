@@ -23,6 +23,7 @@ RSpec.describe "Sign-in links and codes", type: :request do
 
   describe "requesting" do
     it "emails a link and a code, then shows the code form" do
+      freeze_time # resend_in counts down in seconds
       request_email
       expect(response).to redirect_to(sign_in_code_path)
       expect(last_mail.to).to eq([user.email])
@@ -99,6 +100,16 @@ RSpec.describe "Sign-in links and codes", type: :request do
       5.times { |i| travel_to(start + i.minutes) { request_email } }
       travel_to(start + 5.minutes) { request_email }
       expect(flash[:alert]).to eq("We've sent several sign-in emails already. Please try again in 35 minutes.")
+    end
+
+    it "limits a fresh browser too, sending it back to sign in" do
+      start = Time.zone.parse("2026-10-03 13:20")
+      5.times { |i| travel_to(start + i.minutes) { request_email } }
+      reset!
+      travel_to(start + 5.minutes) { request_email }
+      expect(response).to redirect_to(new_user_session_path)
+      expect(flash[:alert]).to start_with("We've sent several sign-in emails already.")
+      expect(ActionMailer::Base.deliveries.size).to eq(5)
     end
 
     it "lifts the per-address limit when the user signs in" do
@@ -191,6 +202,14 @@ RSpec.describe "Sign-in links and codes", type: :request do
       end
     end
 
+    it "sends someone already signed in to the dashboard" do
+      request_email
+      token = emailed_token
+      sign_in user
+      get magic_link_path(token:)
+      expect(response).to redirect_to(root_path)
+    end
+
     it "rejects a tampered token" do
       post redeem_magic_link_path(token: "not-a-real-token")
       expect(response).to redirect_to(new_user_session_path)
@@ -226,6 +245,19 @@ RSpec.describe "Sign-in links and codes", type: :request do
       expect(response).to redirect_to(root_path)
       follow_redirect!
       expect_inertia.to render_component("Dashboard/Show")
+    end
+
+    it "rejects any code for an address without an account" do
+      request_email("nobody@example.com")
+      post sign_in_code_path, params: {code: "123456"}
+      expect(response).to redirect_to(sign_in_code_path)
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("code")
+    end
+
+    it "sends a code posted without asking for one back to sign in" do
+      post sign_in_code_path, params: {code: "123456"}
+      expect(response).to redirect_to(new_user_session_path)
     end
 
     it "rejects a wrong code" do

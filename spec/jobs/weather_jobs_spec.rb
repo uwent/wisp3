@@ -93,8 +93,20 @@ RSpec.describe "Weather jobs" do
       cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "best_match", payload: {days: []})
       described_class.perform_now(cell.id)
       expect(fetcher).not_to have_received(:refresh)
-      expect(fetcher).to have_received(:refresh_ensemble)
+      expect(fetcher).to have_received(:refresh_ensemble) # its ensemble is still stale
       expect(fetcher).to have_received(:backfill)
+
+      cell.weather_forecasts.create!(kind: "ensemble", issued_at: 1.hour.ago, model: "gfs_seamless", payload: {dates: [], members: []})
+      fresh = instance_double(Weather::Fetcher, refresh: nil, refresh_ensemble: 0, backfill: 0)
+      allow(Weather::Fetcher).to receive(:new).and_return(fresh)
+      described_class.perform_now(cell.id)
+      expect(fresh).not_to have_received(:refresh_ensemble)
+      expect(fresh).to have_received(:backfill)
+    end
+
+    it "does nothing for a cell that's gone" do
+      described_class.perform_now(0)
+      expect(Weather::Fetcher).not_to have_received(:new)
     end
   end
 

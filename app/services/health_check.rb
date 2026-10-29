@@ -63,8 +63,8 @@ class HealthCheck
 
     details = failed.group_by(&:first).map do |job_class, rows|
       _, error_class, message, at = rows.max_by(&:last)
-      "#{job_class}: #{rows.size} failed, latest #{ago(at)}: " \
-        "#{[error_class, message.to_s.lines.first&.strip].compact_blank.join(": ")}"
+      error = [error_class, message.to_s.lines.first&.strip].compact_blank.join(": ")
+      ["#{job_class}: #{rows.size} failed, latest #{ago(at)}", error.presence].compact.join(": ")
     end
     Problem.new(kind: :failed_jobs, summary: "#{count(failed.size, "job")} failed since the last check", details:)
   end

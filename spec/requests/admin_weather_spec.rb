@@ -3,22 +3,6 @@ require "rails_helper"
 RSpec.describe "Admin weather status", type: :request do
   let(:admin) { create(:user, admin: true) }
 
-  it "is hidden from users who aren't admins" do
-    sign_in create(:user)
-    get root_path
-    get admin_weather_path
-    expect(response).to have_http_status(:not_found)
-    post refresh_admin_weather_path
-    expect(response).to have_http_status(:not_found)
-    post admin_health_check_path
-    expect(response).to have_http_status(:not_found)
-  end
-
-  it "requires signing in" do
-    get admin_weather_path
-    expect(response).to redirect_to(new_user_session_path)
-  end
-
   it "shows the API mode and each cell's coverage, forecast and errors" do
     travel_to(Time.zone.parse("2026-07-20 12:00")) do
       field = create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53))

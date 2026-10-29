@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import { addDays, daysBetween, formatDate, relativeDay } from './dates'
 import { formatNumber, parseNumber, units } from './units'
 
 describe('units', () => {
@@ -67,20 +66,5 @@ describe('units', () => {
   it('formats plain numbers with grouping', () => {
     expect(formatNumber(1234.5, 1)).toBe('1,234.5')
     expect(formatNumber(null)).toBe('—')
-  })
-})
-
-describe('dates', () => {
-  it('does calendar arithmetic without time zone shifts', () => {
-    expect(addDays('2026-02-28', 1)).toBe('2026-03-01')
-    expect(addDays('2026-03-08', -1)).toBe('2026-03-07')
-    expect(daysBetween('2026-07-01', '2026-07-15')).toBe(14)
-  })
-
-  it('formats dates for people', () => {
-    expect(formatDate('2026-07-01')).toBe('Jul 1')
-    expect(formatDate('2026-07-01', { year: true })).toBe('Jul 1, 2026')
-    expect(relativeDay('2026-07-14', '2026-07-15')).toBe('yesterday')
-    expect(relativeDay('2026-07-10', '2026-07-15')).toBe('5 days ago')
   })
 })

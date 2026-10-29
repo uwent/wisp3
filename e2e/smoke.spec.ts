@@ -2,69 +2,19 @@ import { readFileSync } from 'node:fs'
 
 import { expect, type Page, test } from '@playwright/test'
 
-import { firstFieldPath, signIn } from './session'
+import { firstFieldPath, signIn, watchErrors } from './session'
 
-// Smoke tests over the demo account seeded by e2e/seed.rb: every page renders without script
-// errors or sideways scrolling, and the main ways of entering data save.
-
-/** Uncaught errors and console errors, except resources that failed to load (map tiles in CI) */
-function watchErrors(page: Page): string[] {
-  const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(`${page.url()}: ${error.message}`))
-  page.on('console', (message) => {
-    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource')) {
-      errors.push(`${page.url()}: ${message.text()}`)
-    }
-  })
-  return errors
-}
+// Smoke tests over the demo account seeded by e2e/seed.rb: the main ways of entering data save, and
+// the map and charts work. accessibility.spec.ts visits every page, failing on script errors too.
 
 test.beforeEach(async ({ page }) => {
   await signIn(page)
 })
 
-test('every page renders without errors or sideways scrolling', async ({ page }) => {
-  const errors = watchErrors(page)
-  const field = await firstFieldPath(page)
-  await page.goto(field)
-  const pivot = new URL((await page.locator('main a[href*="/pivots/"]').first().getAttribute('href'))!, page.url())
-    .pathname
-
-  await page.goto('/admin/users')
-  const user = new URL((await page.locator('main a[href*="/admin/users/"]').first().getAttribute('href'))!, page.url())
-    .pathname
-
-  const paths = [
-    '/',
-    '/map',
-    field,
-    '/setup',
-    '/daily',
-    pivot,
-    `${pivot}/edit`,
-    '/pivots/new',
-    '/field_groups',
-    '/setup/start',
-    '/settings',
-    '/alerts',
-    '/about',
-    '/operation',
-    '/admin/weather',
-    '/admin/users',
-    user,
-  ]
-  for (const path of paths) {
-    await page.goto(path)
-    await expect(page.locator('main h1').first()).toBeVisible()
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
-    expect(overflow, `${path} scrolls sideways`).toBeLessThanOrEqual(0)
-  }
-
+test("a field group's page shows its grid", async ({ page }) => {
   await page.goto('/field_groups')
   await page.locator('main a[href*="/field_groups/"]').first().click()
   await expect(page.locator('[data-grid="group-days"]').first()).toBeVisible()
-
-  expect(errors).toEqual([])
 })
 
 test('the dashboard shows field cards with a status', async ({ page }) => {

@@ -58,6 +58,18 @@ RSpec.describe PlantingTasks do
     expect(check.message).to include("check the emergence date (Jul 1)", "WISP still follows the typical curve")
   end
 
+  it "says so when canopy readings run behind the curve" do
+    planting.update!(plant: create(:plant, key: "potato", name: "Potato"))
+    curve = CanopyCurve.for("potato")
+    [25, 31].each do |day|
+      date = planting.emergence_date + day
+      create(:canopy_observation, planting:, date:, pct_cover: curve.cover(planting.emergence_date, date - 10).round)
+    end
+    check = tasks.last
+    expect(check.todo).to eq("Check your canopy readings: they're about 10 days behind the typical potato curve")
+    expect(check.message).to include("If your crop isn't growing that much slower")
+  end
+
   it "adds a check when a reading falls while the curve grows" do
     planting.update!(plant: create(:plant, key: "potato", name: "Potato"), canopy_interpolation: "linear")
     create(:canopy_observation, planting:, date: Date.new(2026, 7, 12), pct_cover: 30)

@@ -82,6 +82,23 @@ RSpec.describe "Setup", type: :request do
       expect(pivot.reload).to have_attributes(farm: other, name: "North 160", pump_capacity_gpm: 900)
     end
 
+    it "sends an invalid edit back to the edit page" do
+      patch pivot_path(pivot), params: {pivot: {radius_ft: 4000}}
+      expect(response).to redirect_to(edit_pivot_path(pivot))
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("radius_ft")
+      expect(pivot.reload.radius_ft).not_to eq(4000)
+    end
+
+    it "deletes a pivot with its fields and their irrigation" do
+      field = create(:field, pivot:, soil_type: sand)
+      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 3), inches: 0.5)
+      delete pivot_path(pivot)
+      expect(response).to redirect_to(setup_path)
+      expect(flash[:notice]).to eq("Deleted North")
+      expect([Pivot.exists?(pivot.id), Field.exists?(field.id), PivotIrrigation.exists?]).to eq([false, false, false])
+    end
+
     it "shows other pivots on the map picker" do
       create(:pivot, farm:, name: "Neighbor")
       get new_pivot_path(farm_id: farm.id)
@@ -150,39 +167,25 @@ RSpec.describe "Setup", type: :request do
       expect(planting.reload).to have_attributes(plant: corn, et_method: "lai")
     end
 
-    it "exports the season as CSV" do
+    # Each file's contents are in its *_csv_spec.rb; these check what the request adds
+    it "downloads the field's season, the operation's season, and a pivot's weather and irrigation as CSV" do
       planting = create(:planting, field:, plant: potato, season_start: Date.new(2026, 7, 1))
-      field.field_entries.create!(date: Date.new(2026, 7, 3), rain_in: 0.5)
-      get export_planting_path(planting)
-      expect(response.media_type).to eq("text/csv")
-      expect(response.headers["Content-Disposition"]).to include("wisp-field-")
-      rows = CSV.parse(response.body.delete_prefix(CsvExport::BOM))
-      header = rows.index { |row| row.first == "Date" }
-      expect(rows[header]).to include("Reference ET (in)", "AD (in)", "Rain source", "Deep drainage (in)")
-      expect(rows[header + 3]).to include("2026-07-03", "0.5000", "entered")
-      expect(rows.last.first).to eq("Totals")
-    end
-
-    it "exports the operation's season, its pivots' weather and their irrigation as CSV" do
-      field = create(:field, pivot:, name: "East", soil_type: sand)
-      create(:planting, field:, plant: potato, season_start: Date.new(2026, 7, 1))
-      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 3), inches: 0.5)
+      {
+        export_planting_path(planting) => ["wisp-field-", "WISP daily report, 2026 season"],
+        season_report_path(year: 2026) => ["wisp-season-", "WISP season report, 2026"],
+        weather_pivot_path(pivot, year: 2026) => ["wisp-weather-north-2026.csv", "WISP weather, North, 2026"],
+        pivot_irrigations_path(pivot, year: 2026) => ["wisp-irrigation-north-2026.csv", "WISP pivot irrigation, North, 2026"]
+      }.each do |path, (filename, title)|
+        get path
+        expect(response.media_type).to eq("text/csv"), path
+        expect(response.headers["Content-Disposition"]).to include("attachment", filename)
+        expect(response.body).to start_with(CsvExport::BOM)
+        expect(CSV.parse(response.body.delete_prefix(CsvExport::BOM)).first).to eq([title])
+      end
 
       get season_report_path(year: 2026)
-      expect(response.media_type).to eq("text/csv")
-      expect(response.headers["Content-Disposition"]).to include("wisp-season-")
       rows = CSV.parse(response.body.delete_prefix(CsvExport::BOM))
-      expect(rows.first).to eq(["WISP season report, 2026"])
       expect(rows).to include(["Exported by: #{user.name} (#{user.email})"], ["Details: http://www.example.com/about"])
-      expect(rows.find { |row| row.include?("East") }).to include("Hancock", "North", "Potato")
-
-      get weather_pivot_path(pivot, year: 2026)
-      expect(response.headers["Content-Disposition"]).to include("wisp-weather-north-2026.csv")
-      expect(CSV.parse(response.body.delete_prefix(CsvExport::BOM))).to include(["WISP weather, North, 2026"])
-
-      get pivot_irrigations_path(pivot, year: 2026)
-      expect(response.headers["Content-Disposition"]).to include("wisp-irrigation-north-2026.csv")
-      expect(CSV.parse(response.body.delete_prefix(CsvExport::BOM)).last).to eq(["2026-07-03", "0.5000", nil, "0.5000", "All fields", nil])
     end
   end
 
@@ -218,6 +221,18 @@ RSpec.describe "Setup", type: :request do
       }}
       follow_redirect!
       expect(inertia.props[:errors]).to include("fields.0.name", "fields.1.plant_id")
+      expect(group.farms).to be_empty
+    end
+
+    it "keys the farm's, pivot's and crop's errors by their inputs" do
+      post quick_setup_path, params: {setup: {farm: {name: ""}, pivot: {name: "North"}, fields: {}}}
+      follow_redirect!
+      expect(inertia.props[:errors].keys).to include("farm.name", "pivot.latitude", "pivot.longitude")
+
+      post quick_setup_path, params: {setup: {farm: {name: "Hancock"}, pivot: {name: "North", latitude: 44.1, longitude: -89.5},
+                                              fields: {"0" => {name: "East", soil_type_id: sand.id, plant_id: potato.id, emergence_date: "2026-12-15"}}}}
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("fields.0.end_date" => ["Harvest or kill date must be on or after emergence"])
       expect(group.farms).to be_empty
     end
 

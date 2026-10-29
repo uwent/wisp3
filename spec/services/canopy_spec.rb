@@ -46,6 +46,11 @@ RSpec.describe Canopy do
     let(:curve) { CanopyModel.from("field_corn", emergence) }
     let(:corn) { canopy(curve:, floor: 0.05) }
 
+    it "is 0 before emergence, and absent for a crop without one" do
+      expect(CanopyModel.lai("field_corn", -1)).to eq(0.0)
+      expect([CanopyModel.lai("soybean", 30), CanopyModel.from("soybean", emergence)]).to eq([nil, nil])
+    end
+
     it "matches the spreadsheet's values by day since emergence" do
       {30 => 0.25, 50 => 1.95, 80 => 4.07, 100 => 3.25, 140 => 0.86}.each do |day, lai|
         expect(CanopyModel.lai("field_corn", day)).to be_within(0.01).of(lai)
@@ -104,6 +109,13 @@ RSpec.describe Canopy do
       expect(c.on(emergence + 20)).to be_within(1e-9).of(50.0)
     end
 
+    it "takes an early reading's ratio against 1% while the curve is below it" do
+      # The curve is 0.7% the day after emergence: 3% against it would be a ratio of 4, not 3
+      expect(curve.call(emergence + 1)).to be < 1.0
+      c = cover([[emergence + 1, 3.0]])
+      expect(c.on(emergence + 20)).to be_within(1e-9).of(3.0 * curve.call(emergence + 20))
+    end
+
     it "never goes above the curve's peak or the highest reading" do
       c = cover([[emergence + 10, 30.0]]) # far ahead of the curve (4% on day 10)
       expect(c.on(emergence + 60)).to be_within(0.01).of(potato.ccx * 100)
@@ -134,8 +146,8 @@ RSpec.describe Canopy do
         expect(cover([[Date.new(2026, 8, 10), 80.0], [Date.new(2026, 8, 24), 60.0]]).check).to be_nil
       end
 
-      it "isn't run for LAI or without a curve" do
-        expect(canopy([[Date.new(2026, 6, 10), 60.0], [Date.new(2026, 6, 17), 40.0]]).check).to be_nil
+      it "isn't run without a curve" do
+        expect(canopy([[Date.new(2026, 6, 10), 60.0], [Date.new(2026, 6, 17), 40.0]], check: true).check).to be_nil
       end
     end
   end
@@ -150,6 +162,23 @@ RSpec.describe Canopy do
       planting.update!(canopy_interpolation: "linear")
       CanopyObservation.record(planting, Date.new(2026, 6, 10), 40)
       expect(described_class.for(planting.reload).on(Date.new(2026, 8, 20))).to eq(40.0)
+    end
+
+    it "takes field corn's LAI curve on the LAI method, with its own floor and no check" do
+      corn = create(:plant, :field_corn)
+      planting = create(:planting, plant: corn, et_method: "lai", emergence_date: emergence, end_date:)
+      expect(described_class.for(planting).on(emergence + 80)).to be_within(0.01).of(4.07)
+
+      # Five days in, the curve is near 0, so a reading's ratio is taken against LAI 0.05
+      CanopyObservation.record(planting, emergence + 5, 0.1)
+      lai = described_class.for(planting.reload)
+      expect(lai.on(emergence + 5)).to be_within(1e-9).of(0.1 / 0.05 * CanopyModel.lai("field_corn", 5))
+
+      # A fall of 20 while the curve grows would be flagged on percent cover
+      CanopyObservation.record(planting, emergence + 40, 60)
+      CanopyObservation.record(planting, emergence + 47, 40)
+      expect(CanopyModel.lai("field_corn", 47)).to be > CanopyModel.lai("field_corn", 40)
+      expect(described_class.for(planting.reload).check).to be_nil
     end
 
     it "has no curve for a crop without one" do

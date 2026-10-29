@@ -42,6 +42,22 @@ RSpec.describe "Domain models" do
       expect(build(:planting, emergence_date: Date.new(2026, 10, 1))).not_to be_valid
     end
 
+    it "ends on or after the season start" do
+      planting = build(:planting, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 3, 1),
+        end_date: Date.new(2026, 3, 15))
+      expect(planting).not_to be_valid
+      expect(planting.errors.of_kind?(:end_date, "must be on or after the season start")).to be(true)
+    end
+
+    it "has a canopy curve by its method: percent cover for crops in canopy_curves.yml, LAI for field corn" do
+      corn = create(:plant, :field_corn)
+      expect(build(:planting, plant: corn, et_method: "lai")).to have_attributes(canopy_curve?: true,
+        effective_canopy_interpolation: "curve")
+      expect(build(:planting, plant: create(:plant, key: "soybean"), et_method: "lai").canopy_curve?).to be(false)
+      expect(build(:planting, plant: create(:plant, key: "onion"))).to have_attributes(canopy_curve?: false,
+        effective_canopy_interpolation: "linear")
+    end
+
     it "has legacy-style defaults" do
       plant = build(:plant, default_max_root_zone_depth: 16)
       expect(described_class.defaults_for(plant, 2027)).to include(season_start: Date.new(2027, 4, 1),
@@ -86,6 +102,12 @@ RSpec.describe "Domain models" do
       expect(linear.call(travel_bearing_deg: 180)).not_to be_valid # the same line as 0
       expect(linear.call(travel_bearing_deg: "30.5")).not_to be_valid # whole degrees
       expect(build(:pivot, kind: "lateral")).not_to be_valid
+    end
+
+    it "needs both ends of an arc" do
+      expect(build(:pivot, arc_start_deg: 30, arc_end_deg: nil).tap(&:validate).errors.attribute_names).to eq([:arc_end_deg])
+      expect(build(:pivot, arc_start_deg: nil, arc_end_deg: 300).tap(&:validate).errors.attribute_names).to eq([:arc_start_deg])
+      expect(build(:pivot, arc_start_deg: 30, arc_end_deg: 300)).to be_valid
     end
 
     it "keeps only its own kind's dimensions" do

@@ -78,6 +78,8 @@ RSpec.describe DailyDigest do
     field_at("North", 15)
     user.update!(digest_frequency: "never")
     expect(described_class.new(user.reload).skip_reason).to eq("The daily email is turned off.")
+    user.update!(digest_frequency: "daily", confirmed_at: nil)
+    expect(described_class.new(user.reload).skip_reason).to eq("The email address isn't confirmed.")
   end
 
   it "only sends on days a field needs water, for those who asked for that" do
@@ -133,11 +135,18 @@ RSpec.describe DailyDigest do
   end
 
   it "says when nothing needs doing, and still shows the in-season pivots' weather" do
-    field_at("Fine", 15)
+    field = field_at("Fine", 15) # its readings are up to date, and the canopy closed
     user.update!(digest_scope: "needs_irrigation")
     digest = described_class.new(user)
     expect(digest.nothing_listed).to eq("No field needs irrigation now or within 3 days.")
     expect(digest.operations.sole.farms.sole.zones.sole.pivots.sole.entries).to eq([])
+
+    user.update!(digest_scope: "needs_action")
+    expect(described_class.new(user).nothing_listed).to eq("No field needs irrigation or a reading today.")
+
+    field.plantings.sole.update!(end_date: Date.new(2026, 7, 10))
+    user.update!(digest_scope: "in_season", digest_frequency: "daily_all_year")
+    expect(described_class.new(user).nothing_listed).to eq("No included field has a crop in season today.")
   end
 
   it "formats depths in the user's units" do

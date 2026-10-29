@@ -177,11 +177,13 @@ RSpec.describe "Tenant isolation", type: :request do
     expect_not_found
   end
 
-  it "shows only the user's own records on the dashboard, setup and daily entry pages" do
+  it "shows only the user's own records on the dashboard, map, setup, daily entry and field group pages" do
     their_field
     my_field
     get root_path
     expect(inertia.props[:farms].flat_map { |farm| farm[:pivots].flat_map { |pivot| pivot[:fields].pluck(:id) } }).to eq([my_field.id])
+    get map_path
+    expect(inertia.props[:farms].flat_map { |farm| farm[:pivots].pluck(:id) }).to eq([my_pivot.id])
     get setup_path
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
     get daily_entry_path

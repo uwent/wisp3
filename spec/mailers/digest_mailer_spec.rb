@@ -103,6 +103,15 @@ RSpec.describe DigestMailer do
     expect(mail.text_part.body.decoded).to include("Unsubscribe: #{url}")
   end
 
+  it "says when a new pivot's weather hasn't arrived yet" do
+    digest_field(pivot, "Fine", 15)
+    new_pivot = create(:pivot, farm: pivot.farm, name: "Pivot 2", latitude: 45.5, longitude: -91.5) # no weather yet
+    digest_field(new_pivot, "New", 15)
+    text = described_class.daily(DailyDigest.new(user)).text_part.body.decoded
+    expect(text).to match(/     Field: New .*\n     Weather for this pivot is on its way\.\n/)
+    expect(text.scan("on its way").size).to eq(1)
+  end
+
   it "says when nothing needs doing" do
     digest_field(pivot, "Fine", 15)
     user.update!(digest_scope: "needs_irrigation")

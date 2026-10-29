@@ -34,18 +34,4 @@ RSpec.describe "Map", type: :request do
     expect(card).to include(id: field.id, name: "North potatoes")
     expect(card[:summary]).to include(phase: "active")
   end
-
-  it "shows only the current operation's pivots" do
-    outsider = create(:user)
-    create(:pivot, farm: create(:farm, group: outsider.groups.first), name: "Their pivot")
-    get map_path
-    names = inertia.props[:farms].flat_map { |f| f[:pivots] }.map { |p| p[:name] }
-    expect(names).to eq(["North 160"])
-  end
-
-  it "needs a signed-in user" do
-    sign_out user
-    get map_path
-    expect(response).to redirect_to(new_user_session_path)
-  end
 end

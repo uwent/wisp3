@@ -22,9 +22,12 @@ RSpec.describe PlantingStatus do
   end
 
   it "runs the balance through today and gives today's status" do
+    planting.canopy_observations.create!(date: Date.new(2026, 7, 1), pct_cover: 80) # adjusted ET = et0
     today = status(Date.new(2026, 7, 10))
     expect(today.days.size).to eq(10)
-    expect(today.status).to eq(WaterBalance.status(today.params, today.current.result.ad))
+    # 1.2 in, less 0.2 a day for 10 days, plus 0.5 of rain on Jul 3: -0.3, below the irrigation point
+    expect(today.current.result.ad).to eq(-0.3)
+    expect(today.status).to eq(:irrigate)
   end
 
   it "knows when the season has started but no weather has arrived" do
@@ -84,6 +87,18 @@ RSpec.describe PlantingStatus, "projection" do
     expect(status.status).to eq(:caution)
     planting.update!(target_ad_pct: 50) # target 0.6 in, already crossed
     expect(status.crossing).to have_attributes(date: today, days: 0)
+  end
+
+  it "counts a crossing 3 days out as caution, and 4 days out as OK" do
+    # A reading today sets AD, then 0.25 in/day ahead: 0.72 in reaches 0 in 3 days, 0.78 in in 4
+    hot = weather.to_h { |date, values| [date, (date > today) ? values.merge(et0: 0.25) : values] }
+    {13.0 => [3, :caution], 13.25 => [4, :ok]}.each do |moisture_pct, (days, expected)|
+      FieldEntry.record(field.field_entries, today, soil_moisture_pct: moisture_pct)
+      projection = status(weather: hot)
+      expect(WaterBalance.status(projection.params, projection.current.result.ad)).to eq(:ok)
+      expect(projection.crossing.days).to eq(days)
+      expect(projection.status).to eq(expected)
+    end
   end
 
   it "counts planned irrigation (an entry on a future date)" do
@@ -186,6 +201,12 @@ RSpec.describe PlantingStatus, "projection" do
 end
 
 RSpec.describe EnsembleProjection do
+  it "has no bands without days or members" do
+    params = WaterBalance::Params.new(field_capacity: 0.15, perm_wilting_pt: 0.05, max_root_zone_depth: 24.0, mad_frac: 0.5)
+    expect(described_class.run(params, days: [], members: [{}], start_ad: 1.0, threshold: 0)).to eq([])
+    expect(described_class.run(params, days: [double], members: [], start_ad: 1.0, threshold: 0)).to eq([])
+  end
+
   it "interpolates percentiles" do
     expect(described_class.percentile([4, 1, 3, 2, 5], 0.5)).to eq(3)
     expect(described_class.percentile([1, 2], 0.1)).to eq(1.1)

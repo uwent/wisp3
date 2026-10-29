@@ -46,3 +46,43 @@ export async function impersonateGrower(page: Page) {
   await page.getByRole('button', { name: 'Sign in as this user' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'for support' })).toBeVisible()
 }
+
+/** Uncaught errors and console errors, except resources that failed to load (map tiles in CI) */
+export function watchErrors(page: Page): string[] {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(`${page.url()}: ${error.message}`))
+  page.on('console', (message) => {
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource')) {
+      errors.push(`${page.url()}: ${message.text()}`)
+    }
+  })
+  return errors
+}
+
+/** Every signed-in page, with the demo account's first field, pivot, field group and user */
+export async function signedInPages(page: Page): Promise<string[]> {
+  const field = await firstFieldPath(page)
+  const pivot = await firstLinkPath(page, field, 'a[href*="/pivots/"]')
+  const fieldGroup = await firstLinkPath(page, '/field_groups', 'a[href*="/field_groups/"]')
+  const user = await firstLinkPath(page, '/admin/users', 'a[href*="/admin/users/"]')
+  return [
+    '/',
+    '/map',
+    field,
+    '/setup',
+    '/setup/start',
+    '/daily',
+    pivot,
+    `${pivot}/edit`,
+    '/pivots/new',
+    '/field_groups',
+    fieldGroup,
+    '/settings',
+    '/alerts',
+    '/operation',
+    '/about',
+    '/admin/weather',
+    '/admin/users',
+    user,
+  ]
+}

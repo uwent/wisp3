@@ -1,6 +1,7 @@
 require "simplecov"
 SimpleCov.start "rails" do
   skip "/spec/"
+  enable_coverage :branch
 end
 
 require "spec_helper"

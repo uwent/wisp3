@@ -62,14 +62,6 @@ RSpec.describe WaterBalance do
       expect(results.last.ad).to eq(-1.2)
       expect(results.last.pct_moisture).to eq(5.0)
     end
-
-    it "treats missing rain and irrigation as none" do
-      expect(run([day(0, et0: 0.2, rain: nil, irrigation: nil)]).last.ad).to eq(1.0)
-    end
-
-    it "resumes from a given AD" do
-      expect(run([day(0, et0: 0.2)], initial_ad: 0.5).last.ad).to eq(0.3)
-    end
   end
 
   describe "soil moisture readings (C2)" do

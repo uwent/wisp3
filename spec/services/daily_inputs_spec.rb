@@ -14,6 +14,10 @@ RSpec.describe DailyInputs do
       irrigation_source: :none, et0: 0.22, et0_source: :model, soil_moisture_pct: nil, moisture_source: nil)
   end
 
+  it "has nothing to resolve without dates" do
+    expect(described_class.new(field, []).days).to eq([])
+  end
+
   it "marks missing weather instead of using 0" do
     expect(resolve(weather: {})).to have_attributes(rain: nil, rain_source: :missing, et0: nil, et0_source: :missing)
   end

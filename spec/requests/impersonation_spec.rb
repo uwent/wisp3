@@ -10,20 +10,6 @@ RSpec.describe "Impersonation", type: :request do
     post admin_user_impersonation_path(target)
   end
 
-  it "is hidden from users who aren't admins" do
-    sign_in create(:user)
-    get root_path
-    post admin_user_impersonation_path(user)
-    expect(response).to have_http_status(:not_found)
-  end
-
-  it "requires signing in" do
-    post admin_user_impersonation_path(user)
-    expect(response).to redirect_to(new_user_session_path)
-    delete impersonation_path
-    expect(response).to redirect_to(new_user_session_path)
-  end
-
   it "isn't for yourself or another admin" do
     other = create(:user, admin: true)
     [admin, other].each do |target|

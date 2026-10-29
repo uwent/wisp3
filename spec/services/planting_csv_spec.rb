@@ -37,6 +37,21 @@ RSpec.describe PlantingCsv do
     expect(totals[columns.index("Irrigation (in)")]).to eq("0.4000")
   end
 
+  it "names the canopy column by the planting's method" do
+    header = ->(rows) { rows.find { |row| row.first == "Date" } }
+    expect(header.call(rows)).to include("Percent cover")
+    planting.update!(plant: create(:plant, :field_corn), et_method: "lai")
+    lai = CSV.parse(described_class.new(PlantingStatus.new(planting.reload, today: Date.new(2026, 7, 10), weather:))
+      .to_csv.delete_prefix(CsvExport::BOM))
+    expect(header.call(lai)).to include("Leaf area index").and(satisfy { |row| row.none? { |column| column.start_with?("Percent cover") } })
+  end
+
+  it "says there are no days yet before the season starts" do
+    upcoming = CSV.parse(described_class.new(PlantingStatus.new(planting, today: Date.new(2026, 6, 20), weather:))
+      .to_csv.delete_prefix(CsvExport::BOM))
+    expect(upcoming).to include(["Days: none yet"])
+  end
+
   it "escapes names a spreadsheet would run as formulas, but not numbers" do
     farm_row = rows.index(["Farm", "Pivot", "Equipment", "Field", "Area (acres)"]) + 1
     expect(rows[farm_row]).to eq(["Hancock", "'=HYPERLINK(\"http://example.com\")", "'+Zimmatic", "North", "60.0"])

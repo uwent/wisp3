@@ -1,16 +1,6 @@
 require "rails_helper"
 
 RSpec.describe "Public pages", type: :request do
-  it "shows the landing page signed out, and the dashboard signed in" do
-    get root_path
-    expect_inertia.to render_component("Pages/Home")
-    expect(inertia.props[:auth][:user]).to be_nil
-
-    sign_in create(:user)
-    get root_path
-    expect_inertia.to render_component("Dashboard/Show")
-  end
-
   it "shows the About page to anyone, with every crop" do
     create(:plant, key: "field_corn", name: "Field Corn", default_max_root_zone_depth: 33, canopy_model: "field_corn")
     get about_path

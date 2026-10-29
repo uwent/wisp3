@@ -56,6 +56,22 @@ RSpec.describe SeasonReportCsv do
       "GDD (50/86 °F)" => "200.0000", "Mean temperature (°F)" => "70.0000")
   end
 
+  it "averages a pivot's irrigation by field when a field has no area" do
+    west.update!(area_acres: nil)
+    expect(rows).to include(["Fields: 2 fields on 1 pivot across 1 farm, 30.0 acres (1 field without an area)"])
+    # The pivot's area is unknown, so (1.0 + 0.6) / 2 fields rather than weighted by area
+    expect(section("Irrigation by pivot").sole).to include("Area (acres)" => nil, "Irrigation (in)" => "0.8000")
+  end
+
+  it "leaves a field whose season hasn't started blank, not zero" do
+    later = create(:field, pivot:, name: "Later", area_acres: 10)
+    create(:planting, field: later, season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 1),
+      end_date: Date.new(2026, 10, 30))
+    row = section("Fields").find { |r| r["Field"] == "Later" }
+    expect(row).to include("Days counted" => "0", "Irrigation (in)" => "0.0000", "Rainfall (in)" => nil,
+      "Adjusted ET (in)" => nil, "AD at end (in)" => nil, "Percent moisture at end" => nil)
+  end
+
   it "says so for a season without crops" do
     rows = CSV.parse(described_class.new(group, 2030, today:).to_csv.delete_prefix(CsvExport::BOM))
     expect(rows).to include(["Season: no crops entered for 2030"])

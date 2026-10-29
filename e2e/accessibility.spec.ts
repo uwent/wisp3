@@ -3,10 +3,11 @@ import { writeFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
 
-import { firstFieldPath, firstLinkPath, impersonateGrower, signIn } from './session'
+import { impersonateGrower, signedInPages, signIn, watchErrors } from './session'
 
-// WCAG 2.1 A and AA checks (axe) on every page, in light (desktop) and dark (phone). Every page is
-// scanned before the test fails, and A11Y_REPORT=path writes the violations found as JSON.
+// WCAG 2.1 A and AA checks (axe) on every page, in light (desktop) and dark (phone), which also fail
+// on script errors. Every page is scanned before the test fails, and A11Y_REPORT=path writes the
+// violations found as JSON.
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 
@@ -44,6 +45,7 @@ test.afterAll(() => {
 })
 
 test('signed-out pages', async ({ page }) => {
+  const errors = watchErrors(page)
   for (const path of [
     '/',
     '/about',
@@ -54,52 +56,32 @@ test('signed-out pages', async ({ page }) => {
   ]) {
     await scan(page, path)
   }
+  expect(errors).toEqual([])
 })
 
 test('signed-in pages', async ({ page }) => {
   test.setTimeout(120_000)
   await signIn(page)
-  const field = await firstFieldPath(page)
-  const pivot = await firstLinkPath(page, field, 'a[href*="/pivots/"]')
-  const fieldGroup = await firstLinkPath(page, '/field_groups', 'a[href*="/field_groups/"]')
-  const user = await firstLinkPath(page, '/admin/users', 'a[href*="/admin/users/"]')
-
-  for (const path of [
-    '/',
-    '/map',
-    field,
-    '/setup',
-    '/setup/start',
-    '/daily',
-    pivot,
-    `${pivot}/edit`,
-    '/pivots/new',
-    '/field_groups',
-    fieldGroup,
-    '/settings',
-    '/alerts',
-    '/operation',
-    '/about',
-    '/admin/weather',
-    '/admin/users',
-    user,
-  ]) {
+  const paths = await signedInPages(page)
+  const errors = watchErrors(page)
+  for (const path of paths) {
     await scan(page, path)
   }
+  expect(errors).toEqual([])
 })
 
 test('the bar shown while signed in as someone else', async ({ page }) => {
   await impersonateGrower(page)
+  const errors = watchErrors(page)
   await scan(page, '/')
+  expect(errors).toEqual([])
 })
 
 test('every page reflows at 320 px wide and at 200% text', async ({ page }) => {
   test.skip(test.info().project.name !== 'desktop', 'one run covers both sizes')
   test.setTimeout(120_000)
   await signIn(page)
-  const field = await firstFieldPath(page)
-  const pivot = await firstLinkPath(page, field, 'a[href*="/pivots/"]')
-  const paths = ['/', '/map', field, '/setup', '/setup/start', '/daily', pivot, '/field_groups', '/alerts', '/about']
+  const paths = await signedInPages(page)
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
 
   // WCAG 1.4.10: 320 CSS px wide with no sideways page scroll (grids and tables scroll inside themselves)

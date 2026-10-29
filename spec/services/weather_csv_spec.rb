@@ -27,4 +27,19 @@ RSpec.describe WeatherCsv do
       "Precipitation (in)" => nil, "GDD (50/86 °F)" => "20.0000")
     expect(data.last).to include("GDD since the first day (50/86 °F)" => "48.0000")
   end
+
+  it "gives the cell's elevation, and says how many days are forecast" do
+    cell = pivot.weather_cell
+    cell.update!(elevation_m: 300.4)
+    cell.weather_forecasts.create!(issued_at: Time.current, model: "m",
+      payload: {days: [{date: "2026-07-02", tmax_f: 90}, {date: "2026-07-03", tmax_f: 91}]})
+    rows = CSV.parse(described_class.new(pivot, 2026, WeatherPanel.new(cell, dates, emergence_date: dates.first).days)
+      .to_csv.delete_prefix(CsvExport::BOM))
+    expect(rows).to include(["Location: the weather grid cell centered at #{cell.latitude}, #{cell.longitude}, 300 m above sea level"],
+      ["Days: 2026-07-01 to 2026-07-03, one row each; the last 2 are from the latest forecast"])
+
+    stored_only = CSV.parse(described_class.new(pivot, 2026, WeatherPanel.new(cell, dates.first..dates.first,
+      emergence_date: dates.first).days).to_csv.delete_prefix(CsvExport::BOM))
+    expect(stored_only).to include(["Days: 2026-07-01 to 2026-07-01, one row each"])
+  end
 end

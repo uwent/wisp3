@@ -24,17 +24,12 @@ class CanopyCurve
 
     def all = @all ||= load
 
-    def sources
-      all
-      @sources
-    end
-
     private
 
     def load
       data = YAML.safe_load_file(FILE, aliases: true)
-      @sources = data.fetch("sources").to_h { |id, source| [id, Source.new(id:, **source.symbolize_keys)] }.freeze
-      data.fetch("crops").to_h { |key, crop| [key, new(key, crop, @sources)] }.freeze
+      sources = data.fetch("sources").to_h { |id, source| [id, Source.new(id:, **source.symbolize_keys)] }
+      data.fetch("crops").to_h { |key, crop| [key, new(key, crop, sources)] }.freeze
     end
   end
 

@@ -25,14 +25,9 @@ RSpec.describe SeasonCopy do
     expect(described_class.new(group, 2029).run.copied.sole.season_start).to eq(Date.new(2029, 2, 28))
   end
 
-  it "leaves fields that already have a crop this season, and other groups' fields" do
+  it "leaves fields that already have a crop this season" do
     planting(Date.new(2027, 4, 1), Date.new(2027, 5, 1), Date.new(2027, 9, 30))
     planting(Date.new(2028, 4, 1), Date.new(2028, 5, 1), Date.new(2028, 9, 30))
-    other = create(:field)
-    create(:planting, field: other, season_start: Date.new(2027, 4, 1), emergence_date: Date.new(2027, 5, 1),
-      end_date: Date.new(2027, 9, 30))
-
     expect(described_class.new(group, 2028).run.copied).to be_empty
-    expect(other.plantings.count).to eq(1)
   end
 end

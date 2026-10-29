@@ -95,6 +95,42 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(inertia.props[:summary]).to include(phase: "ended", date: "2025-09-01")
     end
 
+    it "shows an LAI planting's readings and field corn's LAI curve" do
+      # Emerged Jun 1, so the curve is well above its 0.05 floor by the reading (day 39)
+      planting.update!(plant: create(:plant, :field_corn), et_method: "lai", emergence_date: Date.new(2026, 6, 1))
+      CanopyObservation.record(planting, Date.new(2026, 7, 10), 1.5)
+      get field_path(field)
+      day = inertia.props[:days].find { |d| d[:date] == "2026-07-10" }
+      expect(day).to include(canopy_entered: 1.5, canopy: 1.5)
+      expect(day[:canopy_curve]).to be_within(1e-4).of(CanopyModel.lai("field_corn", 39))
+    end
+
+    it "gives an upcoming planting's summary without today's balance or a projection" do
+      planting.update!(season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 1))
+      get field_path(field)
+      expect(inertia.props[:summary]).to include(phase: "upcoming", status: nil, date: nil, ad: nil, pct_moisture: nil,
+        crossing: nil, projection: [], tasks: [])
+      expect(inertia.props[:days]).to eq([])
+    end
+
+    it "gives the target, and for a field on entered rain the no-rain case beside the forecast's, without an ensemble" do
+      planting.update!(target_ad_pct: 40)
+      planting.canopy_observations.create!(date: Date.new(2026, 7, 1), pct_cover: 80) # adjusted ET = et0
+      field.update!(use_model_precip: false)
+      pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
+        payload: {days: (Date.new(2026, 7, 20)..Date.new(2026, 7, 22)).map { |d| {date: d.iso8601, et0_in: 0.2, precip_in: 0.5} }})
+
+      get field_path(field)
+      summary = inertia.props[:summary]
+      expect(summary).to include(target_in: 0.48, threshold: 0.48, use_model_precip: false, ensemble_size: 0)
+      # At the wilting point today (-1.2): the forecast's 0.5 in of rain a day lifts it, the no-rain case doesn't
+      expect(summary[:projection].map { |day| day.slice(:date, :ad, :dry_ad, :p50, :chance) }).to eq([
+        {"date" => "2026-07-21", "ad" => -0.9, "dry_ad" => -1.2, "p50" => nil, "chance" => nil},
+        {"date" => "2026-07-22", "ad" => -0.6, "dry_ad" => -1.2, "p50" => nil, "chance" => nil}
+      ])
+      expect(summary[:dry_crossing]).to include(date: "2026-07-20", days: 0)
+    end
+
     it "handles a field with no planting" do
       bare = create(:field, pivot:)
       get field_path(bare)
@@ -185,6 +221,20 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(planting.canopy_observations).to be_empty
     end
 
+    it "refuses a canopy reading outside the planting's season" do
+      patch field_day_path(field, "2026-06-15"), params: {day: {canopy: 30}, planting_id: planting.id},
+        headers: {"HTTP_REFERER" => field_path(field)}
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("canopy" => ["is outside this planting's season"])
+      expect(planting.canopy_observations).to be_empty
+    end
+
+    it "refuses a date that isn't one" do
+      patch field_day_path(field, "2026-02-30"), params: {day: {rain_in: 0.5}}
+      expect(response).to have_http_status(:bad_request)
+      expect(field.field_entries).to be_empty
+    end
+
     it "changes the balance on the next page load" do
       get field_path(field)
       before = inertia.props[:days].last[:ad]
@@ -210,10 +260,12 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(cards["Bare"][:summary]).to be_nil
     end
 
-    it "offers the guided setup to a new account" do
+    # Dashboard/Show offers the guided setup when there are no farms; the props are all the server decides
+    it "gives a new account's dashboard no farms" do
       sign_in create(:user)
       get root_path
-      expect(inertia.props).to include(farms: [])
+      expect_inertia.to render_component("Dashboard/Show")
+      expect(inertia.props).to include(farms: [], today: "2026-07-20")
     end
   end
 
@@ -273,6 +325,18 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       pivot_props = inertia.props[:farms].sole[:pivots].sole
       expect(pivot_props[:fields].map { |f| [f[:name], f[:rain_model]] }).to eq([["North corn", 0.4], ["North potatoes", 0.4]])
       expect(inertia.props[:date]).to eq("2026-07-05")
+    end
+
+    it "shows what's already entered for the date, and the crop in season" do
+      field.field_entries.create!(date: Date.new(2026, 7, 5), rain_in: 0.3, notes: "gauge")
+      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 5), inches: 0.8, field_ids: [field.id])
+      get daily_entry_path(date: "2026-07-05")
+      pivot_props = inertia.props[:farms].sole[:pivots].sole
+      expect(pivot_props[:irrigation]).to include(inches: 0.8, field_ids: [field.id])
+      fields = pivot_props[:fields].index_by { |f| f[:name] }
+      expect(fields["North potatoes"]).to include(crop: "Potato",
+        entry: {"rain_in" => 0.3, "irrigation_in" => nil, "soil_moisture_pct" => nil, "notes" => "gauge"})
+      expect(fields["North corn"]).to include(crop: nil, entry: nil)
     end
 
     it "leaves out the modeled rain on a field that uses only entered rain (Q7)" do
@@ -355,6 +419,21 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
 
       patch field_group_day_path(gauge, "2026-07-08"), params: {day: {pct_cover: ""}}
       expect(planting.canopy_observations).to be_empty
+    end
+
+    it "keeps the members when only the name changes" do
+      gauge = create(:field_group, group:, fields: [field])
+      patch field_group_path(gauge), params: {field_group: {name: "Gauge 2"}}
+      expect(gauge.reload).to have_attributes(name: "Gauge 2", fields: [field])
+    end
+
+    it "refuses a percent cover out of range, and rain with it" do
+      gauge = create(:field_group, group:, fields: [field])
+      patch field_group_day_path(gauge, "2026-07-08"), params: {day: {pct_cover: 140, rain_in: 0.5}},
+        headers: {"HTTP_REFERER" => field_group_path(gauge)}
+      follow_redirect!
+      expect(inertia.props[:errors]["pct_cover"].sole).to include("between 0 and 100")
+      expect([planting.canopy_observations.count, gauge.field_group_entries.count]).to eq([0, 0])
     end
 
     it "refuses percent cover on a day no member has a percent-cover crop" do

@@ -40,18 +40,29 @@ RSpec.describe HealthCheck do
       ])
     end
 
+    it "says a job failed under an hour ago, and leaves out an error it doesn't have" do
+      allow(check).to receive(:failed_executions).and_return([["WeatherBackfillJob", nil, nil, 10.minutes.ago]])
+      expect(problem(:failed_jobs).details).to eq(["WeatherBackfillJob: 1 failed, latest under an hour ago"])
+    end
+
     it "reads Solid Queue's failed executions since the last check, with the error from its JSON column" do
       allow(described_class).to receive(:solid_queue?).and_return(true)
       failed = double(job: double(class_name: "WeatherUpdateJob"), created_at: 2.hours.ago,
         error: {"exception_class" => "Weather::TransientError", "message" => "Open-Meteo 503", "backtrace" => []})
-      # Its tables exist only in the servers' queue database
-      relation = double
-      stub_const("SolidQueue::FailedExecution", double)
-      allow(SolidQueue::FailedExecution).to receive(:includes).with(:job).and_return(relation)
-      allow(relation).to receive(:where).with(created_at: (now - 1.day)..).and_return(relation)
-      allow(relation).to receive(:order).with(:created_at).and_return([failed])
+      no_error = double(job: double(class_name: "DailyDigestJob"), created_at: 1.hour.ago, error: nil)
+      # Its tables exist only in the servers' queue database: a relation that takes any scoping and
+      # yields these rows, checked only for the time window
+      relation = Class.new(Array) do
+        attr_reader :window
+        def includes(*) = self
+        def order(*) = self
+        def where(created_at:) = tap { @window = created_at }
+      end.new([failed, no_error])
+      stub_const("SolidQueue::FailedExecution", relation)
 
-      expect(check.failed_executions).to eq([["WeatherUpdateJob", "Weather::TransientError", "Open-Meteo 503", 2.hours.ago]])
+      expect(check.failed_executions).to eq([["WeatherUpdateJob", "Weather::TransientError", "Open-Meteo 503", 2.hours.ago],
+        ["DailyDigestJob", nil, nil, 1.hour.ago]])
+      expect(relation.window).to eq((now - 1.day)..)
     end
 
     it "doesn't look for them where Solid Queue isn't the queue" do
@@ -70,6 +81,12 @@ RSpec.describe HealthCheck do
       expect(missing.summary).to eq("1 weather cell missing weather")
       expect(missing.details.sole).to eq("Cell #{cell.id} (#{format("%.4f, %.4f", cell.latitude, cell.longitude)}): " \
         "2 days missing in the last 7; 1 day without ET or precipitation; forecast issued 26 h ago")
+    end
+
+    it "notes an active cell with no forecast at all" do
+      current_cell
+      cell.weather_forecasts.delete_all
+      expect(problem(:missing_weather).details.sole).to end_with("): no forecast")
     end
 
     it "clears once the data arrives" do

@@ -45,6 +45,14 @@ RSpec.describe "Groups and settings", type: :request do
   end
 
   describe "settings" do
+    it "shows an email change waiting to be confirmed" do
+      get settings_path
+      expect(inertia.props[:pending_email]).to be_nil
+      user.update!(email: "new@example.com")
+      get settings_path
+      expect(inertia.props[:pending_email]).to eq("new@example.com")
+    end
+
     it "updates name and units" do
       patch settings_path, params: {user: {first_name: "Sam", last_name: "Field", unit_system: "metric"}}
       expect(response).to redirect_to(settings_path)

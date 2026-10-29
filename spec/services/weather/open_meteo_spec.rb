@@ -49,6 +49,14 @@ RSpec.describe Weather::OpenMeteo do
     expect { fetch }.to raise_error(Weather::TransientError, /502/)
   end
 
+  it "retries when Open-Meteo can't be reached, then gives up with a TransientError" do
+    stub_request(:get, /open-meteo/).to_timeout.then.to_return(body: fixture)
+    expect(fetch.size).to eq(2)
+
+    stub_request(:get, /open-meteo/).to_raise(SocketError.new("getaddrinfo failed"))
+    expect { fetch }.to raise_error(Weather::TransientError, "Open-Meteo unreachable: getaddrinfo failed")
+  end
+
   it "raises a plain Error for a bad request, with Open-Meteo's reason" do
     stub_request(:get, /open-meteo/).to_return(status: 400, body: '{"error":true,"reason":"Invalid model"}')
     expect { fetch }.to raise_error(Weather::Error, /Invalid model/)
@@ -59,6 +67,14 @@ RSpec.describe Weather::OpenMeteo do
     fetch
     # 2 locations × max(1, 4 variables / 10 × 2 days / 14)
     expect(Weather::RateLimiter.new.used(:minute)).to eq(2.0)
+  end
+
+  it "counts each ensemble member as variables" do
+    stub_request(:get, /open-meteo/).to_return(body: fixture)
+    client.hourly(locations, endpoint: :ensemble, model: "gfs_seamless", variables:,
+      start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 10, 2))
+    # 2 locations × 31 members × 4 variables / 10 × 2 days / 14, stored to the hundredth
+    expect(Weather::RateLimiter.new.used(:minute)).to be_within(0.01).of(described_class::ENSEMBLE_MEMBERS * 4 / 10.0 * 2 / 14 * 2)
   end
 end
 

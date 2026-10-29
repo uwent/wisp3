@@ -33,20 +33,23 @@ export const DEFAULT_PREFS: MapPrefs = {
 
 const key = (groupId: number | undefined) => `wisp-map:${groupId ?? 'none'}`
 
+// A fresh copy, so changing a loaded setting's list or map in place never changes the defaults
+const defaults = (): MapPrefs => structuredClone(DEFAULT_PREFS)
+
 export function loadPrefs(groupId: number | undefined): MapPrefs {
   try {
     const saved = JSON.parse(localStorage.getItem(key(groupId)) ?? 'null')
-    if (!saved || typeof saved !== 'object') return { ...DEFAULT_PREFS }
+    if (!saved || typeof saved !== 'object') return defaults()
     // Layers saved earlier that the map no longer has are dropped
     const known = (id: unknown) => OVERLAYS.some((overlay) => overlay.id === id)
     return {
-      ...DEFAULT_PREFS,
+      ...defaults(),
       ...saved,
       rain: known(saved.rain) ? saved.rain : null,
       overlays: Array.isArray(saved.overlays) ? saved.overlays.filter(known) : [],
     }
   } catch {
-    return { ...DEFAULT_PREFS }
+    return defaults()
   }
 }
 

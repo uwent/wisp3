@@ -18,6 +18,14 @@ RSpec.describe Weather::Fetcher do
       expect(ensemble.members.first[today + 15][:et0]).to be_within(1e-4).of(24 * 0.2 / 25.4)
       expect(cell.latest_forecast).to be_nil
     end
+
+    it "records an error on the cells and re-raises it" do
+      failing = Object.new
+      def failing.hourly(*, **) = raise(Weather::TransientError, "Open-Meteo 503")
+      expect { described_class.new(client: failing).refresh_ensemble([cell]) }.to raise_error(Weather::TransientError)
+      expect(cell.reload).to have_attributes(last_error: "Open-Meteo 503", last_error_at: Time.current)
+      expect(cell.latest_ensemble).to be_nil
+    end
   end
 
   describe "#refresh" do
