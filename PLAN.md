@@ -837,7 +837,8 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
   - [x] AWS resources ready (CALS IT, 2026-10-27): EC2, RDS, ECR, SSM. The `wisp3` role and databases created.
   - [x] The Docker deploy (2026-10-28): `Dockerfile`, `config/deploy/compose.production.yaml`, `bin/production` (push, deploy, status, logs, console), production credentials (`secret_key_base` only), RDS TLS in `database.yml`, SMTP from the environment; the image checked against a local Postgres 18 (migrations, reference data, `/up`, assets, the jobs scheduler, YJIT). The Capistrano production stage removed.
   - [x] The deploy simplified (2026-10-29): images built on the server from a git checkout, settings in a hand-kept `.env`; no ECR, SSM or SES, so nothing needs AWS permissions beyond SSH.
-  - [ ] `.env` on the server, DNS and ports 80/443, then the first `bin/production deploy` (TODO.md).
+  - [x] `.env` on the server and the first `bin/production deploy` (2026-10-29), at `54-159-70-187.sslip.io` until campus DNS (ports 80/443 were already open).
+  - [ ] A temporary campus hostname (TODO.md), then the first admin account (docs/deployment.md, step 6).
   - [ ] Production mail: the CALS relay (port, how it admits the server), `SMTP_*` in `.env`, SPF/DKIM checked.
   - [ ] Restore an RDS snapshot to a scratch instance once, and check the app against it.
 - [ ] Legacy goes read-only (sign-ups disabled, banner) and moves to its legacy hostname; DNS switch; **launch by ~Mar 20, 2027** (§13).
