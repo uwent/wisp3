@@ -9,7 +9,7 @@ The steps are in [docs/deployment.md](docs/deployment.md), Production. The deplo
 **Ask Eric** (nothing in AWS beyond the security group):
 - [x] **The security group:** inbound 80 and 443 from anywhere, for Let's Encrypt and browsers. *(Already open: the site answers on both.)*
 - [ ] **A temporary hostname** for production before launch (e.g. `new.wisp.cals.wisc.edu`), with a DNS A record to 54.159.70.187. `wisp.cals.wisc.edu` moves at launch. Until then the site is at `https://54-159-70-187.sslip.io` (step 3).
-- [ ] **The CALS SMTP relay** (step 7): its hostname and port (587 or 465; EC2 blocks 25), whether it takes a username and password or admits 54.159.70.187 by IP, and that it may send as `agweather@cals.wisc.edu` with DKIM or SPF in place. Until mail works, production can't send sign-up confirmations or sign-in links.
+- [ ] **Amazon SES** (step 7): SES SMTP credentials for us-east-1, `cals.wisc.edu` (or `agweather@cals.wisc.edu`) verified with Easy DKIM (CNAMEs in campus DNS), and production access out of the sandbox. Until mail works, production can't send sign-up confirmations or sign-in links.
 
 **Then you:**
 - [ ] **Back up the production credentials key.** `config/credentials/production.key` (new, 2026-10-28) exists only on this machine. Put it in your password manager beside the staging key.
@@ -17,7 +17,7 @@ The steps are in [docs/deployment.md](docs/deployment.md), Production. The deplo
 - [x] **Write `/opt/wisp/.env`** (step 4): `RAILS_MASTER_KEY` (the contents of `production.key`), `WISP3_DATABASE_PASSWORD` (the `wisp3` password you set), `DB_HOST`, `APP_HOST` (the temporary hostname), `OPEN_METEO_API_KEY`, later the `SMTP_*` settings. Keep a copy in the password manager.
 - [x] **First deploy** (step 5), 2026-10-29, at `54-159-70-187.sslip.io`.
 - [ ] **Create your admin account** in the console (step 6; signing up needs mail).
-- [ ] **Send a test email** (step 7) once the relay details are in `.env`.
+- [ ] **Send a test email** (step 7) once the SES credentials are in `.env`.
 - [ ] **After the next weather refresh** (5 am, 11 am, 5 pm Central), `/admin/weather` shows data; with mail working, sign up and sign in by link.
 - [ ] **Before launch:** restore an RDS snapshot to a scratch instance once (Eric may need to).
 

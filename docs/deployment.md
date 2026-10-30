@@ -102,7 +102,7 @@ Add a `wisp3` site in `/etc/nginx/sites-available` (enabled in `sites-enabled`) 
 
 ## Production (Docker on EC2)
 
-CALS IT set up the server and the database; nothing else in AWS is used, so nothing here needs AWS permissions. Each deploy builds the commit's image on the server from a git checkout of the public repo and the [Dockerfile](../Dockerfile), and [config/deploy/compose.production.yaml](../config/deploy/compose.production.yaml) runs it as two containers:
+CALS IT set up the server, the database and Amazon SES for mail (step 7). The app sends through SES's SMTP interface with credentials kept in `.env`, so the server needs no AWS permissions. Each deploy builds the commit's image on the server from a git checkout of the public repo and the [Dockerfile](../Dockerfile), and [config/deploy/compose.production.yaml](../config/deploy/compose.production.yaml) runs it as two containers:
 
 - `web`: Thruster on ports 80 and 443 in front of Puma. Thruster gets and renews the Let's Encrypt certificate for `APP_HOST` by itself, so there's no nginx or certbot.
 - `jobs`: the Solid Queue worker (`bin/jobs`).
@@ -266,10 +266,10 @@ WISP3_DATABASE_PASSWORD='…'        # the wisp3 password from step 2
 DB_HOST='wisp-prod.chjgrhbg1z6x.us-east-1.rds.amazonaws.com'
 APP_HOST='54-159-70-187.sslip.io'  # the public hostname (step 3)
 OPEN_METEO_API_KEY='…'             # optional; without it the free API is used
-# Mail (step 7); until SMTP_ADDRESS is set, production can't send mail
-SMTP_ADDRESS='…'
+# Mail through Amazon SES (step 7); until SMTP_ADDRESS is set, production can't send mail
+SMTP_ADDRESS='email-smtp.us-east-1.amazonaws.com'
 SMTP_PORT='587'
-SMTP_USERNAME='…'                  # leave both out if the relay admits the server by its IP
+SMTP_USERNAME='…'                  # the SES SMTP credentials from IT (not an AWS access key)
 SMTP_PASSWORD='…'
 # MAILER_FROM='WISP <agweather@cals.wisc.edu>'   # the default
 ```
@@ -314,13 +314,15 @@ bin/production rails runner 'User.find_by!(email: "them@…").update!(admin: tru
 
 Admins see every account (`/admin/users`, where they can also sign in as someone to help them), and the morning health check emails them when something's wrong, so keep the list short.
 
-#### 7. Mail (the CALS SMTP relay)
+#### 7. Mail (Amazon SES)
 
-The app sends through any SMTP relay set by `SMTP_*`; nothing in the code is specific to one. Ask CALS IT:
+Production sends through Amazon SES in us-east-1, using its SMTP interface: `email-smtp.us-east-1.amazonaws.com` on port 587 (STARTTLS). EC2 blocks outbound port 25, but not 587. The app uses SES as any SMTP server (`SMTP_*`), so it needs no AWS SDK and the server no IAM role. Ask CALS IT for:
 
-- **The relay's hostname and port.** It has to be 587 (STARTTLS) or 465 (TLS from the start; set `SMTP_PORT='465'`). EC2 blocks outbound port 25, so a relay only on 25 won't work from this server.
-- **How it admits the server:** a username and password (`SMTP_USERNAME`, `SMTP_PASSWORD`), or by IP address, in which case ask them to allow 54.159.70.187 and leave both out.
-- **That it may send as `agweather@cals.wisc.edu`** (or the address in `MAILER_FROM`), and that it signs with DKIM or is in `cals.wisc.edu`'s SPF record, so the mail passes wisc.edu's DMARC check instead of landing in spam.
+- **SES SMTP credentials** (`SMTP_USERNAME`, `SMTP_PASSWORD`): an IAM user allowed only `ses:SendRawEmail`, with its SMTP password derived for us-east-1. The SMTP password isn't the IAM user's secret access key; SES shows how to make one from the other. If they're ever rotated, update `.env` and the password manager.
+- **A verified identity for the sender:** the `cals.wisc.edu` domain, or at least `agweather@cals.wisc.edu` (or the address in `MAILER_FROM`). Verify the domain with Easy DKIM: SES gives three CNAME records for campus DNS, and DKIM signed by `cals.wisc.edu` is what passes wisc.edu's DMARC check. If staging's Postfix already relays through SES in another AWS account, the identity may already exist there, but each account verifies its own.
+- **Production access** (out of the SES sandbox). In the sandbox, SES sends only to verified addresses, at most 200 a day, so sign-ups and the digest would fail for everyone else. The request asks what the mail is for: account email (confirmations, sign-in links) and an opt-in daily irrigation digest, a few hundred a day.
+- **Bounces and complaints:** keep the account-level suppression list on (the default), so SES stops sending to addresses that bounce or complain. The app doesn't read SES's notifications.
+- **No click tracking.** The app's links carry `ses:no-track`, but don't attach a configuration set that rewrites links. Sign-in links are single-use, and a tracker following one uses it up.
 
 Put the settings in `.env`, `docker compose up -d --force-recreate`, then send yourself a message:
 
@@ -328,7 +330,7 @@ Put the settings in `.env`, `docker compose up -d --force-recreate`, then send y
 bin/production rails runner 'ActionMailer::Base.mail(from: Rails.configuration.x.mailer_from, to: "you@wisc.edu", subject: "WISP test", body: "Mail works").deliver_now'
 ```
 
-A timeout means the server can't reach the relay (the port, or a firewall on either side); `535` means the username or password; `550` or `554` usually means the relay won't send for this server or sender. Check that the test arrived in the inbox, not spam, and that its headers show `dkim=pass` or `spf=pass`.
+A timeout means the server can't reach SES on 587 (an outbound rule in the security group); `535` means the SMTP credentials are wrong or for another region; `554 Message rejected: Email address is not verified` means the sender identity isn't verified, or, for the recipient, that the account is still in the sandbox. Check that the test arrived in the inbox, not spam, and that its headers show `dkim=pass` for `cals.wisc.edu` (SPF passes for SES's own `amazonses.com` return address, which doesn't count toward DMARC).
 
 Then check the app's own mail: sign up with a second address and receive the confirmation, sign in with an emailed link and code, and send a test digest from the Alerts page.
 

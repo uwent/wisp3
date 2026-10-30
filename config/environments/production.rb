@@ -62,9 +62,9 @@ Rails.application.configure do
   # Links in emails (confirmation, password reset, sign-in links) point here
   config.action_mailer.default_url_options = {host: app_host, protocol: "https"}
   # Staging sends through the host's sendmail. The production container has none (and EC2 blocks
-  # port 25), so it sends through an SMTP relay when SMTP_ADDRESS is set: STARTTLS on 587, or
-  # TLS from the start on 465. Without SMTP_USERNAME it sends unauthenticated (a relay that
-  # admits the server by its IP address).
+  # port 25), so it sends through SMTP when SMTP_ADDRESS is set: Amazon SES's SMTP interface
+  # (docs/deployment.md), STARTTLS on 587, or TLS from the start on 465. Without SMTP_USERNAME it
+  # sends unauthenticated (a relay that admits the server by its IP address).
   if ENV["SMTP_ADDRESS"].present?
     smtp_port = ENV.fetch("SMTP_PORT", 587).to_i
     config.action_mailer.delivery_method = :smtp

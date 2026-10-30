@@ -104,9 +104,9 @@ bin/rails demo:seed            # rebuild the demo account
 |---|---|
 | development, test | `.env` (gitignored), read by dotenv; only `OPEN_METEO_API_KEY`, which is optional |
 | staging | `config/credentials/staging.yml.enc` (`database.password`, `open_meteo.api_key`, `secret_key_base`), decrypted by `config/credentials/staging.key` |
-| production | AWS SSM Parameter Store, `/wisp/prod/*`: the database password, the Open-Meteo key, SMTP and `RAILS_MASTER_KEY`. Each deploy writes them into the server's `/opt/wisp/.env`. The master key is `config/credentials/production.key`, which decrypts `config/credentials/production.yml.enc`, holding only `secret_key_base` |
+| production | The server's `/opt/wisp/.env`, edited by hand (docs/deployment.md, Production step 4): the database password, the Open-Meteo key, the SES SMTP credentials and `RAILS_MASTER_KEY`, with a copy in the password manager. The master key is `config/credentials/production.key`, which decrypts `config/credentials/production.yml.enc`, holding only `secret_key_base` |
 
-Keys are never committed. Keep both `.key` files in the team's password manager. Staging's is copied to the server (docs/deployment.md, Staging step 3); production's is the `RAILS_MASTER_KEY` parameter.
+Keys are never committed. Keep both `.key` files in the team's password manager. Staging's is copied to the server (docs/deployment.md, Staging step 3); production's is `RAILS_MASTER_KEY` in that `.env`.
 
 Settings read from the environment (`WISP3_DATABASE_PASSWORD`, `OPEN_METEO_API_KEY`) take precedence over credentials, so production needs nothing else in its credentials file.
 
