@@ -3,7 +3,7 @@
 | Stage | Where | How | URL | Rails env |
 |---|---|---|---|---|
 | staging | `dev.agweather.cals.wisc.edu` (SSH port 216), local Postgres | Capistrano, systemd user services | https://dev.wisp.cals.wisc.edu | `staging` |
-| production | AWS us-east-1: EC2 `wisp-prod` (54.159.70.187), RDS `wisp-prod` (PostgreSQL 18) | Docker Compose, images built on the server | https://54-159-70-187.sslip.io for now; https://wisp.cals.wisc.edu at launch | `production` |
+| production | AWS us-east-1: EC2 `wisp-prod` (54.159.70.187), RDS `wisp-prod` (PostgreSQL 18) | Docker Compose, images built on the server | https://v3.wisp.cals.wisc.edu until launch, then https://wisp.cals.wisc.edu | `production` |
 
 Both run the same two processes: the web server (Puma) and the Solid Queue worker (weather refresh, the daily digest, the health check and other background jobs).
 
@@ -111,7 +111,7 @@ CALS IT set up the server, the database and Amazon SES for mail (step 7). The ap
 |---|---|---|
 | App server (EC2, Ubuntu 26.04, t3.medium: 2 vCPUs, 4 GB, 38 GB disk) | `wisp-prod` | 54.159.70.187 (Elastic IP); you log in as yourself with an SSH key |
 | Database (RDS PostgreSQL 18) | `wisp-prod` | `wisp-prod.chjgrhbg1z6x.us-east-1.rds.amazonaws.com:5432` |
-| Site | | `https://54-159-70-187.sslip.io` until campus DNS gives it a name (step 3) |
+| Site | | `https://v3.wisp.cals.wisc.edu` until launch (step 3) |
 
 On the server, everything is in `/opt/wisp`, owned by you:
 
@@ -157,12 +157,13 @@ Then check it with `bin/production status`: both containers up, `web` "healthy" 
 
 **Rolling back:** `bin/production deploy <earlier commit>`. It reuses that image if it's still on the server (`bin/production images`), or builds it again. Migrations aren't rolled back, so a rollback past a migration needs that migration to be backward compatible.
 
-**Changing a setting or secret:** edit `/opt/wisp/.env` on the server (`bin/production ssh`, then `nano .env`), then `docker compose up -d --force-recreate` in `/opt/wisp` so the containers read it. Update the password manager too. `APP_HOST` is covered in step 3.
+**Changing a setting or secret:** edit `/opt/wisp/.env` on the server (`bin/production ssh`, then `nano .env`), then `bin/production reload` from your machine so the containers read it (on the server, that's `docker compose up -d --force-recreate` in `/opt/wisp`). Update the password manager too. `APP_HOST` is covered in step 3.
 
 ### Other commands
 
 ```bash
 bin/production status          # containers and /up (its version is the deployed commit)
+bin/production reload          # recreate the containers after editing .env
 bin/production images          # images on the server, newest first
 bin/production logs web        # follow logs (web, jobs, or both)
 bin/production console         # Rails console
@@ -171,7 +172,7 @@ bin/production rails weather:refresh      # any bin/rails command or task
 bin/production ssh             # a shell in /opt/wisp
 ```
 
-On the server, in `/opt/wisp`, Compose works directly: `docker compose restart web`, `docker compose ps -a`. For a database shell, the image has no `psql`, but the server does:
+On the server, Compose works directly, but only in `/opt/wisp`, where `compose.yaml` and `.env` are (elsewhere it says "no configuration file provided"): `docker compose restart web`, `docker compose ps -a`. For a database shell, the image has no `psql`, but the server does:
 
 ```bash
 psql "host=wisp-prod.chjgrhbg1z6x.us-east-1.rds.amazonaws.com dbname=wisp3_production user=wisp3 sslmode=verify-full sslrootcert=$HOME/global-bundle.pem"
@@ -244,11 +245,11 @@ REVOKE CONNECT ON DATABASE wisp3_production, wisp3_production_cache, wisp3_produ
 
 Ask IT (and campus DNS) for these early, as they take longest:
 - **Inbound 80 and 443** from anywhere in the server's security group. Let's Encrypt checks port 80, and browsers use 443.
-- **A DNS record:** the hostname resolving to 54.159.70.187. `wisp.cals.wisc.edu` still serves legacy until launch (PLAN.md §13), so start with a temporary name.
+- **A DNS record:** the hostname resolving to 54.159.70.187. `wisp.cals.wisc.edu` still serves legacy until launch (PLAN.md §13), so start with a temporary name: `v3.wisp.cals.wisc.edu` (October 2026).
 
-Until the record exists, use `54-159-70-187.sslip.io` as `APP_HOST`. sslip.io is a public DNS service that resolves any name with an IP address in it to that address, so Let's Encrypt can issue a real certificate for it. If its certificate hits Let's Encrypt's rate limits (many people use sslip.io), `54.159.70.187.nip.io` works the same way.
+Until a record exists, use `54-159-70-187.sslip.io` as `APP_HOST`. sslip.io is a public DNS service that resolves any name with an IP address in it to that address, so Let's Encrypt can issue a real certificate for it. If its certificate hits Let's Encrypt's rate limits (many people use sslip.io), `54.159.70.187.nip.io` works the same way.
 
-**Changing `APP_HOST`** (to the temporary name, then at launch): edit it in `.env` and `docker compose up -d --force-recreate`. Thruster gets a certificate for the new name on its first request. Everyone is signed out, since sessions belong to the old name, and links in emails already sent point to the old name.
+**Changing `APP_HOST`** (to the temporary name, then at launch): edit it in `.env` and run `bin/production reload`. Thruster gets a certificate for the new name on its first request. Everyone is signed out, since sessions belong to the old name, and links in emails already sent point to the old name.
 
 #### 4. The settings file
 
@@ -264,7 +265,7 @@ One `NAME='value'` per line. Single quotes keep Compose from reading `$` or `#` 
 RAILS_MASTER_KEY='…'               # contents of config/credentials/production.key (password manager)
 WISP3_DATABASE_PASSWORD='…'        # the wisp3 password from step 2
 DB_HOST='wisp-prod.chjgrhbg1z6x.us-east-1.rds.amazonaws.com'
-APP_HOST='54-159-70-187.sslip.io'  # the public hostname (step 3)
+APP_HOST='v3.wisp.cals.wisc.edu'   # the public hostname (step 3)
 OPEN_METEO_API_KEY='…'             # optional; without it the free API is used
 # Mail through Amazon SES (step 7); until SMTP_ADDRESS is set, production can't send mail
 SMTP_ADDRESS='email-smtp.us-east-1.amazonaws.com'
@@ -324,7 +325,7 @@ Production sends through Amazon SES in us-east-1, using its SMTP interface: `ema
 - **Bounces and complaints:** keep the account-level suppression list on (the default), so SES stops sending to addresses that bounce or complain. The app doesn't read SES's notifications.
 - **No click tracking.** The app's links carry `ses:no-track`, but don't attach a configuration set that rewrites links. Sign-in links are single-use, and a tracker following one uses it up.
 
-Put the settings in `.env`, `docker compose up -d --force-recreate`, then send yourself a message:
+Put the settings in `.env`, run `bin/production reload`, then send yourself a message:
 
 ```bash
 bin/production rails runner 'ActionMailer::Base.mail(from: Rails.configuration.x.mailer_from, to: "you@wisc.edu", subject: "WISP test", body: "Mail works").deliver_now'

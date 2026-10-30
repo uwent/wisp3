@@ -6,6 +6,7 @@
 #                                   earlier commit rolls back (its image is reused if still there)
 #   bin/production images           the images on the server, newest first (for rolling back)
 #   bin/production status           containers and /up (which gives the deployed commit)
+#   bin/production reload           recreate the containers so they read an edited .env
 #   bin/production logs [service]   follow logs (web, jobs; default both)
 #   bin/production console          a Rails console
 #   bin/production rails ARGS…      any bin/rails command, e.g. rails runner '…'
@@ -75,10 +76,11 @@ REMOTE
 case "${1:-}" in
   deploy) shift; deploy "$@" ;;
   images) remote "docker images wisp3" ;;
+  reload) remote "docker compose up -d --force-recreate && docker compose ps" ;;
   status) remote "docker compose ps; docker compose exec -T web curl -fsS http://localhost:3000/up; echo" ;;
   logs) shift; remote_tty "docker compose logs -f --tail=200 $*" ;;
   console) remote_tty "docker compose exec web bin/rails console" ;;
   rails) shift; remote_tty "docker compose exec web bin/rails $(printf '%q ' "$@")" ;;
   ssh) ssh -t "$HOST" "cd $DIR && exec \$SHELL -l" ;;
-  *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

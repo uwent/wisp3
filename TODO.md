@@ -8,7 +8,7 @@ The steps are in [docs/deployment.md](docs/deployment.md), Production. The deplo
 
 **Ask Eric** (nothing in AWS beyond the security group):
 - [x] **The security group:** inbound 80 and 443 from anywhere, for Let's Encrypt and browsers. *(Already open: the site answers on both.)*
-- [ ] **A temporary hostname** for production before launch (e.g. `new.wisp.cals.wisc.edu`), with a DNS A record to 54.159.70.187. `wisp.cals.wisc.edu` moves at launch. Until then the site is at `https://54-159-70-187.sslip.io` (step 3).
+- [x] **A temporary hostname** for production before launch: `v3.wisp.cals.wisc.edu`, a DNS A record to 54.159.70.187 (step 3). `wisp.cals.wisc.edu` moves at launch.
 - [ ] **Amazon SES** (step 7): SES SMTP credentials for us-east-1, `cals.wisc.edu` (or `agweather@cals.wisc.edu`) verified with Easy DKIM (CNAMEs in campus DNS), and production access out of the sandbox. Until mail works, production can't send sign-up confirmations or sign-in links.
 
 **Then you:**
@@ -109,5 +109,5 @@ The steps are in [docs/deployment.md](docs/deployment.md), Production. The deplo
 ## Decisions still open
 
 - [ ] **Group member roles** (PLAN.md Q8): owner vs member, before group invitations.
-- [ ] Production's temporary hostname before launch (`APP_HOST` in `/opt/wisp/.env`; see Production on AWS above).
+- [x] Production's temporary hostname before launch: `v3.wisp.cals.wisc.edu` (`APP_HOST` in `/opt/wisp/.env`).
 - [ ] Legacy hostname after launch (PLAN.md suggests `legacy.wisp.cals.wisc.edu`).
