@@ -34,3 +34,9 @@ Conventions for working in the code are in [CLAUDE.md](CLAUDE.md).
 ## Deployment
 
 Capistrano deploys to staging (dev.wisp.cals.wisc.edu) and, from the 2027 season, a new production server. See [docs/deployment.md](docs/deployment.md), and DEVELOPMENT.md for credentials.
+
+## License
+
+Copyright (C) 2026 Board of Regents of the University of Wisconsin System.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See [LICENSE](LICENSE) for the full terms. If you run a modified version for others over a network, the license requires you to offer them its source.

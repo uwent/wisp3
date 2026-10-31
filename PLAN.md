@@ -40,6 +40,7 @@ A full rewrite of the Wisconsin Irrigation Scheduling Program (WISP), replacing 
 | D10 | **No data migration.** Users register and set up their farms fresh in WISP 3. Legacy data is used only offline, for engine validation (§10) and the weather comparison (§8.4) |
 | D11 | **New production server** for the 2027 season. Provisioned by CALS IT in AWS (EC2, RDS; October 2026) and deployed with Docker, images built on the server (Ben, 2026-10-29: ECR, SSM and SES dropped, as they needed AWS permissions IT was slow to grant); staging stays on Capistrano (§12). The old production box is out of scope |
 | D12 | **Open-Meteo's shortwave and humidity are corrected against ground stations, and ET0 is computed here from the corrected shortwave** (Ben, 2026-10-31, from AgWeather v2's comparison with 80 Wisconet stations): its shortwave reads 15–20% high, so its ET0 reads 16% high; its RH runs dry. Each correction is a versioned table copied from AgWeather v2, applied as hours are aggregated, with the raw values kept and the corrections applied recorded on each day (§8.5) |
+| D13 | **AGPL-3.0-or-later** (Ben, 2026-10-31), as AgWeather v2 (its D53): anyone who distributes a modified version, or runs one for others over a network, must offer its source. Copyright the Board of Regents of the University of Wisconsin System (`LICENSE`, README, `package.json`). Open-Meteo's data is CC BY 4.0, so the about page credits it | 2026-10-31 |
 
 ---
 
