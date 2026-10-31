@@ -39,6 +39,7 @@ A full rewrite of the Wisconsin Irrigation Scheduling Program (WISP), replacing 
 | D9 | **Pivot-level irrigation entry**: irrigation entered once on a pivot applies to every field under it (or a chosen subset), with per-field overrides (§4) |
 | D10 | **No data migration.** Users register and set up their farms fresh in WISP 3. Legacy data is used only offline, for engine validation (§10) and the weather comparison (§8.4) |
 | D11 | **New production server** for the 2027 season. Provisioned by CALS IT in AWS (EC2, RDS; October 2026) and deployed with Docker, images built on the server (Ben, 2026-10-29: ECR, SSM and SES dropped, as they needed AWS permissions IT was slow to grant); staging stays on Capistrano (§12). The old production box is out of scope |
+| D12 | **Open-Meteo's shortwave and humidity are corrected against ground stations, and ET0 is computed here from the corrected shortwave** (Ben, 2026-10-31, from AgWeather v2's comparison with 80 Wisconet stations): its shortwave reads 15–20% high, so its ET0 reads 16% high; its RH runs dry. Each correction is a versioned table copied from AgWeather v2, applied as hours are aggregated, with the raw values kept and the corrections applied recorded on each day (§8.5) |
 
 ---
 
@@ -315,6 +316,41 @@ The comparison uses AgWeather's public API (`bin/rails weather:compare`, report 
 - **Effect on a standard potato field:** best_match calls for about **6 more irrigations a season** than AgWeather; NBM 1.5 fewer; ECMWF 0.4 fewer. All three Open-Meteo models put the **first irrigation 10–16 days earlier** than AgWeather, which needs a look (early-season ET or rain; TODO.md).
 - **Decision:** NBM, with best_match as fallback (§8.2). No correction factor for now.
 - **Still to do:** re-run at real pivot locations (`POINTS=file.csv`, TODO.md) before the beta.
+
+### 8.5 Corrections to Open-Meteo (D12; from AgWeather v2, 2026-10-31)
+
+**What AgWeather v2 found** (`../agweather2/docs/validation-openmeteo.md`, `scripts/compare_openmeteo_wisconet.py`; 80 Wisconet stations, 2025-01 to 2026-10, Open-Meteo's historical-forecast API at each station, `ncep_nbm_conus` then `best_match` merged hour by hour as WISP uses them):
+
+| | Against the stations |
+|---|---|
+| Shortwave (daily totals) | NBM 1.15, best_match 1.20, every month (v2's corrected grid: 1.00) |
+| ET0, April–October, against FAO-56 from the stations' own measurements (their pyranometers, temperature, humidity, 3 m wind, pressure; 3.02 mm a day) | **Open-Meteo's `et0_fao_evapotranspiration` (WISP's today) 1.156**; best_match's 1.220; FAO-56 from Open-Meteo's inputs 1.127; **the same with the shortwave corrected 1.032**; the old AgWeather API 1.114 (June–September 1.14–1.26, April–May 0.97, October 0.84) |
+| RH, May–September | Open-Meteo counts 5.5 hours a day at RH ≥ 90% (best_match 4.9) against the stations' 7.8 and v2's grid's 7.2; RH bias −0.5 (best_match −2.9), MAE 6% (the grid's 3.8%) |
+| Temperature | +0.16 °C (best_match +0.19), as v2's grid |
+
+So WISP's ET runs about 16% above station FAO-56, and about 4% above the old API's, which the A3600 percent-cover regressions were fitted to (§5.4, §8.4). With the shortwave corrected, WISP's ET0 drops about 11% and sits about 7% below the old API's (Q9).
+
+**What to apply, in order, as hours are aggregated to days (`Weather::Daily`):**
+
+1. **Fetch** `shortwave_radiation` (W/m², the preceding hour's mean) and `surface_pressure` with the other hourly variables, from the same chain (NBM has no pressure: take best_match's, or FAO-56 eq. 7 from the cell's elevation).
+2. **Shortwave**: `Rs × factor(clearness)`, clearness = the hour's Rs over FAO-56's clear-sky Rso for that hour (eq. 37, from Ra by eq. 28 over the hour ending at the stamp), the factor linear between the table's bins and held at its ends; hours with Rso ≤ 1 W/m² stay as they are (dark). Table v1 (`../agweather2/packages/agdata/src/agdata/data/openmeteo_shortwave_correction.json`):
+
+   | Clearness | 0.05 | 0.15 | 0.25 | 0.35 | 0.45 | 0.55 | 0.65 | 0.75 | 0.85 | 0.95 | 1.05 | 1.15 |
+   |---|---|---|---|---|---|---|---|---|---|---|---|---|
+   | Factor | 0.62 | 1.09 | 0.91 | 0.85 | 0.83 | 0.84 | 0.86 | 0.88 | 0.90 | 0.90 | 0.87 | 0.62 |
+
+   (Use the JSON's four-decimal values.) **The sun's hour angle must wrap to ±12 hours** around solar noon: with UTC hours plus longitude/15, a summer evening's solar time comes out below 0 h west of Greenwich, and v2 had Ra = 0 for the hour ending 01Z (19–20 CDT) until 2026-10-31. Its test: the 24 hourly Ra of a solar day sum to eq. 21's daily Ra at longitudes −122, −89.4, −75, 0 and 100.
+3. **ET0**: FAO-56's hourly Penman-Monteith (eq. 53) from temperature, dew point, wind (10 m → 2 m by eq. 47), pressure and the corrected Rs, with G = 0.1 Rn by day and 0.5 Rn at night and the cloudiness ratio Rs/Rso carried from the last hour the sun was high enough; summed over the local day. Port `agmodels.weather.et0_hourly_series` (`../agweather2/packages/agmodels/src/agmodels/weather.py`) with its tests (FAO-56 Example 19). Open-Meteo's own `et0_fao_evapotranspiration` stops feeding the water balance and is kept beside it as the raw value.
+4. **RH** (shown in the weather panels and charts, the digest and alert emails; not in the water balance): each hour's RH, from Open-Meteo's temperature and dew point, through a quantile map by season and solar hour onto v2's grid's RH; the dew point recomputed from it with the temperature kept (invert eq. 11/14), RH again from both. The map (`openmeteo_rh_map.json`, v1): `map[season][0][solar hour][RH 0…100]` → mapped RH, linear in RH, blended between the two nearest solar-hour bins (centred on h + 0.5) and the two nearest seasons by day of year (centres 15, 105, 196, 288, around the year's end); solar hour = (UTC hour + longitude/15) mod 24 at the hour's end. v2's `agdata.calibration.map_rh` is the reference implementation. WISP shows `relative_humidity_2m` today; take RH from T and Td instead, as the map was fitted on that (they differ by under 0.5% on average).
+5. **Times**: WISP asks for `timezone=auto`, so stamps are local; the corrections need each hour's UTC end (from the response's `utc_offset_seconds`) and the cell's longitude.
+
+**Transparency:**
+- Keep the raw values: `weather_days` gains `et0_openmeteo_in`, `dew_point_raw_f`, `rh_mean_raw_pct`, `rh_min_raw_pct`, `rh_max_raw_pct` and `shortwave_raw_mj` beside the corrected columns (and `shortwave_mj` itself, which WISP doesn't store yet), and a `corrections` column (jsonb, e.g. `["openmeteo-shortwave v1", "openmeteo-rh v1", "et0-fao56 v1"]`), so a day says what it went through and a table's new version is visible.
+- The tables live in `db/reference/weather_corrections/` as copied from AgWeather v2, each with its `version`, `fitted` and `source`, and a README naming the v2 commit they came from. Later, v2's API can serve them (`/api/v2/corrections`), and WISP reads the current ones.
+- A corrections table on the About page (and in the admin weather page), generated from the reference files, as v2's `docs/corrections.md` is generated from `agdata.corrections`: source, variable, method, fitted against, version, fitted date, evidence.
+- Weather CSV exports list the corrections in their frontmatter, and the chart tooltips say "corrected" with a link to the About page's table.
+
+**Not yet covered:** the ensemble projection's ET0 (`gfs_seamless` members' `et0_fao_evapotranspiration`, Phase 5) wasn't checked; ask the ensemble for `shortwave_radiation`, `surface_pressure` and the rest and compute ET0 the same way, or scale each member's ET0 by the deterministic run's corrected/raw ratio (Q10). The tables were fitted in Wisconsin; pivots elsewhere get them until other mesonets are compared (v2 Phase 9).
 
 ---
 
@@ -845,6 +881,15 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 - [ ] Legacy goes read-only (sign-ups disabled, banner) and moves to its legacy hostname; DNS switch; **launch by ~Mar 20, 2027** (§13).
 - **Exit:** WISP 3 live on the new server before April 1; announcement emailed to legacy users from the legacy app (new address, create a new account, sign-in links, setup guide).
 
+#### E. Weather corrections (D12, §8.5; before the beta)
+
+- [ ] Fetch hourly `shortwave_radiation` and `surface_pressure`; store daily shortwave (MJ/m²).
+- [ ] FAO-56 hourly ET0 ported from v2 (`agmodels.weather`), with its tests and the Ra wrap test; Open-Meteo's ET0 kept as `et0_openmeteo_in`.
+- [ ] The shortwave and RH corrections from `db/reference/weather_corrections/` (copied from v2 with their versions), applied in `Weather::Daily`; raw columns and `corrections` on `weather_days`; a spec against values v2 computes for a recorded response (`uv run python` in `../agweather2`: `agdata.sources.openmeteo.correct` on `packages/agdata/tests/fixtures/openmeteo_historical_*.json`).
+- [ ] Re-run `bin/rails weather:compare` and the irrigation-count comparison (§8.4) with the corrected ET0, and answer Q9 before the beta.
+- [ ] The corrections table on the About page and the admin weather page; CSV frontmatter and chart tooltips name them.
+- [ ] Backfill: recompute stored days from the cache or refetch them, so every season uses one method.
+
 ### After launch
 
 - Forecast accuracy tracking (stored forecasts vs finalized weather).
@@ -864,6 +909,8 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 | Q5 | Can the deploy user run `systemd --user` services? | **Resolved**: yes on staging; new production server provisioned with it (D11, §12) | – |
 | Q6 | Alert email sender and DKIM | Ask campus IT | Phase 6 |
 | Q7 | Per-field rainfall correction | **Resolved**: per-day overrides shown next to modeled values; no multiplier; per-field entered-only setting (2026-10-07) | – |
+| Q9 | The percent-cover regressions (§5.4) were fitted to the old API's ET; with Open-Meteo's shortwave corrected (D12), ET0 is about 7% below it (1.032 vs 1.114 against station FAO-56, April–October, Wisconsin). Use corrected ET0 as is (it's closer to the physical reference), or scale crop ET to the old API's level? | Recommendation: use it as is, and check the irrigation counts against the old WISP's (§8.4) | Before the beta |
+| Q10 | The ensemble projection's ET0 (§8.5): compute it per member from corrected shortwave, or scale the members by the deterministic run's correction? | Per member, if the ensemble API has the inputs | Phase 8 E |
 
 ### Q1. Alert defaults: resolved (recommendation adopted)
 
