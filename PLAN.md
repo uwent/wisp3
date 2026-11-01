@@ -887,7 +887,7 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 - [ ] Fetch hourly `shortwave_radiation` and `surface_pressure`; store daily shortwave (MJ/m²).
 - [ ] FAO-56 hourly ET0 ported from v2 (`agmodels.weather`), with its tests and the Ra wrap test; Open-Meteo's ET0 kept as `et0_openmeteo_in`.
 - [ ] The shortwave and RH corrections from `db/reference/weather_corrections/` (copied from v2 with their versions), applied in `Weather::Daily`; raw columns and `corrections` on `weather_days`; a spec against values v2 computes for a recorded response (`uv run python` in `../agweather2`: `agdata.sources.openmeteo.correct` on `packages/agdata/tests/fixtures/openmeteo_historical_*.json`).
-- [ ] Re-run `bin/rails weather:compare` and the irrigation-count comparison (§8.4) with the corrected ET0, and answer Q9 before the beta.
+- [ ] Re-run `bin/rails weather:compare` and the irrigation-count comparison (§8.4) with the corrected ET0 (Q9: used as is), and document the shift for users.
 - [ ] The corrections table on the About page and the admin weather page; CSV frontmatter and chart tooltips name them.
 - [ ] Backfill: recompute stored days from the cache or refetch them, so every season uses one method.
 
@@ -896,6 +896,10 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 - Forecast accuracy tracking (stored forecasts vs finalized weather).
 - PWA / offline-friendly daily entry.
 - Validated LAI or canopy curves for more crops; sensor integrations; a future AgWeather 2 provider.
+- **Refit the percent-cover table (§5.4) against today's ET0** (Q9; Ben, 2026-10-31: no academic is available to refit it, so it has to be done computationally). Its slopes are crop ET over the old API's ET by cover (1.0 at 80% and above), and the old API's ET runs about 1.11 × station FAO-56 grass ET0 (April–October), so at full cover the table meant a Kc of about 1.1, near FAO-56's mid-season values (Table 12: potato 1.15, field corn 1.20, soybean 1.15). With corrected ET0 (1.03 × the stations') it gives about 1.03, 10–14% below those values (it was 3–8% below), so WISP may now under-count full-cover water use. Steps:
+  1. Re-express the table against FAO-56 grass ET0 and compare it, band by band, with Allen and Pereira (2009)'s crop coefficient from fraction of ground cover and height (*Irrigation Science* 28: 17–34, doi:10.1007/s00271-009-0182-z: a density coefficient on FAO-56's basal Kcb per crop, plus FAO-56's dual-coefficient soil evaporation in place of the bare-soil steps). Published, per crop, and needs only cover (which WISP has) and crop height (a default per crop).
+  2. Check both against measured ET: Wisconsin eddy-covariance records over irrigated crops (Central Sands potato and corn; ask the Kucharik lab and AmeriFlux), and WISP 3's own soil moisture readings once seasons accumulate (the drawdown between two readings with no rain or irrigation between them is crop ET; needs growers' consent and the anonymised extract of Phase 6.7).
+  3. Pick a method per crop, with its error against the measurements, and replace `CropEt::PCT_COVER_COEFFICIENTS` or keep it with a scale, recorded as a D# with the evidence; a changelog line on the About page.
 
 ---
 
@@ -910,7 +914,7 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 | Q5 | Can the deploy user run `systemd --user` services? | **Resolved**: yes on staging; new production server provisioned with it (D11, §12) | – |
 | Q6 | Alert email sender and DKIM | Ask campus IT | Phase 6 |
 | Q7 | Per-field rainfall correction | **Resolved**: per-day overrides shown next to modeled values; no multiplier; per-field entered-only setting (2026-10-07) | – |
-| Q9 | The percent-cover regressions (§5.4) were fitted to the old API's ET; with Open-Meteo's shortwave corrected (D12), ET0 is about 7% below it (1.032 vs 1.114 against station FAO-56, April–October, Wisconsin). Use corrected ET0 as is (it's closer to the physical reference), or scale crop ET to the old API's level? | Recommendation: use it as is, and check the irrigation counts against the old WISP's (§8.4) | Before the beta |
+| Q9 | The percent-cover regressions (§5.4) were fitted to the old API's ET; with Open-Meteo's shortwave corrected (D12), ET0 is about 7% below it (1.032 vs 1.114 against station FAO-56, April–October, Wisconsin). Use corrected ET0 as is, or scale crop ET to the old API's level? | **Resolved** (Ben, 2026-10-31): corrected ET0 as is. The regressions' provenance is unknown and likely over a decade old, so the best available is the most accurate weather; a computational refit is under After launch | – |
 | Q10 | The ensemble projection's ET0 (§8.5): compute it per member from corrected shortwave, or scale the members by the deterministic run's correction? | Per member, if the ensemble API has the inputs | Phase 8 E |
 
 ### Q1. Alert defaults: resolved (recommendation adopted)
