@@ -106,4 +106,5 @@ Outside services:
 Working here:
 
 - **Propose a plan before building a new feature** unless it's a simple change: the design, the data model and any choices to make, then wait for Ben's go-ahead before implementing.
+- **Work on `main` by default.** Make a feature branch only when the work's scale justifies one (several sessions, a risky or wide change, something to review before it lands). When proposing a plan for a new feature, recommend whether it should get a branch.
 - `pkill -f` with a pattern that's also in the command line kills the shell running it; stop dev servers by port or PID.
