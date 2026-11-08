@@ -10,12 +10,14 @@ class FieldsController < AuthenticatedController
       plantings: [:plant, :canopy_observations]).find(params[:id])
     planting = field.plantings.find { |p| p.id == params[:planting_id].to_i } || default_planting(field)
     WeatherCell.keep_current([field.pivot.weather_cell_id])
+    weather_updating = WeatherCell.updating_ids([field.pivot.weather_cell_id]).any?
 
     render inertia: "Fields/Show", props: {
       field: FieldSerializer.new(field).to_h,
       pivot: {id: field.pivot.id, name: field.pivot.name, pump_capacity_gpm: field.pivot.pump_capacity_gpm},
       farm: {id: field.pivot.farm.id, name: field.pivot.farm.name},
       field_groups: field.field_groups.map { |group| {id: group.id, name: group.name} },
+      weather_updating:,
       planting: planting && PlantingSerializer.new(planting).to_h,
       **(planting ? season_props(field, planting) : {summary: nil, days: [], forecast_days: [], weather: []})
     }

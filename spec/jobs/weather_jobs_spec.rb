@@ -89,6 +89,21 @@ RSpec.describe "Weather jobs" do
       expect(fetcher).to have_received(:backfill).with(cell, from: Date.new(2026, 6, 20))
     end
 
+    it "marks its cell as updating from when it's queued until it ends, failed or not" do
+      other = WeatherCell.for(45.5, -90.5)
+      expect(WeatherCell.updating_ids([cell.id, other.id])).to be_empty
+      described_class.perform_later(cell.id)
+      expect(WeatherCell.updating_ids([cell.id, other.id, nil])).to eq([cell.id])
+
+      described_class.perform_now(cell.id)
+      expect(WeatherCell.updating_ids([cell.id])).to be_empty
+
+      described_class.perform_later(cell.id)
+      allow(fetcher).to receive(:backfill).and_raise(ArgumentError)
+      expect { described_class.perform_now(cell.id) }.to raise_error(ArgumentError)
+      expect(WeatherCell.updating_ids([cell.id])).to be_empty
+    end
+
     it "skips the refresh when the forecast is fresh, and the ensemble likewise" do
       cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "best_match", payload: {days: []})
       described_class.perform_now(cell.id)

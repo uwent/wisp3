@@ -1,6 +1,8 @@
 <script lang="ts">
   import { Link } from '@inertiajs/svelte'
 
+  import Spinner from '@/lib/components/Spinner.svelte'
+  import type { WeatherUpdate } from '@/lib/poll'
   import Sparkline from '@/lib/components/Sparkline.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
@@ -12,9 +14,11 @@
 
   // A field's status card: on the dashboard (the whole card links to the field), and compact on the
   // map, where pivotName labels it and onselect makes the card select it, with its own link to the
-  // field page.
+  // field page. weather: whether the pivot's weather is being fetched (the page reloads until it
+  // lands) or the page gave up waiting.
   let {
     card,
+    weather = null,
     today,
     units,
     compact = false,
@@ -23,6 +27,7 @@
     onselect,
   }: {
     card: FieldCard
+    weather?: WeatherUpdate
     today: string
     units: Units
     compact?: boolean
@@ -68,9 +73,12 @@
 
   {#if !summary}
     <p class="text-sm text-ink-muted">No crop this season. Add one in Setup.</p>
+  {:else if summary.weather_pending && weather === 'failed'}
+    <p class="text-sm text-status-caution-ink">Weather update failed. Refresh the page to try again.</p>
   {:else if summary.weather_pending}
-    <p class="text-sm text-ink-muted">
-      Weather for this pivot is on its way. The water balance will appear when it arrives.
+    <p class="flex items-start gap-1.5 text-sm text-ink-muted">
+      {#if weather === 'updating'}<Spinner class="mt-0.5" />{/if}
+      <span>Weather for this pivot is on its way. The water balance will appear when it arrives.</span>
     </p>
   {:else if summary.phase === 'upcoming'}
     <p class="text-sm text-ink-muted">The season starts {formatDate(summary.season_start)}.</p>
@@ -139,6 +147,11 @@
           </li>
         {/each}
       </ul>
+    {/if}
+    {#if weather === 'updating' && summary.phase !== 'ended'}
+      <p class="flex items-center gap-1.5 text-xs text-ink-muted"><Spinner />Updating weather…</p>
+    {:else if weather === 'failed' && summary.phase !== 'ended'}
+      <p class="text-xs text-status-caution-ink">Weather update failed. Refresh the page to try again.</p>
     {/if}
   {/if}
 {/snippet}

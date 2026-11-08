@@ -88,6 +88,19 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect { get root_path }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id)
     end
 
+    it "says while the pivot's weather is updating, so the pages reload until it lands" do
+      get root_path
+      expect(inertia.props[:farms].sole[:pivots].sole).to include(weather_updating: true)
+      get field_path(field)
+      expect(inertia.props[:weather_updating]).to be(true)
+
+      Rails.cache.delete(WeatherUpdateJob.updating_key(pivot.weather_cell_id)) # the job has run
+      get root_path
+      expect(inertia.props[:farms].sole[:pivots].sole).to include(weather_updating: false)
+      get field_path(field)
+      expect(inertia.props[:weather_updating]).to be(false)
+    end
+
     it "picks another season's planting" do
       older = create(:planting, field:, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
         end_date: Date.new(2025, 9, 1))

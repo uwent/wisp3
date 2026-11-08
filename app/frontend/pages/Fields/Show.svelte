@@ -9,6 +9,7 @@
   import Button from '@/lib/components/Button.svelte'
   import EditableCell from '@/lib/components/EditableCell.svelte'
   import GlossaryText from '@/lib/components/GlossaryText.svelte'
+  import Spinner from '@/lib/components/Spinner.svelte'
   import SeasonDetails from '@/lib/components/SeasonDetails.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import Term from '@/lib/components/Term.svelte'
@@ -16,6 +17,7 @@
   import { guidance as guidanceFor } from '@/lib/guidance'
   import { motion } from '@/lib/motion'
   import { outlook as outlookFor } from '@/lib/outlook'
+  import { poll, weatherUpdate } from '@/lib/poll'
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
   import { seasonStats } from '@/lib/seasonStats'
@@ -29,6 +31,7 @@
     pivot,
     farm,
     field_groups,
+    weather_updating,
     planting,
     summary,
     days,
@@ -39,6 +42,7 @@
     pivot: { id: number; name: string; pump_capacity_gpm: number | null }
     farm: { id: number; name: string }
     field_groups: { id: number; name: string }[]
+    weather_updating: boolean
     planting: Planting | null
     summary: PlantingSummary | null
     days: FieldDay[]
@@ -47,6 +51,15 @@
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+
+  // While the pivot's weather is being fetched, reload the season until it lands
+  let timedOut = $state(false)
+  $effect(() => {
+    if (!weather_updating) return
+    timedOut = false
+    return poll(() => router.reload(), { ongiveup: () => (timedOut = true) })
+  })
+  const weatherState = $derived(weatherUpdate(weather_updating, timedOut))
   const lai = $derived(planting?.et_method === 'lai')
   const rows = $derived([...days].reverse())
   const outlook = $derived(summary && outlookFor(summary, units))
@@ -230,10 +243,22 @@
   </section>
 {:else}
   {#if summary.weather_pending}
-    <p role="status" class="rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm">
-      Weather for this pivot is on its way, usually within a few minutes of adding it. Until it arrives, WISP can't
-      estimate crop water use, so the numbers below won't change.
+    <p role="status" class="flex items-start gap-2 rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm">
+      {#if weatherState === 'updating'}<Spinner class="mt-0.5" />{/if}
+      <span>
+        {#if weatherState === 'failed'}
+          Weather update failed. Refresh the page to try again. Until weather arrives, WISP can't estimate crop water
+          use, so the numbers below won't change.
+        {:else}
+          Weather for this pivot is on its way, usually within a few minutes of adding it. Until it arrives, WISP can't
+          estimate crop water use, so the numbers below won't change.{#if weatherState === 'updating'}{' This page updates when it arrives.'}{/if}
+        {/if}
+      </span>
     </p>
+  {:else if weatherState === 'updating' && summary.phase !== 'ended'}
+    <p role="status" class="flex items-center gap-1.5 text-sm text-ink-muted"><Spinner />Updating weather…</p>
+  {:else if weatherState === 'failed' && summary.phase !== 'ended'}
+    <p role="status" class="text-sm text-status-caution-ink">Weather update failed. Refresh the page to try again.</p>
   {/if}
   <!-- Summary -->
   <section class="grid gap-4 rounded-lg border border-line bg-surface-raised p-4 sm:p-6 lg:grid-cols-3">

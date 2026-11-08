@@ -4,7 +4,8 @@ import type { PlantingSummary } from '@/types/serializers'
 // get them, and how the map orders and picks them
 
 export type FieldCard = { id: number; name: string; summary: PlantingSummary | null }
-export type PivotGroup = { id: number; name: string; fields: FieldCard[] }
+/** weather_updating: a weather update for the pivot's cell is queued or running */
+export type PivotGroup = { id: number; name: string; weather_updating: boolean; fields: FieldCard[] }
 export type FarmGroup<P extends PivotGroup = PivotGroup> = { id: number; name: string; pivots: P[] }
 
 export type Status = NonNullable<PlantingSummary['status']>
@@ -13,6 +14,10 @@ export type Status = NonNullable<PlantingSummary['status']>
 export const STATUSES: Status[] = ['irrigate', 'caution', 'ok', 'full']
 
 /** In season, with a status (not upcoming, ended, without a crop, or waiting for weather) */
+/** Whether any pivot's weather is being updated, so the page reloads until it lands */
+export const anyUpdating = (farms: FarmGroup[]) =>
+  farms.some((farm) => farm.pivots.some((pivot) => pivot.weather_updating))
+
 export const isActive = (card: FieldCard) =>
   card.summary?.phase === 'active' && !card.summary.weather_pending && card.summary.status !== null
 
@@ -49,7 +54,7 @@ export function pivotStatus(fields: FieldCard[]): Status | null {
 
 export type ListItem = {
   card: FieldCard
-  pivot: { id: number; name: string; latitude: number }
+  pivot: { id: number; name: string; latitude: number; weather_updating: boolean }
   farm: { id: number; name: string }
 }
 

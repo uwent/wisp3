@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { Link, page } from '@inertiajs/svelte'
+  import { Link, page, router } from '@inertiajs/svelte'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
-  import type { FarmGroup, FieldCard as Card } from '@/lib/overview'
+  import { anyUpdating, type FarmGroup, type FieldCard as Card } from '@/lib/overview'
+  import { poll, weatherUpdate } from '@/lib/poll'
   import { units as unitsFor } from '@/lib/units'
   import { dailyEntries, newQuickSetup, pivots, setup } from '@/routes'
 
@@ -12,6 +13,16 @@
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   let farmId = $state<number | 'all'>('all')
+
+  // While a pivot's weather is on its way, reload the cards until it lands
+  const updating = $derived(anyUpdating(farms))
+  let timedOut = $state(false)
+  $effect(() => {
+    if (!updating) return
+    timedOut = false
+    return poll(() => router.reload({ only: ['farms'] }), { ongiveup: () => (timedOut = true) })
+  })
+  const weatherFor = (pivot: { weather_updating: boolean }) => weatherUpdate(pivot.weather_updating, timedOut)
 
   // Fields whose season has ended go after the rest, and so do pivots and farms with only ended fields
   // (the sort is stable, so names stay in order otherwise)
@@ -124,7 +135,7 @@
           {:else}
             <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {#each pivot.fields as card (card.id)}
-                <li><FieldCard {card} {today} {units} /></li>
+                <li><FieldCard {card} {today} {units} weather={weatherFor(pivot)} /></li>
               {/each}
             </ul>
           {/if}

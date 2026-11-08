@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from 'svelte'
-  import { Link, page } from '@inertiajs/svelte'
+  import { Link, page, router } from '@inertiajs/svelte'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
@@ -14,7 +14,8 @@
   import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
   import type { MapPivot } from '@/lib/map/pivots'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
-  import { type FarmGroup, type ListItem, needsWaterWithin, sortItems } from '@/lib/overview'
+  import { anyUpdating, type FarmGroup, type ListItem, needsWaterWithin, sortItems } from '@/lib/overview'
+  import { poll, weatherUpdate } from '@/lib/poll'
   import { units as unitsFor } from '@/lib/units'
   import { newQuickSetup } from '@/routes'
 
@@ -52,6 +53,16 @@
   onDestroy(() => overlays.destroy())
   let list = $state<HTMLElement>()
 
+  // While a pivot's weather is on its way, reload the pivots and cards until it lands
+  const updating = $derived(anyUpdating(farms))
+  let timedOut = $state(false)
+  $effect(() => {
+    if (!updating) return
+    timedOut = false
+    return poll(() => router.reload({ only: ['farms'] }), { ongiveup: () => (timedOut = true) })
+  })
+  const weatherFor = (pivot: { weather_updating: boolean }) => weatherUpdate(pivot.weather_updating, timedOut)
+
   const shown = $derived(farms.filter((farm) => farmId === 'all' || farm.id === farmId))
   const mapPivots = $derived(shown.flatMap((farm) => farm.pivots))
   const farmOf = $derived(new Map(farms.flatMap((farm) => farm.pivots.map((pivot) => [pivot.id, farm]))))
@@ -60,7 +71,7 @@
       farm.pivots.flatMap((pivot) =>
         pivot.fields.map((card) => ({
           card,
-          pivot: { id: pivot.id, name: pivot.name, latitude: pivot.latitude },
+          pivot: { id: pivot.id, name: pivot.name, latitude: pivot.latitude, weather_updating: pivot.weather_updating },
           farm: { id: farm.id, name: farm.name },
         })),
       ),
@@ -261,6 +272,7 @@
               {today}
               {units}
               compact
+              weather={weatherFor(item.pivot)}
               pivotName={item.pivot.name}
               selected={isSelected(item)}
               onselect={() => selectField(item)}

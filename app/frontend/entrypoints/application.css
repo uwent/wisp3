@@ -222,4 +222,10 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* Small activity indicators (Spinner) keep moving: they show work in progress, and a spin in
+     place isn't the kind of motion the setting guards against (it doesn't move across the page) */
+  .keep-motion {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
 }

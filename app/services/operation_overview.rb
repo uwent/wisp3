@@ -1,6 +1,7 @@
 # A group's farms, pivots and fields with each field's status today, for the dashboard and the map
 # (PLAN.md §11, Phase 7): farms and pivots by name, one card per field with this season's planting.
-# Pivots without fields are listed too, so the hierarchy matches setup.
+# Pivots without fields are listed too, so the hierarchy matches setup. weather_updating marks a pivot
+# whose cell has a WeatherUpdateJob queued or running; the pages reload until it clears.
 class OperationOverview
   attr_reader :today, :farms
 
@@ -8,7 +9,10 @@ class OperationOverview
     @today = today
     @farms = group.farms.order(:name).includes(pivots: [:weather_cell,
       {fields: [:soil_type, {plantings: [:plant, :canopy_observations]}]}]).to_a
-    WeatherCell.keep_current(pivots.map(&:weather_cell_id).uniq)
+    cell_ids = pivots.map(&:weather_cell_id).uniq
+    WeatherCell.keep_current(cell_ids)
+    # Read before the balances, so weather landing in between still gets a reload
+    @updating = WeatherCell.updating_ids(cell_ids).to_set
     @statuses = FieldStatuses.for(pivots.flat_map(&:fields), today:)
   end
 
@@ -18,7 +22,8 @@ class OperationOverview
   def props
     farms.map do |farm|
       {id: farm.id, name: farm.name, pivots: sorted(farm).map do |pivot|
-        {id: pivot.id, name: pivot.name, **(block_given? ? yield(pivot) : {}),
+        {id: pivot.id, name: pivot.name, weather_updating: @updating.include?(pivot.weather_cell_id),
+         **(block_given? ? yield(pivot) : {}),
          fields: pivot.fields.map { |field| card(field) }}
       end}
     end

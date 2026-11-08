@@ -15,6 +15,7 @@ const field = (status: PlantingSummary['status'], phase: PlantingSummary['phase'
 const pivot = (id: number, latitude: number, fields: FieldCard[] = [], radius_ft: number | null = 1300): MapPivot => ({
   id,
   name: `Pivot ${id}`,
+  weather_updating: false,
   latitude,
   longitude: -89.5,
   kind: 'center',

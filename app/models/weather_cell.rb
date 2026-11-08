@@ -46,6 +46,13 @@ class WeatherCell < ApplicationRecord
     end
   end
 
+  # Of these cells, the ones with a WeatherUpdateJob queued or running
+  def self.updating_ids(ids)
+    ids = ids.compact.uniq
+    keys = ids.index_by { |id| WeatherUpdateJob.updating_key(id) }
+    Rails.cache.read_multi(*keys.keys).keys.map { |key| keys[key] }
+  end
+
   # kind: "deterministic" or "ensemble"
   def forecast_stale?(now = Time.current, kind: "deterministic")
     issued = weather_forecasts.where(kind:).maximum(:issued_at)
