@@ -677,7 +677,7 @@ Each step produces a dated note in `docs/canopy/` (sources, data, scripts and re
    - **Shifted curve:** each reading maps to the point on the rising curve with the same value (the crop is *n* days or GDD ahead or behind), interpolated between readings. This is stable early but undefined above the curve's maximum and after the peak, so it switches to scaling there.
    - After the last reading the scaled curve is followed (decided below); the backtest measures how well that predicts later readings, and sets how far off the readings can be before WISP warns and falls back to straight lines. Readings at or above 80% cover change nothing in ET, so for percent cover the main question is the early-season ramp.
 5. **Write a crop card for every crop in `plants.yml`**: driver and base temperature, parameters, maximum cover/LAI, days or GDD to full cover and to senescence, sources, the fit to legacy data, and a confidence rating (*fitted to Wisconsin data* / *published, unvalidated here* / *borrowed from a similar crop*). Do the crops in order of how much they're grown and how much the curve matters: **potato, field corn, sweet corn, soybean, snap bean**; then peas, onion, carrot, cabbage/broccoli, cucurbits, pepper/tomato, wheat/barley, alfalfa, mint, asparagus; then the rest. Similar crops can share a curve (cucurbits, brassicas, leafy greens), with the sharing noted on their cards. Perennials and cut crops (alfalfa, asparagus, mint) may need curves that restart at green-up or cutting, or no curve. For **Other**, use no curve: linear readings only, as now.
-6. **Agronomy review:** send the crop cards and the backtest results to the agronomist contacted for Q2. Nothing becomes a default without a source; if a crop's card is weak, that crop ships with no curve (today's behavior) rather than a guessed one.
+6. **Agronomy review:** send the crop cards and the backtest results to the agronomist contacted for Q2. *(2026-11-10: the researchers contacted about potato canopy and LAI have stopped replying; no review is expected. The curves stand on the literature and our own backtest, labelled with their confidence, and are checked against 2027 readings: After launch.)* Nothing becomes a default without a source; if a crop's card is weak, that crop ships with no curve (today's behavior) rather than a guessed one.
 
 **Research exit:** a crop card for every crop, the backtest choosing a method for combining readings and the curve, and the review's answers recorded in Q2.
 
@@ -691,7 +691,7 @@ Each step produces a dated note in `docs/canopy/` (sources, data, scripts and re
 - [x] **About page:** a "Canopy curves" section (how readings combine, the warnings, how the curves were made with the equations, crops without a curve, why LAI is field corn only) and a card per crop from `canopy_curves.yml`: the curve for a May 15 emergence (`CanopyCurvePlot`), days to 50% and 80%, the decline, basis, parameters, notes, confidence and sources (with DOIs), linking to `docs/canopy/`. The crop table says which crops have curves. Glossary: canopy curve.
 - [x] Demo seed: the snap beans have no readings, so they follow their curve.
 - [x] **Tasks per field** (Ben, 2026-10-15): `PlantingTasks` lists what's due while the season is on: a soil moisture reading about weekly, a percent cover reading about weekly from emergence until about 80% (LAI once the grower has started), and the canopy check. Its wording is server-side, so the field page (readings and warning), the dashboard cards ("To do") and the daily email (a "To do:" line per field) all show the same. `summary.tasks` replaces `canopy_check`; the field page no longer works out due readings in the browser.
-- [ ] Wording reviewed by Ben; agronomist review of the curves (`docs/canopy/03-crop-curves.md`, "For the agronomist") when it comes.
+- [ ] Wording reviewed by Ben. *(The agronomist review of the curves is dropped for now, 2026-11-10: see A.6. If someone takes it up later, `docs/canopy/03-crop-curves.md`, "For the agronomist", is the starting point.)*
 - **Exit:** every crop in `plants.yml` either has a sourced curve or is documented as having none. A demo planting with no readings has a plausible cover and ET season, and adding readings moves it as the chosen method says. The About page's crop cards match `canopy_curves.yml`, and `legacy_engine_spec` passes.
 
 **Decided 2026-10-15 (Ben):**
@@ -801,6 +801,15 @@ USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free a
 
 **Order (Ben, 2026-10-22):** accessibility first (A), then the admin additions (B), then a performance check and code audit (C), before the beta. Long-lead items run alongside from now: the server request to the sysadmin ([Phase 1](#phase-1-foundation)) and recruiting beta testers.
 
+**Next (2026-11-10; production is live at `v3.wisp.cals.wisc.edu` with SES out of the sandbox):**
+1. **Weather corrections (E)**, before any beta tester sees a number: it moves every field's ET by about 11%, and the backfill keeps one method per season.
+2. **Weather update polling (C, follow-up)**: small, and it shows on every dashboard visit.
+3. **RDS restore test (D)**: once, before real growers' data is on the server.
+4. **Time travel (F)**: the beta runs over the winter, when every season has ended, so testers and demos can only see an in-season page this way. Decisions first (below).
+5. **Closed beta (D)**, then launch by ~Mar 20, 2027. The screen reader walkthrough (A) and wording reviews happen alongside.
+
+Canopy and LAI research continues without outside reviewers (Phase 6.7, Q2): our own analysis, published literature, and readings collected in the 2027 season (After launch).
+
 Done so far:
 - [x] Admin users list (`/admin/users`): a searchable, sortable table (`DataTable`) of every account with its farm, pivot and field counts; delete unconfirmed accounts from the list. Each account's page shows its attributes (not its secrets), its groups and members, and its farms, pivots and fields, with a delete button (with confirmation) except for your own or another admin's account.
 - [x] Group members (A8, Q8): an operation page (`/operation`) for the current group, with its name and rainfall setting (moved from Setup), its members, your other operations, creating one, and deleting it. Owners add people by the email they sign in with (an existing, confirmed account; no invitation tokens) and they get an email; owners change roles and remove members; anyone can leave. A group always keeps an owner, and someone left with no group gets a new one of their own.
@@ -862,6 +871,11 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
   - Duplicated logic between Ruby and TypeScript (`Outlook`/`lib/outlook.ts`, pivot size limits) still matching, ideally with a shared spec fixture.
   - CLAUDE.md and the docs matching the code.
   - (Done 2026-10-22. Tenancy held: no unscoped lookup outside `Admin::`, Q8's owner-only actions all have `require_owner`, and `FieldGroupMember` and `PivotIrrigation` also refuse another group's or pivot's fields; added cross-tenant specs for season copy, the pivot form's `farm_id`, the field page's `planting_id`, pivot irrigation `field_ids` and field group updates. Brakeman's two warnings (`permit!` in bulk daily entry, which also raised a 500 on a malformed value) fixed; `bundle audit` clean; `pnpm audit` one moderate, `postcss-selector-parser` under `@tailwindcss/typography` (build time only). Fixed: the sign-in link's token and code were in the log, as Active Job logs job arguments (`SecretMailDeliveryJob`). Dead code removed (`overlayById`, `WeatherDay#degree_days`, `DegreeDays.cumulative`). Mirrored constants (pivot limits, `LEAD_DAYS`, `READING_EVERY`, `FULL_COVER_PCT`) are now checked by `spec/models/frontend_constants_spec.rb`; `Outlook` and `lib/outlook.ts` still agree, without a shared fixture. **Resolved after review (Ben, 2026-10-22, recommended resolutions):** a sign-in link that confirms a never-confirmed account now clears its password, so someone who signed up with another person's email can't keep a way in (`User#confirm_by_magic_link!`); password sign-in is limited to 10 tries per account per 15 minutes from any address, a limit rather than a lockout (Rack::Attack `sign_in/email`, reading Inertia's JSON); the sign-in link's and unsubscribe link's tokens are query parameters, which the request log filters; a Content Security Policy allows scripts only from WISP (the theme script has a nonce; images and connections allow https for the map's services); `postcss-selector-parser` is overridden to 7.1.6 (`pnpm-workspace.yaml`, identical CSS); missing GDD before emergence, season weather totals without weather and MRMS NoData are shown as missing, not zero; soil depth labels and available water go through `units.ts`. **Accepted as is:** sign-up and adding a member say whether an email has an account. Sign-up has to (the address is taken), adding a member is for owners only and needs the address, and sign-in, password reset and links don't reveal it (`config.paranoid`). The water balance treating missing rain and irrigation as none is legacy behavior and stays.)
+- [ ] **Weather update polling** (Ben, 2026-11-10: on signing in as the demo user, both cards said "Updating weather…", then the page seemed to refresh as a whole). What happens now:
+  - **Most visits show the spinner.** `WeatherCell.keep_current` queues a `WeatherUpdateJob` for every cell on the page once per `UPDATE_THROTTLE` (15 min), whether or not anything is missing, and the job marks the cell as updating. The forecast is refreshed at 5, 11 and 17 h and is stale after 3 h (`STALE_AFTER`), so most visits do fetch a new forecast, but the page already has a usable one and the new one changes little. "Updating weather…" should mean that what's on the page is incomplete.
+  - **It isn't a page reload.** The dashboard and map reload only the `farms` prop (`router.reload({ only: ['farms'] })`), and the cards are keyed, so they update where they are. When one pivot's weather lands first, its cards change and the others keep their spinners. But it's one prop for the whole operation, so every 5 s poll reruns `OperationOverview` (every field's balance and ensemble: about 1 s for the 100-field test operation) for up to 3 minutes. The field page reloads all its props the same way.
+  - **Proposed:** (1) Split "missing" from "refreshing": mark a cell as updating, and show the spinner, only when it has no weather, has gaps in the season, or its forecast is past a day old; a stale but recent forecast is refreshed quietly and the next visit gets it. (2) Poll a cheap endpoint for the updating cells (`GET /weather_updates?cells=…`, reading only the cache) and reload `farms` once each time a cell clears, instead of rebuilding the overview every 5 s. Reloading one pivot's cards alone isn't worth a per-pivot prop.
+- [ ] **The blank field chart in development** (Ben, 2026-11-10): the chart's box was empty, then the whole page reloaded and the chart appeared. Most likely Vite's dependency optimizer: `Chart` imports ECharts on mount, Vite meets it for the first time, prebundles it and reloads the page (its terminal says "new dependencies optimized … reloading"). Check for that message; if so, add the ECharts modules and `maplibre-gl` to `optimizeDeps.include` in `vite.config.ts`. Production loads the prebuilt chunk and doesn't reload; there the box is empty only while the ECharts chunk loads, as designed above.
 - **Exit:** the large operation is measured against the targets (misses noted), Lighthouse findings are fixed or listed, and the audit's findings are fixed or have an entry here.
 
 #### D. Beta and launch
@@ -876,8 +890,8 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
   - [x] The deploy simplified (2026-10-29): images built on the server from a git checkout, settings in a hand-kept `.env`; no ECR, SSM or SES, so nothing needs AWS permissions beyond SSH.
   - [x] `.env` on the server and the first `bin/production deploy` (2026-10-29), at `54-159-70-187.sslip.io` until campus DNS (ports 80/443 were already open).
   - [x] A temporary campus hostname: `v3.wisp.cals.wisc.edu` (2026-10-30).
-  - [ ] The first admin account (docs/deployment.md, step 6).
-  - [ ] Production mail through SES (docs/deployment.md, step 7): SMTP credentials, the sender identity verified with DKIM, production access out of the sandbox; `SMTP_*` in `.env`, a test checked for `dkim=pass`.
+  - [x] The first admin account (docs/deployment.md, step 6).
+  - [x] Production mail through SES (docs/deployment.md, step 7): SMTP credentials, the sender identity verified with DKIM, production access out of the sandbox; `SMTP_*` in `.env`, a test checked for `dkim=pass`.
   - [ ] Restore an RDS snapshot to a scratch instance once, and check the app against it.
 - [ ] Legacy goes read-only (sign-ups disabled, banner) and moves to its legacy hostname; DNS switch; **launch by ~Mar 20, 2027** (§13).
 - **Exit:** WISP 3 live on the new server before April 1; announcement emailed to legacy users from the legacy app (new address, create a new account, sign-in links, setup guide).
@@ -890,12 +904,37 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 - [ ] Re-run `bin/rails weather:compare` and the irrigation-count comparison (§8.4) with the corrected ET0 (Q9: used as is), and document the shift for users.
 - [ ] The corrections table on the About page and the admin weather page; CSV frontmatter and chart tooltips name them.
 - [ ] Backfill: recompute stored days from the cache or refetch them, so every season uses one method.
+- [ ] **Keep a daily forecast archive** (Ben, 2026-11-10), for forecast accuracy tracking (After launch) and time travel's replay (F): `ForecastPruneJob` keeps, besides the latest 14, each cell's first deterministic and ensemble issue of each day (from the 5 am refresh) for good. A few kB to tens of kB a cell a day; at 100 active cells, well under 1 GB a year. Start before the 2027 season, after the corrections, so the archive is all on one method (the corrected ET0 per member, Q10).
+
+#### F. Time travel on the field page (proposed, Ben, 2026-11-10; decisions open)
+
+**Why:** to show what WISP says mid-season. Demos, the About page's examples and a beta that runs over the winter (when every season has ended) can only show an ended season today.
+
+**Idea:** a rewind-clock button on the field page picks a date in the planting's season; the page then shows what it would on that day, under a persistent banner ("Viewing this field as of July 15, 2026 · Return to today"). Only the field page; the dashboard, map and digest are unaffected.
+
+**Why it's feasible:** the engine already takes `today:` everywhere (`PlantingStatus`, `PlantingBalance`, `DailyInputs`, `OperationOverview`), and the field page gets its "today" from the server rather than the browser's clock. So most of it is passing a different date.
+
+**Proposed shape (to keep the complexity down):**
+- **A URL parameter**, `/fields/:id?as_of=2026-07-15`, not a session setting: it can't leak into other pages or tabs, reloading keeps it, a demo link can be shared, and "Return to today" is a link without it. The controller validates it (a date in the planting's season, before today) and passes it as `today:`.
+- **Read-only:** no editing in the grids, no forms or setup links, no weather update polling. One `readonly` flag on the page, passed to `EditableCell` and the forms. Nothing that writes needs to know about time travel.
+- **The data as it is now, cut at that date:** entries, irrigation and canopy readings after the date are left out; those on or before it are shown as they are now. WISP keeps no history of edits, so this isn't exactly what the page showed then (a week of rain entered late shows anyway), and the banner says so.
+- **Tasks and the canopy check** as of that date (they already take `today`).
+- **Weather panels** end at the date.
+
+**Decisions to make:**
+1. **The projection** (decided, Ben, 2026-11-10): where the forecast issued on that day was kept (below), the page replays it, ensemble included; otherwise (2026 seasons) it shows **the weather that actually followed**, labelled "what happened next" rather than a forecast, with no ensemble band. Open-Meteo can't fill the gap: its historical-forecast API is stitched from each run's first hours (close to observed weather, not a 16-day forecast), and its Previous Runs API reaches only 7 days ahead and has no ensemble.
+2. **Entries after the date in the projection:** leave them out (the projection shows what would happen without more irrigation, as the page would have then), or count them as planned irrigation (so the projection follows what the grower actually did). Recommended: leave them out; it's what the page would have advised.
+3. **Who can use it:** everyone, or admins and the demo account first. It's harmless (read-only, own fields), so everyone, if it's simple to explain.
+4. **Where the button goes:** beside the page's date heading, with a date picker limited to the season.
+
+**Size:** one controller parameter, filtering the records by date, the projection source, the banner and the read-only flag; about a session. On `main`. A request spec (dates out of range rejected, another group's field 404, no writes), a component test of the read-only page, and the banner in the axe scan.
 
 ### After launch
 
-- Forecast accuracy tracking (stored forecasts vs finalized weather).
+- Forecast accuracy tracking (stored forecasts vs finalized weather), from the daily archive started in Phase 8 E: by lead time, for ET0 and rain, and whether the ensemble's spread covers what happened.
 - PWA / offline-friendly daily entry.
 - Validated LAI or canopy curves for more crops; sensor integrations; a future AgWeather 2 provider.
+- **Canopy and LAI readings in the 2027 season** (2026-11-10: the researchers contacted haven't replied, so the curves get checked against our own data). Before the season, pick a few cooperating fields (potato first, then field corn, sweet corn, soybean, snap bean) and a protocol: percent cover about weekly from emergence to vine kill or harvest, by photo (the Canopeo app, which measures green cover from a phone picture), and LAI where a ceptometer can be borrowed, with emergence and vine kill dates recorded. Growers' own WISP 3 readings add to it, with their consent and anonymised as in Phase 6.7 A.2. After the season, rerun the backtest (`docs/canopy/scripts/backtest.py`) and refit the curves, with a note in `docs/canopy/` and a changelog line on the About page. A potato LAI curve, if the data supports one, is the most valuable result (Q2).
 - **Refit the percent-cover table (§5.4) against today's ET0** (Q9; Ben, 2026-10-31: no academic is available to refit it, so it has to be done computationally). Its slopes are crop ET over the old API's ET by cover (1.0 at 80% and above), and the old API's ET runs about 1.11 × station FAO-56 grass ET0 (April–October), so at full cover the table meant a Kc of about 1.1, near FAO-56's mid-season values (Table 12: potato 1.15, field corn 1.20, soybean 1.15). With corrected ET0 (1.03 × the stations') it gives about 1.03, 10–14% below those values (it was 3–8% below), so WISP may now under-count full-cover water use. Steps:
   1. Re-express the table against FAO-56 grass ET0 and compare it, band by band, with Allen and Pereira (2009)'s crop coefficient from fraction of ground cover and height (*Irrigation Science* 28: 17–34, doi:10.1007/s00271-009-0182-z: a density coefficient on FAO-56's basal Kcb per crop, plus FAO-56's dual-coefficient soil evaporation in place of the bare-soil steps). Published, per crop, and needs only cover (which WISP has) and crop height (a default per crop).
   2. Check both against measured ET: Wisconsin eddy-covariance records over irrigated crops (Central Sands potato and corn; ask the Kucharik lab and AmeriFlux), and WISP 3's own soil moisture readings once seasons accumulate (the drawdown between two readings with no rain or irrigation between them is crop ET; needs growers' consent and the anonymised extract of Phase 6.7).
@@ -908,11 +947,11 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 | # | Question | Status | Needed by |
 |---|---|---|---|
 | Q1 | Alert threshold and lead-time defaults | **Resolved**: recommendation adopted | – |
-| Q2 | How LAI should work, and for which crops | **A adopted for 2027** (B dropped in Phase 6.7); agronomist contacted; curves per crop (option C) researched in Phase 6.7 | Review answers by Phase 4 |
+| Q2 | How LAI should work, and for which crops | **A adopted for 2027** (B dropped in Phase 6.7); curves per crop (option C) built in Phase 6.7. No outside review coming (2026-11-10): literature, our own work and 2027 readings instead | After launch |
 | Q3 | Display units | **Resolved**: inches by default, per-user inch/mm toggle in Settings | – |
 | Q4 | Pivot-level irrigation | **Resolved** → D9, §4 `pivot_irrigations` | – |
 | Q5 | Can the deploy user run `systemd --user` services? | **Resolved**: yes on staging; new production server provisioned with it (D11, §12) | – |
-| Q6 | Alert email sender and DKIM | Ask campus IT | Phase 6 |
+| Q6 | Alert email sender and DKIM | **Resolved**: Amazon SES over SMTP with DKIM, out of the sandbox (2026-11) | – |
 | Q7 | Per-field rainfall correction | **Resolved**: per-day overrides shown next to modeled values; no multiplier; per-field entered-only setting (2026-10-07) | – |
 | Q9 | The percent-cover regressions (§5.4) were fitted to the old API's ET; with Open-Meteo's shortwave corrected (D12), ET0 is about 7% below it (1.032 vs 1.114 against station FAO-56, April–October, Wisconsin). Use corrected ET0 as is, or scale crop ET to the old API's level? | **Resolved** (Ben, 2026-10-31): corrected ET0 as is. The regressions' provenance is unknown and likely over a decade old, so the best available is the most accurate weather; a computational refit is under After launch | – |
 | Q10 | The ensemble projection's ET0 (§8.5): compute it per member from corrected shortwave, or scale the members by the deterministic run's correction? | Per member, if the ensemble API has the inputs | Phase 8 E |
@@ -1024,6 +1063,8 @@ The legacy `irrigation_events` table had no routes, so nothing should be in it; 
 - **Before handing the new server over,** re-run the check from the staging test (start a throwaway user service, log out, log back in, confirm it's still active).
 
 ### Q6. Alert email sender and DKIM
+
+*Resolved (2026-11):* production sends through Amazon SES's SMTP interface with the sender verified and DKIM passing, out of the sandbox (Phase 8 D, `docs/deployment.md` step 7). Staging still uses the host's sendmail. The questions below were for the old campus setup.
 
 The app currently sends as `agweather@cals.wisc.edu` through local `sendmail`. Ask campus IT:
 1. Is mail from these hosts relayed through a campus server that signs DKIM for `cals.wisc.edu`?
