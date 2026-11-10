@@ -162,6 +162,15 @@ RSpec.describe "Weather jobs" do
     end
   end
 
+  describe WeatherRecorrectJob do
+    it "refetches the cell's days through the current corrections" do
+      fetcher = instance_double(Weather::Fetcher, recorrect: 0)
+      allow(Weather::Fetcher).to receive(:new).and_return(fetcher)
+      described_class.perform_now(cell.id)
+      expect(fetcher).to have_received(:recorrect).with(cell)
+    end
+  end
+
   describe WeatherFinalizeJob do
     it "makes days more than a week old final" do
       [Date.new(2026, 7, 12), Date.new(2026, 7, 13)].each do |date|
@@ -183,6 +192,29 @@ RSpec.describe "Weather jobs" do
       expect(cell.weather_forecasts.deterministic.minimum(:issued_at)).to be > 14.hours.ago
       expect(cell.weather_forecasts.ensemble.count).to eq(1)
       expect(other.weather_forecasts.count).to eq(3)
+    end
+
+    it "keeps each cell's first corrected issue of each kind on each local day for good" do
+      corrected = {days: [{date: "2026-07-01", corrections: ["et0-fao56 v1"]}]}
+      # Three a day for ten days, the 5 am (Central) one first; the first five days' uncorrected
+      10.times do |d|
+        [5, 11, 17].each do |hour|
+          issued_at = Time.find_zone("America/Chicago").local(2026, 7, 1 + d, hour)
+          payload = (d < 5) ? {days: [{date: "2026-07-01", corrections: []}]} : corrected
+          cell.weather_forecasts.create!(issued_at:, model: "m", payload:)
+          cell.weather_forecasts.create!(kind: "ensemble", issued_at:, model: "gfs_seamless",
+            payload: {dates: [], members: [], **((d < 5) ? {} : {corrections: ["et0-ensemble-ratio v1"]})})
+        end
+      end
+      cell.update!(timezone: "America/Chicago")
+      described_class.perform_now
+      %w[deterministic ensemble].each do |kind|
+        kept = cell.weather_forecasts.where(kind:)
+        # The latest 14 (July 7-10, and July 6's 11 am and 5 pm), July 6's 5 am issue for good, none uncorrected
+        expect(kept.count).to eq(15)
+        expect(kept.where(issued_at: Time.find_zone("America/Chicago").local(2026, 7, 6, 5))).to exist
+        expect(kept.where(issued_at: ...Time.find_zone("America/Chicago").local(2026, 7, 6))).not_to exist
+      end
     end
   end
 

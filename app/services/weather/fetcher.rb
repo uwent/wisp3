@@ -48,6 +48,35 @@ module Weather
       end
     end
 
+    # Refetches a cell's stored days that haven't been through the current corrections (PLAN.md
+    # Phase 8 E, step 10), final days included, from the historical-forecast API, so every season is
+    # on one method. Days in the refresh window are left to the next refresh. Returns the days stored.
+    def recorrect(cell)
+      recorrect_runs(cell).sum do |run|
+        run.each_slice(BACKFILL_CHUNK_DAYS).sum do |chunk|
+          fetch([cell], :historical_forecast, overwrite_final: true, start_date: chunk.first, end_date: chunk.last)
+        end
+      end
+    end
+
+    # Runs of consecutive stored dates before the refresh window whose corrections aren't current
+    def recorrect_runs(cell)
+      current = Corrections::DAILY.map { |id| Corrections.label(id) }
+      cell.weather_days.where(date: ...(cell.today - PAST_DAYS)).order(:date).pluck(:date, :corrections)
+        .reject { |_, corrections| corrections == current }.map(&:first)
+        .slice_when { |a, b| b != a + 1 }.to_a
+    end
+
+    # The calls Open-Meteo counts for recorrect(cell): each chunk from each primary model, then the soil model
+    def recorrect_calls(cell)
+      recorrect_runs(cell).sum do |run|
+        run.each_slice(BACKFILL_CHUNK_DAYS).sum do |chunk|
+          @models.size * RateLimiter.weight(locations: 1, variables: OpenMeteo::VARIABLES.size, days: chunk.size) +
+            RateLimiter.weight(locations: 1, variables: OpenMeteo::SOIL_VARIABLES.size, days: chunk.size)
+        end
+      end
+    end
+
     # Runs of consecutive dates in from..to with no stored day
     def missing_runs(cell, from, to)
       return [] if from > to
@@ -57,7 +86,7 @@ module Weather
 
     private
 
-    def fetch(cells, endpoint, **dates)
+    def fetch(cells, endpoint, overwrite_final: false, **dates)
       locations = cells.map { |cell| [cell.latitude, cell.longitude] }
       by_model = @models.map { |model| @client.hourly(locations, endpoint:, model:, variables: OpenMeteo::VARIABLES, **dates) }
       soil = @client.hourly(locations, endpoint:, model: OpenMeteo::SOIL_MODEL, variables: OpenMeteo::SOIL_VARIABLES,
@@ -65,7 +94,7 @@ module Weather
       cells.each_with_index.sum do |cell, i|
         responses = by_model.map { |hourly| hourly[i] } + [soil[i]]
         days = Daily.from_hourly(*responses, latitude: cell.latitude, longitude: cell.longitude)
-        store(cell, responses.last, days, forecast: endpoint == :forecast)
+        store(cell, responses.last, days, forecast: endpoint == :forecast, overwrite_final:)
       end
     rescue Error => e
       WeatherCell.where(id: cells.map(&:id)).update_all(last_error: e.message, last_error_at: Time.current)
@@ -74,13 +103,13 @@ module Weather
 
     # response: one of the cell's responses, for its timezone and elevation (the soil model's,
     # since it covers everywhere)
-    def store(cell, response, days, forecast:)
+    def store(cell, response, days, forecast:, overwrite_final: false)
       now = Time.current
       cell.update!(timezone: response.timezone, elevation_m: response.elevation, last_fetched_at: now, last_error: nil)
       today = cell.today
 
       past = days.select { |date, day| date < today && day["hours"] >= 24 - Daily::MAX_MISSING_HOURS }
-      final = cell.weather_days.where(final: true, date: past.keys).pluck(:date).to_set
+      final = overwrite_final ? [] : cell.weather_days.where(final: true, date: past.keys).pluck(:date).to_set
       rows = past.except(*final).map do |date, day|
         WeatherDay::VALUE_COLUMNS.index_with { |column| day[column] }.merge(
           weather_cell_id: cell.id, date:, model: model_name, soil_model: OpenMeteo::SOIL_MODEL, hours: day["hours"],

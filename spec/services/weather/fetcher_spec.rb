@@ -81,6 +81,24 @@ RSpec.describe Weather::Fetcher do
     expect(cell.weather_days.first.model).to eq("ncep_nbm_conus,best_match")
   end
 
+  describe "#recorrect" do
+    it "refetches days stored before the corrections, final ones too, leaving the refresh window to the refresh" do
+      old = [Date.new(2026, 6, 1), Date.new(2026, 6, 2), Date.new(2026, 6, 4), today - 3]
+      old.each { |date| cell.weather_days.create!(date:, et0_in: 0.3, model: "m", hours: 24, fetched_at: 1.day.ago, final: date < today - 7) }
+      cell.weather_days.find_by(date: Date.new(2026, 6, 4)).update!(corrections: Weather::Corrections::DAILY.map { |id| Weather::Corrections.label(id) })
+
+      expect(fetcher.recorrect_runs(cell)).to eq [[Date.new(2026, 6, 1), Date.new(2026, 6, 2)]]
+      expect(fetcher.recorrect_calls(cell)).to eq 2.0 # one call each from best_match and the soil model
+      expect(fetcher.recorrect(cell)).to eq 2
+      expect(client.calls.map { |call| call.values_at(:endpoint, :start_date, :end_date) }.uniq)
+        .to eq [[:historical_forecast, Date.new(2026, 6, 1), Date.new(2026, 6, 2)]]
+      day = cell.weather_days.find_by(date: Date.new(2026, 6, 1))
+      expect(day).to have_attributes(final: true, corrections: include("et0-fao56 v1"), et0_openmeteo_in: be_present)
+      expect(cell.weather_days.find_by(date: today - 3).corrections).to eq []
+      expect(fetcher.recorrect_runs(cell)).to be_empty
+    end
+  end
+
   describe "#backfill" do
     it "fetches only missing runs from the historical-forecast API, in chunks" do
       fetcher.refresh([cell]) # the last week
