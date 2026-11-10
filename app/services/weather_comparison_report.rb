@@ -1,7 +1,8 @@
 # Markdown report for Weather::Comparison (bin/rails weather:compare)
 class WeatherComparisonReport
   LABELS = {"agweather" => "AgWeather", "best_match" => "Open-Meteo best_match", "ncep_nbm_conus" => "NBM",
-            "ecmwf_ifs" => "ECMWF IFS"}.freeze
+            "wisp_2026" => "WISP 2026 (NBM, best_match; Open-Meteo ET0)",
+            "wisp" => "WISP corrected (FAO-56 ET0, corrected shortwave)"}.freeze
 
   def initialize(comparison) = @comparison = comparison
 
@@ -14,13 +15,19 @@ class WeatherComparisonReport
     <<~MD
       # AgWeather vs Open-Meteo
 
-      Generated #{Date.current} by `bin/rails weather:compare` (PLAN.md §8.4). #{points.size} points × #{years.join(", ")} seasons (Apr 1 – Sep 30), daily values from AgWeather (legacy WISP's source) and from Open-Meteo's historical-forecast API at each point's O1280 cell. Points: #{points.join(", ")}.
+      Generated #{Date.current} by `bin/rails weather:compare` (PLAN.md §8.4, §8.5). #{points.size} points × #{years.join(", ")} seasons (Apr 1 – Sep 30), daily values from AgWeather (legacy WISP's source) and from Open-Meteo's historical-forecast API at each point's O1280 cell. Points: #{points.join(", ")}.
 
-      Errors are the model minus AgWeather, in inches per day, over days where both have a value.
+      Sources: each Open-Meteo model alone with Open-Meteo's own ET0; **WISP 2026**, NBM then best_match hour by hour with Open-Meteo's ET0 (what WISP used through the 2026 season); and **WISP corrected**, the same hours with the shortwave and humidity corrections and WISP's FAO-56 ET0 (D12, what WISP uses from 2027). Precipitation isn't corrected, so the two WISP rows share it.
+
+      Errors are the source minus AgWeather, in inches per day, over days where both have a value.
 
       ## Reference ET
 
       #{table(stats[:et0], %i[days reference_mean mean bias ratio mae rmse r])}
+
+      Ratio to AgWeather's ET by month:
+
+      #{month_table(@comparison.et0_by_month)}
 
       ## Precipitation
 
@@ -46,6 +53,13 @@ class WeatherComparisonReport
       "| #{LABELS.fetch(source, source)} | #{columns.map { |c| format_value(s[c], c) }.join(" | ")} |"
     end
     [header, "|---" * (columns.size + 1) + "|", *rows].join("\n")
+  end
+
+  def month_table(by_source)
+    months = by_source.values.first.keys
+    header = "| Source | #{months.map { Date::ABBR_MONTHNAMES[it] }.join(" | ")} |"
+    rows = by_source.map { |source, ratios| "| #{LABELS.fetch(source, source)} | #{ratios.values.map { it ? format("%.2f", it) : "—" }.join(" | ")} |" }
+    [header, "|---" * (months.size + 1) + "|", *rows].join("\n")
   end
 
   def format_value(value, column)
@@ -77,6 +91,8 @@ class WeatherComparisonReport
       "- **#{LABELS.fetch(source)}**: #{format("%+.1f", diffs.sum.fdiv(diffs.size))} irrigations per season on average " \
         "(range #{diffs.min} to #{diffs.max}); first irrigation #{shifts.empty? ? "—" : format("%+.1f days", shifts.sum.fdiv(shifts.size))} vs AgWeather."
     end
-    "Average difference from AgWeather:\n\n#{lines.join("\n")}"
+    shift = balances.values.map { |b| b["wisp"][:count] - b["wisp_2026"][:count] } if sources.include?("wisp")
+    correction = shift && "\n\nThe correction itself (WISP corrected minus WISP 2026): #{format("%+.1f", shift.sum.fdiv(shift.size))} irrigations per season on average (range #{shift.min} to #{shift.max})."
+    "Average difference from AgWeather:\n\n#{lines.join("\n")}#{correction}"
   end
 end

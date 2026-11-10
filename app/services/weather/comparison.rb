@@ -1,13 +1,17 @@
 require "net/http"
 
 module Weather
-  # The AgWeather → Open-Meteo comparison (PLAN.md §8.4): daily reference ET and precipitation
-  # from AgWeather (legacy WISP's source) against Open-Meteo models at the same points, and what
-  # the difference does to a standard field's water balance. bin/rails weather:compare writes the
-  # report. Uses the historical-forecast API, as the backfill does.
+  # The AgWeather → Open-Meteo comparison (PLAN.md §8.4, §8.5): daily reference ET and
+  # precipitation from AgWeather (legacy WISP's source) against Open-Meteo at the same points, and
+  # what the difference does to a standard field's water balance. bin/rails weather:compare writes
+  # the report. Uses the historical-forecast API, as the backfill does. Sources:
+  # - each model alone, with Open-Meteo's own ET0;
+  # - "wisp_2026": NBM then best_match hour by hour, Open-Meteo's ET0 (what WISP used in 2026);
+  # - "wisp": the same hours corrected, with WISP's FAO-56 ET0 (D12; what WISP uses now).
   class Comparison
     AGWEATHER = "https://agweather.cals.wisc.edu/api"
-    MODELS = %w[best_match ncep_nbm_conus ecmwf_ifs].freeze
+    MODELS = %w[best_match ncep_nbm_conus].freeze
+    SOURCES = %w[best_match ncep_nbm_conus wisp_2026 wisp].freeze
     RAIN_DAY_IN = 0.05
 
     # Irrigated areas of Wisconsin, standing in for real pivot locations
@@ -38,17 +42,17 @@ module Weather
     def data
       @data ||= @years.each_with_object({}) do |year, result|
         dates = season(year)
-        models = MODELS.to_h { |model| [model, open_meteo(model, dates)] }
+        responses = MODELS.to_h { |model| [model, open_meteo(model, dates)] }
         @points.each_with_index do |(name, lat, lng), i|
           @log.call("#{year} #{name}")
-          result[[name, year]] = {"agweather" => agweather(lat, lng, dates)}.merge(models.transform_values { |series| series[i] })
+          result[[name, year]] = {"agweather" => agweather(lat, lng, dates)}.merge(open_meteo_series(responses, i))
         end
       end
     end
 
     # Per source and variable, over all points and years: totals and daily error statistics vs AgWeather
     def stats
-      sources = MODELS
+      sources = SOURCES
       %i[et0 precip].to_h do |variable|
         [variable, sources.to_h do |source|
           pairs = data.values.flat_map do |by_source|
@@ -85,6 +89,20 @@ module Weather
       {count: irrigations.size, inches: irrigations.size * IRRIGATION_IN, first: irrigations.first}
     end
 
+    # Per source, the ratio of its mean ET0 to AgWeather's by month (April–September), over all
+    # points and years
+    def et0_by_month
+      SOURCES.to_h do |source|
+        [source, (4..9).to_h do |month|
+          pairs = data.values.flat_map do |by_source|
+            by_source["agweather"].et0.filter_map { |date, ref| [ref, by_source[source].et0[date]] if date.month == month && ref && by_source[source].et0[date] }
+          end
+          ref = pairs.sum(&:first)
+          [month, (pairs.empty? || ref.zero?) ? nil : pairs.sum(&:last) / ref]
+        end]
+      end
+    end
+
     private
 
     def summarize(pairs, variable)
@@ -118,19 +136,27 @@ module Weather
       Series.new(et0:, precip:)
     end
 
-    # Each model's ET0 as WISP computes it (FAO-56 from the corrected hours, PLAN.md §8.5), so the
-    # variables it needs are asked for too
+    # Variables for WISP's own ET0 (§8.5) besides Open-Meteo's
     OPEN_METEO_VARIABLES = %w[
       et0_fao_evapotranspiration precipitation temperature_2m dew_point_2m wind_speed_10m surface_pressure shortwave_radiation
     ].freeze
 
+    def cells = @cells ||= @points.map { |_, lat, lng| Grid.cell_for(lat, lng) }
+
+    # Each point's hourly response from one model
     def open_meteo(model, dates)
-      cells = @points.map { |_, lat, lng| Grid.cell_for(lat, lng) }
       @client.hourly(cells.map { |cell| [cell.latitude, cell.longitude] }, endpoint: :historical_forecast, model:,
-        variables: OPEN_METEO_VARIABLES, start_date: dates.first, end_date: dates.last).zip(cells).map do |hourly, cell|
-        days = Daily.from_hourly(hourly, latitude: cell.latitude, longitude: cell.longitude)
-        Series.new(et0: days.transform_values { |d| d["et0_in"] }, precip: days.transform_values { |d| d["precip_in"] })
-      end
+        variables: OPEN_METEO_VARIABLES, start_date: dates.first, end_date: dates.last)
+    end
+
+    def open_meteo_series(responses, i)
+      cell = cells[i]
+      daily = ->(*hourly) { Daily.from_hourly(*hourly, latitude: cell.latitude, longitude: cell.longitude) }
+      series = ->(days, et0) { Series.new(et0: days.transform_values { |d| d[et0] }, precip: days.transform_values { |d| d["precip_in"] }) }
+      merged = daily.call(*MODELS.reverse.map { |model| responses[model][i] }) # NBM first
+      MODELS.to_h { |model| [model, series.call(daily.call(responses[model][i]), "et0_openmeteo_in")] }.merge(
+        "wisp_2026" => series.call(merged, "et0_openmeteo_in"), "wisp" => series.call(merged, "et0_in")
+      )
     end
   end
 end
