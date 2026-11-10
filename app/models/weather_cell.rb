@@ -2,6 +2,9 @@
 class WeatherCell < ApplicationRecord
   # Pages ask for an update at most this often per cell
   UPDATE_THROTTLE = 15.minutes
+  # A cell whose latest forecast is older than this is incomplete: pages say they're updating it
+  # (a forecast newer than this but past WeatherForecast::STALE_AFTER is refreshed quietly)
+  INCOMPLETE_AFTER = 1.day
 
   has_many :pivots, dependent: :nullify
   has_many :weather_days, dependent: :delete_all
@@ -38,12 +41,13 @@ class WeatherCell < ApplicationRecord
 
   # Queues a WeatherUpdateJob for each cell, at most once per UPDATE_THROTTLE. Pages showing
   # pivots call this, so the cells people look at stay current between scheduled refreshes, even
-  # before they have a planting.
+  # before they have a planting. Only an incomplete cell's update is shown on the pages ("Updating
+  # weather…", reloading until it lands); a complete one's is quiet, and the next visit gets it.
   def self.keep_current(ids)
-    ids.compact.uniq.each do |id|
-      next unless Rails.cache.write("weather-update:#{id}", true, unless_exist: true, expires_in: UPDATE_THROTTLE)
-      WeatherUpdateJob.perform_later(id)
+    due = ids.compact.uniq.select do |id|
+      Rails.cache.write("weather-update:#{id}", true, unless_exist: true, expires_in: UPDATE_THROTTLE)
     end
+    where(id: due).find_each { |cell| WeatherUpdateJob.perform_later(cell.id, quiet: !cell.incomplete?) }
   end
 
   # Of these cells, the ones with a WeatherUpdateJob queued or running
@@ -57,6 +61,15 @@ class WeatherCell < ApplicationRecord
   def forecast_stale?(now = Time.current, kind: "deterministic")
     issued = weather_forecasts.where(kind:).maximum(:issued_at)
     issued.nil? || issued < now - WeatherForecast::STALE_AFTER
+  end
+
+  # Missing weather the pages would show: no forecast within INCOMPLETE_AFTER, or a day missing
+  # since the backfill start (the season's, or 30 days back)
+  def incomplete?(now = Time.current)
+    issued = weather_forecasts.deterministic.maximum(:issued_at)
+    return true if issued.nil? || issued < now - INCOMPLETE_AFTER
+    from, to = backfill_start, today - 1
+    from <= to && weather_days.where(date: from..to).count < (to - from).to_i + 1
   end
 
   # Backfills start at the earliest season start this year, or 30 days ago

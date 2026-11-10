@@ -14,9 +14,11 @@ export type Status = NonNullable<PlantingSummary['status']>
 export const STATUSES: Status[] = ['irrigate', 'caution', 'ok', 'full']
 
 /** In season, with a status (not upcoming, ended, without a crop, or waiting for weather) */
-/** Whether any pivot's weather is being updated, so the page reloads until it lands */
-export const anyUpdating = (farms: FarmGroup[]) =>
-  farms.some((farm) => farm.pivots.some((pivot) => pivot.weather_updating))
+/** The pivots whose weather is being updated, so the page waits for it to land (lib/poll.ts) */
+export const updatingIds = (farms: FarmGroup[]) =>
+  farms.flatMap((farm) => farm.pivots.filter((pivot) => pivot.weather_updating).map((pivot) => pivot.id))
+
+export const anyUpdating = (farms: FarmGroup[]) => updatingIds(farms).length > 0
 
 export const isActive = (card: FieldCard) =>
   card.summary?.phase === 'active' && !card.summary.weather_pending && card.summary.status !== null

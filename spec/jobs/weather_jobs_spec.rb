@@ -40,10 +40,30 @@ RSpec.describe "Weather jobs" do
 
     it "queues an update for cells being looked at, at most every 15 minutes each" do
       other = WeatherCell.for(36.7, -119.8)
-      expect { WeatherCell.keep_current([cell.id, nil, cell.id]) }.to have_enqueued_job(WeatherUpdateJob).with(cell.id).exactly(:once)
-      expect { WeatherCell.keep_current([cell.id, other.id]) }.to have_enqueued_job(WeatherUpdateJob).with(other.id).exactly(:once)
+      expect { WeatherCell.keep_current([cell.id, nil, cell.id]) }.to have_enqueued_job(WeatherUpdateJob).with(cell.id, quiet: false).exactly(:once)
+      expect { WeatherCell.keep_current([cell.id, other.id]) }.to have_enqueued_job(WeatherUpdateJob).with(other.id, quiet: false).exactly(:once)
       travel 16.minutes
-      expect { WeatherCell.keep_current([cell.id]) }.to have_enqueued_job(WeatherUpdateJob).with(cell.id)
+      expect { WeatherCell.keep_current([cell.id]) }.to have_enqueued_job(WeatherUpdateJob).with(cell.id, quiet: false)
+    end
+
+    it "shows an update only when the cell's weather is incomplete: no recent forecast, or days missing" do
+      (Date.new(2026, 6, 19)..Date.new(2026, 7, 19)).each do |date|
+        cell.weather_days.create!(date:, et0_in: 0.2, precip_in: 0, model: "ncep_nbm_conus", hours: 24, fetched_at: Time.current)
+      end
+      expect(cell).to be_incomplete # no forecast
+      forecast = cell.weather_forecasts.create!(issued_at: 25.hours.ago, model: "best_match", payload: {days: []})
+      expect(cell).to be_incomplete
+      forecast.update!(issued_at: 5.hours.ago) # stale, but recent enough to show
+      expect(cell).not_to be_incomplete
+      expect { WeatherCell.keep_current([cell.id]) }.to have_enqueued_job(WeatherUpdateJob).with(cell.id, quiet: true)
+      expect(WeatherCell.updating_ids([cell.id])).to be_empty
+
+      cell.weather_days.find_by(date: Date.new(2026, 7, 1)).destroy
+      expect(cell).to be_incomplete
+      create(:planting, field: create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53)),
+        season_start: Date.new(2026, 5, 1), end_date: Date.new(2026, 9, 30))
+      cell.weather_days.create!(date: Date.new(2026, 7, 1), et0_in: 0.2, precip_in: 0, model: "ncep_nbm_conus", hours: 24, fetched_at: Time.current)
+      expect(cell).to be_incomplete # the season starts May 1
     end
 
     it "has a stale forecast when it has none, or none in the last 3 hours" do
@@ -102,6 +122,14 @@ RSpec.describe "Weather jobs" do
       allow(fetcher).to receive(:backfill).and_raise(ArgumentError)
       expect { described_class.perform_now(cell.id) }.to raise_error(ArgumentError)
       expect(WeatherCell.updating_ids([cell.id])).to be_empty
+    end
+
+    it "leaves its cell unmarked when quiet, and a shown update's mark alone" do
+      described_class.perform_later(cell.id, quiet: true)
+      expect(WeatherCell.updating_ids([cell.id])).to be_empty
+      described_class.perform_later(cell.id)
+      described_class.perform_now(cell.id, quiet: true)
+      expect(WeatherCell.updating_ids([cell.id])).to eq([cell.id])
     end
 
     it "skips the refresh when the forecast is fresh, and the ensemble likewise" do

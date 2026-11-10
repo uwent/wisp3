@@ -6,22 +6,57 @@ describe('poll', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
-  it('reloads every interval until stopped', () => {
-    const reload = vi.fn()
-    const stop = poll(reload, { every: 1000, limit: 60_000 })
-    vi.advanceTimersByTime(3500)
-    expect(reload).toHaveBeenCalledTimes(3)
+  it('reloads only when one of the pending pivots has landed, once per landing', async () => {
+    let updating = [1, 2, 3]
+    let pending = [1, 2]
+    const check = vi.fn(async () => updating)
+    const reload = vi.fn((done: () => void) => {
+      pending = pending.filter((id) => updating.includes(id))
+      done()
+    })
+    const stop = poll(() => pending, reload, { every: 1000, limit: 60_000, check })
+
+    await vi.advanceTimersByTimeAsync(3500)
+    expect(check).toHaveBeenCalledTimes(3)
+    expect(reload).not.toHaveBeenCalled()
+
+    updating = [2, 3]
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(reload).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(reload).toHaveBeenCalledTimes(1) // pivot 3 isn't on this page
+
     stop()
-    vi.advanceTimersByTime(5000)
-    expect(reload).toHaveBeenCalledTimes(3)
+    updating = []
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(check).toHaveBeenCalledTimes(6)
+    expect(reload).toHaveBeenCalledTimes(1)
   })
 
-  it('gives up after the limit, once', () => {
-    const reload = vi.fn()
+  it("doesn't check again while a reload is on its way, and ignores a failed check", async () => {
+    let finish: () => void = () => {}
+    let result: number[] | null = null
+    const check = vi.fn(async () => result)
+    const reload = vi.fn((done: () => void) => (finish = done))
+    poll(() => [1], reload, { every: 1000, limit: 60_000, check })
+
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(reload).not.toHaveBeenCalled()
+    result = []
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(reload).toHaveBeenCalledTimes(1)
+    expect(check).toHaveBeenCalledTimes(2)
+    finish()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(reload).toHaveBeenCalledTimes(2)
+  })
+
+  it('gives up after the limit, once', async () => {
+    const check = vi.fn(async () => [1])
     const ongiveup = vi.fn()
-    poll(reload, { every: 1000, limit: 5000, ongiveup })
-    vi.advanceTimersByTime(20_000)
-    expect(reload).toHaveBeenCalledTimes(4)
+    poll(() => [1], vi.fn(), { every: 1000, limit: 5000, ongiveup, check })
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(check).toHaveBeenCalledTimes(4)
     expect(ongiveup).toHaveBeenCalledTimes(1)
   })
 

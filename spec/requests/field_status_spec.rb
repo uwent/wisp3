@@ -83,9 +83,9 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
     end
 
     it "queues a weather update for the field's cell, and for the dashboard's" do
-      expect { get field_path(field) }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id)
+      expect { get field_path(field) }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id, quiet: false)
       Rails.cache.clear
-      expect { get root_path }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id)
+      expect { get root_path }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id, quiet: false)
     end
 
     it "says while the pivot's weather is updating, so the pages reload until it lands" do

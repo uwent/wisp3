@@ -177,6 +177,12 @@ RSpec.describe "Tenant isolation", type: :request do
     expect_not_found
   end
 
+  it "lists only my pivots whose weather is updating" do
+    [my_pivot, their_pivot].each { |pivot| Rails.cache.write(WeatherUpdateJob.updating_key(pivot.weather_cell_id), true) }
+    get weather_updates_path
+    expect(response.parsed_body).to eq("pivot_ids" => [my_pivot.id])
+  end
+
   it "shows only the user's own records on the dashboard, map, setup, daily entry and field group pages" do
     their_field
     my_field

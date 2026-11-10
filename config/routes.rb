@@ -63,6 +63,8 @@ Rails.application.routes.draw do
   resource :daily_entry, only: [:show, :update], path: "daily"
   # Every pivot on a map with its fields' status, and optional weather and drought layers
   resource :map, only: :show, controller: "map"
+  # The group's pivots whose weather is updating (JSON), for pages waiting on it
+  resource :weather_updates, only: :show
 
   namespace :admin do
     resources :users, only: [:index, :show, :destroy] do

@@ -57,7 +57,11 @@
   $effect(() => {
     if (!weather_updating) return
     timedOut = false
-    return poll(() => router.reload(), { ongiveup: () => (timedOut = true) })
+    return poll(
+      () => (weather_updating ? [pivot.id] : []),
+      (done) => router.reload({ onFinish: done }),
+      { ongiveup: () => (timedOut = true) },
+    )
   })
   const weatherState = $derived(weatherUpdate(weather_updating, timedOut))
   const lai = $derived(planting?.et_method === 'lai')

@@ -4,7 +4,7 @@
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
-  import { anyUpdating, type FarmGroup, type FieldCard as Card } from '@/lib/overview'
+  import { anyUpdating, updatingIds, type FarmGroup, type FieldCard as Card } from '@/lib/overview'
   import { poll, weatherUpdate } from '@/lib/poll'
   import { units as unitsFor } from '@/lib/units'
   import { dailyEntries, newQuickSetup, pivots, setup } from '@/routes'
@@ -20,7 +20,11 @@
   $effect(() => {
     if (!updating) return
     timedOut = false
-    return poll(() => router.reload({ only: ['farms'] }), { ongiveup: () => (timedOut = true) })
+    return poll(
+      () => updatingIds(farms),
+      (done) => router.reload({ only: ['farms'], onFinish: done }),
+      { ongiveup: () => (timedOut = true) },
+    )
   })
   const weatherFor = (pivot: { weather_updating: boolean }) => weatherUpdate(pivot.weather_updating, timedOut)
 

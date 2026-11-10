@@ -14,7 +14,7 @@
   import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
   import type { MapPivot } from '@/lib/map/pivots'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
-  import { anyUpdating, type FarmGroup, type ListItem, needsWaterWithin, sortItems } from '@/lib/overview'
+  import { anyUpdating, updatingIds, type FarmGroup, type ListItem, needsWaterWithin, sortItems } from '@/lib/overview'
   import { poll, weatherUpdate } from '@/lib/poll'
   import { units as unitsFor } from '@/lib/units'
   import { newQuickSetup } from '@/routes'
@@ -59,7 +59,11 @@
   $effect(() => {
     if (!updating) return
     timedOut = false
-    return poll(() => router.reload({ only: ['farms'] }), { ongiveup: () => (timedOut = true) })
+    return poll(
+      () => updatingIds(farms),
+      (done) => router.reload({ only: ['farms'], onFinish: done }),
+      { ongiveup: () => (timedOut = true) },
+    )
   })
   const weatherFor = (pivot: { weather_updating: boolean }) => weatherUpdate(pivot.weather_updating, timedOut)
 
