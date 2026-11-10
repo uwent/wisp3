@@ -23,9 +23,9 @@
     height = '12rem',
     summary,
     table,
-    unit,
     subtitle,
     download,
+    group,
   }: {
     title: string
     info: string
@@ -33,9 +33,10 @@
     height?: string
     summary: string
     table: () => ChartTable
-    unit: string
     subtitle?: Snippet
     download?: () => void
+    /** Charts that zoom together (Chart's group) */
+    group?: string
   } = $props()
 
   let chart: Chart | undefined = $state()
@@ -75,7 +76,7 @@
       <InfoTip text={info} label="About the {title} chart" />
     </div>
   </div>
-  <Chart bind:this={chart} bind:modified {height} label="{title}. {summary}" {build} />
+  <Chart bind:this={chart} bind:modified {height} label="{title}. {summary}" {build} {group} />
   <details bind:open class="mt-1 text-xs">
     <summary class="cursor-pointer text-brand-600 hover:underline">Summary and data</summary>
     <p class="mt-1 text-ink-muted">{summary}</p>
@@ -97,12 +98,12 @@
         aria-label="{title} by day"
       >
         <table class="w-full tabular-nums">
-          <caption class="sr-only">{title} by day, newest first ({unit})</caption>
+          <caption class="sr-only">{title} by day, newest first</caption>
           <thead class="sticky top-0 bg-surface-raised text-ink-muted">
             <tr class="text-right">
               <th scope="col" class="px-2 py-1 text-left font-medium">Date</th>
               {#each rows.columns as column (column)}
-                <th scope="col" class="px-2 py-1 font-medium">{column} ({unit})</th>
+                <th scope="col" class="px-2 py-1 font-medium">{column}</th>
               {/each}
             </tr>
           </thead>

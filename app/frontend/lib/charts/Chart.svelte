@@ -5,22 +5,33 @@
 
   import type { ChartView, EChartsCoreOption } from './echarts'
   import { onThemeChange } from '../theme'
+  import { join, resetGroup, share, type LinkedChart } from './link'
   import { readPalette, type Palette } from './palette'
 
   // build turns the current palette into the chart's option; it's rebuilt when the data it reads
   // changes or the theme switches. It also gets the days in view once the user zooms, for values
   // that depend on them (running totals). modified is true once the user zooms or toggles a series;
   // reset() puts the chart back as it opened.
+  // group: charts that zoom together (lib/charts/link.ts). In one, zooming doesn't count as
+  // modified (every chart in it would offer a reset); zoomed says whether the group is zoomed, and
+  // reset() puts the whole group back. inView: the days in view once zoomed (indexes into the x
+  // axis), undefined while it shows the days it opened on.
   let {
     build,
     height = '18rem',
     label,
     modified = $bindable(false),
+    zoomed = $bindable(false),
+    inView = $bindable(),
+    group,
   }: {
     build: (palette: Palette, view?: ChartView) => EChartsCoreOption
     height?: string
     label: string
     modified?: boolean
+    zoomed?: boolean
+    inView?: ChartView
+    group?: string
   } = $props()
 
   let element: HTMLDivElement
@@ -51,9 +62,41 @@
   }
 
   export function reset() {
-    zoom = view = legend = undefined
+    legend = undefined
     modified = false
-    if (chart && palette) chart.setOption(build(palette), { notMerge: true })
+    // In a group, the zoom is the group's: resetZoom() puts it back
+    if (!group) {
+      zoom = view = inView = undefined
+      zoomed = false
+    }
+    if (chart && palette) chart.setOption(withState(build(palette, view)), { notMerge: true })
+  }
+
+  /** Every chart in the group back to the days it opened on */
+  export function resetZoom() {
+    if (group) resetGroup(group)
+    else reset()
+  }
+
+  // In a group: the range another chart passed on, and a rebuild for it once the dragging pauses
+  // (a rebuild per chart per frame would make ten charts stutter)
+  let following = false
+  let rebuildTimer: ReturnType<typeof setTimeout> | undefined
+  const linked: LinkedChart = {
+    zoom: ({ start, end }) => {
+      following = true
+      try {
+        chart?.dispatchAction({ type: 'dataZoom', start, end })
+      } finally {
+        following = false
+      }
+    },
+    reset: () => {
+      clearTimeout(rebuildTimer)
+      zoom = view = inView = undefined
+      zoomed = false
+      if (chart && palette) chart.setOption(withState(build(palette)), { notMerge: true })
+    },
   }
 
   // ECharts is the largest chunk on the pages with charts, so it loads after the page renders
@@ -81,8 +124,16 @@
       zoom = { start: dz.start, end: dz.end }
       const count = ((option?.xAxis as { data?: unknown[] }[] | undefined)?.[0]?.data?.length ?? 1) - 1
       view = { start: Math.round((dz.start / 100) * count), end: Math.round((dz.end / 100) * count) }
-      modified = true
-      chart?.setOption(withState(build(palette, view)), { lazyUpdate: true })
+      inView = view
+      zoomed = true
+      const rebuild = () => palette && chart?.setOption(withState(build(palette, view)), { lazyUpdate: true })
+      if (!group) {
+        modified = true
+        return rebuild()
+      }
+      if (!following) share(group, linked, zoom)
+      clearTimeout(rebuildTimer)
+      rebuildTimer = setTimeout(rebuild, 150)
     })
     chart.on('legendselectchanged', (event) => {
       legend = (event as { selected: Record<string, boolean> }).selected
@@ -93,7 +144,10 @@
     document.fonts?.ready.then(() => chart && (palette = readPalette()))
     const observer = new ResizeObserver(() => chart?.resize())
     observer.observe(element)
+    const leave = group ? join(group, linked) : undefined
     return () => {
+      leave?.()
+      clearTimeout(rebuildTimer)
       offTheme()
       observer.disconnect()
       chart?.dispose()

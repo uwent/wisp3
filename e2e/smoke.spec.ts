@@ -332,16 +332,20 @@ test('planned irrigation updates the projection', async ({ page }) => {
 
 test('a field switches to entered rain only and back', async ({ page }) => {
   await page.goto(await firstFieldPath(page))
-  const details = page.locator('#season-details')
-  await expect(details.getByRole('heading', { name: 'Season details and settings' })).toBeVisible()
-  await expect(details).toContainText('Your gauge and the model')
+  // Both sections start closed; following the summary's links opens them
+  const summary = page.locator('#season-summary')
+  const details = page.locator('#rainfall')
+  await expect(page.getByRole('button', { name: 'Season summary' })).toHaveAttribute('aria-expanded', 'false')
+  await page.getByRole('button', { name: 'Season summary' }).click()
+  await expect(summary).toContainText('Your gauge and the model')
+  await page.getByRole('button', { name: 'Rainfall preferences' }).click()
   const setting = (name: RegExp) => details.getByRole('radio', { name })
   const note = page.getByText('Rain: only what you enter, plus the forecast for the days ahead.')
 
   await setting(/^Only the rain you enter/).check()
   await details.getByRole('button', { name: 'Save' }).click()
   await expect(note).toBeVisible()
-  await expect(details).toContainText('Modeled rain not used in the balance')
+  await expect(summary).toContainText('Modeled rain not used in the balance')
 
   // Back to following the operation, as the seed had it
   await setting(/^Follow the operation's setting/).check()
@@ -402,10 +406,34 @@ test('adding a pivot irrigation on a date that has one offers to edit it instead
   await expect(page.getByText(/No irrigation entered/)).toBeVisible()
 })
 
-test('a weather chart explains itself, and resets after zooming', async ({ page }) => {
+test('the weather charts follow the page width without overlapping', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await page.goto(await firstFieldPath(page))
+  const weather = page.getByRole('button', { name: 'Weather at this pivot' })
+  if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
+  const card = (name: string) =>
+    page
+      .getByRole('button', { name: `About the ${name} chart` })
+      .locator('xpath=ancestor::div[contains(@class, "rounded-lg")][1]')
+  await expect(card('Precipitation').locator('canvas').first()).toBeVisible()
+
+  // Narrower (still two columns), then wide again: the left column's cards end before the right's begin
+  for (const width of [900, 1400]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(async () => {
+      const left = (await card('Precipitation').boundingBox())!
+      const right = (await card('Evapotranspiration').boundingBox())!
+      const canvas = (await card('Precipitation').locator('canvas').first().boundingBox())!
+      expect(left.x + left.width).toBeLessThanOrEqual(right.x)
+      expect(canvas.x + canvas.width).toBeLessThanOrEqual(left.x + left.width)
+    }).toPass({ timeout: 3000 })
+  }
+})
+
+test('a weather chart explains itself, and zooms the rest with it', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto(await firstFieldPath(page))
-  const weather = page.getByRole('heading', { name: 'Weather at this pivot' }).locator('..').getByRole('button')
+  const weather = page.getByRole('button', { name: 'Weather at this pivot' })
   if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
 
   const info = page.getByRole('button', { name: 'About the Precipitation chart' })
@@ -415,12 +443,14 @@ test('a weather chart explains itself, and resets after zooming', async ({ page 
   await expect(page.getByRole('tooltip')).toBeHidden()
 
   const card = info.locator('xpath=ancestor::div[contains(@class, "rounded-lg")][1]')
-  const reset = page.getByRole('button', { name: 'Reset Precipitation chart' })
+  // Zooming one chart moves the season slider (and the other charts) with it, whose reset puts them all back
+  const reset = page.getByRole('button', { name: 'Reset', exact: true })
   await expect(reset).toBeHidden()
   const box = (await card.locator('canvas').first().boundingBox())!
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 3)
   await page.mouse.wheel(0, -400)
   await expect(reset).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Reset Precipitation chart' })).toBeHidden()
   await reset.click()
   await expect(reset).toBeHidden()
 
@@ -456,7 +486,7 @@ test('setup downloads the season report, and a pivot its weather', async ({ page
   expect(csv).toContain('Irrigation by pivot')
 
   await page.goto(await firstFieldPath(page))
-  const weather = page.getByRole('heading', { name: 'Weather at this pivot' }).locator('..').getByRole('button')
+  const weather = page.getByRole('button', { name: 'Weather at this pivot' })
   if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
   const [all] = await Promise.all([
     page.waitForEvent('download'),

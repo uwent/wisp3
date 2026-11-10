@@ -3,8 +3,8 @@
   import type { Units } from '../units'
   import Term from './Term.svelte'
 
-  // The season in numbers on a field's page: rain entered and modeled, the gauge against the
-  // model day by day, irrigation and deep drainage ("stats for nerds")
+  // The season in numbers on a field's page, as cards: rain entered and modeled, the gauge against
+  // the model day by day, irrigation and deep drainage ("stats for nerds")
   let { stats, units, useModelPrecip }: { stats: SeasonStats; units: Units; useModelPrecip: boolean } = $props()
 
   const depth = (inches: number) => units.format('depth', inches)
@@ -13,10 +13,11 @@
     total.days ? `${days(total.days)}, ${depth(total.inches)}` : 'None'
   const signed = (inches: number) => `${inches > 0 ? '+' : ''}${depth(inches)}`
   const { comparison } = $derived(stats)
+  const card = 'rounded-lg border border-line bg-surface-raised p-4'
 </script>
 
-<div class="grid gap-x-8 gap-y-5 text-sm md:grid-cols-3">
-  <div>
+<div class="grid gap-3 text-sm sm:grid-cols-[repeat(auto-fit,minmax(16rem,1fr))]">
+  <div class={card}>
     <h3 class="font-medium">Rain</h3>
     <dl class="mt-1 space-y-1.5">
       <div>
@@ -41,7 +42,7 @@
     </dl>
   </div>
 
-  <div>
+  <div class={card}>
     <h3 class="font-medium">Your gauge and the model</h3>
     {#if stats.entered.readings}
       <dl class="mt-1 space-y-1.5">
@@ -83,7 +84,7 @@
     {/if}
   </div>
 
-  <div>
+  <div class={card}>
     <h3 class="font-medium">Irrigation and drainage</h3>
     <dl class="mt-1 space-y-1.5">
       <div>

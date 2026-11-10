@@ -14,6 +14,7 @@ import {
   panelSummary,
   panelTable,
   runningTotal,
+  seasonSliderOption,
   weatherChartOption,
   weatherPanels,
 } from './weatherCharts'
@@ -291,6 +292,49 @@ describe('weather charts', () => {
     expect(runningTotal(days.slice(0, 4), value, { start: 0, end: 3 })).toEqual([1, 2, null, 3])
   })
 
+  it("draws a related measure's daily values in the lower grid, not added up", () => {
+    const warm = days.map((day, i) => ({
+      ...day,
+      gdd: 20,
+      gdd_since_emergence: 20 * (i + 1),
+      cloud_cover_pct: 40,
+      shortwave_mj: 20,
+    }))
+    const option = weatherChartOption(panel('gdd'), warm, units('imperial'), palette)
+    const series = option.series as SeriesOption[]
+    expect(series.map((s) => [s.name, s.type, s.xAxisIndex]).slice(0, 2)).toEqual([
+      ['Degree days (50/86)', 'bar', 0],
+      ['Total since emergence', 'line', 1],
+    ])
+    expect(series[1].data.slice(0, 3)).toEqual([20, 40, 60])
+    const yAxis = option.yAxis as { name?: string; max?: number }[]
+    expect(yAxis[1].name).toBe('Since emergence')
+    // Each series in the tooltip with its own decimals
+    const formatter = (option.tooltip as { formatter: (params: unknown) => string }).formatter
+    const html = formatter([
+      { axisValue: warm[5].date, seriesIndex: 0, seriesName: 'Degree days (50/86)', marker: '', value: 20 },
+      { axisValue: warm[5].date, seriesIndex: 1, seriesName: 'Total since emergence', marker: '', value: 120 },
+    ])
+    expect(html).toContain('20.0 °F·d')
+    expect(html).toContain('120 °F·d')
+
+    const solar = weatherChartOption(panel('solar'), warm, units('imperial'), palette)
+    expect((solar.yAxis as { name?: string; max?: number }[])[1]).toMatchObject({ name: 'Cloud cover (%)', max: 100 })
+    const cloud = (solar.tooltip as { formatter: (params: unknown) => string }).formatter([
+      { axisValue: warm[5].date, seriesIndex: 1, seriesName: 'Cloud cover', marker: '', value: 40 },
+    ])
+    expect(cloud).toContain('40 %')
+  })
+
+  it('gives the charts a season slider opening on the same days', () => {
+    const option = seasonSliderOption(days, palette, units('imperial'))
+    const [slider] = option.dataZoom as { type: string; startValue: string; left: number; right: number }[]
+    const chart = weatherChartOption(panel('air_temperature'), days, units('imperial'), palette)
+    const [inside] = chart.dataZoom as { startValue: string }[]
+    expect(slider).toMatchObject({ type: 'slider', startValue: inside.startValue, showDetail: false })
+    expect((option.xAxis as { data: string[] }).data).toHaveLength(days.length)
+  })
+
   it('explains every chart', () => {
     for (const p of weatherPanels(units('metric'), { field })) expect(p.info.length).toBeGreaterThan(40)
     expect(panel('air_temperature', 'metric').info).toContain('30 °C')
@@ -353,19 +397,36 @@ describe('weather charts in words and tables', () => {
     )
   })
 
+  it("names a lower grid's measure on the latest day, and lists it in its own unit", () => {
+    const sunny = days.map((day) => ({ ...day, shortwave_mj: 20, cloud_cover_pct: 35 }))
+    expect(panelSummary(panel('solar'), sunny, units('imperial'))).toBe(
+      'Jul 30: Cloud cover 35 %. Last 7 days: Solar radiation 140.00 MJ/m². ' +
+        'Next 5 days (forecast): Solar radiation 100.00 MJ/m².',
+    )
+    const table = panelTable(panel('solar'), sunny, units('imperial'))
+    expect(table.columns).toEqual(['Solar radiation (MJ/m²)', 'Cloud cover (%)'])
+    expect(table.rows[0].values).toEqual(['20.00', '35'])
+    expect(panelCsvRows(panel('solar'), sunny, units('imperial'))[0]).toEqual([
+      'Date',
+      'Forecast',
+      'Solar radiation (MJ/m²)',
+      'Cloud cover (%)',
+    ])
+  })
+
   it('says so when there are no values', () => {
     expect(panelSummary(panel('air_temperature'), [], units('imperial'))).toBe('No weather values yet.')
   })
 
   it('lists the daily values newest first, in the user units', () => {
-    const table = panelTable(panel('air_temperature', 'metric'), days)
-    expect(table.columns).toEqual(['High', 'Low'])
+    const table = panelTable(panel('air_temperature', 'metric'), days, units('metric'))
+    expect(table.columns).toEqual(['High (°C)', 'Low (°C)'])
     expect(table.rows[0]).toEqual({ date: days[64].date, forecast: true, values: ['26.7', '15.6'] })
     expect(table.rows).toHaveLength(65)
   })
 
   it('gives the daily values for a CSV oldest first, as stored, with zeros kept', () => {
-    const rows = panelCsvRows(panel('precipitation'), days, 'in')
+    const rows = panelCsvRows(panel('precipitation'), days, units('imperial'))
     expect(rows[0]).toEqual(['Date', 'Forecast', 'Rain (in)', 'Snow and other (in)'])
     expect(rows[1]).toEqual(['2026-06-01', 'no', 0.4, 0.1])
     expect(rows[2]).toEqual(['2026-06-02', 'no', 0, 0])

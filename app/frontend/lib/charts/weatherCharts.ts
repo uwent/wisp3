@@ -29,6 +29,10 @@ type Series = {
   entries?: boolean
   /** Days drawn as an outline: modeled rain the field's balance doesn't use */
   hollow?: (day: WeatherPanelDay) => boolean
+  /** Its own unit, when not the panel's (a series in the lower grid) */
+  unit?: (units: Units) => string
+  /** Its own decimals, when not the panel's */
+  digits?: number
 }
 
 /** A field's rain by date as its balance resolved it (FieldDay), for the precipitation chart */
@@ -46,6 +50,11 @@ export type WeatherPanel = {
   bars?: 'stack' | 'group'
   /** Running totals over the days in view, drawn in a second grid below the daily values */
   totals?: Series[]
+  /**
+   * Or daily values of a related measure in that second grid, drawn as they are (lines), with the
+   * grid's axis named: the total since emergence under each day's degree days, cloud cover under sunshine
+   */
+  below?: { name: string; series: Series[]; max?: number }
   /** Reference lines (e.g. the field's capacity and wilting point) */
   lines?: { name: string; value: number }[]
   /**
@@ -213,41 +222,59 @@ export function weatherPanels(
       ],
     },
     {
-      key: 'soil_moisture',
-      title: 'Modeled soil moisture',
-      unit: () => '% of soil volume',
+      key: 'solar',
+      title: 'Solar radiation and cloud cover',
+      unit: () => 'MJ/m²',
       info:
-        "The weather model's own estimate of the water in the soil at four depths, as a percent of the soil's " +
-        "volume (ECMWF IFS). It isn't a field's balance and doesn't know about irrigation" +
-        (field
-          ? "; the dashed lines are the field's capacity and wilting point for comparison, and the model's soil may hold water differently."
-          : ', and its soil may hold water differently from your fields.'),
-      series: DEPTHS.map(([key, label], i) => ({
-        name: depthName(label),
-        color: (p) => p.depths[i],
-        value: (day) => {
-          const value = day[`soil_moisture_${key}` as keyof WeatherPanelDay] as number | null
-          return value === null ? null : value * 100
-        },
-      })),
-      lines: field && [
-        { name: 'Field capacity', value: field.fieldCapacity * 100 },
-        { name: 'Wilting point', value: field.wiltingPoint * 100 },
-      ],
+        'The sunshine reaching the ground over the day, the main driver of ET: up to about 30 MJ/m² on a clear ' +
+        "Wisconsin day in June, under 5 on a dark, rainy one. Corrected for the model's tendency to read high, " +
+        'most of all under cloud (About › Weather). The lower panel is the share of the sky covered by cloud, ' +
+        'averaged over the day; cloudy days cut sunlight, which lowers ET and slows growth.',
+      bars: 'group',
+      corrected: 'openmeteo-shortwave',
+      series: [{ name: 'Solar radiation', color: (p) => p.warm, value: (day) => day.shortwave_mj }],
+      below: {
+        name: 'Cloud cover (%)',
+        max: 100,
+        series: [
+          {
+            name: 'Cloud cover',
+            color: (p) => p.inkMuted,
+            value: (day) => day.cloud_cover_pct,
+            unit: () => '%',
+            digits: 0,
+          },
+        ],
+      },
     },
     {
-      key: 'soil_temperature',
-      title: 'Soil temperature',
-      unit: (u) => u.label('temperature'),
+      key: 'gdd',
+      title: 'Growing degree days',
+      unit: (u) => u.label('degreeDays'),
       info:
-        `Modeled soil temperature at four depths, averaged over the day. Around ${temp(50)} at seed depth is a ` +
-        'common threshold for planting and germination. Deeper soil warms and cools slowly and evens out the swings of the air.',
-      series: DEPTHS.map(([key, label], i) => ({
-        name: depthName(label),
-        color: (p) => p.depths[i],
-        value: (day) =>
-          converted(units, 'temperature', day[`soil_temp_${key}_f` as keyof WeatherPanelDay] as number | null),
-      })),
+        `Growing degree days add up the heat a crop can use. Each day counts the mean of its high and low, each held ` +
+        `between ${temp(50)} and ${temp(86)}, minus ${temp(50)} (the 50/86 method used for corn and many other crops). ` +
+        `The bars are each day's; the lower panel is the total since ${gddSince}, from which crop stages are often predicted.`,
+      bars: 'group',
+      series: [
+        {
+          name: 'Degree days (50/86)',
+          color: (p) => p.warm,
+          value: (day) => converted(units, 'degreeDays', day.gdd),
+          digits: 1,
+        },
+      ],
+      below: {
+        name: `Since ${gddSince}`,
+        series: [
+          {
+            name: `Total since ${gddSince}`,
+            color: (p) => p.warm,
+            value: (day) => converted(units, 'degreeDays', day.gdd_since_emergence),
+            digits: 0,
+          },
+        ],
+      },
     },
     {
       key: 'air_temperature',
@@ -259,22 +286,6 @@ export function weatherPanels(
       series: [
         { name: 'High', color: (p) => p.warm, value: (day) => converted(units, 'temperature', day.tmax_f) },
         { name: 'Low', color: (p) => p.rain, value: (day) => converted(units, 'temperature', day.tmin_f) },
-      ],
-    },
-    {
-      key: 'gdd',
-      title: `Growing degree days since ${gddSince}`,
-      unit: (u) => u.label('degreeDays'),
-      info:
-        `Growing degree days add up the heat a crop can use. Each day counts the mean of its high and low, each held ` +
-        `between ${temp(50)} and ${temp(86)}, minus ${temp(50)} (the 50/86 method used for corn and many other crops). ` +
-        `Counted from ${gddSince}; crop stages are often predicted from this total.`,
-      series: [
-        {
-          name: 'Degree days (50/86)',
-          color: (p) => p.warm,
-          value: (day) => converted(units, 'degreeDays', day.gdd_since_emergence),
-        },
       ],
     },
     {
@@ -320,23 +331,41 @@ export function weatherPanels(
       ],
     },
     {
-      key: 'cloud',
-      title: 'Cloud cover',
-      unit: () => '%',
-      info: 'The share of the sky covered by cloud, averaged over the day. Cloudy days cut sunlight, which lowers ET and slows growth.',
-      series: [{ name: 'Cloud cover', color: (p) => p.inkMuted, value: (day) => day.cloud_cover_pct }],
+      key: 'soil_moisture',
+      title: 'Modeled soil moisture',
+      unit: () => '% of soil volume',
+      info:
+        "The weather model's own estimate of the water in the soil at four depths, as a percent of the soil's " +
+        "volume (ECMWF IFS). It isn't a field's balance and doesn't know about irrigation" +
+        (field
+          ? "; the dashed lines are the field's capacity and wilting point for comparison, and the model's soil may hold water differently."
+          : ', and its soil may hold water differently from your fields.'),
+      series: DEPTHS.map(([key, label], i) => ({
+        name: depthName(label),
+        color: (p) => p.depths[i],
+        value: (day) => {
+          const value = day[`soil_moisture_${key}` as keyof WeatherPanelDay] as number | null
+          return value === null ? null : value * 100
+        },
+      })),
+      lines: field && [
+        { name: 'Field capacity', value: field.fieldCapacity * 100 },
+        { name: 'Wilting point', value: field.wiltingPoint * 100 },
+      ],
     },
     {
-      key: 'solar',
-      title: 'Solar radiation',
-      unit: () => 'MJ/m²',
+      key: 'soil_temperature',
+      title: 'Soil temperature',
+      unit: (u) => u.label('temperature'),
       info:
-        'The sunshine reaching the ground over the day, the main driver of ET: up to about 30 MJ/m² on a clear ' +
-        "Wisconsin day in June, under 5 on a dark, rainy one. Corrected for the model's tendency to read high, " +
-        'most of all under cloud (About › Weather).',
-      bars: 'group',
-      corrected: 'openmeteo-shortwave',
-      series: [{ name: 'Solar radiation', color: (p) => p.warm, value: (day) => day.shortwave_mj }],
+        `Modeled soil temperature at four depths, averaged over the day. Around ${temp(50)} at seed depth is a ` +
+        'common threshold for planting and germination. Deeper soil warms and cools slowly and evens out the swings of the air.',
+      series: DEPTHS.map(([key, label], i) => ({
+        name: depthName(label),
+        color: (p) => p.depths[i],
+        value: (day) =>
+          converted(units, 'temperature', day[`soil_temp_${key}_f` as keyof WeatherPanelDay] as number | null),
+      })),
     },
   ]
 }
@@ -382,15 +411,16 @@ export function weatherChartOption(
   const firstForecast = days.find((day) => day.forecast)?.date
   const startValue = dates[defaultView(days).start]
   const digits = (value: number | null) => (value === null ? null : Number(value.toFixed(2)))
-  const unit = panel.unit(units)
   const series = shownSeries(panel, days)
   const totals = panel.totals ?? []
-  const legendShown = series.length + totals.length > 1
+  // The second grid's series: running totals, or a related measure's daily values
+  const lower = totals.length ? totals : (panel.below?.series ?? [])
+  const legendShown = series.length + lower.length > 1
   const top = legendShown ? 32 : 12
   const axisLabel = { ...base.axisLabel, formatter: (iso: string) => formatDate(iso) }
 
   // The forecast's days shaded edge to edge, and named once at the top
-  const gridCount = totals.length ? 2 : 1
+  const gridCount = lower.length ? 2 : 1
   const shading = forecastShading({
     dates,
     from: firstForecast ? dates.indexOf(firstForecast) : -1,
@@ -454,18 +484,18 @@ export function weatherChartOption(
       : {}),
   }))
 
-  const running = totals.map((s, i) => ({
+  const running = lower.map((s, i) => ({
     name: s.name,
     type: 'line',
     xAxisIndex: 1,
     yAxisIndex: 1,
-    data: runningTotal(days, s.value, view),
+    data: totals.length ? runningTotal(days, s.value, view) : days.map((day) => digits(s.value(day))),
     symbol: 'none',
     lineStyle: { width: 2, color: s.color(palette), type: i === 0 ? 'solid' : 'dashed' },
     itemStyle: { color: s.color(palette) },
   }))
 
-  const grids = totals.length
+  const grids = lower.length
     ? [
         { left: 40, right: 16, top, height: '42%' },
         { left: 40, right: 16, top: '70%', bottom: 24 },
@@ -481,7 +511,7 @@ export function weatherChartOption(
           top: 0,
           left: 0,
           right: 0,
-          data: [...legendSeries(series, days, view), ...totals].map((s) => s.name),
+          data: [...legendSeries(series, days, view), ...lower].map((s) => s.name),
           textStyle: { color: palette.ink, fontSize: 11 },
           itemWidth: 14,
         }
@@ -489,15 +519,15 @@ export function weatherChartOption(
     tooltip: {
       ...base.tooltip,
       formatter: (params: unknown) =>
-        tooltip(params, unit, panel.bars || totals.length ? 2 : 1, sparse, (date) => {
+        tooltip(params, formats(panel, units), sparse, (date) => {
           const day = panel.corrected ? days.find((d) => d.date === date) : undefined
           return !!day && correctedOn(day, panel.corrected!)
         }),
     },
-    axisPointer: totals.length ? { link: [{ xAxisIndex: 'all' }] } : undefined,
+    axisPointer: lower.length ? { link: [{ xAxisIndex: 'all' }] } : undefined,
     grid: grids,
     xAxis: [
-      ...(totals.length
+      ...(lower.length
         ? [
             {
               type: 'category',
@@ -513,7 +543,7 @@ export function weatherChartOption(
       ...shading.xAxis,
     ],
     yAxis: [
-      ...(totals.length
+      ...(lower.length
         ? [
             {
               type: 'value',
@@ -527,8 +557,9 @@ export function weatherChartOption(
               type: 'value',
               gridIndex: 1,
               min: 0,
+              max: panel.below?.max,
               splitNumber: 2,
-              name: 'Total in view',
+              name: totals.length ? 'Total in view' : panel.below!.name,
               nameTextStyle: { color: palette.inkMuted, fontSize: 10, align: 'left' },
               nameGap: 6,
               axisLabel: base.axisLabel,
@@ -538,10 +569,48 @@ export function weatherChartOption(
         : [{ type: 'value', scale: !panel.bars, axisLabel: base.axisLabel, splitLine: base.splitLine }]),
       ...shading.yAxis,
     ],
-    dataZoom: [
-      { type: 'inside', xAxisIndex: [...(totals.length ? [0, 1] : [0]), ...shading.xAxisIndexes], startValue },
-    ],
+    dataZoom: [{ type: 'inside', xAxisIndex: [...(lower.length ? [0, 1] : [0]), ...shading.xAxisIndexes], startValue }],
     series: [...daily, ...running, ...shading.series],
+  }
+}
+
+/**
+ * The season slider above the weather charts: the whole season's daily highs in outline, with a
+ * handle at each end of the days in view, opening where the charts open. The charts follow it
+ * (lib/charts/link.ts). It runs nearly edge to edge, with its dates shown above it instead of beside
+ * its handles.
+ */
+export function seasonSliderOption(days: WeatherPanelDay[], palette: Palette, units: Units): EChartsCoreOption {
+  const dates = days.map((day) => day.date)
+  return {
+    animation: false,
+    grid: { left: 8, right: 8, top: 0, height: 0 },
+    xAxis: { type: 'category', data: dates, show: false },
+    yAxis: { type: 'value', show: false, scale: true },
+    series: [
+      {
+        name: 'High',
+        type: 'line',
+        data: days.map((day) => units.toDisplay('temperature', day.tmax_f)),
+        symbol: 'none',
+        lineStyle: { opacity: 0 },
+        silent: true,
+      },
+    ],
+    dataZoom: [
+      {
+        type: 'slider',
+        xAxisIndex: 0,
+        left: 8,
+        right: 8,
+        top: 4,
+        height: 22,
+        startValue: dates[defaultView(days).start],
+        borderColor: palette.line,
+        // The dates in view are in the heading above it, where nothing hides them
+        showDetail: false,
+      },
+    ],
   }
 }
 
@@ -560,8 +629,7 @@ type TooltipParam = {
  */
 function tooltip(
   params: unknown,
-  unit: string,
-  digits: number,
+  format: Map<string, { unit: string; digits: number }>,
   sparse: Set<string>,
   corrected: (date: string) => boolean = () => false,
 ): string {
@@ -574,6 +642,7 @@ function tooltip(
     const unused = (param.data as { unused?: boolean } | null)?.unused
       ? ' <span style="opacity:.7">not used</span>'
       : ''
+    const { unit, digits } = format.get(param.seriesName) ?? { unit: '', digits: 1 }
     const value = typeof param.value === 'number' ? `${param.value.toFixed(digits)} ${unit}${unused}` : '—'
     return `<tr><td style="padding-right:12px">${param.marker}${param.seriesName}</td><td style="text-align:right"><strong>${value}</strong></td></tr>`
   })
@@ -586,6 +655,19 @@ function tooltip(
 /** Decimals for a panel's values in words and tables, as in its tooltip: two for amounts, one for levels */
 const digitsFor = (panel: WeatherPanel) => (panel.bars || panel.totals?.length ? 2 : 1)
 
+/** Every series the panel can draw, the second grid's last */
+const allSeries = (panel: WeatherPanel) => [...panel.series, ...(panel.totals ?? []), ...(panel.below?.series ?? [])]
+
+/** A series' unit and decimals: its own, or the panel's */
+const formatOf = (panel: WeatherPanel, s: Series, units: Units) => ({
+  unit: s.unit?.(units) ?? panel.unit(units),
+  digits: s.digits ?? digitsFor(panel),
+})
+
+/** Each series' unit and decimals by name, for the tooltip */
+const formats = (panel: WeatherPanel, units: Units) =>
+  new Map(allSeries(panel).map((s) => [s.name, formatOf(panel, s, units)]))
+
 /**
  * The panel in words, for the chart's text alternative and its summary: amounts (bars) added up over
  * the last 7 observed days and the next 7 forecast; levels (lines) on the latest observed day, then
@@ -593,7 +675,7 @@ const digitsFor = (panel: WeatherPanel) => (panel.bars || panel.totals?.length ?
  */
 export function panelSummary(panel: WeatherPanel, days: WeatherPanelDay[], units: Units): string {
   const series = shownSeries(panel, days)
-  const digits = digitsFor(panel)
+  const digits = (s: Series) => formatOf(panel, s, units).digits
   const unit = panel.unit(units)
   const observed = days.filter((day) => !day.forecast)
   const past = observed.slice(-7)
@@ -606,12 +688,12 @@ export function panelSummary(panel: WeatherPanel, days: WeatherPanelDay[], units
   }
   const total = (s: Series, period: WeatherPanelDay[]) => {
     const values = valuesIn(s, period)
-    return values.length ? `${s.name} ${values.reduce((sum, value) => sum + value, 0).toFixed(digits)}` : null
+    return values.length ? `${s.name} ${values.reduce((sum, value) => sum + value, 0).toFixed(digits(s))}` : null
   }
   const range = (s: Series, period: WeatherPanelDay[]) => {
     const values = valuesIn(s, period)
     if (!values.length) return null
-    const [low, high] = [Math.min(...values), Math.max(...values)].map((value) => value.toFixed(digits))
+    const [low, high] = [Math.min(...values), Math.max(...values)].map((value) => value.toFixed(digits(s)))
     return low === high ? `${s.name} ${low}` : `${s.name} ${low} to ${high}`
   }
   const summarize = panel.bars ? total : range
@@ -622,10 +704,20 @@ export function panelSummary(panel: WeatherPanel, days: WeatherPanelDay[], units
     const values = listed(
       series.map((s) => {
         const value = valueOn(s, latest)
-        return value === null ? null : `${s.name} ${value.toFixed(digits)}`
+        return value === null ? null : `${s.name} ${value.toFixed(digits(s))}`
       }),
     )
     if (values) sentences.push(`${formatDate(latest.date)}: ${values}.`)
+  }
+  // The lower grid's measure on the latest observed day, in its own unit
+  if (panel.below && latest) {
+    const values = panel.below.series
+      .map((s) => {
+        const value = valueOn(s, latest)
+        return value === null ? null : `${s.name} ${value.toFixed(digits(s))} ${formatOf(panel, s, units).unit}`
+      })
+      .filter((value) => value !== null)
+    if (values.length) sentences.push(`${formatDate(latest.date)}: ${values.join(', ')}.`)
   }
   const pastText = past.length ? listed(series.map((s) => summarize(s, past))) : null
   if (pastText) sentences.push(`Last ${past.length} days: ${pastText}.`)
@@ -634,16 +726,21 @@ export function panelSummary(panel: WeatherPanel, days: WeatherPanelDay[], units
   return sentences.join(' ') || 'No weather values yet.'
 }
 
-/** The panel's daily values as a table, newest first: one column per series it shows */
-export function panelTable(panel: WeatherPanel, days: WeatherPanelDay[]) {
-  const series = shownSeries(panel, days)
-  const digits = digitsFor(panel)
+/** The daily series a table or CSV lists: those the panel shows, then a lower grid's measure (not running totals) */
+const listedSeries = (panel: WeatherPanel, days: WeatherPanelDay[]) => [
+  ...shownSeries(panel, days),
+  ...(panel.below?.series ?? []),
+]
+
+/** The panel's daily values as a table, newest first: one column per series it shows, named with its unit */
+export function panelTable(panel: WeatherPanel, days: WeatherPanelDay[], units: Units) {
+  const series = listedSeries(panel, days)
   return {
-    columns: series.map((s) => s.name),
+    columns: series.map((s) => `${s.name} (${formatOf(panel, s, units).unit})`),
     rows: days.toReversed().map((day) => ({
       date: day.date,
       forecast: day.forecast,
-      values: series.map((s) => valueOn(s, day)?.toFixed(digits) ?? null),
+      values: series.map((s) => valueOn(s, day)?.toFixed(formatOf(panel, s, units).digits) ?? null),
     })),
   }
 }
@@ -654,11 +751,11 @@ export function panelTable(panel: WeatherPanel, days: WeatherPanelDay[]) {
  * as stored. Unlike the table, a zero stays a zero (no snow is 0, not missing), and values keep
  * three decimals.
  */
-export function panelCsvRows(panel: WeatherPanel, days: WeatherPanelDay[], unit: string): CsvValue[][] {
-  const series = shownSeries(panel, days)
+export function panelCsvRows(panel: WeatherPanel, days: WeatherPanelDay[], units: Units): CsvValue[][] {
+  const series = listedSeries(panel, days)
   const rounded = (value: number | null) => (value === null ? null : Number(value.toFixed(3)))
   return [
-    ['Date', 'Forecast', ...series.map((s) => `${s.name} (${unit})`)],
+    ['Date', 'Forecast', ...series.map((s) => `${s.name} (${formatOf(panel, s, units).unit})`)],
     ...days.map((day) => [day.date, day.forecast ? 'yes' : 'no', ...series.map((s) => rounded(s.value(day)))]),
   ]
 }

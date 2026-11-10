@@ -18,6 +18,9 @@ const findings: Finding[] = []
 async function scan(page: Page, path: string) {
   await page.goto(path)
   await expect(page.locator('main h1').first()).toBeVisible()
+  // Open the collapsed sections (CollapsibleSection) so what's in them is checked too
+  const closed = page.locator('[data-section-toggle][aria-expanded="false"]')
+  while ((await closed.count()) > 0) await closed.first().click()
   // Charts draw after the first frame
   await page.waitForTimeout(300)
   const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze()
