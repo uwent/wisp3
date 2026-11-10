@@ -8,6 +8,7 @@ module Weather
     SHORTWAVE = "openmeteo-shortwave"
     RH = "openmeteo-rh"
     ET0 = "et0-fao56"
+    ENSEMBLE_ET0 = "et0-ensemble-ratio"
 
     Correction = Data.define(:id, :variable, :method, :fitted_against, :effect, :evidence, :version, :fitted, :source, :table) do
       def label = "#{id} v#{version}"

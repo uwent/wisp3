@@ -37,3 +37,15 @@ corrections:
     fitted_against: Not fitted; FAO Irrigation and Drainage Paper 56 (Allen and others, 1998), as AgWeather v2 computes it.
     effect: About 11% lower than Open-Meteo's own ET0, which ran 16% above ET0 from the stations' own measurements (April–October).
     evidence: https://github.com/uwent/agweather2/blob/main/docs/validation-openmeteo.md
+
+  - id: et0-ensemble-ratio
+    version: 1
+    fitted: "2026-11-10"
+    variable: Forecast range of outcomes (ensemble ET0)
+    method: >-
+      Each GFS ensemble member's ET0 (Open-Meteo's) scaled by the main forecast's ratio of corrected
+      to uncorrected ET0 for the same day, so the range shifts with the main forecast and keeps its
+      width.
+    fitted_against: Not fitted; follows the main forecast's correction. To be checked against a season of archived forecasts.
+    effect: Moves the forecast range with the main forecast's ET0, about 11% lower.
+    evidence: https://github.com/uwent/agweather2/blob/main/docs/validation-openmeteo.md

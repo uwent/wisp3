@@ -28,7 +28,7 @@ module Weather
           variables: OpenMeteo::ENSEMBLE_VARIABLES, forecast_days: FORECAST_DAYS)
         batch.zip(responses).count do |cell, response|
           cell.update!(timezone: response.timezone) if cell.timezone.nil?
-          payload = Ensemble.from_hourly(response, today: cell.today)
+          payload = Ensemble.corrected(Ensemble.from_hourly(response, today: cell.today), cell.latest_forecast)
           next false if payload["dates"].empty?
           cell.weather_forecasts.create!(kind: "ensemble", issued_at: Time.current, model: OpenMeteo::ENSEMBLE_MODEL, payload:)
         end

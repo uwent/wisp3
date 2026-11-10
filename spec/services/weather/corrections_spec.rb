@@ -8,7 +8,7 @@ RSpec.describe Weather::Corrections do
   let(:midnight) { Time.utc(2026, 7, 15, 6) }
 
   it "lists each correction with its version and fitted date from its table" do
-    expect(corrections.all.map(&:label)).to eq ["openmeteo-shortwave v1", "openmeteo-rh v1", "et0-fao56 v1"]
+    expect(corrections.all.map(&:label)).to eq ["openmeteo-shortwave v1", "openmeteo-rh v1", "et0-fao56 v1", "et0-ensemble-ratio v1"]
     shortwave = corrections.find("openmeteo-shortwave")
     expect(shortwave.fitted).to eq "2026-10-31"
     expect(shortwave.source).to include "Wisconet"

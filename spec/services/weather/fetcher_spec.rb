@@ -19,6 +19,15 @@ RSpec.describe Weather::Fetcher do
       expect(cell.latest_forecast).to be_nil
     end
 
+    it "scales the members' ET0 by the latest deterministic forecast's correction" do
+      fetcher.refresh([cell])
+      fetcher.refresh_ensemble([cell])
+      day = cell.latest_forecast.days[today + 1]
+      ratio = (day["et0_in"] / day["et0_openmeteo_in"]).round(4)
+      expect(cell.latest_ensemble.payload).to include("corrections" => ["et0-ensemble-ratio v1"])
+      expect(cell.latest_ensemble.members.first[today + 1][:et0]).to be_within(1e-4).of(24 * 0.2 / 25.4 * ratio)
+    end
+
     it "records an error on the cells and re-raises it" do
       failing = Object.new
       def failing.hourly(*, **) = raise(Weather::TransientError, "Open-Meteo 503")

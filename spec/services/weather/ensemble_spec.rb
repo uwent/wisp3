@@ -35,4 +35,30 @@ RSpec.describe Weather::Ensemble do
     expect(cell.latest_ensemble).to eq(forecast)
     expect(cell.latest_forecast).to be_nil
   end
+
+  describe ".corrected" do
+    let(:payload) do
+      {"dates" => %w[2026-07-20 2026-07-21 2026-07-22],
+       "members" => [{"et0_in" => [0.2, 0.2, nil], "precip_in" => [0.0, 0.1, 0.0]}, {"et0_in" => [0.1, 0.3, 0.2], "precip_in" => [0, 0, 0]}]}
+    end
+
+    def forecast(days) = WeatherForecast.new(payload: {"days" => days})
+
+    it "scales each member's ET0 by the deterministic forecast's corrected/raw ratio for the day, keeping the ratios" do
+      out = described_class.corrected(payload, forecast([
+        {"date" => "2026-07-20", "et0_in" => 0.18, "et0_openmeteo_in" => 0.2},
+        {"date" => "2026-07-21", "et0_in" => 0.16, "et0_openmeteo_in" => 0.2},
+        {"date" => "2026-07-22", "et0_in" => 0.0, "et0_openmeteo_in" => 0.005} # too small for a ratio: the mean
+      ]))
+      expect(out["et0_ratio"]).to eq [0.9, 0.8, 0.85]
+      expect(out["members"].map { |m| m["et0_in"] }).to eq [[0.18, 0.16, nil], [0.09, 0.24, 0.17]]
+      expect(out["members"].first["precip_in"]).to eq [0.0, 0.1, 0.0]
+      expect(out["corrections"]).to eq ["et0-ensemble-ratio v1"]
+    end
+
+    it "leaves the payload alone without a corrected forecast" do
+      expect(described_class.corrected(payload, nil)).to eq payload
+      expect(described_class.corrected(payload, forecast([{"date" => "2026-07-20", "et0_in" => 0.18}]))).to eq payload
+    end
+  end
 end
