@@ -12,3 +12,5 @@ test-results
 tmp
 vendor
 pnpm-lock.yaml
+# weather correction tables, copied byte for byte from AgWeather v2
+db/reference/weather_corrections/*.json

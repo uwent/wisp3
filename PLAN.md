@@ -922,8 +922,8 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 11. **Start the forecast archive** (below), once corrected forecasts are being stored.
 
 Checklist:
-- [ ] Reference tables and their README (1).
-- [ ] `Weather::Fao56` with v2's tests (2).
+- [x] Reference tables and their README (1). *(`db/reference/weather_corrections/`, with `corrections.yml` describing each for the About page; `Weather::Corrections` applies them and matches v2's `correct_w_m2` and `map_humidity` on 300 random hours.)*
+- [x] `Weather::Fao56` with v2's tests (2).
 - [ ] The two new variables and UTC hours from the API; recorded responses updated (3).
 - [ ] The hourly merge, corrections and ET0 before `Daily`; the new columns (4, 5).
 - [ ] The spec against v2's computed values (6).

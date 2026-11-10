@@ -1,0 +1,39 @@
+# The corrections WISP applies to Open-Meteo's hourly weather (PLAN.md D12, §8.5), in the order
+# they're applied. Weather::Corrections reads this file; the About page and the admin weather page
+# list it. A correction with a table takes its version and fitted date from the table's JSON, so a
+# refit copied in from AgWeather v2 bumps the label each stored day records ("openmeteo-shortwave v1").
+#
+# Evidence links point at AgWeather v2's validation write-ups (github.com/uwent/agweather2).
+
+corrections:
+  - id: openmeteo-shortwave
+    table: openmeteo_shortwave_correction.json
+    variable: Shortwave radiation
+    method: >-
+      Each hour scaled by a factor for its clearness (Open-Meteo's value over the FAO-56 clear-sky
+      radiation for that hour), linear between the table's bins and held at its ends.
+    fitted_against: Pyranometers at 80 Wisconet stations, hourly, 2025–2026 (each year tested on the other).
+    effect: Open-Meteo's shortwave reads 15–20% high against the stations; corrected, it matches them on average.
+    evidence: https://github.com/uwent/agweather2/blob/main/docs/validation-openmeteo.md
+
+  - id: openmeteo-rh
+    table: openmeteo_rh_map.json
+    variable: Relative humidity and dew point
+    method: >-
+      Each hour's relative humidity (from temperature and dew point) quantile-mapped by season and
+      solar hour; the dew point recomputed from it, temperature kept.
+    fitted_against: AgWeather v2's hourly humidity grid at 80 Wisconet stations' locations, 2025–2026.
+    effect: Open-Meteo's humidity runs dry, with too few humid hours (5.5 a day at 90% or more in summer, against the stations' 7.8).
+    evidence: https://github.com/uwent/agweather2/blob/main/docs/validation-openmeteo.md
+
+  - id: et0-fao56
+    version: 1
+    fitted: "2026-11-10"
+    variable: Reference evapotranspiration (ET0)
+    method: >-
+      FAO-56's hourly Penman-Monteith grass reference ET0 computed by WISP from Open-Meteo's
+      temperature, wind and pressure with the corrected shortwave and dew point, summed over the
+      local day, in place of Open-Meteo's own ET0.
+    fitted_against: Not fitted; FAO Irrigation and Drainage Paper 56 (Allen and others, 1998), as AgWeather v2 computes it.
+    effect: About 11% lower than Open-Meteo's own ET0, which ran 16% above ET0 from the stations' own measurements (April–October).
+    evidence: https://github.com/uwent/agweather2/blob/main/docs/validation-openmeteo.md
