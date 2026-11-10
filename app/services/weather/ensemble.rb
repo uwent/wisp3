@@ -10,7 +10,7 @@ module Weather
 
     # {"dates" => [iso, ...], "members" => [{"et0_in" => [...], "precip_in" => [...]}, ...]}
     def from_hourly(response, today:)
-      dates = response.times.map { |time| Date.parse(time) }
+      dates = Hours.merge(response).dates
       indexes_by_date = dates.each_index.group_by { |i| dates[i] }.select { |date, _| date >= today }.sort.to_h
 
       members = member_suffixes(response).map do |suffix|

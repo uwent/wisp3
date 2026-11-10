@@ -37,11 +37,16 @@ RSpec.describe Weather::Fetcher do
       day = cell.weather_days.last
       expect(day).to have_attributes(model: "best_match", soil_model: "ecmwf_ifs", hours: 24, final: false, tmean_f: 50.0,
         soil_moisture_0_7cm: 0.3)
-      expect(day.et0_in).to be_within(1e-9).of(24 * 0.2 / 25.4)
+      expect(day.et0_openmeteo_in).to be_within(1e-9).of(24 * 0.2 / 25.4) # Open-Meteo's, kept raw
+      expect(day.et0_in).to be_between(0.05, 0.2) # WISP's FAO-56, from 10 °C, a 6 °C dew point and 500 W/m² by day
+      expect(day.shortwave_raw_mj).to be_within(1e-9).of(12 * 500 * 0.0036)
+      expect(day.shortwave_mj).to be < day.shortwave_raw_mj
+      expect(day.corrections).to eq ["openmeteo-shortwave v1", "openmeteo-rh v1", "et0-fao56 v1"]
 
       forecast = cell.latest_forecast
       expect(forecast.days.keys).to eq((today..today + 15).to_a)
       expect(forecast.days[today]["soil_moisture_0_7cm"]).to eq(0.3)
+      expect(forecast.days[today]).to include("et0_in" => be > 0, "corrections" => include("et0-fao56 v1"))
       expect(cell.reload).to have_attributes(timezone: "America/Chicago", elevation_m: 300.0, last_error: nil)
     end
 
@@ -50,7 +55,7 @@ RSpec.describe Weather::Fetcher do
       cell.weather_days.find_by(date: today - 7).update!(final: true, et0_in: 9.0)
       described_class.new(client: FakeOpenMeteo.new(today:, et0_mm: 0.4), models: %w[best_match]).refresh([cell])
       expect(cell.weather_days.find_by(date: today - 7).et0_in).to eq(9.0)
-      expect(cell.weather_days.find_by(date: today - 1).et0_in).to be_within(1e-9).of(24 * 0.4 / 25.4)
+      expect(cell.weather_days.find_by(date: today - 1).et0_openmeteo_in).to be_within(1e-9).of(24 * 0.4 / 25.4)
     end
 
     it "records an error on the cells and re-raises it" do

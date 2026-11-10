@@ -1,7 +1,8 @@
 module Weather
-  # Turns a location's hourly Open-Meteo values (metric, local time) into daily values in WISP's
-  # units, keyed like WeatherDay::VALUE_COLUMNS. A value is nil when more than MAX_MISSING_HOURS of
-  # its day are missing (as in Ben's R client), or when the model doesn't provide it.
+  # Turns a location's hours (Weather::Hours: merged across models, corrected, metric) into daily
+  # values in WISP's units by local day, keyed like WeatherDay::VALUE_COLUMNS, with "corrections"
+  # listing the corrections the day's values went through. A value is nil when more than
+  # MAX_MISSING_HOURS of its day are missing (as in Ben's R client), or when no model provides it.
   module Daily
     MAX_MISSING_HOURS = 2
     MM_PER_IN = 25.4
@@ -10,11 +11,15 @@ module Weather
     c_to_f = ->(c) { c * 9 / 5.0 + 32 }
     mm_to_in = ->(mm) { mm / MM_PER_IN }
     kmh_to_mph = ->(kmh) { kmh / KMH_PER_MPH }
+    w_m2_to_mj = ->(w_m2_hours) { w_m2_hours * Fao56::W_M2_HOUR_TO_MJ }
     same = ->(value) { value }
 
     # column => [hourly variable, how hours combine, conversion]
     COLUMNS = {
-      "et0_in" => ["et0_fao_evapotranspiration", :sum, mm_to_in],
+      "et0_in" => ["et0", :sum, mm_to_in], # FAO-56 from the corrected hours
+      "et0_openmeteo_in" => ["et0_fao_evapotranspiration", :sum, mm_to_in],
+      "shortwave_mj" => ["shortwave_radiation", :sum, w_m2_to_mj],
+      "shortwave_raw_mj" => ["shortwave_radiation_raw", :sum, w_m2_to_mj],
       "precip_in" => ["precipitation", :sum, mm_to_in],
       "rain_in" => ["rain", :sum, mm_to_in],
       "snowfall_in" => ["snowfall", :sum, ->(cm) { cm * 10 / MM_PER_IN }],
@@ -23,9 +28,13 @@ module Weather
       "tmin_f" => ["temperature_2m", :min, c_to_f],
       "tmean_f" => ["temperature_2m", :mean, c_to_f],
       "dew_point_f" => ["dew_point_2m", :mean, c_to_f],
-      "rh_mean_pct" => ["relative_humidity_2m", :mean, same],
-      "rh_min_pct" => ["relative_humidity_2m", :min, same],
-      "rh_max_pct" => ["relative_humidity_2m", :max, same],
+      "dew_point_raw_f" => ["dew_point_2m_raw", :mean, c_to_f],
+      "rh_mean_pct" => ["relative_humidity", :mean, same],
+      "rh_min_pct" => ["relative_humidity", :min, same],
+      "rh_max_pct" => ["relative_humidity", :max, same],
+      "rh_mean_raw_pct" => ["relative_humidity_raw", :mean, same],
+      "rh_min_raw_pct" => ["relative_humidity_raw", :min, same],
+      "rh_max_raw_pct" => ["relative_humidity_raw", :max, same],
       "vpd_max_kpa" => ["vapour_pressure_deficit", :max, same],
       "pressure_msl_hpa" => ["pressure_msl", :mean, same],
       "wind_speed_mph" => ["wind_speed_10m", :mean, kmh_to_mph],
@@ -45,27 +54,30 @@ module Weather
       "soil_moisture_28_100cm" => ["soil_moisture_28_to_100cm", :mean, same],
       "soil_moisture_100_255cm" => ["soil_moisture_100_to_255cm", :mean, same]
     }.freeze
+    # The column whose value says a day went through each correction
+    CORRECTED_COLUMNS = {Corrections::SHORTWAVE => "shortwave_mj", Corrections::RH => "dew_point_f", Corrections::ET0 => "et0_in"}.freeze
 
     module_function
 
-    # {date => {"hours" => n, column => value, ...}} from one or more Hourly responses for the same
-    # location, in order of preference (e.g. NBM, then best_match, then the soil model): each value
-    # comes from the first response that has it
-    def from_hourly(*responses)
-      responses.each_with_object({}) do |response, days|
-        dates = response.times.map { |time| Date.parse(time) }
-        hours_by_date = dates.tally
-        indexes_by_date = dates.each_index.group_by { |i| dates[i] }
+    # {date => {"hours" => n, column => value, ..., "corrections" => [label, ...]}} from one or more
+    # Hourly responses for the same location, in order of preference (e.g. NBM, then best_match,
+    # then the soil model), merged hour by hour and corrected at the location's point
+    def from_hourly(*responses, latitude:, longitude:)
+      from_hours(Hours.merge(*responses).corrected(latitude:, longitude:))
+    end
 
-        indexes_by_date.each do |date, indexes|
-          day = days[date] ||= {"hours" => hours_by_date[date]}
-          COLUMNS.each do |column, (variable, method, convert)|
-            series = response.values[variable]
-            next if series.blank? || !day[column].nil?
-            value = combine(indexes.map { |i| series[i] }, method, hours_by_date[date])
-            day[column] = value && convert.call(value)
-          end
+    def from_hours(hours)
+      dates = hours.dates
+      labels = hours.corrections.to_h { |id| [id, Corrections.label(id)] }
+      dates.each_index.group_by { |i| dates[i] }.to_h do |date, indexes|
+        day = {"hours" => indexes.size}
+        COLUMNS.each do |column, (variable, method, convert)|
+          series = hours.values[variable]
+          value = series.presence && combine(indexes.map { |i| series[i] }, method, indexes.size)
+          day[column] = value && convert.call(value)
         end
+        day["corrections"] = labels.filter_map { |id, label| label unless day[CORRECTED_COLUMNS.fetch(id)].nil? }
+        [date, day]
       end
     end
 

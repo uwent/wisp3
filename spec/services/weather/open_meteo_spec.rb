@@ -14,12 +14,13 @@ RSpec.describe Weather::OpenMeteo do
   it "requests every location at once from the free host and parses each (recorded response)" do
     request = stub_request(:get, "https://api.open-meteo.com/v1/forecast")
       .with(query: hash_including(latitude: "44.112477,36.731106", longitude: "-89.589041,-119.76378",
-        hourly: variables.join(","), models: "best_match", timezone: "auto", start_date: "2026-10-01", end_date: "2026-10-02"))
+        hourly: variables.join(","), models: "best_match", timezone: "auto", timeformat: "unixtime", start_date: "2026-10-01", end_date: "2026-10-02"))
       .to_return(body: fixture)
 
     hancock, fresno = fetch
     expect(request).to have_been_made.once
-    expect(hancock).to have_attributes(timezone: "America/Chicago", times: have_attributes(size: 48))
+    expect(hancock).to have_attributes(timezone: "America/Chicago", utc_offset_seconds: -18000, times: have_attributes(size: 48))
+    expect(hancock.times.first).to eq(Time.utc(2026, 10, 1, 5)) # local midnight, as UTC
     expect(fresno.timezone).to eq("America/Los_Angeles")
     expect(hancock.values["et0_fao_evapotranspiration"].compact.size).to eq(48)
   end

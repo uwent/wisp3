@@ -1,9 +1,10 @@
 require "net/http"
 
 module Weather
-  # Open-Meteo client (PLAN.md §8). Requests hourly values in metric units with timezone=auto,
-  # so times come back in each location's local time; Weather::Daily turns them into daily
-  # values. With an API key (OPEN_METEO_API_KEY, or credentials open_meteo.api_key) it uses the
+  # Open-Meteo client (PLAN.md §8). Requests hourly values in metric units with timezone=auto, so
+  # the dates asked for are each location's local days, and times as unix seconds, read as UTC
+  # `Time`s (each the end of its hour): the corrections need UTC, and the local day comes from the
+  # zone (Weather::Hours#dates), right across a DST change. Weather::Daily turns them into days. With an API key (OPEN_METEO_API_KEY, or credentials open_meteo.api_key) it uses the
   # customer-* hosts; without one, the free hosts and the free-tier rate limits.
   class OpenMeteo
     ENDPOINTS = {
@@ -15,9 +16,12 @@ module Weather
 
     # Atmospheric variables come from the primary models; soil variables from ECMWF IFS, the only
     # model with them over North America (best_match, GFS and NBM return none).
+    # Shortwave and surface pressure feed WISP's own ET0 (D12, §8.5); RH and the vapor pressure
+    # deficit are derived from temperature and the corrected dew point (Weather::Hours), so
+    # Open-Meteo's aren't asked for. et0_fao_evapotranspiration is kept as the raw value.
     VARIABLES = %w[
-      temperature_2m dew_point_2m relative_humidity_2m et0_fao_evapotranspiration precipitation rain
-      snowfall snow_depth pressure_msl vapour_pressure_deficit wind_speed_10m wind_gusts_10m
+      temperature_2m dew_point_2m et0_fao_evapotranspiration precipitation rain snowfall snow_depth
+      pressure_msl surface_pressure shortwave_radiation wind_speed_10m wind_gusts_10m
       wind_direction_10m cloud_cover cloud_cover_low cloud_cover_mid cloud_cover_high
     ].freeze
     SOIL_VARIABLES = %w[
@@ -35,8 +39,11 @@ module Weather
     BATCH_SIZE = 25 # locations per request
     RETRY_DELAYS = [2, 8].freeze # seconds, for 429 / 5xx / network errors before giving up
 
-    # One location's hourly response
-    Hourly = Data.define(:latitude, :longitude, :timezone, :elevation, :times, :values)
+    # One location's hourly response; times are UTC `Time`s, utc_offset_seconds the response's
+    # offset (one for the whole response, so not for grouping days; for checks)
+    Hourly = Data.define(:latitude, :longitude, :timezone, :utc_offset_seconds, :elevation, :times, :values) do
+      def initialize(utc_offset_seconds: nil, **) = super
+    end
 
     def self.api_key = ENV["OPEN_METEO_API_KEY"].presence || Rails.application.credentials.dig(:open_meteo, :api_key)
 
@@ -65,7 +72,7 @@ module Weather
         params = {
           latitude: batch.map { |lat, _| lat.round(6) }.join(","),
           longitude: batch.map { |_, lng| lng.round(6) }.join(","),
-          hourly: variables.join(","), models: model, timezone: "auto", **dates.compact
+          hourly: variables.join(","), models: model, timezone: "auto", timeformat: "unixtime", **dates.compact
         }
         days = dates[:start_date] ? (dates[:end_date] - dates[:start_date]).to_i + 1 : dates.values_at(:past_days, :forecast_days).compact.sum
         counted = (endpoint == :ensemble) ? variables.size * ENSEMBLE_MEMBERS : variables.size
@@ -119,7 +126,8 @@ module Weather
     def parse(json, variables)
       hourly = json.fetch("hourly")
       Hourly.new(latitude: json["latitude"], longitude: json["longitude"], timezone: json["timezone"],
-        elevation: json["elevation"], times: hourly.fetch("time"),
+        utc_offset_seconds: json["utc_offset_seconds"], elevation: json["elevation"],
+        times: hourly.fetch("time").map { |seconds| Time.at(seconds).utc },
         values: variables.to_h { |variable| [variable, hourly[variable] || []] }.merge(hourly.except("time")))
     end
   end

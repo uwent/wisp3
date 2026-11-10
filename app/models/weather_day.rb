@@ -1,8 +1,14 @@
 # A cell's weather for one local day, built from hourly model values (Weather::Daily). Provisional
 # days are refreshed as the model revises them; final days (WeatherFinalizeJob) are not.
+#
+# Corrected (PLAN.md D12, §8.5): et0_in is WISP's FAO-56 ET0 from the corrected shortwave, and
+# dew_point_f, rh_*_pct and vpd_max_kpa follow the corrected dew point. Open-Meteo's values are kept
+# in the *_raw_* columns and et0_openmeteo_in; `corrections` lists the labels the day went through
+# (Weather::Corrections), empty for a day stored before them.
 class WeatherDay < ApplicationRecord
   VALUE_COLUMNS = %w[
-    et0_in precip_in rain_in snowfall_in snow_depth_in tmax_f tmin_f tmean_f dew_point_f
+    et0_in et0_openmeteo_in shortwave_mj shortwave_raw_mj dew_point_raw_f rh_mean_raw_pct rh_min_raw_pct
+    rh_max_raw_pct precip_in rain_in snowfall_in snow_depth_in tmax_f tmin_f tmean_f dew_point_f
     rh_mean_pct rh_min_pct rh_max_pct vpd_max_kpa pressure_msl_hpa wind_speed_mph wind_speed_max_mph
     wind_gust_max_mph wind_direction_deg cloud_cover_pct cloud_cover_low_pct cloud_cover_mid_pct
     cloud_cover_high_pct soil_temp_0_7cm_f soil_temp_7_28cm_f soil_temp_28_100cm_f soil_temp_100_255cm_f

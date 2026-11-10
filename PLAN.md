@@ -924,9 +924,9 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 Checklist:
 - [x] Reference tables and their README (1). *(`db/reference/weather_corrections/`, with `corrections.yml` describing each for the About page; `Weather::Corrections` applies them and matches v2's `correct_w_m2` and `map_humidity` on 300 random hours.)*
 - [x] `Weather::Fao56` with v2's tests (2).
-- [ ] The two new variables and UTC hours from the API; recorded responses updated (3).
-- [ ] The hourly merge, corrections and ET0 before `Daily`; the new columns (4, 5).
-- [ ] The spec against v2's computed values (6).
+- [x] The two new variables and UTC hours from the API; recorded responses updated (3). *(`relative_humidity_2m` and `vapour_pressure_deficit` are no longer asked for: RH and VPD are derived from temperature and the corrected dew point, so the request stays at 17 variables and the rate-limit weight is unchanged.)*
+- [x] The hourly merge, corrections and ET0 before `Daily`; the new columns (4, 5). *(`Weather::Hours`; each day's `corrections` lists a label only where its column has a value.)*
+- [x] The spec against v2's computed values (6). *(`spec/services/weather/v2_match_spec.rb`: every hour matches to floating point.)*
 - [ ] The ensemble's ET0 (7, Q10).
 - [ ] `weather:compare` and the irrigation-count comparison re-run; the shift documented (8).
 - [ ] The corrections table on the About page and the admin weather page; CSV frontmatter and chart tooltips name them (9).

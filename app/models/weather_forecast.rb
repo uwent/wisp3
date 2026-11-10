@@ -1,6 +1,6 @@
 # One forecast issue for a cell. The latest few issues of each kind are kept (ForecastPruneJob).
 # - deterministic: payload["days"] holds daily values with the same keys as
-#   WeatherDay::VALUE_COLUMNS, plus "date".
+#   WeatherDay::VALUE_COLUMNS, plus "date" and "corrections" (corrected as stored days are).
 # - ensemble (Weather::Ensemble): payload["dates"] and payload["members"], each member
 #   {"et0_in" => [...], "precip_in" => [...]} by date.
 class WeatherForecast < ApplicationRecord

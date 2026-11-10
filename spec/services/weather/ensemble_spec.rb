@@ -5,7 +5,7 @@ RSpec.describe Weather::Ensemble do
     Weather::OpenMeteo::Hourly.new(latitude: 44, longitude: -89, timezone: "America/Chicago", elevation: 300, times:, values:)
   end
 
-  let(:times) { %w[2026-07-19 2026-07-20 2026-07-21].flat_map { |d| (0..23).map { |h| format("%sT%02d:00", d, h) } } }
+  let(:times) { (0...72).map { |h| Time.utc(2026, 7, 19, 5) + h * 3600 } } # local days, Chicago
 
   it "sums each member's hours into daily inches from today on, the control first" do
     hourly = {

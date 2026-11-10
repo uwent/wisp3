@@ -64,7 +64,8 @@ module Weather
         **dates)
       cells.each_with_index.sum do |cell, i|
         responses = by_model.map { |hourly| hourly[i] } + [soil[i]]
-        store(cell, responses.last, Daily.from_hourly(*responses), forecast: endpoint == :forecast)
+        days = Daily.from_hourly(*responses, latitude: cell.latitude, longitude: cell.longitude)
+        store(cell, responses.last, days, forecast: endpoint == :forecast)
       end
     rescue Error => e
       WeatherCell.where(id: cells.map(&:id)).update_all(last_error: e.message, last_error_at: Time.current)
@@ -83,7 +84,8 @@ module Weather
       rows = past.except(*final).map do |date, day|
         WeatherDay::VALUE_COLUMNS.index_with { |column| day[column] }.merge(
           weather_cell_id: cell.id, date:, model: model_name, soil_model: OpenMeteo::SOIL_MODEL, hours: day["hours"],
-          fetched_at: now, final: date < today - PAST_DAYS # backfilled days past the refresh window are settled
+          corrections: day["corrections"] || [], fetched_at: now,
+          final: date < today - PAST_DAYS # backfilled days past the refresh window are settled
         )
       end
       WeatherDay.upsert_all(rows, unique_by: [:weather_cell_id, :date]) if rows.any?

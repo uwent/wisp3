@@ -118,14 +118,17 @@ module Weather
       Series.new(et0:, precip:)
     end
 
+    # Each model's ET0 as WISP computes it (FAO-56 from the corrected hours, PLAN.md §8.5), so the
+    # variables it needs are asked for too
+    OPEN_METEO_VARIABLES = %w[
+      et0_fao_evapotranspiration precipitation temperature_2m dew_point_2m wind_speed_10m surface_pressure shortwave_radiation
+    ].freeze
+
     def open_meteo(model, dates)
-      locations = @points.map { |_, lat, lng|
-        cell = Grid.cell_for(lat, lng)
-        [cell.latitude, cell.longitude]
-      }
-      @client.hourly(locations, endpoint: :historical_forecast, model:,
-        variables: %w[et0_fao_evapotranspiration precipitation], start_date: dates.first, end_date: dates.last).map do |hourly|
-        days = Daily.from_hourly(hourly)
+      cells = @points.map { |_, lat, lng| Grid.cell_for(lat, lng) }
+      @client.hourly(cells.map { |cell| [cell.latitude, cell.longitude] }, endpoint: :historical_forecast, model:,
+        variables: OPEN_METEO_VARIABLES, start_date: dates.first, end_date: dates.last).zip(cells).map do |hourly, cell|
+        days = Daily.from_hourly(hourly, latitude: cell.latitude, longitude: cell.longitude)
         Series.new(et0: days.transform_values { |d| d["et0_in"] }, precip: days.transform_values { |d| d["precip_in"] })
       end
     end
