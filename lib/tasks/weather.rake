@@ -24,11 +24,17 @@ namespace :weather do
     "Open-Meteo calls; CONFIRM=yes queues a job per cell with a pivot"
   task recorrect: :environment do
     fetcher = Weather::Fetcher.new
+    # Cells with any stored day not on the current corrections, the last week's included
     plan = WeatherCell.with_pivots.order(:id).filter_map do |cell|
-      days = fetcher.recorrect_runs(cell).sum(&:size)
-      [cell, days, fetcher.recorrect_calls(cell)] if days.positive?
+      next unless fetcher.stale_days(cell).exists?
+      [cell, fetcher.recorrect_runs(cell).sum(&:size), fetcher.recorrect_calls(cell)]
     end
     days, calls = plan.sum { |_, d, _| d }, plan.sum { |_, _, c| c }
+    refresh = plan.size * (Weather::Fetcher::PAST_DAYS + Weather::Fetcher::FORECAST_DAYS).then do |d|
+      Weather::OpenMeteo.primary_models.size * Weather::RateLimiter.weight(locations: 1, variables: Weather::OpenMeteo::VARIABLES.size, days: d) +
+        Weather::RateLimiter.weight(locations: 1, variables: Weather::OpenMeteo::SOIL_VARIABLES.size, days: d)
+    end
+    calls += refresh # each job ends with a refresh of the last week and the forecast
     puts "#{plan.size} cells, #{days} days to refetch, about #{calls.round} Open-Meteo calls " \
       "(#{Weather::OpenMeteo.new.mode} API)"
     if ENV["CONFIRM"] == "yes"

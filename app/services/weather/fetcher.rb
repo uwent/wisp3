@@ -59,11 +59,15 @@ module Weather
       end
     end
 
-    # Runs of consecutive stored dates before the refresh window whose corrections aren't current
-    def recorrect_runs(cell)
+    # A cell's stored days whose corrections aren't the current ones
+    def stale_days(cell)
       current = Corrections::DAILY.map { |id| Corrections.label(id) }
-      cell.weather_days.where(date: ...(cell.today - PAST_DAYS)).order(:date).pluck(:date, :corrections)
-        .reject { |_, corrections| corrections == current }.map(&:first)
+      cell.weather_days.where.not("corrections = ?::jsonb", current.to_json)
+    end
+
+    # Runs of consecutive stale dates before the refresh window
+    def recorrect_runs(cell)
+      stale_days(cell).where(date: ...(cell.today - PAST_DAYS)).order(:date).pluck(:date)
         .slice_when { |a, b| b != a + 1 }.to_a
     end
 

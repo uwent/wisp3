@@ -163,11 +163,12 @@ RSpec.describe "Weather jobs" do
   end
 
   describe WeatherRecorrectJob do
-    it "refetches the cell's days through the current corrections" do
-      fetcher = instance_double(Weather::Fetcher, recorrect: 0)
+    it "refetches the cell's days through the current corrections, then its last week and forecast" do
+      fetcher = instance_double(Weather::Fetcher, recorrect: 0, refresh: nil)
       allow(Weather::Fetcher).to receive(:new).and_return(fetcher)
       described_class.perform_now(cell.id)
-      expect(fetcher).to have_received(:recorrect).with(cell)
+      expect(fetcher).to have_received(:recorrect).with(cell).ordered
+      expect(fetcher).to have_received(:refresh).with([cell]).ordered
     end
   end
 
