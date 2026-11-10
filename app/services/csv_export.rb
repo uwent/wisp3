@@ -27,6 +27,13 @@ module CsvExport
     csv << []
   end
 
+  # The frontmatter line naming the weather corrections (PLAN.md §8.5), for exports with weather in them
+  def weather_corrections
+    labels = Weather::Corrections::DAILY.map { |id| Weather::Corrections.label(id) }
+    {"Weather corrections" => "Open-Meteo's solar radiation and humidity corrected against Wisconsin weather " \
+      "stations, and reference ET computed by WISP from them (#{labels.join(", ")}); see Details"}
+  end
+
   def exporter(user)
     user && (user.name.present? ? "#{user.name} (#{user.email})" : user.email)
   end

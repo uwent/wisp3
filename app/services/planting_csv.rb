@@ -18,7 +18,8 @@ class PlantingCsv
       frontmatter(csv, "WISP daily report, #{planting.season_year} season", {
         "Operation" => field.pivot.farm.group.name,
         "Field" => "#{field.pivot.farm.name} / #{field.pivot.name} / #{field.name}",
-        "Days" => days.any? ? "#{days.first.inputs.date} to #{days.last.inputs.date}, one row each" : "none yet"
+        "Days" => days.any? ? "#{days.first.inputs.date} to #{days.last.inputs.date}, one row each" : "none yet",
+        **weather_corrections
       }, exported_by: @exported_by, about_url: @about_url)
       csv << ["Farm", "Pivot", "Equipment", "Field", "Area (acres)"]
       csv << [text(field.pivot.farm.name), text(field.pivot.name), text(field.pivot.equipment), text(field.name),

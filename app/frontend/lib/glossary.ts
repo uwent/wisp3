@@ -59,7 +59,16 @@ export const GLOSSARY: GlossaryEntry[] = [
     matches: ['reference ET', 'ET0'],
     definition:
       'The water a well-watered reference grass would use in a day, calculated from the weather (FAO-56 ' +
-      'Penman-Monteith). Crop ET is this amount adjusted for the crop’s canopy.',
+      'Penman-Monteith). WISP works it out each hour from corrected solar radiation and humidity. Crop ET is this ' +
+      'amount adjusted for the crop’s canopy.',
+  },
+  {
+    id: 'solar_radiation',
+    term: 'Solar radiation',
+    matches: ['solar radiation', 'shortwave radiation'],
+    definition:
+      'The sunshine reaching the ground, measured as energy per area (MJ/m² over a day). It drives most of a ' +
+      'day’s reference ET. Weather models tend to overestimate it, so WISP corrects it against weather stations.',
   },
   {
     id: 'crop_et',

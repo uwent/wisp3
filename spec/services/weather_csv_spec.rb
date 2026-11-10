@@ -6,13 +6,14 @@ RSpec.describe WeatherCsv do
 
   before do
     pivot.weather_cell.weather_days.create!(date: Date.new(2026, 7, 1), et0_in: 0.21, tmax_f: 80, tmin_f: 60,
-      soil_moisture_0_7cm: 0.25, model: "m", hours: 24, fetched_at: Time.current)
+      soil_moisture_0_7cm: 0.25, et0_openmeteo_in: 0.24, corrections: ["openmeteo-shortwave v1", "et0-fao56 v1"],
+      model: "m", hours: 24, fetched_at: Time.current)
     pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "m",
       payload: {days: [{date: "2026-07-02", tmax_f: 90, tmin_f: 70}]})
   end
 
   it "has a label for every stored weather variable" do
-    expect(described_class::COLUMNS.keys).to eq(WeatherPanel::COLUMNS)
+    expect(described_class::COLUMNS.keys).to eq(WeatherPanel::ALL_COLUMNS)
   end
 
   it "opens with frontmatter, then one row per day with every variable, forecast days marked" do
@@ -25,7 +26,10 @@ RSpec.describe WeatherCsv do
     expect(data.map { |row| [row["Date"], row["Forecast"]] }).to eq([%w[2026-07-01 no], %w[2026-07-02 yes]])
     expect(data.first).to include("Reference ET (in)" => "0.2100", "Soil moisture, 0–3 in (m³/m³)" => "0.2500",
       "Precipitation (in)" => nil, "GDD (50/86 °F)" => "20.0000")
-    expect(data.last).to include("GDD since the first day (50/86 °F)" => "48.0000")
+    expect(data.last).to include("GDD since the first day (50/86 °F)" => "48.0000", "Corrections" => nil)
+    expect(data.first).to include("Reference ET, Open-Meteo's (in)" => "0.2400", "Corrections" => "openmeteo-shortwave v1 et0-fao56 v1")
+    expect(rows.flatten.compact.find { |line| line.start_with?("Weather corrections:") })
+      .to include("openmeteo-shortwave v1, openmeteo-rh v1, et0-fao56 v1")
   end
 
   it "gives the cell's elevation, and says how many days are forecast" do

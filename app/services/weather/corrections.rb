@@ -9,6 +9,12 @@ module Weather
     RH = "openmeteo-rh"
     ET0 = "et0-fao56"
     ENSEMBLE_ET0 = "et0-ensemble-ratio"
+    DAILY = [SHORTWAVE, RH, ET0].freeze # what a stored or forecast day goes through
+
+    # Each correction for the About page and the admin weather page
+    def self.summaries
+      all.map { |c| c.to_h.except(:table).merge(label: c.label) }
+    end
 
     Correction = Data.define(:id, :variable, :method, :fitted_against, :effect, :evidence, :version, :fitted, :source, :table) do
       def label = "#{id} v#{version}"

@@ -2,6 +2,7 @@
   import { Form, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
+  import WeatherCorrectionsTable, { type WeatherCorrection } from '@/lib/docs/WeatherCorrectionsTable.svelte'
   import { formatTimestamp } from '@/lib/dates'
   import { adminHealthChecks, adminWeather } from '@/routes'
   import type { WeatherCellStatus } from '@/types/serializers'
@@ -15,6 +16,7 @@
     api,
     cells,
     pending_jobs,
+    weather_corrections,
   }: {
     health_check: Health
     api: {
@@ -26,6 +28,7 @@
     }
     cells: WeatherCellStatus[]
     pending_jobs: number
+    weather_corrections: WeatherCorrection[]
   } = $props()
 
   // While weather jobs are queued or running, reload usage and cells so fetches show up as they land
@@ -195,4 +198,14 @@
       </tbody>
     </table>
   {/if}
+</section>
+
+<section class="space-y-2" aria-labelledby="corrections-heading">
+  <h2 id="corrections-heading" class="font-medium">Weather corrections</h2>
+  <p class="text-sm text-ink-muted">
+    Applied to every day fetched from Open-Meteo (PLAN.md §8.5), from <code>db/reference/weather_corrections</code>. A
+    day stored before a table's current version lists the older label; refetch with
+    <code>bin/rails weather:recorrect</code>.
+  </p>
+  <WeatherCorrectionsTable corrections={weather_corrections} />
 </section>

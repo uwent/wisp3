@@ -12,7 +12,7 @@ class SeasonReportCsv
 
   def to_csv
     generate do |csv|
-      frontmatter(csv, "WISP season report, #{@year}", summary, exported_by: @exported_by, about_url: @about_url)
+      frontmatter(csv, "WISP season report, #{@year}", summary.merge(weather_corrections), exported_by: @exported_by, about_url: @about_url)
       fields_section(csv)
       csv << []
       pivots_section(csv)

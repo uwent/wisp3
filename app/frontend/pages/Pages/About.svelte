@@ -5,6 +5,7 @@
   import Term from '@/lib/components/Term.svelte'
   import CanopyCurvePlot from '@/lib/docs/CanopyCurvePlot.svelte'
   import Introduction from '@/lib/docs/Introduction.svelte'
+  import WeatherCorrectionsTable, { type WeatherCorrection } from '@/lib/docs/WeatherCorrectionsTable.svelte'
   import { GLOSSARY } from '@/lib/glossary'
   import { FULL_COVER_PCT, READING_EVERY } from '@/lib/guidance'
   import { units as unitsFor } from '@/lib/units'
@@ -12,7 +13,8 @@
   // The About page (PLAN.md Phase 6.5): WISP's documentation, replacing the legacy PDF user guide.
   // Public; the crop table comes from the plants table, the soil table from soil_types (with each
   // value's basis from db/reference/soil_types.yml), the glossary from lib/glossary.ts and the
-  // reading advice from lib/guidance.ts, so they stay in step with the app.
+  // reading advice from lib/guidance.ts, and the weather corrections from
+  // db/reference/weather_corrections, so they stay in step with the app.
 
   type Plant = { key: string; name: string; root_zone_in: number; lai_curve: boolean; cover_curve: boolean }
   // A crop's percent cover curve, from db/reference/canopy_curves.yml (PagesController#canopy_curves)
@@ -43,11 +45,13 @@
     plants,
     canopy_curves: curves,
     soil_types: soils,
+    weather_corrections: corrections,
     defaults,
   }: {
     plants: Plant[]
     canopy_curves: CanopyCurve[]
     soil_types: Soil[]
+    weather_corrections: WeatherCorrection[]
     defaults: {
       mad_pct: number
       lead_days: number
@@ -96,8 +100,10 @@
     { id: 'soils', title: 'Soils' },
     { id: 'crops', title: 'Crops' },
     { id: 'canopy', title: 'Canopy curves' },
+    { id: 'weather', title: 'Weather' },
     { id: 'glossary', title: 'Glossary' },
     { id: 'accessibility', title: 'Accessibility' },
+    { id: 'changes', title: "What's changed" },
     { id: 'contact', title: 'Credits and contact' },
   ]
 </script>
@@ -493,6 +499,29 @@ t: days since emergence; t′: days since the decline starts</code
       {/each}
     </div>
 
+    <h2 id="weather">Weather</h2>
+    <p>
+      WISP's weather comes from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>, for the
+      grid cell (about 9 km across) around each pivot: the National Blend of Models (NBM) where it has a value, and
+      Open-Meteo's best match of other models where it doesn't. The last week is refreshed as the models revise it; the
+      next {defaults.forecast_days} days are the latest forecast, and the field chart's range of outcomes comes from the 31
+      runs of the GFS ensemble forecast.
+    </p>
+    <h3 id="weather-corrections">Weather corrections</h3>
+    <p>
+      Checked against 80 Wisconet weather stations across Wisconsin in 2025 and 2026, Open-Meteo's solar radiation reads
+      15–20% high and its humidity runs dry, so its <Term id="reference_et">reference ET</Term> came out about 16% above what
+      the stations' own measurements give. WISP corrects both, hour by hour, and works out reference ET itself from the corrected
+      hours with the same FAO-56 equation. The corrections and the evidence for them come from AgWeather, the UW–Madison weather
+      service, which made the comparison. Each day of weather records which corrections it went through, and the weather downloads
+      include the values before them.
+    </p>
+    <WeatherCorrectionsTable {corrections} />
+    <p>
+      The corrections were fitted in Wisconsin. Pivots elsewhere get them too until they're checked against stations in
+      other states.
+    </p>
+
     <h2 id="glossary">Glossary</h2>
     <dl>
       {#each GLOSSARY as entry (entry.id)}
@@ -530,6 +559,17 @@ t: days since emergence; t′: days since the decline starts</code
       at <a href="mailto:agweather@cals.wisc.edu">agweather@cals.wisc.edu</a>, with the page and what happened. We'll
       fix it, or help you get the same information another way.
     </p>
+
+    <h2 id="changes">What's changed</h2>
+    <dl>
+      <dt>November 2026: weather corrections</dt>
+      <dd>
+        Solar radiation and humidity are now corrected and reference ET is worked out by WISP (see
+        <a href="#weather-corrections">Weather corrections</a>). Reference ET is about 11% lower than WISP showed in
+        2026, most of that in midsummer, so fields use water more slowly than before and need irrigating less often.
+        Every season's weather has been recalculated the same way, so earlier seasons' numbers change too.
+      </dd>
+    </dl>
 
     <h2 id="contact">Credits and contact</h2>
     <p>

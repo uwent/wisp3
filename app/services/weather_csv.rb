@@ -1,12 +1,13 @@
 # A pivot's weather as CSV: frontmatter (CsvExport), then every variable WISP stores for its weather
 # grid cell, one row per day (WeatherPanel's days: the stored ones, then the latest forecast's,
-# marked), with growing degree days. Values as stored.
+# marked), with growing degree days, Open-Meteo's values before the corrections, and the corrections
+# each day went through. Values as stored.
 class WeatherCsv
   include CsvExport
 
   # A label for each of WeatherPanel::COLUMNS, with its unit (soil depths as on the weather charts)
   COLUMNS = {
-    et0_in: "Reference ET (in)", precip_in: "Precipitation (in)", rain_in: "Rain (in)", snowfall_in: "Snowfall (in)",
+    et0_in: "Reference ET (in)", shortwave_mj: "Solar radiation (MJ/m²)", precip_in: "Precipitation (in)", rain_in: "Rain (in)", snowfall_in: "Snowfall (in)",
     snow_depth_in: "Snow depth (in)", tmax_f: "High temperature (°F)", tmin_f: "Low temperature (°F)",
     tmean_f: "Mean temperature (°F)", dew_point_f: "Dew point (°F)", rh_mean_pct: "Relative humidity, mean (%)",
     rh_min_pct: "Relative humidity, low (%)", vpd_max_kpa: "Vapor pressure deficit, high (kPa)",
@@ -15,10 +16,13 @@ class WeatherCsv
     soil_temp_0_7cm_f: "Soil temperature, 0–3 in (°F)", soil_temp_7_28cm_f: "Soil temperature, 3–11 in (°F)",
     soil_temp_28_100cm_f: "Soil temperature, 11–39 in (°F)", soil_temp_100_255cm_f: "Soil temperature, 39–100 in (°F)",
     soil_moisture_0_7cm: "Soil moisture, 0–3 in (m³/m³)", soil_moisture_7_28cm: "Soil moisture, 3–11 in (m³/m³)",
-    soil_moisture_28_100cm: "Soil moisture, 11–39 in (m³/m³)", soil_moisture_100_255cm: "Soil moisture, 39–100 in (m³/m³)"
+    soil_moisture_28_100cm: "Soil moisture, 11–39 in (m³/m³)", soil_moisture_100_255cm: "Soil moisture, 39–100 in (m³/m³)",
+    et0_openmeteo_in: "Reference ET, Open-Meteo's (in)", shortwave_raw_mj: "Solar radiation, uncorrected (MJ/m²)",
+    dew_point_raw_f: "Dew point, uncorrected (°F)", rh_mean_raw_pct: "Relative humidity, mean, uncorrected (%)",
+    rh_min_raw_pct: "Relative humidity, low, uncorrected (%)"
   }.freeze
 
-  UNITS = "inches, °F, mph, kPa and percent, and soil moisture as a fraction of the soil's volume (m³/m³), as stored"
+  UNITS = "inches, °F, mph, kPa, MJ/m² and percent, and soil moisture as a fraction of the soil's volume (m³/m³), as stored"
 
   def initialize(pivot, year, days, exported_by: nil, about_url: nil)
     @pivot, @year, @days, @exported_by, @about_url = pivot, year, days, exported_by, about_url
@@ -33,12 +37,13 @@ class WeatherCsv
         "Location" => cell && "the weather grid cell centered at #{cell.latitude}, #{cell.longitude}" \
           "#{", #{cell.elevation_m.round} m above sea level" if cell.elevation_m}",
         "Days" => days_line,
-        "Growing degree days" => @days.any? ? "the 50/86 °F method, added up from #{@days.first.date}" : nil
+        "Growing degree days" => @days.any? ? "the 50/86 °F method, added up from #{@days.first.date}" : nil,
+        **weather_corrections
       }, exported_by: @exported_by, about_url: @about_url, units: UNITS)
-      csv << ["Date", "Forecast", *COLUMNS.values, "GDD (50/86 °F)", "GDD since the first day (50/86 °F)"]
+      csv << ["Date", "Forecast", *COLUMNS.values, "GDD (50/86 °F)", "GDD since the first day (50/86 °F)", "Corrections"]
       @days.each do |day|
         csv << [day.date, day.forecast ? "yes" : "no", *COLUMNS.keys.map { |column| num(day.public_send(column)) },
-          num(day.gdd), num(day.gdd_since_emergence)]
+          num(day.gdd), num(day.gdd_since_emergence), day.corrections.join(" ").presence]
       end
     end
   end

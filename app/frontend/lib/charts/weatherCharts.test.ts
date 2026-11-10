@@ -7,6 +7,7 @@ import { units } from '../units'
 import { DEFAULT_WINDOW_DAYS } from './fieldChart'
 import type { Palette } from './palette'
 import {
+  correctedOn,
   defaultView,
   type FieldRain,
   panelCsvRows,
@@ -33,10 +34,11 @@ const palette: Palette = {
   dark: false,
 }
 
-// 60 observed days from Jun 1, then 5 forecast days
+// 60 observed days from Jun 1, then 5 forecast days; corrected from Jun 3 (the first two stored before)
 const days = Array.from({ length: 65 }, (_, i) => ({
   date: addDays('2026-06-01', i),
   forecast: i >= 60,
+  corrections: i >= 2 ? ['openmeteo-shortwave v1', 'openmeteo-rh v1', 'et0-fao56 v1'] : [],
   tmax_f: 80,
   tmin_f: 60,
   soil_moisture_0_7cm: 0.2,
@@ -313,6 +315,25 @@ describe('weather charts', () => {
     expect(html.indexOf('Reference ET<')).toBeLessThan(html.indexOf('Reference ET total'))
     expect(html).toContain('0.20 in')
     expect(html).toContain('—')
+    expect(html).not.toContain('Corrected') // stored before the corrections
+    const later = formatter([{ ...param(0, 'Reference ET', 0.2), axisValue: '2026-06-03' }])
+    expect(later).toContain('Corrected (About › Weather)')
+  })
+
+  it('marks the panels whose values are corrected', () => {
+    const corrected = Object.fromEntries(
+      weatherPanels(units('imperial'), { field, cropEt })
+        .filter((p) => p.corrected)
+        .map((p) => [p.key, p.corrected]),
+    )
+    expect(corrected).toEqual({
+      et: 'et0-fao56',
+      humidity: 'openmeteo-rh',
+      vpd: 'openmeteo-rh',
+      solar: 'openmeteo-shortwave',
+    })
+    expect(correctedOn(days[2], 'openmeteo-rh')).toBe(true)
+    expect(correctedOn(days[0], 'openmeteo-rh')).toBe(false)
   })
 })
 

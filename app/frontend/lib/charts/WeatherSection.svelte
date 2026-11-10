@@ -7,7 +7,14 @@
   import { motion } from '../motion'
   import { units as unitsFor, type Units } from '../units'
   import ChartCard from './ChartCard.svelte'
-  import { panelCsvRows, panelSummary, panelTable, weatherChartOption, type WeatherPanel } from './weatherCharts'
+  import {
+    correctedOn,
+    panelCsvRows,
+    panelSummary,
+    panelTable,
+    weatherChartOption,
+    type WeatherPanel,
+  } from './weatherCharts'
   import { about } from '@/routes'
   import type { WeatherPanelDay } from '@/types/serializers'
 
@@ -35,6 +42,20 @@
   const panels = $derived(build(units))
   const stored = unitsFor('imperial')
 
+  // The labels of the panel's correction that its days went through ("openmeteo-rh v1"), for its CSV
+  function correctionsLine(panel: WeatherPanel): string | null {
+    if (!panel.corrected) return null
+    const labels = new Set(
+      days.flatMap((day) => day.corrections.filter((label) => label.startsWith(`${panel.corrected} v`))),
+    )
+    const uncorrected = days.filter((day) => !correctedOn(day, panel.corrected!)).length
+    if (!labels.size) return 'none (stored before the corrections)'
+    return (
+      `${[...labels].join(', ')}; see Details` +
+      (uncorrected ? ` (${uncorrected} ${uncorrected === 1 ? 'day was' : 'days were'} stored before it)` : '')
+    )
+  }
+
   function download(key: string) {
     const panel = build(stored).find((p) => p.key === key)!
     const unit = panel.unit(stored)
@@ -49,6 +70,7 @@
           `${days[0].date} to ${days.at(-1)!.date}, one row each` +
           (forecast ? `; ${forecast === 1 ? 'the last is' : `the last ${forecast} are`} from the latest forecast` : ''),
         Units: `${unit}, as stored`,
+        'Weather corrections': correctionsLine(panel),
         'Exported by': user && (name ? `${name} (${user.email})` : user.email),
         Exported: exportedAt(),
         Source: SOURCE,
@@ -76,8 +98,11 @@
     {#if open}
       <div class="space-y-3" transition:slide={{ duration: motion(200) }}>
         <p class="text-xs text-ink-muted">
-          Modeled by Open-Meteo for the area around this pivot, with the forecast shaded. Scroll or pinch a chart to see
-          more of the season, and select the (i) on a chart to learn what it shows. {@render children?.()}
+          Modeled by Open-Meteo for the area around this pivot, with the forecast shaded; WISP corrects its sunshine and
+          humidity and works out reference ET from them (<a
+            href="{about().url}#weather-corrections"
+            class="text-brand-600 underline underline-offset-2">weather corrections</a
+          >). Scroll or pinch a chart to see more of the season, and select the (i) on a chart to learn what it shows. {@render children?.()}
           Each chart's data downloads from its "Summary and data", or
           <a href={exports.href} class="text-brand-600 underline underline-offset-2" download
             >download all of this pivot's weather</a

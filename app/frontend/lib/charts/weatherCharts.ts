@@ -48,7 +48,16 @@ export type WeatherPanel = {
   totals?: Series[]
   /** Reference lines (e.g. the field's capacity and wilting point) */
   lines?: { name: string; value: number }[]
+  /**
+   * The correction its values go through (Weather::Corrections' id, e.g. 'openmeteo-rh'): the tooltip
+   * says "Corrected" on days whose corrections list it, and its CSV names it
+   */
+  corrected?: string
 }
+
+/** Whether a day's values went through a correction (its labels are "id vN") */
+export const correctedOn = (day: WeatherPanelDay, id: string) =>
+  day.corrections.some((label) => label.startsWith(`${id} v`))
 
 const DEPTHS = [
   ['0_7cm', '0–3 in'],
@@ -167,8 +176,8 @@ export function weatherPanels(
       title: 'Evapotranspiration',
       unit: (u) => u.label('depth'),
       info:
-        'Reference ET is the water a well-watered grass would use, from the FAO-56 Penman–Monteith equation on the ' +
-        "model's temperature, humidity, wind and sunshine. " +
+        'Reference ET is the water a well-watered grass would use, worked out by WISP with the FAO-56 Penman–Monteith ' +
+        "equation from the model's temperature and wind and its corrected humidity and sunshine (About › Weather). " +
         (cropEt
           ? "Crop ET is this field's estimate: reference ET adjusted for the crop's canopy, which is what the balance " +
             "takes out of the soil. It's lower than reference ET while the canopy is small. In the forecast it's the projection's, " +
@@ -177,6 +186,7 @@ export function weatherPanels(
           : "Each field's crop ET (reference ET adjusted for its canopy) is on the field's page. The lower panel adds " +
             'reference ET up from the first day in view.'),
       bars: 'group',
+      corrected: 'et0-fao56',
       series: [
         { name: 'Reference ET', color: (p) => p.warm, value: (day) => depth(day.et0_in) },
         ...(cropEt
@@ -273,7 +283,9 @@ export function weatherPanels(
       unit: () => '%',
       info:
         'How close the air is to saturation, as the daily mean and the daily low (usually mid-afternoon). Dry ' +
-        'afternoons raise crop water use; long humid spells favor leaf diseases such as late blight and white mold.',
+        'afternoons raise crop water use; long humid spells favor leaf diseases such as late blight and white mold. ' +
+        "Corrected for the model's tendency to run dry (About › Weather).",
+      corrected: 'openmeteo-rh',
       series: [
         { name: 'Daily mean', color: (p) => p.rain, value: (day) => day.rh_mean_pct },
         { name: 'Daily low', color: (p) => p.canopy, value: (day) => day.rh_min_pct },
@@ -286,7 +298,9 @@ export function weatherPanels(
       info:
         "How much more water vapor the air could hold: the air's drying power, and a driver of transpiration. About " +
         '0.4–1.5 kPa suits most crops. Above 1.5 kPa plants close their stomata to save water, which slows growth; ' +
-        "below 0.4 kPa transpiration and nutrient uptake slow. This is the day's highest value, usually mid-afternoon.",
+        "below 0.4 kPa transpiration and nutrient uptake slow. This is the day's highest value, usually mid-afternoon, " +
+        'from the temperature and the corrected humidity.',
+      corrected: 'openmeteo-rh',
       series: [{ name: 'Vapor pressure deficit', color: (p) => p.warm, value: (day) => day.vpd_max_kpa }],
       lines: [
         { name: '0.4 kPa', value: 0.4 },
@@ -311,6 +325,18 @@ export function weatherPanels(
       unit: () => '%',
       info: 'The share of the sky covered by cloud, averaged over the day. Cloudy days cut sunlight, which lowers ET and slows growth.',
       series: [{ name: 'Cloud cover', color: (p) => p.inkMuted, value: (day) => day.cloud_cover_pct }],
+    },
+    {
+      key: 'solar',
+      title: 'Solar radiation',
+      unit: () => 'MJ/m²',
+      info:
+        'The sunshine reaching the ground over the day, the main driver of ET: up to about 30 MJ/m² on a clear ' +
+        "Wisconsin day in June, under 5 on a dark, rainy one. Corrected for the model's tendency to read high, " +
+        'most of all under cloud (About › Weather).',
+      bars: 'group',
+      corrected: 'openmeteo-shortwave',
+      series: [{ name: 'Solar radiation', color: (p) => p.warm, value: (day) => day.shortwave_mj }],
     },
   ]
 }
@@ -462,7 +488,11 @@ export function weatherChartOption(
       : undefined,
     tooltip: {
       ...base.tooltip,
-      formatter: (params: unknown) => tooltip(params, unit, panel.bars || totals.length ? 2 : 1, sparse),
+      formatter: (params: unknown) =>
+        tooltip(params, unit, panel.bars || totals.length ? 2 : 1, sparse, (date) => {
+          const day = panel.corrected ? days.find((d) => d.date === date) : undefined
+          return !!day && correctedOn(day, panel.corrected!)
+        }),
     },
     axisPointer: totals.length ? { link: [{ xAxisIndex: 'all' }] } : undefined,
     grid: grids,
@@ -524,8 +554,17 @@ type TooltipParam = {
   data?: unknown
 }
 
-/** The day, then each series in order (daily values before running totals); sparse series only on days they have a value */
-function tooltip(params: unknown, unit: string, digits: number, sparse: Set<string>): string {
+/**
+ * The day, then each series in order (daily values before running totals); sparse series only on
+ * days they have a value; "Corrected" below on a day whose values went through the panel's correction
+ */
+function tooltip(
+  params: unknown,
+  unit: string,
+  digits: number,
+  sparse: Set<string>,
+  corrected: (date: string) => boolean = () => false,
+): string {
   const all = ((Array.isArray(params) ? params : [params]) as TooltipParam[]).toSorted(
     (a, b) => a.seriesIndex - b.seriesIndex,
   )
@@ -538,7 +577,10 @@ function tooltip(params: unknown, unit: string, digits: number, sparse: Set<stri
     const value = typeof param.value === 'number' ? `${param.value.toFixed(digits)} ${unit}${unused}` : '—'
     return `<tr><td style="padding-right:12px">${param.marker}${param.seriesName}</td><td style="text-align:right"><strong>${value}</strong></td></tr>`
   })
-  return `<strong>${formatDate(all[0].axisValue, { weekday: true })}</strong><table>${rows.join('')}</table>`
+  const note = corrected(all[0].axisValue)
+    ? '<div style="opacity:.7;margin-top:2px">Corrected (About › Weather)</div>'
+    : ''
+  return `<strong>${formatDate(all[0].axisValue, { weekday: true })}</strong><table>${rows.join('')}</table>${note}`
 }
 
 /** Decimals for a panel's values in words and tables, as in its tooltip: two for amounts, one for levels */

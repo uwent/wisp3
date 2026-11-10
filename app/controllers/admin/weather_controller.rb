@@ -15,7 +15,8 @@ module Admin
           limits: (client.mode == :free) ? Weather::RateLimiter::FREE_LIMITS : nil
         },
         cells: WeatherCellStatusSerializer.new(WeatherCellStatus.all).serializable_hash,
-        pending_jobs: WeatherJob.pending
+        pending_jobs: WeatherJob.pending,
+        weather_corrections: Weather::Corrections.summaries
       }
     end
 
