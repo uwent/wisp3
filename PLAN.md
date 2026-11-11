@@ -806,7 +806,8 @@ USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free a
 2. **Weather update polling (C, follow-up)**: small, and it shows on every dashboard visit.
 3. **RDS restore test (D)**: once, before real growers' data is on the server.
 4. ~~**Time travel (F)**~~ (built 2026-11-10): the beta runs over the winter, when every season has ended, so testers and demos can only see an in-season page this way.
-5. **Closed beta (D)**, then launch by ~Mar 20, 2027. The screen reader walkthrough (A) and wording reviews happen alongside.
+5. **Beta readiness (G)** (added 2026-11-11, from a UX review): seasons that keep their history, season end dates, crops without a curve, daily entry, irrigation systems other than pivots, wording, new crops, all operations at once and a sample farm. On the `beta-readiness` branch; G.1–G.4 and G.9 before any tester sets up a field.
+6. **Closed beta (D)**, then launch by ~Mar 20, 2027. The screen reader walkthrough (A) and wording reviews happen alongside.
 
 Canopy and LAI research continues without outside reviewers (Phase 6.7, Q2): our own analysis, published literature, and readings collected in the 2027 season (After launch).
 
@@ -974,6 +975,138 @@ Checklist:
 5. **Words:** the projection's legend and the outlook say "what happened next" for observed weather; guidance and tasks already follow `today`. A short paragraph on the About page (how to use it for training and demos), and a glossary entry only if the label needs one.
 6. **Tests:** request specs (as_of honored inside the season; ignored outside it, in the future and when malformed; entries, irrigation and readings after it left out; no weather update queued; another group's field still 404); a component test of the read-only page (no editable cells, banner, Return link); the time-travel page in `e2e/accessibility.spec.ts` (banner contrast, light and dark) and a smoke test (pick a date, see the banner, return).
 7. **Not in scope:** the dashboard, map and digest; writing while time travelling; the archive replay (step 3) until the archive has a season.
+
+#### G. Beta readiness (UX review, 2026-11-11)
+
+A review before the beta: the app driven in a browser as the demo grower (desktop and phone widths), a new account taken through sign-up and quick setup, and the code read behind anything that looked off. Nothing was broken; these are the pain points, gaps and confusions a new grower would meet, and the crops worth adding. Ben agreed to all of it (2026-11-11) and asked for irrigation systems beyond pivots and linears (G.5) and a link from the dashboard's pivot names (G.1).
+
+**Order** (on the `beta-readiness` branch, merged to `main` in pieces as each step passes CI): G.1 quick fixes; G.9 seasons and history (it changes what the balance reads, so it goes in before the beta's data does, and G.5's pivot moves rely on it); G.2 and G.3 (what a grower meets in the first week); G.4 daily entry; G.5 irrigation systems; G.6 wording; G.7 crops; G.8 operations, next season and the sample farm (which shows G.5's systems). Decisions: Ben, 2026-11-11, recorded in each step.
+
+##### G.1 Quick fixes
+
+- [ ] **Dashboard: the pivot's name links to its page** (`Dashboard/Show.svelte`, the `Pivot:` heading), and the same on the map's field list (`FieldCard`'s `Pivot:` line) and the pivot popup. Rename the pivot's "View" link to "Irrigation", the name Setup gives the same page.
+- [ ] **Readings due stay visible:** the "Soil moisture … due" and "Percent cover … due" chips sit inside the "How … is modeled" `<details>` (`Fields/Show.svelte`), so collapsing the text hides them. Move them out, beside the canopy warning.
+- [ ] "On the 1 days you entered rain" (`Fields/Show.svelte`, season totals): pluralize.
+- [ ] **Phone nav:** at 390 px the tab row scrolls sideways and "Setup" is cut off with no sign of more. Add an edge fade or scroll hint (or a "More" menu for About and the admin items); keep the bits-ui rule in CLAUDE.md (items left out, not hidden).
+
+##### G.2 Season end dates
+
+Every planting defaults to an end date of Nov 30 (`Planting.defaults_for`, as in legacy), and quick setup doesn't ask for one. A potato harvested in September stays in season for two more months: the dashboard shows it, the daily email lists it, and its tasks keep asking for readings (the demo's R1 potato on Nov 11: "Percent cover: Oct 2 (40 days ago) · due").
+
+- [ ] **A typical season length per crop** (days from emergence to harvest) in `db/reference/canopy_curves.yml` (`season_days`), with its source: the AquaCrop maturity or FAO-56 Table 11 totals already gathered in `docs/canopy/02-published-curves.md`, shortened to Wisconsin practice where the notes say so (snap bean and sweet corn harvested green). Crops with no row get one from extension timing, or keep Nov 30.
+- [ ] `Planting.defaults_for` uses it: end date = emergence + `season_days`. It moves when the emergence date changes in the form, until the grower sets the end date themselves (the same "suggested until chosen" pattern as the soil suggestion).
+- [ ] **Quick setup asks for the harvest date** ("Harvest (expected)", filled from the crop and emergence date, editable), so a field set up in a few minutes ends when it should.
+- [ ] **"End the season" on the field page** (a button while the planting is in season and past its typical length: sets the end date to today after a confirm). Owners and members alike; it is ordinary planting data.
+- [ ] Existing plantings keep their dates. The About page's setup section says what the default is.
+
+##### G.3 Crops without a canopy curve
+
+Onion, alfalfa, mint, asparagus and Other have no curve (`canopy_curves.yml`), so until the first cover reading their canopy is 0 and crop ET is bare-soil evaporation (at most 0.02 in a day, `CropEt.bare_soil`). The field page says so in "How … is modeled", but the dashboard card, map badge and email show the field as OK and never needing water: a silent, confident wrong answer.
+
+- [ ] **A status of its own**: a planting in season, past emergence, with no curve and no reading gets `needs_canopy` in place of OK/Full (`PlantingStatus`): a caution-style badge "No canopy data", the outlook "WISP can't estimate {crop} water use until you enter a percent cover reading", and a task that is always due. The dashboard counts, map filter ("Needs water"), and digest (its own line, not "no irrigation needed") follow. `Outlook` and `lib/outlook.ts` change together, with cases in `outlook_cases.json`.
+- [ ] **Setup says so when the crop is picked** (quick setup, the planting form): "There's no canopy curve for onion, so WISP needs your percent cover readings, about weekly, to estimate its water use."
+- [ ] Onion gets a stopgap curve in G.7 if one can be justified; then it leaves this list.
+
+##### G.4 Daily entry as the morning page
+
+Daily entry has rain, irrigation and soil moisture per field, but nothing for a shared rain gauge and no canopy readings. On River pivot (8 fields) one gauge reading is typed 8 times, or entered on the field group's page; weekly cover readings for 10 fields mean opening 10 field pages.
+
+- [ ] **Rain gauge groups on daily entry** (field groups, `FieldGroupEntry.record`): a "Rain gauges" section at the top, one rain input per group, each listing its fields. A field in a group shows the group's value in its rain cell, muted (a field's own entry still wins, as now).
+- [ ] **"Same rain for all fields"** on each pivot: fills its fields' empty rain inputs in the browser (stored per field as now; no new data). Simpler than a pivot-level rain entry, and nothing in the balance changes.
+- [ ] **An optional percent cover column** (LAI for LAI plantings), shown for fields in season after emergence whose canopy reading is due or that have no curve; written with `CanopyObservation.record`. Hidden once the canopy is closed or vines are killed (`PlantingTasks`).
+- [ ] Fields with no crop in season are listed below the rest, collapsed ("3 fields with no crop this season").
+
+##### G.5 Irrigation systems other than pivots
+
+WISP assumes every field sits under a center pivot or linear move, and says "pivot" everywhere. Research farms use travelers (hard hose reels with a big gun), specialty crop growers drip, and some fields solid set; some growers just want a location.
+
+**What the "pivot" does in the model:** only two things depend on it. Its **location** picks the weather cell (and the soil suggestion), and it holds **irrigation applied to several fields at once** (`pivot_irrigations`, inches or run hours: pump gpm × hours ÷ the fields' acres). The shape is drawn and measured, never used by the balance. So other systems need new shapes and words, not a new engine. Run hours already work for any system with a flow rate and known acres.
+
+**Kinds** (`pivots.kind`, a check constraint, `Pivot::KINDS`, mirrored in `lib/geo.ts`):
+
+| Kind | Called (one) | Shape on the map | Dimensions |
+|---|---|---|---|
+| `center` | Pivot | Circle or arc (as now) | Radius, arc |
+| `linear` | Linear | Rectangle (as now) | Machine length, travel, bearing |
+| `traveler` | Traveler | A point | None; area from its fields (see below) |
+| `solid_set` | Solid set | A point (a marker) | None; area from its fields |
+| `drip` | Drip | A point | None; area from its fields |
+| `point` | Location | A point | None. For anything else, or growers who don't want to draw a shape |
+
+Point kinds keep the pump capacity (labelled **Flow**), so run hours work for a drip zone or solid set block as for a pivot. Drawing a block's outline (a polygon) for solid set and drip is a later step; the point is enough for weather and soil.
+
+**What an irrigation system is in WISP** (2026-11-11): a place that is watered one way, not a machine. A pivot is both, which hid the difference. A **traveler** is one machine pulled by a tractor from field to field, so in WISP each field (or set of fields) it waters is its own Traveler system at that field's location, and the machine's name goes in Equipment ("Hard hose reel #2"). Irrigation is entered on that system or field for the day it ran there. One record for the machine with no location wouldn't work: weather comes from the location, and the fields it moves between can be in different weather cells (about 9 km across, so usually not). The same applies to a drip block or solid set block. That's also why the traveler is a point and not a lane: a field is covered by many pulls in different places. A shared Equipment name lets a later step list a machine's runs across fields if growers want that.
+
+**Words:**
+- [ ] **One item names its kind**: "Pivot: North 160", "Traveler: Lane 3", "Drip: Tomato block". The noun comes from one place: `Pivot::KIND_NAMES` serialized as `kind_name` on the pivot serializers, so Svelte pages, the digest, CSVs and admin pages can't disagree.
+- [ ] **Collective words use "irrigation system"**: "Set up an irrigation system", Setup's "Add irrigation system", the map's list, the digest's grouping ("by weather zone, irrigation system and field"), the About page, the glossary. A pivot's irrigation page becomes "{kind name}: {name}" with "Irrigation applied by this {kind name lower}".
+- [ ] Sentences that only make sense for pivots ("place the pivot where it really is", "Click the map at the center of the pivot") get per-kind versions in the shape editor.
+- [ ] Legacy users keep seeing "Pivot" for their pivots; nothing they know changes name.
+
+**Decided (Ben, 2026-11-11):** keep `Pivot`, `pivots`, `pivot_irrigations` and the `/pivots` URLs in code, with a line in CLAUDE.md ("a pivot in code is any irrigation system; growers see its kind's name"). The collective word is **"irrigation system"** ("system" where space is short).
+
+**Build:**
+- [ ] Migration: widen the kind check constraint; point kinds (`traveler`, `solid_set`, `drip`, `point`) hold no dimensions (check constraint).
+- [ ] `Pivot` validations and limits per kind, mirrored in `lib/geo.ts` (`pivotOutline` gives a point kind no outline; `shapeAcres` nil).
+- [ ] `PivotShapeFields`: the kind as a set of choices with a one-line description each ("Center pivot: a circle or part of one", "Traveler: a hard hose reel or gun moved between fields; set one up for each field it waters, at the field", "Drip: drip tape or emitters; place it at the block", "Location only: just where the field is"). Point kinds show only the location (map click, place search, coordinates) and Flow.
+- [ ] Map: point kinds drawn as markers with the same badges and selection (`lib/map/pivots.ts`, `OverviewMap`); the pivot picker (`PivotMap`) places a marker with no handles.
+- [ ] Words, as above, across pages, emails (`DailyDigest`, mailer views), CSV headers and frontmatter (`PivotIrrigationCsv`, `SeasonReportCsv`), About and glossary; `e2e` and spec text updated.
+- [ ] Demo seed: a traveler serving two fields on a research farm (two Traveler systems, one Equipment name) and a drip block at Coloma Vegetables, so the beta, the sample farm (G.8) and the screenshots show them.
+- [ ] Tests: model and request specs per kind (validations, constraint, cross-tenant as now), `geo.ts` vitests, the setup form's kinds in a smoke test, axe on the form with a point kind.
+
+**Not in this step (After launch, if the beta asks):**
+- **Drip's wetted fraction and plastic mulch.** WISP spreads every irrigation over the whole field and counts bare-soil evaporation from all of it. FAO-56 adjusts both for drip (the fraction of soil wetted, `few`, and mulch cutting soil evaporation). Until then, the About page says to enter drip irrigation as the depth over the field's whole area (what run hours already compute).
+- **Application losses.** Travelers and guns lose more to wind drift than pivots or drip. WISP takes the irrigation entered as what reached the crop; the About page and the irrigation form's hint say so, and a per-system efficiency (to enter gross amounts) waits for demand.
+- Polygons for blocks; several drip zones on one block with their own run times.
+
+##### G.6 Fewer things to decode
+
+- [ ] **Lead with the outlook, not AD.** The dashboard card and the field summary lead with "AD today 0.31 in of 0.48 in"; field capacity, target and the irrigation point are all given in AD ("Irrigate at 0 AD"), which goes negative. Make the outlook sentence ("Irrigate by Thu, Jul 23 · about 0.6 in refills it", "No irrigation needed through …") the headline, with AD and moisture beneath it, and word the reference points by moisture first: "Irrigation point: 7.0% moisture (AD 0)". `Outlook` and `lib/outlook.ts` together. A wording review with the beta growers.
+- [ ] **A shorter field page for a first visit:** the weather section starts collapsed (its remembered open state then wins), and "How … is modeled" opens as two sentences with "More about how {crop} is modeled" for the rest.
+- [ ] **Setup's Delete links** (one per farm, pivot, field and crop, red, on every row) move into each item's edit page, behind its confirmation as now. Setup keeps Edit, Add and Irrigation.
+
+##### G.7 Crops to add
+
+From the canopy research already done (`docs/canopy/02-published-curves.md`, `03-crop-curves.md`). Each new crop gets its row in `plants.yml` (root zone), a curve in `canopy_curves.yml` with sources, confidence and notes (the About page's crop cards follow), a `season_days` (G.2), and a backtest line where readings exist.
+
+- [ ] **Dry bean** (kidney, black, navy; grown in the Central Sands): AquaCrop's DryBean curve, already behind snap bean (which stops it at harvest), run to maturity with its decline. Confidence `published`.
+- [ ] **Oats** (and spring rye or triticale if growers ask): FAO-56 Table 11's "Barley/Oats/Wheat" row is already the source of the barley and wheat curves.
+- [ ] **Corn silage:** the field corn curve and LAI model with an earlier harvest (`season_days`). Its own crop name rather than a variety, so it gets its own default end date and shows in the crop list.
+- [ ] **Onion, a stopgap:** note 03 found no published Upper Midwest curve and rejected FAO-56's temperate row (80% cover by day 26). Try FAO-56 Table 11's stage lengths with Wisconsin planting and maturity dates and a realistic maximum cover from extension photos; confidence `fao56`, flagged on its crop card. If it can't be justified, it stays readings-only with G.3's status.
+- [ ] **Alfalfa and mint** (already in the list, readings only): cut and regrown through the season, so a curve needs cutting dates (a `cuttings` list on the planting, the canopy restarting from stubble after each one, FAO-56's per-cutting stage lengths). Design it here; build it after launch unless the beta has alfalfa growers.
+- [ ] **About page: crops WISP doesn't model** and why: cranberry (managed by flooding, frost protection and the water table) and ginseng (under shade). Sugar beet and sorghum are left out until someone asks (little irrigated acreage in Wisconsin).
+
+##### G.8 Operations, next season and a sample farm
+
+Decided (Ben, 2026-11-11): all three.
+
+- [ ] **All operations at once** (crop consultants and anyone in several operations): an "All operations" choice at the top of the operation switcher, shown to users in more than one. The dashboard and map then list every operation's fields, grouped by operation first (`OperationOverview` over several groups, `FieldStatuses.for` already takes any fields). Daily entry, Setup and the operation page stay one operation at a time, and say so with a link to pick one. Tenancy: the set is exactly `current_user.groups`, never a parameter; a cross-tenant spec for it.
+- [ ] **Next season from October:** Setup's season menu offers next year from October 1 (`SetupController`'s `years`; `/setup?year=2027` and Copy last season already work, the menu just doesn't offer it). Quick setup asks which season when run between October and December, defaulting to next year.
+- [ ] **A sample farm:** each new account gets its own copy of a sample operation (`DemoSeed` into a group flagged `groups.sample`, owned by the user, so it can be explored and changed freely without a read-only role). It shows the common configurations: a center pivot split between two crops, a linear, a traveler serving two fields, a drip block and a location-only field, with entries, irrigation by run hours and a rain gauge group. A banner on its pages ("This is a sample farm…", with "Remove it"); left out of the daily email, the admin counts and the health check. Dated in the current season, so from May it's in season; over the winter the empty dashboard links to it in time travel at mid-July. Existing accounts can add it from the empty dashboard or the operation menu.
+
+##### G.9 Seasons and history
+
+Farms, pivots and fields aren't tied to a season; only plantings (a field's crop in a season), entries, irrigation and readings are dated. Every balance is recalculated when it's shown, from the field's and pivot's **current** values. So editing setup for 2027 changes 2026 as well:
+
+| Change made in 2027 | Effect on the 2026 season |
+|---|---|
+| Rename a pivot, farm or field | Shows the new name. Harmless |
+| Move a pivot within its weather cell | None |
+| Move a pivot to another weather cell | 2026 reads the new cell's weather, which usually has no 2026 days (backfills cover only the current year, `WeatherCell#backfill_start`): its days lose their weather |
+| Change a field's soil, field capacity or wilting point | 2026's balance is recomputed on the new soil |
+| Change a field's area | Run-hours irrigation in 2026 converts to different inches |
+| Move a field to another pivot | Its 2026 pivot irrigation no longer applies (`PivotIrrigation#applies_to?` checks the field's current pivot), and its weather follows the new pivot |
+| Add a field to a pivot | Run-hours irrigation for "all fields" in 2026 is spread over the new field's acres too (a bug now: `irrigated_fields` counts every current field, even one with no crop that day) |
+
+Growers rotate crops and often farm different acreage from year to year, so this will happen. **Recommended:** past seasons keep the values they ran with, and edits apply from the season being edited on:
+- [ ] **The balance's field values on the planting.** A planting copies the field's soil type, field capacity and wilting point when it's created (as it already holds root zone and MAD), and the balance reads the planting's. Editing a field updates it and its plantings that haven't ended; ended plantings keep theirs, and the planting form can change them for a past season. A migration fills existing plantings from their fields. `legacy_engine_spec` is unaffected (inputs only).
+- [ ] **The weather cell on the planting.** `plantings.weather_cell_id`, set from the pivot when the planting is created; when a pivot moves, its plantings that haven't ended follow it, and ended ones keep their cell (whose weather is already stored). `DailyInputs` and the preloads read the planting's cell.
+- [ ] **Run hours over the fields irrigated that day:** only fields with a planting in season on the irrigation's date count (fixes the bug above), and the inches are stored when the irrigation is saved (`converted_inches`, recomputed when it's edited, or when the pump capacity or a field's area changes for an irrigation in a season that hasn't ended). Run hours stay what's shown.
+- [ ] **Moving a field to another pivot** is allowed only for a field with no ended plantings; otherwise the form offers "Set up this field under {other} from {year}", which makes a new field there (same name, soil and area) and leaves the old one with its history.
+- [ ] **Setup by season:** fields and pivots with plantings in other seasons but none in the one shown are collapsed under "N fields not used in 2027", so last year's layout doesn't clutter this year's; a field with no plantings at all always shows.
+- [ ] Setup forms say when an edit leaves earlier seasons alone ("Changes apply to 2027 and later; 2026 keeps its soil").
+
+**Exit:** editing setup for a new season leaves earlier seasons' balances as they were; a new account set up in November or May gets the right season and sensible harvest dates; no field shows OK on a model that can't estimate its water use; a grower can do the morning routine (rain gauge, irrigation, soil moisture, cover) on one page; a traveler, a drip block and a location-only field can be set up, mapped, entered and emailed in their own words; a new account can look around a sample farm; someone in several operations sees them all on one dashboard; the new crops are on the About page with their sources.
 
 ### After launch
 
