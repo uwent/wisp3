@@ -18,7 +18,11 @@ class Outlook
 
   def result
     crossing = @status.crossing
-    if crossing&.days&.zero?
+    if @status.status == :needs_canopy
+      Result.new(urgent: false, headline: "No canopy data",
+        detail: "WISP can't estimate #{@status.planting.plant.name.downcase} water use until you enter a percent cover reading.",
+        chance: nil, dry: nil)
+    elsif crossing&.days&.zero?
       Result.new(urgent: true, headline: target? ? "Below target now" : "At the irrigation point now",
         detail: "About #{@depth.call(crossing.refill)} refills the root zone to field capacity.", chance: nil, dry: nil)
     elsif crossing

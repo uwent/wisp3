@@ -75,8 +75,22 @@ RSpec.describe "Domain models" do
       expect(build(:planting, plant: corn, et_method: "lai")).to have_attributes(canopy_curve?: true,
         effective_canopy_interpolation: "curve")
       expect(build(:planting, plant: create(:plant, key: "soybean"), et_method: "lai").canopy_curve?).to be(false)
-      expect(build(:planting, plant: create(:plant, key: "onion"))).to have_attributes(canopy_curve?: false,
-        effective_canopy_interpolation: "linear")
+      # A crop without its own follows its generic curve, another picked, or none (G.3)
+      onion = create(:plant, key: "onion")
+      expect(build(:planting, plant: onion)).to have_attributes(canopy_curve?: true, generic_curve_crop?: true)
+      expect(build(:planting, plant: onion).cover_curve.key).to eq("slow_partial")
+      expect(build(:planting, plant: onion, canopy_curve_key: "leafy_fast").cover_curve.key).to eq("leafy_fast")
+      expect(build(:planting, plant: onion, canopy_curve_key: "none")).to have_attributes(canopy_curve?: false,
+        effective_canopy_interpolation: "linear", cover_curve: nil)
+    end
+
+    it "takes a curve choice only for a crop without its own, and only one WISP has (G.3)" do
+      potato = create(:plant, key: "potato")
+      onion = create(:plant, key: "onion")
+      expect(build(:planting, plant: potato, canopy_curve_key: "leafy_fast")).not_to be_valid
+      expect(build(:planting, plant: onion, canopy_curve_key: "nope")).not_to be_valid
+      expect(build(:planting, plant: onion, canopy_curve_key: "none")).to be_valid
+      expect(build(:planting, plant: onion, canopy_curve_key: "")).to have_attributes(canopy_curve_key: nil)
     end
 
     it "has legacy-style defaults" do
@@ -193,7 +207,7 @@ RSpec.describe "Domain models" do
   describe ReferenceData do
     it "loads plants and soil types, and can run again" do
       2.times { described_class.load! }
-      expect(Plant.count).to eq(27)
+      expect(Plant.count).to eq(28)
       expect(SoilType.count).to eq(11)
       expect(Plant.find_by(key: "field_corn").canopy_model).to eq("field_corn")
       expect(SoilType.default.field_capacity).to eq(0.17)

@@ -15,7 +15,7 @@ export type FarmGroup<P extends PivotGroup = PivotGroup> = { id: number; name: s
 export type Status = NonNullable<PlantingSummary['status']>
 
 /** Most urgent first */
-export const STATUSES: Status[] = ['irrigate', 'caution', 'ok', 'full']
+export const STATUSES: Status[] = ['irrigate', 'caution', 'needs_canopy', 'ok', 'full']
 
 /** The pivots whose weather is being updated, so the page waits for it to land (lib/poll.ts) */
 export const updatingIds = (farms: FarmGroup[]) =>
@@ -32,10 +32,11 @@ export const summaryActive = (summary: PlantingSummary | null) =>
  * season without one yet, then upcoming, season ended, and no crop (FieldStatuses.urgency)
  */
 export function summaryUrgency(summary: PlantingSummary | null): number {
-  if (!summary) return 7
-  if (summary.phase === 'upcoming') return 5
-  if (summary.phase === 'ended') return 6
-  return summaryActive(summary) ? STATUSES.indexOf(summary.status!) : 4
+  const n = STATUSES.length
+  if (!summary) return n + 3
+  if (summary.phase === 'upcoming') return n + 1
+  if (summary.phase === 'ended') return n + 2
+  return summaryActive(summary) ? STATUSES.indexOf(summary.status!) : n
 }
 
 /** Days until the planting needs water (0 when it does now), or null if not within the forecast */

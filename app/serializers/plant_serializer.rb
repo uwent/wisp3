@@ -7,6 +7,9 @@ class PlantSerializer < ApplicationSerializer
   # Whether its plantings take a vine kill date (potato)
   attribute(:has_vine_kill) { |plant| CanopyCurve.for(plant.key)&.vine_kill? || false }
   # Typical days from emergence to harvest, which suggests a harvest date (PLAN.md Phase 8 G.2)
-  attribute(:season_days) { |plant| CanopyCurve.for(plant.key)&.season_days }
-  typelize has_lai_curve: :boolean, has_cover_curve: :boolean, has_vine_kill: :boolean, season_days: "number | null"
+  attribute(:season_days) { |plant| CanopyCurve.effective(plant.key)&.season_days }
+  # For a crop without its own curve, the generic one it follows unless a planting picks another (G.3)
+  attribute(:default_generic_curve) { |plant| CanopyCurve.for(plant.key) ? nil : CanopyCurve.default_generic(plant.key)&.key }
+  typelize has_lai_curve: :boolean, has_cover_curve: :boolean, has_vine_kill: :boolean, season_days: "number | null",
+    default_generic_curve: "string | null"
 end

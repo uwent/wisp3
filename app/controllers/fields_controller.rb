@@ -26,7 +26,8 @@ class FieldsController < AuthenticatedController
       plantings: summaries(field, plantings, today),
       days: field_days(field, year, plantings, today),
       plants: PlantSerializer.new(Plant.order(:name)).to_h,
-      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h
+      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h,
+      generic_curves: GenericCurveSerializer.all
     }
   end
 

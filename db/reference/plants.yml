@@ -88,3 +88,6 @@
 - key: other
   name: Other
   default_max_root_zone_depth: 36.0
+- key: garden_vegetables
+  name: Garden vegetables (mixed)
+  default_max_root_zone_depth: 18.0

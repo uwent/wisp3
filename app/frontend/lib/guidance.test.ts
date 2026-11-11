@@ -110,8 +110,17 @@ describe('guidance', () => {
       [],
       today,
     )
-    expect(none.paragraphs[0]).toContain("There's no canopy curve for onion")
+    expect(none.paragraphs[0]).toContain('This planting follows no canopy curve (readings only)')
     expect(none.paragraphs[0]).toContain('Between readings WISP draws a straight line')
+    // A crop without its own curve on a generic one (G.3)
+    const generic = guidance(
+      { ...potato, plant_name: 'Onion', generic_curve_name: 'Slow, partial cover' },
+      units('imperial'),
+      [],
+      today,
+    )
+    expect(generic.paragraphs[0]).toContain('no canopy curve of its own for onion')
+    expect(generic.paragraphs[0]).toContain('follows a generic one (slow, partial cover)')
   })
 
   it('gives the canopy check as a warning, not a reading', () => {

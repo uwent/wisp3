@@ -6,7 +6,9 @@ class PlantingSerializer < ApplicationSerializer
     # Whole field, or part of it: a plot (length × width, ft) or acres, with an optional pin (G.11)
     :partial, :plot_length_ft, :plot_width_ft, :latitude, :longitude,
     # A plot on its own soil, which the field's soil edits leave alone
-    :own_soil
+    :own_soil,
+    # A crop without its own curve: the generic one picked, or none (readings only); null its default (G.3)
+    :canopy_curve_key
 
   attribute :plant_name do |planting|
     planting.plant.name
@@ -15,6 +17,10 @@ class PlantingSerializer < ApplicationSerializer
   attribute :plant_key do |planting|
     planting.plant.key
   end
+
+  # The generic curve in effect, for a crop without its own ("Vegetable, medium"), or null
+  attribute(:generic_curve_name) { |planting| planting.generic_curve_crop? ? planting.cover_curve&.name : nil }
+  typelize generic_curve_name: "string | null", canopy_curve_key: "string | null"
 
   # Whether the crop has a canopy curve for the planting's method, and how readings combine with it
   attribute(:canopy_curve, &:canopy_curve?)

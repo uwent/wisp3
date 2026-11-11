@@ -1,15 +1,26 @@
 {
   "about": "What a field's projection means, in words: the same cases run against Outlook (Ruby, the daily digest) and lib/outlook.ts (the field page and dashboard), so the two can't drift apart. Each case's summary is merged over base; expected is the whole outlook, or null.",
   "base": {
+    "status": "ok",
+    "plant_name": "Onion",
     "phase": "active",
     "date": "2026-07-10",
     "target_in": null,
     "crossing": null,
     "dry_crossing": null,
     "projection": [
-      { "date": "2026-07-11", "chance": 0.1 },
-      { "date": "2026-07-12", "chance": 0.5 },
-      { "date": "2026-07-13", "chance": 0.9 }
+      {
+        "date": "2026-07-11",
+        "chance": 0.1
+      },
+      {
+        "date": "2026-07-12",
+        "chance": 0.5
+      },
+      {
+        "date": "2026-07-13",
+        "chance": 0.9
+      }
     ],
     "ensemble_size": 30
   },
@@ -17,7 +28,14 @@
     {
       "name": "says when to irrigate, how much, and how many forecast scenarios agree",
       "units": "imperial",
-      "summary": { "crossing": { "date": "2026-07-12", "days": 2, "ad": -0.1, "refill": 1.3 } },
+      "summary": {
+        "crossing": {
+          "date": "2026-07-12",
+          "days": 2,
+          "ad": -0.1,
+          "refill": 1.3
+        }
+      },
       "expected": {
         "urgent": true,
         "headline": "Irrigate by Sun, Jul 12",
@@ -29,7 +47,15 @@
     {
       "name": "says tomorrow, and names the target when there is one",
       "units": "imperial",
-      "summary": { "target_in": 0.6, "crossing": { "date": "2026-07-11", "days": 1, "ad": 0.5, "refill": 0.7 } },
+      "summary": {
+        "target_in": 0.6,
+        "crossing": {
+          "date": "2026-07-11",
+          "days": 1,
+          "ad": 0.5,
+          "refill": 0.7
+        }
+      },
       "expected": {
         "urgent": true,
         "headline": "Irrigate by Sat, Jul 11",
@@ -41,7 +67,14 @@
     {
       "name": "isn't urgent beyond the lead days, and leaves out the scenarios for a day past the ensemble",
       "units": "imperial",
-      "summary": { "crossing": { "date": "2026-07-15", "days": 5, "ad": -0.05, "refill": 2.05 } },
+      "summary": {
+        "crossing": {
+          "date": "2026-07-15",
+          "days": 5,
+          "ad": -0.05,
+          "refill": 2.05
+        }
+      },
       "expected": {
         "urgent": false,
         "headline": "Irrigate by Wed, Jul 15",
@@ -54,8 +87,18 @@
       "name": "says the irrigation point is reached now, without scenarios or the dry case",
       "units": "imperial",
       "summary": {
-        "crossing": { "date": "2026-07-10", "days": 0, "ad": -0.1, "refill": 1.3 },
-        "dry_crossing": { "date": "2026-07-10", "days": 0, "ad": -0.2, "refill": 1.4 }
+        "crossing": {
+          "date": "2026-07-10",
+          "days": 0,
+          "ad": -0.1,
+          "refill": 1.3
+        },
+        "dry_crossing": {
+          "date": "2026-07-10",
+          "days": 0,
+          "ad": -0.2,
+          "refill": 1.4
+        }
       },
       "expected": {
         "urgent": true,
@@ -68,7 +111,15 @@
     {
       "name": "says the target is crossed now, in the reader's units",
       "units": "metric",
-      "summary": { "target_in": 0.6, "crossing": { "date": "2026-07-10", "days": 0, "ad": 0.5, "refill": 0.7 } },
+      "summary": {
+        "target_in": 0.6,
+        "crossing": {
+          "date": "2026-07-10",
+          "days": 0,
+          "ad": 0.5,
+          "refill": 0.7
+        }
+      },
       "expected": {
         "urgent": true,
         "headline": "Below target now",
@@ -92,7 +143,15 @@
     {
       "name": "leaves out the scenarios when none reach the threshold",
       "units": "imperial",
-      "summary": { "target_in": 0.6, "projection": [{ "date": "2026-07-11", "chance": 0.0 }] },
+      "summary": {
+        "target_in": 0.6,
+        "projection": [
+          {
+            "date": "2026-07-11",
+            "chance": 0.0
+          }
+        ]
+      },
       "expected": {
         "urgent": false,
         "headline": "No irrigation needed through Sat, Jul 11",
@@ -104,7 +163,15 @@
     {
       "name": "leaves out the scenarios without an ensemble",
       "units": "imperial",
-      "summary": { "ensemble_size": 0, "projection": [{ "date": "2026-07-11", "chance": null }] },
+      "summary": {
+        "ensemble_size": 0,
+        "projection": [
+          {
+            "date": "2026-07-11",
+            "chance": null
+          }
+        ]
+      },
       "expected": {
         "urgent": false,
         "headline": "No irrigation needed through Sat, Jul 11",
@@ -116,7 +183,14 @@
     {
       "name": "says when a field on entered rain needs water if no rain falls",
       "units": "imperial",
-      "summary": { "dry_crossing": { "date": "2026-07-11", "days": 1, "ad": -0.1, "refill": 1.3 } },
+      "summary": {
+        "dry_crossing": {
+          "date": "2026-07-11",
+          "days": 1,
+          "ad": -0.1,
+          "refill": 1.3
+        }
+      },
       "expected": {
         "urgent": false,
         "headline": "No irrigation needed through Mon, Jul 13",
@@ -129,8 +203,18 @@
       "name": "gives the dry case when it's sooner than the forecast's",
       "units": "imperial",
       "summary": {
-        "crossing": { "date": "2026-07-14", "days": 4, "ad": -0.1, "refill": 1.3 },
-        "dry_crossing": { "date": "2026-07-12", "days": 2, "ad": -0.1, "refill": 1.3 }
+        "crossing": {
+          "date": "2026-07-14",
+          "days": 4,
+          "ad": -0.1,
+          "refill": 1.3
+        },
+        "dry_crossing": {
+          "date": "2026-07-12",
+          "days": 2,
+          "ad": -0.1,
+          "refill": 1.3
+        }
       },
       "expected": {
         "urgent": false,
@@ -144,8 +228,18 @@
       "name": "leaves out the dry case when it's no sooner",
       "units": "imperial",
       "summary": {
-        "crossing": { "date": "2026-07-12", "days": 2, "ad": -0.1, "refill": 1.3 },
-        "dry_crossing": { "date": "2026-07-12", "days": 2, "ad": -0.3, "refill": 1.5 }
+        "crossing": {
+          "date": "2026-07-12",
+          "days": 2,
+          "ad": -0.1,
+          "refill": 1.3
+        },
+        "dry_crossing": {
+          "date": "2026-07-12",
+          "days": 2,
+          "ad": -0.3,
+          "refill": 1.5
+        }
       },
       "expected": {
         "urgent": true,
@@ -158,20 +252,46 @@
     {
       "name": "has nothing to say outside the season",
       "units": "imperial",
-      "summary": { "phase": "ended" },
+      "summary": {
+        "phase": "ended"
+      },
       "expected": null
     },
     {
       "name": "has nothing to say before today has a balance",
       "units": "imperial",
-      "summary": { "date": null },
+      "summary": {
+        "date": null
+      },
       "expected": null
     },
     {
       "name": "has nothing to say without a forecast",
       "units": "imperial",
-      "summary": { "projection": [] },
+      "summary": {
+        "projection": []
+      },
       "expected": null
+    },
+    {
+      "name": "says it can't estimate water use without canopy data (no curve, no reading; G.3)",
+      "units": "imperial",
+      "summary": {
+        "status": "needs_canopy",
+        "crossing": {
+          "date": "2026-07-12",
+          "days": 2,
+          "ad": -0.1,
+          "refill": 1.3
+        }
+      },
+      "expected": {
+        "urgent": false,
+        "headline": "No canopy data",
+        "detail": "WISP can't estimate onion water use until you enter a percent cover reading.",
+        "chance": null,
+        "dry": null
+      }
     }
   ]
 }

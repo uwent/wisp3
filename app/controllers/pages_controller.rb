@@ -16,7 +16,13 @@ class PagesController < AuthenticatedController
     render inertia: "Pages/About", props: {
       plants: Plant.order(:name).map do |plant|
         {key: plant.key, name: plant.name, root_zone_in: plant.default_max_root_zone_depth,
-         lai_curve: plant.canopy_model.present?, cover_curve: CanopyCurve.for(plant.key).present?}
+         lai_curve: plant.canopy_model.present?, cover_curve: CanopyCurve.for(plant.key).present?,
+         generic_curve: CanopyCurve.for(plant.key) ? nil : CanopyCurve.default_generic(plant.key)&.name}
+      end,
+      # The generic curves crops without their own follow (G.3), with the crops that do by default
+      generic_curves: CanopyCurve.generic.values.map do |curve|
+        {key: curve.key, name: curve.name, basis: curve.basis, season: curve.season_basis,
+         crops: Plant.where(key: curve.default_for).order(:name).pluck(:name)}
       end,
       canopy_curves: canopy_curves,
       weather_corrections: Weather::Corrections.summaries,

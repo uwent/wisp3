@@ -10,6 +10,7 @@ class DigestMailer < ApplicationMailer
   STATUSES = {
     irrigate: {label: "▲ Irrigate", color: COLORS[:irrigate], text: COLORS[:white]},
     caution: {label: "! Caution", color: COLORS[:caution], text: COLORS[:ink]},
+    needs_canopy: {label: "? No canopy data", color: COLORS[:off], text: COLORS[:ink]},
     ok: {label: "✓ OK", color: COLORS[:ok], text: COLORS[:white]},
     full: {label: "● Full", color: COLORS[:full], text: COLORS[:white]},
     off: {label: "– Off season", color: COLORS[:off], text: COLORS[:ink]}

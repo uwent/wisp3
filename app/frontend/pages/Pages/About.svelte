@@ -16,7 +16,16 @@
   // reading advice from lib/guidance.ts, and the weather corrections from
   // db/reference/weather_corrections, so they stay in step with the app.
 
-  type Plant = { key: string; name: string; root_zone_in: number; lai_curve: boolean; cover_curve: boolean }
+  type Plant = {
+    key: string
+    name: string
+    root_zone_in: number
+    lai_curve: boolean
+    cover_curve: boolean
+    /** The generic curve a crop without its own follows by default (G.3) */
+    generic_curve: string | null
+  }
+  type GenericCurve = { key: string; name: string; basis: string; season: string | null; crops: string[] }
   // A crop's percent cover curve, from db/reference/canopy_curves.yml (PagesController#canopy_curves)
   type CanopyCurve = {
     key: string
@@ -46,12 +55,14 @@
   let {
     plants,
     canopy_curves: curves,
+    generic_curves,
     soil_types: soils,
     weather_corrections: corrections,
     defaults,
   }: {
     plants: Plant[]
     canopy_curves: CanopyCurve[]
+    generic_curves: GenericCurve[]
     soil_types: Soil[]
     weather_corrections: WeatherCorrection[]
     defaults: {
@@ -65,7 +76,7 @@
       fit_noise_pct: number
     }
   } = $props()
-  const withoutCurve = $derived(plants.filter((plant) => !plant.cover_curve).map((plant) => plant.name))
+  const withoutCurve = $derived(plants.filter((plant) => !plant.cover_curve).map((plant) => plant.name.toLowerCase()))
 
   const pct = (fraction: number) => `${+(fraction * 100).toFixed(2)}%`
   function declineText(decline: CanopyCurve['decline']): string {
@@ -195,6 +206,13 @@
           </td>
         </tr>
         <tr><td><StatusBadge status="irrigate" /></td><td>At or below the irrigation point (0 AD) today.</td></tr>
+        <tr>
+          <td><StatusBadge status="needs_canopy" /></td>
+          <td>
+            A planting set to readings only (no canopy curve) with no percent cover reading yet, so WISP can't estimate
+            its water use. Enter a reading to start.
+          </td>
+        </tr>
       </tbody>
     </table>
 
@@ -407,9 +425,11 @@
                 {depth(plant.root_zone_in * 0.25)} and {depth(plant.root_zone_in * 0.75)}
               </td>
               <td class="px-3 py-1.5"
-                >{plant.cover_curve ? 'Percent cover, with a curve' : 'Percent cover, readings only'}{plant.lai_curve
-                  ? '; LAI with a curve'
-                  : ''}</td
+                >{plant.cover_curve
+                  ? 'Percent cover, with a curve'
+                  : plant.generic_curve
+                    ? `Percent cover, generic curve (${plant.generic_curve.toLowerCase()})`
+                    : 'Percent cover, readings only'}{plant.lai_curve ? '; LAI with a curve' : ''}</td
               >
             </tr>
           {/each}
@@ -470,10 +490,24 @@ decline: CC = CCx · [1 − 0.05 · (e^(3.33·CDC·t′ / (CCx + 2.29)) − 1)]
 t: days since emergence; t′: days since the decline starts</code
       ></pre>
     <p>
-      <strong>Crops without a curve</strong> ({withoutCurve.join(', ')}) use only the cover you enter: WISP draws
-      straight lines between your readings and assumes no cover until the first one. We found no published canopy values
-      for onion to check against; alfalfa and mint are cut and regrow during the season; and we found no source for
-      asparagus fern growth after harvest.
+      <strong>Crops without their own curve</strong> ({withoutCurve.join(', ')}) follow a generic one, a rough shape
+      that your percent cover readings correct the same way, so enter one now and then. We found no published canopy
+      values for onion to check against; alfalfa and mint are cut and regrow during the season; and we found no source
+      for asparagus fern growth after harvest. The planting form offers each generic curve for these crops:
+    </p>
+    <ul>
+      {#each generic_curves as curve (curve.key)}
+        <li>
+          <strong>{curve.name}</strong>{curve.crops.length ? ` (for ${curve.crops.join(', ').toLowerCase()})` : ''}: {curve.basis}.{#if curve.season}{' '}Typical
+            season: {curve.season}.{/if}
+        </li>
+      {/each}
+    </ul>
+    <p>
+      Or choose <strong>No curve: readings only</strong>: WISP then draws straight lines between your readings and
+      assumes no cover until the first one, so it can't estimate the crop's water use until you enter a reading, and
+      shows
+      <StatusBadge status="needs_canopy" size="sm" /> until then.
     </p>
     <p>
       <strong>LAI</strong> is offered only for crops with an LAI curve, so far field corn, whose curve comes from the Wisconsin

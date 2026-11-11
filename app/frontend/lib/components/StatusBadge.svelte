@@ -14,6 +14,12 @@
     ok: { label: 'OK', icon: '✓', class: 'bg-status-ok text-white' },
     caution: { label: 'Caution', icon: '!', class: 'bg-status-caution text-on-caution' },
     irrigate: { label: 'Irrigate', icon: '▲', class: 'bg-status-irrigate text-white' },
+    // No curve and no reading (G.3): outlined, so it doesn't read as a water status
+    needs_canopy: {
+      label: 'No canopy data',
+      icon: '?',
+      class: 'border border-status-caution bg-surface-raised text-status-caution-ink',
+    },
   }
   const style = $derived(status ? styles[status] : null)
 </script>

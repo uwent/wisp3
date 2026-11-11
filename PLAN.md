@@ -1013,9 +1013,25 @@ Every planting defaults to an end date of Nov 30 (`Planting.defaults_for`, as in
 
 Onion, alfalfa, mint, asparagus and Other have no curve (`canopy_curves.yml`), so until the first cover reading their canopy is 0 and crop ET is bare-soil evaporation (at most 0.02 in a day, `CropEt.bare_soil`). The field page says so in "How … is modeled", but the dashboard card, map badge and email show the field as OK and never needing water: a silent, confident wrong answer.
 
-- [ ] **A status of its own**: a planting in season, past emergence, with no curve and no reading gets `needs_canopy` in place of OK/Full (`PlantingStatus`): a caution-style badge "No canopy data", the outlook "WISP can't estimate {crop} water use until you enter a percent cover reading", and a task that is always due. The dashboard counts, map filter ("Needs water"), and digest (its own line, not "no irrigation needed") follow. `Outlook` and `lib/outlook.ts` change together, with cases in `outlook_cases.json`.
-- [ ] **Setup says so when the crop is picked** (quick setup, the planting form): "There's no canopy curve for onion, so WISP needs your percent cover readings, about weekly, to estimate its water use."
-- [ ] Onion gets a stopgap curve in G.7 if one can be justified; then it leaves this list.
+**Decided (Ben, 2026-11-11): generic curves, a "readings only" opt-out, and cuttings.** A crop without its own curve borrows a generic one, which readings correct as they do any curve (`CanopyFit`); "No curve: readings only" is a choice with a warning, and only that gets the status of its own. Perennials that are cut restart their canopy at each cutting.
+
+- [x] **Generic curves** in `canopy_curves.yml` (`generic:`, percent cover only, confidence `generic`, each with its derivation), and each curveless crop's default:
+
+  | Curve | Shape (AquaCrop growth) | Typical season | Default for |
+  |---|---|---|---|
+  | Fast, leafy | CC₀ 2%, CCx 90%, 80% by day 35 | 60 days | — |
+  | Vegetable, medium | CC₀ 1.5%, CCx 90%, 80% by day 52 | 110 days | Other, garden vegetables |
+  | Slow, partial cover | CC₀ 1%, CCx 65%, 55% by day 70 | 120 days | onion |
+  | Perennial, regrowth | CC₀ 5%, CCx 95%, 80% by day 25 from green-up or a cutting | (Nov 30) | alfalfa, mint, asparagus |
+
+- [x] **`plantings.canopy_curve_key`** (string, NULL; the serializer's `canopy_curve` was already the boolean "has a curve"): NULL is the crop's own curve, or its generic default; a generic key picks another; `none` is readings only. Only crops without their own curve take one (validation). `Planting#cover_curve` gives the `CanopyCurve` in effect (or nil), and everything that asked `CanopyCurve.for(plant.key)` for a planting asks it instead (Canopy, `canopy_curve?`, season days, guidance). LAI is unchanged (field corn only).
+- [x] **The planting form** (and quick setup's crop choice), for a crop without its own curve: "Canopy: [generic curves] | No curve: readings only", preset to its default, with "An approximation for {crop}: your percent cover readings correct it" or, for none, "Irrigation scheduling works only if you enter percent cover regularly, about weekly until the canopy closes."
+- [x] **A status of its own** for `none` only: a planting in season, past emergence, with no curve and no reading gets `needs_canopy` in place of OK/Full (`PlantingStatus`): a caution-style badge "No canopy data", the outlook "WISP can't estimate {crop} water use until you enter a percent cover reading", and a task that is always due. The dashboard counts, map filter, and digest (its own line, not "no irrigation needed") follow. `Outlook` and `lib/outlook.ts` change together, with cases in `outlook_cases.json`.
+- [x] **Garden vegetables (mixed)**: a crop in `plants.yml` (root zone 18 in) on the medium vegetable curve, for a home garden or a market garden bed: one planting on part of a field (G.11), at a location without a pivot once G.5 has "Location only"; hose or drip water is its own irrigation.
+- [ ] **Cuttings** (alfalfa, mint; any planting on the perennial curve): a `canopy_cuttings` table (planting, date), entered on the planting page ("Cut on [date]", listed with delete) and drawn on the chart. Each cutting restarts the canopy: the season splits at the cuttings into pieces, each following the perennial regrowth curve from its start (the first from emergence, i.e. green-up) and fitted to the readings within it only, so the canopy drops at a cutting and regrows (a sawtooth) rather than smoothing across it. Readings after a cutting belong to the regrowth. `Canopy` composes the pieces; the check runs on the current piece. Tests: the drop and regrowth, a reading fitting only its piece, cross-tenant for the cuttings controller.
+- Built (2026-11-11), as above, with: the key validated only when it changes (a crop that later gets its own curve keeps its plantings editable; its own curve wins), the default left blank (so a crop follows a changed default); quick setup only says a crop is on a generic curve (no choice there); `needs_canopy` ranks after caution, an outlined "? No canopy data" badge, the map in the caution color; the About page's crop table, a list of the generic curves and the crops on each, and the status; "How … is modeled" names the generic curve. Tests: `spec/services/generic_curves_spec.rb`, request and model specs for the choice, an outlook case, vitests, a smoke test of the form.
+- [ ] Onion gets its own curve in G.7 if one can be justified; the generic stays its default until then.
+- [ ] About: the generic curves on the crop cards (marked generic, with each crop that uses one), cuttings, and readings-only; the glossary's canopy curve entry.
 
 ##### G.4 Daily entry as the morning page
 
@@ -1090,7 +1106,7 @@ From the canopy research already done (`docs/canopy/02-published-curves.md`, `03
 - [ ] **Oats** (and spring rye or triticale if growers ask): FAO-56 Table 11's "Barley/Oats/Wheat" row is already the source of the barley and wheat curves.
 - [ ] **Corn silage:** the field corn curve and LAI model with an earlier harvest (`season_days`). Its own crop name rather than a variety, so it gets its own default end date and shows in the crop list.
 - [ ] **Onion, a stopgap:** note 03 found no published Upper Midwest curve and rejected FAO-56's temperate row (80% cover by day 26). Try FAO-56 Table 11's stage lengths with Wisconsin planting and maturity dates and a realistic maximum cover from extension photos; confidence `fao56`, flagged on its crop card. If it can't be justified, it stays readings-only with G.3's status.
-- [ ] **Alfalfa and mint** (already in the list, readings only): cut and regrown through the season, so a curve needs cutting dates (a `cuttings` list on the planting, the canopy restarting from stubble after each one, FAO-56's per-cutting stage lengths). Design it here; build it after launch unless the beta has alfalfa growers.
+- [x] **Alfalfa and mint** cuttings: moved to G.3 (Ben, 2026-11-11).
 - [ ] **About page: crops WISP doesn't model** and why: cranberry (managed by flooding, frost protection and the water table) and ginseng (under shade). Sugar beet and sorghum are left out until someone asks (little irrigated acreage in Wisconsin).
 
 ##### G.8 Operations, next season and an example farm

@@ -20,7 +20,7 @@
     seasonReport,
     setup,
   } from '@/routes'
-  import type { Farm, Field, Pivot, Plant, SoilType } from '@/types/serializers'
+  import type { Farm, Field, GenericCurve, Pivot, Plant, SoilType } from '@/types/serializers'
 
   let {
     year,
@@ -28,7 +28,15 @@
     farms,
     plants,
     soil_types,
-  }: { year: number; years: number[]; farms: Farm[]; plants: Plant[]; soil_types: SoilType[] } = $props()
+    generic_curves,
+  }: {
+    year: number
+    years: number[]
+    farms: Farm[]
+    plants: Plant[]
+    soil_types: SoilType[]
+    generic_curves: GenericCurve[]
+  } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const group = $derived(page.props.auth.group!)
@@ -324,7 +332,7 @@
   {/if}
 </div>
 
-<PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} />
+<PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} genericCurves={generic_curves} />
 
 <Dialog bind:open={dialogOpen} title={dialogTitle}>
   {#if dialog?.kind === 'farm'}

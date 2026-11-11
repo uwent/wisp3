@@ -79,7 +79,8 @@ class Canopy
       fit_curve = ->(**fit) { CanopyModel.from(key, emergence, **fit) } if key
       fit_key = ["lai", key, CanopyModel::VERSION, emergence]
     else
-      crop_curve = CanopyCurve.for(planting.plant.key)
+      # The crop's own curve, or the generic one it follows (G.3)
+      crop_curve = planting.cover_curve
       fit_curve = ->(**fit) { crop_curve.from(emergence, **fit) } if crop_curve
       fit_key = ["cover", crop_curve&.key, crop_curve&.digest, emergence]
     end

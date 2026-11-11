@@ -10,7 +10,7 @@
   import { clashes, cropName, formatArea, plotAcres, seasonDates, typicalEnd } from '@/lib/plantings'
   import { units as unitsFor } from '@/lib/units'
   import { plantings } from '@/routes'
-  import type { Field, Plant, Planting, SoilType } from '@/types/serializers'
+  import type { Field, GenericCurve, Plant, Planting, SoilType } from '@/types/serializers'
   import { page } from '@inertiajs/svelte'
 
   // One planting on a field for one season. Dates default to Apr 1 – Nov 30 with emergence May 1,
@@ -25,6 +25,7 @@
     year,
     plants,
     soilTypes = [],
+    genericCurves = [],
     template,
     ondone,
   }: {
@@ -33,6 +34,8 @@
     year: number
     plants: Plant[]
     soilTypes?: SoilType[]
+    /** Curves a crop without its own can follow (G.3) */
+    genericCurves?: GenericCurve[]
     template?: Partial<Planting>
     ondone: () => void
   } = $props()
@@ -78,7 +81,18 @@
   let interpolation = $state(untrack(() => planting?.canopy_interpolation ?? 'curve'))
   const plant = $derived(plants.find((p) => String(p.id) === plantId))
   // Whether the crop has a canopy curve for the chosen method (Planting#canopy_curve?)
-  const hasCurve = $derived(etMethod === 'lai' ? plant?.has_lai_curve : plant?.has_cover_curve)
+  // A crop without its own percent cover curve follows a generic one, its default unless another is
+  // picked, or none (readings only) (PLAN.md Phase 8 G.3)
+  const NONE = 'none'
+  const generic = $derived(plant !== undefined && !plant.has_cover_curve && etMethod === 'pct_cover')
+  let curveChoice = $state(untrack(() => planting?.canopy_curve_key ?? ''))
+  const curveKey = $derived(curveChoice || plant?.default_generic_curve || NONE)
+  const genericCurve = $derived(genericCurves.find((c) => c.key === curveKey))
+  const hasCurve = $derived(
+    etMethod === 'lai' ? plant?.has_lai_curve : plant?.has_cover_curve || (generic && curveKey !== NONE),
+  )
+  // The typical season: the crop's own, or its generic curve's
+  const seasonDays = $derived(plant?.has_cover_curve ? plant.season_days : (genericCurve?.season_days ?? null))
   // Potatoes are vine killed some weeks before harvest, and irrigated until it
   const endLabel = $derived(plant?.has_vine_kill ? 'Harvest' : 'Harvest or kill')
 
@@ -97,7 +111,7 @@
   // until a date is typed; an existing one keeps its own
   let endChosen = untrack(() => planting !== undefined)
   function suggestEnd() {
-    if (!endChosen && plant && emergence) endDate = typicalEnd(plant.season_days, emergence)
+    if (!endChosen && plant && emergence) endDate = typicalEnd(seasonDays, emergence)
   }
 
   let seasonSoilId = $state(untrack(() => String(planting?.soil_type_id ?? '')))
@@ -160,9 +174,11 @@
         endChosen = true
       })}
     </div>
-    {#if plant?.season_days}
+    {#if plant && seasonDays}
       <p class="-mt-2 text-sm text-ink-muted">
-        A {plant.name.toLowerCase()} season typically runs about {plant.season_days} days from emergence to harvest.
+        A {plant.name.toLowerCase()} season typically runs about {seasonDays} days from emergence to harvest{plant.has_cover_curve
+          ? '.'
+          : ` (${genericCurve?.name.toLowerCase()} curve).`}
       </p>
     {/if}
 
@@ -371,6 +387,55 @@
         </label>
       {/if}
     </fieldset>
+    <!-- Blank leaves the crop's own curve or its default; a crop with its own never sends one -->
+    <input type="hidden" name="planting[canopy_curve_key]" value={generic ? curveChoice : ''} />
+    {#if generic}
+      <fieldset class="space-y-2">
+        <legend class="text-sm font-medium">Canopy curve</legend>
+        <p class="text-sm text-ink-muted">WISP has no canopy curve of its own for {plant!.name.toLowerCase()}.</p>
+        {#each genericCurves as curve (curve.key)}
+          <label class="flex items-start gap-3 text-sm">
+            <input
+              type="radio"
+              name="planting-canopy-curve"
+              checked={curveKey === curve.key}
+              onchange={() => {
+                // The default is left blank, so the crop follows it if it changes
+                curveChoice = curve.key === plant!.default_generic_curve ? '' : curve.key
+                suggestEnd()
+              }}
+              class="mt-0.5"
+            />
+            <span
+              >{curve.name}{curve.key === plant!.default_generic_curve ? ' (suggested)' : ''}
+              <span class="block text-ink-muted">{curve.basis}</span></span
+            >
+          </label>
+        {/each}
+        <label class="flex items-start gap-3 text-sm">
+          <input
+            type="radio"
+            name="planting-canopy-curve"
+            checked={curveKey === NONE}
+            onchange={() => {
+              curveChoice = NONE
+              suggestEnd()
+            }}
+            class="mt-0.5"
+          />
+          <span>No curve: readings only</span>
+        </label>
+        <p role="status" class="rounded-md border border-line px-3 py-2 text-sm">
+          {#if curveKey === NONE}
+            Irrigation scheduling works only if you enter percent cover regularly, about weekly until the canopy closes.
+            Until the first reading, WISP can't estimate this crop's water use.
+          {:else}
+            An approximation for {plant!.name.toLowerCase()}: your percent cover readings correct it, so enter one now
+            and then.
+          {/if}
+        </p>
+      </fieldset>
+    {/if}
     {#if hasCurve}
       <fieldset class="space-y-2">
         <legend class="text-sm font-medium">Between canopy readings</legend>
@@ -383,7 +448,7 @@
             class="mt-0.5"
           />
           <span
-            >Follow the {plant!.name.toLowerCase()} curve
+            >Follow the {generic ? `${genericCurve?.name.toLowerCase()} curve` : `${plant!.name.toLowerCase()} curve`}
             <span class="text-ink-muted"
               >(fitted to your readings and passing through each one, including its late-season decline)</span
             ></span

@@ -197,6 +197,9 @@
               name="setup[fields][{i}][plant_id]"
               bind:value={row.plantId}
               onchange={() => suggestHarvest(row)}
+              hint={plants.find((p) => String(p.id) === row.plantId && !p.has_cover_curve)
+                ? 'No curve of its own: a generic one, corrected by your readings'
+                : undefined}
               options={plantOptions}
               error={error(e, `fields.${i}.plant_id`)}
             />

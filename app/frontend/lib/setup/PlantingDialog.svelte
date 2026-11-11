@@ -5,12 +5,17 @@
   import { nextSeason } from '@/lib/plantings'
   import PlantingForm from '@/lib/setup/PlantingForm.svelte'
   import { plantings } from '@/routes'
-  import type { Field, Plant, Planting, SoilType } from '@/types/serializers'
+  import type { Field, GenericCurve, Plant, Planting, SoilType } from '@/types/serializers'
 
   // Adding or editing a planting on a field (Setup, the field page): the form, and for an existing
   // planting, "Add the next planting" (a season starting the day after it ends, the same size) and
   // delete. Open it with open(field, planting?).
-  let { year, plants, soilTypes }: { year: number; plants: Plant[]; soilTypes: SoilType[] } = $props()
+  let {
+    year,
+    plants,
+    soilTypes,
+    genericCurves,
+  }: { year: number; plants: Plant[]; soilTypes: SoilType[]; genericCurves: GenericCurve[] } = $props()
 
   let isOpen = $state(false)
   let field = $state<Field | null>(null)
@@ -70,6 +75,7 @@
         year={template?.season_start ? Number(template.season_start.slice(0, 4)) : year}
         {plants}
         {soilTypes}
+        {genericCurves}
         {template}
         ondone={close}
       />

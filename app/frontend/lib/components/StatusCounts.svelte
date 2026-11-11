@@ -22,6 +22,8 @@
     irrigate: (count: number) => `${fieldCount(count)} at or below the irrigation point today`,
     caution: (count: number) =>
       `${fieldCount(count)} running low, or projected to need irrigation within ${LEAD_DAYS} days`,
+    needs_canopy: (count: number) =>
+      `${fieldCount(count)} with no canopy curve or reading, so WISP can't estimate water use yet`,
     ok: (count: number) => `${fieldCount(count)} with enough water for now`,
     full: (count: number) => `${fieldCount(count)} near field capacity`,
   }

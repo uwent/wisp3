@@ -34,10 +34,12 @@ describe('urgency', () => {
       card('ok'),
       card('caution', { status: 'caution' }),
       card('irrigate', { status: 'irrigate' }),
+      card('no canopy', { status: 'needs_canopy' }),
     ]
     expect(cards.toSorted((a, b) => urgency(a) - urgency(b)).map((c) => c.name)).toEqual([
       'irrigate',
       'caution',
+      'no canopy',
       'ok',
       'full',
       'pending',

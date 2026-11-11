@@ -4,7 +4,7 @@
 # queries, not several per field, through the projection's days. Fields need their pivot and
 # plantings (with plant and canopy observations) and soil type loaded.
 class FieldStatuses
-  RANK = {irrigate: 0, caution: 1, ok: 2, full: 3}.freeze
+  RANK = {irrigate: 0, caution: 1, needs_canopy: 2, ok: 3, full: 4}.freeze
 
   # {field_id => [PlantingStatus, …]}, whole-field planting first, then by season start; empty for a
   # field with no planting this year

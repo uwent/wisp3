@@ -29,6 +29,7 @@ class Planting < ApplicationRecord
   validates :mad_frac, numericality: {in: 0.05..0.95, message: "must be between 5% and 95%"}
   validates :et_method, inclusion: {in: ET_METHODS}
   validates :canopy_interpolation, inclusion: {in: CANOPY_INTERPOLATIONS}, allow_nil: true
+  validate :canopy_curve_key_allowed, if: :will_save_change_to_canopy_curve_key?
   validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}, allow_nil: true
   validates :area_acres, numericality: {greater_than: 0}, allow_nil: true
   validates :area_acres, presence: {message: "is needed for part of a field (or its length and width)"}, if: :partial?
@@ -45,7 +46,7 @@ class Planting < ApplicationRecord
   validate :entries_kept_with_part, if: -> { persisted? && will_save_change_to_partial? && !partial? }
 
   normalizes :variety, :notes, with: ->(text) { text.strip.presence }
-  normalizes :canopy_interpolation, with: ->(value) { value.presence }
+  normalizes :canopy_interpolation, :canopy_curve_key, with: ->(value) { value.presence }
 
   # Only crops that are vine killed keep a vine kill date, so changing the crop leaves none behind
   before_validation { self.vine_kill_date = nil unless vine_kill_crop? }
@@ -90,20 +91,27 @@ class Planting < ApplicationRecord
   # The suggested harvest date for plant emerging on emergence: its typical season's length later
   # (CanopyCurve#season_days), but no later than Nov 30; Nov 30 for a crop without one (PLAN.md Phase
   # 8 G.2). lib/plantings.ts (typicalEnd) mirrors it.
-  def self.typical_end(plant, emergence)
+  def self.typical_end(plant, emergence, canopy_curve_key = nil)
     latest = Date.new(emergence.year, *LATEST_END)
-    days = CanopyCurve.for(plant.key)&.season_days
+    days = CanopyCurve.effective(plant.key, canopy_curve_key)&.season_days
     days ? [emergence + days, latest].min : latest
   end
 
-  # The crop's typical days from emergence to harvest, or nil
-  def season_days = plant && CanopyCurve.for(plant.key)&.season_days
+  # The percent cover curve this planting follows (PLAN.md Phase 8 G.3): its crop's own, or for a
+  # crop without one the generic curve chosen (canopy_curve_key) or its default; nil for readings only
+  def cover_curve = plant && CanopyCurve.effective(plant.key, canopy_curve_key)
+
+  # Whether its crop has no curve of its own, so it may pick a generic one or none
+  def generic_curve_crop? = plant.present? && CanopyCurve.for(plant.key).nil?
+
+  # The crop's typical days from emergence to harvest (its curve's), or nil
+  def season_days = cover_curve&.season_days
 
   # Whether the crop takes a vine kill date (potato; canopy_curves.yml)
   def vine_kill_crop? = plant.present? && CanopyCurve.for(plant.key)&.vine_kill? || false
 
   # Whether the crop has a canopy curve for this planting's method (CanopyCurve, or CanopyModel for LAI)
-  def canopy_curve? = (et_method == "lai") ? plant.canopy_model.present? : CanopyCurve.for(plant.key).present?
+  def canopy_curve? = (et_method == "lai") ? plant.canopy_model.present? : cover_curve.present?
 
   # How readings combine with the curve: the setting, or the curve where there is one
   def effective_canopy_interpolation = canopy_curve? ? (canopy_interpolation || "curve") : "linear"
@@ -185,6 +193,18 @@ class Planting < ApplicationRecord
   def entries_kept_with_part
     return unless planting_entries.exists?
     errors.add(:partial, "can't change to the whole field while this planting has its own irrigation or readings")
+  end
+
+  # Only a crop without its own curve picks one (a generic key, or none for readings only). Checked
+  # when it changes, so a crop that later gets its own curve keeps its plantings editable (the
+  # crop's curve wins, CanopyCurve.effective)
+  def canopy_curve_key_allowed
+    return if canopy_curve_key.nil?
+    if !generic_curve_crop?
+      errors.add(:canopy_curve_key, "can be chosen only for crops without their own canopy curve")
+    elsif canopy_curve_key != CanopyCurve::NONE && !CanopyCurve.generic.key?(canopy_curve_key)
+      errors.add(:canopy_curve_key, "isn't a canopy curve WISP has")
+    end
   end
 
   def wilting_point_below_capacity

@@ -41,7 +41,7 @@ class PlantingsController < AuthenticatedController
     defaults = plant ? Planting.defaults_for(plant, year) : {}
     # Without a harvest date, the crop's typical one after the emergence given (G.2)
     emergence = iso_date(given[:emergence_date])
-    defaults[:end_date] = Planting.typical_end(plant, emergence) if plant && emergence && !given[:end_date]
+    defaults[:end_date] = Planting.typical_end(plant, emergence, given[:canopy_curve_key]) if plant && emergence && !given[:end_date]
     planting = field.plantings.build(defaults.merge(given))
     saved = Planting.transaction do
       replace_overlapping(planting) if params[:replace].present?
@@ -144,6 +144,6 @@ class PlantingsController < AuthenticatedController
     params.expect(planting: [:field_id, :plant_id, :variety, :season_start, :emergence_date, :end_date, :vine_kill_date,
       :max_root_zone_depth, :mad_frac, :et_method, :canopy_interpolation, :target_ad_pct, :initial_moisture_pct, :notes,
       :soil_type_id, :field_capacity, :perm_wilting_pt, :area_acres,
-      :partial, :plot_length_ft, :plot_width_ft, :latitude, :longitude, :own_soil])
+      :partial, :plot_length_ft, :plot_width_ft, :latitude, :longitude, :own_soil, :canopy_curve_key])
   end
 end

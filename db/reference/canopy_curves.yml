@@ -27,9 +27,15 @@
 # (cabbage, broccoli, tomato, carrot) likely run long for Wisconsin; replace them with Upper Midwest
 # extension timings when gathered. Crops without a curve end Nov 30.
 #
+# generic: curves for crops without their own (PLAN.md Phase 8 G.3), each a rough shape that readings
+# correct; default_for lists the crops that follow it unless their planting picks another (or none,
+# readings only). Their growth rates put the stated cover on the stated day (cgc = −ln(4·cc0·(ccx −
+# C)/ccx²)/t). The perennial curve also restarts after each cutting (Canopy, canopy_cuttings).
+#
 # confidence: matches_wi (published, matches Wisconsin 2026 readings), adjusted_wi (published,
 # adjusted to them), fitted_wi (fitted to them), published (not checked in Wisconsin), fao56
-# (derived from FAO-56 stage lengths, not checked in Wisconsin).
+# (derived from FAO-56 stage lengths, not checked in Wisconsin), generic (a generic shape for crops
+# without their own).
 # Crops not listed (onion, alfalfa, mint, asparagus, other) have no curve: readings only.
 
 sources:
@@ -231,3 +237,36 @@ crops:
     confidence: fao56
     sources: [fao56, aquacrop]
     notes: Use the transplanting date as the emergence date.
+
+generic:
+  leafy_fast:
+    name: Fast, leafy
+    growth: {cc0: 0.02, ccx: 0.90, cgc: 0.1319}
+    season: {days: 60, basis: "Generic: a short leafy crop, after FAO-56 Table 11's lettuce row (75 days from planting)"}
+    basis: "Generic shape: 80% cover 35 days after emergence, like lettuce and other leafy greens"
+    confidence: generic
+    sources: [aquacrop_algorithms, fao56]
+    default_for: []
+  vegetable_medium:
+    name: Vegetable, medium
+    growth: {cc0: 0.015, ccx: 0.90, cgc: 0.0943}
+    season: {days: 110, basis: "Generic: a mid-length vegetable season, between FAO-56 Table 11's shorter and longer vegetable rows"}
+    basis: "Generic shape: 80% cover 52 days (about 7 to 8 weeks) after emergence, like most transplanted or row vegetables"
+    confidence: generic
+    sources: [aquacrop_algorithms, fao56]
+    default_for: [other, garden_vegetables]
+  slow_partial:
+    name: Slow, partial cover
+    growth: {cc0: 0.01, ccx: 0.65, cgc: 0.0666}
+    season: {days: 120, basis: "Generic: FAO-56 Table 11's dry onion (150 days from planting) shortened toward Wisconsin harvests in August and September"}
+    basis: "Generic shape: slow growth to a canopy that never closes, 55% cover 70 days after emergence, like onion"
+    confidence: generic
+    sources: [aquacrop_algorithms, fao56]
+    default_for: [onion]
+  perennial_regrowth:
+    name: Perennial, regrowth
+    growth: {cc0: 0.05, ccx: 0.95, cgc: 0.1362}
+    basis: "Generic shape: regrowth from 5% cover to 80% in 25 days, from spring green-up (the emergence date) or after each cutting, after FAO-56 Table 11's alfalfa cuttings (about 25 days from a cutting to full cover)"
+    confidence: generic
+    sources: [aquacrop_algorithms, fao56]
+    default_for: [alfalfa, mint, asparagus]

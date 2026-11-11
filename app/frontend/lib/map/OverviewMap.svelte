@@ -88,6 +88,8 @@
       status.irrigate,
       'caution',
       status.caution,
+      'needs_canopy',
+      status.caution,
       'ok',
       status.ok,
       'full',

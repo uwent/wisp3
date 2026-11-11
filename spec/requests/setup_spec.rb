@@ -145,10 +145,17 @@ RSpec.describe "Setup", type: :request do
         end_date: Date.new(2027, 9, 2), max_root_zone_depth: 16.0, mad_frac: 0.5, et_method: "pct_cover") # 105 days on
 
       # A crop without a typical season ends Nov 30, as in legacy
-      onion = create(:plant, key: "onion", name: "Onion")
+      alfalfa = create(:plant, key: "alfalfa", name: "Alfalfa")
       other = create(:field, pivot:, soil_type: sand)
-      post plantings_path(year: 2027), params: {planting: {field_id: other.id, plant_id: onion.id, emergence_date: "2027-05-20"}}
+      post plantings_path(year: 2027), params: {planting: {field_id: other.id, plant_id: alfalfa.id, emergence_date: "2027-05-20"}}
       expect(other.plantings.sole.end_date).to eq(Date.new(2027, 11, 30))
+
+      # A crop without its own curve takes its generic curve's season, or the one picked (G.3)
+      onion = create(:plant, key: "onion", name: "Onion")
+      third = create(:field, pivot:, soil_type: sand)
+      post plantings_path(year: 2027), params: {planting: {field_id: third.id, plant_id: onion.id, emergence_date: "2027-05-20",
+        canopy_curve_key: "leafy_fast"}}
+      expect(third.plantings.sole).to have_attributes(canopy_curve_key: "leafy_fast", end_date: Date.new(2027, 7, 19))
     end
 
     it "suggests the harvest from the crop's typical season, no later than Nov 30 (G.2)" do

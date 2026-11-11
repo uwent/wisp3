@@ -507,6 +507,23 @@ test("a new planting's harvest follows the crop and emergence until one is typed
   await expect(harvest).toHaveValue(`${year}-10-01`)
 })
 
+test('a crop without its own canopy curve follows a generic one, or readings only', async ({ page }) => {
+  const year = new Date().getFullYear()
+  await page.goto('/setup')
+  await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
+  const dialog = page.getByRole('dialog', { name: /^Add a \d{4} planting to Cabbage/ })
+  await dialog.getByLabel('Crop').selectOption({ label: 'Onion' })
+  const curves = dialog.getByRole('group', { name: 'Canopy curve' })
+  await expect(curves.getByRole('radio', { name: /^Slow, partial cover \(suggested\)/ })).toBeChecked()
+  await expect(curves.getByText('An approximation for onion')).toBeVisible()
+  await expect(dialog.getByLabel('Harvest or kill')).toHaveValue(`${year}-08-29`) // May 1 + 120 days
+  await curves.getByRole('radio', { name: 'No curve: readings only' }).check()
+  await expect(curves.getByText('Irrigation scheduling works only if you enter percent cover regularly')).toBeVisible()
+  // A crop with its own curve has no choice
+  await dialog.getByLabel('Crop').selectOption({ label: 'Soybean' })
+  await expect(curves).toBeHidden()
+})
+
 test('a new whole-field planting over another offers to replace it', async ({ page }) => {
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()

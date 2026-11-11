@@ -9,8 +9,11 @@ class CanopyCurve
     "adjusted_wi" => "Published, adjusted to Wisconsin 2026 readings",
     "fitted_wi" => "Fitted to Wisconsin 2026 readings",
     "published" => "Published; not yet checked in Wisconsin",
-    "fao56" => "Derived from FAO-56 stage lengths; not yet checked in Wisconsin"
+    "fao56" => "Derived from FAO-56 stage lengths; not yet checked in Wisconsin",
+    "generic" => "Generic shape for crops without their own curve; readings correct it"
   }.freeze
+  # A planting's choice of no curve at all: readings only (PLAN.md Phase 8 G.3)
+  NONE = "none"
   # The canopy counts as full (for a decline rule's start) at this share of its maximum
   FULL = 0.98
 
@@ -19,6 +22,8 @@ class CanopyCurve
   attr_reader :key, :cc0, :ccx, :cgc, :decline, :basis, :confidence, :sources, :notes
   # Typical days from emergence to harvest, and how they were worked out (PLAN.md Phase 8 G.2)
   attr_reader :season_days, :season_basis
+  # A generic curve's name ("Vegetable, medium") and the crops that follow it by default (G.3)
+  attr_reader :name, :default_for
   # Changes with the curve's definition, so fits to it are redone (CanopyFit.fetch)
   attr_reader :digest
 
@@ -30,14 +35,26 @@ class CanopyCurve
     # The curve for a plant key, or nil if the crop has none
     def for(key) = all[key]
 
-    def all = @all ||= load
+    def all = @all ||= load("crops")
+
+    # The generic curves (G.3), in the file's order
+    def generic = @generic ||= load("generic")
+
+    # The generic curve a crop without its own follows unless its planting picks another, or nil
+    def default_generic(plant_key) = generic.values.find { |curve| curve.default_for.include?(plant_key) }
+
+    # The percent cover curve a planting of plant_key follows: the crop's own, else the generic one
+    # chosen (choice: a generic key, NONE, or nil for the crop's default)
+    def effective(plant_key, choice = nil)
+      all[plant_key] || ((choice == NONE) ? nil : (choice && generic[choice]) || default_generic(plant_key))
+    end
 
     private
 
-    def load
+    def load(section)
       data = YAML.safe_load_file(FILE, aliases: true)
       sources = data.fetch("sources").to_h { |id, source| [id, Source.new(id:, **source.symbolize_keys)] }
-      data.fetch("crops").to_h { |key, crop| [key, new(key, crop, sources)] }.freeze
+      data.fetch(section).to_h { |key, crop| [key, new(key, crop, sources)] }.freeze
     end
   end
 
@@ -50,6 +67,7 @@ class CanopyCurve
     @digest = Digest::SHA256.hexdigest(definition.slice("growth", "decline").to_json).first(12)
     @vine_kill = definition.fetch("vine_kill", false)
     @season_days, @season_basis = definition["season"]&.values_at("days", "basis")
+    @name, @default_for = definition["name"], definition.fetch("default_for", [])
     @confidence = definition.fetch("confidence")
     raise ArgumentError, "#{key}: unknown confidence #{@confidence}" unless CONFIDENCE.key?(@confidence)
     @sources = definition.fetch("sources").map { |id| sources.fetch(id) }

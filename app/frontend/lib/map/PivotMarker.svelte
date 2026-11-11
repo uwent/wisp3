@@ -15,7 +15,13 @@
     onselect,
   }: { pivot: MapPivot; selected: boolean; dimmed: boolean; onselect: () => void } = $props()
 
-  const LABELS: Record<Status, string> = { irrigate: 'Irrigate', caution: 'Caution', ok: 'OK', full: 'Full' }
+  const LABELS: Record<Status, string> = {
+    irrigate: 'Irrigate',
+    caution: 'Caution',
+    needs_canopy: 'No canopy data',
+    ok: 'OK',
+    full: 'Full',
+  }
 
   const status = $derived(pivotStatus(pivot.fields))
   const idle = (card: FieldCard) => {

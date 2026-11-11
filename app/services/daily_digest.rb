@@ -25,7 +25,7 @@ class DailyDigest
   PivotSection = Data.define(:pivot, :entries)
 
   ATTENTION = %i[irrigate caution].freeze
-  RANK = {irrigate: 0, caution: 1, ok: 2, full: 3}.freeze
+  RANK = FieldStatuses::RANK
 
   attr_reader :user, :today
 

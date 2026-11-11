@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_11_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -214,6 +214,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_140000) do
     t.float "latitude"
     t.float "longitude"
     t.boolean "own_soil", default: false, null: false
+    t.string "canopy_curve_key"
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
     t.index ["soil_type_id"], name: "index_plantings_on_soil_type_id"

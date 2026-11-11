@@ -27,6 +27,16 @@ export const LEAD_DAYS = 3
 
 export function outlook(summary: PlantingSummary, units: Units): Outlook | null {
   if (summary.phase !== 'active' || !summary.date) return null
+  // No curve and no reading (PLAN.md Phase 8 G.3): the balance can't say when to irrigate
+  if (summary.status === 'needs_canopy') {
+    return {
+      urgent: false,
+      headline: 'No canopy data',
+      detail: `WISP can't estimate ${summary.plant_name.toLowerCase()} water use until you enter a percent cover reading.`,
+      chance: null,
+      dry: null,
+    }
+  }
   const today = summary.date
   const level = summary.target_in === null ? 'the irrigation point' : 'its target'
   const depth = (inches: number) => units.format('depth', inches)

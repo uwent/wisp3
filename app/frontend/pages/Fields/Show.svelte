@@ -17,7 +17,7 @@
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { fieldDays, fields, pivots, planting as plantingRoute } from '@/routes'
-  import type { Field, Plant, PlantingSummary, SoilType } from '@/types/serializers'
+  import type { Field, GenericCurve, Plant, PlantingSummary, SoilType } from '@/types/serializers'
 
   // The field page (PLAN.md Phase 8 G.11): the land, not one crop on it. The season's plantings on
   // a timeline and with their status today, the field's own rain and irrigation (which every
@@ -43,6 +43,7 @@
     days,
     plants,
     soil_types,
+    generic_curves,
   }: {
     field: Field
     pivot: { id: number; name: string; pump_capacity_gpm: number | null }
@@ -57,6 +58,7 @@
     days: FieldDayRow[]
     plants: Plant[]
     soil_types: SoilType[]
+    generic_curves: GenericCurve[]
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
@@ -323,4 +325,4 @@
   </Form>
 </CollapsibleSection>
 
-<PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} />
+<PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} genericCurves={generic_curves} />

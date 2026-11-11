@@ -47,7 +47,8 @@ type GuidedPlanting = Pick<
   | 'end_date'
   | 'vine_kill_crop'
   | 'vine_kill_date'
->
+> &
+  Partial<Pick<Planting, 'generic_curve_name'>>
 
 /** Days from vine kill until the canopy is gone (Canopy::VINE_KILL_DAYS) */
 export const VINE_KILL_DAYS = 14
@@ -144,19 +145,24 @@ function fitText(planting: GuidedPlanting, fit: CanopyFit): string {
   if (Math.abs(rate) >= 5) parts.push(`grows ${Math.abs(rate)}% ${rate > 0 ? 'faster' : 'slower'}`)
   const height = Math.round((fit.height - 1) * 100)
   if (Math.abs(height) >= 5) parts.push(`is ${Math.abs(height)}% ${height > 0 ? 'fuller' : 'thinner'}`)
-  if (!parts.length) return ` So far your readings match the typical ${crop} curve, so WISP follows it as it is.`
+  const name = planting.generic_curve_name ? 'generic' : crop
+  if (!parts.length) return ` So far your readings match the typical ${name} curve, so WISP follows it as it is.`
   const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
-  return ` So far, fitted to your readings, the ${crop} curve ${list}.`
+  return ` So far, fitted to your readings, the ${name} curve ${list}.`
 }
 
 function methodText(planting: GuidedPlanting, fit: CanopyFit = null): string {
   const crop = planting.plant_name
   if (planting.et_method === 'pct_cover') {
-    const curve = planting.canopy_curve
-      ? `Without readings, WISP follows a ${crop.toLowerCase()} canopy curve from the emergence date (its source is ` +
-        'on the About page). '
-      : `There's no canopy curve for ${crop.toLowerCase()}, so until you enter your first reading, the model ` +
-        'treats the field as bare soil and counts only evaporation from the soil. '
+    const curve = planting.generic_curve_name
+      ? `WISP has no canopy curve of its own for ${crop.toLowerCase()}, so without readings it follows a generic ` +
+        `one (${planting.generic_curve_name.toLowerCase()}) from the emergence date: a rough shape, described on the ` +
+        'About page, that your readings correct. '
+      : planting.canopy_curve
+        ? `Without readings, WISP follows a ${crop.toLowerCase()} canopy curve from the emergence date (its source is ` +
+          'on the About page). '
+        : `This planting follows no canopy curve (readings only), so until you enter your first reading, the model ` +
+          "treats the field as bare soil and counts only evaporation from the soil, and can't say when to irrigate. "
     return (
       `${crop} water use is modeled from percent canopy cover, the share of the ground shaded by the crop: the ` +
       `day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${interpolationText(planting, fit)} Enter percent cover about ` +

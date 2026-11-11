@@ -67,9 +67,11 @@ class PlantingStatus
   # Today's day, or the season's last
   def current = days.last
 
-  # Today's status; caution when it's fine today but the projection reaches the threshold soon
+  # Today's status; caution when it's fine today but the projection reaches the threshold soon;
+  # needs_canopy when nothing says how much the crop covers (G.3)
   def status
     return unless current
+    return :needs_canopy if needs_canopy?
     today_status = WaterBalance.status(params, current.result.ad)
     soon = phase == :active && crossing && crossing.days <= LEAD_DAYS
     (%i[full ok].include?(today_status) && soon) ? :caution : today_status
@@ -81,6 +83,14 @@ class PlantingStatus
   def crossing
     return @crossing if defined?(@crossing)
     @crossing = first_crossing(([current] + forecast_days).compact.map(&:result))
+  end
+
+  # In season and emerged, set to readings only (no canopy curve, PLAN.md Phase 8 G.3), with no reading
+  # yet: crop ET is bare soil's, so the balance can't say when to irrigate
+  def needs_canopy?
+    return false unless phase == :active && today >= planting.emergence_date && planting.canopy_curve_key == CanopyCurve::NONE
+    attribute = (planting.et_method == "lai") ? :lai : :pct_cover
+    planting.canopy_observations.none? { |obs| obs[attribute] && obs.date.between?(planting.emergence_date, today) }
   end
 
   # Whether days without entered rain take the model's (the field's setting, or its group's)
