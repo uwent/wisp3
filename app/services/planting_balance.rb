@@ -18,7 +18,8 @@ class PlantingBalance
   def days(through: @planting.end_date)
     dates = (@planting.season_start..[through, @planting.end_date].min).to_a
     weather = @weather || WeatherDay.balance_inputs(@planting.weather_cell, dates)
-    inputs = DailyInputs.new(@planting.field, dates, weather:, records: @records, today: @today).days
+    inputs = DailyInputs.new(@planting.field, dates, weather:, records: @records, today: @today,
+      planting: @planting).days
     canopies = dates.map { |date| canopy.on(date) }
 
     balance_days = inputs.zip(canopies).map do |day, canopy_value|

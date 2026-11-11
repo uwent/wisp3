@@ -1,5 +1,10 @@
-# One crop on one field for one season. Plantings on a field can't overlap, which allows double
-# cropping (legacy picked the crop with the latest emergence, C10).
+# One crop on one field for one season. A planting covers the whole field (the usual case) or part
+# of it (partial, PLAN.md Phase 8 G.11: a plot of plot_length_ft × plot_width_ft, or just its acres,
+# with an optional pin). A whole-field planting can't overlap another planting on its field, which
+# allows double cropping (legacy picked the crop with the latest emergence, C10); part-field ones may
+# overlap each other (a research field or market garden growing several crops at once). A
+# part-field planting can have its own irrigation, soil moisture readings and notes
+# (PlantingEntry), which come before the field's for its balance (DailyInputs).
 #
 # A planting keeps the values its balance runs on (PLAN.md Phase 8 G.9): the field's soil type and
 # its own field capacity and wilting point (NULL follows the soil type, as on fields), the field's
@@ -16,6 +21,7 @@ class Planting < ApplicationRecord
   belongs_to :soil_type
   belongs_to :weather_cell, optional: true
   has_many :canopy_observations, -> { order(:date) }, dependent: :destroy
+  has_many :planting_entries, dependent: :delete_all
 
   validates :season_start, :emergence_date, :end_date, presence: true
   validates :max_root_zone_depth, numericality: {greater_than: 0}
@@ -24,18 +30,26 @@ class Planting < ApplicationRecord
   validates :canopy_interpolation, inclusion: {in: CANOPY_INTERPOLATIONS}, allow_nil: true
   validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}, allow_nil: true
   validates :area_acres, numericality: {greater_than: 0}, allow_nil: true
+  validates :area_acres, presence: {message: "is needed for part of a field (or its length and width)"}, if: :partial?
+  validates :plot_length_ft, :plot_width_ft, numericality: {greater_than: 0}, allow_nil: true
+  validates :latitude, numericality: {in: Pivot::LATITUDES}, allow_nil: true
+  validates :longitude, numericality: {in: Pivot::LONGITUDES}, allow_nil: true
   validates :target_ad_pct, :initial_moisture_pct, numericality: {in: 0..100, message: "must be between 0 and 100"},
     allow_nil: true
   validate :dates_in_order
   validate :lai_needs_curve
   validate :wilting_point_below_capacity
   validate :no_overlap, if: -> { field && season_start && end_date }
+  validate :entries_kept_with_part, if: -> { persisted? && will_save_change_to_partial? && !partial? }
 
   normalizes :variety, :notes, with: ->(text) { text.strip.presence }
   normalizes :canopy_interpolation, with: ->(value) { value.presence }
 
   # Only crops that are vine killed keep a vine kill date, so changing the crop leaves none behind
   before_validation { self.vine_kill_date = nil unless vine_kill_crop? }
+  # A whole-field planting has no plot or pin, and covers the field's area; a plot's area is its
+  # length × width
+  before_validation :fit_area
   # Before validation (soil type is required) and again on create, for saves that skip validation
   before_validation :copy_from_field, on: :create
   before_create :copy_from_field
@@ -46,8 +60,11 @@ class Planting < ApplicationRecord
   # Plantings whose season includes date
   scope :on, ->(date) { where(season_start: ..date, end_date: date..) }
 
-  # The field values a planting copies, with the field's attribute for each
+  # The field values a planting copies, with the field's attribute for each; a part-field planting
+  # keeps its own area
   FIELD_VALUES = %i[soil_type_id field_capacity perm_wilting_pt area_acres].freeze
+
+  SQUARE_FEET_PER_ACRE = 43_560
 
   # Defaults for a new planting of plant in year: Apr 1 to Nov 30, as in legacy WISP
   def self.defaults_for(plant, year)
@@ -76,6 +93,20 @@ class Planting < ApplicationRecord
 
   def ended?(today = Date.current) = end_date < today
 
+  # Whether part-field plantings in season on some day of this one's add up to more than the field
+  # (a warning, not an error: the field's area may be out of date)
+  def exceeds_field_area?
+    return false unless partial? && area_acres && field&.area_acres
+    others = Planting.where(field_id:, partial: true).where.not(id:)
+      .where("season_start <= ? AND end_date >= ?", end_date, season_start).to_a
+    together = others + [self]
+    # The total only rises when a planting starts, so checking each start within this season is enough
+    starts = together.map(&:season_start).select { |date| season_range.cover?(date) }
+    starts.any? { |date| together.select { |p| p.season_range.cover?(date) }.sum(&:area_acres) > field.area_acres }
+  end
+
+  def overlaps?(other) = season_start <= other.end_date && end_date >= other.season_start
+
   def season_range = season_start..end_date
   def season_year = season_start.year
 
@@ -90,8 +121,25 @@ class Planting < ApplicationRecord
       self.field_capacity = field.field_capacity if field_capacity.nil?
       self.perm_wilting_pt = field.perm_wilting_pt if perm_wilting_pt.nil?
     end
-    self.area_acres ||= field.area_acres
+    self.area_acres ||= field.area_acres unless partial?
     self.weather_cell ||= field.pivot&.weather_cell
+  end
+
+  def fit_area
+    if partial?
+      if plot_length_ft && plot_width_ft
+        self.area_acres = (plot_length_ft * plot_width_ft / SQUARE_FEET_PER_ACRE).round(6)
+      end
+    else
+      self.plot_length_ft = self.plot_width_ft = self.latitude = self.longitude = nil
+      # Back to the whole field: its area again (a new planting gets it in copy_from_field)
+      self.area_acres = field&.area_acres if persisted? && will_save_change_to_partial?
+    end
+  end
+
+  def entries_kept_with_part
+    return unless planting_entries.exists?
+    errors.add(:partial, "can't change to the whole field while this planting has its own irrigation or readings")
   end
 
   def wilting_point_below_capacity
@@ -119,9 +167,13 @@ class Planting < ApplicationRecord
     errors.add(:vine_kill_date, "must be on or before the harvest date") if vine_kill_date > end_date
   end
 
+  # Part-field plantings may overlap each other; nothing may overlap a whole-field one
   def no_overlap
     overlapping = Planting.where(field_id:).where.not(id:)
       .where("season_start <= ? AND end_date >= ?", end_date, season_start)
-    errors.add(:season_start, "overlaps another planting on this field") if overlapping.exists?
+    overlapping = overlapping.where(partial: false) if partial?
+    return unless overlapping.exists?
+    message = partial? ? "overlaps a planting covering the whole field" : "overlaps another planting on this field"
+    errors.add(:season_start, message)
   end
 end

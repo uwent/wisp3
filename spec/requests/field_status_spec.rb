@@ -287,6 +287,21 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
   describe "editing a day" do
     let(:url) { field_day_path(field, "2026-07-08") }
 
+    it "gives a part-field planting its own irrigation, readings and notes, and the field the rain (G.11)" do
+      plot_field = create(:field, pivot:, name: "Arlington 525", area_acres: 4)
+      plot = create(:planting, field: plot_field, partial: true, plot_length_ft: 100, plot_width_ft: 20,
+        season_start: Date.new(2026, 5, 1), emergence_date: Date.new(2026, 5, 20), end_date: Date.new(2026, 9, 30))
+      patch field_day_path(plot_field, "2026-07-08"),
+        params: {day: {rain_in: 0.3, irrigation_in: 0.25, soil_moisture_pct: 14, notes: "Drip"}, planting_id: plot.id}
+      expect(plot.planting_entries.sole).to have_attributes(irrigation_in: 0.25, soil_moisture_pct: 14, notes: "Drip")
+      expect(plot_field.field_entries.sole).to have_attributes(rain_in: 0.3, irrigation_in: nil, soil_moisture_pct: nil)
+
+      patch field_day_path(plot_field, "2026-07-08"), params: {day: {irrigation_in: "", soil_moisture_pct: "", notes: ""},
+                                                               planting_id: plot.id}
+      expect(plot.planting_entries).to be_empty
+      expect(plot_field.field_entries.sole.rain_in).to eq(0.3)
+    end
+
     it "records rain, irrigation, a moisture reading and notes, and clears them" do
       patch url, params: {day: {rain_in: 0.0, irrigation_in: 0.6, notes: " Gauge "}, planting_id: planting.id}
       expect(field.field_entries.sole).to have_attributes(rain_in: 0.0, irrigation_in: 0.6, soil_moisture_pct: nil, notes: "Gauge")

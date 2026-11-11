@@ -79,6 +79,13 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_planting.canopy_observations).to be_empty
   end
 
+  it "won't record another group's part-field planting's own entries through my field (G.11)" do
+    their_plot = create(:planting, field: create(:field, pivot: their_pivot), partial: true, area_acres: 1)
+    patch field_day_path(my_field, "2026-07-01"), params: {day: {irrigation_in: 0.5}, planting_id: their_plot.id}
+    expect_not_found
+    expect(their_plot.planting_entries).to be_empty
+  end
+
   it "hides other groups' plantings" do
     post plantings_path, params: {planting: {field_id: their_field.id, plant_id: their_planting.plant_id}}
     expect_not_found

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_11_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_11_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -173,6 +173,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_120000) do
     t.check_constraint "radius_ft IS NULL OR radius_ft > 0::double precision", name: "pivots_radius_positive"
   end
 
+  create_table "planting_entries", force: :cascade do |t|
+    t.bigint "planting_id", null: false
+    t.date "date", null: false
+    t.float "irrigation_in"
+    t.float "soil_moisture_pct"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["planting_id", "date"], name: "index_planting_entries_on_planting_id_and_date", unique: true
+    t.check_constraint "irrigation_in IS NULL OR irrigation_in >= 0::double precision", name: "planting_entries_irrigation_nonnegative"
+    t.check_constraint "soil_moisture_pct IS NULL OR soil_moisture_pct >= 0::double precision AND soil_moisture_pct <= 100::double precision", name: "planting_entries_moisture_range"
+  end
+
   create_table "plantings", force: :cascade do |t|
     t.bigint "field_id", null: false
     t.bigint "plant_id", null: false
@@ -195,20 +208,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_120000) do
     t.float "perm_wilting_pt"
     t.float "area_acres"
     t.bigint "weather_cell_id"
+    t.boolean "partial", default: false, null: false
+    t.float "plot_length_ft"
+    t.float "plot_width_ft"
+    t.float "latitude"
+    t.float "longitude"
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
     t.index ["soil_type_id"], name: "index_plantings_on_soil_type_id"
     t.index ["weather_cell_id"], name: "index_plantings_on_weather_cell_id"
+    t.check_constraint "(latitude IS NULL) = (longitude IS NULL)", name: "plantings_pin_both"
+    t.check_constraint "(plot_length_ft IS NULL) = (plot_width_ft IS NULL)", name: "plantings_plot_both"
+    t.check_constraint "NOT partial OR area_acres IS NOT NULL", name: "plantings_partial_area"
     t.check_constraint "area_acres IS NULL OR area_acres > 0::double precision", name: "plantings_area_positive"
     t.check_constraint "canopy_interpolation::text = ANY (ARRAY['linear'::character varying::text, 'curve'::character varying::text])", name: "plantings_canopy_interpolation"
     t.check_constraint "et_method::text = ANY (ARRAY['pct_cover'::character varying::text, 'lai'::character varying::text])", name: "plantings_et_method"
     t.check_constraint "initial_moisture_pct IS NULL OR initial_moisture_pct >= 0::double precision AND initial_moisture_pct <= 100::double precision", name: "plantings_initial_moisture_range"
     t.check_constraint "mad_frac >= 0.05::double precision AND mad_frac <= 0.95::double precision", name: "plantings_mad_frac_range"
     t.check_constraint "max_root_zone_depth > 0::double precision", name: "plantings_mrzd_positive"
+    t.check_constraint "plot_length_ft IS NULL OR partial AND plot_length_ft > 0::double precision AND plot_width_ft > 0::double precision", name: "plantings_plot_partial"
     t.check_constraint "season_start <= end_date AND emergence_date <= end_date", name: "plantings_date_order"
     t.check_constraint "target_ad_pct IS NULL OR target_ad_pct >= 0::double precision AND target_ad_pct <= 100::double precision", name: "plantings_target_range"
     t.check_constraint "vine_kill_date IS NULL OR emergence_date <= vine_kill_date AND vine_kill_date <= end_date", name: "plantings_vine_kill_order"
-    t.exclusion_constraint "field_id WITH =, daterange(season_start, end_date, '[]'::text) WITH &&", using: :gist, name: "plantings_no_overlap"
+    t.exclusion_constraint "field_id WITH =, daterange(season_start, end_date, '[]'::text) WITH &&, (\nCASE\n    WHEN partial THEN int8range(id, (id + 1))\n    ELSE int8range(NULL::bigint, NULL::bigint)\nEND) WITH &&", using: :gist, name: "plantings_no_overlap"
   end
 
   create_table "plants", force: :cascade do |t|
@@ -358,6 +380,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_120000) do
   add_foreign_key "pivot_irrigations", "pivots"
   add_foreign_key "pivots", "farms"
   add_foreign_key "pivots", "weather_cells"
+  add_foreign_key "planting_entries", "plantings"
   add_foreign_key "plantings", "fields"
   add_foreign_key "plantings", "plants"
   add_foreign_key "plantings", "soil_types"

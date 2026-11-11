@@ -97,7 +97,8 @@ class FieldsController < AuthenticatedController
     weather_dates = planting.season_start..(as_of || [planting.end_date, Date.current + FORECAST_DAYS].min)
 
     day_params = {
-      entries: field.field_entries.where(date: dates).index_by(&:date),
+      # Notes: a part-field planting's own (G.11), else the field's
+      entries: (planting.partial? ? planting.planting_entries : field.field_entries).where(date: dates).index_by(&:date),
       observations: planting.canopy_observations.select { |obs| dates.cover?(obs.date) && (!as_of || obs.date <= as_of) }
         .to_h { |obs| [obs.date, obs[attribute]] }.compact,
       pivot_inches:,

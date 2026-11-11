@@ -34,17 +34,27 @@ class PivotIrrigation < ApplicationRecord
     pivot.pump_capacity_gpm * run_hours * 60 / (GALLONS_PER_ACRE_INCH * acres)
   end
 
-  # The area watered on the date: the plantings in season then on the irrigated fields, each with
-  # the area it kept for its season (PLAN.md Phase 8 G.9), so a field added later or left fallow
-  # doesn't thin the water out. A day with no planting counts the fields' areas. nil when an area
-  # is missing. Kept per date and fields, as the balance asks once per field under the pivot.
+  # The area watered on the date: the irrigated fields with a planting in season then, each counted
+  # at the area its whole-field planting kept for the season (PLAN.md Phase 8 G.9), so a field added
+  # later or left fallow doesn't thin the water out. A field growing only part-field plantings that
+  # day (G.11) counts whole: the pivot waters the field, not just its plots. A day with no planting
+  # counts the fields' areas. nil when an area is missing. Kept per date and fields, as the balance
+  # asks once per field under the pivot.
   def irrigated_acres
     key = [date, field_ids]
     @irrigated_acres ||= {}
     return @irrigated_acres[key] if @irrigated_acres.key?(key)
     @irrigated_acres[key] = begin
-      areas = date ? Planting.on(date).where(field_id: irrigated_fields.select(:id)).pluck(:area_acres) : []
-      areas = irrigated_fields.map(&:area_acres) if areas.empty?
+      fields = irrigated_fields.to_a
+      plantings = date ? Planting.on(date).where(field_id: fields.map(&:id)).to_a.group_by(&:field_id) : {}
+      areas = if plantings.empty?
+        fields.map(&:area_acres)
+      else
+        fields.filter_map do |field|
+          in_season = plantings[field.id] or next
+          in_season.find { |planting| !planting.partial? }&.area_acres || field.area_acres
+        end
+      end
       areas.sum if areas.any? && areas.none?(&:nil?)
     end
   end

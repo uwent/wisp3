@@ -1,7 +1,9 @@
 # Saves one day of a field's grid: the field entry (rain, irrigation, soil moisture, notes) and,
-# with planting_id, that planting's canopy reading (percent cover or LAI, by its ET method). Only
-# the values sent change; a blank value clears it. A future day takes only planned irrigation and
-# notes: rain and readings haven't happened yet.
+# with planting_id, that planting's canopy reading (percent cover or LAI, by its ET method). For a
+# planting on part of the field (PLAN.md Phase 8 G.11), its irrigation, soil moisture and notes go
+# to its own entry (PlantingEntry) and rain to the field's. Only the values sent change; a blank
+# value clears it. A future day takes only planned irrigation and notes: rain and readings haven't
+# happened yet.
 class FieldDaysController < AuthenticatedController
   FUTURE_VALUES = %i[irrigation_in notes].freeze
 
@@ -18,10 +20,21 @@ class FieldDaysController < AuthenticatedController
       end
     end
 
+    part = field.plantings.find(params[:planting_id]) if params[:planting_id].present?
+    part = nil unless part&.partial?
+    entry_values = values.except(:canopy).to_h.symbolize_keys
     errors = {}
     FieldEntry.transaction do
-      entry = FieldEntry.record(field.field_entries, date, values.except(:canopy))
-      errors.merge!(entry.errors.to_hash(true))
+      if part
+        own = entry_values.slice(*PlantingEntry.entry_values)
+        if own.any?
+          errors.merge!(PlantingEntry.record(part.planting_entries, date, own).errors.to_hash(true))
+        end
+        entry_values = entry_values.except(*PlantingEntry.entry_values)
+      end
+      if entry_values.any?
+        errors.merge!(FieldEntry.record(field.field_entries, date, entry_values).errors.to_hash(true))
+      end
       errors.merge!(record_canopy(field, date, values[:canopy])) if values.key?(:canopy)
       raise ActiveRecord::Rollback if errors.any?
     end

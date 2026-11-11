@@ -1,9 +1,9 @@
 # One row of a field's daily grid: PlantingBalance::Day's resolved inputs (with sources), canopy
-# and balance. params: entries {date => FieldEntry} for notes, observations {date => canopy
+# and balance. params: entries {date => FieldEntry, or PlantingEntry for a part-field planting} for notes, observations {date => canopy
 # reading}, pivot_inches {date => inches from the pivot} (shown when a field entry overrides it),
 # canopy (the planting's Canopy, for its crop's curve).
 class FieldDaySerializer < ApplicationSerializer
-  SOURCE = "'entered' | 'pivot' | 'group' | 'model' | 'forecast' | 'none' | 'missing'"
+  SOURCE = "'entered' | 'field' | 'pivot' | 'group' | 'model' | 'forecast' | 'none' | 'missing'"
 
   attribute(:date) { |day| day.inputs.date }
   attribute(:et0) { |day| day.inputs.et0 }

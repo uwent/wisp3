@@ -33,9 +33,15 @@ class Field < ApplicationRecord
     use_model_precip.nil? ? pivot.farm.group.use_model_precip : use_model_precip
   end
 
-  # The planting whose season includes date, if any
+  # The planting whose season includes date, if any: the whole-field one, else the first part-field
+  # one (a field can have several of those at once, G.11; plantings_on gives them all)
   def planting_on(date)
-    plantings.find { |planting| planting.season_range.cover?(date) }
+    plantings_on(date).min_by { |planting| [planting.partial? ? 1 : 0, planting.season_start, planting.id] }
+  end
+
+  # Every planting whose season includes date
+  def plantings_on(date)
+    plantings.select { |planting| planting.season_range.cover?(date) }
   end
 
   private
@@ -44,7 +50,9 @@ class Field < ApplicationRecord
     changed = Planting::FIELD_VALUES.select { |attribute| saved_change_to_attribute?(attribute) }
     values = changed.to_h { |attribute| [attribute, self[attribute]] }
     values[:weather_cell_id] = pivot.weather_cell_id if saved_change_to_pivot_id?
-    plantings.open.update_all(values) if values.any?
+    plantings.open.update_all(values.except(:area_acres)) if values.except(:area_acres).any?
+    # Part-field plantings keep their own area (G.11)
+    plantings.open.where(partial: false).update_all(area_acres:) if values.key?(:area_acres)
   end
 
   # Earlier seasons' pivot irrigation and weather belong to the pivot the field was on, so a field

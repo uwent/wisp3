@@ -40,6 +40,7 @@ class PlantingsController < AuthenticatedController
   def planting_params
     params.expect(planting: [:field_id, :plant_id, :variety, :season_start, :emergence_date, :end_date, :vine_kill_date,
       :max_root_zone_depth, :mad_frac, :et_method, :canopy_interpolation, :target_ad_pct, :initial_moisture_pct, :notes,
-      :soil_type_id, :field_capacity, :perm_wilting_pt, :area_acres])
+      :soil_type_id, :field_capacity, :perm_wilting_pt, :area_acres,
+      :partial, :plot_length_ft, :plot_width_ft, :latitude, :longitude])
   end
 end
