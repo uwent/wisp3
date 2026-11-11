@@ -81,6 +81,41 @@ RSpec.describe "Part-field plantings" do
     end
   end
 
+  describe "soil" do
+    let(:loam) { create(:soil_type, name: "Loam", field_capacity: 0.30, perm_wilting_pt: 0.12) }
+    let(:muck) { create(:soil_type, name: "Muck", field_capacity: 0.50, perm_wilting_pt: 0.20) }
+
+    it "follows the field's soil, unless a plot has its own" do
+      following = plot
+      own = plot(length: 50, soil_type: loam)
+      expect([following.own_soil, own.own_soil]).to eq([false, true])
+      field.update!(soil_type: muck)
+      expect(following.reload.soil_type).to eq(muck)
+      expect(own.reload.soil_type).to eq(loam)
+    end
+
+    it "takes the field's soil again when a plot goes back to it" do
+      own = plot(soil_type: loam, field_capacity: 0.28)
+      own.update!(own_soil: false)
+      expect(own).to have_attributes(soil_type: field.soil_type, field_capacity: field.field_capacity)
+    end
+
+    it "keeps a whole-field planting on the field's soil" do
+      whole = create(:planting, field: create(:field, pivot:), own_soil: true, **season)
+      expect(whole.own_soil).to be(false)
+      part = plot(soil_type: loam)
+      part.update!(partial: false)
+      expect(part).to have_attributes(own_soil: false, soil_type: field.soil_type)
+    end
+
+    it "copies a plot's own soil to the next season, and the field's to the rest" do
+      plot(soil_type: loam)
+      SeasonCopy.new(field.pivot.farm.group, 2027).run
+      copied = field.plantings.reload.find { |planting| planting.season_year == 2027 }
+      expect(copied).to have_attributes(own_soil: true, soil_type: loam)
+    end
+  end
+
   describe "own entries" do
     let(:part) { plot }
     let(:dates) { (Date.new(2026, 6, 1)..Date.new(2026, 6, 4)).to_a }

@@ -4,7 +4,8 @@
 # allows double cropping (legacy picked the crop with the latest emergence, C10); part-field ones may
 # overlap each other (a research field or market garden growing several crops at once). A
 # part-field planting can have its own irrigation, soil moisture readings and notes
-# (PlantingEntry), which come before the field's for its balance (DailyInputs).
+# (PlantingEntry), which come before the field's for its balance (DailyInputs), and its own soil
+# (own_soil), which edits to the field's soil leave alone.
 #
 # A planting keeps the values its balance runs on (PLAN.md Phase 8 G.9): the field's soil type and
 # its own field capacity and wilting point (NULL follows the soil type, as on fields), the field's
@@ -50,6 +51,8 @@ class Planting < ApplicationRecord
   # A whole-field planting has no plot or pin, and covers the field's area; a plot's area is its
   # length × width
   before_validation :fit_area
+  # A whole-field planting grows on the field's soil; a plot set back to it takes the field's again
+  before_validation :follow_field_soil, unless: :new_record?
   # Before validation (soil type is required) and again on create, for saves that skip validation
   before_validation :copy_from_field, on: :create
   before_create :copy_from_field
@@ -113,13 +116,17 @@ class Planting < ApplicationRecord
   private
 
   # A new planting takes its field's soil and area, unless given its own soil type (with its
-  # overrides) or area, and its pivot's weather cell
+  # overrides) or area, and its pivot's weather cell. A plot given a soil type keeps it as its own.
   def copy_from_field
     return unless field
+    self.own_soil = false unless partial?
     if soil_type.nil?
       self.soil_type = field.soil_type
       self.field_capacity = field.field_capacity if field_capacity.nil?
       self.perm_wilting_pt = field.perm_wilting_pt if perm_wilting_pt.nil?
+    elsif partial? && new_record? && !will_save_change_to_own_soil?
+      self.own_soil = soil_type_id != field.soil_type_id || field_capacity != field.field_capacity ||
+        perm_wilting_pt != field.perm_wilting_pt
     end
     self.area_acres ||= field.area_acres unless partial?
     self.weather_cell ||= field.pivot&.weather_cell
@@ -135,6 +142,12 @@ class Planting < ApplicationRecord
       # Back to the whole field: its area again (a new planting gets it in copy_from_field)
       self.area_acres = field&.area_acres if persisted? && will_save_change_to_partial?
     end
+  end
+
+  def follow_field_soil
+    self.own_soil = false unless partial?
+    return unless field && will_save_change_to_own_soil? && !own_soil? && !ended?
+    self.soil_type, self.field_capacity, self.perm_wilting_pt = field.soil_type, field.field_capacity, field.perm_wilting_pt
   end
 
   def entries_kept_with_part

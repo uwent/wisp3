@@ -26,8 +26,12 @@ class SeasonCopy
     attributes = planting.attributes.slice(*%w[field_id plant_id variety max_root_zone_depth mad_frac et_method
       canopy_interpolation target_ad_pct initial_moisture_pct notes partial plot_length_ft plot_width_ft latitude
       longitude])
-    # A plot keeps its size; a whole-field planting takes the field's area as it is now (G.9)
+    # A plot keeps its size; a whole-field planting takes the field's area as it is now (G.9). A plot
+    # on its own soil keeps that too; the rest take the field's soil as it is now.
     attributes["area_acres"] = planting.area_acres if planting.partial?
+    if planting.own_soil?
+      attributes.merge!(planting.attributes.slice(*%w[own_soil soil_type_id field_capacity perm_wilting_pt]))
+    end
     dates = %w[season_start emergence_date end_date vine_kill_date].to_h { |column| [column, planting[column]&.next_year] }
     Planting.new(attributes.merge(dates)).tap(&:save)
   end

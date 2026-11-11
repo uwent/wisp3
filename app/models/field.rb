@@ -50,7 +50,10 @@ class Field < ApplicationRecord
     changed = Planting::FIELD_VALUES.select { |attribute| saved_change_to_attribute?(attribute) }
     values = changed.to_h { |attribute| [attribute, self[attribute]] }
     values[:weather_cell_id] = pivot.weather_cell_id if saved_change_to_pivot_id?
-    plantings.open.update_all(values.except(:area_acres)) if values.except(:area_acres).any?
+    soil = values.slice(:soil_type_id, :field_capacity, :perm_wilting_pt)
+    # Plots on their own soil keep it (G.11)
+    plantings.open.where(own_soil: false).update_all(soil) if soil.any?
+    plantings.open.update_all(values.slice(:weather_cell_id)) if values.key?(:weather_cell_id)
     # Part-field plantings keep their own area (G.11)
     plantings.open.where(partial: false).update_all(area_acres:) if values.key?(:area_acres)
   end
