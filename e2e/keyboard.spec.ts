@@ -52,7 +52,8 @@ test('selecting a pivot from the keyboard moves to its panel, and Escape comes b
   const panel = page.locator('[data-pivot-panel]')
   await expect(panel).toBeFocused()
   await page.keyboard.press('Tab')
-  await expect(page.getByRole('link', { name: 'View pivot' })).toBeFocused()
+  // First the pivot's name, which links to its page
+  await expect(panel.getByRole('heading').getByRole('link')).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(panel).toBeHidden()
   await expect(show).toBeFocused()

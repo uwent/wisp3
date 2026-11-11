@@ -521,7 +521,9 @@
       {/if}
       {#if summary.totals.entered_rain_days}
         <p class="mt-2 text-xs text-ink-muted">
-          On the {summary.totals.entered_rain_days} days you entered rain, your gauge read
+          {summary.totals.entered_rain_days === 1
+            ? 'On the day you entered rain'
+            : `On the ${summary.totals.entered_rain_days} days you entered rain`}, your gauge read
           {units.format('depth', summary.totals.entered_rain)} and the model estimated {units.format(
             'depth',
             summary.totals.entered_rain_model,
@@ -544,15 +546,14 @@
       </p>
     {/if}
     {#if guidance}
-      <details
-        class="border-t border-line pt-3 text-sm lg:col-span-3"
-        open={guidanceOpen}
-        ontoggle={(event) => toggleGuidance(event.currentTarget.open)}
-      >
-        <summary class="cursor-pointer font-medium">{guidance.title}</summary>
-        <div class="mt-2 max-w-3xl space-y-2 text-ink-muted">
-          <GlossaryText paragraphs={guidance.paragraphs} />
-        </div>
+      <!-- The readings stay in view when the explanation is collapsed -->
+      <div class="border-t border-line pt-3 text-sm lg:col-span-3">
+        <details open={guidanceOpen} ontoggle={(event) => toggleGuidance(event.currentTarget.open)}>
+          <summary class="cursor-pointer font-medium">{guidance.title}</summary>
+          <div class="mt-2 max-w-3xl space-y-2 text-ink-muted">
+            <GlossaryText paragraphs={guidance.paragraphs} />
+          </div>
+        </details>
         {#if guidance.readings.length}
           <ul class="mt-3 flex flex-wrap gap-2" aria-label="Last readings">
             {#each guidance.readings as reading (reading.label)}
@@ -566,7 +567,7 @@
             {/each}
           </ul>
         {/if}
-      </details>
+      </div>
     {/if}
   </section>
 

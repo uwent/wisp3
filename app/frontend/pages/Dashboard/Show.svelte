@@ -119,11 +119,16 @@
           <div class="flex items-center justify-between gap-3">
             <h3 id="pivot-{pivot.id}" class="min-w-0 truncate font-medium">
               <span class="font-normal text-ink-muted">Pivot:</span>
-              {pivot.name}
+              <Link
+                href={pivots.show(pivot.id)}
+                class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current">{pivot.name}</Link
+              >
             </h3>
             <div class="flex shrink-0 gap-3 text-sm">
-              <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline" aria-label="View {pivot.name}"
-                >View</Link
+              <Link
+                href={pivots.show(pivot.id)}
+                class="text-brand-600 hover:underline"
+                aria-label="Irrigation on {pivot.name}">Irrigation</Link
               >
               <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
                 >Edit</Link

@@ -278,6 +278,7 @@
               compact
               weather={weatherFor(item.pivot)}
               pivotName={item.pivot.name}
+              pivotId={item.pivot.id}
               selected={isSelected(item)}
               onselect={() => selectField(item)}
             />

@@ -25,10 +25,11 @@ test('the dashboard shows field cards with a status', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /^Farm: / }).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
-  // A pivot's View opens its irrigation and weather
+  // A pivot's name links to its page: its irrigation and weather
   const pivot = page.getByRole('heading', { name: /^Pivot: / }).first()
   const name = (await pivot.textContent())!.replace('Pivot:', '').trim()
-  await page.getByRole('link', { name: `View ${name}` }).click()
+  await expect(page.getByRole('link', { name: `Irrigation on ${name}` })).toBeVisible()
+  await pivot.getByRole('link', { name }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Pivot: ${name}`)
   await expect(page.getByRole('heading', { name: /^Weather at this pivot/ })).toBeVisible()
 })
@@ -46,7 +47,8 @@ test('the map lists the fields and selects a pivot from the list', async ({ page
   await expect(select).toHaveAttribute('aria-pressed', 'true')
   const panel = page.getByRole('region', { name: /^Pivot: / })
   await expect(panel).toBeVisible()
-  await expect(panel.getByRole('link', { name: 'View pivot' })).toBeVisible()
+  await expect(panel.getByRole('heading').getByRole('link')).toBeVisible()
+  await expect(panel.getByRole('link', { name: 'Irrigation', exact: true })).toBeVisible()
 
   // Escape closes it; the list's link opens the field
   await page.keyboard.press('Escape')

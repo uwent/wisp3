@@ -988,10 +988,10 @@ A review before the beta: the app driven in a browser as the demo grower (deskto
 
 ##### G.1 Quick fixes
 
-- [ ] **Dashboard: the pivot's name links to its page** (`Dashboard/Show.svelte`, the `Pivot:` heading), and the same on the map's field list (`FieldCard`'s `Pivot:` line) and the pivot popup. Rename the pivot's "View" link to "Irrigation", the name Setup gives the same page.
-- [ ] **Readings due stay visible:** the "Soil moisture … due" and "Percent cover … due" chips sit inside the "How … is modeled" `<details>` (`Fields/Show.svelte`), so collapsing the text hides them. Move them out, beside the canopy warning.
-- [ ] "On the 1 days you entered rain" (`Fields/Show.svelte`, season totals): pluralize.
-- [ ] **Phone nav:** at 390 px the tab row scrolls sideways and "Setup" is cut off with no sign of more. Add an edge fade or scroll hint (or a "More" menu for About and the admin items); keep the bits-ui rule in CLAUDE.md (items left out, not hidden).
+- [x] **Dashboard: the pivot's name links to its page** (`Dashboard/Show.svelte`, the `Pivot:` heading), and the same on the map's field list (`FieldCard`'s `Pivot:` line) and the pivot popup. Rename the pivot's "View" link to "Irrigation", the name Setup gives the same page.
+- [x] **Readings due stay visible:** the "Soil moisture … due" and "Percent cover … due" chips sit inside the "How … is modeled" `<details>` (`Fields/Show.svelte`), so collapsing the text hides them. Move them out, beside the canopy warning.
+- [x] "On the 1 days you entered rain" (`Fields/Show.svelte`, season totals): pluralize.
+- [x] **Phone nav:** at 390 px the tab row scrolls sideways and "Setup" is cut off with no sign of more. Add an edge fade or scroll hint (or a "More" menu for About and the admin items); keep the bits-ui rule in CLAUDE.md (items left out, not hidden). *(Done 2026-11-11: a fade on whichever edge has more tabs past it, and the current tab scrolled to the middle after each visit.)*
 
 ##### G.2 Season end dates
 

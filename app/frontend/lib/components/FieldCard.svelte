@@ -9,12 +9,12 @@
   import { outlook } from '@/lib/outlook'
   import type { FieldCard } from '@/lib/overview'
   import type { Units } from '@/lib/units'
-  import { fields } from '@/routes'
+  import { fields, pivots } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
 
   // A field's status card: on the dashboard (the whole card links to the field), and compact on the
-  // map, where pivotName labels it and onselect makes the card select it, with its own link to the
-  // field page. weather: whether the pivot's weather is being fetched (the page reloads until it
+  // map, where pivotName labels it (linking to the pivot's page when pivotId is given) and onselect
+  // makes the card select it, with its own link to the field page. weather: whether the pivot's weather is being fetched (the page reloads until it
   // lands) or the page gave up waiting.
   let {
     card,
@@ -23,6 +23,7 @@
     units,
     compact = false,
     pivotName,
+    pivotId,
     selected = false,
     onselect,
   }: {
@@ -32,6 +33,7 @@
     units: Units
     compact?: boolean
     pivotName?: string
+    pivotId?: number
     selected?: boolean
     onselect?: () => void
   } = $props()
@@ -53,7 +55,19 @@
 {#snippet content()}
   <div class="flex items-start justify-between gap-2">
     <div class="min-w-0">
-      {#if pivotName}<p class="truncate text-xs text-ink-muted">Pivot: {pivotName}</p>{/if}
+      {#if pivotName}
+        <p class="truncate text-xs text-ink-muted">
+          Pivot:
+          {#if pivotId !== undefined && onselect}
+            <!-- Above the card's select button, like the field link -->
+            <Link
+              href={pivots.show(pivotId)}
+              class="pointer-events-auto relative underline decoration-ink-muted/50 underline-offset-2 hover:text-ink hover:decoration-current"
+              >{pivotName}</Link
+            >
+          {:else}{pivotName}{/if}
+        </p>
+      {/if}
       <h4 class="truncate font-medium">
         <span class="font-normal text-ink-muted">Field:</span>
         {card.name}

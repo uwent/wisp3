@@ -59,6 +59,39 @@
       : [{ label: 'About', route: about() }],
   )
 
+  // On phones the nav scrolls sideways: fade the edge that has more tabs past it, and bring the
+  // current tab into view after each visit (Setup is off the right edge at 390 px)
+  let navEl = $state<HTMLElement>()
+  let moreLeft = $state(false)
+  let moreRight = $state(false)
+  function measureNav() {
+    if (!navEl) return
+    moreLeft = navEl.scrollLeft > 1
+    moreRight = navEl.scrollLeft + navEl.clientWidth < navEl.scrollWidth - 1
+  }
+  $effect(() => {
+    if (!navEl) return
+    const observer = new ResizeObserver(measureNav)
+    observer.observe(navEl)
+    return () => observer.disconnect()
+  })
+  $effect(() => {
+    void page.url
+    const current = navEl?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (navEl && current && navEl.scrollWidth > navEl.clientWidth) {
+      navEl.scrollLeft = current.offsetLeft - (navEl.clientWidth - current.offsetWidth) / 2
+    }
+    measureNav()
+  })
+  const fade = '2.5rem'
+  const navMask = $derived(
+    moreLeft || moreRight
+      ? `linear-gradient(to right, ${moreLeft ? `transparent, black ${fade}` : 'black'}, ${
+          moreRight ? `black calc(100% - ${fade}), transparent` : 'black'
+        })`
+      : undefined,
+  )
+
   // While an admin is signed in as someone else, every tab's title says whose WISP it is. Pages set
   // their titles in <svelte:head>, so this re-adds the prefix whenever a page changes its title.
   const titlePrefix = $derived(auth.impersonator && auth.user ? `As ${auth.user.email} · ` : null)
@@ -133,7 +166,13 @@
       <Link href={dashboard.show()} class="flex text-ink"><Logo /></Link>
 
       <!-- On phones: logo and account menu on one row, the nav below; the group switch moves into the account menu -->
-      <nav aria-label="Main" class="order-3 -mx-1 flex w-full gap-1 overflow-x-auto sm:order-2 sm:w-auto">
+      <nav
+        bind:this={navEl}
+        aria-label="Main"
+        class="order-3 -mx-1 flex w-full gap-1 overflow-x-auto sm:order-2 sm:w-auto"
+        style:mask-image={navMask}
+        onscroll={measureNav}
+      >
         {#each nav as item (item.label)}
           <Link
             href={item.route}

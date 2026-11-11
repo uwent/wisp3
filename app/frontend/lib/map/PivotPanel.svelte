@@ -49,10 +49,13 @@
       <p class="truncate text-xs text-ink-muted">Farm: {farmName}</p>
       <h2 id="pivot-panel-title" class="truncate font-medium">
         <span class="font-normal text-ink-muted">Pivot:</span>
-        {pivot.name}
+        <Link
+          href={pivots.show(pivot.id)}
+          class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current">{pivot.name}</Link
+        >
       </h2>
       <div class="flex gap-3 text-xs">
-        <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline">View pivot</Link>
+        <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline">Irrigation</Link>
         <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline">Edit</Link>
       </div>
     </div>
