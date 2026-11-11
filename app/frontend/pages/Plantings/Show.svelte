@@ -14,7 +14,7 @@
   import SeasonDetails from '@/lib/components/SeasonDetails.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import Term from '@/lib/components/Term.svelte'
-  import { formatDate, relativeDay } from '@/lib/dates'
+  import { addDays, formatDate, relativeDay } from '@/lib/dates'
   import { guidance as guidanceFor } from '@/lib/guidance'
   import { outlook as outlookFor } from '@/lib/outlook'
   import { plotSize } from '@/lib/plantings'
@@ -25,7 +25,16 @@
   import { stickyHeight } from '@/lib/stickyBars'
   import { fileSlug } from '@/lib/csv'
   import { formatNumber, parseNumber, units as unitsFor, type Units } from '@/lib/units'
-  import { exportPlanting, fieldDays, fields, pivots, planting as plantingRoute, setup, weatherPivot } from '@/routes'
+  import {
+    exportPlanting,
+    fieldDays,
+    fields,
+    pivots,
+    planting as plantingRoute,
+    plantings as plantingRoutes,
+    setup,
+    weatherPivot,
+  } from '@/routes'
   import type { Field, FieldDay, Planting, PlantingSummary, WeatherPanelDay } from '@/types/serializers'
 
   let {
@@ -116,6 +125,26 @@
   const stats = $derived(days.length ? seasonStats(days) : null)
   // Part of the field (G.11): rain is the field's; irrigation, readings and notes are this planting's
   const plot = $derived(planting.partial ? plotSize(planting, units) : null)
+
+  // Past the crop's typical season and still running (often the Nov 30 default): offer to end it
+  // today (PLAN.md Phase 8 G.2)
+  const overdue = $derived(
+    !readOnly &&
+      summary.phase === 'active' &&
+      summary.date !== null &&
+      planting.season_days !== null &&
+      summary.date > addDays(planting.emergence_date, planting.season_days),
+  )
+  function endSeason() {
+    const today = summary.date!
+    if (
+      !confirm(
+        `End this ${planting.plant_name.toLowerCase()} season today, ${formatDate(today)}? WISP stops tracking it and asking for readings. Its days so far stay, and you can change the harvest date in setup.`,
+      )
+    )
+      return
+    router.patch(plantingRoutes.update(planting.id).url, { planting: { end_date: today } }, { preserveScroll: true })
+  }
   const guidance = $derived(
     planting &&
       guidanceFor(
@@ -378,6 +407,16 @@
         ? ` · vine kill ${formatDate(planting.vine_kill_date)}`
         : ''} · season {formatDate(planting.season_start)} – {formatDate(planting.end_date, { year: true })}
     </p>
+    {#if overdue}
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line px-3 py-2 text-sm">
+        <p class="text-ink-muted">
+          Past a typical {planting.plant_name.toLowerCase()} season ({planting.season_days} days from emergence). Harvested?
+        </p>
+        <button type="button" class="font-medium text-brand-600 underline underline-offset-2" onclick={endSeason}
+          >End the season today</button
+        >
+      </div>
+    {/if}
     {#if plot}
       <p class="text-sm">
         Part of the field: {plot}{#if planting.own_soil}{' '}<span class="text-ink-muted"

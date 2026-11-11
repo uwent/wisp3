@@ -70,17 +70,34 @@ class Planting < ApplicationRecord
 
   SQUARE_FEET_PER_ACRE = 43_560
 
-  # Defaults for a new planting of plant in year: Apr 1 to Nov 30, as in legacy WISP
+  # A season ends no later than this, the legacy default end
+  LATEST_END = [11, 30].freeze
+
+  # Defaults for a new planting of plant in year: from Apr 1, emerging May 1, harvested after the
+  # crop's typical season (Nov 30 without one, as in legacy WISP)
   def self.defaults_for(plant, year)
+    emergence = Date.new(year, 5, 1)
     {
       season_start: Date.new(year, 4, 1),
-      emergence_date: Date.new(year, 5, 1),
-      end_date: Date.new(year, 11, 30),
+      emergence_date: emergence,
+      end_date: typical_end(plant, emergence),
       max_root_zone_depth: plant.default_max_root_zone_depth,
       mad_frac: DEFAULT_MAD_FRAC,
       et_method: "pct_cover"
     }
   end
+
+  # The suggested harvest date for plant emerging on emergence: its typical season's length later
+  # (CanopyCurve#season_days), but no later than Nov 30; Nov 30 for a crop without one (PLAN.md Phase
+  # 8 G.2). lib/plantings.ts (typicalEnd) mirrors it.
+  def self.typical_end(plant, emergence)
+    latest = Date.new(emergence.year, *LATEST_END)
+    days = CanopyCurve.for(plant.key)&.season_days
+    days ? [emergence + days, latest].min : latest
+  end
+
+  # The crop's typical days from emergence to harvest, or nil
+  def season_days = plant && CanopyCurve.for(plant.key)&.season_days
 
   # Whether the crop takes a vine kill date (potato; canopy_curves.yml)
   def vine_kill_crop? = plant.present? && CanopyCurve.for(plant.key)&.vine_kill? || false

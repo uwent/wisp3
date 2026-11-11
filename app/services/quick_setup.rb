@@ -53,7 +53,12 @@ class QuickSetup
     return @errors["fields.#{index}.plant_id"] = ["Choose a crop"] unless plant
 
     planting = field.plantings.build(Planting.defaults_for(plant, @year).merge(plant:))
-    planting.emergence_date = params[:emergence_date] if params[:emergence_date].present?
+    if params[:emergence_date].present?
+      planting.emergence_date = params[:emergence_date]
+      # The harvest suggested for that emergence, unless one was given
+      planting.end_date = Planting.typical_end(plant, planting.emergence_date) if planting.emergence_date
+    end
+    planting.end_date = params[:end_date] if params[:end_date].present?
     collect("fields.#{index}", planting) unless planting.save
   end
 

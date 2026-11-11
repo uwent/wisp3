@@ -48,6 +48,7 @@ class PagesController < AuthenticatedController
       covers = (0..CURVE_DAYS).map { |day| curve.cover(emergence, emergence + day).round(1) }
       {key: plant.key, name: plant.name, basis: curve.basis, confidence: curve.confidence,
        confidence_label: curve.confidence_label, notes: curve.notes,
+       season: curve.season_days && {days: curve.season_days, basis: curve.season_basis},
        growth: {cc0: curve.cc0, ccx: curve.ccx, cgc: curve.cgc}, decline: curve.decline,
        days_to: [50, 80].to_h { |pct| [pct, covers.index { |cover| cover >= pct }] },
        covers:, sources: curve.sources.map { |source| {citation: source.citation, url: source.url} }}

@@ -20,6 +20,13 @@
 # Other WISP crops have no such period (sweet potato vines are cut days before digging, after
 # irrigation has stopped; onion tops fall on their own).
 #
+# season: the typical days from emergence to harvest (PLAN.md Phase 8 G.2), which sets a new
+# planting's suggested harvest date (no later than Nov 30), with how it was worked out: AquaCrop's
+# maturity where the crop has a file, else FAO-56 Table 11's total (from planting) less about 10 days
+# to emergence; crops harvested green stop before FAO-56's late stage. Rows from warm climates
+# (cabbage, broccoli, tomato, carrot) likely run long for Wisconsin; replace them with Upper Midwest
+# extension timings when gathered. Crops without a curve end Nov 30.
+#
 # confidence: matches_wi (published, matches Wisconsin 2026 readings), adjusted_wi (published,
 # adjusted to them), fitted_wi (fitted to them), published (not checked in Wisconsin), fao56
 # (derived from FAO-56 stage lengths, not checked in Wisconsin).
@@ -44,6 +51,7 @@ sources:
 
 crops:
   potato:
+    season: {days: 105, basis: "AquaCrop crop file: maturity 105 days after emergence"}
     growth: {cc0: 0.006, ccx: 0.92, cgc: 0.18896}
     decline: {type: rule, date: "07-25", days: 42, floor: 50}
     vine_kill: true
@@ -60,6 +68,7 @@ crops:
       over two weeks, while WISP keeps the water balance going until harvest (the end date), for the
       irrigation that keeps the soil moist through skin set.
   field_corn:
+    season: {days: 126, basis: "AquaCrop crop file: maturity 126 days after emergence (maize)"}
     growth: {cc0: 0.0049, ccx: 0.96, cgc: 0.16312}
     decline: {type: aquacrop, start_day: 101, cdc: 0.11691}
     basis: AquaCrop maize crop file (calendar days)
@@ -70,6 +79,7 @@ crops:
       growers' 2026 readings: 26 and 40 days). If you track field corn by LAI, it uses its own LAI
       curve from the Wisconsin Irrigation Scheduler (WIS v6.3.11).
   sweet_corn:
+    season: {days: 80, basis: "FAO-56 Table 11 (sweet corn, Idaho) through mid-season, 90 days from planting, less about 10 days to emergence: harvested green, before the late stage"}
     growth: {cc0: 0.0049, ccx: 0.96, cgc: 0.124}
     basis: AquaCrop maize crop file, growth slowed to fit Wisconsin sweet corn
     confidence: adjusted_wi
@@ -80,6 +90,7 @@ crops:
       gives 37 to 52 days for sweet corn. Sweet corn is harvested green, so the curve has no decline
       and the canopy holds until the end date.
   soybean:
+    season: {days: 121, basis: "AquaCrop crop file: maturity 121 days after emergence"}
     growth: {cc0: 0.0165, ccx: 0.98, cgc: 0.087}
     decline: {type: aquacrop, start_day: 95, cdc: 0.02885}
     basis: AquaCrop soybean crop file (calendar days), growth slowed to fit Wisconsin soybeans
@@ -90,6 +101,7 @@ crops:
       cover 6 days before Wisconsin soybeans did in 2026. Now 50% and 80% come about 40 and 51 days
       after emergence (in Wisconsin growers' 2026 readings: 39 and 51 days).
   snap_bean:
+    season: {days: 70, basis: "FAO-56 Table 11 (beans, green) through mid-season, 80 days from planting, less about 10 days to emergence: harvested green, before the late stage"}
     growth: {cc0: 0.0132, ccx: 0.99, cgc: 0.11804}
     basis: AquaCrop dry bean crop file (calendar days)
     confidence: matches_wi
@@ -98,6 +110,7 @@ crops:
       Reaches 50% cover about 31 days after emergence and 80% about 39 days after (in Wisconsin
       growers' 2026 readings: 29 and 42 days). Harvested green, so the curve has no decline.
   shell_peas:
+    season: {days: 65, basis: "FAO-56 Table 11 (peas, Europe) through mid-season, 75 days from planting, less about 10 days to emergence: harvested green, before the late stage"}
     growth: {cc0: 0.0453, ccx: 0.95, cgc: 0.088}
     basis: AquaCrop equations fitted to Wisconsin 2026 readings
     confidence: fitted_wi
@@ -107,6 +120,7 @@ crops:
       Wisconsin 2026 readings. FAO-56 gives 80% cover at 30 days (Europe) to 50 days (Idaho) for
       peas in temperate climates. Harvested green, so the curve has no decline.
   tomato:
+    season: {days: 145, basis: "FAO-56 Table 11 (California, Apr/May, 155 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.00667, ccx: 0.75, cgc: 0.12286}
     decline: {type: aquacrop, start_day: 87, cdc: 0.07238}
     basis: AquaCrop tomato crop file (calendar days, from transplanting)
@@ -114,6 +128,7 @@ crops:
     sources: [aquacrop, aquacrop_crop_files]
     notes: Use the transplanting date as the emergence date. Maximum cover is 75%.
   barley:
+    season: {days: 125, basis: "FAO-56 Table 11 (barley, oats and wheat, 35–45° latitude, 135 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0225, ccx: 0.80, cgc: 0.1241}
     decline: {type: aquacrop, start_day: 58, cdc: 0.07697}
     basis: AquaCrop barley crop file (calendar days)
@@ -121,6 +136,7 @@ crops:
     sources: [aquacrop, aquacrop_crop_files]
     notes: Maximum cover is 80%.
   wheat:
+    season: {days: 125, basis: "FAO-56 Table 11 (barley, oats and wheat, 35–45° latitude, 135 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0338, ccx: 0.95, cgc: 0.1084}
     decline: {type: aquacrop, start_day: 95, cdc: 0.07697}
     basis: "FAO-56 spring small grains (35–45° latitude, March/April planting); decline at AquaCrop barley's rate"
@@ -131,72 +147,85 @@ crops:
       emergence date. The canopy starts to decline at the end of FAO-56's mid-season stage, 95 days
       after emergence.
   cabbage:
+    season: {days: 155, basis: "FAO-56 Table 11 (California desert, September, 165 days from planting) less about 10 days to emergence"}
     growth: &crucifers {cc0: 0.0164, ccx: 0.95, cgc: 0.0904}
     basis: FAO-56 crucifers (Mediterranean, April planting)
     confidence: fao56
     sources: [fao56, aquacrop]
     notes: Use the transplanting date as the emergence date. This is the same curve as broccoli's.
   broccoli:
+    season: {days: 125, basis: "FAO-56 Table 11 (California desert, September, 135 days from planting) less about 10 days to emergence"}
     growth: *crucifers
     basis: FAO-56 crucifers (Mediterranean, April planting)
     confidence: fao56
     sources: [fao56, aquacrop]
     notes: Use the transplanting date as the emergence date. This is the same curve as cabbage's.
   carrot:
+    season: {days: 140, basis: "FAO-56 Table 11 (Mediterranean, Feb/Mar, 150 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0338, ccx: 0.95, cgc: 0.0678}
     basis: FAO-56 carrots (Mediterranean, February/March planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   beets:
+    season: {days: 60, basis: "FAO-56 Table 11 (table beets, Mediterranean, 70 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0420, ccx: 0.95, cgc: 0.1084}
     basis: FAO-56 table beets (Mediterranean, April/May planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   celery:
+    season: {days: 115, basis: "FAO-56 Table 11 (Mediterranean, April, 125 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0184, ccx: 0.95, cgc: 0.0678}
     basis: FAO-56 celery (Mediterranean, April planting)
     confidence: fao56
     sources: [fao56, aquacrop]
     notes: Use the transplanting date as the emergence date.
   leafy_greens:
+    season: {days: 65, basis: "FAO-56 Table 11 (lettuce, Mediterranean, 75 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0309, ccx: 0.95, cgc: 0.0904}
     basis: FAO-56 lettuce (Mediterranean, April planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   pepper:
+    season: {days: 115, basis: "FAO-56 Table 11 (sweet peppers, Europe, 125 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0055, ccx: 0.75, cgc: 0.1036}
     basis: FAO-56 sweet peppers (Europe and Mediterranean, April–June planting)
     confidence: fao56
     sources: [fao56, aquacrop, aquacrop_crop_files]
     notes: Use the transplanting date as the emergence date. Maximum cover is 75%, assumed from AquaCrop's tomato curve.
   cucumber:
+    season: {days: 95, basis: "FAO-56 Table 11 (arid, June/Aug, 105 days from planting) less about 10 days to emergence"}
     growth: &cucurbits_fast {cc0: 0.0309, ccx: 0.95, cgc: 0.0904}
     basis: FAO-56 cucumber (arid region, June/August planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   summer_squash:
+    season: {days: 80, basis: "FAO-56 Table 11 (zucchini, Mediterranean/Europe, 90 days from planting) less about 10 days to emergence"}
     growth: *cucurbits_fast
     basis: FAO-56 squash and zucchini (Mediterranean and Europe, May/June planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   melon:
+    season: {days: 110, basis: "FAO-56 Table 11 (sweet melons, Mediterranean, 120 days from planting) less about 10 days to emergence"}
     growth: &cucurbits_slow {cc0: 0.0248, ccx: 0.95, cgc: 0.0775}
     basis: FAO-56 sweet melons (Mediterranean, May planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   pumpkin:
+    season: {days: 110, basis: "FAO-56 Table 11 (pumpkin and winter squash, Europe, 120 days from planting) less about 10 days to emergence"}
     growth: *cucurbits_slow
     basis: FAO-56 pumpkin and winter squash (Europe, June planting)
     confidence: fao56
     sources: [fao56, aquacrop]
     notes: This is the same curve as winter squash's.
   winter_squash:
+    season: {days: 110, basis: "FAO-56 Table 11 (pumpkin and winter squash, Europe, 120 days from planting) less about 10 days to emergence"}
     growth: *cucurbits_slow
     basis: FAO-56 pumpkin and winter squash (Europe, June planting)
     confidence: fao56
     sources: [fao56, aquacrop]
     notes: This is the same curve as pumpkin's.
   sweet_potato:
+    season: {days: 140, basis: "FAO-56 Table 11 (Mediterranean, April, 150 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0164, ccx: 0.95, cgc: 0.0904}
     basis: FAO-56 sweet potato (Mediterranean, April planting)
     confidence: fao56

@@ -491,6 +491,22 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   await expect(next.getByLabel('Length', { exact: true })).toHaveValue('300')
 })
 
+test("a new planting's harvest follows the crop and emergence until one is typed", async ({ page }) => {
+  const year = new Date().getFullYear()
+  await page.goto('/setup')
+  await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
+  const dialog = page.getByRole('dialog', { name: /^Add a \d{4} planting to Cabbage/ })
+  const harvest = dialog.getByLabel('Harvest or kill')
+  await dialog.getByLabel('Crop').selectOption({ label: 'Soybean' })
+  await expect(harvest).toHaveValue(`${year}-08-30`) // May 1 + 121 days
+  await expect(dialog.getByText('A soybean season typically runs about 121 days')).toBeVisible()
+  await dialog.getByLabel('Emergence').fill(`${year}-05-20`)
+  await expect(harvest).toHaveValue(`${year}-09-18`)
+  await harvest.fill(`${year}-10-01`)
+  await dialog.getByLabel('Emergence').fill(`${year}-05-25`)
+  await expect(harvest).toHaveValue(`${year}-10-01`)
+})
+
 test('a new whole-field planting over another offers to replace it', async ({ page }) => {
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()

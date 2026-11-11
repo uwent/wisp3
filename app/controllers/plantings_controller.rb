@@ -37,8 +37,12 @@ class PlantingsController < AuthenticatedController
     field = Current.group.fields.find(planting_params[:field_id])
     plant = Plant.find_by(id: planting_params[:plant_id])
     year = params.fetch(:year, Date.current.year).to_i
+    given = planting_params.compact_blank.except(:field_id)
     defaults = plant ? Planting.defaults_for(plant, year) : {}
-    planting = field.plantings.build(defaults.merge(planting_params.compact_blank.except(:field_id)))
+    # Without a harvest date, the crop's typical one after the emergence given (G.2)
+    emergence = iso_date(given[:emergence_date])
+    defaults[:end_date] = Planting.typical_end(plant, emergence) if plant && emergence && !given[:end_date]
+    planting = field.plantings.build(defaults.merge(given))
     saved = Planting.transaction do
       replace_overlapping(planting) if params[:replace].present?
       planting.save || raise(ActiveRecord::Rollback)
@@ -94,8 +98,10 @@ class PlantingsController < AuthenticatedController
   end
 
   # ?as_of= as a date, or nil when it's missing or malformed
-  def requested_date
-    Date.iso8601(params[:as_of]) if params[:as_of].is_a?(String)
+  def requested_date = iso_date(params[:as_of])
+
+  def iso_date(value)
+    Date.iso8601(value) if value.is_a?(String)
   rescue Date::Error
     nil
   end

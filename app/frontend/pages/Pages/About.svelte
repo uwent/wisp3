@@ -31,6 +31,8 @@
       | { type: 'rule'; date: string; days: number; floor: number }
       | null
     days_to: { 50: number | null; 80: number | null }
+    /** Typical days from emergence to harvest (PLAN.md Phase 8 G.2) */
+    season: { days: number; basis: string } | null
     covers: number[]
     sources: { citation: string; url: string }[]
   }
@@ -221,9 +223,12 @@
         enter them instead.
       </li>
       <li>
-        <strong>Planting:</strong> a crop on a field for one season, with its emergence date, root zone depth, MAD and
-        the way its canopy is tracked. Typical values for each crop are in the <a href="#crops">table below</a>. Each
-        planting has its own water balance and its own page.
+        <strong>Planting:</strong> a crop on a field for one season, with its emergence date, harvest date, root zone
+        depth, MAD and the way its canopy is tracked. The harvest date starts at the crop's typical season after
+        emergence (on each crop's card below; November 30 for crops without one, and never later), and the season ends
+        there: WISP stops tracking it and asking for readings. Change it to your own date, or, once a planting is past
+        its typical season, use <strong>End the season today</strong> on its page. Typical values for each crop are in
+        the <a href="#crops">table below</a>. Each planting has its own water balance and its own page.
       </li>
     </ul>
     <p>
@@ -505,6 +510,11 @@ t: days since emergence; t′: days since the decline starts</code
             growth rate (CGC) {curve.growth.cgc} a day.
           </p>
           {#if curve.notes}<p class="text-ink-muted">{curve.notes}</p>{/if}
+          {#if curve.season}
+            <p class="text-ink-muted">
+              Typical season: {curve.season.days} days from emergence to harvest ({curve.season.basis}).
+            </p>
+          {/if}
           <details class="text-xs text-ink-muted">
             <summary class="cursor-pointer">Sources</summary>
             <ul class="mt-1 list-disc space-y-1 pl-4">

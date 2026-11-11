@@ -74,3 +74,14 @@ export function nextSeason(previous: { end_date: string }): {
     end_date: addDays(start, 30) > novemberEnd ? addDays(start, 30) : novemberEnd,
   }
 }
+
+/**
+ * The suggested harvest date for a crop emerging on emergence: its typical season's length later
+ * (PlantSerializer's season_days), no later than Nov 30; Nov 30 without one (Planting.typical_end)
+ */
+export function typicalEnd(seasonDays: number | null | undefined, emergence: string): string {
+  const latest = `${emergence.slice(0, 4)}-11-30`
+  if (!seasonDays) return latest
+  const end = addDays(emergence, seasonDays)
+  return end < latest ? end : latest
+}

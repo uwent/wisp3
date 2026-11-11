@@ -999,11 +999,15 @@ A review before the beta: the app driven in a browser as the demo grower (deskto
 
 Every planting defaults to an end date of Nov 30 (`Planting.defaults_for`, as in legacy), and quick setup doesn't ask for one. A potato harvested in September stays in season for two more months: the dashboard shows it, the daily email lists it, and its tasks keep asking for readings (the demo's R1 potato on Nov 11: "Percent cover: Oct 2 (40 days ago) · due").
 
-- [ ] **A typical season length per crop** (days from emergence to harvest) in `db/reference/canopy_curves.yml` (`season_days`), with its source: the AquaCrop maturity or FAO-56 Table 11 totals already gathered in `docs/canopy/02-published-curves.md`, shortened to Wisconsin practice where the notes say so (snap bean and sweet corn harvested green). Crops with no row get one from extension timing, or keep Nov 30.
-- [ ] `Planting.defaults_for` uses it: end date = emergence + `season_days`. It moves when the emergence date changes in the form, until the grower sets the end date themselves (the same "suggested until chosen" pattern as the soil suggestion).
-- [ ] **Quick setup asks for the harvest date** ("Harvest (expected)", filled from the crop and emergence date, editable), so a field set up in a few minutes ends when it should.
-- [ ] **"End the season" on the field page** (a button while the planting is in season and past its typical length: sets the end date to today after a confirm). Owners and members alike; it is ordinary planting data.
-- [ ] Existing plantings keep their dates. The About page's setup section says what the default is.
+**Built (2026-11-11):**
+- [x] **A typical season length per crop:** `season: {days, basis}` on each crop in `db/reference/canopy_curves.yml` (`CanopyCurve#season_days`). AquaCrop's maturity for potato (105), field corn (126) and soybean (121); FAO-56 Table 11's total less about 10 days to emergence for the rest; crops harvested green (snap bean 70, sweet corn 80, shell peas 65) stop before FAO-56's late stage. The crops without a curve (onion, alfalfa, mint, asparagus, other) end Nov 30. No season ends after Nov 30.
+- [x] `Planting.typical_end(plant, emergence)` (mirrored by `typicalEnd` in `lib/plantings.ts`): `defaults_for`, a planting created with an emergence and no harvest, and quick setup use it. The planting form's harvest follows the crop and emergence until a date is typed (an existing planting keeps its own), with "A soybean season typically runs about 121 days from emergence to harvest" under the dates.
+- [x] **Quick setup asks for the harvest date** ("Harvest (expected)", following crop and emergence until typed; `end_date` in its rows).
+- [x] **"End the season today"** on the planting page, once a planting in season is past its crop's typical length ("Past a typical potato season (105 days from emergence). Harvested?"), after a confirm; anyone in the operation (an ordinary planting update).
+- [x] Existing plantings keep their dates. The About page's planting entry says how the harvest date is set, and each crop card gives its typical season with its basis.
+- [x] Tests: request specs (defaults, the emergence given, quick setup's harvest given or suggested), `typicalEnd` vitest, a smoke test of the form's suggestion.
+- [ ] **Wisconsin timings for the warm-climate rows** (cabbage 155, broccoli 125, tomato 145, carrot 140, celery 115, sweet potato 140 days come from California and Mediterranean rows and likely run long here): replace them with Upper Midwest extension timings, with sources, alongside the canopy curves' own follow-up in `docs/canopy/02-published-curves.md`.
+- Winter crops (Ben, 2026-11-11): a planting may cross the new year, but WISP models the irrigated season; winter wheat or rye is entered from spring green-up (emergence on that date). Say so with G.7's crops.
 
 ##### G.3 Crops without a canopy curve
 

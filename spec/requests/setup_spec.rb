@@ -142,7 +142,19 @@ RSpec.describe "Setup", type: :request do
     it "creates a planting with the crop's defaults for the season" do
       post plantings_path(year: 2027), params: {planting: {field_id: field.id, plant_id: potato.id, emergence_date: "2027-05-20"}}
       expect(field.plantings.sole).to have_attributes(season_start: Date.new(2027, 4, 1), emergence_date: Date.new(2027, 5, 20),
-        end_date: Date.new(2027, 11, 30), max_root_zone_depth: 16.0, mad_frac: 0.5, et_method: "pct_cover")
+        end_date: Date.new(2027, 9, 2), max_root_zone_depth: 16.0, mad_frac: 0.5, et_method: "pct_cover") # 105 days on
+
+      # A crop without a typical season ends Nov 30, as in legacy
+      onion = create(:plant, key: "onion", name: "Onion")
+      other = create(:field, pivot:, soil_type: sand)
+      post plantings_path(year: 2027), params: {planting: {field_id: other.id, plant_id: onion.id, emergence_date: "2027-05-20"}}
+      expect(other.plantings.sole.end_date).to eq(Date.new(2027, 11, 30))
+    end
+
+    it "suggests the harvest from the crop's typical season, no later than Nov 30 (G.2)" do
+      expect(Planting.typical_end(potato, Date.new(2026, 5, 20))).to eq(Date.new(2026, 9, 2))
+      expect(Planting.typical_end(potato, Date.new(2026, 9, 1))).to eq(Date.new(2026, 11, 30))
+      expect(Planting.defaults_for(potato, 2026)[:end_date]).to eq(Date.new(2026, 8, 14)) # May 1 + 105
     end
 
     it "refuses overlapping plantings on a field" do
@@ -242,7 +254,7 @@ RSpec.describe "Setup", type: :request do
                 arc_end_deg: 300},
         fields: {
           "0" => {name: "North potatoes", area_acres: 70, soil_type_id: sand.id, plant_id: potato.id, emergence_date: "2026-05-20"},
-          "1" => {name: "North corn", area_acres: 55, soil_type_id: sand.id, plant_id: corn.id}
+          "1" => {name: "North corn", area_acres: 55, soil_type_id: sand.id, plant_id: corn.id, end_date: "2026-09-20"}
         }
       }}
       expect(response).to redirect_to(root_path)
@@ -251,6 +263,9 @@ RSpec.describe "Setup", type: :request do
       expect(pivot.fields.map(&:name)).to eq(["North corn", "North potatoes"])
       expect(pivot.fields.flat_map(&:plantings).map { |p| [p.plant.name, p.emergence_date] })
         .to contain_exactly(["Field Corn", Date.new(2026, 5, 1)], ["Potato", Date.new(2026, 5, 20)])
+      # The harvest given, or the crop's typical one after the emergence (G.2)
+      expect(pivot.fields.flat_map(&:plantings).map { |p| [p.plant.name, p.end_date] })
+        .to contain_exactly(["Field Corn", Date.new(2026, 9, 20)], ["Potato", Date.new(2026, 9, 2)])
     end
 
     it "saves nothing and reports every problem by input" do

@@ -7,7 +7,7 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { addDays, formatDate } from '@/lib/dates'
-  import { clashes, cropName, formatArea, plotAcres, seasonDates } from '@/lib/plantings'
+  import { clashes, cropName, formatArea, plotAcres, seasonDates, typicalEnd } from '@/lib/plantings'
   import { units as unitsFor } from '@/lib/units'
   import { plantings } from '@/routes'
   import type { Field, Plant, Planting, SoilType } from '@/types/serializers'
@@ -90,6 +90,14 @@
     if (chosen && !typedDepth) rootDepth = chosen.default_max_root_zone_depth
     // LAI is offered only for crops with an LAI growth curve
     if (!chosen?.has_lai_curve) etMethod = 'pct_cover'
+    suggestEnd()
+  }
+
+  // A new planting's harvest follows the crop's typical season from emergence (PLAN.md Phase 8 G.2)
+  // until a date is typed; an existing one keeps its own
+  let endChosen = untrack(() => planting !== undefined)
+  function suggestEnd() {
+    if (!endChosen && plant && emergence) endDate = typicalEnd(plant.season_days, emergence)
   }
 
   let seasonSoilId = $state(untrack(() => String(planting?.soil_type_id ?? '')))
@@ -143,9 +151,20 @@
         </div>
       {/snippet}
       {@render dateInput('season_start', 'Season start', errors.season_start, seasonStart, (v) => (seasonStart = v))}
-      {@render dateInput('emergence_date', 'Emergence', errors.emergence_date, emergence, (v) => (emergence = v))}
-      {@render dateInput('end_date', endLabel, errors.end_date, endDate, (v) => (endDate = v))}
+      {@render dateInput('emergence_date', 'Emergence', errors.emergence_date, emergence, (v) => {
+        emergence = v
+        suggestEnd()
+      })}
+      {@render dateInput('end_date', endLabel, errors.end_date, endDate, (v) => {
+        endDate = v
+        endChosen = true
+      })}
     </div>
+    {#if plant?.season_days}
+      <p class="-mt-2 text-sm text-ink-muted">
+        A {plant.name.toLowerCase()} season typically runs about {plant.season_days} days from emergence to harvest.
+      </p>
+    {/if}
 
     <fieldset class="space-y-3">
       <legend class="text-sm font-medium">Planting size</legend>

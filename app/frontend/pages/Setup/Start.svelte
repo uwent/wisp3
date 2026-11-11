@@ -8,6 +8,7 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { shapeDraft } from '@/lib/geo'
+  import { typicalEnd } from '@/lib/plantings'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { quickSetups } from '@/routes'
   import type { Plant, SoilType } from '@/types/serializers'
@@ -39,12 +40,23 @@
     area: null as number | null,
     soilTypeId: defaultSoilId(),
     soilChosen: false,
+    plantId: '',
+    emergence: '',
+    // The harvest follows the crop and emergence (typicalEnd) until the user picks one (PLAN.md G.2)
+    harvest: '',
+    harvestChosen: false,
   })
+  type Row = ReturnType<typeof newRow>
+  function suggestHarvest(row: Row) {
+    if (row.harvestChosen) return
+    const plant = plants.find((p) => String(p.id) === row.plantId)
+    row.harvest = plant ? typicalEnd(plant.season_days, row.emergence || `${year}-05-01`) : ''
+  }
   let rows = $state([newRow()])
 
   const plantOptions = $derived([
     { value: '', label: 'Choose a crop' },
-    ...plants.map((p) => ({ value: p.id, label: p.name })),
+    ...plants.map((p) => ({ value: String(p.id), label: p.name })),
   ])
   const soilOptions = $derived(soil_types.map((s) => ({ value: String(s.id), label: s.name })))
 
@@ -144,14 +156,16 @@
         <div>
           <h2 class="text-lg font-medium">3. Fields</h2>
           <p class="text-sm text-ink-muted">
-            Add one field for each crop under the pivot; a pivot split between two crops is two fields. If you leave the
-            emergence date blank, WISP uses May 1. You can also add fields later.
+            Add each field under the pivot, with what's planted on it this season; a pivot split between two fields you
+            manage separately is two fields. If you leave the emergence date blank, WISP uses May 1. The harvest date
+            follows from the crop's typical season; change it if yours ends sooner or later. You can add fields and more
+            plantings later.
           </p>
         </div>
         {#if error(e, 'fields')}<p class="text-sm text-status-irrigate-ink">{error(e, 'fields')}</p>{/if}
         {#each rows as row, i (row.key)}
           <fieldset
-            class="grid gap-3 border-t border-line pt-4 first-of-type:border-0 first-of-type:pt-0 sm:grid-cols-6"
+            class="grid gap-3 border-t border-line pt-4 first-of-type:border-0 first-of-type:pt-0 sm:grid-cols-4 lg:grid-cols-7"
           >
             <legend class="sr-only">Field {i + 1}</legend>
             <div class="sm:col-span-2">
@@ -159,7 +173,7 @@
                 label="Field name"
                 name="setup[fields][{i}][name]"
                 bind:value={row.name}
-                placeholder={rows.length > 1 ? `e.g. North ${i ? 'corn' : 'potatoes'}` : 'e.g. North 160'}
+                placeholder={rows.length > 1 ? `e.g. ${i ? 'South' : 'North'} half` : 'e.g. North 160'}
                 error={error(e, `fields.${i}.name`)}
               />
             </div>
@@ -181,7 +195,8 @@
             <SelectField
               label="Crop"
               name="setup[fields][{i}][plant_id]"
-              value=""
+              bind:value={row.plantId}
+              onchange={() => suggestHarvest(row)}
               options={plantOptions}
               error={error(e, `fields.${i}.plant_id`)}
             />
@@ -193,14 +208,31 @@
                 name="setup[fields][{i}][emergence_date]"
                 min="{year}-01-01"
                 max="{year}-12-31"
+                bind:value={row.emergence}
+                oninput={() => suggestHarvest(row)}
                 class="block w-full rounded-md shadow-sm sm:text-sm"
               />
               {#if error(e, `fields.${i}.emergence_date`)}<p class="text-sm text-status-irrigate-ink">
                   {error(e, `fields.${i}.emergence_date`)}
                 </p>{/if}
             </div>
+            <div class="space-y-1">
+              <label class="block text-sm font-medium" for="harvest-{row.key}">Harvest (expected)</label>
+              <input
+                id="harvest-{row.key}"
+                type="date"
+                name="setup[fields][{i}][end_date]"
+                min="{year}-01-01"
+                bind:value={row.harvest}
+                oninput={() => (row.harvestChosen = true)}
+                class="block w-full rounded-md shadow-sm sm:text-sm"
+              />
+              {#if error(e, `fields.${i}.end_date`)}<p class="text-sm text-status-irrigate-ink">
+                  {error(e, `fields.${i}.end_date`)}
+                </p>{/if}
+            </div>
             {#if rows.length > 1}
-              <div class="sm:col-span-6">
+              <div class="sm:col-span-4 lg:col-span-7">
                 <button
                   type="button"
                   class="text-sm text-status-irrigate-ink hover:underline"

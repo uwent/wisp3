@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { units } from '@/lib/units'
 
-import { clashes, nextSeason, plotAcres, plotSize } from './plantings'
+import { clashes, nextSeason, plotAcres, plotSize, typicalEnd } from './plantings'
 
 const sized = { partial: true, area_acres: plotAcres(100, 20), plot_length_ft: 100, plot_width_ft: 20 }
 
@@ -45,5 +45,13 @@ describe('nextSeason', () => {
 
   it('runs a month when it starts late in the year', () => {
     expect(nextSeason({ end_date: '2026-11-20' }).end_date).toBe('2026-12-21')
+  })
+})
+
+describe('typicalEnd', () => {
+  it("adds the crop's season to emergence, no later than Nov 30", () => {
+    expect(typicalEnd(105, '2026-05-20')).toBe('2026-09-02')
+    expect(typicalEnd(140, '2026-08-01')).toBe('2026-11-30')
+    expect(typicalEnd(null, '2026-05-01')).toBe('2026-11-30')
   })
 })

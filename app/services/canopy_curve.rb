@@ -17,6 +17,8 @@ class CanopyCurve
   Source = Data.define(:id, :citation, :url)
 
   attr_reader :key, :cc0, :ccx, :cgc, :decline, :basis, :confidence, :sources, :notes
+  # Typical days from emergence to harvest, and how they were worked out (PLAN.md Phase 8 G.2)
+  attr_reader :season_days, :season_basis
   # Changes with the curve's definition, so fits to it are redone (CanopyFit.fetch)
   attr_reader :digest
 
@@ -47,6 +49,7 @@ class CanopyCurve
     @basis, @notes = definition.fetch("basis"), definition["notes"]
     @digest = Digest::SHA256.hexdigest(definition.slice("growth", "decline").to_json).first(12)
     @vine_kill = definition.fetch("vine_kill", false)
+    @season_days, @season_basis = definition["season"]&.values_at("days", "basis")
     @confidence = definition.fetch("confidence")
     raise ArgumentError, "#{key}: unknown confidence #{@confidence}" unless CONFIDENCE.key?(@confidence)
     @sources = definition.fetch("sources").map { |id| sources.fetch(id) }
