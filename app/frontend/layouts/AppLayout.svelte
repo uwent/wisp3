@@ -196,7 +196,7 @@
                 {auth.group?.name} ▾
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
-                <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
+                <DropdownMenu.Content class={menuContent} sideOffset={6} align="end" preventScroll={false}>
                   {#each auth.groups as group (group.id)}
                     <DropdownMenu.Item class={menuItem} onSelect={() => switchGroup(group.id)}>
                       <span class="w-5">{group.id === auth.group?.id ? '✓' : ''}</span>{group.name}
@@ -233,7 +233,7 @@
               {auth.user?.display_name}
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
-              <DropdownMenu.Content class={menuContent} sideOffset={6} align="end">
+              <DropdownMenu.Content class={menuContent} sideOffset={6} align="end" preventScroll={false}>
                 {#if auth.groups.length > 1 && !wideNav.current}
                   <DropdownMenu.Group aria-label="Operation">
                     <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted"

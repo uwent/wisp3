@@ -86,7 +86,10 @@
 {#snippet fieldRow(pivot: Pivot, field: Field)}
   <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
     <div class="min-w-40 flex-1">
-      <Link href={fields.show(field.id)} class="font-medium hover:underline">{field.name}</Link>
+      <p>
+        <span class="text-ink-muted">Field:</span>
+        <Link href={fields.show(field.id)} class="font-medium hover:underline">{field.name}</Link>
+      </p>
       <p class="text-xs text-ink-muted">
         {units.format('area', field.area_acres)} · {field.soil_type_name}
         {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(own field capacity and wilting point){/if}
@@ -180,7 +183,7 @@
   <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-4 sm:p-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div class="min-w-0">
-        <h2 class="text-lg font-medium">{farm.name}</h2>
+        <h2 class="text-lg font-medium"><span class="font-normal text-ink-muted">Farm:</span> {farm.name}</h2>
         {#if farm.notes}<p class="text-sm whitespace-pre-line text-ink-muted">{farm.notes}</p>{/if}
       </div>
       <div class="flex gap-1 text-sm">
@@ -216,7 +219,10 @@
       <div class="rounded-md border border-line">
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2">
           <div>
-            <h3 class="font-medium">{pivot.name}</h3>
+            <h3 class="font-medium">
+              <span class="font-normal text-ink-muted">Irrigation system:</span>
+              <Link href={pivots.show(pivot.id)} class="hover:underline">{pivot.name}</Link>
+            </h3>
             <p class="text-xs text-ink-muted">
               {pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}
               {#if pivotSize(pivot)}

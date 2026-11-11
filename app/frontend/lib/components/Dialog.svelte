@@ -14,8 +14,11 @@
 <Dialog.Root bind:open>
   <Dialog.Portal>
     <Dialog.Overlay class="fixed inset-0 z-40 bg-black/40" />
+    <!-- No scroll lock: hiding the page's scrollbar shifted and shook the page (PLAN.md G.1), so the
+         page behind still scrolls, and the dialog scrolls on its own without dragging it -->
     <Dialog.Content
-      class="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto
+      preventScroll={false}
+      class="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain
         rounded-lg border border-line bg-surface-raised p-6 shadow-xl {wide ? 'max-w-2xl' : 'max-w-lg'}"
     >
       <div class="mb-4 flex items-start justify-between gap-4">

@@ -467,8 +467,11 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   await expect(page.getByText('Part of the field: 300 × 60 ft (0.41 ac)')).toBeVisible()
   await expect(tabs.getByRole('link', { name: /^Snap bean/ })).toHaveAttribute('aria-current', 'page')
 
-  // Setup: the field's plantings on a timeline, each opening its form, with its size
+  // Setup: each level labelled, the field's plantings on a timeline, each opening its form, with its size
   await page.goto('/setup')
+  await expect(page.getByRole('heading', { name: 'Farm: Arlington Research' })).toBeVisible()
+  const station = page.getByRole('heading', { name: 'Irrigation system: Station pivot' })
+  await expect(station.getByRole('link', { name: 'Station pivot' })).toBeVisible()
   const bars = page.getByRole('list', { name: /^Plantings on Arlington 525/ })
   await bars.getByRole('button', { name: /^Edit Soybean/ }).click()
   const dialog = page.getByRole('dialog', { name: /^Edit Soybean on Arlington 525/ })
@@ -492,6 +495,11 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
   const dialog = page.getByRole('dialog', { name: /^Add a \d{4} planting to Cabbage/ })
+  // No scroll lock (G.1): the page keeps its scrollbar, so nothing shifts
+  await expect(dialog).toBeVisible()
+  expect(
+    await page.evaluate(() => [getComputedStyle(document.body).overflow, document.body.style.paddingRight]),
+  ).toEqual(['visible', ''])
   await expect(dialog.getByRole('radio', { name: /^Whole field/ })).toBeChecked()
   await expect(dialog.getByText('This overlaps: Cabbage')).toBeVisible()
   await dialog.getByLabel('Season start').fill(`${new Date().getFullYear()}-08-01`)
