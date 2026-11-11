@@ -5,10 +5,11 @@
 # on future dates), the ensemble's range around it, and when the field reaches its threshold. A field
 # that uses only entered rain also gets a projection with no rain at all (Q7), beside the forecast's.
 #
-# as_of: time travel (PLAN.md Phase 8 F): the season as it stood on that day, with the entries,
-# irrigation and canopy readings dated up to then (as they are now; edits keep no history). The
-# projection runs on the weather that followed instead of a forecast, with no ensemble, and nothing
-# entered after the date, so it shows what happens without more irrigation.
+# as_of: time travel (PLAN.md Phase 8 F): the season as it stood on that day (entries as they are
+# now; edits keep no history). The projection is what happened in the days that followed: their
+# stored weather instead of a forecast, with no ensemble, and the rain, irrigation and soil moisture
+# entered for them. Canopy readings after the date are left out, since they'd refit the curve
+# before it too.
 class PlantingStatus
   Totals = Data.define(:rain, :irrigation, :adj_et, :deep_drainage, :rain_model, :entered_rain_days,
     :entered_rain, :entered_rain_model)
@@ -29,7 +30,8 @@ class PlantingStatus
   def initialize(planting, today: Date.current, weather: nil, records: nil, ensemble: :load, as_of: nil)
     if as_of
       today, ensemble = as_of, nil
-      records = DailyInputs.preload([planting.field], planting.season_start..as_of).fetch(planting.field.id)
+      through = [as_of + HORIZON, planting.end_date].min
+      records = DailyInputs.preload([planting.field], planting.season_start..through).fetch(planting.field.id)
     end
     @planting, @today, @ensemble_members, @as_of = planting, today, ensemble, as_of
     @balance = PlantingBalance.new(planting, weather:, records:, today:, canopy_through: as_of)

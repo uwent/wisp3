@@ -75,11 +75,13 @@
     return `${str} (${n} days)`
   })
 
-  // The slider's bar casts a shadow while it floats over the charts (stuck to the top of the window)
+  // The slider's bar casts a shadow while it floats over the charts (stuck to the top of the window,
+  // or below the bars pinned there)
   let bar: HTMLDivElement | undefined = $state()
   let floating = $state(false)
   onMount(() => {
-    const check = () => (floating = !!bar && bar.getBoundingClientRect().top < 1)
+    const check = () =>
+      (floating = !!bar && bar.getBoundingClientRect().top < parseFloat(getComputedStyle(bar).top) + 1)
     addEventListener('scroll', check, { passive: true })
     return () => removeEventListener('scroll', check)
   })
@@ -147,7 +149,7 @@
     </p>
     <div
       bind:this={bar}
-      class="sticky top-0 z-10 rounded-lg border border-line bg-surface-raised pb-1.5 transition-shadow motion-reduce:transition-none {floating
+      class="sticky top-sticky z-10 rounded-lg border border-line bg-surface-raised pb-1.5 transition-shadow motion-reduce:transition-none {floating
         ? 'shadow-lg'
         : ''}"
     >

@@ -227,7 +227,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(inertia.props[:summary]).to include(date: "2026-07-20", projection_source: "forecast")
     end
 
-    it "leaves out entries, irrigation and readings after the day, in the season and the projection" do
+    it "ends the season at the day, then shows what was entered for the days that followed, but not canopy readings" do
       planting.update!(plant: create(:plant, key: "potato"))
       field.field_entries.create!(date: Date.new(2026, 7, 8), irrigation_in: 0.5, notes: "before")
       field.field_entries.create!(date: Date.new(2026, 7, 12), irrigation_in: 1.0, notes: "after")
@@ -239,9 +239,10 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       get field_path(field, as_of: "2026-07-10")
       days = (inertia.props[:days] + inertia.props[:forecast_days]).index_by { |day| day[:date] }
       expect(days["2026-07-08"]).to include(irrigation: 0.5, notes: "before")
-      expect(days["2026-07-12"]).to include(irrigation: 0.0, irrigation_source: "none", notes: nil)
-      expect(days["2026-07-13"]).to include(rain: 0.0, rain_source: "model")
-      expect(days["2026-07-14"]).to include(irrigation_source: "none")
+      expect(inertia.props[:days].last[:date]).to eq("2026-07-10")
+      expect(days["2026-07-12"]).to include(irrigation: 1.0, irrigation_source: "entered", notes: "after")
+      expect(days["2026-07-13"]).to include(rain: 2.0, rain_source: "group")
+      expect(days["2026-07-14"]).to include(irrigation: 0.8, irrigation_source: "pivot")
       expect(days["2026-07-06"][:canopy_entered]).to eq(20)
       expect(days["2026-07-15"]).to include(canopy_entered: nil)
       expect(days["2026-07-15"][:canopy]).to be < 90

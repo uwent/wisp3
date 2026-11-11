@@ -260,8 +260,9 @@
         irrigation by entering it on a future day: it counts as applied when the day comes, so change it if plans change.
         Export the season as a CSV file. To see the page as it was on an earlier day of the season (for training, a demonstration,
         or looking back at a decision), use the clock button at the top right and pick a date. The page then shows what was
-        entered up to that day, and in place of the forecast, the weather that actually followed, with no more irrigation.
-        Nothing can be changed while viewing an earlier day, and values entered or corrected since show as they are now.
+        entered up to that day, and in place of the forecast, what happened next: the weather that came, and the rain and
+        irrigation entered for those days. Nothing can be changed while viewing an earlier day, and values entered or corrected
+        since show as they are now.
       </li>
       <li>
         <strong>Alerts:</strong> a morning email at about 6 am. It groups your fields by operation, farm, weather zone (pivots

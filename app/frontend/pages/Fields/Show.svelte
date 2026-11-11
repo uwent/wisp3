@@ -21,6 +21,7 @@
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
   import { seasonStats } from '@/lib/seasonStats'
+  import { stickyHeight } from '@/lib/stickyBars'
   import { fileSlug } from '@/lib/csv'
   import { formatNumber, parseNumber, units as unitsFor, type Units } from '@/lib/units'
   import { exportPlanting, fieldDays, fieldGroups, fields, pivots, setup, weatherPivot } from '@/routes'
@@ -60,6 +61,19 @@
   // Time travelling, nothing on the page edits, and the projection is the weather that followed
   const readOnly = $derived(as_of !== null)
   const replay = $derived(summary?.projection_source === 'observed')
+
+  // Whether the time travel card has scrolled up out of view, when the bar across the top takes over
+  let cardGone = $state(false)
+  function watchCard(card: HTMLElement) {
+    const observer = new IntersectionObserver(([entry]) => {
+      cardGone = !entry.isIntersecting && entry.boundingClientRect.top < 0
+    })
+    observer.observe(card)
+    return () => {
+      observer.disconnect()
+      cardGone = false
+    }
+  }
 
   // The date picker for time travel, opened by the rewind-clock button; open while time travelling,
   // so the date in view can be changed or left
@@ -338,15 +352,12 @@
 </div>
 
 {#if as_of && planting}
-  <!-- Time travel (PLAN.md Phase 8 F): stays in view as the page scrolls -->
-  <div
-    role="status"
-    class="sticky top-0 z-40 rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm shadow-sm"
-  >
+  <!-- Time travel (PLAN.md Phase 8 F): this card explains it, and once it scrolls away a slim bar
+       across the top of the window keeps the date and the way back in view -->
+  <div role="status" class="rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm" {@attach watchCard}>
     <p>
       Viewing {field.name} as of <strong>{formatDate(as_of, { year: true })}</strong>, with what's entered for the days
-      up to then. Nothing can be changed here, and the days after it show the weather that followed rather than a
-      forecast.
+      up to then. Nothing can be changed here, and in place of the forecast, the days after it show what happened next.
       <Link
         href={fields.show(field.id, { query: { planting_id: planting.id } })}
         class="font-medium whitespace-nowrap text-brand-600 underline underline-offset-2">Return to today</Link
@@ -357,6 +368,21 @@
       now.
     </p>
   </div>
+  {#if cardGone}
+    <div
+      class="fixed inset-x-0 top-[var(--app-bar-h,0px)] z-40 border-b border-brand-500/40 bg-brand-50 shadow-sm"
+      {@attach stickyHeight('--page-bar-h')}
+      data-testid="time-travel-bar"
+    >
+      <p class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-2 text-sm">
+        <span>Viewing {field.name} as of <strong>{formatDate(as_of, { year: true })}</strong></span>
+        <Link
+          href={fields.show(field.id, { query: { planting_id: planting.id } })}
+          class="font-medium text-brand-600 underline underline-offset-2">Return to today</Link
+        >
+      </p>
+    </div>
+  {/if}
 {/if}
 
 {#if !planting || !summary}
@@ -588,8 +614,8 @@
         </p>
         {#if forecast_days.length && replay}
           <p class="text-xs text-ink-muted">
-            After {formatDate(as_of)} the dashed line follows the weather that actually came, with nothing entered after that
-            day: what would have happened without more irrigation.
+            After {formatDate(as_of)} the dashed line follows what happened next: the weather that came, and the rain, irrigation
+            and soil moisture readings entered for those days.
             {#if hasDry}The dotted line is the same with no rain at all, since this field counts only the rain you
               enter.{/if}
           </p>
@@ -615,8 +641,9 @@
         <div class="space-y-2">
           {#if replay}
             <p class="text-xs text-ink-muted">
-              This is the weather that followed {formatDate(as_of)} for this pivot, run through the water balance with nothing
-              entered after that day, the way the forecast would have been. Depths are in {depthUnitName}.
+              This is what happened after {formatDate(as_of)}: the weather that came for this pivot and what was entered
+              for those days, run through the water balance where the forecast would have been. Depths are in
+              {depthUnitName}.
             </p>
           {:else}
             <p class="text-xs text-ink-muted">

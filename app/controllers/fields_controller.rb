@@ -86,10 +86,11 @@ class FieldsController < AuthenticatedController
       field.plantings.min_by(&:season_start)
   end
 
-  # as_of: time travelling, everything entered is cut at that date and the weather ends there
+  # as_of: time travelling, the days run to the end of the days that followed it, canopy readings
+  # stop at it, and the weather panels end there
   def season_props(field, planting, as_of)
     status = PlantingStatus.new(planting, as_of:)
-    dates = as_of ? planting.season_start..as_of : planting.season_range
+    dates = as_of ? planting.season_start..[as_of + PlantingStatus::HORIZON, planting.end_date].min : planting.season_range
     attribute = (planting.et_method == "lai") ? :lai : :pct_cover
     pivot_inches = field.pivot.pivot_irrigations.where(date: dates).select { |irrigation| irrigation.applies_to?(field) }
       .to_h { |irrigation| [irrigation.date, irrigation.applied_inches] }
@@ -97,7 +98,7 @@ class FieldsController < AuthenticatedController
 
     day_params = {
       entries: field.field_entries.where(date: dates).index_by(&:date),
-      observations: planting.canopy_observations.select { |obs| dates.cover?(obs.date) }
+      observations: planting.canopy_observations.select { |obs| dates.cover?(obs.date) && (!as_of || obs.date <= as_of) }
         .to_h { |obs| [obs.date, obs[attribute]] }.compact,
       pivot_inches:,
       canopy: status.canopy

@@ -380,6 +380,23 @@ test('time travel shows a field on an earlier day, read-only, and returns to tod
   expect(await at()).toBe(before)
   expect(await heights()).toHaveLength(1)
 
+  // Once the card scrolls away, a bar across the top keeps the date in view, and the weather charts'
+  // range bar sticks below it rather than under it
+  const topBar = page.getByTestId('time-travel-bar')
+  await expect(topBar).toHaveCount(0)
+  const range = page.locator('div.sticky', { hasText: 'Weather data range:' })
+  const weather = page.locator('#weather [data-section-toggle]')
+  if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
+  await range.scrollIntoViewIfNeeded()
+  await page.mouse.wheel(0, 600)
+  await expect(topBar).toBeVisible()
+  await expect(topBar).toContainText('as of')
+  await expect
+    .poll(async () => (await range.boundingBox())!.y - (await topBar.boundingBox())!.height)
+    .toBeGreaterThanOrEqual(-0.5)
+  await page.evaluate(() => scrollTo(0, 0))
+  await expect(topBar).toHaveCount(0)
+
   await page.locator('#time-travel').getByRole('link', { name: 'Return to today' }).click()
   await expect(page).not.toHaveURL(/as_of=/)
   await expect(banner).toHaveCount(0)

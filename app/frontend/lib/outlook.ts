@@ -5,8 +5,8 @@ import type { Units } from './units'
 
 // What the projection means for a field, in words, for its page and its dashboard card. Time
 // travelling on the field page (projection_source 'observed', PLAN.md Phase 8 F), the projection is
-// the weather that followed with nothing more entered, and the words say so; the digest's Outlook
-// never time travels, so only this side has that case.
+// what happened next (the weather and what was entered), so the words look back at it; the
+// digest's Outlook never time travels, so only this side has that case.
 
 export type Outlook = {
   /** Needs attention: at or below the threshold now, or projected to be within the lead days */
@@ -56,9 +56,11 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
     const scenarios = chanceBy(crossing.date)
     return {
       urgent: crossing.days <= LEAD_DAYS,
-      headline: `Irrigate by ${formatDate(crossing.date, { weekday: true })}`,
+      headline: replay
+        ? `Reached ${level} ${formatDate(crossing.date, { weekday: true })}`
+        : `Irrigate by ${formatDate(crossing.date, { weekday: true })}`,
       detail: replay
-        ? `Without more irrigation, the weather that followed took it to ${level} ${crossing.days === 1 ? 'the next day' : `${crossing.days} days later`}, when about ${depth(crossing.refill)} would have refilled the root zone to field capacity.`
+        ? `With the weather that followed and what was entered for those days, it reached ${level} ${crossing.days === 1 ? 'the next day' : `${crossing.days} days later`}, when about ${depth(crossing.refill)} would have refilled the root zone to field capacity.`
         : `Projected to reach ${level} ${relativeDay(crossing.date, today)}, when about ${depth(crossing.refill)} would refill the root zone to field capacity.`,
       chance: scenarios && `${scenarios} reach it by then.`,
       dry,
@@ -69,9 +71,11 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
   const scenarios = chanceBy(last.date)
   return {
     urgent: false,
-    headline: `No irrigation needed through ${formatDate(last.date, { weekday: true })}`,
+    headline: replay
+      ? `Stayed above ${level} through ${formatDate(last.date, { weekday: true })}`
+      : `No irrigation needed through ${formatDate(last.date, { weekday: true })}`,
     detail: replay
-      ? `It stayed above ${level} through the weather that followed.`
+      ? `With the weather that followed and what was entered for those days, it stayed above ${level}.`
       : `Projected to stay above ${level} through the end of the forecast.`,
     chance: scenarios && !scenarios.startsWith('0 ') ? `${scenarios} reach it by then.` : null,
     dry,

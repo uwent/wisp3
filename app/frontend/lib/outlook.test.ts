@@ -25,9 +25,9 @@ describe('outlook', () => {
       const summary = { ...base, crossing, dry_crossing: dryCrossing } as unknown as PlantingSummary
       expect(outlook(summary, units('imperial'))).toEqual({
         urgent: true,
-        headline: 'Irrigate by Mon, Jul 13',
+        headline: 'Reached the irrigation point Mon, Jul 13',
         detail:
-          'Without more irrigation, the weather that followed took it to the irrigation point 3 days later, when about 0.70 in would have refilled the root zone to field capacity.',
+          'With the weather that followed and what was entered for those days, it reached the irrigation point 3 days later, when about 0.70 in would have refilled the root zone to field capacity.',
         chance: null,
         dry: null,
       })
@@ -36,9 +36,11 @@ describe('outlook', () => {
     it('says the next day, and when it stayed above', () => {
       const next = { ...base, crossing: { ...crossing, date: '2026-07-11', days: 1 } } as unknown as PlantingSummary
       expect(outlook(next, units('imperial'))?.detail).toMatch(/irrigation point the next day/)
-      expect(outlook(base as unknown as PlantingSummary, units('imperial'))?.detail).toBe(
-        'It stayed above the irrigation point through the weather that followed.',
-      )
+      expect(outlook(base as unknown as PlantingSummary, units('imperial'))).toMatchObject({
+        headline: 'Stayed above the irrigation point through Mon, Jul 13',
+        detail:
+          'With the weather that followed and what was entered for those days, it stayed above the irrigation point.',
+      })
     })
   })
 })

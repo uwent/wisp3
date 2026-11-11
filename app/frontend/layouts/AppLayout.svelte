@@ -7,6 +7,7 @@
   import BrandBar from '@/lib/components/BrandBar.svelte'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
+  import { stickyHeight } from '@/lib/stickyBars'
   import {
     about,
     adminUsers,
@@ -102,7 +103,11 @@
   >
   {#if auth.impersonator && auth.user}
     <!-- Signed in as someone else for support: stays at the top as the page scrolls (PLAN.md Phase 8 B) -->
-    <div role="status" class="sticky top-0 z-50 bg-impersonation text-on-impersonation">
+    <div
+      role="status"
+      class="sticky top-0 z-50 bg-impersonation text-on-impersonation"
+      {@attach stickyHeight('--app-bar-h')}
+    >
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 text-sm">
         <p>
           Signed in as <strong>{auth.user.display_name}</strong>{auth.user.display_name === auth.user.email

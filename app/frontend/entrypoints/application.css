@@ -142,6 +142,11 @@
 }
 
 /* Tailwind's dark: variant, matching the rules above */
+/* Sticks below the bars pinned to the top of the window (lib/stickyBars.ts) */
+@utility top-sticky {
+  top: calc(var(--app-bar-h, 0px) + var(--page-bar-h, 0px));
+}
+
 @custom-variant dark {
   &:where([data-theme='dark'], [data-theme='dark'] *) {
     @slot;
