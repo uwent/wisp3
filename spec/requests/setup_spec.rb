@@ -154,7 +154,7 @@ RSpec.describe "Setup", type: :request do
       onion = create(:plant, key: "onion", name: "Onion")
       third = create(:field, pivot:, soil_type: sand)
       post plantings_path(year: 2027), params: {planting: {field_id: third.id, plant_id: onion.id, emergence_date: "2027-05-20",
-        canopy_curve_key: "leafy_fast"}}
+                                                           canopy_curve_key: "leafy_fast"}}
       expect(third.plantings.sole).to have_attributes(canopy_curve_key: "leafy_fast", end_date: Date.new(2027, 7, 19))
     end
 
