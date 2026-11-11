@@ -200,6 +200,89 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
     end
   end
 
+  describe "time travel (Phase 8 F)" do
+    before do
+      # An ensemble that would give the projection a band today
+      dates = Date.new(2026, 7, 20)..Date.new(2026, 8, 4)
+      pivot.weather_cell.weather_forecasts.create!(kind: "ensemble", issued_at: 1.hour.ago, model: "gfs_seamless",
+        payload: {dates: dates.map(&:iso8601), members: [{et0_in: [0.2] * 16, precip_in: [0.0] * 16}] * 2})
+    end
+
+    it "shows the season as of an earlier day, projecting it on the weather that followed" do
+      expect { get field_path(field, as_of: "2026-07-10") }.not_to have_enqueued_job(WeatherUpdateJob)
+      props = inertia.props
+      expect(props).to include(as_of: "2026-07-10", weather_updating: false,
+        travel_dates: {"from" => "2026-07-01", "to" => "2026-07-19"})
+      expect(props[:days].last[:date]).to eq("2026-07-10")
+      expect(props[:summary]).to include(phase: "active", date: "2026-07-10", projection_source: "observed",
+        ensemble_size: 0)
+      # The rest of the stored weather, Jul 11–19, and nothing in the forecast's place
+      expect(props[:forecast_days].map { |day| day[:date] }).to eq((Date.new(2026, 7, 11)..Date.new(2026, 7, 19)).map(&:iso8601))
+      expect(props[:forecast_days].map { |day| day[:rain_source] }.uniq).to eq(["model"])
+      expect(props[:summary][:projection].map { |day| day[:p50] }.uniq).to eq([nil])
+      expect(props[:weather].last[:date]).to eq("2026-07-10")
+
+      get field_path(field)
+      expect(inertia.props).to include(as_of: nil)
+      expect(inertia.props[:summary]).to include(date: "2026-07-20", projection_source: "forecast")
+    end
+
+    it "leaves out entries, irrigation and readings after the day, in the season and the projection" do
+      planting.update!(plant: create(:plant, key: "potato"))
+      field.field_entries.create!(date: Date.new(2026, 7, 8), irrigation_in: 0.5, notes: "before")
+      field.field_entries.create!(date: Date.new(2026, 7, 12), irrigation_in: 1.0, notes: "after")
+      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 14), inches: 0.8)
+      create(:field_group, group:, fields: [field]).field_group_entries.create!(date: Date.new(2026, 7, 13), rain_in: 2.0)
+      CanopyObservation.record(planting, Date.new(2026, 7, 6), 20)
+      CanopyObservation.record(planting, Date.new(2026, 7, 15), 90)
+
+      get field_path(field, as_of: "2026-07-10")
+      days = (inertia.props[:days] + inertia.props[:forecast_days]).index_by { |day| day[:date] }
+      expect(days["2026-07-08"]).to include(irrigation: 0.5, notes: "before")
+      expect(days["2026-07-12"]).to include(irrigation: 0.0, irrigation_source: "none", notes: nil)
+      expect(days["2026-07-13"]).to include(rain: 0.0, rain_source: "model")
+      expect(days["2026-07-14"]).to include(irrigation_source: "none")
+      expect(days["2026-07-06"][:canopy_entered]).to eq(20)
+      expect(days["2026-07-15"]).to include(canopy_entered: nil)
+      expect(days["2026-07-15"][:canopy]).to be < 90
+      expect(inertia.props[:summary][:last_irrigation]).to include(date: "2026-07-08")
+      expect(inertia.props[:summary][:tasks].find { |task| task[:kind] == "canopy" }).to include(last_date: "2026-07-06")
+
+      get field_path(field)
+      days = inertia.props[:days].index_by { |day| day[:date] }
+      expect(days["2026-07-15"]).to include(canopy_entered: 90)
+      expect(days["2026-07-12"]).to include(irrigation: 1.0)
+    end
+
+    it "drops a date that isn't an earlier day of the season from the URL, keeping the rest" do
+      ["2026-07-20", "2026-07-25", "2026-06-30", "July 10", ""].each do |as_of|
+        get field_path(field, as_of:, planting_id: planting.id)
+        expect(response).to redirect_to(field_path(field, planting_id: planting.id))
+      end
+      follow_redirect!
+      expect(inertia.props).to include(as_of: nil)
+      expect(inertia.props[:summary]).to include(date: "2026-07-20")
+    end
+
+    it "opens the season that covers the date, unless another is picked" do
+      older = create(:planting, field:, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
+        end_date: Date.new(2025, 9, 1))
+      get field_path(field, as_of: "2025-07-01")
+      expect(inertia.props).to include(as_of: "2025-07-01")
+      expect(inertia.props[:summary]).to include(planting_id: older.id, phase: "active", date: "2025-07-01")
+
+      get field_path(field, as_of: "2025-07-01", planting_id: planting.id)
+      expect(response).to redirect_to(field_path(field, planting_id: planting.id))
+    end
+
+    it "is 404 for another group's field" do
+      other = create(:field)
+      get root_path
+      get field_path(other, as_of: "2026-07-10")
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   describe "editing a day" do
     let(:url) { field_day_path(field, "2026-07-08") }
 

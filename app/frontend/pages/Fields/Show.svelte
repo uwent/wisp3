@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Form, Link, page, router } from '@inertiajs/svelte'
+  import { tick } from 'svelte'
 
   import Chart from '@/lib/charts/Chart.svelte'
   import { fieldChartOption, type FieldChartMode } from '@/lib/charts/fieldChart'
@@ -31,6 +32,8 @@
     farm,
     field_groups,
     weather_updating,
+    as_of,
+    travel_dates,
     planting,
     summary,
     days,
@@ -42,6 +45,10 @@
     farm: { id: number; name: string }
     field_groups: { id: number; name: string }[]
     weather_updating: boolean
+    /** Time travel (PLAN.md Phase 8 F): the earlier day the page shows, read-only; null for today */
+    as_of: string | null
+    /** The season's days before today, which time travel can pick; null if none */
+    travel_dates: { from: string; to: string } | null
     planting: Planting | null
     summary: PlantingSummary | null
     days: FieldDay[]
@@ -50,6 +57,28 @@
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  // Time travelling, nothing on the page edits, and the projection is the weather that followed
+  const readOnly = $derived(as_of !== null)
+  const replay = $derived(summary?.projection_source === 'observed')
+
+  // The date picker for time travel, opened by the rewind-clock button; open while time travelling,
+  // so the date in view can be changed or left
+  // (a writable $derived: toggled by the button, reset whenever the page moves to another date)
+  let travelOpen = $derived(as_of !== null)
+  // The date picked, which View goes to: disabled on the date already in view
+  let travelDate = $derived(as_of ?? travel_dates?.to ?? '')
+  let dateInput: HTMLInputElement | undefined = $state()
+  async function toggleTravel() {
+    travelOpen = !travelOpen
+    await tick()
+    if (travelOpen) dateInput?.focus()
+  }
+  function travel(event: SubmitEvent) {
+    event.preventDefault()
+    const date = new FormData(event.currentTarget as HTMLFormElement).get('as_of')
+    if (typeof date !== 'string' || !date || !planting) return
+    router.get(fields.show(field.id).url, { planting_id: planting.id, as_of: date })
+  }
 
   // While the pivot's weather is being fetched, reload the season until it lands
   let timedOut = $state(false)
@@ -188,7 +217,7 @@
     summary?.phase === 'active' && summary.date ? relativeDay(date, summary.date) : formatDate(date)
 </script>
 
-<svelte:head><title>{field.name} · WISP</title></svelte:head>
+<svelte:head><title>{as_of ? `As of ${formatDate(as_of)} · ` : ''}{field.name} · WISP</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div class="min-w-0">
@@ -209,35 +238,126 @@
       {/if}
     </p>
   </div>
-  <div class="flex flex-wrap items-center gap-2 text-sm">
+  <div class="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
     {#if field.plantings.length > 1}
       <label for="planting" class="sr-only">Season</label>
       <select
         id="planting"
-        class="rounded-md text-sm"
+        class="rounded-md py-1.5 text-sm"
         value={planting?.id}
         onchange={(e) => router.get(fields.show(field.id).url, { planting_id: e.currentTarget.value })}
       >
         {#each field.plantings as p (p.id)}<option value={p.id}>{p.year} {p.plant_name}</option>{/each}
       </select>
     {/if}
-    {#if planting}
+    {#if planting && !readOnly}
       <a
         href={exportPlanting(planting.id).url}
+        title="Download this season's daily values as a CSV file"
         class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
         download
       >
         Export CSV
       </a>
     {/if}
-    <Link
-      href={setup.show({ query: planting ? { year: planting.year } : {} })}
-      class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
-    >
-      Edit in setup
-    </Link>
+    {#if !readOnly}
+      <Link
+        href={setup.show({ query: planting ? { year: planting.year } : {} })}
+        title="Change this field, its pivot or its crop on the setup page"
+        class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
+      >
+        Edit in setup
+      </Link>
+    {/if}
+    {#if travel_dates && planting}
+      <!-- Time travel: the clock stays at the row's right end, its date picker flying out to its left -->
+      <div class="flex items-center gap-1">
+        {#if travelOpen}
+          <form id="time-travel" class="flex items-center gap-1" onsubmit={travel}>
+            <label for="as-of" class="sr-only">Date to view</label>
+            <input
+              bind:this={dateInput}
+              id="as-of"
+              name="as_of"
+              type="date"
+              required
+              min={travel_dates.from}
+              max={travel_dates.to}
+              bind:value={travelDate}
+              title={`A day from ${formatDate(travel_dates.from)} to ${formatDate(travel_dates.to, { year: true })}`}
+              class="rounded-md px-2 py-1.5 text-sm"
+            />
+            <button
+              type="submit"
+              disabled={!travelDate || travelDate === as_of}
+              title={travelDate && travelDate === as_of
+                ? 'Already viewing this date; pick another'
+                : 'View this field as it was on the date picked'}
+              class="rounded-md border border-line bg-surface-raised px-3 py-1.5 enabled:hover:bg-surface disabled:opacity-50"
+              >View</button
+            >
+            {#if as_of}
+              <Link
+                href={fields.show(field.id, { query: { planting_id: planting.id } })}
+                class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
+                aria-label="Return to today"
+                title="Return to today">Today</Link
+              >
+            {/if}
+          </form>
+        {/if}
+        <button
+          type="button"
+          class="rounded-md border border-line bg-surface-raised p-1.5 hover:bg-surface
+            {travelOpen || as_of ? 'text-brand-600' : 'text-ink-muted'}"
+          aria-label="View this field on an earlier date"
+          title="View this field on an earlier date"
+          aria-expanded={travelOpen}
+          aria-controls="time-travel"
+          onclick={toggleTravel}
+        >
+          <!-- A clock with an arrow turning back -->
+          <svg
+            viewBox="0 0 24 24"
+            class="size-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+            <path d="M12 7v5l4 2" />
+          </svg>
+        </button>
+      </div>
+    {/if}
   </div>
 </div>
+
+{#if as_of && planting}
+  <!-- Time travel (PLAN.md Phase 8 F): stays in view as the page scrolls -->
+  <div
+    role="status"
+    class="sticky top-0 z-40 rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm shadow-sm"
+  >
+    <p>
+      Viewing {field.name} as of <strong>{formatDate(as_of, { year: true })}</strong>, with what's entered for the days
+      up to then. Nothing can be changed here, and the days after it show the weather that followed rather than a
+      forecast.
+      <Link
+        href={fields.show(field.id, { query: { planting_id: planting.id } })}
+        class="font-medium whitespace-nowrap text-brand-600 underline underline-offset-2">Return to today</Link
+      >
+    </p>
+    <p class="mt-1 text-xs text-ink-muted">
+      WISP doesn't keep a history of edits, so a value entered or changed later for one of these days shows as it is
+      now.
+    </p>
+  </div>
+{/if}
 
 {#if !planting || !summary}
   <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-12 text-center">
@@ -282,7 +402,9 @@
         <p class="text-sm">The season starts {formatDate(summary.season_start, { year: true })}.</p>
       {:else}
         <p class="text-sm">
-          {#if summary.phase === 'ended'}At the end of the season{:else}Today{/if}:
+          {#if summary.phase === 'ended'}At the end of the season{:else if as_of}On {formatDate(
+              as_of,
+            )}{:else}Today{/if}:
           <strong class="tabular-nums">{units.format('depth', summary.ad)}</strong>
           <Term id="ad">allowable depletion</Term> of
           {units.format('depth', summary.ad_max)}, <strong>{formatNumber(summary.pct_moisture, 1)}%</strong> soil moisture.
@@ -362,9 +484,13 @@
       {#if !summary.use_model_precip}
         <p class="mt-2 text-xs">
           Rain: <Term id="entered_rain_only">only what you enter</Term>, plus the forecast for the days ahead.
-          <a href="#rainfall" class="text-brand-600 underline underline-offset-2" onclick={() => (rainfallOpen = true)}
-            >Change this</a
-          >
+          {#if !readOnly}
+            <a
+              href="#rainfall"
+              class="text-brand-600 underline underline-offset-2"
+              onclick={() => (rainfallOpen = true)}>Change this</a
+            >
+          {/if}
         </p>
       {/if}
       {#if summary.totals.entered_rain_days}
@@ -460,7 +586,14 @@
           for your readings{#if planting?.canopy_curve}{' '}and a thin dashed line for the {planting.plant_name.toLowerCase()}
             curve as it would be without them{/if}. Scroll or drag the bar below to see the whole season.
         </p>
-        {#if forecast_days.length}
+        {#if forecast_days.length && replay}
+          <p class="text-xs text-ink-muted">
+            After {formatDate(as_of)} the dashed line follows the weather that actually came, with nothing entered after that
+            day: what would have happened without more irrigation.
+            {#if hasDry}The dotted line is the same with no rain at all, since this field counts only the rain you
+              enter.{/if}
+          </p>
+        {:else if forecast_days.length}
           <p class="text-xs text-ink-muted">
             After today the dashed line follows the forecast, including any irrigation you've planned. The shaded band
             shows where most of the {summary?.ensemble_size
@@ -475,22 +608,39 @@
 
     {#if forecast_days.length}
       <!-- The projection, and planned irrigation -->
-      <CollapsibleSection title="Next {forecast_days.length} days" storageKey="forecast">
+      <CollapsibleSection
+        title={replay ? `The ${forecast_days.length} days that followed` : `Next ${forecast_days.length} days`}
+        storageKey="forecast"
+      >
         <div class="space-y-2">
-          <p class="text-xs text-ink-muted">
-            This is the forecast for this pivot, run through the water balance. To plan irrigation, enter an amount on a
-            future day. WISP counts it as applied when that day arrives, so change or clear it if your plans change.
-            Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and press Enter
-            or start typing to edit one.
-          </p>
-          <div class="overflow-auto rounded-lg border border-line bg-surface-raised">
+          {#if replay}
+            <p class="text-xs text-ink-muted">
+              This is the weather that followed {formatDate(as_of)} for this pivot, run through the water balance with nothing
+              entered after that day, the way the forecast would have been. Depths are in {depthUnitName}.
+            </p>
+          {:else}
+            <p class="text-xs text-ink-muted">
+              This is the forecast for this pivot, run through the water balance. To plan irrigation, enter an amount on
+              a future day. WISP counts it as applied when that day arrives, so change or clear it if your plans change.
+              Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and press
+              Enter or start typing to edit one.
+            </p>
+          {/if}
+          <!-- Read-only, nothing inside takes focus, so the box does, to scroll from the keyboard -->
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+          <div
+            class="overflow-auto rounded-lg border border-line bg-surface-raised"
+            tabindex={readOnly ? 0 : undefined}
+            role={readOnly ? 'region' : undefined}
+            aria-label={readOnly ? 'The days that followed' : undefined}
+          >
             <table class="w-full text-sm">
               <thead class="border-b border-line text-xs text-ink-muted">
                 <tr class="text-right">
                   <th class="px-3 py-2 text-left font-medium">Date</th>
                   <th class="px-2 py-2 font-medium">Crop ET</th>
                   <th class="px-2 py-2 font-medium">Rain</th>
-                  <th class="px-2 py-2 font-medium">Planned irrigation</th>
+                  <th class="px-2 py-2 font-medium">{replay ? 'Irrigation' : 'Planned irrigation'}</th>
                   <th class="px-2 py-2 font-medium">AD</th>
                   {#if hasDry}<th class="px-2 py-2 font-medium">AD if no rain</th>{/if}
                   {#if summary?.ensemble_size}
@@ -508,8 +658,8 @@
                     >
                     <td class="px-2 py-1 text-ink-muted tabular-nums">{depth(day.adj_et)}</td>
                     <td class="px-2 py-1 tabular-nums">
-                      {#if day.rain_source === 'forecast' || day.rain_source === 'none'}<span class="text-ink-muted"
-                          >{depth(day.rain)}</span
+                      {#if day.rain_source === 'forecast' || day.rain_source === 'model' || day.rain_source === 'none'}<span
+                          class="text-ink-muted">{depth(day.rain)}</span
                         >
                       {:else}<span class="font-medium">{depth(day.rain)}</span>{/if}
                     </td>
@@ -520,6 +670,7 @@
                         col={0}
                         text={inputText(day, 'irrigation_in')}
                         label={cellLabel(day, 'Planned irrigation')}
+                        {readOnly}
                         onsave={(t) => saveCell(day, 'irrigation_in', t)}
                       >
                         {#if day.irrigation_source === 'none'}<span class="text-ink-muted">–</span>
@@ -563,11 +714,21 @@
     <CollapsibleSection title="Daily values" storageKey="daily">
       <div class="space-y-2">
         <p class="text-xs text-ink-muted">
-          Click a rain, irrigation, soil moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value, and press Enter
-          to save and move down. Clear a cell to go back to the modeled or pivot value. Depths are in {depthUnitName}.
-          From the keyboard, use the arrow keys to move between cells, and press Enter or start typing to edit one.
+          {#if readOnly}
+            The season up to {formatDate(as_of)}. Depths are in {depthUnitName}.
+          {:else}
+            Click a rain, irrigation, soil moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value, and press Enter
+            to save and move down. Clear a cell to go back to the modeled or pivot value. Depths are in {depthUnitName}.
+            From the keyboard, use the arrow keys to move between cells, and press Enter or start typing to edit one.
+          {/if}
         </p>
-        <div class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised">
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div
+          class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised"
+          tabindex={readOnly ? 0 : undefined}
+          role={readOnly ? 'region' : undefined}
+          aria-label={readOnly ? 'Daily values' : undefined}
+        >
           <table class="w-full text-sm">
             <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
               <tr class="text-right">
@@ -603,6 +764,7 @@
                       col={0}
                       text={inputText(day, 'rain_in')}
                       label={cellLabel(day, 'Rain')}
+                      {readOnly}
                       onsave={(t) => saveCell(day, 'rain_in', t)}
                     >
                       {#if day.rain_source === 'model' || day.rain_source === 'missing' || day.rain_source === 'none'}
@@ -624,6 +786,7 @@
                       col={1}
                       text={inputText(day, 'irrigation_in')}
                       label={cellLabel(day, 'Irrigation')}
+                      {readOnly}
                       onsave={(t) => saveCell(day, 'irrigation_in', t)}
                     >
                       {#if day.irrigation_source === 'none'}
@@ -649,6 +812,7 @@
                       col={2}
                       text={inputText(day, 'soil_moisture_pct')}
                       label={cellLabel(day, 'Soil moisture reading')}
+                      {readOnly}
                       onsave={(t) => saveCell(day, 'soil_moisture_pct', t)}
                     >
                       {#if day.soil_moisture_pct !== null}
@@ -665,6 +829,7 @@
                       col={3}
                       text={inputText(day, 'canopy')}
                       label={cellLabel(day, lai ? 'LAI' : 'Percent cover')}
+                      {readOnly}
                       onsave={(t) => saveCell(day, 'canopy', t)}
                     >
                       {#if day.canopy_entered !== null}<span class="font-medium"
@@ -688,6 +853,7 @@
                       align="left"
                       text={inputText(day, 'notes')}
                       label={cellLabel(day, 'Notes')}
+                      {readOnly}
                       onsave={(t) => saveCell(day, 'notes', t)}
                     >
                       <span class="block max-w-48 truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
@@ -735,28 +901,37 @@
   </CollapsibleSection>
 {/if}
 
-<CollapsibleSection title="Rainfall preferences" id="rainfall" storageKey="rainfall" bind:open={rainfallOpen}>
-  <Form
-    action={fields.update(field.id)}
-    class="max-w-xl space-y-3 rounded-lg border border-line bg-surface-raised p-4"
-    options={{ preserveScroll: true }}
-  >
-    {#snippet children({ processing })}
-      <fieldset class="space-y-2">
-        <legend class="text-sm font-medium">Which rain this field's balance uses</legend>
-        {#each rainOptions as [value, label, hint] (value)}
-          <label class="flex items-start gap-3 text-sm">
-            <input type="radio" name="field[use_model_precip]" {value} checked={rainSetting === value} class="mt-0.5" />
-            <span
-              >{label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}</span
-            >
-          </label>
-        {/each}
-      </fieldset>
-      <p class="text-xs text-ink-muted">
-        This only changes which rain the balance uses. Nothing is copied or deleted, so you can switch back at any time.
-      </p>
-      <Button type="submit" disabled={processing}>Save</Button>
-    {/snippet}
-  </Form>
-</CollapsibleSection>
+{#if !readOnly}
+  <CollapsibleSection title="Rainfall preferences" id="rainfall" storageKey="rainfall" bind:open={rainfallOpen}>
+    <Form
+      action={fields.update(field.id)}
+      class="max-w-xl space-y-3 rounded-lg border border-line bg-surface-raised p-4"
+      options={{ preserveScroll: true }}
+    >
+      {#snippet children({ processing })}
+        <fieldset class="space-y-2">
+          <legend class="text-sm font-medium">Which rain this field's balance uses</legend>
+          {#each rainOptions as [value, label, hint] (value)}
+            <label class="flex items-start gap-3 text-sm">
+              <input
+                type="radio"
+                name="field[use_model_precip]"
+                {value}
+                checked={rainSetting === value}
+                class="mt-0.5"
+              />
+              <span
+                >{label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}</span
+              >
+            </label>
+          {/each}
+        </fieldset>
+        <p class="text-xs text-ink-muted">
+          This only changes which rain the balance uses. Nothing is copied or deleted, so you can switch back at any
+          time.
+        </p>
+        <Button type="submit" disabled={processing}>Save</Button>
+      {/snippet}
+    </Form>
+  </CollapsibleSection>
+{/if}

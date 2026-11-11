@@ -94,4 +94,10 @@ describe('EditableCell', () => {
       expect(button(1).tabIndex).toBe(0)
     })
   })
+
+  it('shows plain text when read-only, with nothing to edit', () => {
+    render(EditableCell, { ...props(vi.fn()), readOnly: true })
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.getByText('0.50')).toBeInTheDocument()
+  })
 })

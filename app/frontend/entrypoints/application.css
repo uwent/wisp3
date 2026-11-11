@@ -167,6 +167,13 @@
     color-scheme: dark;
   }
 
+  /* Tailwind v4's reset leaves buttons with the default cursor while links get the hand; give
+     buttons the hand too, so everything clickable looks it */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
   h1,
   h2,
   h3,

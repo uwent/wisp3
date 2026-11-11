@@ -4,6 +4,11 @@
 # the projection (PLAN.md §6): the same balance through the forecast, with planned irrigation (entries
 # on future dates), the ensemble's range around it, and when the field reaches its threshold. A field
 # that uses only entered rain also gets a projection with no rain at all (Q7), beside the forecast's.
+#
+# as_of: time travel (PLAN.md Phase 8 F): the season as it stood on that day, with the entries,
+# irrigation and canopy readings dated up to then (as they are now; edits keep no history). The
+# projection runs on the weather that followed instead of a forecast, with no ensemble, and nothing
+# entered after the date, so it shows what happens without more irrigation.
 class PlantingStatus
   Totals = Data.define(:rain, :irrigation, :adj_et, :deep_drainage, :rain_model, :entered_rain_days,
     :entered_rain, :entered_rain_model)
@@ -16,14 +21,22 @@ class PlantingStatus
   # A field OK today but projected to reach its threshold within this many days is "caution" (§5.5)
   LEAD_DAYS = 3
 
-  attr_reader :planting, :today
+  attr_reader :planting, :today, :as_of
 
   # weather: and records: are passed to PlantingBalance (pages showing many plantings preload them).
-  # ensemble: the cell's ensemble members (WeatherForecast#members); loaded if not given.
-  def initialize(planting, today: Date.current, weather: nil, records: nil, ensemble: :load)
-    @planting, @today, @ensemble_members = planting, today, ensemble
-    @balance = PlantingBalance.new(planting, weather:, records:, today:)
+  # ensemble: the cell's ensemble members (WeatherForecast#members); loaded if not given. as_of:
+  # time travel (above); it sets today and builds its own records, cut at the date.
+  def initialize(planting, today: Date.current, weather: nil, records: nil, ensemble: :load, as_of: nil)
+    if as_of
+      today, ensemble = as_of, nil
+      records = DailyInputs.preload([planting.field], planting.season_start..as_of).fetch(planting.field.id)
+    end
+    @planting, @today, @ensemble_members, @as_of = planting, today, ensemble, as_of
+    @balance = PlantingBalance.new(planting, weather:, records:, today:, canopy_through: as_of)
   end
+
+  # Where the projection's weather comes from: the forecast, or (time travelling) what followed
+  def projection_source = as_of ? :observed : :forecast
 
   def params = @balance.params
 

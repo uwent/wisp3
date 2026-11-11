@@ -14,4 +14,31 @@ describe('outlook', () => {
       expect(outlook(summary, units(example.units as UnitSystem))).toEqual(example.expected)
     })
   }
+
+  // Time travel (PLAN.md Phase 8 F): the field page only, so not in the shared cases
+  describe('on the weather that followed', () => {
+    const base = { ...outlookCases.base, projection_source: 'observed', ensemble_size: 0 }
+    const crossing = { date: '2026-07-13', days: 3, ad: 0.1, refill: 0.7 }
+    const dryCrossing = { date: '2026-07-11', days: 1, ad: 0, refill: 0.8 }
+
+    it('says what the weather that followed did, without the dry case', () => {
+      const summary = { ...base, crossing, dry_crossing: dryCrossing } as unknown as PlantingSummary
+      expect(outlook(summary, units('imperial'))).toEqual({
+        urgent: true,
+        headline: 'Irrigate by Mon, Jul 13',
+        detail:
+          'Without more irrigation, the weather that followed took it to the irrigation point 3 days later, when about 0.70 in would have refilled the root zone to field capacity.',
+        chance: null,
+        dry: null,
+      })
+    })
+
+    it('says the next day, and when it stayed above', () => {
+      const next = { ...base, crossing: { ...crossing, date: '2026-07-11', days: 1 } } as unknown as PlantingSummary
+      expect(outlook(next, units('imperial'))?.detail).toMatch(/irrigation point the next day/)
+      expect(outlook(base as unknown as PlantingSummary, units('imperial'))?.detail).toBe(
+        'It stayed above the irrigation point through the weather that followed.',
+      )
+    })
+  })
 })

@@ -805,7 +805,7 @@ USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free a
 1. **Weather corrections (E)**, before any beta tester sees a number: it moves every field's ET by about 11%, and the backfill keeps one method per season.
 2. **Weather update polling (C, follow-up)**: small, and it shows on every dashboard visit.
 3. **RDS restore test (D)**: once, before real growers' data is on the server.
-4. **Time travel (F)**: the beta runs over the winter, when every season has ended, so testers and demos can only see an in-season page this way. Decisions first (below).
+4. ~~**Time travel (F)**~~ (built 2026-11-10): the beta runs over the winter, when every season has ended, so testers and demos can only see an in-season page this way.
 5. **Closed beta (D)**, then launch by ~Mar 20, 2027. The screen reader walkthrough (A) and wording reviews happen alongside.
 
 Canopy and LAI research continues without outside reviewers (Phase 6.7, Q2): our own analysis, published literature, and readings collected in the 2027 season (After launch).
@@ -937,7 +937,7 @@ Checklist:
 - [x] **Keep a daily forecast archive** (Ben, 2026-11-10; built: `ForecastPruneJob` keeps each cell's first *corrected* issue of each kind per local day, so the archive starts by itself once corrected forecasts are stored), for forecast accuracy tracking (After launch) and time travel's replay (F): `ForecastPruneJob` keeps, besides the latest 14, each cell's first deterministic and ensemble issue of each day (from the 5 am refresh) for good. A few kB to tens of kB a cell a day; at 100 active cells, well under 1 GB a year. Start before the 2027 season, after the corrections, so the archive is all on one method (members scaled by the deterministic ratio, Q10, each issue recording its corrections).
 - **Exit:** WISP's ET0 matches v2's for the same hours; every stored day says which corrections it went through; the About page lists them; the shift is documented; staging and production are backfilled.
 
-#### F. Time travel on the field page (proposed, Ben, 2026-11-10; decisions open)
+#### F. Time travel on the field page (built 2026-11-10, except the archive replay)
 
 **Why:** to show what WISP says mid-season. Demos, the About page's examples and a beta that runs over the winter (when every season has ended) can only show an ended season today.
 
@@ -954,11 +954,19 @@ Checklist:
 
 **Decided (Ben, 2026-11-10):**
 1. **The projection:** where the forecast issued on that day was archived (Phase 8 E, from 2027), the page replays it, ensemble included; otherwise (2026 seasons) it uses **the weather that actually followed**, labelled "what happened next" rather than a forecast, with no ensemble band. Open-Meteo can't fill the gap: its historical-forecast API is stitched from each run's first hours (close to observed weather, not a 16-day forecast), and its Previous Runs API reaches only 7 days ahead and has no ensemble.
-2. **Entries after the date are left out of the projection** too (recommended, not yet confirmed): it shows what would happen without more irrigation, which is what the page would have advised then.
+2. **Entries after the date are left out of the projection** too (built that way 2026-11-10; Ben to confirm): it shows what would happen without more irrigation, which is what the page would have advised then.
 3. **Everyone can use it** (read-only, their own fields).
 4. **The button** goes beside the page's date heading: a rewind-clock icon button (`aria-label="View this field on an earlier date"`) opening a date input limited to the season's days before today.
 
-**Build plan** (a new session, on `main`):
+**Built (2026-11-10)**, as below except where noted:
+- [x] Controller: `?as_of=` honored for a day of the chosen planting's season before today, else ignored; `travel_dates` gives the picker its limits. `PlantingStatus.new(planting, as_of:)` does the cutting (records via `DailyInputs.preload` to the date, `Canopy.for(planting, through:)`, no ensemble, `projection_source: observed`).
+- [x] Projection: the existing `HORIZON` cap already ends it at as_of + 15, on stored weather (a date within 15 days of today runs into the forecast for the rest). The weather panels end at the date.
+- [x] Page: the rewind-clock button is the last of the header's actions, right-aligned so it never moves; its date input, View and (time travelling) a Today button fly out to its left, open from the start on a time-travelled page; the banner, "Return to today" (keeps the season), read-only `EditableCell` (`readOnly`), no Export CSV, setup link or rainfall preferences; the title starts "As of Jul 15 · ". While read-only, the grid's scroll boxes take focus (axe).
+- [x] Words: the outlook (`lib/outlook.ts` only; the digest never time travels), the chart's "What happened next" and the date in place of "Today", the section "The N days that followed", About (Day to day and What's changed).
+- [x] Tests: request specs, outlook and `EditableCell` vitests, the page in `e2e/accessibility.spec.ts`, a smoke test.
+- [ ] The archive replay (step 3's later part), once the archive has a season.
+
+**Build plan** (as written before building):
 1. **Controller** (`FieldsController#show`): read `params[:as_of]`, parse it as a date, and use it only if it's within the chosen planting's season and before `Date.current` (otherwise ignore it and show today; no error). Pass `today: as_of` to `PlantingStatus`, the season's records and the weather range. Skip `keep_current` and give `weather_updating: false` while time travelling. Add `as_of` (the date or null) to the props. The planting choice (`default_planting`) uses the as_of date when given, and `?planting_id=` still wins.
 2. **Records cut at the date:** `DailyInputs::Records` built with entries, group entries and pivot irrigations dated on or before as_of (a `through:` on `DailyInputs.preload`, or filter the field's own). Canopy readings: `Canopy.for(planting, through: as_of)` leaves out readings after it; `CanopyFit`'s cache key follows the readings, so it needs nothing else.
 3. **The projection:** `PlantingBalance` already uses stored weather where it exists and the forecast only for days without it, so days after as_of take the observed weather. Cap the projection at as_of + `FORECAST_DAYS` − 1 (today it runs while days have weather, which would be the rest of the season), pass `ensemble: nil` so there's no band, and mark the summary (`projection_source: "observed"`) so the page labels it "What happened next" instead of the forecast. Replaying an archived forecast is a later step, once the archive has data: `weather:` from that day's archived issue.

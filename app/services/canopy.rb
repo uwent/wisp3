@@ -65,11 +65,14 @@ class Canopy
     @anchors = @follow ? ratio_anchors : linear_anchors
   end
 
-  # For a Planting, from its canopy observations (percent cover or LAI, by its ET method)
-  def self.for(planting)
+  # For a Planting, from its canopy observations (percent cover or LAI, by its ET method). through:
+  # leaves out readings after that date (time travel on the field page, PLAN.md Phase 8 F).
+  def self.for(planting, through: nil)
     lai = planting.et_method == "lai"
     attribute = lai ? :lai : :pct_cover
-    observations = planting.canopy_observations.filter_map { |obs| [obs.date, obs[attribute]] if obs[attribute] }
+    observations = planting.canopy_observations.filter_map do |obs|
+      [obs.date, obs[attribute]] if obs[attribute] && (through.nil? || obs.date <= through)
+    end
     emergence = planting.emergence_date
     if lai
       key = planting.plant.canopy_model

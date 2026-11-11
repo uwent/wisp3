@@ -154,12 +154,20 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
     axisOffset: 4,
     palette,
   })
+  // Time travelling (PLAN.md Phase 8 F), the projection is the weather that followed the day in view
+  const replay = summary.projection_source === 'observed'
   const forecastLabel = forecastDays.length
     ? [
         {
           xAxis: forecastDays[0].date,
           itemStyle: { opacity: 0 },
-          label: { show: true, position: 'insideTop', color: palette.inkMuted, fontSize: 10, formatter: 'Forecast' },
+          label: {
+            show: true,
+            position: 'insideTop',
+            color: palette.inkMuted,
+            fontSize: 10,
+            formatter: replay ? 'What happened next' : 'Forecast',
+          },
         },
         { xAxis: dates.at(-1) },
       ]
@@ -299,7 +307,12 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
                   {
                     xAxis: today!.date,
                     lineStyle: { color: palette.inkMuted, type: 'solid', width: 1 },
-                    label: { formatter: 'Today', position: 'insideEndTop', color: palette.inkMuted, fontSize: 10 },
+                    label: {
+                      formatter: replay ? formatDate(today!.date) : 'Today',
+                      position: 'insideEndTop',
+                      color: palette.inkMuted,
+                      fontSize: 10,
+                    },
                   },
                 ]
               : []),

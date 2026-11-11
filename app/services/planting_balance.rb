@@ -2,17 +2,17 @@
 # Canopy + DailyInputs + WaterBalance::Params → WaterBalance.run. Weather defaults to the stored
 # days for the field's pivot's cell; pass weather: {date => {et0:, precip:}} to override, and
 # records: (DailyInputs.preload) to skip querying the field's entries. today: where the projection
-# starts (DailyInputs).
+# starts (DailyInputs). canopy_through: leaves out canopy readings after that date (Canopy.for).
 class PlantingBalance
   Day = Data.define(:inputs, :canopy, :result)
 
-  def initialize(planting, weather: nil, records: nil, today: Date.current)
-    @planting, @weather, @records, @today = planting, weather, records, today
+  def initialize(planting, weather: nil, records: nil, today: Date.current, canopy_through: nil)
+    @planting, @weather, @records, @today, @canopy_through = planting, weather, records, today, canopy_through
   end
 
   def params = @params ||= WaterBalance::Params.for(@planting)
 
-  def canopy = @canopy ||= Canopy.for(@planting)
+  def canopy = @canopy ||= Canopy.for(@planting, through: @canopy_through)
 
   # One Day per date from season start through `through` (default: end_date)
   def days(through: @planting.end_date)

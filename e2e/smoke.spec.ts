@@ -330,6 +330,63 @@ test('planned irrigation updates the projection', async ({ page }) => {
   await expect(nextAd).toHaveText(before!)
 })
 
+test('time travel shows a field on an earlier day, read-only, and returns to today', async ({ page }) => {
+  await page.goto(await firstFieldPath(page))
+  const rewind = page.getByRole('button', { name: 'View this field on an earlier date' })
+  test.skip(!(await rewind.isVisible()), "the field's season has no earlier days on this date")
+
+  // The date picker flies out to the clock's left, leaving the clock where it was
+  const at = async () => (await rewind.boundingBox())!.x
+  const before = await at()
+  await rewind.click()
+  await expect(rewind).toHaveAttribute('aria-expanded', 'true')
+  const date = page.getByLabel('Date to view')
+  await expect(date).toBeFocused()
+  expect((await date.boundingBox())!.x).toBeLessThan(before)
+  expect(await at()).toBe(before)
+  // As tall as the clock and the row's other buttons
+  const heights = async () =>
+    page
+      .locator('#time-travel input, #time-travel button, #time-travel a, button[aria-controls="time-travel"]')
+      .evaluateAll((elements) => [...new Set(elements.map((element) => element.getBoundingClientRect().height))])
+  expect(await heights()).toHaveLength(1)
+
+  // A week before the latest day it offers, within the season
+  const [min, max] = [await date.getAttribute('min'), await date.getAttribute('max')]
+  const week = new Date(`${max}T00:00:00Z`)
+  week.setUTCDate(week.getUTCDate() - 7)
+  const pick = [week.toISOString().slice(0, 10), min!].sort().at(-1)!
+  await date.fill(pick)
+  await page.getByRole('button', { name: 'View', exact: true }).click()
+
+  await expect(page).toHaveURL(new RegExp(`as_of=${pick}`))
+  const banner = page.getByRole('status').filter({ hasText: 'Viewing' })
+  await expect(banner).toContainText('as of')
+  await expect(banner.getByRole('link', { name: 'Return to today' })).toBeVisible()
+  await expect(page).toHaveTitle(/^As of /)
+  await expect(page.locator('[data-grid]')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Edit in setup' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Rainfall preferences' })).toHaveCount(0)
+  // The picker starts open on the day in view, with Today beside it, and the clock hasn't moved
+  await expect(rewind).toHaveAttribute('aria-expanded', 'true')
+  await expect(date).toHaveValue(pick)
+  // View does nothing on the date already in view, so it waits for another
+  const view = page.getByRole('button', { name: 'View', exact: true })
+  await expect(view).toBeDisabled()
+  if (pick !== max) {
+    await date.fill(max!)
+    await expect(view).toBeEnabled()
+  }
+  expect(await at()).toBe(before)
+  expect(await heights()).toHaveLength(1)
+
+  await page.locator('#time-travel').getByRole('link', { name: 'Return to today' }).click()
+  await expect(page).not.toHaveURL(/as_of=/)
+  await expect(banner).toHaveCount(0)
+  await expect(rewind).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('link', { name: 'Edit in setup' })).toBeVisible()
+})
+
 test('a field switches to entered rain only and back', async ({ page }) => {
   await page.goto(await firstFieldPath(page))
   // Both sections start closed; following the summary's links opens them

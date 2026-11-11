@@ -5,7 +5,8 @@
   // A spreadsheet-style cell. Click, Enter or start typing to edit; Enter saves and moves down,
   // Tab saves and moves along the row, Escape cancels; arrow keys move between cells of the same
   // grid. A grid is one tab stop (the cell last focused, else its first), so Tab moves past it.
-  // onsave gets the typed text and resolves with an error message, or null once saved.
+  // onsave gets the typed text and resolves with an error message, or null once saved. readOnly
+  // shows the content as plain text, out of the grid and the tab order (time travel, Phase 8 F).
   let {
     text,
     label,
@@ -15,6 +16,7 @@
     onsave,
     children,
     align = 'right',
+    readOnly = false,
     class: className = '',
   }: {
     text: string
@@ -25,6 +27,7 @@
     onsave: (text: string) => Promise<string | null>
     children: Snippet
     align?: 'left' | 'right'
+    readOnly?: boolean
     class?: string
   } = $props()
 
@@ -142,7 +145,11 @@
   }
 </script>
 
-{#if editing}
+{#if readOnly}
+  <div class="block min-w-16 px-1.5 py-1 tabular-nums {align === 'right' ? 'text-right' : 'text-left'} {className}">
+    {@render children()}
+  </div>
+{:else if editing}
   <!-- The cell's content stays in place, unseen, so the column keeps its width while the input
        covers it; otherwise the table shifts as an edit opens and closes, and a click meant for the
        next cell lands somewhere else -->
