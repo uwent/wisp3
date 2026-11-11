@@ -26,9 +26,10 @@
     {id}
     {name}
     bind:value
-    class="block w-full rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm
+    class="block w-full rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-surface disabled:text-ink-muted sm:text-sm
       {message ? 'border-status-irrigate' : ''}"
     aria-invalid={message ? 'true' : undefined}
+    aria-describedby={message || hint ? `${id}-note` : undefined}
     {...rest}
   >
     {#each options as option (option.value)}
@@ -36,8 +37,8 @@
     {/each}
   </select>
   {#if message}
-    <p class="text-sm text-status-irrigate-ink">{message}</p>
+    <p id="{id}-note" class="text-sm text-status-irrigate-ink">{message}</p>
   {:else if hint}
-    <p class="text-sm text-ink-muted">{hint}</p>
+    <p id="{id}-note" class="text-sm text-ink-muted">{hint}</p>
   {/if}
 </div>

@@ -29,9 +29,24 @@ class PivotIrrigation < ApplicationRecord
   # nil if run hours can't be converted (no pump capacity or field areas).
   def applied_inches
     return inches if inches
-    acres = irrigated_fields.map(&:area_acres)
-    return if pivot.pump_capacity_gpm.nil? || acres.empty? || acres.any?(&:nil?)
-    pivot.pump_capacity_gpm * run_hours * 60 / (GALLONS_PER_ACRE_INCH * acres.sum)
+    acres = irrigated_acres
+    return if pivot.pump_capacity_gpm.nil? || acres.nil?
+    pivot.pump_capacity_gpm * run_hours * 60 / (GALLONS_PER_ACRE_INCH * acres)
+  end
+
+  # The area watered on the date: the plantings in season then on the irrigated fields, each with
+  # the area it kept for its season (PLAN.md Phase 8 G.9), so a field added later or left fallow
+  # doesn't thin the water out. A day with no planting counts the fields' areas. nil when an area
+  # is missing. Kept per date and fields, as the balance asks once per field under the pivot.
+  def irrigated_acres
+    key = [date, field_ids]
+    @irrigated_acres ||= {}
+    return @irrigated_acres[key] if @irrigated_acres.key?(key)
+    @irrigated_acres[key] = begin
+      areas = date ? Planting.on(date).where(field_id: irrigated_fields.select(:id)).pluck(:area_acres) : []
+      areas = irrigated_fields.map(&:area_acres) if areas.empty?
+      areas.sum if areas.any? && areas.none?(&:nil?)
+    end
   end
 
   private

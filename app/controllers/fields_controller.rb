@@ -9,7 +9,7 @@ class FieldsController < AuthenticatedController
   # season as it stood then, read-only. A date outside the season, ahead or malformed redirects without it.
   def show
     field = Current.group.fields.includes(:soil_type, :field_groups, pivot: [:farm, :weather_cell],
-      plantings: [:plant, :canopy_observations]).find(params[:id])
+      plantings: [:plant, :canopy_observations, :soil_type, :weather_cell]).find(params[:id])
     past = requested_date&.then { |date| date if date < Date.current }
     planting = field.plantings.find { |p| p.id == params[:planting_id].to_i } ||
       default_planting(field, past || Date.current)
@@ -110,7 +110,8 @@ class FieldsController < AuthenticatedController
       # The projection's days, with planned irrigation (entries on future dates)
       forecast_days: FieldDaySerializer.new(status.forecast_days, params: day_params).to_h,
       weather: WeatherPanelDaySerializer.new(
-        WeatherPanel.new(field.pivot.weather_cell, weather_dates, emergence_date: planting.emergence_date).days
+        # The weather the season ran on (G.9)
+        WeatherPanel.new(planting.weather_cell, weather_dates, emergence_date: planting.emergence_date).days
       ).to_h
     }
   end

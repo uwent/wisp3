@@ -7,17 +7,26 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { plantings } from '@/routes'
-  import type { Plant, Planting } from '@/types/serializers'
+  import type { Plant, Planting, SoilType } from '@/types/serializers'
 
   // One crop on a field for one season. Dates default to Apr 1 – Nov 30 with emergence May 1, and
-  // the root zone depth to the crop's (as in legacy WISP).
+  // the root zone depth to the crop's (as in legacy WISP). A season that has ended keeps its own soil
+  // and area (PLAN.md Phase 8 G.9), which can be corrected here; one still running follows its field's.
   let {
     planting,
     fieldId,
     year,
     plants,
+    soilTypes = [],
     ondone,
-  }: { planting?: Planting; fieldId: number; year: number; plants: Plant[]; ondone: () => void } = $props()
+  }: {
+    planting?: Planting
+    fieldId: number
+    year: number
+    plants: Plant[]
+    soilTypes?: SoilType[]
+    ondone: () => void
+  } = $props()
 
   // Form fields start from the props; the dialog mounts a new form each time it opens
   let plantId = $state(untrack(() => String(planting?.plant_id ?? '')))
@@ -40,6 +49,10 @@
     // LAI is offered only for crops with an LAI growth curve
     if (!chosen?.has_lai_curve) etMethod = 'pct_cover'
   }
+
+  let seasonSoilId = $state(untrack(() => String(planting?.soil_type_id ?? '')))
+  const seasonSoil = $derived(soilTypes.find((s) => String(s.id) === seasonSoilId))
+  const pct = (fraction: number | undefined) => (fraction === undefined ? '' : `${Math.round(fraction * 1000) / 10}%`)
 
   const date = (name: string, label: string, value: string, error?: string | string[]) => ({
     name,
@@ -198,6 +211,51 @@
         error={errors.initial_moisture_pct}
       />
     </div>
+    {#if planting?.ended && soilTypes.length}
+      <details class="text-sm">
+        <summary class="cursor-pointer text-ink-muted">Soil and area this season</summary>
+        <div class="mt-3 space-y-4">
+          <p class="text-ink-muted">
+            This season has ended, so it keeps the soil and area it ran with; changes to the field apply only to seasons
+            that haven't ended. Correct them here for this season.
+          </p>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <SelectField
+              label="Soil"
+              name="planting[soil_type_id]"
+              bind:value={seasonSoilId}
+              options={soilTypes.map((s) => ({ value: String(s.id), label: s.name }))}
+              error={errors.soil_type}
+            />
+            <NumberField
+              label="Area"
+              name="planting[area_acres]"
+              quantity="area"
+              value={planting.area_acres}
+              error={errors.area_acres}
+            />
+            <NumberField
+              label="Field capacity"
+              name="planting[field_capacity]"
+              scale={100}
+              unitLabel="%"
+              value={planting.field_capacity}
+              hint="Leave blank to use {seasonSoil?.name ?? 'the soil'} ({pct(seasonSoil?.field_capacity)})"
+              error={errors.field_capacity}
+            />
+            <NumberField
+              label="Wilting point"
+              name="planting[perm_wilting_pt]"
+              scale={100}
+              unitLabel="%"
+              value={planting.perm_wilting_pt}
+              hint="Leave blank to use {seasonSoil?.name ?? 'the soil'} ({pct(seasonSoil?.perm_wilting_pt)})"
+              error={errors.perm_wilting_pt}
+            />
+          </div>
+        </div>
+      </details>
+    {/if}
     <div class="space-y-1">
       <label for="planting-notes" class="block text-sm font-medium">Notes</label>
       <textarea id="planting-notes" name="planting[notes]" rows="2" class="block w-full rounded-md text-sm"

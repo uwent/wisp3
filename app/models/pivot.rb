@@ -47,6 +47,8 @@ class Pivot < ApplicationRecord
 
   before_save :assign_weather_cell, if: -> { will_save_change_to_latitude? || will_save_change_to_longitude? }
   after_commit :update_weather, if: -> { saved_change_to_weather_cell_id? && weather_cell_id }
+  # Plantings that haven't ended move with the pivot; ended ones keep the weather they ran on (G.9)
+  after_update :move_open_plantings, if: :saved_change_to_weather_cell_id?
 
   def linear? = kind == "linear"
 
@@ -59,6 +61,10 @@ class Pivot < ApplicationRecord
     else
       self.length_ft = self.travel_ft = self.travel_bearing_deg = nil
     end
+  end
+
+  def move_open_plantings
+    Planting.open.where(field_id: fields.select(:id)).update_all(weather_cell_id:)
   end
 
   def assign_weather_cell

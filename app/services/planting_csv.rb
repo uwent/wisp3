@@ -23,9 +23,9 @@ class PlantingCsv
       }, exported_by: @exported_by, about_url: @about_url)
       csv << ["Farm", "Pivot", "Equipment", "Field", "Area (acres)"]
       csv << [text(field.pivot.farm.name), text(field.pivot.name), text(field.pivot.equipment), text(field.name),
-        field.area_acres]
+        planting.area_acres]
       csv << ["Soil type", "Field capacity (%)", "Wilting point (%)", "Target AD (%)"]
-      csv << [field.soil_type.name, pct(params.field_capacity), pct(params.perm_wilting_pt), planting.target_ad_pct]
+      csv << [planting.soil_type.name, pct(params.field_capacity), pct(params.perm_wilting_pt), planting.target_ad_pct]
       csv << ["Crop", "Variety", "Root zone depth (in)", "MAD (%)", "Initial moisture (%)", "Emergence",
         "AD at field capacity (in)", "Season start", "Vine kill", "Harvest or kill"]
       csv << [planting.plant.name, text(planting.variety), planting.max_root_zone_depth, pct(planting.mad_frac),

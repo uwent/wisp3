@@ -1,6 +1,6 @@
 # Runs the water balance for a planting over its season, from the database and weather:
 # Canopy + DailyInputs + WaterBalance::Params → WaterBalance.run. Weather defaults to the stored
-# days for the field's pivot's cell; pass weather: {date => {et0:, precip:}} to override, and
+# days for the planting's weather cell (its pivot's, kept for the season, G.9); pass weather: {date => {et0:, precip:}} to override, and
 # records: (DailyInputs.preload) to skip querying the field's entries. today: where the projection
 # starts (DailyInputs). canopy_through: leaves out canopy readings after that date (Canopy.for).
 class PlantingBalance
@@ -17,7 +17,7 @@ class PlantingBalance
   # One Day per date from season start through `through` (default: end_date)
   def days(through: @planting.end_date)
     dates = (@planting.season_start..[through, @planting.end_date].min).to_a
-    weather = @weather || WeatherDay.balance_inputs(@planting.field.pivot.weather_cell, dates)
+    weather = @weather || WeatherDay.balance_inputs(@planting.weather_cell, dates)
     inputs = DailyInputs.new(@planting.field, dates, weather:, records: @records, today: @today).days
     canopies = dates.map { |date| canopy.on(date) }
 

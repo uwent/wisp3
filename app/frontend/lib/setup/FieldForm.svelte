@@ -11,7 +11,8 @@
   import { fields } from '@/routes'
   import type { Field, Pivot, SoilType } from '@/types/serializers'
 
-  // Create a field under a pivot, or edit one (including moving it to another pivot)
+  // Create a field under a pivot, or edit one (including moving it to another pivot, while it has
+  // no seasons that have ended: those stay with their pivot, PLAN.md Phase 8 G.9)
   let {
     field,
     pivotId,
@@ -46,6 +47,12 @@
     soilTypeId = String(suggested.id)
     fromSurvey = true
   }
+  // Seasons that have ended keep their soil, area and pivot
+  const endedYears = $derived(field?.ended_years ?? [])
+  const endedText = $derived(
+    endedYears.length === 1 ? `The ${endedYears[0]} season` : `Earlier seasons (${endedYears.join(', ')})`,
+  )
+  const currentPivot = $derived(pivots.find((p) => p.id === field?.pivot_id))
   const pct = (fraction: number | undefined) => (fraction === undefined ? '' : `${Math.round(fraction * 1000) / 10}%`)
 </script>
 
@@ -63,6 +70,11 @@
         name="field[pivot_id]"
         bind:value={pivotChoice}
         options={pivots.map((p) => ({ value: String(p.id), label: p.name }))}
+        disabled={endedYears.length > 0}
+        error={errors.pivot_id}
+        hint={endedYears.length
+          ? `${endedText} ${endedYears.length === 1 ? 'stays' : 'stay'} with ${currentPivot?.name ?? 'this pivot'}. To grow on another pivot, add a new field there.`
+          : undefined}
       />
       <NumberField
         label="Area"
@@ -86,6 +98,13 @@
     />
     {#if shape}
       <SoilSurvey {shape} {soilTypes} onsuggest={suggestSoil} />
+    {/if}
+    {#if endedYears.length}
+      <p class="text-sm text-ink-muted">
+        Changes to the soil and area apply to seasons that haven't ended. {endedText}
+        {endedYears.length === 1 ? 'keeps the soil and area it ran with' : 'keep the soil and area they ran with'}; to
+        correct one, edit that season's crop.
+      </p>
     {/if}
     <details class="text-sm" open={field?.field_capacity !== null && field?.field_capacity !== undefined}>
       <summary class="cursor-pointer text-ink-muted">Use your own field capacity and wilting point</summary>

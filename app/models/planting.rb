@@ -1,5 +1,11 @@
 # One crop on one field for one season. Plantings on a field can't overlap, which allows double
 # cropping (legacy picked the crop with the latest emergence, C10).
+#
+# A planting keeps the values its balance runs on (PLAN.md Phase 8 G.9): the field's soil type and
+# its own field capacity and wilting point (NULL follows the soil type, as on fields), the field's
+# area, and the pivot's weather cell. They're copied when the planting is created; editing the
+# field or moving the pivot changes them on plantings that haven't ended (Field, Pivot), so earlier
+# seasons keep what they ran with.
 class Planting < ApplicationRecord
   ET_METHODS = %w[pct_cover lai].freeze
   CANOPY_INTERPOLATIONS = %w[linear curve].freeze
@@ -7,6 +13,8 @@ class Planting < ApplicationRecord
 
   belongs_to :field
   belongs_to :plant
+  belongs_to :soil_type
+  belongs_to :weather_cell, optional: true
   has_many :canopy_observations, -> { order(:date) }, dependent: :destroy
 
   validates :season_start, :emergence_date, :end_date, presence: true
@@ -14,10 +22,13 @@ class Planting < ApplicationRecord
   validates :mad_frac, numericality: {in: 0.05..0.95, message: "must be between 5% and 95%"}
   validates :et_method, inclusion: {in: ET_METHODS}
   validates :canopy_interpolation, inclusion: {in: CANOPY_INTERPOLATIONS}, allow_nil: true
+  validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}, allow_nil: true
+  validates :area_acres, numericality: {greater_than: 0}, allow_nil: true
   validates :target_ad_pct, :initial_moisture_pct, numericality: {in: 0..100, message: "must be between 0 and 100"},
     allow_nil: true
   validate :dates_in_order
   validate :lai_needs_curve
+  validate :wilting_point_below_capacity
   validate :no_overlap, if: -> { field && season_start && end_date }
 
   normalizes :variety, :notes, with: ->(text) { text.strip.presence }
@@ -25,8 +36,18 @@ class Planting < ApplicationRecord
 
   # Only crops that are vine killed keep a vine kill date, so changing the crop leaves none behind
   before_validation { self.vine_kill_date = nil unless vine_kill_crop? }
+  # Before validation (soil type is required) and again on create, for saves that skip validation
+  before_validation :copy_from_field, on: :create
+  before_create :copy_from_field
 
   scope :in_season, ->(year) { where(season_start: Date.new(year).all_year) }
+  # Plantings whose season hasn't ended: they follow edits to their field and pivot
+  scope :open, ->(today = Date.current) { where(end_date: today..) }
+  # Plantings whose season includes date
+  scope :on, ->(date) { where(season_start: ..date, end_date: date..) }
+
+  # The field values a planting copies, with the field's attribute for each
+  FIELD_VALUES = %i[soil_type_id field_capacity perm_wilting_pt area_acres].freeze
 
   # Defaults for a new planting of plant in year: Apr 1 to Nov 30, as in legacy WISP
   def self.defaults_for(plant, year)
@@ -49,10 +70,36 @@ class Planting < ApplicationRecord
   # How readings combine with the curve: the setting, or the curve where there is one
   def effective_canopy_interpolation = canopy_curve? ? (canopy_interpolation || "curve") : "linear"
 
+  # NULL means "use the soil type's value" (C14)
+  def effective_field_capacity = field_capacity || soil_type.field_capacity
+  def effective_perm_wilting_pt = perm_wilting_pt || soil_type.perm_wilting_pt
+
+  def ended?(today = Date.current) = end_date < today
+
   def season_range = season_start..end_date
   def season_year = season_start.year
 
   private
+
+  # A new planting takes its field's soil and area, unless given its own soil type (with its
+  # overrides) or area, and its pivot's weather cell
+  def copy_from_field
+    return unless field
+    if soil_type.nil?
+      self.soil_type = field.soil_type
+      self.field_capacity = field.field_capacity if field_capacity.nil?
+      self.perm_wilting_pt = field.perm_wilting_pt if perm_wilting_pt.nil?
+    end
+    self.area_acres ||= field.area_acres
+    self.weather_cell ||= field.pivot&.weather_cell
+  end
+
+  def wilting_point_below_capacity
+    return unless soil_type
+    unless effective_perm_wilting_pt < effective_field_capacity
+      errors.add(:perm_wilting_pt, "must be below field capacity")
+    end
+  end
 
   # LAI is offered only for crops with an LAI growth curve (PLAN.md Phase 6.7): deriving LAI from
   # percent cover gave 20–40% less ET than the percent cover method (docs/canopy/03-crop-curves.md)

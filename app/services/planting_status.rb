@@ -157,7 +157,7 @@ class PlantingStatus
   end
 
   def ensemble_members
-    @ensemble_members = planting.field.pivot.weather_cell&.latest_ensemble&.members if @ensemble_members == :load
+    @ensemble_members = planting.weather_cell&.latest_ensemble&.members if @ensemble_members == :load
     @ensemble_members
   end
 

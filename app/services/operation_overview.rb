@@ -8,7 +8,7 @@ class OperationOverview
   def initialize(group, today: Date.current)
     @today = today
     @farms = group.farms.order(:name).includes(pivots: [:weather_cell,
-      {fields: [:soil_type, {plantings: [:plant, :canopy_observations]}]}]).to_a
+      {fields: [:soil_type, {plantings: [:plant, :canopy_observations, :soil_type]}]}]).to_a
     cell_ids = pivots.map(&:weather_cell_id).uniq
     WeatherCell.keep_current(cell_ids)
     # Read before the balances, so weather landing in between still gets a reload

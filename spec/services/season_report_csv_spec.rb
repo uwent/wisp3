@@ -57,7 +57,7 @@ RSpec.describe SeasonReportCsv do
   end
 
   it "averages a pivot's irrigation by field when a field has no area" do
-    west.update!(area_acres: nil)
+    west.plantings.update_all(area_acres: nil)
     expect(rows).to include(["Fields: 2 fields on 1 pivot across 1 farm, 30.0 acres (1 field without an area)"])
     # The pivot's area is unknown, so (1.0 + 0.6) / 2 fields rather than weighted by area
     expect(section("Irrigation by pivot").sole).to include("Area (acres)" => nil, "Irrigation (in)" => "0.8000")

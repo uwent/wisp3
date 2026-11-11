@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_11_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -190,8 +190,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_120000) do
     t.datetime "updated_at", null: false
     t.string "canopy_interpolation"
     t.date "vine_kill_date"
+    t.bigint "soil_type_id", null: false
+    t.float "field_capacity"
+    t.float "perm_wilting_pt"
+    t.float "area_acres"
+    t.bigint "weather_cell_id"
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
+    t.index ["soil_type_id"], name: "index_plantings_on_soil_type_id"
+    t.index ["weather_cell_id"], name: "index_plantings_on_weather_cell_id"
+    t.check_constraint "area_acres IS NULL OR area_acres > 0::double precision", name: "plantings_area_positive"
     t.check_constraint "canopy_interpolation::text = ANY (ARRAY['linear'::character varying::text, 'curve'::character varying::text])", name: "plantings_canopy_interpolation"
     t.check_constraint "et_method::text = ANY (ARRAY['pct_cover'::character varying::text, 'lai'::character varying::text])", name: "plantings_et_method"
     t.check_constraint "initial_moisture_pct IS NULL OR initial_moisture_pct >= 0::double precision AND initial_moisture_pct <= 100::double precision", name: "plantings_initial_moisture_range"
@@ -352,6 +360,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_120000) do
   add_foreign_key "pivots", "weather_cells"
   add_foreign_key "plantings", "fields"
   add_foreign_key "plantings", "plants"
+  add_foreign_key "plantings", "soil_types"
+  add_foreign_key "plantings", "weather_cells", on_delete: :nullify
   add_foreign_key "weather_days", "weather_cells"
   add_foreign_key "weather_forecasts", "weather_cells"
 end

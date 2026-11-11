@@ -122,6 +122,18 @@ RSpec.describe "Setup", type: :request do
       patch field_path(field), params: {field: {perm_wilting_pt: 0.2}}
       expect(field.reload.perm_wilting_pt).to be_nil
     end
+
+    it "keeps a field with an ended season on its pivot, and says why (G.9)" do
+      field = create(:field, pivot:, soil_type: sand)
+      create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
+        end_date: Date.new(2025, 9, 30))
+      other = create(:pivot, farm:, name: "South")
+      patch field_path(field), params: {field: {pivot_id: other.id}}, headers: {"HTTP_REFERER" => setup_url}
+      expect(field.reload.pivot).to eq(pivot)
+      follow_redirect!
+      expect(inertia.props[:errors][:pivot_id].first).to start_with("Pivot can't change for a field with earlier seasons")
+      expect(inertia.props[:farms].first[:pivots].first[:fields].first[:ended_years]).to eq([2025])
+    end
   end
 
   describe "plantings" do
@@ -137,6 +149,15 @@ RSpec.describe "Setup", type: :request do
       create(:planting, field:, plant: potato)
       post plantings_path(year: 2026), params: {planting: {field_id: field.id, plant_id: potato.id}}
       expect(field.plantings.count).to eq(1)
+    end
+
+    it "corrects an ended season's own soil and area, leaving the field's (G.9)" do
+      loam = create(:soil_type, key: "loam", name: "Loam", field_capacity: 0.30, perm_wilting_pt: 0.12)
+      planting = create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1),
+        emergence_date: Date.new(2025, 5, 1), end_date: Date.new(2025, 9, 30))
+      patch planting_path(planting), params: {planting: {soil_type_id: loam.id, area_acres: 42, field_capacity: ""}}
+      expect(planting.reload).to have_attributes(soil_type: loam, area_acres: 42, field_capacity: nil)
+      expect(field.reload.soil_type).to eq(sand)
     end
 
     it "updates and deletes a planting" do

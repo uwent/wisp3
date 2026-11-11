@@ -28,7 +28,7 @@ class SeasonReportCsv
     fields = statuses.map { |status| status.planting.field }.uniq
     pivots = fields.map(&:pivot).uniq
     farms = pivots.map(&:farm).uniq
-    acres = fields.filter_map(&:area_acres)
+    acres = fields.filter_map { |field| field_areas[field] }
     without_area = fields.size - acres.size
     {
       "Operation" => @group.name,
@@ -51,7 +51,7 @@ class SeasonReportCsv
       planting, totals, last = status.planting, status.totals, status.current&.result
       field = planting.field
       csv << [text(field.pivot.farm.name), text(field.pivot.name), text(field.pivot.equipment), text(field.name),
-        field.area_acres, planting.plant.name, text(planting.variety), field.soil_type.name, planting.season_start,
+        planting.area_acres, planting.plant.name, text(planting.variety), planting.soil_type.name, planting.season_start,
         planting.emergence_date, planting.vine_kill_date, planting.end_date, status.days.size, num(totals.rain), num(totals.rain_model),
         num(totals.irrigation), irrigated_dates(status).size, num(totals.adj_et), num(totals.deep_drainage),
         status.days.count { |day| day.result.ad <= 0 }, num(last&.ad), num(last&.pct_moisture), text(planting.notes)]
@@ -65,9 +65,9 @@ class SeasonReportCsv
     statuses.group_by { |status| status.planting.field.pivot }.each do |pivot, pivot_statuses|
       by_field = pivot_statuses.group_by { |status| status.planting.field }
         .transform_values { |field_statuses| field_statuses.sum { |status| status.totals.irrigation } }
-      areas = by_field.keys.map(&:area_acres)
+      areas = by_field.keys.map { |field| field_areas[field] }
       average = if areas.all?
-        by_field.sum { |field, inches| field.area_acres * inches } / areas.sum
+        by_field.sum { |field, inches| field_areas[field] * inches } / areas.sum
       else
         by_field.values.sum / by_field.size
       end
@@ -81,7 +81,8 @@ class SeasonReportCsv
     csv << ["Weather by zone (the weather grid cell its pivots share)"]
     csv << ["Zone", "Latitude", "Longitude", "Pivots", "From", "Through", "Days with weather", "Precipitation (in)",
       "Reference ET (in)", "GDD (50/86 °F)", "Mean temperature (°F)", "Highest (°F)", "Lowest (°F)"]
-    zones = statuses.group_by { |status| status.planting.field.pivot.weather_cell }.except(nil)
+    # The weather each planting ran on (where its pivot was that season, G.9)
+    zones = statuses.group_by { |status| status.planting.weather_cell }.except(nil)
     weather = weather_by_cell(zones.keys)
     zones.each_with_index do |(cell, cell_statuses), i|
       from = cell_statuses.map { |status| status.planting.season_start }.min
@@ -99,7 +100,7 @@ class SeasonReportCsv
   def statuses
     @statuses ||= begin
       plantings = @group.plantings.where(season_start: Date.new(@year).all_year)
-        .includes(:plant, :canopy_observations, field: [:soil_type, {pivot: [:weather_cell, {farm: :group}]}])
+        .includes(:plant, :canopy_observations, :soil_type, :weather_cell, field: {pivot: {farm: :group}})
         .sort_by { |p| [p.field.pivot.farm.name, p.field.pivot.name, p.field.name, p.season_start] }
       if plantings.empty?
         []
@@ -107,11 +108,10 @@ class SeasonReportCsv
         fields = plantings.map(&:field).uniq
         dates = plantings.map(&:season_start).min..[plantings.map(&:end_date).max, @today].min
         records = DailyInputs.preload(fields, dates)
-        weather = WeatherDay.balance_inputs_by_cell(fields.map { |field| field.pivot.weather_cell_id }.uniq, dates)
+        weather = WeatherDay.balance_inputs_by_cell(plantings.map(&:weather_cell_id).uniq, dates)
         plantings.map do |planting|
-          field = planting.field
-          PlantingStatus.new(planting, today: @today, records: records[field.id],
-            weather: weather.fetch(field.pivot.weather_cell_id, {}), ensemble: [])
+          PlantingStatus.new(planting, today: @today, records: records[planting.field_id],
+            weather: weather.fetch(planting.weather_cell_id, {}), ensemble: [])
         end
       end
     end
@@ -124,6 +124,13 @@ class SeasonReportCsv
       values = field_statuses.filter_map { |status| yield status.totals }
       values.sum if values.any?
     end
+  end
+
+  # Each field's area that year, as its plantings kept it (PLAN.md Phase 8 G.9; the larger, for a
+  # double crop), or nil
+  def field_areas
+    @field_areas ||= statuses.group_by { |status| status.planting.field }
+      .transform_values { |field_statuses| field_statuses.filter_map { |status| status.planting.area_acres }.max }
   end
 
   # The last day counted: today, or the last season's end

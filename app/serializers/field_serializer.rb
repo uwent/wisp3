@@ -13,5 +13,8 @@ class FieldSerializer < ApplicationSerializer
 
   many :plantings, resource: PlantingSerializer
 
-  typelize soil_type_name: :string, effective_field_capacity: :number, effective_perm_wilting_pt: :number
+  # Years of seasons that have ended: they keep their soil, area and pivot (PLAN.md Phase 8 G.9)
+  attribute(:ended_years) { |field| field.plantings.select(&:ended?).map(&:season_year).uniq.sort }
+
+  typelize ended_years: "number[]", soil_type_name: :string, effective_field_capacity: :number, effective_perm_wilting_pt: :number
 end

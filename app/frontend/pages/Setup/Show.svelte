@@ -42,6 +42,14 @@
         ? `radius ${units.format('distance', pivot.radius_ft)}`
         : null
   const seasonPlantings = (field: Field) => field.plantings.filter((planting) => planting.year === year)
+  // A field listed for the season: it has a crop in it or the season before (to plan from), or no
+  // crop at all yet. Fields used only in other seasons (rotated out, or set up for a later one) are
+  // collapsed below the rest (PLAN.md Phase 8 G.9).
+  const inSeason = (field: Field) =>
+    field.plantings.length === 0 ||
+    field.plantings.some((planting) => planting.year === year || planting.year === year - 1)
+  const used = (pivot: Pivot) => pivot.fields.filter(inSeason)
+  const unused = (pivot: Pivot) => pivot.fields.filter((field) => !inSeason(field))
   const hasSeason = $derived(allPivots.some((p) => p.fields.some((f) => seasonPlantings(f).length)))
   const hasLastSeason = $derived(
     allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
@@ -78,6 +86,60 @@
 </script>
 
 <svelte:head><title>Setup · WISP</title></svelte:head>
+
+{#snippet fieldRow(pivot: Pivot, field: Field)}
+  <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
+    <div class="min-w-40 flex-1">
+      <Link href={fields.show(field.id)} class="font-medium hover:underline">{field.name}</Link>
+      <p class="text-xs text-ink-muted">
+        {units.format('area', field.area_acres)} · {field.soil_type_name}
+        {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(own field capacity and wilting point){/if}
+        {#if field.use_model_precip !== null}· {field.use_model_precip
+            ? 'modeled rain'
+            : 'only the rain you enter'}{/if}
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {#each seasonPlantings(field) as planting (planting.id)}
+        <button
+          type="button"
+          class="rounded-full border border-line bg-surface px-3 py-1 text-xs hover:border-brand-500"
+          onclick={() => open({ kind: 'planting', field, planting })}
+          title="Edit this crop"
+        >
+          <span class="font-medium">{planting.plant_name}</span>
+          <span class="text-ink-muted">{formatDate(planting.emergence_date)} – {formatDate(planting.end_date)}</span>
+        </button>
+      {:else}
+        <span class="text-xs text-ink-muted">No {year} crop</span>
+      {/each}
+      <Button
+        variant="ghost"
+        class="px-2 py-1 text-xs"
+        aria-label="Add crop to {field.name}"
+        onclick={() => open({ kind: 'planting', field })}>+ Crop</Button
+      >
+    </div>
+    <div class="flex gap-1 text-xs">
+      <Button
+        variant="ghost"
+        class="px-2 py-1 text-xs"
+        aria-label="Edit {field.name}"
+        onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button
+      >
+      {#if owner}
+        <Button
+          variant="danger-ghost"
+          class="px-2 py-1 text-xs"
+          aria-label="Delete {field.name}"
+          onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its crops and entries`)}
+        >
+          Delete
+        </Button>
+      {/if}
+    </div>
+  </li>
+{/snippet}
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
@@ -198,68 +260,28 @@
             {/if}
           </div>
         </div>
-
         {#if pivot.fields.length === 0}
           <p class="px-3 py-3 text-sm text-ink-muted">No fields on this pivot yet.</p>
-        {:else}
+        {/if}
+        {#if used(pivot).length}
           <ul class="divide-y divide-line">
-            {#each pivot.fields as field (field.id)}
-              <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
-                <div class="min-w-40 flex-1">
-                  <Link href={fields.show(field.id)} class="font-medium hover:underline">{field.name}</Link>
-                  <p class="text-xs text-ink-muted">
-                    {units.format('area', field.area_acres)} · {field.soil_type_name}
-                    {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(own field capacity and wilting
-                      point){/if}
-                    {#if field.use_model_precip !== null}· {field.use_model_precip
-                        ? 'modeled rain'
-                        : 'only the rain you enter'}{/if}
-                  </p>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                  {#each seasonPlantings(field) as planting (planting.id)}
-                    <button
-                      type="button"
-                      class="rounded-full border border-line bg-surface px-3 py-1 text-xs hover:border-brand-500"
-                      onclick={() => open({ kind: 'planting', field, planting })}
-                      title="Edit this crop"
-                    >
-                      <span class="font-medium">{planting.plant_name}</span>
-                      <span class="text-ink-muted"
-                        >{formatDate(planting.emergence_date)} – {formatDate(planting.end_date)}</span
-                      >
-                    </button>
-                  {:else}
-                    <span class="text-xs text-ink-muted">No {year} crop</span>
-                  {/each}
-                  <Button
-                    variant="ghost"
-                    class="px-2 py-1 text-xs"
-                    aria-label="Add crop to {field.name}"
-                    onclick={() => open({ kind: 'planting', field })}>+ Crop</Button
-                  >
-                </div>
-                <div class="flex gap-1 text-xs">
-                  <Button
-                    variant="ghost"
-                    class="px-2 py-1 text-xs"
-                    aria-label="Edit {field.name}"
-                    onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button
-                  >
-                  {#if owner}
-                    <Button
-                      variant="danger-ghost"
-                      class="px-2 py-1 text-xs"
-                      aria-label="Delete {field.name}"
-                      onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its crops and entries`)}
-                    >
-                      Delete
-                    </Button>
-                  {/if}
-                </div>
-              </li>
+            {#each used(pivot) as field (field.id)}
+              {@render fieldRow(pivot, field)}
             {/each}
           </ul>
+        {/if}
+        {#if unused(pivot).length}
+          <!-- Fields used only in other seasons (rotated out, or set up for a later one) -->
+          <details class="border-t border-line first:border-t-0">
+            <summary class="cursor-pointer px-3 py-2 text-xs text-ink-muted hover:text-ink">
+              {unused(pivot).length === 1 ? '1 field' : `${unused(pivot).length} fields`} not used in {year - 1} or {year}
+            </summary>
+            <ul class="divide-y divide-line border-t border-line">
+              {#each unused(pivot) as field (field.id)}
+                {@render fieldRow(pivot, field)}
+              {/each}
+            </ul>
+          </details>
         {/if}
       </div>
     {/each}
@@ -335,7 +357,14 @@
       ondone={close}
     />
   {:else if dialog?.kind === 'planting'}
-    <PlantingForm planting={dialog.planting} fieldId={dialog.field.id} {year} {plants} ondone={close} />
+    <PlantingForm
+      planting={dialog.planting}
+      fieldId={dialog.field.id}
+      {year}
+      {plants}
+      soilTypes={soil_types}
+      ondone={close}
+    />
     {#if dialog.planting}
       <button
         type="button"

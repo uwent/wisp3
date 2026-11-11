@@ -12,8 +12,16 @@ class Field < ApplicationRecord
   validates :area_acres, numericality: {greater_than: 0}, allow_nil: true
   validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}, allow_nil: true
   validate :wilting_point_below_capacity
+  validate :pivot_kept_with_history, on: :update
 
   normalizes :notes, with: ->(text) { text.strip.presence }
+
+  # Plantings that haven't ended follow the field's soil, area and pivot (PLAN.md Phase 8 G.9);
+  # ended ones keep what their season ran with
+  after_update :update_open_plantings
+
+  # Whether the field has plantings whose season has ended (they stay on its pivot, G.9)
+  def history? = plantings.any?(&:ended?)
 
   # NULL means "use the soil type's value" (C14)
   def effective_field_capacity = field_capacity || soil_type.field_capacity
@@ -31,6 +39,21 @@ class Field < ApplicationRecord
   end
 
   private
+
+  def update_open_plantings
+    changed = Planting::FIELD_VALUES.select { |attribute| saved_change_to_attribute?(attribute) }
+    values = changed.to_h { |attribute| [attribute, self[attribute]] }
+    values[:weather_cell_id] = pivot.weather_cell_id if saved_change_to_pivot_id?
+    plantings.open.update_all(values) if values.any?
+  end
+
+  # Earlier seasons' pivot irrigation and weather belong to the pivot the field was on, so a field
+  # with them stays; the setup form offers a new field under the other pivot instead (G.9)
+  def pivot_kept_with_history
+    return unless will_save_change_to_pivot_id? && history?
+    errors.add(:pivot_id, "can't change for a field with earlier seasons, which stay with its pivot. " \
+      "Set up a new field under the other pivot instead")
+  end
 
   def wilting_point_below_capacity
     return unless soil_type

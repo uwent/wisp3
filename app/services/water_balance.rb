@@ -28,9 +28,9 @@ module WaterBalance
       super
     end
 
+    # The planting's own soil values (its season's, PLAN.md Phase 8 G.9)
     def self.for(planting)
-      field = planting.field
-      new(field_capacity: field.effective_field_capacity, perm_wilting_pt: field.effective_perm_wilting_pt,
+      new(field_capacity: planting.effective_field_capacity, perm_wilting_pt: planting.effective_perm_wilting_pt,
         max_root_zone_depth: planting.max_root_zone_depth, mad_frac: planting.mad_frac,
         et_method: planting.et_method, target_ad_pct: planting.target_ad_pct,
         initial_moisture_pct: planting.initial_moisture_pct)

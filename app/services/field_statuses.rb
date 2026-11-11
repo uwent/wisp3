@@ -14,13 +14,14 @@ class FieldStatuses
     last = [today + PlantingStatus::HORIZON, current.map(&:end_date).max].compact.min
     dates = current.any? ? current.map(&:season_start).min..last : today..today
     records = DailyInputs.preload(fields, dates)
-    cell_ids = fields.map { |field| field.pivot.weather_cell_id }.uniq
+    # Each planting's weather cell: its pivot's, or where the pivot was in an ended season (G.9)
+    cell_ids = current.map(&:weather_cell_id).uniq
     weather = WeatherDay.balance_inputs_by_cell(cell_ids, dates)
     ensembles = WeatherForecast.ensemble.latest_by_cell(cell_ids).transform_values(&:members)
 
     fields.to_h do |field|
       planting = plantings[field.id]
-      cell_id = field.pivot.weather_cell_id
+      cell_id = planting&.weather_cell_id
       [field.id, planting && PlantingStatus.new(planting, today:, records: records[field.id],
         weather: weather.fetch(cell_id, {}), ensemble: ensembles.fetch(cell_id, []))]
     end

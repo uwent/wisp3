@@ -7,6 +7,7 @@ class WeatherCell < ApplicationRecord
   INCOMPLETE_AFTER = 1.day
 
   has_many :pivots, dependent: :nullify
+  has_many :plantings, dependent: :nullify
   has_many :weather_days, dependent: :delete_all
   has_many :weather_forecasts, dependent: :delete_all
 
@@ -19,12 +20,11 @@ class WeatherCell < ApplicationRecord
     retry
   end
 
-  # Cells with a pivot whose fields have a planting this season (or one still running), and cells
-  # whose weather a daily digest shows out of season
+  # Cells with a planting this season (or one still running), and cells whose weather a daily
+  # digest shows out of season. A planting's cell is its pivot's, or where its pivot was (G.9).
   def self.active(today = Date.current)
-    planted = Pivot.joins(fields: :plantings)
-      .where("plantings.end_date >= ? OR plantings.season_start >= ?", today, today.beginning_of_year)
-      .select(:weather_cell_id)
+    planted = Planting.where("end_date >= ? OR season_start >= ?", today, today.beginning_of_year)
+      .where.not(weather_cell_id: nil).select(:weather_cell_id)
     where(id: planted).or(where(id: digest_cell_ids))
   end
 
@@ -83,7 +83,6 @@ class WeatherCell < ApplicationRecord
 
   # Earliest season start of this cell's plantings this year, for backfills
   def season_start(today = self.today)
-    Planting.joins(field: :pivot).where(pivots: {weather_cell_id: id})
-      .where("plantings.end_date >= ?", today.beginning_of_year).minimum(:season_start)
+    Planting.where(weather_cell_id: id).where("end_date >= ?", today.beginning_of_year).minimum(:season_start)
   end
 end
