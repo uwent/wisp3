@@ -48,7 +48,7 @@ Done once, in October 2026; kept for rebuilding the server.
 
 ```bash
 ssh agwx-dev
-rbenv versions                                   # needs 4.0.5 (rbenv install 4.0.5 if missing)
+rbenv versions                                   # needs the version in .ruby-version (rbenv install <version> if missing)
 node -v                                          # needs v24.x on the non-interactive PATH, see below
 loginctl show-user deploy --property=Linger      # needs Linger=yes (already confirmed on staging)
 ```

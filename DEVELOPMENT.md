@@ -8,7 +8,7 @@ Written for Ubuntu 24.04, natively or under WSL2 on Windows. macOS works too wit
 
 | Tool | Version | Why |
 |---|---|---|
-| Ruby | 4.0.5 (`.ruby-version`), through rbenv | The app |
+| Ruby | the version in `.ruby-version`, through rbenv | The app |
 | Node.js | 24 (`.node-version`) | Vite builds and the frontend tests |
 | pnpm | from `packageManager` in `package.json`, through corepack | JavaScript packages |
 | PostgreSQL | 16 or newer | The database (CI uses 16; 18 works) |
@@ -27,13 +27,22 @@ sudo apt install -y build-essential git curl libssl-dev libyaml-dev zlib1g-dev l
 ### Ruby
 
 ```bash
+# first-time rbenv setup
 git clone https://github.com/rbenv/rbenv.git ~/.rbenv
 git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
 echo 'eval "$(~/.rbenv/bin/rbenv init - bash)"' >> ~/.bashrc && exec bash
-rbenv install 4.0.5
+
+# install ruby (from the repo, where rbenv reads the version from .ruby-version)
+rbenv install
+
+# if rbenv can't install it, update ruby-build and try again
+git -C "$(rbenv root)"/plugins/ruby-build pull
+
+# install gems
+bundle install
 ```
 
-Check YJIT with `ruby --yjit -e 'p RubyVM::YJIT.enabled?'`, which prints `true` if Ruby was built with it. To add YJIT to a Ruby built without it, install `rustc`, then run `rbenv install --force 4.0.5` followed by `bundle install` (the reinstall removes its gems).
+Check YJIT with `ruby --yjit -e 'p RubyVM::YJIT.enabled?'`, which prints `true` if Ruby was built with it. To add YJIT to a Ruby built without it, install `rustc`, then run `rbenv install --force` followed by `bundle install` (the reinstall removes its gems).
 
 ### Node and pnpm
 

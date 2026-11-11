@@ -3,7 +3,8 @@
 # worker with `bin/jobs`. Built on the EC2 server by `bin/production deploy` and run there by
 # config/deploy/compose.production.yaml; see docs/deployment.md, Production.
 
-ARG RUBY_VERSION=4.0.5
+# bin/production passes RUBY_VERSION from .ruby-version; this default is for a plain `docker build`.
+ARG RUBY_VERSION=4.0.9
 ARG NODE_VERSION=24
 
 FROM docker.io/library/node:${NODE_VERSION}-slim AS node

@@ -48,7 +48,7 @@ else
     || { echo "$tag isn't on GitHub: push it first." >&2; exit 1; }
   git -C src checkout --quiet --force --detach "$sha"
   echo "Building $tag…"
-  docker build --build-arg REVISION="$sha" -t "wisp3:$tag" src
+  docker build --build-arg REVISION="$sha" --build-arg RUBY_VERSION="$(cat src/.ruby-version)" -t "wisp3:$tag" src
 fi
 git -C src show "$sha:config/deploy/compose.production.yaml" > compose.yaml
 
