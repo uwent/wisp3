@@ -524,6 +524,23 @@ test('a crop without its own canopy curve follows a generic one, or readings onl
   await expect(curves).toBeHidden()
 })
 
+test("a perennial's cuttings restart its canopy, and are added and removed on its page", async ({ page }) => {
+  await page.goto('/')
+  const card = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Hay north' }) })
+  await card.getByRole('link').first().click()
+  await expect(page).toHaveURL(/\/plantings\/\d+/)
+  const cuttings = page.getByRole('region', { name: 'Cuttings' })
+  await expect(cuttings.getByRole('list', { name: 'Cuttings' }).getByRole('listitem')).toHaveCount(3)
+
+  const year = new Date().getFullYear()
+  await cuttings.getByLabel('Cut on').fill(`${year}-09-20`)
+  await cuttings.getByRole('button', { name: 'Add cutting' }).click()
+  await expect(cuttings.getByRole('listitem')).toHaveCount(4)
+  page.once('dialog', (dialog) => dialog.accept())
+  await cuttings.getByRole('button', { name: 'Remove the Sep 20 cutting' }).click()
+  await expect(cuttings.getByRole('listitem')).toHaveCount(3)
+})
+
 test('a new whole-field planting over another offers to replace it', async ({ page }) => {
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()

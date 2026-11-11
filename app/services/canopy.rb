@@ -43,7 +43,7 @@ class Canopy
 
   # curve: the crop's typical curve. fit: the CanopyFit::Fit to the readings, when the canopy
   # follows the curve and has readings (nil otherwise).
-  attr_reader :curve, :fit
+  attr_reader :curve, :fit, :emergence_date
 
   # curve: date → value, or nil. fit_curve: ->(shift:, stretch:, height:) { date → value }, the curve
   # adjusted, to fit it to the readings (without it the typical curve is used as is); fit_key
@@ -68,6 +68,12 @@ class Canopy
   # For a Planting, from its canopy observations (percent cover or LAI, by its ET method). through:
   # leaves out readings after that date (time travel on the field page, PLAN.md Phase 8 F).
   def self.for(planting, through: nil)
+    # A perennial cut during the season regrows from each cutting (G.3)
+    cuttings = planting.canopy_cuttings.map(&:date).select { |date| through.nil? || date <= through }
+    if cuttings.any? && planting.cover_curve&.key == CanopyCutting::CURVE && planting.et_method == "pct_cover"
+      return CutCanopy.for(planting, cuttings, through:)
+    end
+
     lai = planting.et_method == "lai"
     attribute = lai ? :lai : :pct_cover
     observations = planting.canopy_observations.filter_map do |obs|

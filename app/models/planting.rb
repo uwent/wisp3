@@ -23,6 +23,8 @@ class Planting < ApplicationRecord
   belongs_to :weather_cell, optional: true
   has_many :canopy_observations, -> { order(:date) }, dependent: :destroy
   has_many :planting_entries, dependent: :delete_all
+  # A perennial's cuttings, each restarting its canopy (G.3)
+  has_many :canopy_cuttings, -> { order(:date) }, dependent: :delete_all
 
   validates :season_start, :emergence_date, :end_date, presence: true
   validates :max_root_zone_depth, numericality: {greater_than: 0}

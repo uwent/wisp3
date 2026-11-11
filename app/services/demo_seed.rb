@@ -83,6 +83,14 @@ class DemoSeed
     planting(peas, "soybean", season_start: date(7, 1), emergence: date(7, 8), end_date: date(10, 5))
     pivot_irrigations(river, [[6, 22, 0.7], [7, 5, 0.8], [7, 19, 0.8], [8, 2, 0.75]])
 
+    # Alfalfa from spring green-up, cut three times (G.3: the canopy restarts at each cutting)
+    hay = plover.pivots.create!(name: "Hay pivot", latitude: 44.4721, longitude: -89.5302, radius_ft: 1200,
+      pump_capacity_gpm: 800)
+    alfalfa = planting(field(hay, "Hay north", 40, "loamy_sand"), "alfalfa", emergence: date(4, 15), end_date: date(10, 15),
+      readings: [])
+    [[6, 1], [7, 10], [8, 18]].each { |month, day| alfalfa.canopy_cuttings.create!(date: date(month, day)) }
+    alfalfa.canopy_observations.create!(date: date(6, 20), pct_cover: 55)
+
     # Vegetables sharing a rain gauge (field group)
     veg = coloma.pivots.create!(name: "Home pivot", latitude: 44.0337, longitude: -89.5208, radius_ft: 1100,
       pump_capacity_gpm: 750)

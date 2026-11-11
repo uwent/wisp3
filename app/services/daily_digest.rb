@@ -37,7 +37,7 @@ class DailyDigest
   def all_entries
     @all_entries ||= begin
       fields = user.digest_fields
-        .includes(:soil_type, pivot: [:weather_cell, {farm: :group}], plantings: [:plant, :canopy_observations, :soil_type]).to_a
+        .includes(:soil_type, pivot: [:weather_cell, {farm: :group}], plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type]).to_a
       statuses = FieldStatuses.for(fields, today:)
       fields.flat_map do |field|
         (statuses[field.id].presence || [nil]).map do |status|

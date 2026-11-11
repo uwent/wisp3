@@ -18,6 +18,11 @@ class PlantingSerializer < ApplicationSerializer
     planting.plant.key
   end
 
+  # On the perennial regrowth curve, so it can be cut; and its cuttings (G.3)
+  attribute(:takes_cuttings) { |planting| planting.cover_curve&.key == CanopyCutting::CURVE && planting.et_method == "pct_cover" }
+  attribute(:cuttings) { |planting| planting.canopy_cuttings.map { |cutting| {id: cutting.id, date: cutting.date} } }
+  typelize takes_cuttings: :boolean, cuttings: "{ id: number; date: string }[]"
+
   # The generic curve in effect, for a crop without its own ("Vegetable, medium"), or null
   attribute(:generic_curve_name) { |planting| planting.generic_curve_crop? ? planting.cover_curve&.name : nil }
   typelize generic_curve_name: "string | null", canopy_curve_key: "string | null"

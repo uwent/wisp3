@@ -192,6 +192,23 @@ describe('field chart', () => {
     expect(canopySeries(null).markLine).toBeUndefined()
   })
 
+  it("marks a perennial's cuttings on the canopy grid (G.3)", () => {
+    const days = [day('2026-06-01'), day('2026-06-02'), day('2026-06-03')]
+    const option = fieldChartOption({
+      days,
+      summary,
+      rootZoneDepth: 16,
+      units: units('imperial'),
+      mode: 'ad',
+      palette,
+      cuttings: ['2026-06-02', '2026-08-01'],
+    })
+    const canopy = (option.series as { id: string; markLine?: { data: { xAxis: string }[] } }[]).find(
+      (s) => s.id === 'canopy',
+    )!
+    expect(canopy.markLine!.data.map((line) => line.xAxis)).toEqual(['2026-06-02'])
+  })
+
   it("draws the crop's curve dashed behind the canopy, and names it in the tooltip", () => {
     const days = [
       day('2026-07-01', { canopy: 20, canopy_entered: 20, canopy_curve: 30 }),

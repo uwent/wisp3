@@ -7,7 +7,7 @@ class FieldsController < AuthenticatedController
   # ?planting_id= (links from before plantings had their own pages) goes to that planting's page.
   def show
     field = Current.group.fields.includes(:soil_type, :field_groups, pivot: [:farm, :weather_cell],
-      plantings: [:plant, :canopy_observations, :soil_type, :weather_cell]).find(params[:id])
+      plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell]).find(params[:id])
     if (planting = field.plantings.find { |p| p.id == params[:planting_id].to_i })
       return redirect_to planting_path(planting, request.query_parameters.slice("as_of"))
     end

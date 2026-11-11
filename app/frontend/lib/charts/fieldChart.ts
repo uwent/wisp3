@@ -26,6 +26,8 @@ export type FieldChartInput = {
   canopy?: 'cover' | 'lai'
   /** The planting's vine kill date (potato), marked on the canopy grid, where the canopy starts to ramp down */
   vineKill?: string | null
+  /** A perennial's cutting dates, marked on the canopy panel (G.3) */
+  cuttings?: string[]
   /** The days in view (indexes into days then forecastDays), for the running totals; default the opening view */
   view?: ChartView
 }
@@ -58,9 +60,25 @@ export function thresholds({
 }
 
 export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
-  const { days, forecastDays = [], summary, rootZoneDepth, units, mode, palette, canopy = 'cover', vineKill } = input
+  const {
+    days,
+    forecastDays = [],
+    summary,
+    rootZoneDepth,
+    units,
+    mode,
+    palette,
+    canopy = 'cover',
+    vineKill,
+    cuttings = [],
+  } = input
   const base = baseOption(palette)
   const all = [...days, ...forecastDays]
+  // Dashed lines on the canopy panel: vine kill, and each cutting of a perennial (G.3), within the days shown
+  const markers: [string, string][] = [
+    ...(vineKill ? [[vineKill, 'Vine kill'] as [string, string]] : []),
+    ...cuttings.map((date) => [date, 'Cut'] as [string, string]),
+  ].filter(([date]) => all.some((day) => day.date === date))
   const dates = all.map((day) => day.date)
   const observed = days.length
   const depth = (inches: number | null) => units.toDisplay('depth', inches)
@@ -525,18 +543,16 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         symbol: 'none',
         lineStyle: { width: 2, color: palette.canopy },
         itemStyle: { color: palette.canopy },
-        ...(vineKill && all.some((day) => day.date === vineKill)
+        ...(markers.length
           ? {
               markLine: {
                 silent: true,
                 symbol: 'none',
-                data: [
-                  {
-                    xAxis: vineKill,
-                    lineStyle: { color: palette.inkMuted, type: 'dashed', width: 1 },
-                    label: { formatter: 'Vine kill', position: 'insideEndTop', color: palette.inkMuted, fontSize: 10 },
-                  },
-                ],
+                data: markers.map(([date, label]) => ({
+                  xAxis: date,
+                  lineStyle: { color: palette.inkMuted, type: 'dashed', width: 1 },
+                  label: { formatter: label, position: 'insideEndTop', color: palette.inkMuted, fontSize: 10 },
+                })),
               },
             }
           : {}),

@@ -6,7 +6,7 @@ RSpec.describe "Public pages", type: :request do
     get about_path
     expect_inertia.to render_component("Pages/About")
     expect(inertia.props[:plants]).to include({key: "field_corn", name: "Field Corn", root_zone_in: 33.0, lai_curve: true,
-      cover_curve: true})
+      cover_curve: true, generic_curve: nil})
     expect(inertia.props[:defaults]).to eq("mad_pct" => 50, "lead_days" => 3, "forecast_days" => 16,
       "shift_warning_days" => 7, "drop_warning" => 5, "fade_days" => 14, "fit_shift_days" => 5, "fit_noise_pct" => 10)
   end
@@ -15,6 +15,9 @@ RSpec.describe "Public pages", type: :request do
     create(:plant, key: "potato", name: "Potato")
     create(:plant, key: "onion", name: "Onion")
     get about_path
+    # Onion has no curve of its own: a generic one (G.3)
+    expect(inertia.props[:plants].find { |plant| plant[:key] == "onion" }).to include(generic_curve: "Slow, partial cover")
+    expect(inertia.props[:generic_curves].find { |curve| curve[:key] == "slow_partial" }).to include(crops: ["Onion"])
     curves = inertia.props[:canopy_curves]
     expect(curves.map { |curve| curve[:key] }).to eq(["potato"])
     expect(curves.first).to include(confidence: "matches_wi", days_to: {"50" => 24, "80" => 31},

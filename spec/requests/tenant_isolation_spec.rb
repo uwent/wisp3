@@ -167,6 +167,17 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  it "won't add or remove cuttings on another group's planting (G.3)" do
+    their_planting.update!(plant: create(:plant, key: "alfalfa"), canopy_curve_key: nil)
+    cutting = their_planting.canopy_cuttings.create!(date: their_planting.emergence_date + 30)
+    get root_path
+    post planting_cuttings_path(their_planting), params: {cutting: {date: (their_planting.emergence_date + 40).iso8601}}
+    expect(response).to have_http_status(:not_found)
+    delete planting_cutting_path(their_planting, cutting)
+    expect(response).to have_http_status(:not_found)
+    expect(their_planting.canopy_cuttings.count).to eq(1)
+  end
+
   it "won't let Replace end another group's planting" do
     their_planting
     post plantings_path, params: {planting: {field_id: their_planting.field_id, plant_id: their_planting.plant_id,

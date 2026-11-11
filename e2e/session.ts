@@ -78,6 +78,10 @@ export async function signedInPages(page: Page): Promise<string[]> {
   const field = await firstLinkPath(page, planting, 'a[href*="/fields/"]')
   const research = await researchFieldPath(page)
   const plot = await firstLinkPath(page, research, 'nav a[href*="/plantings/"]')
+  // A perennial with cuttings (G.3)
+  await page.goto('/')
+  const hayCard = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Hay north' }) })
+  const hay = new URL((await hayCard.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
   const fieldGroup = await firstLinkPath(page, '/field_groups', 'a[href*="/field_groups/"]')
   const user = await firstLinkPath(page, '/admin/users', 'a[href*="/admin/users/"]')
   return [
@@ -87,6 +91,7 @@ export async function signedInPages(page: Page): Promise<string[]> {
     field,
     research,
     plot,
+    hay,
     '/setup',
     '/setup/start',
     '/daily',
