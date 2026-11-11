@@ -1,6 +1,6 @@
 <script lang="ts">
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
-  import { type FieldCard, isActive, pivotStatus, type Status } from '@/lib/overview'
+  import { type FieldCard, isActive, pivotStatus, primary, type Status } from '@/lib/overview'
 
   import type { MapPivot } from './pivots'
 
@@ -19,7 +19,7 @@
 
   const status = $derived(pivotStatus(pivot.fields))
   const idle = (card: FieldCard) => {
-    const summary = card.summary
+    const summary = primary(card)
     if (!summary) return 'no crop this season'
     if (summary.phase === 'upcoming') return 'season not started'
     if (summary.phase === 'ended') return 'season ended'
@@ -48,7 +48,7 @@
   >
     {#each pivot.fields as card (card.id)}
       {#if isActive(card)}
-        <StatusBadge status={card.summary!.status} size="icon" title="{card.name}: {LABELS[card.summary!.status!]}" />
+        <StatusBadge status={primary(card)!.status} size="icon" title="{card.name}: {LABELS[primary(card)!.status!]}" />
       {:else}
         <span
           class="inline-flex size-5 rounded-full border-2 border-white/80 bg-gray-400/70"

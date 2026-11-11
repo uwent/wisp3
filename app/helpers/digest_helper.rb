@@ -1,9 +1,10 @@
 # Wording shared by the daily digest's HTML and text parts
 module DigestHelper
-  # "Potato (Russet)"
+  # "Potato (Russet)", with part of a field's size: "Soybean, 100 × 20 ft (0.05 ac)"
   def digest_crop(entry)
     planting = entry.status.planting
-    planting.variety.present? ? "#{planting.plant.name} (#{planting.variety})" : planting.plant.name
+    name = planting.variety.present? ? "#{planting.plant.name} (#{planting.variety})" : planting.plant.name
+    (planting.partial? && @digest) ? "#{name}, #{@digest.plot(planting)}" : name
   end
 
   # "Home farm › Pivot 1", with the operation when the digest spans several

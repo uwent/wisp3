@@ -54,7 +54,7 @@ Rails.application.routes.draw do
   resources :fields, only: [:show, :create, :update, :destroy] do
     resources :days, only: :update, controller: "field_days", param: :date
   end
-  resources :plantings, only: [:create, :update, :destroy] do
+  resources :plantings, only: [:show, :create, :update, :destroy] do
     get :export, on: :member, defaults: {format: :csv}
   end
   resources :field_groups, only: [:index, :show, :create, :update, :destroy] do

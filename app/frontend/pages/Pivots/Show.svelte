@@ -210,7 +210,7 @@
   </div>
 {/if}
 
-<section class="overflow-x-auto rounded-lg border border-line bg-surface-raised">
+<section class="relative overflow-x-auto rounded-lg border border-line bg-surface-raised">
   {#if irrigations.length === 0}
     <p class="p-6 text-center text-sm text-ink-muted">No irrigation entered for {year} yet.</p>
   {:else}

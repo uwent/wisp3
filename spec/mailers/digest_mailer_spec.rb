@@ -36,7 +36,7 @@ RSpec.describe DigestMailer do
 
     html = mail.html_part.body.decoded
     expect(html).to include("ses:no-track")
-    expect(html).to include("http://example.com/fields/#{soon.id}?operation=#{user.groups.first.id}")
+    expect(html).to include("http://example.com/plantings/#{soon.plantings.sole.id}?operation=#{user.groups.first.id}")
     expect(html).to include("http://example.com/pivots/#{pivot.id}?operation=#{user.groups.first.id}")
     expect(html).to include("http://example.com/alerts")
   end

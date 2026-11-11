@@ -6,27 +6,69 @@
   import NumberField from '@/lib/components/NumberField.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
+  import { addDays, formatDate } from '@/lib/dates'
+  import { clashes, cropName, formatArea, plotAcres, seasonDates } from '@/lib/plantings'
+  import { units as unitsFor } from '@/lib/units'
   import { plantings } from '@/routes'
-  import type { Plant, Planting, SoilType } from '@/types/serializers'
+  import type { Field, Plant, Planting, SoilType } from '@/types/serializers'
+  import { page } from '@inertiajs/svelte'
 
-  // One crop on a field for one season. Dates default to Apr 1 – Nov 30 with emergence May 1, and
-  // the root zone depth to the crop's (as in legacy WISP). A season that has ended keeps its own soil
-  // and area (PLAN.md Phase 8 G.9), which can be corrected here; one still running follows its field's.
+  // One planting on a field for one season. Dates default to Apr 1 – Nov 30 with emergence May 1,
+  // and the root zone depth to the crop's (as in legacy WISP). A season that has ended keeps its own
+  // soil and area (PLAN.md Phase 8 G.9), which can be corrected here; one still running follows its
+  // field's. A planting covers the whole field or part of it (G.11): length × width or acres, on the
+  // field's soil or its own. A new whole-field planting overlapping another can replace it (ending
+  // it the day before). template: a new planting's dates and size ("Add the next planting").
   let {
     planting,
-    fieldId,
+    field,
     year,
     plants,
     soilTypes = [],
+    template,
     ondone,
   }: {
     planting?: Planting
-    fieldId: number
+    field: Field
     year: number
     plants: Plant[]
     soilTypes?: SoilType[]
+    template?: Partial<Planting>
     ondone: () => void
   } = $props()
+
+  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const start = untrack(() => planting ?? template)
+  let seasonStart = $state(untrack(() => start?.season_start ?? `${year}-04-01`))
+  let emergence = $state(untrack(() => start?.emergence_date ?? `${year}-05-01`))
+  let endDate = $state(untrack(() => start?.end_date ?? `${year}-11-30`))
+
+  // Whole field or part of it, sized by length × width or by acres
+  let partial = $state(untrack(() => start?.partial ?? false))
+  let sizeBy = $state<'plot' | 'acres'>(
+    untrack(() => (start?.partial && start.plot_length_ft === null ? 'acres' : 'plot')),
+  )
+  let lengthFt = $state<number | null>(untrack(() => start?.plot_length_ft ?? null))
+  let widthFt = $state<number | null>(untrack(() => start?.plot_width_ft ?? null))
+  let acres = $state<number | null>(untrack(() => (start?.partial ? (start.area_acres ?? null) : null)))
+  const plotArea = $derived(sizeBy === 'plot' ? (lengthFt && widthFt ? plotAcres(lengthFt, widthFt) : null) : acres)
+  const tooBig = $derived(plotArea !== null && field.area_acres !== null && plotArea > field.area_acres + 1e-6)
+
+  // The plantings on this field this one would clash with, and the ones "Replace" would end
+  const others = $derived(field.plantings.filter((other) => other.id !== planting?.id))
+  const clashing = $derived(
+    seasonStart && endDate ? clashes({ season_start: seasonStart, end_date: endDate, partial }, others) : [],
+  )
+  // Replace ends each the day before this one starts, after its emergence (PlantingsController)
+  const replaceable = $derived(
+    !planting && clashing.length > 0 && clashing.every((other) => other.emergence_date < seasonStart),
+  )
+  let replace = $state(false)
+
+  // A plot follows the field's soil unless it has its own
+  let ownSoil = $state(untrack(() => planting?.own_soil ?? false))
+  let plotSoilId = $state(untrack(() => String(planting?.own_soil ? planting.soil_type_id : field.soil_type_id)))
+  const plotSoil = $derived(soilTypes.find((s) => String(s.id) === plotSoilId))
 
   // Form fields start from the props; the dialog mounts a new form each time it opens
   let plantId = $state(untrack(() => String(planting?.plant_id ?? '')))
@@ -53,13 +95,6 @@
   let seasonSoilId = $state(untrack(() => String(planting?.soil_type_id ?? '')))
   const seasonSoil = $derived(soilTypes.find((s) => String(s.id) === seasonSoilId))
   const pct = (fraction: number | undefined) => (fraction === undefined ? '' : `${Math.round(fraction * 1000) / 10}%`)
-
-  const date = (name: string, label: string, value: string, error?: string | string[]) => ({
-    name,
-    label,
-    value,
-    error,
-  })
 </script>
 
 <Form
@@ -69,7 +104,7 @@
   onSuccess={ondone}
 >
   {#snippet children({ errors, processing })}
-    <input type="hidden" name="planting[field_id]" value={fieldId} />
+    <input type="hidden" name="planting[field_id]" value={field.id} />
     <div class="grid gap-4 sm:grid-cols-2">
       <SelectField
         label="Crop"
@@ -86,23 +121,177 @@
       <TextField label="Variety" name="planting[variety]" value={planting?.variety ?? ''} />
     </div>
     <div class="grid gap-4 sm:grid-cols-3">
-      {#each [date('season_start', 'Season start', planting?.season_start ?? `${year}-04-01`, errors.season_start), date('emergence_date', 'Emergence', planting?.emergence_date ?? `${year}-05-01`, errors.emergence_date), date('end_date', endLabel, planting?.end_date ?? `${year}-11-30`, errors.end_date)] as d (d.name)}
+      {#snippet dateInput(
+        name: string,
+        label: string,
+        error: string | string[] | undefined,
+        value: string,
+        set: (v: string) => void,
+      )}
         <div class="space-y-1">
-          <label class="block text-sm font-medium" for="planting-{d.name}">{d.label}</label>
+          <label class="block text-sm font-medium" for="planting-{name}">{label}</label>
           <input
-            id="planting-{d.name}"
+            id="planting-{name}"
             type="date"
-            name="planting[{d.name}]"
-            value={d.value}
+            name="planting[{name}]"
+            {value}
+            oninput={(event) => set(event.currentTarget.value)}
             required
-            class="block w-full rounded-md text-sm {d.error ? 'border-status-irrigate' : ''}"
+            class="block w-full rounded-md text-sm {error ? 'border-status-irrigate' : ''}"
           />
-          {#if d.error}<p class="text-sm text-status-irrigate-ink">
-              {Array.isArray(d.error) ? d.error[0] : d.error}
-            </p>{/if}
+          {#if error}<p class="text-sm text-status-irrigate-ink">{Array.isArray(error) ? error[0] : error}</p>{/if}
         </div>
-      {/each}
+      {/snippet}
+      {@render dateInput('season_start', 'Season start', errors.season_start, seasonStart, (v) => (seasonStart = v))}
+      {@render dateInput('emergence_date', 'Emergence', errors.emergence_date, emergence, (v) => (emergence = v))}
+      {@render dateInput('end_date', endLabel, errors.end_date, endDate, (v) => (endDate = v))}
     </div>
+
+    <fieldset class="space-y-3">
+      <legend class="text-sm font-medium">Planting size</legend>
+      <input type="hidden" name="planting[partial]" value={String(partial)} />
+      <div
+        class="flex flex-col overflow-hidden rounded-md border border-line text-sm sm:w-fit sm:flex-row"
+        role="radiogroup"
+      >
+        {#each [[false, `Whole field (${formatArea(units, field.area_acres)})`], [true, 'Part of the field']] as const as [value, label] (label)}
+          <label
+            class="flex flex-1 cursor-pointer items-center gap-2 px-3 py-1.5 whitespace-nowrap has-checked:bg-brand-600 has-checked:text-white
+              has-focus-visible:outline-2 has-focus-visible:outline-brand-500 dark:has-checked:text-surface"
+          >
+            <input
+              type="radio"
+              class="sr-only"
+              name="planting-size"
+              checked={partial === value}
+              onchange={() => (partial = value)}
+            />
+            {label}
+          </label>
+        {/each}
+      </div>
+      {#if partial}
+        <div class="space-y-3 rounded-md border border-line p-3">
+          <div class="flex flex-wrap gap-4 text-sm">
+            <label class="flex items-center gap-2"
+              ><input type="radio" name="planting-size-by" value="plot" bind:group={sizeBy} /> Length × width</label
+            >
+            <label class="flex items-center gap-2"
+              ><input type="radio" name="planting-size-by" value="acres" bind:group={sizeBy} /> Area</label
+            >
+          </div>
+          {#if sizeBy === 'plot'}
+            <div class="grid gap-4 sm:grid-cols-3">
+              <NumberField
+                label="Length"
+                name="planting[plot_length_ft]"
+                quantity="distance"
+                bind:value={lengthFt}
+                required
+                error={errors.plot_length_ft}
+              />
+              <NumberField
+                label="Width"
+                name="planting[plot_width_ft]"
+                quantity="distance"
+                bind:value={widthFt}
+                required
+                error={errors.plot_width_ft}
+              />
+              <div class="space-y-1 text-sm">
+                <p class="font-medium">Area</p>
+                <p class="py-2 tabular-nums" aria-live="polite">{plotArea ? formatArea(units, plotArea) : '—'}</p>
+              </div>
+            </div>
+          {:else}
+            <input type="hidden" name="planting[plot_length_ft]" value="" />
+            <input type="hidden" name="planting[plot_width_ft]" value="" />
+            <div class="sm:w-1/2">
+              <NumberField
+                label="Area"
+                name="planting[area_acres]"
+                quantity="area"
+                bind:value={acres}
+                required
+                error={errors.area_acres}
+              />
+            </div>
+          {/if}
+          {#if tooBig}
+            <p class="text-sm text-status-irrigate-ink">
+              That's more than the field's {formatArea(units, field.area_acres)}.
+            </p>
+          {:else if sizeBy === 'plot' && errors.area_acres}
+            <p class="text-sm text-status-irrigate-ink">{errors.area_acres}</p>
+          {/if}
+          {#if soilTypes.length}
+            <label class="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                class="mt-0.5"
+                checked={!ownSoil}
+                onchange={(e) => (ownSoil = !e.currentTarget.checked)}
+              />
+              <span>Use the field's soil ({field.soil_type_name})</span>
+            </label>
+            <input type="hidden" name="planting[own_soil]" value={String(ownSoil)} />
+            {#if ownSoil}
+              <div class="grid gap-4 sm:grid-cols-3">
+                <SelectField
+                  label="Soil"
+                  name="planting[soil_type_id]"
+                  bind:value={plotSoilId}
+                  options={soilTypes.map((s) => ({ value: String(s.id), label: s.name }))}
+                  error={errors.soil_type}
+                />
+                <NumberField
+                  label="Field capacity"
+                  name="planting[field_capacity]"
+                  scale={100}
+                  unitLabel="%"
+                  value={planting?.own_soil ? planting.field_capacity : null}
+                  hint="Blank: {pct(plotSoil?.field_capacity)}"
+                  error={errors.field_capacity}
+                />
+                <NumberField
+                  label="Wilting point"
+                  name="planting[perm_wilting_pt]"
+                  scale={100}
+                  unitLabel="%"
+                  value={planting?.own_soil ? planting.perm_wilting_pt : null}
+                  hint="Blank: {pct(plotSoil?.perm_wilting_pt)}"
+                  error={errors.perm_wilting_pt}
+                />
+              </div>
+            {/if}
+          {/if}
+        </div>
+      {/if}
+      {#if clashing.length}
+        <div
+          role="status"
+          class="space-y-2 rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2 text-sm"
+        >
+          <p>
+            {partial ? 'This overlaps a planting covering the whole field' : 'This overlaps'}:
+            {clashing.map((other) => `${cropName(other)} (${seasonDates(other)})`).join(', ')}.
+            {#if partial}Make that one part of the field too, or change the dates.{:else}Choose Part of the field if
+              they grow side by side{replaceable ? ', or replace it.' : '.'}{/if}
+          </p>
+          {#if replaceable && !partial}
+            <label class="flex items-start gap-2">
+              <input type="checkbox" class="mt-0.5" bind:checked={replace} />
+              {#if replace}<input type="hidden" name="replace" value="1" />{/if}
+              <span>
+                Replace: end {clashing.map((other) => other.plant_name).join(' and ')} on {formatDate(
+                  addDays(seasonStart, -1),
+                )}
+              </span>
+            </label>
+          {/if}
+        </div>
+      {/if}
+    </fieldset>
     {#if plant?.has_vine_kill}
       <div class="space-y-1 sm:w-1/3">
         <label class="block text-sm font-medium" for="planting-vine_kill_date">Vine kill</label>
@@ -211,7 +400,7 @@
         error={errors.initial_moisture_pct}
       />
     </div>
-    {#if planting?.ended && soilTypes.length}
+    {#if planting?.ended && soilTypes.length && !partial}
       <details class="text-sm">
         <summary class="cursor-pointer text-ink-muted">Soil and area this season</summary>
         <div class="mt-3 space-y-4">
@@ -263,6 +452,6 @@
       >
     </div>
     {#if errors.base}<p class="text-sm text-status-irrigate-ink">{errors.base}</p>{/if}
-    <Button type="submit" disabled={processing}>{planting ? 'Save crop' : 'Add crop'}</Button>
+    <Button type="submit" disabled={processing || tooBig}>{planting ? 'Save planting' : 'Add planting'}</Button>
   {/snippet}
 </Form>

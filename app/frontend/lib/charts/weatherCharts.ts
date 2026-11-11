@@ -192,7 +192,7 @@ export function weatherPanels(
             "takes out of the soil. It's lower than reference ET while the canopy is small. In the forecast it's the projection's, " +
             'from the forecast reference ET and the expected canopy. ' +
             'The lower panel adds both up from the first day in view.'
-          : "Each field's crop ET (reference ET adjusted for its canopy) is on the field's page. The lower panel adds " +
+          : "Each planting's crop ET (reference ET adjusted for its canopy) is on its page. The lower panel adds " +
             'reference ET up from the first day in view.'),
       bars: 'group',
       corrected: 'et0-fao56',

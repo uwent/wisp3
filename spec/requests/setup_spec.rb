@@ -178,13 +178,13 @@ RSpec.describe "Setup", type: :request do
         .to eq("linear")
     end
 
-    it "takes a potato's vine kill date, and shows it on the field page" do
+    it "takes a potato's vine kill date, and shows it on the planting's page" do
       planting = create(:planting, field:, plant: potato, season_start: Date.new(2026, 4, 1),
         emergence_date: Date.new(2026, 5, 15), end_date: Date.new(2026, 9, 30))
       patch planting_path(planting), params: {planting: {vine_kill_date: "2026-09-10"}}
       expect(planting.reload.vine_kill_date).to eq(Date.new(2026, 9, 10))
 
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props[:planting]).to include(vine_kill_date: "2026-09-10", vine_kill_crop: true)
       get setup_path
       expect(inertia.props[:plants].find { |plant| plant[:key] == "potato" }).to include(has_vine_kill: true)

@@ -24,10 +24,22 @@ export async function signIn(page: Page) {
   await expect(page.getByRole('heading', { name: 'Dashboard' }).locator('..')).toContainText('Demo farms')
 }
 
-export async function firstFieldPath(page: Page): Promise<string> {
+/**
+ * The Cabbage field's planting page (its dashboard card links to it), whose season the seed keeps
+ * running past today
+ */
+export async function firstPlantingPath(page: Page): Promise<string> {
   await page.goto('/')
-  const href = await page.locator('main ul li a').first().getAttribute('href')
+  const card = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Cabbage' }) })
+  const href = await card.getByRole('link').first().getAttribute('href')
   return new URL(href!, page.url()).pathname
+}
+
+/** The demo's research field, with four plots side by side (PLAN.md Phase 8 G.11) */
+export async function researchFieldPath(page: Page): Promise<string> {
+  await page.goto('/')
+  const card = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Arlington 525' }) })
+  return new URL((await card.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
 }
 
 /** The path of the first link in main matching a selector, on the page at `from` */
@@ -61,14 +73,20 @@ export function watchErrors(page: Page): string[] {
 
 /** Every signed-in page, with the demo account's first field, pivot, field group and user */
 export async function signedInPages(page: Page): Promise<string[]> {
-  const field = await firstFieldPath(page)
-  const pivot = await firstLinkPath(page, field, 'a[href*="/pivots/"]')
+  const planting = await firstPlantingPath(page)
+  const pivot = await firstLinkPath(page, planting, 'a[href*="/pivots/"]')
+  const field = await firstLinkPath(page, planting, 'a[href*="/fields/"]')
+  const research = await researchFieldPath(page)
+  const plot = await firstLinkPath(page, research, 'nav a[href*="/plantings/"]')
   const fieldGroup = await firstLinkPath(page, '/field_groups', 'a[href*="/field_groups/"]')
   const user = await firstLinkPath(page, '/admin/users', 'a[href*="/admin/users/"]')
   return [
     '/',
     '/map',
+    planting,
     field,
+    research,
+    plot,
     '/setup',
     '/setup/start',
     '/daily',

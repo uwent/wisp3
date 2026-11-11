@@ -1,100 +1,76 @@
 <script lang="ts">
   import { Form, Link, page, router } from '@inertiajs/svelte'
-  import { tick } from 'svelte'
 
-  import Chart from '@/lib/charts/Chart.svelte'
-  import { fieldChartOption, type FieldChartMode } from '@/lib/charts/fieldChart'
-  import { weatherPanels } from '@/lib/charts/weatherCharts'
-  import WeatherSection from '@/lib/charts/WeatherSection.svelte'
   import Button from '@/lib/components/Button.svelte'
   import CollapsibleSection from '@/lib/components/CollapsibleSection.svelte'
   import EditableCell from '@/lib/components/EditableCell.svelte'
-  import GlossaryText from '@/lib/components/GlossaryText.svelte'
+  import FieldHeader from '@/lib/components/FieldHeader.svelte'
+  import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import Spinner from '@/lib/components/Spinner.svelte'
-  import SeasonDetails from '@/lib/components/SeasonDetails.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
-  import Term from '@/lib/components/Term.svelte'
-  import { formatDate, relativeDay } from '@/lib/dates'
-  import { guidance as guidanceFor } from '@/lib/guidance'
-  import { outlook as outlookFor } from '@/lib/outlook'
+  import { formatDate, isoDate } from '@/lib/dates'
+  import { outlook } from '@/lib/outlook'
+  import { cropName, plotSize, seasonDates } from '@/lib/plantings'
   import { poll, weatherUpdate } from '@/lib/poll'
-  import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
+  import { rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
-  import { seasonStats } from '@/lib/seasonStats'
-  import { stickyHeight } from '@/lib/stickyBars'
-  import { fileSlug } from '@/lib/csv'
-  import { formatNumber, parseNumber, units as unitsFor, type Units } from '@/lib/units'
-  import { exportPlanting, fieldDays, fieldGroups, fields, pivots, setup, weatherPivot } from '@/routes'
-  import type { Field, FieldDay, Planting, PlantingSummary, WeatherPanelDay } from '@/types/serializers'
+  import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
+  import { units as unitsFor } from '@/lib/units'
+  import { fieldDays, fields, pivots, planting as plantingRoute } from '@/routes'
+  import type { Field, Plant, PlantingSummary, SoilType } from '@/types/serializers'
+
+  // The field page (PLAN.md Phase 8 G.11): the land, not one crop on it. The season's plantings on
+  // a timeline and with their status today, the field's own rain and irrigation (which every
+  // planting on it shares; each planting's balance is on its own page), and its rainfall setting.
+  type FieldDayRow = {
+    date: string
+    rain: number | null
+    rain_source: 'entered' | 'group' | 'model' | 'forecast' | 'none' | 'missing'
+    rain_model: number | null
+    irrigation: number | null
+    irrigation_source: 'entered' | 'pivot' | 'group' | 'none'
+    notes: string | null
+  }
 
   let {
     field,
     pivot,
     farm,
     field_groups,
+    year,
     weather_updating,
-    as_of,
-    travel_dates,
-    planting,
-    summary,
+    plantings,
     days,
-    forecast_days,
-    weather,
+    plants,
+    soil_types,
   }: {
     field: Field
     pivot: { id: number; name: string; pump_capacity_gpm: number | null }
     farm: { id: number; name: string }
     field_groups: { id: number; name: string }[]
+    year: number
+    years: number[]
     weather_updating: boolean
-    /** Time travel (PLAN.md Phase 8 F): the earlier day the page shows, read-only; null for today */
-    as_of: string | null
-    /** The season's days before today, which time travel can pick; null if none */
-    travel_dates: { from: string; to: string } | null
-    planting: Planting | null
-    summary: PlantingSummary | null
-    days: FieldDay[]
-    forecast_days: FieldDay[]
-    weather: WeatherPanelDay[]
+    /** The season's plantings with their status today */
+    plantings: PlantingSummary[]
+    /** The field's own rain and irrigation, newest first */
+    days: FieldDayRow[]
+    plants: Plant[]
+    soil_types: SoilType[]
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
-  // Time travelling, nothing on the page edits, and the projection is the weather that followed
-  const readOnly = $derived(as_of !== null)
-  const replay = $derived(summary?.projection_source === 'observed')
+  const today = isoDate(new Date())
+  const seasonPlantings = $derived(field.plantings.filter((p) => p.year === year))
+  const statusById = $derived(Object.fromEntries(plantings.map((s) => [s.planting_id, s.status])))
+  // Only plantings in season today have a status worth a dot
+  const dots = $derived(
+    Object.fromEntries(plantings.filter((s) => s.phase === 'active').map((s) => [s.planting_id, s.status])),
+  )
+  const anyPartial = $derived(seasonPlantings.some((p) => p.partial))
+  let plantingDialog: PlantingDialog | undefined = $state()
 
-  // Whether the time travel card has scrolled up out of view, when the bar across the top takes over
-  let cardGone = $state(false)
-  function watchCard(card: HTMLElement) {
-    const observer = new IntersectionObserver(([entry]) => {
-      cardGone = !entry.isIntersecting && entry.boundingClientRect.top < 0
-    })
-    observer.observe(card)
-    return () => {
-      observer.disconnect()
-      cardGone = false
-    }
-  }
-
-  // The date picker for time travel, opened by the rewind-clock button; open while time travelling,
-  // so the date in view can be changed or left
-  // (a writable $derived: toggled by the button, reset whenever the page moves to another date)
-  let travelOpen = $derived(as_of !== null)
-  // The date picked, which View goes to: disabled on the date already in view
-  let travelDate = $derived(as_of ?? travel_dates?.to ?? '')
-  let dateInput: HTMLInputElement | undefined = $state()
-  async function toggleTravel() {
-    travelOpen = !travelOpen
-    await tick()
-    if (travelOpen) dateInput?.focus()
-  }
-  function travel(event: SubmitEvent) {
-    event.preventDefault()
-    const date = new FormData(event.currentTarget as HTMLFormElement).get('as_of')
-    if (typeof date !== 'string' || !date || !planting) return
-    router.get(fields.show(field.id).url, { planting_id: planting.id, as_of: date })
-  }
-
-  // While the pivot's weather is being fetched, reload the season until it lands
+  // While the pivot's weather is being fetched, reload until it lands
   let timedOut = $state(false)
   $effect(() => {
     if (!weather_updating) return
@@ -106,15 +82,38 @@
     )
   })
   const weatherState = $derived(weatherUpdate(weather_updating, timedOut))
-  const lai = $derived(planting?.et_method === 'lai')
-  const rows = $derived([...days].reverse())
-  const outlook = $derived(summary && outlookFor(summary, units))
-  const projectionByDate = $derived(new Map(summary?.projection.map((day) => [day.date, day]) ?? []))
-  // A field using only entered rain also has a projection with no rain (Q7)
-  const hasDry = $derived(summary?.projection.some((day) => day.dry_ad !== null) ?? false)
+
+  type Column = 'rain_in' | 'irrigation_in' | 'notes'
+  const depth = (value: number | null) => units.format('depth', value, { unit: false })
+  const depthUnitName = $derived(units.label('depth') === 'mm' ? 'millimeters' : 'inches')
+  const cellLabel = (day: FieldDayRow, what: string) => `${what}, ${formatDate(day.date, { weekday: true })}`
+
+  function inputText(day: FieldDayRow, column: Column): string {
+    if (column === 'rain_in') return day.rain_source === 'entered' ? units.input('depth', day.rain) : ''
+    if (column === 'irrigation_in')
+      return day.irrigation_source === 'entered' ? units.input('depth', day.irrigation) : ''
+    return day.notes ?? ''
+  }
+
+  // Saved to the field's own entry (no planting_id); the plantings' statuses follow
+  async function saveCell(day: FieldDayRow, column: Column, text: string): Promise<string | null> {
+    let value: number | string | null
+    if (column === 'notes') {
+      value = text.trim() || null
+    } else {
+      const parsed = units.parse('depth', text)
+      if (!parsed.ok) return parsed.error
+      value = parsed.value
+    }
+    return save(
+      fieldDays.update({ fieldId: field.id, date: day.date }),
+      { day: { [column]: value } },
+      { only: ['plantings', 'days', 'errors'] },
+    )
+  }
+
   // The operation's rainfall setting, which a field follows unless it has its own
   const operationUsesModel = $derived(page.props.auth.group?.use_model_precip ?? true)
-  const stats = $derived(days.length ? seasonStats(days) : null)
   const rainSetting = $derived(field.use_model_precip === null ? '' : String(field.use_model_precip))
   // [value, label, hint]: blank follows the operation
   const rainOptions = $derived([
@@ -126,840 +125,202 @@
       'Best if you read your gauge every day it rains. Days without an entry count as dry. The projection still uses the forecast rain, and also shows what happens if none falls.',
     ],
   ] as const)
-  const guidance = $derived(
-    planting &&
-      guidanceFor(
-        planting,
-        units,
-        summary?.tasks ?? [],
-        summary?.phase === 'active' ? summary.date : null,
-        summary?.canopy_fit ?? null,
-      ),
-  )
-  // Whether "How … is modeled" is open: open until closed, then remembered in this browser
-  const GUIDANCE_KEY = 'wisp:field-guidance-open'
-  let guidanceOpen = $state(true)
-  try {
-    guidanceOpen = localStorage.getItem(GUIDANCE_KEY) !== 'false'
-  } catch {
-    // Storage blocked: stay open
-  }
-  function toggleGuidance(open: boolean) {
-    guidanceOpen = open
-    try {
-      localStorage.setItem(GUIDANCE_KEY, String(open))
-    } catch {
-      // Storage blocked: only this page view remembers
-    }
-  }
-  const thresholdName = $derived(summary?.target_in === null ? 'of reaching 0 AD' : 'of falling below target')
-  const depthUnitName = $derived(units.label('depth') === 'mm' ? 'millimeters' : 'inches')
-  let chartMode = $state<FieldChartMode>('ad')
-  // The season's sections, closed until opened; links in the summary open them
-  let summaryOpen = $state(false)
-  let rainfallOpen = $state(false)
-
-  // Crop ET and rain by date, through the projection, as a string so the weather charts rebuild only
-  // when they change (an edit to irrigation or a reading reloads the days, but leaves both alone)
-  const balanceJson = $derived(
-    JSON.stringify(
-      [...days, ...forecast_days].map(({ date, adj_et, rain, rain_source, rain_model }) => ({
-        date,
-        adj_et,
-        rain,
-        rain_source,
-        rain_model,
-      })),
-    ),
-  )
-  // In some units: the user's for the charts, imperial (as stored) for their CSVs (WeatherSection)
-  const panels = $derived.by(() => {
-    const balance: Pick<FieldDay, 'date' | 'adj_et' | 'rain' | 'rain_source' | 'rain_model'>[] = JSON.parse(balanceJson)
-    return (u: Units) =>
-      weatherPanels(u, {
-        field: { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt },
-        cropEt: Object.fromEntries(balance.map((day) => [day.date, day.adj_et])),
-        fieldRain: Object.fromEntries(
-          balance.map(({ date, rain, rain_source, rain_model }) => [date, { rain, rain_source, rain_model }]),
-        ),
-      })
-  })
-
-  // What it takes to refill the root zone to field capacity today
-  const refill = $derived(
-    summary?.ad !== null && summary?.ad !== undefined ? Math.max(0, summary.ad_max - summary.ad) : null,
-  )
-
-  type Column = 'rain_in' | 'irrigation_in' | 'soil_moisture_pct' | 'canopy' | 'notes'
-
-  function inputText(day: FieldDay, column: Column): string {
-    switch (column) {
-      case 'rain_in':
-        return day.rain_source === 'entered' ? units.input('depth', day.rain) : ''
-      case 'irrigation_in':
-        return day.irrigation_source === 'entered' ? units.input('depth', day.irrigation) : ''
-      case 'soil_moisture_pct':
-        return day.moisture_source === 'entered' ? String(day.soil_moisture_pct) : ''
-      case 'canopy':
-        return day.canopy_entered === null ? '' : String(day.canopy_entered)
-      case 'notes':
-        return day.notes ?? ''
-    }
-  }
-
-  async function saveCell(day: FieldDay, column: Column, text: string): Promise<string | null> {
-    let value: number | string | null
-    if (column === 'notes') {
-      value = text.trim() || null
-    } else {
-      const parsed = column === 'rain_in' || column === 'irrigation_in' ? units.parse('depth', text) : parseNumber(text)
-      if (!parsed.ok) return parsed.error
-      value = parsed.value
-    }
-    // Only the balance changes; the weather and the rest of the page stay as they are
-    return save(
-      fieldDays.update({ fieldId: field.id, date: day.date }),
-      { day: { [column]: value }, planting_id: planting!.id },
-      { only: ['summary', 'days', 'forecast_days', 'errors'] },
-    )
-  }
-
-  const cellLabel = (day: FieldDay, what: string) => `${what}, ${formatDate(day.date, { weekday: true })}`
-  const depth = (value: number | null) => units.format('depth', value, { unit: false })
-  // "3 days ago" during the season; a plain date once it's over
-  const when = (date: string) =>
-    summary?.phase === 'active' && summary.date ? relativeDay(date, summary.date) : formatDate(date)
 </script>
 
-<svelte:head><title>{as_of ? `As of ${formatDate(as_of)} · ` : ''}{field.name} · WISP</title></svelte:head>
+<svelte:head><title>{field.name} · WISP</title></svelte:head>
 
-<div class="flex flex-wrap items-end justify-between gap-3">
-  <div class="min-w-0">
-    <p class="text-sm text-ink-muted">
-      {farm.name} · <Link href={pivots.show(pivot.id)} class="underline underline-offset-2">{pivot.name}</Link>
-    </p>
-    <h1 class="text-2xl font-semibold">{field.name}</h1>
-    <p class="text-sm text-ink-muted">
-      {units.format('area', field.area_acres)} · {field.soil_type_name} (field capacity {formatNumber(
-        field.effective_field_capacity * 100,
-        1,
-      )}%, wilting point {formatNumber(field.effective_perm_wilting_pt * 100, 1)}%)
-      {#if field_groups.length}
-        · in {#each field_groups as group, i (group.id)}{i ? ', ' : ''}<Link
-            href={fieldGroups.show(group.id)}
-            class="text-brand-600 underline underline-offset-2">{group.name}</Link
-          >{/each}
-      {/if}
-    </p>
-  </div>
-  <div class="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
-    {#if field.plantings.length > 1}
-      <label for="planting" class="sr-only">Season</label>
-      <select
-        id="planting"
-        class="rounded-md py-1.5 text-sm"
-        value={planting?.id}
-        onchange={(e) => router.get(fields.show(field.id).url, { planting_id: e.currentTarget.value })}
-      >
-        {#each field.plantings as p (p.id)}<option value={p.id}>{p.year} {p.plant_name}</option>{/each}
-      </select>
-    {/if}
-    {#if planting && !readOnly}
-      <a
-        href={exportPlanting(planting.id).url}
-        title="Download this season's daily values as a CSV file"
-        class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
-        download
-      >
-        Export CSV
-      </a>
-    {/if}
-    {#if !readOnly}
-      <Link
-        href={setup.show({ query: planting ? { year: planting.year } : {} })}
-        title="Change this field, its pivot or its crop on the setup page"
-        class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
-      >
-        Edit in setup
-      </Link>
-    {/if}
-    {#if travel_dates && planting}
-      <!-- Time travel: the clock stays at the row's right end, its date picker flying out to its left -->
-      <div class="flex items-center gap-1">
-        {#if travelOpen}
-          <form id="time-travel" class="flex items-center gap-1" onsubmit={travel}>
-            <label for="as-of" class="sr-only">Date to view</label>
-            <input
-              bind:this={dateInput}
-              id="as-of"
-              name="as_of"
-              type="date"
-              required
-              min={travel_dates.from}
-              max={travel_dates.to}
-              bind:value={travelDate}
-              title={`A day from ${formatDate(travel_dates.from)} to ${formatDate(travel_dates.to, { year: true })}`}
-              class="rounded-md px-2 py-1.5 text-sm"
-            />
-            <button
-              type="submit"
-              disabled={!travelDate || travelDate === as_of}
-              title={travelDate && travelDate === as_of
-                ? 'Already viewing this date; pick another'
-                : 'View this field as it was on the date picked'}
-              class="rounded-md border border-line bg-surface-raised px-3 py-1.5 enabled:hover:bg-surface disabled:opacity-50"
-              >View</button
-            >
-            {#if as_of}
-              <Link
-                href={fields.show(field.id, { query: { planting_id: planting.id } })}
-                class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
-                aria-label="Return to today"
-                title="Return to today">Today</Link
-              >
+<FieldHeader {field} {pivot} {farm} {field_groups} {units} {year} current="field">
+  {#snippet actions()}
+    <Button variant="secondary" class="px-3 py-1.5" onclick={() => plantingDialog?.open(field)}>Add a planting</Button>
+  {/snippet}
+</FieldHeader>
+
+{#if weatherState === 'updating'}
+  <p role="status" class="flex items-center gap-1.5 text-sm text-ink-muted"><Spinner />Updating weather…</p>
+{:else if weatherState === 'failed'}
+  <p role="status" class="text-sm text-status-caution-ink">Weather update failed. Refresh the page to try again.</p>
+{/if}
+
+<section class="space-y-3 rounded-lg border border-line bg-surface-raised p-4" aria-labelledby="season-heading">
+  <h2 id="season-heading" class="font-medium">Plantings in {year}</h2>
+  {#if seasonPlantings.length}
+    <SeasonTimeline
+      plantings={seasonPlantings}
+      {year}
+      {today}
+      {units}
+      label="Plantings on {field.name}, {year}"
+      href={(p) => plantingRoute(p.id).url}
+      status={dots}
+    />
+    <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {#each plantings as summary (summary.planting_id)}
+        {@const look = summary.phase === 'active' ? outlook(summary, units) : null}
+        <li>
+          <Link
+            href={plantingRoute(summary.planting_id)}
+            class="block h-full space-y-1 rounded-md border border-line p-3 hover:border-brand-500"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <p class="min-w-0 font-medium">{cropName(summary)}</p>
+              {#if summary.phase === 'active'}
+                <StatusBadge status={statusById[summary.planting_id]} size="sm" />
+              {:else}
+                <span class="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted"
+                  >{summary.phase === 'ended' ? 'Season ended' : 'Upcoming'}</span
+                >
+              {/if}
+            </div>
+            <p class="text-xs text-ink-muted">
+              {plotSize(summary, units) ?? 'Whole field'} · {seasonDates(summary)}
+            </p>
+            {#if summary.phase !== 'upcoming' && !summary.weather_pending}
+              <p class="text-sm">
+                AD {summary.phase === 'ended' ? 'at season end' : 'today'}
+                <span class="font-semibold tabular-nums">{units.format('depth', summary.ad)}</span>
+                <span class="text-xs text-ink-muted">of {units.format('depth', summary.ad_max)}</span>
+              </p>
             {/if}
-          </form>
-        {/if}
-        <button
-          type="button"
-          class="rounded-md border border-line bg-surface-raised p-1.5 hover:bg-surface
-            {travelOpen || as_of ? 'text-brand-600' : 'text-ink-muted'}"
-          aria-label="View this field on an earlier date"
-          title="View this field on an earlier date"
-          aria-expanded={travelOpen}
-          aria-controls="time-travel"
-          onclick={toggleTravel}
-        >
-          <!-- A clock with an arrow turning back -->
-          <svg
-            viewBox="0 0 24 24"
-            class="size-5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-            <path d="M12 7v5l4 2" />
-          </svg>
-        </button>
-      </div>
-    {/if}
-  </div>
-</div>
-
-{#if as_of && planting}
-  <!-- Time travel (PLAN.md Phase 8 F): this card explains it, and once it scrolls away a slim bar
-       across the top of the window keeps the date and the way back in view -->
-  <div role="status" class="rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm" {@attach watchCard}>
-    <p>
-      Viewing {field.name} as of <strong>{formatDate(as_of, { year: true })}</strong>, with what's entered for the days
-      up to then. Nothing can be changed here, and in place of the forecast, the days after it show what happened next.
-      <Link
-        href={fields.show(field.id, { query: { planting_id: planting.id } })}
-        class="font-medium whitespace-nowrap text-brand-600 underline underline-offset-2">Return to today</Link
-      >
+            {#if look}<p class="text-sm {look.urgent ? 'font-medium text-status-irrigate-ink' : ''}">
+                {look.headline}
+              </p>{/if}
+          </Link>
+        </li>
+      {/each}
+    </ul>
+  {:else}
+    <p class="text-sm text-ink-muted">
+      Nothing planted on this field in {year}.
+      <button
+        type="button"
+        class="text-brand-600 underline underline-offset-2"
+        onclick={() => plantingDialog?.open(field)}>Add a planting</button
+      > to start its water balance.
     </p>
-    <p class="mt-1 text-xs text-ink-muted">
-      WISP doesn't keep a history of edits, so a value entered or changed later for one of these days shows as it is
-      now.
-    </p>
-  </div>
-  {#if cardGone}
-    <div
-      class="fixed inset-x-0 top-[var(--app-bar-h,0px)] z-40 border-b border-brand-500/40 bg-brand-50 shadow-sm"
-      {@attach stickyHeight('--page-bar-h')}
-      data-testid="time-travel-bar"
-    >
-      <p class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-2 text-sm">
-        <span>Viewing {field.name} as of <strong>{formatDate(as_of, { year: true })}</strong></span>
-        <Link
-          href={fields.show(field.id, { query: { planting_id: planting.id } })}
-          class="font-medium text-brand-600 underline underline-offset-2">Return to today</Link
-        >
-      </p>
-    </div>
   {/if}
-{/if}
+</section>
 
-{#if !planting || !summary}
-  <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-12 text-center">
-    <h2 class="text-lg font-medium">No crop on this field yet</h2>
-    <p class="mt-2 text-sm text-ink-muted">Add this season's crop in setup to start the water balance.</p>
-    <Link href={setup.show()} class="mt-4 inline-block text-sm text-brand-600 hover:underline">Go to setup</Link>
-  </section>
-{:else}
-  {#if summary.weather_pending}
-    <p role="status" class="flex items-start gap-2 rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm">
-      {#if weatherState === 'updating'}<Spinner class="mt-0.5" />{/if}
-      <span>
-        {#if weatherState === 'failed'}
-          Weather update failed. Refresh the page to try again. Until weather arrives, WISP can't estimate crop water
-          use, so the numbers below won't change.
-        {:else}
-          Weather for this pivot is on its way, usually within a few minutes of adding it. Until it arrives, WISP can't
-          estimate crop water use, so the numbers below won't change.{#if weatherState === 'updating'}{' This page updates when it arrives.'}{/if}
-        {/if}
-      </span>
-    </p>
-  {:else if weatherState === 'updating' && summary.phase !== 'ended'}
-    <p role="status" class="flex items-center gap-1.5 text-sm text-ink-muted"><Spinner />Updating weather…</p>
-  {:else if weatherState === 'failed' && summary.phase !== 'ended'}
-    <p role="status" class="text-sm text-status-caution-ink">Weather update failed. Refresh the page to try again.</p>
-  {/if}
-  <!-- Summary -->
-  <section class="grid gap-4 rounded-lg border border-line bg-surface-raised p-4 sm:p-6 lg:grid-cols-3">
+{#if days.length}
+  <CollapsibleSection title="Rain and irrigation on the field" storageKey="field-days">
     <div class="space-y-2">
-      <div class="flex items-center gap-3">
-        <h2 class="text-lg font-medium">
-          {planting.plant_name}{#if planting.variety}{' '}<span class="text-ink-muted">({planting.variety})</span>{/if}
-        </h2>
-        {#if summary.phase === 'active'}<StatusBadge status={summary.status} />{/if}
-      </div>
-      <p class="text-sm text-ink-muted">
-        Emerged {formatDate(planting.emergence_date)}{planting.vine_kill_date
-          ? ` · vine kill ${formatDate(planting.vine_kill_date)}`
-          : ''} · season {formatDate(planting.season_start)} – {formatDate(planting.end_date, { year: true })}
+      <p class="text-xs text-ink-muted">
+        What's entered here is the whole field's, so it counts for every planting on it.
+        {#if anyPartial}
+          A planting on part of the field can also have its own irrigation, entered on its page, which it uses instead
+          of the field's that day.
+        {/if}
+        Click a cell to enter a value, and press Enter to save and move down. Clear a cell to go back to the modeled or pivot
+        value. Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and press
+        Enter or start typing to edit one.
       </p>
-      {#if summary.phase === 'upcoming'}
-        <p class="text-sm">The season starts {formatDate(summary.season_start, { year: true })}.</p>
-      {:else}
-        <p class="text-sm">
-          {#if summary.phase === 'ended'}At the end of the season{:else if as_of}On {formatDate(
-              as_of,
-            )}{:else}Today{/if}:
-          <strong class="tabular-nums">{units.format('depth', summary.ad)}</strong>
-          <Term id="ad">allowable depletion</Term> of
-          {units.format('depth', summary.ad_max)}, <strong>{formatNumber(summary.pct_moisture, 1)}%</strong> soil moisture.
-        </p>
-        {#if outlook}
-          <div
-            class="rounded-md border px-3 py-2 text-sm {outlook.urgent
-              ? 'border-status-irrigate/50 bg-status-irrigate/5'
-              : 'border-line'}"
-          >
-            <p class="font-medium">{outlook.headline}</p>
-            <p class="text-ink-muted">
-              {outlook.detail}{#if outlook.chance}{' '}{outlook.chance}{/if}
-            </p>
-            {#if outlook.dry}<p class="text-ink-muted">{outlook.dry}</p>{/if}
-          </div>
-        {:else if summary.phase === 'active' && refill !== null && refill > 0.005}
-          <p class="text-sm">
-            Refilling to field capacity takes about <strong>{units.format('depth', refill)}</strong>.
-          </p>
-        {/if}
-      {/if}
-    </div>
-
-    <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-      <div>
-        <dt class="text-ink-muted">At <Term id="field_capacity">field capacity</Term></dt>
-        <dd class="tabular-nums">{units.format('depth', summary.ad_max)} AD</dd>
-      </div>
-      <div>
-        <dt class="text-ink-muted">Target</dt>
-        <dd class="tabular-nums">
-          {summary.target_in === null ? 'Not set' : `${units.format('depth', summary.target_in)} AD`}
-        </dd>
-      </div>
-      <div>
-        <dt class="text-ink-muted">Irrigate at</dt>
-        <dd class="tabular-nums">0 AD ({formatNumber(summary.pct_at_ad_zero, 1)}% moisture)</dd>
-      </div>
-      <div>
-        <dt class="text-ink-muted">Root zone</dt>
-        <dd class="tabular-nums">
-          {units.format('rootDepth', planting.max_root_zone_depth)}, <Term id="mad">MAD</Term>
-          {Math.round(planting.mad_frac * 100)}%
-        </dd>
-      </div>
-      <div>
-        <dt class="text-ink-muted">Last rain</dt>
-        <dd>
-          {summary.last_rain
-            ? `${units.format('depth', summary.last_rain.inches)}, ${when(summary.last_rain.date)}`
-            : 'None'}
-        </dd>
-      </div>
-      <div>
-        <dt class="text-ink-muted">Last irrigation</dt>
-        <dd>
-          {summary.last_irrigation
-            ? `${units.format('depth', summary.last_irrigation.inches)}, ${when(summary.last_irrigation.date)}`
-            : 'None'}
-        </dd>
-      </div>
-    </dl>
-
-    <div class="text-sm">
-      <h3 class="font-medium">Totals so far</h3>
-      <dl class="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 tabular-nums">
-        <dt class="text-ink-muted">Rain</dt>
-        <dd>{units.format('depth', summary.totals.rain)}</dd>
-        <dt class="text-ink-muted">Irrigation</dt>
-        <dd>{units.format('depth', summary.totals.irrigation)}</dd>
-        <dt class="text-ink-muted"><Term id="crop_et">Crop ET</Term></dt>
-        <dd>{units.format('depth', summary.totals.adj_et)}</dd>
-        <dt class="text-ink-muted"><Term id="deep_drainage">Deep drainage</Term></dt>
-        <dd>{units.format('depth', summary.totals.deep_drainage)}</dd>
-      </dl>
-      {#if !summary.use_model_precip}
-        <p class="mt-2 text-xs">
-          Rain: <Term id="entered_rain_only">only what you enter</Term>, plus the forecast for the days ahead.
-          {#if !readOnly}
-            <a
-              href="#rainfall"
-              class="text-brand-600 underline underline-offset-2"
-              onclick={() => (rainfallOpen = true)}>Change this</a
-            >
-          {/if}
-        </p>
-      {/if}
-      {#if summary.totals.entered_rain_days}
-        <p class="mt-2 text-xs text-ink-muted">
-          {summary.totals.entered_rain_days === 1
-            ? 'On the day you entered rain'
-            : `On the ${summary.totals.entered_rain_days} days you entered rain`}, your gauge read
-          {units.format('depth', summary.totals.entered_rain)} and the model estimated {units.format(
-            'depth',
-            summary.totals.entered_rain_model,
-          )}.
-          <a
-            href="#season-summary"
-            class="text-brand-600 underline underline-offset-2"
-            onclick={() => (summaryOpen = true)}>Compare day by day</a
-          >
-        </p>
-      {/if}
-    </div>
-
-    {#if guidance?.warning}
-      <p
-        role="status"
-        class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2 text-sm lg:col-span-3"
-      >
-        {guidance.warning}
-      </p>
-    {/if}
-    {#if guidance}
-      <!-- The readings stay in view when the explanation is collapsed -->
-      <div class="border-t border-line pt-3 text-sm lg:col-span-3">
-        <details open={guidanceOpen} ontoggle={(event) => toggleGuidance(event.currentTarget.open)}>
-          <summary class="cursor-pointer font-medium">{guidance.title}</summary>
-          <div class="mt-2 max-w-3xl space-y-2 text-ink-muted">
-            <GlossaryText paragraphs={guidance.paragraphs} />
-          </div>
-        </details>
-        {#if guidance.readings.length}
-          <ul class="mt-3 flex flex-wrap gap-2" aria-label="Last readings">
-            {#each guidance.readings as reading (reading.label)}
-              <li
-                class="rounded-md border px-2.5 py-1 text-xs
-                  {reading.due ? 'border-status-caution/60 bg-status-caution/10' : 'border-line'}"
-              >
-                <span class="font-medium">{reading.label}:</span>
-                {reading.last}{#if reading.note}{' '}<span class="text-ink-muted">· {reading.note}</span>{/if}
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    {/if}
-  </section>
-
-  {#if days.length}
-    <!-- Chart -->
-    <CollapsibleSection title="Soil water" storageKey="soil-water">
-      {#snippet actions()}
-        <div class="flex overflow-hidden rounded-md border border-line text-xs" role="group" aria-label="Show">
-          {#each [['ad', `AD (${units.label('depth')})`], ['moisture', 'Soil moisture (%)']] as const as [mode, name] (mode)}
-            <button
-              type="button"
-              class="px-3 py-1.5 {chartMode === mode
-                ? 'bg-brand-600 text-white dark:text-surface'
-                : 'hover:bg-surface'}"
-              aria-pressed={chartMode === mode}
-              onclick={() => (chartMode = mode)}>{name}</button
-            >
-          {/each}
-        </div>
-      {/snippet}
-      <div class="space-y-2 rounded-lg border border-line bg-surface-raised p-4">
-        <Chart
-          height="40rem"
-          label="Soil water, water inputs and their totals, and the crop canopy over the season; the daily table below has the same values"
-          build={(palette, view) =>
-            fieldChartOption({
-              days,
-              forecastDays: forecast_days,
-              summary: summary!,
-              rootZoneDepth: planting!.max_root_zone_depth,
-              units,
-              mode: chartMode,
-              palette,
-              canopy: lai ? 'lai' : 'cover',
-              vineKill: planting!.vine_kill_date,
-              view,
-            })}
-        />
-        <p class="text-xs text-ink-muted">
-          Dots on the line mark soil moisture readings. A dashed outline beside the rain shows the modeled rain where
-          the balance didn't use it. The totals add up rain and irrigation from the first day in view, so zooming
-          changes them. The bottom panel is the crop's {lai ? 'LAI' : 'canopy cover'} as the balance models it, with dots
-          for your readings{#if planting?.canopy_curve}{' '}and a thin dashed line for the {planting.plant_name.toLowerCase()}
-            curve as it would be without them{/if}. Scroll or drag the bar below to see the whole season.
-        </p>
-        {#if forecast_days.length && replay}
-          <p class="text-xs text-ink-muted">
-            After {formatDate(as_of)} the dashed line follows what happened next: the weather that came, and the rain, irrigation
-            and soil moisture readings entered for those days.
-            {#if hasDry}The dotted line is the same with no rain at all, since this field counts only the rain you
-              enter.{/if}
-          </p>
-        {:else if forecast_days.length}
-          <p class="text-xs text-ink-muted">
-            After today the dashed line follows the forecast, including any irrigation you've planned. The shaded band
-            shows where most of the {summary?.ensemble_size
-              ? `${summary.ensemble_size} forecast scenarios fall (all but the highest and lowest tenth)`
-              : 'forecast scenarios fall, once they are available'}.
-            {#if hasDry}The dotted line is the same with no rain at all, since this field counts only the rain you
-              enter.{/if}
-          </p>
-        {/if}
-      </div>
-    </CollapsibleSection>
-
-    {#if forecast_days.length}
-      <!-- The projection, and planned irrigation -->
-      <CollapsibleSection
-        title={replay ? `The ${forecast_days.length} days that followed` : `Next ${forecast_days.length} days`}
-        storageKey="forecast"
-      >
-        <div class="space-y-2">
-          {#if replay}
-            <p class="text-xs text-ink-muted">
-              This is what happened after {formatDate(as_of)}: the weather that came for this pivot and what was entered
-              for those days, run through the water balance where the forecast would have been. Depths are in
-              {depthUnitName}.
-            </p>
-          {:else}
-            <p class="text-xs text-ink-muted">
-              This is the forecast for this pivot, run through the water balance. To plan irrigation, enter an amount on
-              a future day. WISP counts it as applied when that day arrives, so change or clear it if your plans change.
-              Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and press
-              Enter or start typing to edit one.
-            </p>
-          {/if}
-          <!-- Read-only, nothing inside takes focus, so the box does, to scroll from the keyboard -->
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <div
-            class="overflow-auto rounded-lg border border-line bg-surface-raised"
-            tabindex={readOnly ? 0 : undefined}
-            role={readOnly ? 'region' : undefined}
-            aria-label={readOnly ? 'The days that followed' : undefined}
-          >
-            <table class="w-full text-sm">
-              <thead class="border-b border-line text-xs text-ink-muted">
-                <tr class="text-right">
-                  <th class="px-3 py-2 text-left font-medium">Date</th>
-                  <th class="px-2 py-2 font-medium">Crop ET</th>
-                  <th class="px-2 py-2 font-medium">Rain</th>
-                  <th class="px-2 py-2 font-medium">{replay ? 'Irrigation' : 'Planned irrigation'}</th>
-                  <th class="px-2 py-2 font-medium">AD</th>
-                  {#if hasDry}<th class="px-2 py-2 font-medium">AD if no rain</th>{/if}
-                  {#if summary?.ensemble_size}
-                    <th class="px-2 py-2 font-medium">Likely range</th>
-                    <th class="px-2 py-2 font-medium">Chance {thresholdName} by then</th>
-                  {/if}
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-line">
-                {#each forecast_days as day, row (day.date)}
-                  {@const band = projectionByDate.get(day.date)}
-                  <tr class="text-right {day.ad <= (summary?.threshold ?? 0) ? 'bg-status-irrigate/5' : ''}">
-                    <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap"
-                      >{formatDate(day.date, { weekday: true })}</th
-                    >
-                    <td class="px-2 py-1 text-ink-muted tabular-nums">{depth(day.adj_et)}</td>
-                    <td class="px-2 py-1 tabular-nums">
-                      {#if day.rain_source === 'forecast' || day.rain_source === 'model' || day.rain_source === 'none'}<span
-                          class="text-ink-muted">{depth(day.rain)}</span
-                        >
-                      {:else}<span class="font-medium">{depth(day.rain)}</span>{/if}
-                    </td>
-                    <td class="px-1 py-0.5">
-                      <EditableCell
-                        grid="forecast"
-                        {row}
-                        col={0}
-                        text={inputText(day, 'irrigation_in')}
-                        label={cellLabel(day, 'Planned irrigation')}
-                        {readOnly}
-                        onsave={(t) => saveCell(day, 'irrigation_in', t)}
-                      >
-                        {#if day.irrigation_source === 'none'}<span class="text-ink-muted">–</span>
-                        {:else}
-                          <span class="font-medium">{depth(day.irrigation)}</span>
-                          {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600"
-                              >{day.irrigation_source}</span
-                            >{/if}
-                        {/if}
-                      </EditableCell>
-                    </td>
-                    <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate-ink' : ''}"
-                      >{depth(day.ad)}</td
-                    >
-                    {#if hasDry}
-                      {@const dryAd = band?.dry_ad ?? null}
-                      <td
-                        class="px-2 py-1 text-ink-muted tabular-nums {dryAd !== null && dryAd <= 0
-                          ? 'text-status-irrigate-ink'
-                          : ''}">{depth(dryAd)}</td
-                      >
-                    {/if}
-                    {#if summary?.ensemble_size}
-                      <td class="px-2 py-1 whitespace-nowrap text-ink-muted tabular-nums">
-                        {band?.p10 != null && band.p90 != null ? `${depth(band.p10)} to ${depth(band.p90)}` : ''}
-                      </td>
-                      <td class="px-2 py-1 tabular-nums"
-                        >{band?.chance != null ? `${Math.round(band.chance * 100)}%` : ''}</td
-                      >
-                    {/if}
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </CollapsibleSection>
-    {/if}
-
-    <!-- Daily grid -->
-    <CollapsibleSection title="Daily values" storageKey="daily">
-      <div class="space-y-2">
-        <p class="text-xs text-ink-muted">
-          {#if readOnly}
-            The season up to {formatDate(as_of)}. Depths are in {depthUnitName}.
-          {:else}
-            Click a rain, irrigation, soil moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value, and press Enter
-            to save and move down. Clear a cell to go back to the modeled or pivot value. Depths are in {depthUnitName}.
-            From the keyboard, use the arrow keys to move between cells, and press Enter or start typing to edit one.
-          {/if}
-        </p>
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <div
-          class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised"
-          tabindex={readOnly ? 0 : undefined}
-          role={readOnly ? 'region' : undefined}
-          aria-label={readOnly ? 'Daily values' : undefined}
-        >
-          <table class="w-full text-sm">
-            <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
+      <div class="max-h-[36rem] max-w-3xl overflow-auto rounded-lg border border-line bg-surface-raised">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
+            <tr class="text-right">
+              <th class="px-3 py-2 text-left font-medium">Date</th>
+              <th class="px-2 py-2 font-medium">Rain</th>
+              <th class="px-2 py-2 font-medium">Irrigation</th>
+              <th class="px-2 py-2 text-left font-medium">Notes</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            {#each days as day, row (day.date)}
               <tr class="text-right">
-                <th class="px-3 py-2 text-left font-medium">Date</th>
-                <th class="px-2 py-2 font-medium">Reference ET</th>
-                <th class="px-2 py-2 font-medium">Crop ET</th>
-                <th class="px-2 py-2 font-medium">Rain</th>
-                <th class="px-2 py-2 font-medium">Irrigation</th>
-                <th class="px-2 py-2 font-medium">Soil moisture reading (%)</th>
-                <th class="px-2 py-2 font-medium">{lai ? 'LAI' : 'Cover (%)'}</th>
-                <th class="px-2 py-2 font-medium">AD</th>
-                <th class="px-2 py-2 font-medium">Soil moisture (%)</th>
-                <th class="px-2 py-2 font-medium">Drainage</th>
-                <th class="px-2 py-2 text-left font-medium">Notes</th>
+                <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap"
+                  >{formatDate(day.date, { weekday: true })}</th
+                >
+                <td class="px-1 py-0.5">
+                  <EditableCell
+                    grid="field-days"
+                    {row}
+                    col={0}
+                    text={inputText(day, 'rain_in')}
+                    label={cellLabel(day, 'Rain')}
+                    onsave={(t) => saveCell(day, 'rain_in', t)}
+                  >
+                    {#if day.rain_source === 'entered' || day.rain_source === 'group'}
+                      <span class="font-medium">{depth(day.rain)}</span>
+                      {#if day.rain_source === 'group'}<span class="ml-1 text-xs text-brand-600">from group</span>{/if}
+                      {#if rainOverridden(day)}<span class="block text-xs text-ink-muted"
+                          >modeled {depth(day.rain_model)}</span
+                        >{/if}
+                    {:else}
+                      <span class="text-ink-muted">{depth(day.rain)}</span>
+                    {/if}
+                  </EditableCell>
+                </td>
+                <td class="px-1 py-0.5">
+                  <EditableCell
+                    grid="field-days"
+                    {row}
+                    col={1}
+                    text={inputText(day, 'irrigation_in')}
+                    label={cellLabel(day, 'Irrigation')}
+                    onsave={(t) => saveCell(day, 'irrigation_in', t)}
+                  >
+                    {#if day.irrigation_source === 'none'}
+                      <span class="text-ink-muted">–</span>
+                    {:else}
+                      <span class="font-medium">{depth(day.irrigation)}</span>
+                      {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600"
+                          >from {day.irrigation_source}</span
+                        >{/if}
+                    {/if}
+                  </EditableCell>
+                </td>
+                <td class="px-1 py-0.5 text-left">
+                  <EditableCell
+                    grid="field-days"
+                    {row}
+                    col={2}
+                    align="left"
+                    text={inputText(day, 'notes')}
+                    label={cellLabel(day, 'Notes')}
+                    onsave={(t) => saveCell(day, 'notes', t)}
+                  >
+                    <span class="block max-w-64 truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
+                  </EditableCell>
+                </td>
               </tr>
-            </thead>
-            <tbody class="divide-y divide-line">
-              {#each rows as day, row (day.date)}
-                <tr class="text-right {day.ad <= 0 ? 'bg-status-irrigate/5' : ''}">
-                  <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap"
-                    >{formatDate(day.date, { weekday: true })}</th
-                  >
-                  <td class="px-2 py-1 tabular-nums {day.et0_source === 'missing' ? 'text-ink-muted' : ''}"
-                    >{depth(day.et0)}</td
-                  >
-                  <td class="px-2 py-1 tabular-nums" title={ET_SOURCE_LABELS[day.et_source]}>
-                    {depth(day.adj_et)}{#if day.et_source === 'gap_fill'}<span class="text-ink-muted">*</span>{/if}
-                  </td>
-                  <td class="px-1 py-0.5">
-                    <EditableCell
-                      grid="days"
-                      {row}
-                      col={0}
-                      text={inputText(day, 'rain_in')}
-                      label={cellLabel(day, 'Rain')}
-                      {readOnly}
-                      onsave={(t) => saveCell(day, 'rain_in', t)}
-                    >
-                      {#if day.rain_source === 'model' || day.rain_source === 'missing' || day.rain_source === 'none'}
-                        <span class="text-ink-muted">{depth(day.rain)}</span>
-                      {:else}
-                        <span class="font-medium">{depth(day.rain)}</span>
-                        {#if day.rain_source === 'group'}<span class="ml-1 text-xs text-brand-600">from group</span
-                          >{/if}
-                        {#if rainOverridden(day)}<span class="block text-xs text-ink-muted"
-                            >modeled {depth(day.rain_model)}</span
-                          >{/if}
-                      {/if}
-                    </EditableCell>
-                  </td>
-                  <td class="px-1 py-0.5">
-                    <EditableCell
-                      grid="days"
-                      {row}
-                      col={1}
-                      text={inputText(day, 'irrigation_in')}
-                      label={cellLabel(day, 'Irrigation')}
-                      {readOnly}
-                      onsave={(t) => saveCell(day, 'irrigation_in', t)}
-                    >
-                      {#if day.irrigation_source === 'none'}
-                        <span class="text-ink-muted">–</span>
-                      {:else}
-                        <span class="font-medium">{depth(day.irrigation)}</span>
-                        {#if day.irrigation_source === 'pivot'}<span class="ml-1 text-xs text-brand-600"
-                            >from pivot</span
-                          >{/if}
-                        {#if day.irrigation_source === 'group'}<span class="ml-1 text-xs text-brand-600"
-                            >from group</span
-                          >{/if}
-                        {#if day.irrigation_source === 'entered' && day.pivot_inches !== null}
-                          <span class="block text-xs text-ink-muted">pivot {depth(day.pivot_inches)}</span>
-                        {/if}
-                      {/if}
-                    </EditableCell>
-                  </td>
-                  <td class="px-1 py-0.5">
-                    <EditableCell
-                      grid="days"
-                      {row}
-                      col={2}
-                      text={inputText(day, 'soil_moisture_pct')}
-                      label={cellLabel(day, 'Soil moisture reading')}
-                      {readOnly}
-                      onsave={(t) => saveCell(day, 'soil_moisture_pct', t)}
-                    >
-                      {#if day.soil_moisture_pct !== null}
-                        <span class="font-medium">{day.soil_moisture_pct}</span>
-                        {#if day.moisture_source === 'group'}<span class="ml-1 text-xs text-brand-600">from group</span
-                          >{/if}
-                      {:else}<span class="text-ink-muted">–</span>{/if}
-                    </EditableCell>
-                  </td>
-                  <td class="px-1 py-0.5">
-                    <EditableCell
-                      grid="days"
-                      {row}
-                      col={3}
-                      text={inputText(day, 'canopy')}
-                      label={cellLabel(day, lai ? 'LAI' : 'Percent cover')}
-                      {readOnly}
-                      onsave={(t) => saveCell(day, 'canopy', t)}
-                    >
-                      {#if day.canopy_entered !== null}<span class="font-medium"
-                          >{formatNumber(day.canopy_entered, lai ? 2 : 0)}</span
-                        >
-                      {:else}<span class="text-ink-muted">{formatNumber(day.canopy, lai ? 2 : 0)}</span>{/if}
-                    </EditableCell>
-                  </td>
-                  <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate-ink' : ''}"
-                    >{depth(day.ad)}</td
-                  >
-                  <td class="px-2 py-1 tabular-nums">{formatNumber(day.pct_moisture, 1)}</td>
-                  <td class="px-2 py-1 text-ink-muted tabular-nums"
-                    >{day.deep_drainage > 0 ? depth(day.deep_drainage) : ''}</td
-                  >
-                  <td class="px-1 py-0.5 text-left">
-                    <EditableCell
-                      grid="days"
-                      {row}
-                      col={4}
-                      align="left"
-                      text={inputText(day, 'notes')}
-                      label={cellLabel(day, 'Notes')}
-                      {readOnly}
-                      onsave={(t) => saveCell(day, 'notes', t)}
-                    >
-                      <span class="block max-w-48 truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
-                    </EditableCell>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-        <p class="text-xs text-ink-muted">
-          Rain in gray is modeled for the pivot's location; bold values are ones you entered. Irrigation marked “from
-          pivot” was entered on the
-          <Link href={pivots.show(pivot.id)} class="text-brand-600 underline underline-offset-2"
-            >pivot's irrigation page</Link
-          > or on the Daily entry page. * Crop ET is estimated from the past week because that day's weather is missing.
-          {lai ? 'LAI' : 'Cover'} in gray is estimated: {planting?.effective_canopy_interpolation === 'curve'
-            ? "the crop's typical curve, adjusted to your readings"
-            : 'straight lines between your readings'}.
-        </p>
+            {/each}
+          </tbody>
+        </table>
       </div>
-    </CollapsibleSection>
-  {/if}
+      <p class="text-xs text-ink-muted">
+        Rain in gray is modeled for the pivot's location; bold values are ones you entered. Irrigation marked “from
+        pivot” was entered on the
+        <Link href={pivots.show(pivot.id)} class="text-brand-600 underline underline-offset-2"
+          >pivot's irrigation page</Link
+        > or on the Daily entry page.
+      </p>
+    </div>
+  </CollapsibleSection>
+{/if}
 
-  <WeatherSection
-    {panels}
-    days={weather}
-    {units}
-    exports={{
-      place: `${farm.name} / ${pivot.name} / ${field.name}`,
-      file: `wisp-${fileSlug(field.name)}-${planting?.year}`,
-      href: weatherPivot(pivot.id, { query: { year: planting?.year } }).url,
-    }}
+<CollapsibleSection title="Rainfall preferences" id="rainfall" storageKey="rainfall">
+  <Form
+    action={fields.update(field.id)}
+    class="max-w-xl space-y-3 rounded-lg border border-line bg-surface-raised p-4"
+    options={{ preserveScroll: true }}
   >
-    Precipitation also shows the rain you entered for this field, with the modeled rain its balance doesn't use
-    outlined. Soil moisture is the model's own estimate, not this field's balance; it's shown against the field's
-    capacity and wilting point for comparison.
-  </WeatherSection>
-{/if}
+    {#snippet children({ processing })}
+      <fieldset class="space-y-2">
+        <legend class="text-sm font-medium">Which rain this field's plantings use</legend>
+        {#each rainOptions as [value, label, hint] (value)}
+          <label class="flex items-start gap-3 text-sm">
+            <input type="radio" name="field[use_model_precip]" {value} checked={rainSetting === value} class="mt-0.5" />
+            <span
+              >{label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}</span
+            >
+          </label>
+        {/each}
+      </fieldset>
+      <p class="text-xs text-ink-muted">
+        This only changes which rain the balance uses. Nothing is copied or deleted, so you can switch back at any time.
+      </p>
+      <Button type="submit" disabled={processing}>Save</Button>
+    {/snippet}
+  </Form>
+</CollapsibleSection>
 
-<!-- The season in numbers, and settings for this field's balance (its setup is on the setup page) -->
-{#if stats && planting && summary}
-  <CollapsibleSection title="Season summary" id="season-summary" storageKey="season-summary" bind:open={summaryOpen}>
-    <SeasonDetails {stats} {units} useModelPrecip={summary.use_model_precip} />
-  </CollapsibleSection>
-{/if}
-
-{#if !readOnly}
-  <CollapsibleSection title="Rainfall preferences" id="rainfall" storageKey="rainfall" bind:open={rainfallOpen}>
-    <Form
-      action={fields.update(field.id)}
-      class="max-w-xl space-y-3 rounded-lg border border-line bg-surface-raised p-4"
-      options={{ preserveScroll: true }}
-    >
-      {#snippet children({ processing })}
-        <fieldset class="space-y-2">
-          <legend class="text-sm font-medium">Which rain this field's balance uses</legend>
-          {#each rainOptions as [value, label, hint] (value)}
-            <label class="flex items-start gap-3 text-sm">
-              <input
-                type="radio"
-                name="field[use_model_precip]"
-                {value}
-                checked={rainSetting === value}
-                class="mt-0.5"
-              />
-              <span
-                >{label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}</span
-              >
-            </label>
-          {/each}
-        </fieldset>
-        <p class="text-xs text-ink-muted">
-          This only changes which rain the balance uses. Nothing is copied or deleted, so you can switch back at any
-          time.
-        </p>
-        <Button type="submit" disabled={processing}>Save</Button>
-      {/snippet}
-    </Form>
-  </CollapsibleSection>
-{/if}
+<PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} />

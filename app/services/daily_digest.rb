@@ -2,9 +2,10 @@
 # farm, weather zone (the weather grid cell its pivots share, with a summary of its weather), pivot
 # and field. users.digest_scope chooses which included fields are listed: all of them, those with a
 # crop in season, those needing irrigation or a reading, or only those needing irrigation. Fields
-# needing attention (irrigate, or caution) are also listed first, soonest crossing first.
+# needing attention (irrigate, or caution) are also listed first, soonest crossing first. A field
+# growing several plantings at once (plots, PLAN.md Phase 8 G.11) has a line for each.
 class DailyDigest
-  # status: the field's PlantingStatus this year, or nil without a planting
+  # One line: a planting's PlantingStatus this year, or nil for a field without a planting
   Entry = Data.define(:field, :status, :outlook) do
     def active? = status&.phase == :active
     def attention? = active? && ATTENTION.include?(status.status)
@@ -32,16 +33,17 @@ class DailyDigest
     @user, @today = user, today
   end
 
-  # Every included field, most urgent first
+  # Every included field's plantings (one entry for a field without), most urgent first
   def all_entries
     @all_entries ||= begin
       fields = user.digest_fields
         .includes(:soil_type, pivot: [:weather_cell, {farm: :group}], plantings: [:plant, :canopy_observations, :soil_type]).to_a
       statuses = FieldStatuses.for(fields, today:)
-      fields.map do |field|
-        status = statuses[field.id]
-        outlook = Outlook.for(status, depth: method(:depth)) if status&.phase == :active
-        Entry.new(field:, status:, outlook:)
+      fields.flat_map do |field|
+        (statuses[field.id].presence || [nil]).map do |status|
+          outlook = Outlook.for(status, depth: method(:depth)) if status&.phase == :active
+          Entry.new(field:, status:, outlook:)
+        end
       end.sort_by do |entry|
         [entry.active? ? RANK.fetch(entry.status.status, RANK.size) : RANK.size + 1,
           (entry.status.crossing&.days if entry.active?) || PlantingStatus::HORIZON + 1, *place_order(entry)]
@@ -111,8 +113,9 @@ class DailyDigest
   Counts = Data.define(:fields, :pivots, :covered_fields, :covered_pivots, :planted)
 
   def counts
-    Counts.new(fields: listed.size, pivots: listed.map(&:pivot).uniq.size, covered_fields: all_entries.size,
-      covered_pivots: all_entries.map(&:pivot).uniq.size, planted: all_entries.count(&:status))
+    Counts.new(fields: listed.map(&:field).uniq.size, pivots: listed.map(&:pivot).uniq.size,
+      covered_fields: all_entries.map(&:field).uniq.size, covered_pivots: all_entries.map(&:pivot).uniq.size,
+      planted: all_entries.select(&:status).map(&:field).uniq.size)
   end
 
   # Why the digest wouldn't be sent today, or nil if it would be
@@ -137,14 +140,16 @@ class DailyDigest
   # "WISP: 2 fields to irrigate, 1 to watch (Sun, Oct 4)", "WISP: 5 fields OK (…)", or "WISP: no
   # crops in season (…)"
   def subject
-    irrigate = entries.count { |entry| entry.status.status == :irrigate }
-    caution = entries.count { |entry| entry.status.status == :caution }
+    # Fields, not plantings: a field of plots counts once, at its most urgent
+    worst = entries.group_by(&:field).transform_values { |list| FieldStatuses.most_urgent(list.map(&:status)).status }
+    irrigate = worst.count { |_, status| status == :irrigate }
+    caution = worst.count { |_, status| status == :caution }
     summary = if irrigate.positive?
       ["#{fields(irrigate)} to irrigate", ("#{caution} to watch" if caution.positive?)].compact.join(", ")
     elsif caution.positive?
       "#{fields(caution)} to watch"
     elsif entries.any?
-      "#{fields(entries.size)} OK"
+      "#{fields(worst.size)} OK"
     else
       "no crops in season"
     end
@@ -159,6 +164,14 @@ class DailyDigest
     format(metric? ? "%.1f mm" : "%.2f in", value.zero? ? 0.0 : value)
   end
 
+  # Part of a field's size: "100 × 20 ft (0.05 ac)", "30 × 6 m (0.02 ha)", or "0.25 ac"
+  def plot(planting)
+    area = metric? ? format("%.2f ha", planting.area_acres * 0.404686) : format("%.2f ac", planting.area_acres)
+    return area unless planting.plot_length_ft
+    length, width = [planting.plot_length_ft, planting.plot_width_ft].map { |ft| (metric? ? ft * 0.3048 : ft).round }
+    "#{length} × #{width} #{metric? ? "m" : "ft"} (#{area})"
+  end
+
   # A range of °F in the user's units: "68–82°F", "20–28°C", or "75°F" when it's one value
   def temperatures(range)
     low, high = [range.begin, range.end].map { |f| (metric? ? (f - 32) * 5 / 9.0 : f).round }
@@ -171,7 +184,8 @@ class DailyDigest
 
   def place_order(entry)
     [entry.group.name.downcase, entry.group.id, entry.farm.name.downcase, entry.farm.id, entry.pivot.name.downcase,
-      entry.pivot.id, entry.field.name.downcase, entry.field.id]
+      entry.pivot.id, entry.field.name.downcase, entry.field.id, entry.status&.planting&.partial? ? 1 : 0,
+      entry.status&.planting&.season_start || today, entry.status&.planting&.id || 0]
   end
 
   def fields(count) = (count == 1) ? "1 field" : "#{count} fields"

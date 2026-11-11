@@ -32,6 +32,6 @@ RSpec.describe "Map", type: :request do
     expect(shown[:weather][:ahead]).to be_nil # no forecast stored
     card = shown[:fields].sole
     expect(card).to include(id: field.id, name: "North potatoes")
-    expect(card[:summary]).to include(phase: "active")
+    expect(card[:plantings].sole).to include(phase: "active")
   end
 end

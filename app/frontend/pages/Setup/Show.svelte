@@ -3,11 +3,12 @@
 
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
+  import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import { formatDate } from '@/lib/dates'
+  import { isoDate } from '@/lib/dates'
   import { units as unitsFor } from '@/lib/units'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
-  import PlantingForm from '@/lib/setup/PlantingForm.svelte'
+  import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import {
     farms as farmRoutes,
     fieldGroups,
@@ -15,12 +16,11 @@
     groups as groupRoutes,
     newQuickSetup,
     pivots,
-    plantings,
     seasonCopies,
     seasonReport,
     setup,
   } from '@/routes'
-  import type { Farm, Field, Pivot, Plant, Planting, SoilType } from '@/types/serializers'
+  import type { Farm, Field, Pivot, Plant, SoilType } from '@/types/serializers'
 
   let {
     year,
@@ -55,10 +55,10 @@
     allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
   )
 
-  type DialogState =
-    | { kind: 'farm'; farm?: Farm }
-    | { kind: 'field'; pivot: Pivot; field?: Field }
-    | { kind: 'planting'; field: Field; planting?: Planting }
+  type DialogState = { kind: 'farm'; farm?: Farm } | { kind: 'field'; pivot: Pivot; field?: Field }
+  // Plantings have their own dialog (also on the field page)
+  let plantingDialog: PlantingDialog | undefined = $state()
+  const today = isoDate(new Date())
   let dialog = $state<DialogState | null>(null)
   let dialogOpen = $state(false)
   const open = (state: DialogState) => {
@@ -77,11 +77,7 @@
   const dialogTitle = $derived.by(() => {
     if (!dialog) return ''
     if (dialog.kind === 'farm') return dialog.farm ? `Edit ${dialog.farm.name}` : 'Add a farm'
-    if (dialog.kind === 'field')
-      return dialog.field ? `Edit ${dialog.field.name}` : `Add a field to ${dialog.pivot.name}`
-    return dialog.planting
-      ? `Edit ${dialog.planting.plant_name} on ${dialog.field.name}`
-      : `Add a ${year} crop to ${dialog.field.name}`
+    return dialog.field ? `Edit ${dialog.field.name}` : `Add a field to ${dialog.pivot.name}`
   })
 </script>
 
@@ -99,27 +95,12 @@
             : 'only the rain you enter'}{/if}
       </p>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
-      {#each seasonPlantings(field) as planting (planting.id)}
-        <button
-          type="button"
-          class="rounded-full border border-line bg-surface px-3 py-1 text-xs hover:border-brand-500"
-          onclick={() => open({ kind: 'planting', field, planting })}
-          title="Edit this crop"
-        >
-          <span class="font-medium">{planting.plant_name}</span>
-          <span class="text-ink-muted">{formatDate(planting.emergence_date)} – {formatDate(planting.end_date)}</span>
-        </button>
-      {:else}
-        <span class="text-xs text-ink-muted">No {year} crop</span>
-      {/each}
-      <Button
-        variant="ghost"
-        class="px-2 py-1 text-xs"
-        aria-label="Add crop to {field.name}"
-        onclick={() => open({ kind: 'planting', field })}>+ Crop</Button
-      >
-    </div>
+    <Button
+      variant="ghost"
+      class="px-2 py-1 text-xs"
+      aria-label="Add a planting to {field.name}"
+      onclick={() => plantingDialog?.open(field)}>Add a planting</Button
+    >
     <div class="flex gap-1 text-xs">
       <Button
         variant="ghost"
@@ -132,10 +113,25 @@
           variant="danger-ghost"
           class="px-2 py-1 text-xs"
           aria-label="Delete {field.name}"
-          onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its crops and entries`)}
+          onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its plantings and entries`)}
         >
           Delete
         </Button>
+      {/if}
+    </div>
+    <!-- The season's plantings on a timeline, each opening its form (PLAN.md Phase 8 G.11) -->
+    <div class="w-full">
+      {#if seasonPlantings(field).length}
+        <SeasonTimeline
+          plantings={seasonPlantings(field)}
+          {year}
+          {today}
+          {units}
+          label="Plantings on {field.name}, {year}"
+          onselect={(planting) => plantingDialog?.open(field, planting)}
+        />
+      {:else}
+        <p class="text-xs text-ink-muted">No {year} planting</p>
       {/if}
     </div>
   </li>
@@ -144,7 +140,7 @@
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
     <h1 class="text-2xl font-semibold">Setup</h1>
-    <p class="text-sm text-ink-muted">Farms, pivots, fields and each season's crops for {group.name}</p>
+    <p class="text-sm text-ink-muted">Farms, pivots, fields and each season's plantings for {group.name}</p>
   </div>
   <div class="flex flex-wrap items-center gap-2">
     <label for="season" class="text-sm text-ink-muted">Season</label>
@@ -172,10 +168,10 @@
   >
     {#snippet children({ processing })}
       <p class="flex-1">
-        Growing the same crops as {year - 1}? Copy last season's crops to {year}, with the same settings and dates a
+        Growing the same crops as {year - 1}? Copy last season's plantings to {year}, with the same settings and dates a
         year later.
       </p>
-      <Button type="submit" variant="secondary" disabled={processing}>Copy {year - 1} crops</Button>
+      <Button type="submit" variant="secondary" disabled={processing}>Copy {year - 1} plantings</Button>
     {/snippet}
   </Form>
 {/if}
@@ -322,7 +318,9 @@
   {/if}
 </div>
 
-<Dialog bind:open={dialogOpen} title={dialogTitle} wide={dialog?.kind === 'planting'}>
+<PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} />
+
+<Dialog bind:open={dialogOpen} title={dialogTitle}>
   {#if dialog?.kind === 'farm'}
     <Form
       action={dialog.farm ? farmRoutes.update(dialog.farm.id) : farmRoutes.create()}
@@ -356,32 +354,5 @@
       soilTypes={soil_types}
       ondone={close}
     />
-  {:else if dialog?.kind === 'planting'}
-    <PlantingForm
-      planting={dialog.planting}
-      fieldId={dialog.field.id}
-      {year}
-      {plants}
-      soilTypes={soil_types}
-      ondone={close}
-    />
-    {#if dialog.planting}
-      <button
-        type="button"
-        class="mt-4 text-sm text-status-irrigate-ink hover:underline"
-        onclick={() => {
-          if (dialog?.kind !== 'planting' || !dialog.planting) return
-          if (
-            destroy(
-              plantings.destroy(dialog.planting.id),
-              `this ${dialog.planting.plant_name} crop and its canopy readings`,
-            )
-          )
-            close()
-        }}
-      >
-        Delete this crop
-      </button>
-    {/if}
   {/if}
 </Dialog>

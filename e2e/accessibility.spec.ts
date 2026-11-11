@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
 
-import { firstFieldPath, impersonateGrower, signedInPages, signIn, watchErrors } from './session'
+import { firstPlantingPath, impersonateGrower, signedInPages, signIn, watchErrors } from './session'
 
 // WCAG 2.1 A and AA checks (axe) on every page, in light (desktop) and dark (phone), which also fail
 // on script errors. Every page is scanned before the test fails, and A11Y_REPORT=path writes the
@@ -75,7 +75,7 @@ test('signed-in pages', async ({ page }) => {
 
 test('a field viewed on an earlier date (time travel)', async ({ page }) => {
   await signIn(page)
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const rewind = page.getByRole('button', { name: 'View this field on an earlier date' })
   test.skip(!(await rewind.isVisible()), "the field's season has no earlier days on this date")
   await rewind.click()

@@ -38,8 +38,8 @@
   const nav = $derived(
     auth.user
       ? [
-          // A pivot's and a field's pages are reached from the dashboard; creating and editing them is setup
-          { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields)\/\d+(\?|$)/] },
+          // A pivot's, a field's and a planting's pages are reached from the dashboard; creating and editing them is setup
+          { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields|plantings)\/\d+(\?|$)/] },
           { label: 'Map', route: map.show() },
           { label: 'Daily entry', route: dailyEntries.show() },
           { label: 'Alerts', route: alerts.show() },

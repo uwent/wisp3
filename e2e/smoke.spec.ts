@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import { expect, type Page, test } from '@playwright/test'
 
-import { firstFieldPath, signIn, watchErrors } from './session'
+import { firstPlantingPath, signIn, watchErrors } from './session'
 
 // Smoke tests over the demo account seeded by e2e/seed.rb: the main ways of entering data save, and
 // the map and charts work. accessibility.spec.ts visits every page, failing on script errors too.
@@ -57,7 +57,7 @@ test('the map lists the fields and selects a pivot from the list', async ({ page
     .getByRole('link', { name: /^Open / })
     .first()
     .click()
-  await expect(page).toHaveURL(/\/fields\/\d+/)
+  await expect(page).toHaveURL(/\/(fields|plantings)\/\d+/)
   expect(errors).toEqual([])
 })
 
@@ -242,7 +242,7 @@ test("a partial circle's arc is set by dragging its ends", async ({ page }) => {
 })
 
 test('a grid cell saves on Enter, and Escape cancels without saving', async ({ page }) => {
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const note = `Checked gauge ${Date.now()}`
   const cell = page.locator('[data-grid="days"][data-row="2"][data-col="4"]')
 
@@ -276,7 +276,7 @@ test('a grid cell saves on Enter, and Escape cancels without saving', async ({ p
 })
 
 test('an open grid cell keeps its column width, and clicking another cell opens that one', async ({ page }) => {
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const cell = (row: number, col: number) => page.locator(`[data-grid="days"][data-row="${row}"][data-col="${col}"]`)
   const widths = () =>
     page
@@ -297,7 +297,7 @@ test('an open grid cell keeps its column width, and clicking another cell opens 
 })
 
 test('planned irrigation updates the projection', async ({ page }) => {
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   await expect(page.locator('main h1')).toBeVisible()
   const forecast = page.getByRole('heading', { name: /^Next \d+ days$/ })
   test.skip(!(await forecast.isVisible()), 'the season has no projection on this date')
@@ -333,7 +333,7 @@ test('planned irrigation updates the projection', async ({ page }) => {
 })
 
 test('time travel shows a field on an earlier day, read-only, and returns to today', async ({ page }) => {
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const rewind = page.getByRole('button', { name: 'View this field on an earlier date' })
   test.skip(!(await rewind.isVisible()), "the field's season has no earlier days on this date")
 
@@ -407,27 +407,101 @@ test('time travel shows a field on an earlier day, read-only, and returns to tod
 })
 
 test('a field switches to entered rain only and back', async ({ page }) => {
-  await page.goto(await firstFieldPath(page))
-  // Both sections start closed; following the summary's links opens them
+  const planting = await firstPlantingPath(page)
+  await page.goto(planting)
+  // The section starts closed; following the summary's links opens it
   const summary = page.locator('#season-summary')
-  const details = page.locator('#rainfall')
   await expect(page.getByRole('button', { name: 'Season summary' })).toHaveAttribute('aria-expanded', 'false')
   await page.getByRole('button', { name: 'Season summary' }).click()
   await expect(summary).toContainText('Your gauge and the model')
-  await page.getByRole('button', { name: 'Rainfall preferences' }).click()
-  const setting = (name: RegExp) => details.getByRole('radio', { name })
   const note = page.getByText('Rain: only what you enter, plus the forecast for the days ahead.')
 
+  // The setting is the field's, on its page
+  await page
+    .getByRole('navigation', { name: 'Field and plantings' })
+    .getByRole('link', { name: /^Field/ })
+    .click()
+  await expect(page).toHaveURL(/\/fields\/\d+/)
+  const details = page.locator('#rainfall')
+  const rainfall = page.getByRole('button', { name: 'Rainfall preferences' })
+  if ((await rainfall.getAttribute('aria-expanded')) === 'false') await rainfall.click()
+  const setting = (name: RegExp) => details.getByRole('radio', { name })
   await setting(/^Only the rain you enter/).check()
   await details.getByRole('button', { name: 'Save' }).click()
+  await expect(setting(/^Only the rain you enter/)).toBeChecked()
+
+  await page.goto(planting)
   await expect(note).toBeVisible()
   await expect(summary).toContainText('Modeled rain not used in the balance')
 
-  // Back to following the operation, as the seed had it
+  // Back to following the operation, as the seed had it, from the note's link
+  await page.getByRole('link', { name: 'Change this' }).click()
+  await expect(details).toBeVisible()
   await setting(/^Follow the operation's setting/).check()
   await details.getByRole('button', { name: 'Save' }).click()
-  await expect(note).toBeHidden()
   await expect(setting(/^Follow the operation's setting/)).toBeChecked()
+  await page.goto(planting)
+  await expect(note).toBeHidden()
+})
+
+test('a field of plots lists each planting, on the dashboard, its page and Setup', async ({ page }) => {
+  // The dashboard card lists the research field's four plots, each linking to its page
+  await page.goto('/')
+  const card = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Arlington 525' }) })
+  const plantings = card.getByRole('list', { name: 'Plantings on Arlington 525' })
+  await expect(plantings.getByRole('listitem')).toHaveCount(4)
+  await expect(card.getByText('Soybean, 300 × 60 ft (0.41 ac)')).toBeVisible()
+
+  // The field page: its timeline, a status card per planting, and tabs for each
+  await card.getByRole('link', { name: /Arlington 525/ }).click()
+  await expect(page).toHaveURL(/\/fields\/\d+/)
+  await expect(page.getByRole('heading', { name: 'Arlington 525', level: 1 })).toBeVisible()
+  const timeline = page.getByRole('list', { name: /^Plantings on Arlington 525/ })
+  await expect(timeline.getByRole('link')).toHaveCount(4)
+  await expect(page.getByRole('button', { name: 'Rain and irrigation on the field' })).toBeVisible()
+
+  // A plot's page: its size, and its own irrigation from the drip
+  const tabs = page.getByRole('navigation', { name: 'Field and plantings' })
+  await tabs.getByRole('link', { name: /^Snap bean/ }).click()
+  await expect(page).toHaveURL(/\/plantings\/\d+/)
+  await expect(page.getByText('Part of the field: 300 × 60 ft (0.41 ac)')).toBeVisible()
+  await expect(tabs.getByRole('link', { name: /^Snap bean/ })).toHaveAttribute('aria-current', 'page')
+
+  // Setup: the field's plantings on a timeline, each opening its form, with its size
+  await page.goto('/setup')
+  const bars = page.getByRole('list', { name: /^Plantings on Arlington 525/ })
+  await bars.getByRole('button', { name: /^Edit Soybean/ }).click()
+  const dialog = page.getByRole('dialog', { name: /^Edit Soybean on Arlington 525/ })
+  await expect(dialog.getByRole('radio', { name: 'Part of the field' })).toBeChecked()
+  await expect(dialog.getByLabel('Length', { exact: true })).toHaveValue('300')
+  await expect(dialog.getByText('0.41 ac', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('checkbox', { name: "Use the field's soil (Silt loam)" })).toBeChecked()
+
+  // A plot can't be larger than the field
+  await dialog.getByLabel('Length', { exact: true }).fill('3000')
+  await expect(dialog.getByText("That's more than the field's 2.00 ac.")).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Save planting' })).toBeDisabled()
+
+  // "Add the next planting" starts a new one the day after this one ends, the same size
+  await dialog.getByRole('button', { name: 'Add the next planting' }).click()
+  const next = page.getByRole('dialog', { name: 'Add the next planting on Arlington 525' })
+  await expect(next.getByLabel('Length', { exact: true })).toHaveValue('300')
+})
+
+test('a new whole-field planting over another offers to replace it', async ({ page }) => {
+  await page.goto('/setup')
+  await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
+  const dialog = page.getByRole('dialog', { name: /^Add a \d{4} planting to Cabbage/ })
+  await expect(dialog.getByRole('radio', { name: /^Whole field/ })).toBeChecked()
+  await expect(dialog.getByText('This overlaps: Cabbage')).toBeVisible()
+  await dialog.getByLabel('Season start').fill(`${new Date().getFullYear()}-08-01`)
+  await expect(dialog.getByRole('checkbox', { name: /^Replace: end Cabbage on Jul 31/ })).toBeVisible()
+  // Part of the field leaves the cabbage alone, but can't overlap a planting covering the whole field
+  await dialog
+    .locator('label')
+    .filter({ hasText: /^\s*Part of the field\s*$/ })
+    .click()
+  await expect(dialog.getByText('This overlaps a planting covering the whole field')).toBeVisible()
 })
 
 test('daily entry saves rain for a field', async ({ page }) => {
@@ -465,7 +539,7 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
 })
 
 test('adding a pivot irrigation on a date that has one offers to edit it instead', async ({ page }) => {
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   await page.locator('main a[href*="/pivots/"]').first().click()
 
   // Add one for today; the form resets to today, which now has an irrigation
@@ -484,7 +558,7 @@ test('adding a pivot irrigation on a date that has one offers to edit it instead
 
 test('the weather charts follow the page width without overlapping', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 900 })
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const weather = page.getByRole('button', { name: 'Weather at this pivot' })
   if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
   const card = (name: string) =>
@@ -508,7 +582,7 @@ test('the weather charts follow the page width without overlapping', async ({ pa
 
 test('a weather chart explains itself, and zooms the rest with it', async ({ page }) => {
   const errors = watchErrors(page)
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const weather = page.getByRole('button', { name: 'Weather at this pivot' })
   if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
 
@@ -561,7 +635,7 @@ test('setup downloads the season report, and a pivot its weather', async ({ page
   expect(csv).toMatch(/^\uFEFF"?WISP season report, \d{4}/)
   expect(csv).toContain('Irrigation by pivot')
 
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const weather = page.getByRole('button', { name: 'Weather at this pivot' })
   if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
   const [all] = await Promise.all([
@@ -608,7 +682,7 @@ test('alerts previews today’s email and sends a test, then waits', async ({ pa
 })
 
 test('glossary terms explain themselves on hover or tap', async ({ page }) => {
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const term = page.getByRole('button', { name: 'allowable depletion', exact: true })
   if (test.info().project.name === 'phone') await term.tap()
   else await term.hover()

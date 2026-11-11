@@ -60,8 +60,8 @@ RSpec.describe PlantingCsv do
   end
 
   it "escapes names a spreadsheet would run as formulas, but not numbers" do
-    farm_row = rows.index(["Farm", "Pivot", "Equipment", "Field", "Area (acres)"]) + 1
-    expect(rows[farm_row]).to eq(["Hancock", "'=HYPERLINK(\"http://example.com\")", "'+Zimmatic", "North", "60.0"])
+    farm_row = rows.index(["Farm", "Pivot", "Equipment", "Field", "Area (acres)", "Part of the field"]) + 1
+    expect(rows[farm_row]).to eq(["Hancock", "'=HYPERLINK(\"http://example.com\")", "'+Zimmatic", "North", "60.0", "Whole field"])
     expect(rows[farm_row + 4][1]).to eq("'@Russet")
   end
 end

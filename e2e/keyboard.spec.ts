@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { firstFieldPath, signIn } from './session'
+import { firstPlantingPath, signIn } from './session'
 
 // Keyboard use (WCAG 2.1.1, 2.4.1, 2.4.3): skipping the nav, grids as one tab stop, and focus moving
 // into the map's pivot panel, the layers panel, dialogs and menus and back out again
@@ -21,7 +21,7 @@ test('the first Tab offers a skip link to the main content', async ({ page }) =>
 })
 
 test('a grid is one tab stop: arrows move inside it, Tab moves past it', async ({ page }) => {
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const cells = page.locator('button[data-grid="days"]')
   await cells.first().waitFor()
   expect(await cells.count()).toBeGreaterThan(10)
@@ -95,7 +95,7 @@ test('setup dialogs and the account menu work from the keyboard', async ({ page 
 })
 
 test('a glossary term opens from the keyboard, and describes itself by its definition', async ({ page }) => {
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   const term = page.getByRole('button', { name: 'allowable depletion' }).first()
   await term.focus()
   await page.keyboard.press('Enter')

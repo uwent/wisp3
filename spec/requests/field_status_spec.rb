@@ -26,8 +26,8 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: [{date: "2026-07-20", tmax_f: 90, tmin_f: 70}, {date: "2026-07-21", tmax_f: 88, tmin_f: 66}]})
 
-      get field_path(field)
-      expect_inertia.to render_component("Fields/Show")
+      get planting_path(planting)
+      expect_inertia.to render_component("Plantings/Show")
       props = inertia.props
       expect(props[:planting][:id]).to eq(planting.id)
       expect(props[:days].size).to eq(20) # Jul 1 through today
@@ -40,7 +40,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
 
     it "gives the crop's canopy curve each day, and flags readings that run ahead of it (Phase 6.7)" do
       planting.update!(plant: create(:plant, key: "potato"))
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props[:planting]).to include(canopy_curve: true, effective_canopy_interpolation: "curve")
       day = inertia.props[:days].find { |d| d[:date] == "2026-07-15" }
       expect(day[:canopy_curve]).to be_within(0.01).of(CanopyCurve.for("potato").cover(planting.emergence_date, Date.new(2026, 7, 15)))
@@ -50,7 +50,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       # 30% and 50% cover are reached on days 15 and 24 of the curve; read 9 days early
       CanopyObservation.record(planting, Date.new(2026, 7, 7), 30)
       CanopyObservation.record(planting, Date.new(2026, 7, 16), 50)
-      get field_path(field)
+      get planting_path(planting)
       check = inertia.props[:summary][:tasks].last
       expect(check).to include(kind: "canopy_check", due: true, todo: match(/days ahead of the typical potato curve/))
     end
@@ -60,7 +60,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(response).to redirect_to(field_url(field))
       expect(field.reload.use_model_precip).to be(false)
 
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props[:field][:use_model_precip]).to be(false)
       expect(inertia.props[:summary][:use_model_precip]).to be(false)
       expect(inertia.props[:days][4]).to include(rain: 0.0, rain_source: "none", rain_model: 0.4)
@@ -75,7 +75,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.5)
       pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 12), run_hours: 10)
 
-      get field_path(field)
+      get planting_path(planting)
       days = inertia.props[:days].index_by { |day| day[:date] }
       expect(days["2026-07-10"]).to include(irrigation: 0.5, irrigation_source: "entered", pivot_inches: 0.8)
       expect(days["2026-07-12"]).to include(irrigation_source: "pivot")
@@ -91,28 +91,32 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
     it "says while the pivot's weather is updating, so the pages reload until it lands" do
       get root_path
       expect(inertia.props[:farms].sole[:pivots].sole).to include(weather_updating: true)
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props[:weather_updating]).to be(true)
 
       Rails.cache.delete(WeatherUpdateJob.updating_key(pivot.weather_cell_id)) # the job has run
       get root_path
       expect(inertia.props[:farms].sole[:pivots].sole).to include(weather_updating: false)
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props[:weather_updating]).to be(false)
     end
 
     it "picks another season's planting" do
       older = create(:planting, field:, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
         end_date: Date.new(2025, 9, 1))
-      get field_path(field, planting_id: older.id)
+      get planting_path(older)
       expect(inertia.props[:summary]).to include(phase: "ended", date: "2025-09-01")
+
+      # Links from before plantings had their own pages
+      get field_path(field, planting_id: older.id, as_of: "2025-07-01")
+      expect(response).to redirect_to(planting_path(older, as_of: "2025-07-01"))
     end
 
     it "shows an LAI planting's readings and field corn's LAI curve" do
       # Emerged Jun 1, so the curve is well above its 0.05 floor by the reading (day 39)
       planting.update!(plant: create(:plant, :field_corn), et_method: "lai", emergence_date: Date.new(2026, 6, 1))
       CanopyObservation.record(planting, Date.new(2026, 7, 10), 1.5)
-      get field_path(field)
+      get planting_path(planting)
       day = inertia.props[:days].find { |d| d[:date] == "2026-07-10" }
       expect(day).to include(canopy_entered: 1.5, canopy: 1.5)
       expect(day[:canopy_curve]).to be_within(1e-4).of(CanopyModel.lai("field_corn", 39))
@@ -120,7 +124,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
 
     it "gives an upcoming planting's summary without today's balance or a projection" do
       planting.update!(season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 1))
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props[:summary]).to include(phase: "upcoming", status: nil, date: nil, ad: nil, pct_moisture: nil,
         crossing: nil, projection: [], tasks: [])
       expect(inertia.props[:days]).to eq([])
@@ -133,7 +137,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: (Date.new(2026, 7, 20)..Date.new(2026, 7, 22)).map { |d| {date: d.iso8601, et0_in: 0.2, precip_in: 0.5} }})
 
-      get field_path(field)
+      get planting_path(planting)
       summary = inertia.props[:summary]
       expect(summary).to include(target_in: 0.48, threshold: 0.48, use_model_precip: false, ensemble_size: 0)
       # At the wilting point today (-1.2): the forecast's 0.5 in of rain a day lifts it, the no-rain case doesn't
@@ -147,7 +151,11 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
     it "handles a field with no planting" do
       bare = create(:field, pivot:)
       get field_path(bare)
-      expect(inertia.props).to include(planting: nil, summary: nil, days: [])
+      expect_inertia.to render_component("Fields/Show")
+      expect(inertia.props).to include(plantings: [], year: 2026)
+      # The field's own rain from Apr 1, which nothing grows on yet
+      expect(inertia.props[:days].first[:date]).to eq("2026-07-20")
+      expect(inertia.props[:days].last[:date]).to eq("2026-04-01")
     end
   end
 
@@ -165,7 +173,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
     end
 
     it "runs the balance through the forecast, with the ensemble's range and when to irrigate" do
-      get field_path(field)
+      get planting_path(planting)
       props = inertia.props
       expect(props[:days].last).to include(date: "2026-07-20", et0_source: "forecast", rain_source: "forecast")
       expect(props[:forecast_days].map { |day| day[:date] }).to eq((Date.new(2026, 7, 21)..Date.new(2026, 8, 4)).map(&:iso8601))
@@ -181,7 +189,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
     it "takes planned irrigation on future days, but not rain or readings" do
       patch field_day_path(field, "2026-07-25"), params: {day: {irrigation_in: 1.0}, planting_id: planting.id}
       expect(field.field_entries.sole).to have_attributes(date: Date.new(2026, 7, 25), irrigation_in: 1.0)
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props[:forecast_days].find { |day| day[:date] == "2026-07-25" })
         .to include(irrigation: 1.0, irrigation_source: "entered")
 
@@ -194,7 +202,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
 
     it "gives each dashboard card the projection" do
       get root_path
-      summary = inertia.props[:farms].sole[:pivots].sole[:fields].sole[:summary]
+      summary = inertia.props[:farms].sole[:pivots].sole[:fields].sole[:plantings].sole
       expect(summary[:projection].size).to eq(15)
       expect(summary[:ensemble_size]).to eq(2)
     end
@@ -209,7 +217,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
     end
 
     it "shows the season as of an earlier day, projecting it on the weather that followed" do
-      expect { get field_path(field, as_of: "2026-07-10") }.not_to have_enqueued_job(WeatherUpdateJob)
+      expect { get planting_path(planting, as_of: "2026-07-10") }.not_to have_enqueued_job(WeatherUpdateJob)
       props = inertia.props
       expect(props).to include(as_of: "2026-07-10", weather_updating: false,
         travel_dates: {"from" => "2026-07-01", "to" => "2026-07-19"})
@@ -222,7 +230,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(props[:summary][:projection].map { |day| day[:p50] }.uniq).to eq([nil])
       expect(props[:weather].last[:date]).to eq("2026-07-10")
 
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props).to include(as_of: nil)
       expect(inertia.props[:summary]).to include(date: "2026-07-20", projection_source: "forecast")
     end
@@ -236,7 +244,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       CanopyObservation.record(planting, Date.new(2026, 7, 6), 20)
       CanopyObservation.record(planting, Date.new(2026, 7, 15), 90)
 
-      get field_path(field, as_of: "2026-07-10")
+      get planting_path(planting, as_of: "2026-07-10")
       days = (inertia.props[:days] + inertia.props[:forecast_days]).index_by { |day| day[:date] }
       expect(days["2026-07-08"]).to include(irrigation: 0.5, notes: "before")
       expect(inertia.props[:days].last[:date]).to eq("2026-07-10")
@@ -249,7 +257,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(inertia.props[:summary][:last_irrigation]).to include(date: "2026-07-08")
       expect(inertia.props[:summary][:tasks].find { |task| task[:kind] == "canopy" }).to include(last_date: "2026-07-06")
 
-      get field_path(field)
+      get planting_path(planting)
       days = inertia.props[:days].index_by { |day| day[:date] }
       expect(days["2026-07-15"]).to include(canopy_entered: 90)
       expect(days["2026-07-12"]).to include(irrigation: 1.0)
@@ -257,29 +265,18 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
 
     it "drops a date that isn't an earlier day of the season from the URL, keeping the rest" do
       ["2026-07-20", "2026-07-25", "2026-06-30", "July 10", ""].each do |as_of|
-        get field_path(field, as_of:, planting_id: planting.id)
-        expect(response).to redirect_to(field_path(field, planting_id: planting.id))
+        get planting_path(planting, as_of:)
+        expect(response).to redirect_to(planting_path(planting))
       end
       follow_redirect!
       expect(inertia.props).to include(as_of: nil)
       expect(inertia.props[:summary]).to include(date: "2026-07-20")
     end
 
-    it "opens the season that covers the date, unless another is picked" do
-      older = create(:planting, field:, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
-        end_date: Date.new(2025, 9, 1))
-      get field_path(field, as_of: "2025-07-01")
-      expect(inertia.props).to include(as_of: "2025-07-01")
-      expect(inertia.props[:summary]).to include(planting_id: older.id, phase: "active", date: "2025-07-01")
-
-      get field_path(field, as_of: "2025-07-01", planting_id: planting.id)
-      expect(response).to redirect_to(field_path(field, planting_id: planting.id))
-    end
-
-    it "is 404 for another group's field" do
-      other = create(:field)
+    it "is 404 for another group's planting" do
+      other = create(:planting)
       get root_path
-      get field_path(other, as_of: "2026-07-10")
+      get planting_path(other, as_of: "2026-07-10")
       expect(response).to have_http_status(:not_found)
     end
   end
@@ -348,10 +345,10 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
     end
 
     it "changes the balance on the next page load" do
-      get field_path(field)
+      get planting_path(planting)
       before = inertia.props[:days].last[:ad]
       patch url, params: {day: {soil_moisture_pct: 5}, planting_id: planting.id}
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props[:days].last[:ad]).to be < before
     end
   end
@@ -365,11 +362,12 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(farm_props[:name]).to eq(farm.name)
       expect(farm_props[:pivots].map { |p| [p[:name], p[:fields].size] }).to eq([[empty.name, 0], [pivot.name, 2]])
       cards = farm_props[:pivots].last[:fields].index_by { |card| card[:name] }
-      expect(cards["North potatoes"][:summary]).to include(phase: "active", status: "ok") # AD 1.05 of 1.2
-      expect(cards["North potatoes"][:summary][:recent].size).to eq(20)
-      expect(cards["North potatoes"][:summary][:tasks].select { |task| task[:due] }.map { |task| task[:todo] })
+      summary = cards["North potatoes"][:plantings].sole
+      expect(summary).to include(phase: "active", status: "ok", partial: false) # AD 1.05 of 1.2
+      expect(summary[:recent].size).to eq(20)
+      expect(summary[:tasks].select { |task| task[:due] }.map { |task| task[:todo] })
         .to eq(["Enter a soil moisture reading (none yet this season)", "Enter a percent cover reading (none yet this season)"])
-      expect(cards["Bare"][:summary]).to be_nil
+      expect(cards["Bare"][:plantings]).to eq([])
     end
 
     # Dashboard/Show offers the guided setup when there are no farms; the props are all the server decides
@@ -501,7 +499,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       patch field_group_day_path(gauge, "2026-07-08"), params: {day: {rain_in: 1.2}}
       expect(gauge.field_group_entries.sole.rain_in).to eq(1.2)
 
-      get field_path(field)
+      get planting_path(planting)
       expect(inertia.props[:days].find { |day| day[:date] == "2026-07-08" }).to include(rain: 1.2, rain_source: "group")
       expect(inertia.props[:field_groups]).to eq([{"id" => gauge.id, "name" => "Home gauge"}])
 

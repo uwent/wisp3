@@ -204,7 +204,7 @@
       the operation by their email address (Operation and members, in the account menu). Every member can set up fields
       and enter data. Owners can also change the operation's settings and members, and delete farms, pivots and fields.
     </p>
-    <h3>Farms, pivots, fields and crops</h3>
+    <h3>Farms, pivots, fields and plantings</h3>
     <p>WISP organizes everything the way irrigation is managed:</p>
     <ul>
       <li><strong>Farm:</strong> any set of pivots you want to see together, such as one location.</li>
@@ -213,31 +213,46 @@
         really is.
       </li>
       <li>
-        <strong>Field:</strong> the land under a pivot that's managed alike, with one crop and one soil. A pivot split
-        between two crops is two fields. The soil type sets field capacity and wilting point (see
+        <strong>Field:</strong> a piece of land under a pivot, with one soil. A pivot split between two fields you
+        manage separately is two fields. The soil type sets field capacity and wilting point (see
         <a href="#soils">Soils</a>); when you place the pivot, WISP suggests one from the USDA soil survey. If you know
         better values for your field, from the
         <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a> or your own measurements,
         enter them instead.
       </li>
       <li>
-        <strong>Crop (planting):</strong> a crop on a field for one season, with its emergence date, root zone depth,
-        MAD and the way its canopy is tracked. Typical values for each crop are in the <a href="#crops">table below</a>.
-        A field can have more than one planting a year, for double cropping.
+        <strong>Planting:</strong> a crop on a field for one season, with its emergence date, root zone depth, MAD and
+        the way its canopy is tracked. Typical values for each crop are in the <a href="#crops">table below</a>. Each
+        planting has its own water balance and its own page.
       </li>
     </ul>
     <p>
+      Most plantings cover the <strong>whole field</strong>. A field can grow one after another in a year (double
+      cropping, or successions in a market garden: <strong>Add the next planting</strong> starts one the day after
+      another ends). To grow several crops side by side, as on a research field, make each planting
+      <strong>part of the field</strong>: a plot of a given length and width, or just its area. Plots in season at once
+      can't add up to more than the field without a warning, and none can be larger than it. A plot grows on the field's
+      soil unless you give it its own.
+    </p>
+    <p>
+      <strong>What's entered where:</strong> rain falls on the whole field, so it's entered for the field (on the field's
+      page, a planting's page or Daily entry) and counts for every planting on it. Irrigation entered for the field, or applied
+      by its pivot, counts for every planting too. A plot can also have its own irrigation and soil moisture readings, entered
+      on its page, which it uses instead of the field's on those days.
+    </p>
+    <p>
       The quickest start is <strong>Set up a pivot</strong> on the Setup page: place the pivot, then add its fields and
-      crops in one form. Everything can be changed later in Setup. Each spring,
-      <strong>Copy last season's crops</strong>
-      brings your crops forward a year with the same settings.
+      crops in one form. Everything can be changed later in Setup, where each field shows its season's plantings on a
+      timeline; click one to change it. Each spring,
+      <strong>Copy last season's plantings</strong>
+      brings your plantings forward a year with the same settings.
     </p>
 
     <h2 id="day-to-day">Day to day</h2>
     <ul>
       <li>
         <strong>Dashboard:</strong> every field by farm and pivot, with its status, AD and outlook, and the last rain and
-        irrigation.
+        irrigation. A field growing several plantings at once lists each, and sorts by the one that needs water soonest.
       </li>
       <li>
         <strong>Map:</strong> shows each pivot where it is, colored by its most urgent field, with each field's status at
@@ -255,7 +270,11 @@
         for a group applies to every field in it.
       </li>
       <li>
-        <strong>A field's page:</strong> its status and outlook, a chart of the season, the next
+        <strong>A field's page:</strong> its plantings this season on a timeline, each one's status, the rain and irrigation
+        entered for the whole field, and which rain it uses. Tabs at the top open each planting.
+      </li>
+      <li>
+        <strong>A planting's page:</strong> its status and outlook, a chart of the season, the next
         {defaults.forecast_days} days, every day's values, and the weather. Click a cell to enter or correct a value. Plan
         irrigation by entering it on a future day: it counts as applied when the day comes, so change it if plans change.
         Export the season as a CSV file. To see the page as it was on an earlier day of the season (for training, a demonstration,
@@ -305,7 +324,7 @@
         in the field at full canopy. For potatoes, measure from the top of the hill.
       </li>
     </ul>
-    <p>Each field's page shows when soil moisture and canopy were last entered, and flags them when one is due.</p>
+    <p>Each planting's page shows when soil moisture and canopy were last entered, and flags them when one is due.</p>
 
     <h2 id="soils">Soils</h2>
     <p>
@@ -420,7 +439,7 @@
       the rest of the season by about 40% compared with holding the last reading's ratio all season.
     </p>
     <p>
-      <strong>When your readings and the curve disagree,</strong> the field page says so. That happens if readings
+      <strong>When your readings and the curve disagree,</strong> the planting's page says so. That happens if readings
       between 10% and 80% run more than {defaults.shift_warning_days} days ahead of or behind the curve (often a sign that
       the emergence date is off), or if a reading drops by more than {defaults.drop_warning} points while the curve is still
       growing or holding steady. Either way, WISP keeps following the curve through your readings.
@@ -566,9 +585,15 @@ t: days since emergence; t′: days since the decline starts</code
 
     <h2 id="changes">What's changed</h2>
     <dl>
-      <dt>November 2026: earlier days on a field's page</dt>
+      <dt>November 2026: plantings side by side</dt>
       <dd>
-        A field's page can show an earlier day of its season, with the weather that followed in place of the forecast
+        A field can grow several plantings at once, each on part of the field, with its own water balance (see
+        <a href="#getting-started">Getting started</a>). Each planting now has its own page; a field's page shows its
+        plantings and the rain and irrigation entered for the whole field.
+      </dd>
+      <dt>November 2026: earlier days on a planting's page</dt>
+      <dd>
+        A planting's page can show an earlier day of its season, with the weather that followed in place of the forecast
         (see <a href="#day-to-day">Day to day</a>), so a season can be looked back on, or shown, after it ends.
       </dd>
       <dt>November 2026: weather corrections</dt>

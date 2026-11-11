@@ -1,7 +1,9 @@
 # A realistic demo account for development, staging and the beta (bin/rails demo:seed): several
 # farms in the Central Sands, single- and multi-field pivots (one with seven fields), both ET
 # methods, canopy readings, irrigation by field, by pivot (inches and run hours, all fields and a
-# subset), a soil moisture reading, and a field group sharing a rain gauge. Rebuilds the demo
+# subset), a soil moisture reading, a field group sharing a rain gauge, a research field with four
+# plots side by side (one with its own drip irrigation and readings) and a market garden field with
+# successions (PLAN.md Phase 8 G.11). Rebuilds the demo
 # group from scratch each run. Weather comes from Phase 3's fetch.
 class DemoSeed
   GROUP_NAME = "Demo farms"
@@ -41,6 +43,7 @@ class DemoSeed
     hancock = group.farms.create!(name: "Hancock Sands")
     plover = group.farms.create!(name: "Plover River")
     coloma = group.farms.create!(name: "Coloma Vegetables")
+    arlington = group.farms.create!(name: "Arlington Research")
 
     # Two crops split under one pivot, irrigated together
     north = hancock.pivots.create!(name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300,
@@ -93,6 +96,31 @@ class DemoSeed
       gauge.field_group_entries.create!(date: date(month, day), rain_in: rain)
     end
     gauge.field_group_entries.create!(date: date(7, 15), rain_in: 0.0, notes: "Storm missed us")
+
+    # A market garden field growing one crop after another
+    garden = field(veg, "Market garden", 4, "loam")
+    planting(garden, "leafy_greens", season_start: date(4, 10), emergence: date(4, 24), end_date: date(6, 10),
+      readings: [[14, 20], [28, 60]])
+    planting(garden, "summer_squash", season_start: date(6, 11), emergence: date(6, 18), end_date: date(8, 31))
+    planting(garden, "leafy_greens", season_start: date(9, 1), emergence: date(9, 10), end_date: date(10, 31),
+      readings: [[14, 20]])
+
+    # A research field with four plots side by side, 300 × 60 ft each; the snap beans are on drip, with
+    # their own irrigation and soil moisture readings
+    station = arlington.pivots.create!(name: "Station pivot", latitude: 43.3006, longitude: -89.3807, radius_ft: 600,
+      pump_capacity_gpm: 300)
+    research = field(station, "Arlington 525", 2, "silt_loam")
+    plot = {partial: true, plot_length_ft: 300, plot_width_ft: 60}
+    planting(research, "soybean", emergence: date(5, 25), end_date: date(9, 25), **plot)
+    planting(research, "field_corn", et_method: "lai", emergence: date(5, 12), end_date: date(9, 30), **plot)
+    planting(research, "potato", variety: "Superior", emergence: date(5, 18), end_date: date(8, 30), **plot)
+    drip = planting(research, "snap_bean", emergence: date(6, 5), end_date: date(8, 25), readings: [], **plot)
+    [[6, 20], [6, 27], [7, 4], [7, 11], [7, 18], [7, 25], [8, 1], [8, 8]].each do |month, day|
+      drip.planting_entries.create!(date: date(month, day), irrigation_in: 0.4)
+    end
+    drip.planting_entries.create!(date: date(7, 8), soil_moisture_pct: 24, notes: "TDR, 6 in")
+    drip.planting_entries.create!(date: date(7, 22), soil_moisture_pct: 21)
+    pivot_irrigations(station, [[6, 24, 0.7], [7, 9, 0.8], [7, 23, 0.8]])
   end
 
   def field(pivot, name, acres, soil_key)
@@ -104,11 +132,11 @@ class DemoSeed
   # Percent-cover plantings get readings (days after emergence, cover) that rise to full cover; LAI
   # ones use the plant's curve
   def planting(field, plant_key, emergence:, end_date:, season_start: date(4, 1), et_method: "pct_cover", variety: nil,
-    target: nil, readings: COVER_READINGS, vine_kill: nil)
+    target: nil, readings: COVER_READINGS, vine_kill: nil, **plot)
     crop = plant(plant_key)
     planting = field.plantings.create!(Planting.defaults_for(crop, @year).merge(
       plant: crop, season_start:, emergence_date: emergence, end_date:, et_method:, variety:, target_ad_pct: target,
-      vine_kill_date: vine_kill
+      vine_kill_date: vine_kill, **plot
     ))
     if et_method == "pct_cover"
       readings.each do |days, cover|

@@ -132,6 +132,16 @@ export const GLOSSARY: GlossaryEntry[] = [
       'rain, and the outlook also says when the field would need water if no rain fell. Use it if you read a ' +
       'gauge every day it rains. Nothing is deleted, so you can switch back at any time.',
   },
+  {
+    id: 'planting',
+    term: 'Planting',
+    matches: ['planting', 'plantings'],
+    definition:
+      'A crop growing on a field for one season, from season start to harvest, with its own water balance. A ' +
+      'planting covers the whole field or part of it (a plot, sized by length and width or by area), so a field ' +
+      'can grow one crop after another, or several side by side. Rain is the field’s; a plot can have its own ' +
+      'irrigation and soil moisture readings.',
+  },
 ]
 
 const byId = new Map(GLOSSARY.map((entry) => [entry.id, entry]))

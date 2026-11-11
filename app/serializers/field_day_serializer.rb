@@ -1,6 +1,7 @@
 # One row of a field's daily grid: PlantingBalance::Day's resolved inputs (with sources), canopy
 # and balance. params: entries {date => FieldEntry, or PlantingEntry for a part-field planting} for notes, observations {date => canopy
 # reading}, pivot_inches {date => inches from the pivot} (shown when a field entry overrides it),
+# field_inches {date => the field's entered irrigation} (a part-field planting's, shown under its own),
 # canopy (the planting's Canopy, for its crop's curve).
 class FieldDaySerializer < ApplicationSerializer
   SOURCE = "'entered' | 'field' | 'pivot' | 'group' | 'model' | 'forecast' | 'none' | 'missing'"
@@ -16,6 +17,7 @@ class FieldDaySerializer < ApplicationSerializer
   attribute(:irrigation) { |day| day.inputs.irrigation }
   attribute(:irrigation_source) { |day| day.inputs.irrigation_source }
   attribute(:pivot_inches) { |day| params[:pivot_inches][day.inputs.date] }
+  attribute(:field_inches) { |day| params.fetch(:field_inches, {})[day.inputs.date] }
   attribute(:soil_moisture_pct) { |day| day.inputs.soil_moisture_pct }
   attribute(:moisture_source) { |day| day.inputs.moisture_source }
   attribute(:canopy) { |day| day.canopy.round(WaterBalance::PRECISION) }
@@ -29,7 +31,7 @@ class FieldDaySerializer < ApplicationSerializer
   typelize date: :string, et0: "number | null", et0_source: "'model' | 'forecast' | 'missing'", adj_et: "number | null",
     et_source: "'computed' | 'gap_fill' | 'missing'", rain: "number | null", rain_source: SOURCE,
     rain_model: "number | null", irrigation: "number | null", irrigation_source: SOURCE,
-    pivot_inches: "number | null", soil_moisture_pct: "number | null", moisture_source: "'entered' | 'group' | null",
+    pivot_inches: "number | null", field_inches: "number | null", soil_moisture_pct: "number | null", moisture_source: "'entered' | 'group' | null",
     canopy: :number, canopy_entered: "number | null", canopy_curve: "number | null", ad: :number, pct_moisture: :number, deep_drainage: :number,
     notes: "string | null"
 end

@@ -18,6 +18,18 @@ RSpec.describe "Part-field plantings" do
       expect(plot.area_acres).to be_within(1e-6).of(2000 / 43_560.0)
     end
 
+    it "names its size for CSVs" do
+      expect(plot.size_label).to eq("100 × 20 ft (0.046 acres)")
+      expect(create(:planting, field:, partial: true, area_acres: 0.25, **season.merge(season_start: Date.new(2026, 4, 2))).size_label)
+        .to eq("0.25 acres")
+    end
+
+    it "can't be larger than its field" do
+      big = build(:planting, field:, partial: true, area_acres: 10.5, **season)
+      expect(big).not_to be_valid
+      expect(big.errors[:area_acres]).to include("is more than the field's 10 acres")
+    end
+
     it "takes acres for part of a field without a length and width, and needs one or the other" do
       expect(create(:planting, field:, partial: true, area_acres: 0.5, **season).area_acres).to eq(0.5)
       expect(build(:planting, field:, partial: true, **season)).not_to be_valid

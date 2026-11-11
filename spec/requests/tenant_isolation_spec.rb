@@ -158,11 +158,22 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(group.reload.fields).to eq([my_field])
   end
 
-  it "won't show another group's planting on my field's page" do
+  it "won't show another group's planting on my field's page, or its own page" do
     their_planting
     get field_path(my_field, planting_id: their_planting.id)
     expect(response).to have_http_status(:ok)
     expect(inertia.props[:planting]).to be_nil
+    get planting_path(their_planting)
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it "won't let Replace end another group's planting" do
+    their_planting
+    post plantings_path, params: {planting: {field_id: their_planting.field_id, plant_id: their_planting.plant_id,
+                                             season_start: their_planting.season_start + 30, emergence_date: their_planting.season_start + 40,
+                                             end_date: their_planting.end_date}, replace: "1"}
+    expect(response).to have_http_status(:not_found)
+    expect(their_planting.reload.end_date).to eq(their_planting.end_date)
   end
 
   it "won't preselect another group's farm on the pivot form" do

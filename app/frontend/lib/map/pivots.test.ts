@@ -9,7 +9,7 @@ import { type MapPivot, pivotBounds, pivotFeatures } from './pivots'
 const field = (status: PlantingSummary['status'], phase: PlantingSummary['phase'] = 'active'): FieldCard => ({
   id: 1,
   name: 'Field',
-  summary: { phase, status, weather_pending: false, crossing: null } as PlantingSummary,
+  plantings: [{ phase, status, weather_pending: false, crossing: null } as PlantingSummary],
 })
 
 const pivot = (id: number, latitude: number, fields: FieldCard[] = [], radius_ft: number | null = 1300): MapPivot => ({

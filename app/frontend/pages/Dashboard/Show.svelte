@@ -30,7 +30,8 @@
 
   // Fields whose season has ended go after the rest, and so do pivots and farms with only ended fields
   // (the sort is stable, so names stay in order otherwise)
-  const ended = (card: Card) => card.summary?.phase === 'ended'
+  const ended = (card: Card) =>
+    card.plantings.length > 0 && card.plantings.every((summary) => summary.phase === 'ended')
   const allEnded = (cards: Card[]) => cards.length > 0 && cards.every(ended)
   const endedLast = <T,>(items: T[], isEnded: (item: T) => boolean) =>
     items.toSorted((a, b) => Number(isEnded(a)) - Number(isEnded(b)))

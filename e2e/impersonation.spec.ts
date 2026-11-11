@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { firstFieldPath, GROWER_EMAIL, impersonateGrower } from './session'
+import { firstPlantingPath, GROWER_EMAIL, impersonateGrower } from './session'
 
 // An admin signed in as a grower for support (PLAN.md Phase 8 B): the bar on every page, and back
 
@@ -18,7 +18,7 @@ test('an admin signs in as a grower, sees the bar on every page, and returns to 
   await page.keyboard.press('Tab')
   await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeFocused()
 
-  await page.goto(await firstFieldPath(page))
+  await page.goto(await firstPlantingPath(page))
   await expect(bar).toBeVisible()
   await expect(page).toHaveTitle(new RegExp(`^As ${GROWER_EMAIL} · `))
 

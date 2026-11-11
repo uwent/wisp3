@@ -18,7 +18,7 @@ const summary = (overrides: Partial<PlantingSummary>) =>
 const card = (name: string, overrides: Partial<PlantingSummary> | null = {}): FieldCard => ({
   id: name.length,
   name,
-  summary: overrides && summary(overrides),
+  plantings: overrides ? [summary(overrides)] : [],
 })
 
 const crossing = (days: number) => ({ date: '2026-07-20', days, ad: 0, refill: 1 })

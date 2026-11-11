@@ -40,8 +40,12 @@ class DigestMailer < ApplicationMailer
 
   private
 
-  # A field's page, switching to its operation (the link may be read with another one current)
-  def field_link(entry) = field_url(entry.field, operation: entry.group.id)
+  # The planting's page (the field's without one), switching to its operation (the link may be read
+  # with another one current)
+  def field_link(entry)
+    planting = entry.status&.planting
+    planting ? planting_url(planting, operation: entry.group.id) : field_url(entry.field, operation: entry.group.id)
+  end
 
   def pivot_link(pivot) = pivot_url(pivot, operation: pivot.farm.group_id)
 

@@ -1,18 +1,21 @@
 <script lang="ts">
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { LEAD_DAYS } from '@/lib/outlook'
-  import { type FieldCard, STATUSES } from '@/lib/overview'
+  import { type FieldCard, primary, STATUSES } from '@/lib/overview'
 
-  // How many fields are at each status, and how many seasons have ended (dashboard and map)
+  // How many fields are at each status (a field of plots at its most urgent planting's), and how
+  // many seasons have ended (dashboard and map)
   let { cards }: { cards: FieldCard[] } = $props()
+
+  const summaries = $derived(cards.map(primary))
 
   const counts = $derived(
     STATUSES.map((status) => ({
       status,
-      count: cards.filter((card) => card.summary?.phase === 'active' && card.summary.status === status).length,
+      count: summaries.filter((summary) => summary?.phase === 'active' && summary.status === status).length,
     })),
   )
-  const ended = $derived(cards.filter((card) => card.summary?.phase === 'ended').length)
+  const ended = $derived(summaries.filter((summary) => summary?.phase === 'ended').length)
 
   const fieldCount = (count: number) => `${count} field${count === 1 ? '' : 's'}`
   const tips = {

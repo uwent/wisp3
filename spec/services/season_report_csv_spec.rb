@@ -43,7 +43,7 @@ RSpec.describe SeasonReportCsv do
   it "lists each field's season, then irrigation by pivot, then the weather by zone" do
     fields = section("Fields")
     expect(fields.map { |row| row["Field"] }).to eq(%w[East West])
-    expect(fields.first).to include("Pivot" => "North", "Equipment" => "'=Well 12", "Days counted" => "10",
+    expect(fields.first).to include("Pivot" => "North", "Part of the field" => "Whole field", "Equipment" => "'=Well 12", "Days counted" => "10",
       "Irrigation (in)" => "1.0000", "Days irrigated" => "2", "Rainfall (in)" => "1.0000", "Season start" => "2026-07-01")
 
     pivot_row = section("Irrigation by pivot").sole

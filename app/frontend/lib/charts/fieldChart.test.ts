@@ -43,6 +43,7 @@ const day = (date: string, overrides: Partial<FieldDay> = {}): FieldDay => ({
   irrigation: 0,
   irrigation_source: 'none',
   pivot_inches: null,
+  field_inches: null,
   soil_moisture_pct: null,
   moisture_source: null,
   canopy: 50,

@@ -1,5 +1,6 @@
 # A group's farms, pivots and fields with each field's status today, for the dashboard and the map
-# (PLAN.md §11, Phase 7): farms and pivots by name, one card per field with this season's planting.
+# (PLAN.md §11, Phase 7): farms and pivots by name, one card per field with a summary for each of its
+# plantings in season (several on a field of plots, G.11; or the nearest this year).
 # Pivots without fields are listed too, so the hierarchy matches setup. weather_updating marks a pivot
 # whose cell has a WeatherUpdateJob queued or running; the pages reload until it clears.
 class OperationOverview
@@ -34,7 +35,6 @@ class OperationOverview
   def sorted(farm) = farm.pivots.sort_by(&:name)
 
   def card(field)
-    status = @statuses[field.id]
-    {id: field.id, name: field.name, summary: status && PlantingSummarySerializer.new(status).to_h}
+    {id: field.id, name: field.name, plantings: @statuses[field.id].map { |status| PlantingSummarySerializer.new(status).to_h }}
   end
 end

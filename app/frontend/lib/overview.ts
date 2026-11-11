@@ -3,7 +3,11 @@ import type { PlantingSummary } from '@/types/serializers'
 // The operation's farms, pivots and field cards (OperationOverview), as the dashboard and the map
 // get them, and how the map orders and picks them
 
-export type FieldCard = { id: number; name: string; summary: PlantingSummary | null }
+/**
+ * A field and its plantings in season today, or the nearest this year (several on a field of plots,
+ * PLAN.md Phase 8 G.11); empty without a planting this year
+ */
+export type FieldCard = { id: number; name: string; plantings: PlantingSummary[] }
 /** weather_updating: a weather update for the pivot's cell is queued or running */
 export type PivotGroup = { id: number; name: string; weather_updating: boolean; fields: FieldCard[] }
 export type FarmGroup<P extends PivotGroup = PivotGroup> = { id: number; name: string; pivots: P[] }
@@ -13,34 +17,47 @@ export type Status = NonNullable<PlantingSummary['status']>
 /** Most urgent first */
 export const STATUSES: Status[] = ['irrigate', 'caution', 'ok', 'full']
 
-/** In season, with a status (not upcoming, ended, without a crop, or waiting for weather) */
 /** The pivots whose weather is being updated, so the page waits for it to land (lib/poll.ts) */
 export const updatingIds = (farms: FarmGroup[]) =>
   farms.flatMap((farm) => farm.pivots.filter((pivot) => pivot.weather_updating).map((pivot) => pivot.id))
 
 export const anyUpdating = (farms: FarmGroup[]) => updatingIds(farms).length > 0
 
-export const isActive = (card: FieldCard) =>
-  card.summary?.phase === 'active' && !card.summary.weather_pending && card.summary.status !== null
+/** In season, with a status (not upcoming, ended, or waiting for weather) */
+export const summaryActive = (summary: PlantingSummary | null) =>
+  summary?.phase === 'active' && !summary.weather_pending && summary.status !== null
 
 /**
- * Where a field stands, most urgent first: in season by status (irrigate, caution, ok, full), in
- * season without one yet, then upcoming, season ended, and no crop
+ * Where a planting stands, most urgent first: in season by status (irrigate, caution, ok, full), in
+ * season without one yet, then upcoming, season ended, and no crop (FieldStatuses.urgency)
  */
-export function urgency(card: FieldCard): number {
-  const summary = card.summary
+export function summaryUrgency(summary: PlantingSummary | null): number {
   if (!summary) return 7
   if (summary.phase === 'upcoming') return 5
   if (summary.phase === 'ended') return 6
-  return isActive(card) ? STATUSES.indexOf(summary.status!) : 4
+  return summaryActive(summary) ? STATUSES.indexOf(summary.status!) : 4
 }
 
-/** Days until the field needs water (0 when it does now), or null if not within the forecast */
-export function daysToIrrigate(card: FieldCard): number | null {
-  if (!isActive(card)) return null
-  if (card.summary!.status === 'irrigate') return 0
-  return card.summary!.crossing?.days ?? null
+/** Days until the planting needs water (0 when it does now), or null if not within the forecast */
+export function summaryDaysToIrrigate(summary: PlantingSummary | null): number | null {
+  if (!summaryActive(summary)) return null
+  if (summary!.status === 'irrigate') return 0
+  return summary!.crossing?.days ?? null
 }
+
+/** A field's most urgent planting, which places the field among the others; null without one */
+export function primary(card: FieldCard): PlantingSummary | null {
+  const soonest = (summary: PlantingSummary) => summaryDaysToIrrigate(summary) ?? Infinity
+  return card.plantings.toSorted((a, b) => summaryUrgency(a) - summaryUrgency(b) || soonest(a) - soonest(b))[0] ?? null
+}
+
+export const isActive = (card: FieldCard) => summaryActive(primary(card))
+
+/** Where a field stands: its most urgent planting's urgency (summaryUrgency) */
+export const urgency = (card: FieldCard): number => summaryUrgency(primary(card))
+
+/** Days until the field's first planting needs water (0 when one does now), or null if none within the forecast */
+export const daysToIrrigate = (card: FieldCard): number | null => summaryDaysToIrrigate(primary(card))
 
 /** In season and needing water within the next days (0: today) */
 export function needsWaterWithin(card: FieldCard, days: number): boolean {
@@ -50,7 +67,7 @@ export function needsWaterWithin(card: FieldCard, days: number): boolean {
 
 /** The most urgent status among a pivot's fields in season, or null if none is */
 export function pivotStatus(fields: FieldCard[]): Status | null {
-  const active = fields.filter(isActive).map((card) => card.summary!.status!)
+  const active = fields.flatMap((card) => card.plantings.filter(summaryActive).map((summary) => summary.status!))
   return STATUSES.find((status) => active.includes(status)) ?? null
 }
 

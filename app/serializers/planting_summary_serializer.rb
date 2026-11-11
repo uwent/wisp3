@@ -11,6 +11,11 @@ class PlantingSummarySerializer < ApplicationSerializer
   attribute(:plant_name) { |status| status.planting.plant.name }
   attribute(:variety) { |status| status.planting.variety }
   attribute(:season_start) { |status| status.planting.season_start }
+  # Part of the field (G.11): its size, for labels ("Soybean, 100 × 20 ft")
+  attribute(:partial) { |status| status.planting.partial? }
+  attribute(:area_acres) { |status| status.planting.area_acres }
+  attribute(:plot_length_ft) { |status| status.planting.plot_length_ft }
+  attribute(:plot_width_ft) { |status| status.planting.plot_width_ft }
   attribute(:end_date) { |status| status.planting.end_date }
   attribute(:phase, &:phase)
   attribute(:status, &:status)
@@ -58,6 +63,7 @@ class PlantingSummarySerializer < ApplicationSerializer
   end
 
   typelize planting_id: :number, plant_name: :string, variety: "string | null", season_start: :string,
+    partial: :boolean, area_acres: "number | null", plot_length_ft: "number | null", plot_width_ft: "number | null",
     end_date: :string, phase: "'upcoming' | 'active' | 'ended'",
     status: "'full' | 'ok' | 'caution' | 'irrigate' | null", weather_pending: :boolean, date: "string | null", ad: "number | null",
     pct_moisture: "number | null", taw: :number, ad_max: :number, ad_pwp: :number, target_in: "number | null",

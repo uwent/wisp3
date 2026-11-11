@@ -41,6 +41,7 @@ class Planting < ApplicationRecord
   validate :lai_needs_curve
   validate :wilting_point_below_capacity
   validate :no_overlap, if: -> { field && season_start && end_date }
+  validate :within_field_area, if: :partial?
   validate :entries_kept_with_part, if: -> { persisted? && will_save_change_to_partial? && !partial? }
 
   normalizes :variety, :notes, with: ->(text) { text.strip.presence }
@@ -108,6 +109,13 @@ class Planting < ApplicationRecord
     starts.any? { |date| together.select { |p| p.season_range.cover?(date) }.sum(&:area_acres) > field.area_acres }
   end
 
+  # Its size in stored units, for CSVs: "Whole field", "100 × 20 ft (0.046 acres)" or "0.25 acres"
+  def size_label
+    return "Whole field" unless partial?
+    acres = "#{format("%g", area_acres.round(3))} acres"
+    plot_length_ft ? "#{format("%g", plot_length_ft)} × #{format("%g", plot_width_ft)} ft (#{acres})" : acres
+  end
+
   def overlaps?(other) = season_start <= other.end_date && end_date >= other.season_start
 
   def season_range = season_start..end_date
@@ -148,6 +156,13 @@ class Planting < ApplicationRecord
     self.own_soil = false unless partial?
     return unless field && will_save_change_to_own_soil? && !own_soil? && !ended?
     self.soil_type, self.field_capacity, self.perm_wilting_pt = field.soil_type, field.field_capacity, field.perm_wilting_pt
+  end
+
+  # Part of a field can't be larger than the field (G.11); plots together can (a warning,
+  # exceeds_field_area?), since the field's area may be out of date
+  def within_field_area
+    return unless area_acres && field&.area_acres && area_acres > field.area_acres + 1e-6
+    errors.add(:area_acres, "is more than the field's #{format("%g", field.area_acres.round(2))} acres")
   end
 
   def entries_kept_with_part
