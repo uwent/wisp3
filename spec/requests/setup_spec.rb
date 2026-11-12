@@ -61,6 +61,15 @@ RSpec.describe "Setup", type: :request do
         radius_ft: nil)
     end
 
+    it "creates a traveler at a field, keeping no dimensions" do
+      post pivots_path, params: {pivot: {farm_id: farm.id, name: "Lane 3", kind: "traveler", latitude: 44.11,
+                                         longitude: -89.54, radius_ft: 1300, pump_capacity_gpm: 250,
+                                         equipment: "Hard hose reel #2"}}
+      expect(farm.pivots.sole).to have_attributes(kind: "traveler", radius_ft: nil, pump_capacity_gpm: 250,
+        equipment: "Hard hose reel #2")
+      expect(response).to redirect_to(setup_path)
+    end
+
     it "sends back a pivot too large to be real" do
       post pivots_path, params: {pivot: {farm_id: farm.id, name: "Huge", latitude: 44.11, longitude: -89.54, radius_ft: 4000}}
       follow_redirect!
@@ -131,7 +140,7 @@ RSpec.describe "Setup", type: :request do
       patch field_path(field), params: {field: {pivot_id: other.id}}, headers: {"HTTP_REFERER" => setup_url}
       expect(field.reload.pivot).to eq(pivot)
       follow_redirect!
-      expect(inertia.props[:errors][:pivot_id].first).to start_with("Pivot can't change for a field with earlier seasons")
+      expect(inertia.props[:errors][:pivot_id].first).to start_with("Irrigation system can't change for a field with earlier seasons")
       expect(inertia.props[:farms].first[:pivots].first[:fields].first[:ended_years]).to eq([2025])
     end
   end
@@ -232,8 +241,8 @@ RSpec.describe "Setup", type: :request do
       {
         export_planting_path(planting) => ["wisp-field-", "WISP daily report, 2026 season"],
         season_report_path(year: 2026) => ["wisp-season-", "WISP season report, 2026"],
-        weather_pivot_path(pivot, year: 2026) => ["wisp-weather-north-2026.csv", "WISP weather, North, 2026"],
-        pivot_irrigations_path(pivot, year: 2026) => ["wisp-irrigation-north-2026.csv", "WISP pivot irrigation, North, 2026"]
+        weather_pivot_path(pivot, year: 2026) => ["wisp-weather-north-2026.csv", "WISP weather, Pivot: North, 2026"],
+        pivot_irrigations_path(pivot, year: 2026) => ["wisp-irrigation-north-2026.csv", "WISP irrigation, Pivot: North, 2026"]
       }.each do |path, (filename, title)|
         get path
         expect(response.media_type).to eq("text/csv"), path

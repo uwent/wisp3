@@ -7,7 +7,7 @@
   import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import { shapeDraft } from '@/lib/geo'
+  import { isPoint, KIND_NOUNS, shapeDraft } from '@/lib/geo'
   import { typicalEnd } from '@/lib/plantings'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { quickSetups } from '@/routes'
@@ -29,6 +29,8 @@
 
   let farmId = $state<string>(untrack(() => (farms[0] ? String(farms[0].id) : '')))
   let shape = $state(shapeDraft())
+  // "pivot", "drip block"
+  const noun = $derived(KIND_NOUNS[shape.kind])
 
   // A field's soil follows the soil survey's suggestion until the user picks one
   let suggestedSoilId = $state<number | null>(null)
@@ -71,19 +73,18 @@
   confirmUnsavedChanges(() => !saved && (edited || shape.latitude !== null))
   const confirmNoFields = () =>
     rows.some((row) => row.name.trim()) ||
-    confirm(
-      "You haven't added any fields to this pivot. You can add them later in Setup. Save the pivot without fields?",
-    )
+    confirm(`You haven't added any fields to this ${noun}. You can add them later in Setup. Save it without fields?`)
 
   const error = (errors: Record<string, string | string[]>, key: string) => errors[key]
 </script>
 
-<svelte:head><title>Set up a pivot · WISP</title></svelte:head>
+<svelte:head><title>Set up an irrigation system · WISP</title></svelte:head>
 
 <div>
-  <h1 class="text-2xl font-semibold">Set up a pivot</h1>
+  <h1 class="text-2xl font-semibold">Set up an irrigation system</h1>
   <p class="text-sm text-ink-muted">
-    Place the pivot, then add the fields under it with their {year} crops. You can fine-tune everything later in Setup.
+    Place the pivot, traveler, drip block or other system, then add the fields it waters with their {year} crops. You can
+    fine-tune everything later in Setup.
   </p>
 </div>
 
@@ -95,7 +96,8 @@
         <div>
           <h2 class="text-lg font-medium">1. Farm</h2>
           <p class="text-sm text-ink-muted">
-            A farm groups pivots you want to view and manage together, such as one location or one operation.
+            A farm groups irrigation systems you want to view and manage together, such as one location or one
+            operation.
           </p>
         </div>
         {#if farms.length}
@@ -121,16 +123,16 @@
 
       <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
         <div>
-          <h2 class="text-lg font-medium">2. Pivot</h2>
+          <h2 class="text-lg font-medium">2. Irrigation system</h2>
           <p class="text-sm text-ink-muted">
-            Weather comes from the pivot's location, so place it where it really is. You can move it or change any of
-            this later in Setup.
+            Weather comes from its location, so place it where it really is. You can move it or change any of this later
+            in Setup.
           </p>
         </div>
         <TextField
-          label="Pivot name"
+          label="Name"
           name="setup[pivot][name]"
-          placeholder="e.g. North 160"
+          placeholder={shape.kind === 'center' ? 'e.g. North 160' : 'e.g. Home garden'}
           error={error(e, 'pivot.name')}
         />
         <PivotShapeFields
@@ -142,11 +144,11 @@
         />
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <NumberField
-            label="Pump capacity"
+            label={isPoint(shape.kind) ? 'Flow' : 'Pump capacity'}
             name="setup[pivot][pump_capacity_gpm]"
             quantity="flow"
             value={null}
-            hint="Optional. With it, you can enter irrigation as hours the pivot ran."
+            hint="Optional. With it, you can enter irrigation as hours the {noun} ran."
             error={error(e, 'pivot.pump_capacity_gpm')}
           />
         </div>
@@ -156,9 +158,9 @@
         <div>
           <h2 class="text-lg font-medium">3. Fields</h2>
           <p class="text-sm text-ink-muted">
-            Add each field under the pivot, with what's planted on it this season; a pivot split between two fields you
-            manage separately is two fields. If you leave the emergence date blank, WISP uses May 1. The harvest date
-            follows from the crop's typical season; change it if yours ends sooner or later. You can add fields and more
+            Add each field it waters, with what's planted on it this season; a pivot split between two fields you manage
+            separately is two fields. If you leave the emergence date blank, WISP uses May 1. The harvest date follows
+            from the crop's typical season; change it if yours ends sooner or later. You can add fields and more
             plantings later.
           </p>
         </div>

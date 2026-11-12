@@ -23,7 +23,7 @@
     field?: Field
     pivotId: number
     /** With their location, a new field gets the soil survey's suggestion for its pivot */
-    pivots: (Pick<Pivot, 'id' | 'name'> & Partial<PivotShape>)[]
+    pivots: (Pick<Pivot, 'id' | 'name'> & Partial<Pick<Pivot, 'kind_name'>> & Partial<PivotShape>)[]
     soilTypes: SoilType[]
     ondone: () => void
   } = $props()
@@ -66,14 +66,17 @@
     <TextField label="Name" name="field[name]" value={field?.name ?? ''} error={errors.name} required />
     <div class="grid gap-4 sm:grid-cols-2">
       <SelectField
-        label="Pivot"
+        label="Irrigation system"
         name="field[pivot_id]"
         bind:value={pivotChoice}
-        options={pivots.map((p) => ({ value: String(p.id), label: p.name }))}
+        options={pivots.map((p) => ({
+          value: String(p.id),
+          label: p.kind_name ? `${p.kind_name}: ${p.name}` : p.name,
+        }))}
         disabled={endedYears.length > 0}
         error={errors.pivot_id}
         hint={endedYears.length
-          ? `${endedText} ${endedYears.length === 1 ? 'stays' : 'stay'} with ${currentPivot?.name ?? 'this pivot'}. To grow on another pivot, add a new field there.`
+          ? `${endedText} ${endedYears.length === 1 ? 'stays' : 'stay'} with ${currentPivot?.name ?? 'this irrigation system'}. To grow under another system, add a new field there.`
           : undefined}
       />
       <NumberField

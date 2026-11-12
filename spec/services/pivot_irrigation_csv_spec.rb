@@ -9,7 +9,7 @@ RSpec.describe PivotIrrigationCsv do
     pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 3), inches: 0.5, notes: "-first pass")
     pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 8), run_hours: 10, field_ids: [east.id])
     rows = CSV.parse(described_class.new(pivot, 2026, pivot.pivot_irrigations.order(:date)).to_csv.delete_prefix(CsvExport::BOM))
-    expect(rows.first).to eq(["WISP pivot irrigation, North, 2026"])
+    expect(rows.first).to eq(["WISP irrigation, Pivot: North, 2026"])
     header = rows.index { |row| row.first == "Date" }
     data = rows[(header + 1)..]
     # 905 gpm × 600 min / (27,154 gal per acre-inch × 10 acres)

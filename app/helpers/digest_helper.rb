@@ -20,7 +20,7 @@ module DigestHelper
   end
 
   # The pivots of a weather zone in this email: "North 160, South 80"
-  def digest_zone_pivots(zone) = zone.pivots.map { |section| section.pivot.name }.join(", ")
+  def digest_zone_pivots(zone) = zone.pivots.map { |section| section.pivot.label }.join(", ")
 
   # "Allowable depletion 0.45 in of 1.20 in · 9.5% soil moisture", or just "Allowable depletion 0.45 in"
   def digest_ad(entry, digest, short: false)

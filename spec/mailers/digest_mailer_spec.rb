@@ -25,7 +25,7 @@ RSpec.describe DigestMailer do
     expect(text).to include("\n-- #{zone} --\n" \
       "   Past 7 days: 0.00 in rain · 1.40 in ET · highs 85°F, lows 60°F\n" \
       "   Next 7 days: 0.00 in rain · 1.40 in ET · highs 88°F, lows 62°F\n" \
-      "   Pivots in this zone: Pivot 1\n\n   Pivot: Pivot 1\n")
+      "   Irrigation systems in this zone: Pivot: Pivot 1\n\n   Pivot: Pivot 1\n")
     expect(text).to include("This email lists 2 fields on 1 pivot, out of the 2 fields on 1 pivot in your alert settings (2 have a crop this season).")
     expect(text).to include("     Field: Fine [✓ OK] Potato · Allowable depletion 1.00 in\n     Irrigate by Sat, Jul 25\n")
     expect(text).to include("     Field: Soon [! Caution] Potato · Allowable depletion 0.28 in of 1.20 in · 11.2% soil moisture\n     Irrigate by Wed, Jul 22. Projected")
@@ -117,7 +117,7 @@ RSpec.describe DigestMailer do
     user.update!(digest_scope: "needs_irrigation")
     mail = described_class.daily(DailyDigest.new(user))
     expect(mail.text_part.body.decoded).to include("Nothing needs your attention today. No field needs irrigation now or within 3 days.")
-    expect(mail.text_part.body.decoded).to include("Pivots in this zone: Pivot 1")
+    expect(mail.text_part.body.decoded).to include("Irrigation systems in this zone: Pivot: Pivot 1")
     expect(mail.text_part.body.decoded).not_to include("Field: Fine")
   end
 

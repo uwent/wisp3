@@ -1,8 +1,10 @@
 <script module lang="ts">
-  /** Our sources (pivots, and overlays named overlay-*), carried over when the basemap changes */
-  export const isOwnSource = (id: string) => id === 'pivots' || id.startsWith('overlay-')
+  /** Our sources (irrigation groups, pivots, and overlays named overlay-*), carried over when the basemap changes */
+  export const isOwnSource = (id: string) => id === 'pivots' || id === 'groups' || id.startsWith('overlay-')
   /** Overlays go under the pivots */
   export const PIVOT_LAYER = 'pivots-fill'
+  /** Point kinds' dots (a traveler, drip, a location) */
+  export const POINT_LAYER = 'pivots-point'
 </script>
 
 <script lang="ts">
@@ -17,19 +19,21 @@
   import { onThemeChange } from '@/lib/theme'
   import type { UnitSystem } from '@/lib/units'
 
-  import { basemapStyle, type Basemap, setBasemap } from './basemaps'
+  import { basemapStyle, type Basemap, LABEL_FONT, setBasemap } from './basemaps'
   import BasemapToggle from './BasemapToggle.svelte'
   import { ButtonControl, FIT_ICON } from './controls'
   import { loadMapLibre } from './maplibre'
   import PivotMarker from './PivotMarker.svelte'
-  import { type MapPivot, pivotBounds, pivotFeatures } from './pivots'
+  import { type FeatureCollection, type MapPivot, pivotBounds, pivotFeatures } from './pivots'
   import PlaceSearch from './PlaceSearch.svelte'
 
-  // The operation's pivots on a map (PLAN.md Phase 7): each drawn to scale in its most urgent
-  // field's status color, with a marker of its fields' badges at the center. Clicking a pivot selects
+  // The operation's irrigation systems on a map (PLAN.md Phase 7): each drawn to scale in its most
+  // urgent field's status color (a point kind as a dot), with a marker of its fields' badges at the
+  // center, and each irrigation group lightly outlined around its systems. Clicking a system selects
   // it; the page shows its details in the panel (children) and the toolbar adds to the top-left.
   let {
     pivots,
+    groups,
     selectedId,
     highlighted,
     basemap,
@@ -43,6 +47,8 @@
     children,
   }: {
     pivots: MapPivot[]
+    /** The irrigation groups' outlines (groupFeatures) */
+    groups: FeatureCollection<{ name: string }>
     selectedId: number | null
     /** The pivots in the "needs water within" window (others are dimmed), or null for none */
     highlighted: Set<number> | null
@@ -98,13 +104,51 @@
     ]
   }
 
+  const POLYGONS: ExpressionSpecification = ['==', ['geometry-type'], 'Polygon']
+
   function addPivotLayers(m: MapLibreMap) {
+    // Irrigation groups: a light shade inside a dotted line, named along it
+    m.addSource('groups', { type: 'geojson', data: groups })
+    m.addLayer({
+      id: 'groups-fill',
+      type: 'fill',
+      source: 'groups',
+      paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.08 },
+    })
+    m.addLayer({
+      id: 'groups-casing',
+      type: 'line',
+      source: 'groups',
+      paint: { 'line-color': '#000000', 'line-width': 3, 'line-opacity': 0.3 },
+    })
+    m.addLayer({
+      id: 'groups-line',
+      type: 'line',
+      source: 'groups',
+      paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-dasharray': [1, 2] },
+      layout: { 'line-cap': 'round' },
+    })
+    m.addLayer({
+      id: 'groups-label',
+      type: 'symbol',
+      source: 'groups',
+      layout: {
+        'symbol-placement': 'line',
+        'text-field': ['get', 'name'],
+        'text-size': 12,
+        'text-font': LABEL_FONT,
+        'text-offset': [0, -0.8],
+      },
+      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
+    })
+
     m.addSource('pivots', { type: 'geojson', data: features() })
     const color = statusColor()
     m.addLayer({
       id: PIVOT_LAYER,
       type: 'fill',
       source: 'pivots',
+      filter: POLYGONS,
       paint: {
         'fill-color': color,
         'fill-opacity': ['case', ['get', 'dimmed'], 0.05, ['get', 'selected'], 0.4, 0.22],
@@ -115,6 +159,7 @@
       id: 'pivots-casing',
       type: 'line',
       source: 'pivots',
+      filter: POLYGONS,
       paint: {
         'line-color': '#ffffff',
         'line-width': ['case', ['get', 'selected'], 6, 3.5],
@@ -125,10 +170,26 @@
       id: 'pivots-line',
       type: 'line',
       source: 'pivots',
+      filter: POLYGONS,
       paint: {
         'line-color': color,
         'line-width': ['case', ['get', 'selected'], 3.5, 2],
         'line-opacity': ['case', ['get', 'dimmed'], 0.35, 1],
+      },
+    })
+    // A point kind (a traveler, drip, a location) is a dot under its marker, the same size at any zoom
+    m.addLayer({
+      id: POINT_LAYER,
+      type: 'circle',
+      source: 'pivots',
+      filter: ['==', ['geometry-type'], 'Point'],
+      paint: {
+        'circle-color': color,
+        'circle-radius': ['case', ['get', 'selected'], 22, 18],
+        'circle-opacity': ['case', ['get', 'dimmed'], 0.1, ['get', 'selected'], 0.55, 0.35],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': ['case', ['get', 'selected'], 3, 2],
+        'circle-stroke-opacity': ['case', ['get', 'dimmed'], 0.3, 0.85],
       },
     })
   }
@@ -169,6 +230,9 @@
     map?.getSource<GeoJSONSource>('pivots')?.setData(features())
     syncMarkers()
   })
+  $effect(() => {
+    map?.getSource<GeoJSONSource>('groups')?.setData(groups)
+  })
 
   /** Fits the map to these pivots (all of them by default) */
   export function fit(some: MapPivot[] = pivots, animate = true) {
@@ -201,7 +265,7 @@
 
   function onClick(event: MapMouseEvent) {
     placeSearch?.close()
-    const hit = map?.queryRenderedFeatures(event.point, { layers: [PIVOT_LAYER] })[0]
+    const hit = map?.queryRenderedFeatures(event.point, { layers: [POINT_LAYER, PIVOT_LAYER] })[0]
     onselect(hit ? Number(hit.properties.id) : null)
   }
 
@@ -220,7 +284,7 @@
       map = m
       m.addControl(new maplibre.AttributionControl({ compact: true, customAttribution: GEOCODER_ATTRIBUTION }))
       m.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right')
-      m.addControl(new ButtonControl('Fit all pivots', FIT_ICON, () => fit()), 'top-right')
+      m.addControl(new ButtonControl('Fit all irrigation systems', FIT_ICON, () => fit()), 'top-right')
       m.addControl(
         new maplibre.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false }),
         'top-right',
@@ -235,8 +299,10 @@
         onload?.(m)
       })
       m.on('click', onClick)
-      m.on('mouseenter', PIVOT_LAYER, () => (m.getCanvas().style.cursor = 'pointer'))
-      m.on('mouseleave', PIVOT_LAYER, () => (m.getCanvas().style.cursor = ''))
+      for (const layer of [PIVOT_LAYER, POINT_LAYER]) {
+        m.on('mouseenter', layer, () => (m.getCanvas().style.cursor = 'pointer'))
+        m.on('mouseleave', layer, () => (m.getCanvas().style.cursor = ''))
+      }
       m.on('zoom', () => (zoom = m.getZoom()))
       m.on('moveend', () => {
         const { lng, lat } = m.getCenter()
@@ -256,6 +322,7 @@
           if (!m.getLayer(PIVOT_LAYER)) return
           m.setPaintProperty(PIVOT_LAYER, 'fill-color', color)
           m.setPaintProperty('pivots-line', 'line-color', color)
+          m.setPaintProperty(POINT_LAYER, 'circle-color', color)
         }),
       )
     })

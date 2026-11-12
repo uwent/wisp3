@@ -1,7 +1,7 @@
 <% c = EmailHelper::COLORS %>
 <% muted = email_style(:muted) %>
 <% rule = email_style(:rule) %>
-<%# Heading levels follow the sections shown, so none is skipped (operation, farm, then zone and pivot) %>
+<%# Heading levels follow the sections shown, so none is skipped (operation, farm, then zone and irrigation system) %>
 <% farm_level = @digest.several_groups? ? 3 : 2 %>
 <% zone_level = farm_level + (@digest.several_farms? ? 1 : 0) %>
 <h1 style="<%= email_style(:h1) %>">Your fields this morning</h1>
@@ -56,14 +56,14 @@
             <%= content_tag "h#{zone_level}", digest_zone(zone), style: "font-size:14px;line-height:1.3;margin:0 0 4px" %>
             <p style="margin:0;font-size:12px;line-height:1.5;<%= muted %>">
               <%= safe_join(digest_weather(zone, @digest), tag.br) %><br>
-              Pivots in this zone: <%= digest_zone_pivots(zone) %>
+              Irrigation systems in this zone: <%= digest_zone_pivots(zone) %>
             </p>
           </td>
         </tr>
         <tr>
           <td style="<%= email_style(:card_body) %>">
             <% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
-              <%= content_tag "h#{zone_level + 1}", style: "font-size:15px;line-height:1.3;margin:12px 0 4px" do %><span style="font-weight:400;<%= muted %>">Pivot:</span> <%= email_link_to pivot_section.pivot.name, pivot_link(pivot_section.pivot) %><% end %>
+              <%= content_tag "h#{zone_level + 1}", style: "font-size:15px;line-height:1.3;margin:12px 0 4px" do %><span style="font-weight:400;<%= muted %>"><%= pivot_section.pivot.kind_name %>:</span> <%= email_link_to pivot_section.pivot.name, pivot_link(pivot_section.pivot) %><% end %>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px">
                 <% pivot_section.entries.each do |entry| %>
                   <tr>

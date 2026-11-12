@@ -21,7 +21,7 @@
     actions,
   }: {
     field: Field
-    pivot: { id: number; name: string }
+    pivot: { id: number; name: string; kind_name: string }
     farm: { id: number; name: string }
     units: Units
     year: number
@@ -55,7 +55,7 @@
     <div class="min-w-0">
       <nav aria-label="Breadcrumb" class="text-sm text-ink-muted">
         {farm.name} ›
-        <Link href={pivots.show(pivot.id)} class="underline underline-offset-2">{pivot.name}</Link>
+        <Link href={pivots.show(pivot.id)} class="underline underline-offset-2">{pivot.kind_name}: {pivot.name}</Link>
       </nav>
       <h1 class="text-2xl font-semibold">{field.name}</h1>
       <p class="text-sm text-ink-muted">

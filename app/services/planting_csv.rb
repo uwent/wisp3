@@ -17,12 +17,12 @@ class PlantingCsv
       days = @status.days
       frontmatter(csv, "WISP daily report, #{planting.season_year} season", {
         "Operation" => field.pivot.farm.group.name,
-        "Field" => "#{field.pivot.farm.name} / #{field.pivot.name} / #{field.name}",
+        "Field" => "#{field.pivot.farm.name} / #{field.pivot.label} / #{field.name}",
         "Days" => days.any? ? "#{days.first.inputs.date} to #{days.last.inputs.date}, one row each" : "none yet",
         **weather_corrections
       }, exported_by: @exported_by, about_url: @about_url)
-      csv << ["Farm", "Pivot", "Equipment", "Field", "Area (acres)", "Part of the field"]
-      csv << [text(field.pivot.farm.name), text(field.pivot.name), text(field.pivot.equipment), text(field.name),
+      csv << ["Farm", "Irrigation system", "Kind", "Equipment", "Field", "Area (acres)", "Part of the field"]
+      csv << [text(field.pivot.farm.name), text(field.pivot.name), field.pivot.kind_name, text(field.pivot.equipment), text(field.name),
         planting.area_acres, planting.size_label]
       csv << ["Soil type", "Field capacity (%)", "Wilting point (%)", "Target AD (%)"]
       csv << [planting.soil_type.name, pct(params.field_capacity), pct(params.perm_wilting_pt), planting.target_ad_pct]

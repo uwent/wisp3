@@ -83,10 +83,10 @@
 
 {#if farms.length === 0}
   <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-12 text-center">
-    <h2 class="text-lg font-medium">Set up your first pivot</h2>
+    <h2 class="text-lg font-medium">Set up your first irrigation system</h2>
     <p class="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-      Place it on the map and add its fields and crops. It takes a few minutes, and WISP starts tracking each field's
-      soil water straight away.
+      Place your pivot, traveler, drip block or other system on the map and add its fields and crops. It takes a few
+      minutes, and WISP starts tracking each field's soil water straight away.
     </p>
     <Link
       href={newQuickSetup()}
@@ -99,7 +99,7 @@
   {#if !anyFields}
     <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-8 text-center">
       <h2 class="text-lg font-medium">No fields yet</h2>
-      <p class="mt-2 text-sm text-ink-muted">Add fields to your pivots to see their water status here.</p>
+      <p class="mt-2 text-sm text-ink-muted">Add fields to your irrigation systems to see their water status here.</p>
       <Link href={setup.show()} class="mt-4 inline-block text-sm text-brand-600 hover:underline">Go to setup</Link>
     </section>
   {:else}
@@ -119,7 +119,7 @@
         >
           <div class="flex items-center justify-between gap-3">
             <h3 id="pivot-{pivot.id}" class="min-w-0 truncate font-medium">
-              <span class="font-normal text-ink-muted">Pivot:</span>
+              <span class="font-normal text-ink-muted">{pivot.kind_name}:</span>
               <Link
                 href={pivots.show(pivot.id)}
                 class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current">{pivot.name}</Link
@@ -153,7 +153,7 @@
       {/each}
       {#if farm.pivots.length === 0}
         <p class="text-sm text-ink-muted">
-          No pivots yet. <Link href={setup.show()} class="text-brand-600 underline underline-offset-2"
+          No irrigation systems yet. <Link href={setup.show()} class="text-brand-600 underline underline-offset-2"
             >Add one in setup</Link
           >.
         </p>

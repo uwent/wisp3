@@ -2,7 +2,7 @@ import type { Map as MapLibreMap, MapMouseEvent, MapSourceDataEvent, RasterTileS
 
 import { type LngLat, pointInPolygon } from '@/lib/geo'
 
-import { PIVOT_LAYER } from './OverviewMap.svelte'
+import { PIVOT_LAYER, POINT_LAYER } from './OverviewMap.svelte'
 import {
   type Bounds,
   DROUGHT_CATEGORIES,
@@ -96,7 +96,8 @@ export class MapOverlays {
       })
     }
     map.on('click', (event) => {
-      if (map.getLayer(PIVOT_LAYER) && map.queryRenderedFeatures(event.point, { layers: [PIVOT_LAYER] }).length) return
+      const systems = [PIVOT_LAYER, POINT_LAYER].filter((layer) => map.getLayer(layer))
+      if (systems.length && map.queryRenderedFeatures(event.point, { layers: systems }).length) return
       this.probeAt(event)
     })
     map.on('movestart', () => this.#clearProbe())

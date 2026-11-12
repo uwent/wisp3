@@ -14,7 +14,7 @@ class PivotGroupsController < AuthenticatedController
   def destroy
     pivot_group = Current.group.pivot_groups.find(params[:id])
     pivot_group.destroy!
-    redirect_to setup_path, notice: "Deleted #{pivot_group.name}; its pivots are no longer grouped"
+    redirect_to setup_path, notice: "Deleted #{pivot_group.name}; its irrigation systems are no longer grouped"
   end
 
   private

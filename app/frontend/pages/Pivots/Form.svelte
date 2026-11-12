@@ -7,7 +7,7 @@
   import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import { draftShape, type PivotShape, shapeDraft } from '@/lib/geo'
+  import { draftShape, isPoint, KIND_NAMES, KIND_NOUNS, type PivotKind, type PivotShape, shapeDraft } from '@/lib/geo'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { pivots, setup } from '@/routes'
   import type { Pivot, SoilType } from '@/types/serializers'
@@ -37,16 +37,30 @@
   let saved = $state(false)
   const moved = $derived(JSON.stringify(draftShape(shape)) !== initial)
   confirmUnsavedChanges(() => !saved && (edited || moved))
+
+  // The kind as saved, for the title; the kind being chosen, for the words below it
+  const title = $derived(
+    editing ? `Edit ${KIND_NAMES[pivot.kind ?? 'center']}: ${pivot.name}` : 'Add an irrigation system',
+  )
+  const noun = $derived(KIND_NOUNS[shape.kind])
+  const EQUIPMENT_EXAMPLES: Record<PivotKind, string> = {
+    center: 'e.g. Valley 8000, end gun',
+    linear: 'e.g. Zimmatic 9500L, hose drag',
+    traveler: 'e.g. Hard hose reel #2',
+    solid_set: 'e.g. Impact sprinklers, 40 × 40 ft',
+    drip: 'e.g. 15 mil tape, 12 in emitters',
+    point: '',
+  }
 </script>
 
-<svelte:head><title>{editing ? `Edit ${pivot.name}` : 'Add a pivot'} · WISP</title></svelte:head>
+<svelte:head><title>{title} · WISP</title></svelte:head>
 
 <div>
   <Link href={setup.show()} class="text-sm text-brand-600 hover:underline">← Setup</Link>
-  <h1 class="text-2xl font-semibold">{editing ? `Edit ${pivot.name}` : 'Add a pivot'}</h1>
+  <h1 class="text-2xl font-semibold">{title}</h1>
   <p class="text-sm text-ink-muted">
-    Weather comes from the pivot's location. {editing
-      ? 'If you move the pivot, WISP gets weather for its new location.'
+    Weather comes from its location. {editing
+      ? `If you move the ${noun}, WISP gets weather for its new location.`
       : 'You can move it or change any of this after it’s created.'}
   </p>
 </div>
@@ -62,7 +76,7 @@
             name="pivot[farm_id]"
             value={String(pivot.farm_id ?? farms[0]?.id ?? '')}
             options={farms.map((farm) => ({ value: String(farm.id), label: farm.name }))}
-            hint="A farm groups pivots you want to view and manage together"
+            hint="A farm groups irrigation systems you want to view and manage together"
             error={errors.farm}
           />
         </div>
@@ -77,18 +91,19 @@
 
       <section class="grid gap-4 rounded-lg border border-line bg-surface-raised p-6 sm:grid-cols-2">
         <NumberField
-          label="Pump capacity"
+          label={isPoint(shape.kind) ? 'Flow' : 'Pump capacity'}
           name="pivot[pump_capacity_gpm]"
           quantity="flow"
           value={pivot.pump_capacity_gpm ?? null}
-          hint="With it, you can enter irrigation as hours the pivot ran."
+          hint="With it, you can enter irrigation as hours the {noun} ran."
           error={errors.pump_capacity_gpm}
         />
         <TextField
           label="Equipment"
           name="pivot[equipment]"
           value={pivot.equipment ?? ''}
-          placeholder="e.g. Valley 8000, end gun"
+          placeholder={EQUIPMENT_EXAMPLES[shape.kind]}
+          hint={shape.kind === 'traveler' ? 'The machine, named the same at each field it waters' : undefined}
         />
         <div class="space-y-1 sm:col-span-2">
           <label for="pivot-notes" class="block text-sm font-medium">Notes</label>
@@ -98,7 +113,7 @@
         </div>
       </section>
 
-      <Button type="submit" disabled={processing}>{editing ? 'Save pivot' : 'Add pivot'}</Button>
+      <Button type="submit" disabled={processing}>{editing ? 'Save' : 'Add irrigation system'}</Button>
     </div>
   {/snippet}
 </Form>

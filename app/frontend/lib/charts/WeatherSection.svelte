@@ -27,7 +27,7 @@
   // units: the user's for the charts, imperial (as stored) for each chart's CSV. exports: the
   // place and file name for those CSVs, and the link to the pivot's whole weather CSV.
   let {
-    title = 'Weather at this pivot',
+    title = 'Weather at this location',
     panels: build,
     days,
     units,
@@ -115,7 +115,7 @@
     const rows = [
       ...frontmatter(`WISP weather chart: ${panel.title}, ${exports.place}`, {
         Operation: page.props.auth.group?.name,
-        Pivot: exports.place,
+        'Irrigation system': exports.place,
         Days:
           `${days[0].date} to ${days.at(-1)!.date}, one row each` +
           (forecast ? `; ${forecast === 1 ? 'the last is' : `the last ${forecast} are`} from the latest forecast` : ''),
@@ -143,7 +143,7 @@
       (i) on a chart to learn what it shows. {@render children?.()}
       Each chart's data downloads from its "Summary and data", or
       <a href={exports.href} class="text-brand-600 underline underline-offset-2" download
-        >download all of this pivot's weather</a
+        >download all of this location's weather</a
       >
       (CSV, in inches and °F).
     </p>

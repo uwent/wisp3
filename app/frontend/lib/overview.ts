@@ -9,8 +9,23 @@ import type { PlantingSummary } from '@/types/serializers'
  */
 export type FieldCard = { id: number; name: string; plantings: PlantingSummary[] }
 /** weather_updating: a weather update for the pivot's cell is queued or running */
-export type PivotGroup = { id: number; name: string; weather_updating: boolean; fields: FieldCard[] }
-export type FarmGroup<P extends PivotGroup = PivotGroup> = { id: number; name: string; pivots: P[] }
+export type PivotGroup = {
+  id: number
+  name: string
+  /** "Pivot", "Traveler" (Pivot::KIND_NAMES) */
+  kind_name: string
+  /** Its irrigation group (PivotGroup), if any */
+  pivot_group_id: number | null
+  weather_updating: boolean
+  fields: FieldCard[]
+}
+export type FarmGroup<P extends PivotGroup = PivotGroup> = {
+  id: number
+  name: string
+  /** Its irrigation groups */
+  pivot_groups: { id: number; name: string }[]
+  pivots: P[]
+}
 
 export type Status = NonNullable<PlantingSummary['status']>
 
@@ -74,7 +89,7 @@ export function pivotStatus(fields: FieldCard[]): Status | null {
 
 export type ListItem = {
   card: FieldCard
-  pivot: { id: number; name: string; latitude: number; weather_updating: boolean }
+  pivot: { id: number; name: string; kind_name: string; latitude: number; weather_updating: boolean }
   farm: { id: number; name: string }
 }
 

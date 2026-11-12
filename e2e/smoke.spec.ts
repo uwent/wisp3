@@ -175,7 +175,7 @@ test('quick setup suggests the soil from the soil survey under the pivot', async
 /** Drags a map handle (a marker, found by its title) by dx, dy pixels, once the map has settled */
 /** Clicks the pivot picker's map once MapLibre is ready for it */
 async function placePivot(page: Page) {
-  const map = page.getByRole('application', { name: /click to place the pivot/ })
+  const map = page.getByRole('application', { name: /click to place the / })
   await expect(map.locator('canvas')).toBeVisible()
   await map.click()
 }
@@ -203,7 +203,7 @@ async function dragHandle(page: Page, title: string, dx: number, dy: number) {
 test('a linear move is sized by dragging a corner and turned by its handle', async ({ page }) => {
   const name = `Ditch linear ${Date.now()}`
   await page.goto('/pivots/new')
-  await page.getByLabel('Name').fill(name)
+  await page.getByLabel('Name', { exact: true }).fill(name)
   await page.getByLabel(/Linear move/).check()
   await placePivot(page)
   const travel = page.getByLabel('Travel distance')
@@ -214,15 +214,39 @@ test('a linear move is sized by dragging a corner and turned by its handle', asy
   await expect(direction).toHaveValue('0')
   await dragHandle(page, 'Drag to turn the linear move', 60, 0)
   await expect(direction).not.toHaveValue('0')
-  await page.getByRole('button', { name: 'Add pivot' }).click()
-  const row = page.getByRole('heading', { name }).locator('../..')
-  await expect(row).toContainText(/linear move, 1,300 ft long, travels [\d,]+ ft at \d+° from north/)
+  await page.getByRole('button', { name: 'Add irrigation system' }).click()
+  const row = page.getByRole('heading', { name: `Linear: ${name}` }).locator('../..')
+  // Dragging a corner by pixels can nudge the length a few feet as well as the travel
+  await expect(row).toContainText(/1,[23]\d\d ft long, travels [\d,]+ ft at \d+° from north/)
 
   // Delete it again: a new pivot sorts first on the dashboard, and its weather cell has no seeded
   // weather, so leaving it would change what later tests open
   page.once('dialog', (dialog) => dialog.accept())
   await row.getByRole('button', { name: 'Delete' }).click()
-  await expect(page.getByRole('heading', { name })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: `Linear: ${name}` })).toHaveCount(0)
+})
+
+test('a traveler is placed with a click and keeps no shape', async ({ page }) => {
+  const name = `Lane ${Date.now()}`
+  await page.goto('/pivots/new')
+  await page.getByLabel('Name', { exact: true }).fill(name)
+  await page.getByRole('radio', { name: /^Traveler/ }).check()
+  await expect(page.getByLabel('Radius')).toHaveCount(0)
+  await expect(page.getByLabel('Flow')).toBeVisible()
+  const map = page.getByRole('application', { name: /click to place the traveler/ })
+  await expect(map.locator('canvas')).toBeVisible()
+  await map.click()
+  await expect(page.getByText('Drag the pin to move the traveler.')).toBeVisible()
+  await page.getByLabel('Equipment', { exact: true }).fill('Hard hose reel #9')
+  await page.getByRole('button', { name: 'Add irrigation system' }).click()
+  const heading = page.getByRole('heading', { name: `Traveler: ${name}` })
+  const row = heading.locator('../..')
+  await expect(row).toContainText('Hard hose reel #9')
+  await expect(row).not.toContainText('radius')
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await row.getByRole('button', { name: 'Delete' }).click()
+  await expect(heading).toHaveCount(0)
 })
 
 test("a partial circle's arc is set by dragging its ends", async ({ page }) => {
@@ -464,7 +488,7 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   // Setup: each level labelled, the field's plantings on a timeline, each opening its form, with its size
   await page.goto('/setup')
   await expect(page.getByRole('heading', { name: 'Farm: Arlington Research' })).toBeVisible()
-  const station = page.getByRole('heading', { name: 'Irrigation system: Station pivot' })
+  const station = page.getByRole('heading', { name: 'Pivot: Station pivot' })
   await expect(station.getByRole('link', { name: 'Station pivot' })).toBeVisible()
   const bars = page.getByRole('list', { name: /^Plantings on Arlington 525/ })
   await bars.getByRole('button', { name: /^Edit Soybean/ }).click()
@@ -575,7 +599,7 @@ test('daily entry saves rain for a field', async ({ page }) => {
   await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('')
 })
 
-test('daily entry fills a pivot group’s rain into its fields, and saves a plot’s irrigation and a cover reading', async ({
+test('daily entry fills an irrigation group’s rain into its fields, and saves a plot’s irrigation and a cover reading', async ({
   page,
 }) => {
   await page.goto(midSeason)
@@ -602,11 +626,11 @@ test('daily entry fills a pivot group’s rain into its fields, and saves a plot
   await expect(cover).toHaveValue('30')
 
   // Collapsing the group is remembered
-  await page.getByRole('button', { name: 'Pivots in River gauge' }).click()
+  await page.getByRole('button', { name: 'Irrigation systems in River gauge' }).click()
   await expect(rain('Hay north')).toBeHidden()
   await page.reload()
   await expect(rain('Hay north')).toBeHidden()
-  await page.getByRole('button', { name: 'Pivots in River gauge' }).click()
+  await page.getByRole('button', { name: 'Irrigation systems in River gauge' }).click()
 
   // Leave the day as it was for other tests: one value from the group, then clear it from there
   await gauge.fill('0.4')
@@ -658,7 +682,7 @@ test('adding a pivot irrigation on a date that has one offers to edit it instead
 test('the weather charts follow the page width without overlapping', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 900 })
   await page.goto(await firstPlantingPath(page))
-  const weather = page.getByRole('button', { name: 'Weather at this pivot' })
+  const weather = page.getByRole('button', { name: 'Weather at this location' })
   if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
   const card = (name: string) =>
     page
@@ -682,7 +706,7 @@ test('the weather charts follow the page width without overlapping', async ({ pa
 test('a weather chart explains itself, and zooms the rest with it', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto(await firstPlantingPath(page))
-  const weather = page.getByRole('button', { name: 'Weather at this pivot' })
+  const weather = page.getByRole('button', { name: 'Weather at this location' })
   if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
 
   const info = page.getByRole('button', { name: 'About the Precipitation chart' })
@@ -732,14 +756,14 @@ test('setup downloads the season report, and a pivot its weather', async ({ page
   expect(report.suggestedFilename()).toMatch(/^wisp-season-.+\.csv$/)
   const csv = readFileSync(await report.path(), 'utf8')
   expect(csv).toMatch(/^\uFEFF"?WISP season report, \d{4}/)
-  expect(csv).toContain('Irrigation by pivot')
+  expect(csv).toContain('Irrigation by irrigation system')
 
   await page.goto(await firstPlantingPath(page))
-  const weather = page.getByRole('button', { name: 'Weather at this pivot' })
+  const weather = page.getByRole('button', { name: 'Weather at this location' })
   if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
   const [all] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('link', { name: "download all of this pivot's weather" }).click(),
+    page.getByRole('link', { name: "download all of this location's weather" }).click(),
   ])
   expect(readFileSync(await all.path(), 'utf8')).toMatch(/^\uFEFF"?WISP weather, /)
 })

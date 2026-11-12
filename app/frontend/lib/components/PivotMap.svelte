@@ -13,17 +13,21 @@
     draftShape,
     edgePointer,
     FEET_PER_METER,
+    isPoint,
+    KIND_NOUNS,
     MAX_RADIUS_FT,
     MIN_SIZE_FT,
     pivotOutline,
     linearCorners,
     linearOf,
     offset,
+    POINT_SURVEY_RADIUS_FT,
     resizeLinear,
     snapBearing,
     sweep,
     travelArrow,
     type LngLat,
+    type PivotKind,
     type PivotShape,
     type ShapeDraft,
   } from '@/lib/geo'
@@ -40,7 +44,8 @@
   // center or the handles to adjust it. A center pivot has a handle on its edge for the radius and,
   // for a partial circle, one at each end of the arc; a linear move has handles on two opposite
   // corners (its front left and back right, facing its direction of travel) and one past its front
-  // end that turns it. The group's other pivots are drawn for reference. A place search moves
+  // end that turns it. A point kind (a traveler, drip, a location) is just the pin. The group's
+  // other irrigation systems are drawn for reference. A place search moves
   // the map (it doesn't place the pivot), and an arrow at the edge points back to the pivot when
   // it's out of view.
   let {
@@ -68,6 +73,16 @@
   const SOIL_ZOOM = 13
   const SOIL_MARGIN_M = 900
 
+  // Where to click, for each kind
+  const PLACE_HINTS: Record<PivotKind, string> = {
+    center: 'Click the map at the center of the pivot, or enter its coordinates below',
+    linear: 'Click the map in the middle of the area the linear move irrigates, or enter its coordinates below',
+    traveler: 'Click the map at the field this traveler waters, or enter its coordinates below',
+    solid_set: 'Click the map at the middle of the solid set block, or enter its coordinates below',
+    drip: 'Click the map at the middle of the drip block, or enter its coordinates below',
+    point: 'Click the map at the field, or enter its coordinates below',
+  }
+
   type Handle = 'radius' | 'start' | 'end' | 'frontLeft' | 'backRight' | 'rotate'
 
   let container: HTMLDivElement
@@ -89,6 +104,9 @@
   let placeSearch: PlaceSearch | undefined = $state()
 
   const linear = $derived(shape.kind === 'linear')
+  const point = $derived(isPoint(shape.kind))
+  // "pivot", "drip block"
+  const noun = $derived(KIND_NOUNS[shape.kind])
   const outline = $derived(draftShape(shape))
   const center = $derived<LngLat | null>(outline && [outline.longitude, outline.latitude])
   const radiusM = $derived((shape.radiusFt ?? DEFAULT_RADIUS_FT) / FEET_PER_METER)
@@ -96,7 +114,13 @@
     linearOf({ length_ft: shape.lengthFt, travel_ft: shape.travelFt, travel_bearing_deg: shape.travelBearing }),
   )
   // How far the pivot reaches from its center
-  const reachM = $derived(linear ? Math.hypot(machine.lengthFt, machine.travelFt) / 2 / FEET_PER_METER : radiusM)
+  const reachM = $derived(
+    point
+      ? POINT_SURVEY_RADIUS_FT / FEET_PER_METER
+      : linear
+        ? Math.hypot(machine.lengthFt, machine.travelFt) / 2 / FEET_PER_METER
+        : radiusM,
+  )
   // The turning handle sits past the end of the linear nearer where it was last dragged
   let rotateBack = $state(false)
   const rotatePosition = $derived.by(() => {
@@ -123,13 +147,31 @@
     }
   }
 
+  // Another system: its outline, or a point kind's location
+  function otherFeature(other: Outline) {
+    const ring = pivotOutline(other)
+    if (ring) return feature(ring, other.name)
+    return {
+      type: 'Feature' as const,
+      properties: { name: other.name },
+      geometry: { type: 'Point' as const, coordinates: [other.longitude, other.latitude] as LngLat },
+    }
+  }
+
   function addLayers(m: MapLibreMap) {
     m.addSource('others', {
       type: 'geojson',
       data: {
         type: 'FeatureCollection',
-        features: others.map((other) => feature(pivotOutline(other), other.name)),
+        features: others.map(otherFeature),
       },
+    })
+    m.addLayer({
+      id: 'others-point',
+      type: 'circle',
+      source: 'others',
+      filter: ['==', ['geometry-type'], 'Point'],
+      paint: { 'circle-radius': 6, 'circle-color': '#ffffff', 'circle-opacity': 0.7 },
     })
     m.addLayer({
       id: 'others-line',
@@ -141,7 +183,13 @@
       id: 'others-label',
       type: 'symbol',
       source: 'others',
-      layout: { 'text-field': ['get', 'name'], 'text-size': 12, 'text-font': LABEL_FONT },
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': 12,
+        'text-font': LABEL_FONT,
+        'text-variable-anchor': ['center', 'top'],
+        'text-radial-offset': 0.8,
+      },
       paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
     })
     m.addSource('pivot', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
@@ -186,13 +234,13 @@
         : []
     source.setData({
       type: 'FeatureCollection',
-      features: outline ? [feature(pivotOutline(outline)), ...extras] : [],
+      features: outline && !point ? [feature(pivotOutline(outline)!), ...extras] : [],
     })
   }
 
   // Where each of the shape's handles goes
   function handlePositions(): Partial<Record<Handle, LngLat>> {
-    if (!center) return {}
+    if (!center || point) return {}
     if (linear) {
       const [frontLeft, , backRight] = linearCorners(center, machine)
       return { frontLeft, backRight, rotate: rotatePosition! }
@@ -529,7 +577,8 @@
         if (!center) {
           setCenter(point)
           const bounds = new LngLatBounds()
-          for (const corner of [...pivotOutline(draftShape(shape)!), ...Object.values(handlePositions())]) {
+          const ring = pivotOutline(draftShape(shape)!) ?? [point]
+          for (const corner of [...ring, ...Object.values(handlePositions())]) {
             bounds.extend(corner)
           }
           if (m.getZoom() < PIVOT_ZOOM - 1) m.fitBounds(bounds, { padding: 40, maxZoom: PIVOT_ZOOM, duration: 600 })
@@ -551,7 +600,9 @@
     <div
       bind:this={container}
       class="h-full w-full"
-      aria-label="Map: click to place the pivot, or enter its coordinates and size in the fields below"
+      aria-label="Map: click to place the {noun}, or enter its coordinates{point
+        ? ''
+        : ' and size'} in the fields below"
       role="application"
     ></div>
 
@@ -573,9 +624,7 @@
       <p
         class="pointer-events-none absolute top-12 right-12 left-2 mx-auto max-w-xs rounded-md bg-black/60 px-3 py-2 text-center text-sm text-white"
       >
-        {linear
-          ? 'Click the map in the middle of the area the linear move irrigates, or enter its coordinates below'
-          : 'Click the map at the center of the pivot, or enter its coordinates below'}
+        {PLACE_HINTS[shape.kind]}
       </p>
     {/if}
 
@@ -585,8 +634,8 @@
         class="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#1c5cab] text-white shadow-lg hover:scale-110"
         style:left="{pointer.x}px"
         style:top="{pointer.y}px"
-        aria-label="The pivot is off the map: show it"
-        title="Show the pivot"
+        aria-label="The {noun} is off the map: show it"
+        title="Show the {noun}"
         onclick={showPivot}
       >
         <svg
@@ -632,11 +681,13 @@
     </button>
     {#if locateError}<span class="text-status-irrigate-ink">{locateError}</span>{/if}
     {#if center}<span class="text-ink-muted"
-        >{linear
-          ? 'Drag the pin to move the linear move, the square corner handles to resize it, or the round handle to turn it.'
-          : arc
-            ? 'Drag the pin to move the pivot, the blue handle to set its radius, or the white handles to set the ends of its arc.'
-            : 'Drag the pin to move the pivot, or the round handle to set its radius.'}</span
+        >{point
+          ? `Drag the pin to move the ${noun}.`
+          : linear
+            ? 'Drag the pin to move the linear move, the square corner handles to resize it, or the round handle to turn it.'
+            : arc
+              ? 'Drag the pin to move the pivot, the blue handle to set its radius, or the white handles to set the ends of its arc.'
+              : 'Drag the pin to move the pivot, or the round handle to set its radius.'}</span
       >{/if}
   </div>
   {#if soils}
@@ -647,7 +698,7 @@
       {:else if soilStatus === 'error'}
         <span class="text-ink-muted">the soil survey can't be reached right now.</span>
       {:else if soilStatus === 'zoom'}
-        <span class="text-ink-muted">place the pivot, or zoom in, to see them.</span>
+        <span class="text-ink-muted">place the {noun}, or zoom in, to see them.</span>
       {:else}
         {#each soilTypes.filter((type) => soilKeys.includes(type.key)) as type (type.key)}
           <span class="flex items-center gap-1"

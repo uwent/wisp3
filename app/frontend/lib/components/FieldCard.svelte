@@ -28,6 +28,7 @@
     units,
     compact = false,
     pivotName,
+    pivotKindName = 'Pivot',
     pivotId,
     selected = false,
     onselect,
@@ -38,6 +39,8 @@
     units: Units
     compact?: boolean
     pivotName?: string
+    /** "Pivot", "Traveler" */
+    pivotKindName?: string
     pivotId?: number
     selected?: boolean
     onselect?: () => void
@@ -77,7 +80,7 @@
   <div class="min-w-0">
     {#if pivotName}
       <p class="truncate text-xs text-ink-muted">
-        Pivot:
+        {pivotKindName}:
         {#if pivotId !== undefined && onselect}
           <!-- Above the card's select button, like the field link -->
           <Link
@@ -109,7 +112,7 @@
   {:else if summary.weather_pending}
     <p class="flex items-start gap-1.5 text-sm text-ink-muted">
       {#if weather === 'updating'}<Spinner class="mt-0.5" />{/if}
-      <span>Weather for this pivot is on its way. The water balance will appear when it arrives.</span>
+      <span>Weather for this location is on its way. The water balance will appear when it arrives.</span>
     </p>
   {:else if summary.phase === 'upcoming'}
     <p class="text-sm text-ink-muted">The season starts {formatDate(summary.season_start)}.</p>

@@ -2,11 +2,36 @@
 // (start and end bearings in degrees clockwise from north; the pivot sweeps clockwise from start
 // to end). A linear move is a machine length_ft long traveling travel_ft along travel_bearing_deg
 // (whole degrees from north, 0–179, as it runs both ways): a rectangle centered on its location.
-// Spherical-earth math, which is plenty at pivot scale.
+// The other kinds (a traveler, solid set, drip, or a location only; Pivot::POINT_KINDS) are a
+// point with no outline. Spherical-earth math, which is plenty at pivot scale.
 
 export type LngLat = [number, number]
 
-export type PivotKind = 'center' | 'linear'
+/** An irrigation system's kind (Pivot::KINDS); "pivot" in code is any of them */
+export type PivotKind = 'center' | 'linear' | 'traveler' | 'solid_set' | 'drip' | 'point'
+
+/** What growers call each kind (Pivot::KIND_NAMES; the server sends it as kind_name) */
+export const KIND_NAMES: Record<PivotKind, string> = {
+  center: 'Pivot',
+  linear: 'Linear',
+  traveler: 'Traveler',
+  solid_set: 'Solid set',
+  drip: 'Drip',
+  point: 'Location',
+}
+
+/** The kind in a sentence: "place the drip block" */
+export const KIND_NOUNS: Record<PivotKind, string> = {
+  center: 'pivot',
+  linear: 'linear move',
+  traveler: 'traveler',
+  solid_set: 'solid set block',
+  drip: 'drip block',
+  point: 'location',
+}
+
+/** Kinds that are a point with no dimensions (Pivot::POINT_KINDS) */
+export const isPoint = (kind: PivotKind) => kind !== 'center' && kind !== 'linear'
 
 /** What a pivot covers, as the server sends it (PivotSerializer::SHAPE) */
 export type PivotShape = {
@@ -185,8 +210,12 @@ export function linearOf(shape: Pick<PivotShape, 'length_ft' | 'travel_ft' | 'tr
   }
 }
 
-/** A pivot's irrigated area as a closed ring: a circle, a sector, or a linear move's rectangle */
-export function pivotOutline(shape: PivotShape, steps = 96): LngLat[] {
+/**
+ * A pivot's irrigated area as a closed ring: a circle, a sector, or a linear move's rectangle; null
+ * for a point kind, which has no outline
+ */
+export function pivotOutline(shape: PivotShape, steps = 96): LngLat[] | null {
+  if (isPoint(shape.kind)) return null
   const center: LngLat = [shape.longitude, shape.latitude]
   if (shape.kind === 'linear') {
     return linearRing(center, linearOf(shape))
@@ -194,8 +223,20 @@ export function pivotOutline(shape: PivotShape, steps = 96): LngLat[] {
   return pivotRing(center, shape.radius_ft ?? DEFAULT_RADIUS_FT, shape.arc_start_deg, shape.arc_end_deg, steps)
 }
 
-/** A pivot's irrigated acres */
-export function shapeAcres(shape: Omit<PivotShape, 'latitude' | 'longitude'>): number {
+/** How far around a point kind the soil survey is read: a circle about 100 m across */
+export const POINT_SURVEY_RADIUS_FT = 165
+
+/** The ring the soil survey is read in: the outline, or a small circle around a point kind */
+export function surveyRing(shape: PivotShape, steps = 48): LngLat[] {
+  return (
+    pivotOutline(shape, steps) ??
+    pivotRing([shape.longitude, shape.latitude], POINT_SURVEY_RADIUS_FT, null, null, steps)
+  )
+}
+
+/** A pivot's irrigated acres; null for a point kind, whose area comes from its fields */
+export function shapeAcres(shape: Omit<PivotShape, 'latitude' | 'longitude'>): number | null {
+  if (isPoint(shape.kind)) return null
   if (shape.kind === 'linear') {
     const { lengthFt, travelFt } = linearOf(shape)
     return (lengthFt * travelFt) / 43_560
@@ -275,16 +316,54 @@ export function shapeDraft(pivot: Partial<PivotShape> = {}): ShapeDraft {
 export function draftShape(draft: ShapeDraft): PivotShape | null {
   if (draft.latitude === null || draft.longitude === null) return null
   const linear = draft.kind === 'linear'
-  const arc = !linear && draft.partial && draft.arcStart !== null && draft.arcEnd !== null
+  const center = draft.kind === 'center'
+  const arc = center && draft.partial && draft.arcStart !== null && draft.arcEnd !== null
   return {
     kind: draft.kind,
     latitude: draft.latitude,
     longitude: draft.longitude,
-    radius_ft: linear ? null : draft.radiusFt,
+    radius_ft: center ? draft.radiusFt : null,
     arc_start_deg: arc ? draft.arcStart : null,
     arc_end_deg: arc ? draft.arcEnd : null,
     length_ft: linear ? draft.lengthFt : null,
     travel_ft: linear ? draft.travelFt : null,
     travel_bearing_deg: linear ? draft.travelBearing : null,
   }
+}
+
+/**
+ * The convex hull of points as a closed ring, counterclockwise (Andrew's monotone chain, treating
+ * longitude and latitude as plane coordinates, which is plenty across a farm). Fewer than three
+ * distinct points give what there is.
+ */
+export function convexHull(points: LngLat[]): LngLat[] {
+  const sorted = [...points].sort(([ax, ay], [bx, by]) => ax - bx || ay - by)
+  const cross = (o: LngLat, a: LngLat, b: LngLat) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+  const half = (list: LngLat[]) => {
+    const chain: LngLat[] = []
+    for (const point of list) {
+      while (chain.length >= 2 && cross(chain[chain.length - 2], chain[chain.length - 1], point) <= 0) chain.pop()
+      chain.push(point)
+    }
+    chain.pop()
+    return chain
+  }
+  const hull = [...half(sorted), ...half([...sorted].reverse())]
+  return hull.length ? [...hull, hull[0]] : []
+}
+
+/** How far an irrigation group's outline stands off its systems */
+export const GROUP_MARGIN_M = 120
+
+/**
+ * The outline around an irrigation group's systems: the convex hull of their outlines (a point
+ * kind's small circle) with a margin, so even a group of one shows around its system
+ */
+export function groupOutline(shapes: PivotShape[]): LngLat[] {
+  const points = shapes.flatMap((shape) =>
+    surveyRing(shape, 24).flatMap((vertex) =>
+      [0, 60, 120, 180, 240, 300].map((b) => destination(vertex, GROUP_MARGIN_M, b)),
+    ),
+  )
+  return convexHull(points)
 }

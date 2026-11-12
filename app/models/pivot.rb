@@ -4,10 +4,16 @@ class Pivot < ApplicationRecord
   LATITUDES = 18.0..84.0
   LONGITUDES = -180.0..-52.0
 
+  # A pivot in code is any irrigation system (PLAN.md Phase 8 G.5); growers see its kind's name.
   # A center pivot is a circle (or an arc of one) around its location; a linear move is a machine
   # length_ft long traveling travel_ft along travel_bearing_deg (whole degrees from north, 0–179, as
-  # it runs both ways), a rectangle centered on its location.
-  KINDS = %w[center linear].freeze
+  # it runs both ways), a rectangle centered on its location. The other kinds are a point with no
+  # dimensions: the place watered one way, whose area comes from its fields (a traveler is set up at
+  # each field it waters, its machine named in equipment). Mirrored in lib/geo.ts.
+  KIND_NAMES = {"center" => "Pivot", "linear" => "Linear", "traveler" => "Traveler", "solid_set" => "Solid set",
+                "drip" => "Drip", "point" => "Location"}.freeze
+  KINDS = KIND_NAMES.keys.freeze
+  POINT_KINDS = %w[traveler solid_set drip point].freeze
   # The longest center pivots sold are about 2,900 ft (Reinke); the longest linear machines about
   # 3,200 ft (Valley), and travel of more than a mile is beyond what we model. Mirrored in lib/geo.ts.
   MAX_RADIUS_FT = 3000
@@ -56,15 +62,20 @@ class Pivot < ApplicationRecord
 
   def linear? = kind == "linear"
 
+  def point? = POINT_KINDS.include?(kind)
+
+  # What growers call it: "Pivot", "Traveler", "Location"
+  def kind_name = KIND_NAMES.fetch(kind, "Irrigation system")
+
+  # "Pivot: North 160"
+  def label = "#{kind_name}: #{name}"
+
   private
 
   # Only the kind's own dimensions are kept, so switching kinds leaves no stale shape behind
   def clear_other_shape
-    if linear?
-      self.radius_ft = self.arc_start_deg = self.arc_end_deg = nil
-    else
-      self.length_ft = self.travel_ft = self.travel_bearing_deg = nil
-    end
+    self.radius_ft = self.arc_start_deg = self.arc_end_deg = nil unless kind == "center"
+    self.length_ft = self.travel_ft = self.travel_bearing_deg = nil unless linear?
   end
 
   def move_open_plantings
@@ -81,7 +92,7 @@ class Pivot < ApplicationRecord
   end
 
   def pivot_group_on_farm
-    errors.add(:pivot_group, "must be on the pivot's farm") if pivot_group && pivot_group.farm_id != farm_id
+    errors.add(:pivot_group, "must be on the same farm") if pivot_group && pivot_group.farm_id != farm_id
   end
 
   def arc_complete

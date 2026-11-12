@@ -4,12 +4,13 @@
   import NumberField from '@/lib/components/NumberField.svelte'
   import PivotMap from '@/lib/components/PivotMap.svelte'
   import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
-  import { draftShape, type PivotKind, type PivotShape, shapeAcres, type ShapeDraft } from '@/lib/geo'
+  import { draftShape, isPoint, type PivotKind, type PivotShape, shapeAcres, type ShapeDraft } from '@/lib/geo'
   import { units as unitsFor } from '@/lib/units'
   import type { SoilType } from '@/types/serializers'
 
-  // A pivot's kind, location and size: the map picker and the inputs that edit the same values, for
-  // the pivot form and the guided setup. Inputs are named `${prefix}[attribute]`.
+  // An irrigation system's kind, location and size: the map picker and the inputs that edit the same
+  // values, for the pivot form and the guided setup. A point kind (a traveler, solid set, drip, a
+  // location only) has only its location. Inputs are named `${prefix}[attribute]`.
   let {
     shape = $bindable(),
     prefix,
@@ -33,22 +34,38 @@
   const areaHint = $derived(area ? `Irrigates about ${units.format('area', area)}` : undefined)
 
   const KINDS: { value: PivotKind; label: string; hint: string }[] = [
-    { value: 'center', label: 'Center pivot', hint: 'A circle, or part of one' },
-    { value: 'linear', label: 'Linear move', hint: 'A rectangle the machine travels along' },
+    { value: 'center', label: 'Center pivot', hint: 'A circle, or part of one.' },
+    { value: 'linear', label: 'Linear move', hint: 'A rectangle the machine travels along.' },
+    {
+      value: 'traveler',
+      label: 'Traveler',
+      hint: 'A hard hose reel or gun moved between fields. Set one up at each field it waters, and name the machine in Equipment.',
+    },
+    { value: 'solid_set', label: 'Solid set', hint: 'Sprinklers set out over a block. Place it at the block.' },
+    { value: 'drip', label: 'Drip', hint: 'Drip tape or emitters. Place it at the block.' },
+    { value: 'point', label: 'Location only', hint: 'Just where the field is, for its weather and soil.' },
   ]
 </script>
 
 <fieldset class="space-y-2">
   <legend class="text-sm font-medium">Irrigation system</legend>
   <input type="hidden" name="{prefix}[kind]" value={shape.kind} />
-  <div class="flex flex-wrap gap-x-6 gap-y-2">
+  <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
     {#each KINDS as kind (kind.value)}
-      <label class="flex items-start gap-2 text-sm">
+      <label
+        class="flex items-start gap-2 rounded-md border px-3 py-2 text-sm
+          {shape.kind === kind.value ? 'border-brand-500 bg-brand-50' : 'border-line'}"
+      >
         <input type="radio" value={kind.value} bind:group={shape.kind} class="mt-0.5" />
-        <span><span class="font-medium">{kind.label}</span> <span class="text-ink-muted">{kind.hint}</span></span>
+        <span><span class="block font-medium">{kind.label}</span> <span class="text-ink-muted">{kind.hint}</span></span>
       </label>
     {/each}
   </div>
+  {#if isPoint(shape.kind)}
+    <p class="text-sm text-ink-muted">
+      Its area comes from its fields. Weather and the soil suggestion come from where you place it.
+    </p>
+  {/if}
   {#if error('kind')}<p class="text-sm text-status-irrigate-ink">{error('kind')}</p>{/if}
 </fieldset>
 

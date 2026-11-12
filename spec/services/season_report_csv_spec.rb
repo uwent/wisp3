@@ -40,27 +40,27 @@ RSpec.describe SeasonReportCsv do
     end
   end
 
-  it "lists each field's season, then irrigation by pivot, then the weather by zone" do
+  it "lists each field's season, then irrigation by system, then the weather by zone" do
     fields = section("Fields")
     expect(fields.map { |row| row["Field"] }).to eq(%w[East West])
-    expect(fields.first).to include("Pivot" => "North", "Part of the field" => "Whole field", "Equipment" => "'=Well 12", "Days counted" => "10",
+    expect(fields.first).to include("Irrigation system" => "North", "Kind" => "Pivot", "Part of the field" => "Whole field", "Equipment" => "'=Well 12", "Days counted" => "10",
       "Irrigation (in)" => "1.0000", "Days irrigated" => "2", "Rainfall (in)" => "1.0000", "Season start" => "2026-07-01")
 
-    pivot_row = section("Irrigation by pivot").sole
+    pivot_row = section("Irrigation by irrigation system").sole
     # (30 × 1.0 + 90 × 0.6) / 120 acres
     expect(pivot_row).to include("Fields" => "2", "Area (acres)" => "120.0", "Days irrigated" => "2", "Irrigation (in)" => "0.7000")
 
     zone = section("Weather by zone").sole
-    expect(zone).to include("Zone" => "1", "Pivots" => "North", "From" => "2026-07-01", "Through" => "2026-07-10",
+    expect(zone).to include("Zone" => "1", "Irrigation systems" => "Pivot: North", "From" => "2026-07-01", "Through" => "2026-07-10",
       "Days with weather" => "10", "Precipitation (in)" => "1.0000", "Reference ET (in)" => "2.0000",
       "GDD (50/86 °F)" => "200.0000", "Mean temperature (°F)" => "70.0000")
   end
 
-  it "averages a pivot's irrigation by field when a field has no area" do
+  it "averages a system's irrigation by field when a field has no area" do
     west.plantings.update_all(area_acres: nil)
     expect(rows).to include(["Fields: 2 fields on 1 pivot across 1 farm, 30.0 acres (1 field without an area)"])
     # The pivot's area is unknown, so (1.0 + 0.6) / 2 fields rather than weighted by area
-    expect(section("Irrigation by pivot").sole).to include("Area (acres)" => nil, "Irrigation (in)" => "0.8000")
+    expect(section("Irrigation by irrigation system").sole).to include("Area (acres)" => nil, "Irrigation (in)" => "0.8000")
   end
 
   it "leaves a field whose season hasn't started blank, not zero" do

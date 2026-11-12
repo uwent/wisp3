@@ -30,10 +30,10 @@ Nothing needs your attention today. <%= @digest.nothing_listed %>
 <% digest_weather(zone, @digest).each do |line| %>
    <%= line %>
 <% end %>
-   Pivots in this zone: <%= digest_zone_pivots(zone) %>
+   Irrigation systems in this zone: <%= digest_zone_pivots(zone) %>
 <% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
 
-   Pivot: <%= pivot_section.pivot.name %>
+   <%= pivot_section.pivot.label %>
 <% pivot_section.entries.each do |entry| %>
 
 <% if !entry.active? %>

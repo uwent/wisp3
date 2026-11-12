@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { pivotOutline, type PivotShape } from '@/lib/geo'
+  import { isPoint, KIND_NOUNS, type PivotShape, surveyRing } from '@/lib/geo'
   import { fetchSoilSurvey, type MapUnit, soilKeyFor, type SoilSuggestion, suggestSoil } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
 
-  // What the soil survey (SSURGO) says is under a pivot, and the soil type it suggests (PLAN.md
-  // Phase 7 F). Looked up when the pivot is placed or moved; it never holds up the form, and a
+  // What the soil survey (SSURGO) says is under an irrigation system (its outline, or a small circle
+  // around a point kind's location), and the soil type it suggests (PLAN.md Phase 7 F). Looked up when the pivot is placed or moved; it never holds up the form, and a
   // failure just says so.
   let {
     shape,
@@ -24,6 +24,10 @@
   let lookup = $state<'idle' | 'loading' | 'done' | 'error'>('idle')
   let suggestion = $state<SoilSuggestion | null>(null)
 
+  // "of the pivot", "around this spot"
+  const where = $derived(
+    !shape || !isPoint(shape.kind) ? `of the ${KIND_NOUNS[shape?.kind ?? 'center']}` : 'around this spot',
+  )
   const suggested = $derived(suggestion?.key ? (soilTypes.find((s) => s.key === suggestion!.key) ?? null) : null)
   const pct = (share: number) => `${Math.max(1, Math.round(share * 100))}%`
   const describe = (unit: MapUnit) => {
@@ -39,7 +43,7 @@
       suggestion = null
       return
     }
-    const ring = pivotOutline(shape, 48)
+    const ring = surveyRing(shape)
     const request = new AbortController()
     const timer = setTimeout(() => {
       lookup = 'loading'
@@ -75,9 +79,9 @@
       <p>
         <span class="font-medium">Soil survey:</span>
         {#if suggested}
-          mostly <span class="font-medium">{suggested.name}</span> ({pct(suggestion.share)} of the pivot).
+          mostly <span class="font-medium">{suggested.name}</span> ({pct(suggestion.share)} {where}).
         {:else}
-          no single soil type covers most of the pivot.
+          no single soil type covers most {where}.
         {/if}
       </p>
       <ul class="mt-1 list-disc pl-5 text-xs text-ink-muted">

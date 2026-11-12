@@ -12,7 +12,7 @@
   import OverviewMap from '@/lib/map/OverviewMap.svelte'
   import PivotPanel from '@/lib/map/PivotPanel.svelte'
   import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
-  import type { MapPivot } from '@/lib/map/pivots'
+  import { groupFeatures, type MapPivot } from '@/lib/map/pivots'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
   import { anyUpdating, updatingIds, type FarmGroup, type ListItem, needsWaterWithin, sortItems } from '@/lib/overview'
   import { poll, weatherUpdate } from '@/lib/poll'
@@ -69,13 +69,20 @@
 
   const shown = $derived(farms.filter((farm) => farmId === 'all' || farm.id === farmId))
   const mapPivots = $derived(shown.flatMap((farm) => farm.pivots))
+  const mapGroups = $derived(groupFeatures(shown, mapPivots))
   const farmOf = $derived(new Map(farms.flatMap((farm) => farm.pivots.map((pivot) => [pivot.id, farm]))))
   const items = $derived<ListItem[]>(
     shown.flatMap((farm) =>
       farm.pivots.flatMap((pivot) =>
         pivot.fields.map((card) => ({
           card,
-          pivot: { id: pivot.id, name: pivot.name, latitude: pivot.latitude, weather_updating: pivot.weather_updating },
+          pivot: {
+            id: pivot.id,
+            name: pivot.name,
+            kind_name: pivot.kind_name,
+            latitude: pivot.latitude,
+            weather_updating: pivot.weather_updating,
+          },
           farm: { id: farm.id, name: farm.name },
         })),
       ),
@@ -180,10 +187,10 @@
 {#if !anyPivots}
   <div class="mx-auto w-full max-w-6xl px-4 py-6">
     <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-12 text-center">
-      <h1 class="text-lg font-medium">No pivots to show yet</h1>
+      <h1 class="text-lg font-medium">No irrigation systems to show yet</h1>
       <p class="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-        Place your first pivot on the map and add its fields and crops. The map then shows each field's water status
-        where it is.
+        Place your first irrigation system on the map and add its fields and crops. The map then shows each field's
+        water status where it is.
       </p>
       <Link
         href={newQuickSetup()}
@@ -263,7 +270,7 @@
         <input
           type="search"
           bind:value={query}
-          placeholder="Filter by field, pivot or farm"
+          placeholder="Filter by field, system or farm"
           aria-label="Filter fields"
           class="block w-full rounded-md py-1 text-sm"
         />
@@ -278,6 +285,7 @@
               compact
               weather={weatherFor(item.pivot)}
               pivotName={item.pivot.name}
+              pivotKindName={item.pivot.kind_name}
               pivotId={item.pivot.id}
               selected={isSelected(item)}
               onselect={() => selectField(item)}
@@ -314,6 +322,7 @@
       <OverviewMap
         bind:this={overview}
         pivots={mapPivots}
+        groups={mapGroups}
         selectedId={selectedPivotId}
         {highlighted}
         basemap={prefs.basemap}

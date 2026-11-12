@@ -11,10 +11,10 @@
   will need water in the next few days, and how much would refill them.
 </p>
 <p>
-  Weather arrives automatically for each pivot's location. You add what only you know: your rain gauge readings, the
-  irrigation you apply, and soil moisture readings now and then to keep the model accurate. Together with your own
-  observations in the field, WISP helps you make the most of rain and avoid irrigation that simply drains below the
-  roots and carries nutrients with it.
+  Weather arrives automatically for each irrigation system's location. You add what only you know: your rain gauge
+  readings, the irrigation you apply, and soil moisture readings now and then to keep the model accurate. Together with
+  your own observations in the field, WISP helps you make the most of rain and avoid irrigation that simply drains below
+  the roots and carries nutrients with it.
 </p>
 <p>
   WISP was developed by the Departments of Soil Science and Biological Systems Engineering at the University of

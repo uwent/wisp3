@@ -13,7 +13,8 @@ class AlertsController < AuthenticatedController
       groups: groups.map do |group|
         {id: group.id, name: group.name, farms: group.farms.sort_by(&:name).map do |farm|
           {id: farm.id, name: farm.name, pivots: farm.pivots.map do |pivot|
-            {id: pivot.id, name: pivot.name, fields: pivot.fields.map { |field| {id: field.id, name: field.name} }}
+            {id: pivot.id, name: pivot.name, kind_name: pivot.kind_name,
+             fields: pivot.fields.map { |field| {id: field.id, name: field.name} }}
           end}
         end}
       end,

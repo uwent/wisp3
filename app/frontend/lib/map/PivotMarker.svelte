@@ -4,8 +4,8 @@
 
   import type { MapPivot } from './pivots'
 
-  // What sits at a pivot's center on the map (PLAN.md Phase 7): a badge per field in season, a gray
-  // dot per field that isn't, and the pivot's name when zoomed in. Zoomed out (the map sets
+  // What sits at an irrigation system's center (or point) on the map (PLAN.md Phase 7): a badge per
+  // field in season, a gray dot per field that isn't, and its name when zoomed in. Zoomed out (the map sets
   // data-far), it's one dot in the most urgent status's color. Where its fields are under the pivot
   // isn't known, so they aren't drawn as areas.
   let {
@@ -32,7 +32,7 @@
     return 'waiting for weather'
   }
   const label = $derived(
-    `Pivot ${pivot.name}: ${pivot.fields.length} field${pivot.fields.length === 1 ? '' : 's'}` +
+    `${pivot.kind_name} ${pivot.name}: ${pivot.fields.length} field${pivot.fields.length === 1 ? '' : 's'}` +
       (status ? `, most urgent ${LABELS[status]}` : ', none in season'),
   )
 </script>
@@ -42,7 +42,7 @@
   class="flex cursor-pointer flex-col items-center gap-0.5 transition-opacity {dimmed ? 'opacity-35' : ''}"
   aria-label={label}
   aria-pressed={selected}
-  title={pivot.name}
+  title="{pivot.kind_name}: {pivot.name}"
   onclick={(event) => {
     event.stopPropagation()
     onselect()

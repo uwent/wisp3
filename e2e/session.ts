@@ -71,7 +71,7 @@ export function watchErrors(page: Page): string[] {
   return errors
 }
 
-/** Every signed-in page, with the demo account's first field, pivot and user */
+/** Every signed-in page, with the demo account's first field, pivot, traveler and user */
 export async function signedInPages(page: Page): Promise<string[]> {
   const planting = await firstPlantingPath(page)
   const pivot = await firstLinkPath(page, planting, 'a[href*="/pivots/"]')
@@ -83,6 +83,10 @@ export async function signedInPages(page: Page): Promise<string[]> {
   const hayCard = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Hay north' }) })
   const hay = new URL((await hayCard.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
   const user = await firstLinkPath(page, '/admin/users', 'a[href*="/admin/users/"]')
+  // A traveler, a point with no shape (G.5)
+  await page.goto('/setup')
+  const travelerHeading = page.getByRole('heading', { name: 'Traveler: West lane' })
+  const traveler = new URL((await travelerHeading.getByRole('link').getAttribute('href'))!, page.url()).pathname
   return [
     '/',
     '/map',
@@ -97,6 +101,8 @@ export async function signedInPages(page: Page): Promise<string[]> {
     `/daily?date=${new Date().getFullYear()}-07-15`,
     pivot,
     `${pivot}/edit`,
+    traveler,
+    `${traveler}/edit`,
     '/pivots/new',
     '/settings',
     '/alerts',

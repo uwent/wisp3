@@ -1,9 +1,10 @@
 # A realistic demo account for development, staging and the beta (bin/rails demo:seed): several
 # farms in the Central Sands, single- and multi-field pivots (one with seven fields), both ET
 # methods, canopy readings, irrigation by field, by pivot (inches and run hours, all fields and a
-# subset), a soil moisture reading, a field group sharing a rain gauge, a research field with four
-# plots side by side (one with its own drip irrigation and readings) and a market garden field with
-# successions (PLAN.md Phase 8 G.11). Rebuilds the demo
+# subset), a soil moisture reading, an irrigation group sharing a rain gauge, a research field with
+# four plots side by side (one with its own drip irrigation and readings), a market garden field with
+# successions (PLAN.md Phase 8 G.11), a traveler serving two fields (one Traveler system at each, the
+# same machine) and a drip block (G.5). Rebuilds the demo
 # group from scratch each run. Weather comes from Phase 3's fetch.
 class DemoSeed
   GROUP_NAME = "Demo farms"
@@ -106,6 +107,15 @@ class DemoSeed
     end
     cabbage.field_entries.find_by!(date: date(7, 15)).update!(notes: "Storm missed us")
 
+    # A drip block, irrigated by run hours (60 gpm over 3 acres: about 0.18 in for 4 hours)
+    block = coloma.pivots.create!(name: "Tomato block", kind: "drip", latitude: 44.0302, longitude: -89.5141,
+      pump_capacity_gpm: 60, equipment: "15 mil tape, 12 in emitters")
+    tomatoes = field(block, "Tomatoes", 3, "loam")
+    planting(tomatoes, "tomato", emergence: date(5, 30), end_date: date(9, 15))
+    [[6, 18], [6, 25], [7, 2], [7, 9], [7, 13], [7, 20], [7, 24], [7, 31], [8, 7], [8, 14]].each do |month, day|
+      block.pivot_irrigations.create!(date: date(month, day), run_hours: 4)
+    end
+
     # A market garden field growing one crop after another
     garden = field(veg, "Market garden", 4, "loam")
     planting(garden, "leafy_greens", season_start: date(4, 10), emergence: date(4, 24), end_date: date(6, 10),
@@ -130,6 +140,20 @@ class DemoSeed
     drip.planting_entries.create!(date: date(7, 8), soil_moisture_pct: 24, notes: "TDR, 6 in")
     drip.planting_entries.create!(date: date(7, 22), soil_moisture_pct: 21)
     pivot_irrigations(station, [[6, 24, 0.7], [7, 9, 0.8], [7, 23, 0.8]])
+
+    # One hard hose reel pulled between two fields: a Traveler system at each, named the same in
+    # Equipment, irrigated a day apart as the reel moves
+    reel = "Hard hose reel #2"
+    west_lane = arlington.pivots.create!(name: "West lane", kind: "traveler", latitude: 43.3051, longitude: -89.3912,
+      equipment: reel)
+    east_lane = arlington.pivots.create!(name: "East lane", kind: "traveler", latitude: 43.3046, longitude: -89.3741,
+      equipment: reel)
+    sweet_corn = field(west_lane, "West 20", 20, "silt_loam")
+    planting(sweet_corn, "sweet_corn", emergence: date(5, 20), end_date: date(8, 25))
+    beans = field(east_lane, "East 15", 15, "silt_loam")
+    planting(beans, "snap_bean", emergence: date(6, 8), end_date: date(8, 28))
+    pivot_irrigations(west_lane, [[6, 30, 1.0], [7, 14, 1.0], [7, 28, 1.1], [8, 11, 1.0]])
+    pivot_irrigations(east_lane, [[7, 1, 1.0], [7, 15, 1.0], [7, 29, 1.1], [8, 12, 1.0]])
   end
 
   def field(pivot, name, acres, soil_key)

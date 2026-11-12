@@ -50,7 +50,7 @@
       firstDirection: 'desc',
     },
     { key: 'farms', label: 'Farms', value: (u) => u.farms_count, align: 'right', firstDirection: 'desc' },
-    { key: 'pivots', label: 'Pivots', value: (u) => u.pivots_count, align: 'right', firstDirection: 'desc' },
+    { key: 'pivots', label: 'Systems', value: (u) => u.pivots_count, align: 'right', firstDirection: 'desc' },
     { key: 'fields', label: 'Fields', value: (u) => u.fields_count, align: 'right', firstDirection: 'desc' },
     { key: 'actions', label: '', value: () => null, sortable: false, align: 'right' },
   ]
@@ -83,7 +83,8 @@
     <p class="text-sm text-ink-muted">
       {users.length}
       {users.length === 1 ? 'account' : 'accounts'}, {unconfirmed} unconfirmed. Open an account to see its details and farm
-      setup. Farm, pivot and field counts are over every group the user belongs to. Unconfirmed accounts can be deleted here.
+      setup. Farm, irrigation system and field counts are over every group the user belongs to. Unconfirmed accounts can be
+      deleted here.
     </p>
   </div>
 

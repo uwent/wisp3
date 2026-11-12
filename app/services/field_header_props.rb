@@ -5,7 +5,7 @@ module FieldHeaderProps
   def self.for(field)
     {
       field: FieldSerializer.new(field).to_h,
-      pivot: {id: field.pivot.id, name: field.pivot.name, pump_capacity_gpm: field.pivot.pump_capacity_gpm},
+      pivot: field.pivot.slice(:id, :name, :kind, :pump_capacity_gpm).symbolize_keys.merge(kind_name: field.pivot.kind_name),
       farm: {id: field.pivot.farm.id, name: field.pivot.farm.name}
     }
   end

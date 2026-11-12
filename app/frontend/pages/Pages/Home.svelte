@@ -9,12 +9,12 @@
   const steps = [
     {
       title: 'Set up your fields',
-      text: 'Place each pivot on the map and add its fields with their crop, emergence date and soil.',
+      text: 'Place each irrigation system (a pivot, linear, traveler, drip block or just a location) on the map and add its fields with their crop, emergence date and soil.',
       anchor: 'getting-started',
     },
     {
       title: 'Weather comes in',
-      text: 'Each pivot gets its own rain and reference ET (the water use of a grass crop, worked out from the weather) updated three times a day, along with a 16-day forecast.',
+      text: 'Each location gets its own rain and reference ET (the water use of a grass crop, worked out from the weather) updated three times a day, along with a 16-day forecast.',
       anchor: 'how-it-works',
     },
     {

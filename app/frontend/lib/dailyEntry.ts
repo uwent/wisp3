@@ -1,7 +1,8 @@
+import type { PivotKind } from '@/lib/geo'
 import type { PivotIrrigation } from '@/types/serializers'
 
-// Daily entry's rows (PLAN.md Phase 8 G.4): one table per farm, its levels as indented rows (pivot
-// group, pivot, field, plot). Rain fills down from a group or pivot row into its fields; irrigation
+// Daily entry's rows (PLAN.md Phase 8 G.4): one table per farm, its levels as indented rows
+// (irrigation group, irrigation system ("pivot" in code), field, plot). Rain fills down from a group or pivot row into its fields; irrigation
 // is inherited (the pivot's, then the field's, shown muted); readings belong to one planting.
 
 export type DayEntry = {
@@ -41,6 +42,9 @@ export type DayField = {
 export type DayPivot = {
   id: number
   name: string
+  kind: PivotKind
+  /** "Pivot", "Traveler" */
+  kind_name: string
   pivot_group_id: number | null
   pump_capacity_gpm: number | null
   irrigation: PivotIrrigation | null

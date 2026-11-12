@@ -22,6 +22,7 @@
     type DayPlanting,
   } from '@/lib/dailyEntry'
   import { addDays, formatDate } from '@/lib/dates'
+  import { KIND_NAMES, KIND_NOUNS } from '@/lib/geo'
   import { cropName, plotSize } from '@/lib/plantings'
   import { confirmUnsavedChanges, UNSAVED_MESSAGE } from '@/lib/unsaved.svelte'
   import { units as unitsFor } from '@/lib/units'
@@ -30,6 +31,8 @@
   let { date, farms }: { date: string; farms: DayFarm[] } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  /** A system in a placeholder: "pivot", "traveler", "drip" */
+  const short = (pivot: DayPivot) => KIND_NAMES[pivot.kind].toLowerCase()
   const today = new Date().toLocaleDateString('en-CA')
 
   // Typed values not yet saved: set by any input, cleared by a successful save
@@ -216,11 +219,11 @@
     <td class="w-36 px-2 py-1.5">
       <NumberField
         hideLabel
-        label="Irrigation on {field.name} (replaces the pivot's)"
+        label="Irrigation on {field.name} (replaces the {KIND_NOUNS[pivot.kind]}'s)"
         name="fields[{field.id}][irrigation_in]"
         quantity="depth"
         bind:value={fieldIrrigation[field.id]}
-        placeholder={pivotReaches(pivot, field) ? "pivot's" : ''}
+        placeholder={pivotReaches(pivot, field) ? `${short(pivot)}'s` : ''}
         error={e(errs, `fields.${field.id}.irrigation_in`)}
       />
     </td>
@@ -264,7 +267,11 @@
           name="plantings[{plot.id}][irrigation_in]"
           quantity="depth"
           value={plot.entry?.irrigation_in ?? null}
-          placeholder={fieldIrrigation[field.id] != null ? "field's" : pivotReaches(pivot, field) ? "pivot's" : ''}
+          placeholder={fieldIrrigation[field.id] != null
+            ? "field's"
+            : pivotReaches(pivot, field)
+              ? `${short(pivot)}'s`
+              : ''}
           error={e(errs, `plantings.${plot.id}.irrigation_in`)}
         />
       </td>
@@ -301,7 +308,9 @@
         {@render toggle(`Fields on ${pivot.name}`, open, () => remember(key, open))}
         <span>
           <span class="font-medium">{pivot.name}</span>
-          <span class="block text-xs font-normal text-ink-muted">{count(pivot.fields.length, 'field')}</span>
+          <span class="block text-xs font-normal text-ink-muted"
+            >{`${pivot.kind_name} · ${count(pivot.fields.length, 'field')}`}</span
+          >
         </span>
       </span>
     </th>
@@ -338,7 +347,7 @@
               name="pivots[{pivot.id}][inches]"
               quantity="depth"
               bind:value={pivotAmount[pivot.id]}
-              placeholder="pivot"
+              placeholder={short(pivot)}
               error={e(errs, `pivots.${pivot.id}.inches`)}
             />
             <input type="hidden" name="pivots[{pivot.id}][run_hours]" value="" />
@@ -450,8 +459,9 @@
   <section
     class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted"
   >
-    You haven't added a pivot yet. <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2"
-      >Set up your first pivot</Link
+    You haven't added an irrigation system yet. <Link
+      href={newQuickSetup()}
+      class="text-brand-600 underline underline-offset-2">Set up your first irrigation system</Link
     > to start entering rain and irrigation.
   </section>
 {:else}
@@ -470,7 +480,7 @@
         <div class="flex flex-wrap items-baseline justify-between gap-2">
           <h2 class="text-lg font-medium">{formatDate(date, { weekday: true, year: true })}</h2>
           <p class="text-xs text-ink-muted">
-            Rain typed for a pivot or a group fills in its fields; change any field before saving.
+            Rain typed for an irrigation system or group fills in its fields; change any field before saving.
           </p>
         </div>
 
@@ -485,7 +495,7 @@
                 <table class="w-full min-w-xl text-sm">
                   <thead class="text-xs text-ink-muted">
                     <tr class="text-left">
-                      <th class="sticky left-0 z-10 bg-surface-raised px-3 py-1.5 font-medium">Pivot or field</th>
+                      <th class="sticky left-0 z-10 bg-surface-raised px-3 py-1.5 font-medium">System or field</th>
                       <th class="px-2 py-1.5 font-medium">Rain ({units.label('depth')})</th>
                       <th class="px-2 py-1.5 font-medium">Irrigation ({units.label('depth')})</th>
                       <th class="px-2 py-1.5 font-medium">Soil moisture (%)</th>
@@ -501,11 +511,11 @@
                       <tr class="border-t border-line bg-brand-50 align-top">
                         <th scope="row" class="{nameCell} bg-brand-50 {indent[0]}">
                           <span class="flex items-start gap-1">
-                            {@render toggle(`Pivots in ${group.name}`, open, () => remember(key, open))}
+                            {@render toggle(`Irrigation systems in ${group.name}`, open, () => remember(key, open))}
                             <span>
                               <span class="font-medium">{group.name}</span>
                               <span class="block text-xs font-normal text-ink-muted"
-                                >Pivot group · {count(group.pivots.length, 'pivot')}</span
+                                >{`Irrigation group · ${count(group.pivots.length, 'system')}`}</span
                               >
                             </span>
                           </span>
@@ -534,11 +544,11 @@
                         <td colspan={columns} class="py-1.5 pl-8">
                           <span class="flex items-center gap-1 text-xs text-ink-muted">
                             {@render toggle(
-                              `Pivots with no crop on ${farm.name}`,
+                              `Irrigation systems with no crop on ${farm.name}`,
                               idleOpen,
                               () => (opened[idleKey] = !idleOpen),
                             )}
-                            {count(rows.idle.length, 'pivot')} with no crop this season
+                            {count(rows.idle.length, 'system')} with no crop this season
                           </span>
                         </td>
                       </tr>

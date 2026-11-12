@@ -79,7 +79,7 @@ describe('pivotStatus', () => {
 describe('sortItems', () => {
   const item = (c: FieldCard, pivot: string, latitude: number, id = latitude): ListItem => ({
     card: c,
-    pivot: { id, name: pivot, latitude, weather_updating: false },
+    pivot: { id, name: pivot, kind_name: 'Pivot', latitude, weather_updating: false },
     farm: { id: 1, name: 'Farm' },
   })
   const items = [

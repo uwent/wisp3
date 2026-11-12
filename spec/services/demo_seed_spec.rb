@@ -3,9 +3,9 @@ require "rails_helper"
 RSpec.describe DemoSeed do
   before { ReferenceData.load! }
 
-  it "builds a demo account with both ET methods, pivot and field irrigation, and a pivot group" do
+  it "builds a demo account with both ET methods, pivot and field irrigation, an irrigation group, a traveler and drip" do
     result = described_class.new(email: "demo@example.com", year: 2026).run
-    expect(result).to include(farms: 4, fields: 16, plantings: 22)
+    expect(result).to include(farms: 4, fields: 19, plantings: 25)
     expect(result[:password]).to be_present
 
     group = User.find_by!(email: "demo@example.com").groups.find_by!(name: DemoSeed::GROUP_NAME)
@@ -21,6 +21,11 @@ RSpec.describe DemoSeed do
     expect(group.fields.find_by!(name: "Market garden").plantings.size).to eq(3)
     expect(group.plantings.joins(:plant).find_by!(plants: {key: "alfalfa"}).canopy_cuttings.size).to eq(3)
     expect(group.pivot_groups.sole.pivots.map(&:name)).to eq(["Hay pivot", "River pivot"])
+    travelers = group.pivots.where(kind: "traveler")
+    expect(travelers.map { |pivot| [pivot.name, pivot.equipment, pivot.fields.size] })
+      .to contain_exactly(["West lane", "Hard hose reel #2", 1], ["East lane", "Hard hose reel #2", 1])
+    drip = group.pivots.find_by!(kind: "drip")
+    expect(drip.pivot_irrigations.first.applied_inches).to be_within(0.01).of(0.18)
   end
 
   it "rebuilds rather than duplicating, and keeps the user's password" do

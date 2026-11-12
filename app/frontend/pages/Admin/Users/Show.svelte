@@ -150,13 +150,13 @@
                   Farm: {farm.name} <span class="font-normal text-ink-muted">(#{farm.id})</span>
                 </div>
                 {#if farm.pivots.length === 0}
-                  <p class="ml-4 text-ink-muted">No pivots.</p>
+                  <p class="ml-4 text-ink-muted">No irrigation systems.</p>
                 {:else}
                   <ul class="ml-4 space-y-2 border-l border-line pl-3">
                     {#each farm.pivots as pivot (pivot.id)}
                       <li>
                         <div>
-                          Pivot: {pivot.name}
+                          {pivot.kind_name}: {pivot.name}
                           <a
                             class="font-mono text-xs text-brand-600 hover:underline"
                             href="https://www.openstreetmap.org/?mlat={pivot.latitude}&mlon={pivot.longitude}#map=15/{pivot.latitude}/{pivot.longitude}"

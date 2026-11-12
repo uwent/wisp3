@@ -1,5 +1,5 @@
 # The props of daily entry (PLAN.md Phase 8 G.4) for one operation on one date: its farms, each
-# with its pivot groups and pivots; each pivot's irrigation that day and its fields; each field's
+# with its irrigation groups and systems ("pivots" in code, G.5); each pivot's irrigation that day and its fields; each field's
 # entry, the rain the model would use, and its plantings in season that day, with a part-field
 # planting's own entry and each planting's canopy reading (when one is wanted: PlantingTasks.canopy).
 # Loads everything up front, with no query per field.
@@ -29,7 +29,8 @@ class DailyEntryPage
 
   def pivot_props(pivot)
     irrigation = irrigations[pivot.id]
-    {id: pivot.id, name: pivot.name, pivot_group_id: pivot.pivot_group_id, pump_capacity_gpm: pivot.pump_capacity_gpm,
+    {id: pivot.id, name: pivot.name, kind: pivot.kind, kind_name: pivot.kind_name, pivot_group_id: pivot.pivot_group_id,
+     pump_capacity_gpm: pivot.pump_capacity_gpm,
      irrigation: irrigation && PivotIrrigationSerializer.new(irrigation).to_h,
      fields: pivot.fields.map { |field| field_props(pivot, field) }}
   end

@@ -19,7 +19,7 @@ RSpec.describe WeatherCsv do
   it "opens with frontmatter, then one row per day with every variable, forecast days marked" do
     days = WeatherPanel.new(pivot.weather_cell, dates, emergence_date: dates.first).days
     rows = CSV.parse(described_class.new(pivot, 2026, days).to_csv.delete_prefix(CsvExport::BOM))
-    expect(rows.first).to eq(["WISP weather, North, 2026"])
+    expect(rows.first).to eq(["WISP weather, Pivot: North, 2026"])
     expect(rows).to include(["Days: 2026-07-01 to 2026-07-02, one row each; the last is from the latest forecast"])
     header = rows.index { |row| row.first == "Date" }
     data = rows[(header + 1)..].map { |row| rows[header].zip(row).to_h }

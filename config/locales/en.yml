@@ -29,11 +29,14 @@ en:
         field_capacity: Field capacity
         perm_wilting_pt: Wilting point
       field:
+        pivot: Irrigation system
+        pivot_id: Irrigation system
         area_acres: Area
         soil_type: Soil
         field_capacity: Field capacity
         perm_wilting_pt: Wilting point
       pivot:
+        pivot_group: Irrigation group
         radius_ft: Radius
         pump_capacity_gpm: Pump capacity
         arc_start_deg: Arc start

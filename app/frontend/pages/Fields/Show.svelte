@@ -9,6 +9,7 @@
   import Spinner from '@/lib/components/Spinner.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate, isoDate } from '@/lib/dates'
+  import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
   import { outlook } from '@/lib/outlook'
   import { cropName, plotSize, seasonDates } from '@/lib/plantings'
   import { poll, weatherUpdate } from '@/lib/poll'
@@ -45,7 +46,7 @@
     generic_curves,
   }: {
     field: Field
-    pivot: { id: number; name: string; pump_capacity_gpm: number | null }
+    pivot: { id: number; name: string; kind: PivotKind; kind_name: string; pump_capacity_gpm: number | null }
     farm: { id: number; name: string }
     year: number
     years: number[]
@@ -60,6 +61,8 @@
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  // "pivot", "drip block"
+  const noun = $derived(KIND_NOUNS[pivot.kind])
   const today = isoDate(new Date())
   const seasonPlantings = $derived(field.plantings.filter((p) => p.year === year))
   const statusById = $derived(Object.fromEntries(plantings.map((s) => [s.planting_id, s.status])))
@@ -118,7 +121,7 @@
   // [value, label, hint]: blank follows the operation
   const rainOptions = $derived([
     ['', `Follow the operation's setting (${operationUsesModel ? 'modeled rain' : 'only the rain you enter'})`, null],
-    ['true', 'Modeled rain for this pivot', 'Your own rain gauge readings replace it on the days you enter them.'],
+    ['true', 'Modeled rain for this location', 'Your own rain gauge readings replace it on the days you enter them.'],
     [
       'false',
       'Only the rain you enter',
@@ -209,9 +212,9 @@
           A planting on part of the field can also have its own irrigation, entered on its page, which it uses instead
           of the field's that day.
         {/if}
-        Click a cell to enter a value, and press Enter to save and move down. Clear a cell to go back to the modeled or pivot
-        value. Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and press
-        Enter or start typing to edit one.
+        Click a cell to enter a value, and press Enter to save and move down. Clear a cell to go back to the modeled value
+        or the {noun}'s. Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and
+        press Enter or start typing to edit one.
       </p>
       <div class="max-h-[36rem] max-w-3xl overflow-auto rounded-lg border border-line bg-surface-raised">
         <table class="w-full text-sm">
@@ -286,10 +289,10 @@
         </table>
       </div>
       <p class="text-xs text-ink-muted">
-        Rain in gray is modeled for the pivot's location; bold values are ones you entered. Irrigation marked “from
-        pivot” was entered on the
+        Rain in gray is modeled for the {noun}'s location; bold values are ones you entered. Irrigation marked “from
+        {noun}” was entered on the
         <Link href={pivots.show(pivot.id)} class="text-brand-600 underline underline-offset-2"
-          >pivot's irrigation page</Link
+          >{noun}'s irrigation page</Link
         > or on the Daily entry page.
       </p>
     </div>

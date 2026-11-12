@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   bearing,
+  convexHull,
   destination,
   distanceM,
   draftShape,
@@ -9,10 +10,13 @@ import {
   linearCorners,
   MAX_LINEAR_LENGTH_FT,
   MAX_LINEAR_TRAVEL_FT,
+  isPoint,
   pivotAcres,
   pivotOutline,
+  POINT_SURVEY_RADIUS_FT,
   pivotRing,
   pointInPolygon,
+  surveyRing,
   resizeLinear,
   shapeAcres,
   shapeDraft,
@@ -148,6 +152,73 @@ describe('linear moves', () => {
 
   it('drafts a shape without a location as nothing to draw', () => {
     expect(draftShape(shapeDraft())).toBeNull()
+  })
+})
+
+describe('point kinds', () => {
+  const traveler = {
+    kind: 'traveler' as const,
+    latitude: 44.1,
+    longitude: -89.5,
+    radius_ft: null,
+    arc_start_deg: null,
+    arc_end_deg: null,
+    length_ft: null,
+    travel_ft: null,
+    travel_bearing_deg: null,
+  }
+
+  it('are every kind but a center pivot and a linear', () => {
+    expect((['center', 'linear', 'traveler', 'solid_set', 'drip', 'point'] as const).filter(isPoint)).toEqual([
+      'traveler',
+      'solid_set',
+      'drip',
+      'point',
+    ])
+  })
+
+  it('have no outline or area of their own', () => {
+    expect(pivotOutline(traveler)).toBeNull()
+    expect(shapeAcres(traveler)).toBeNull()
+  })
+
+  it('read the soil survey in a small circle around the point', () => {
+    const ring = surveyRing(traveler)
+    expect(distanceM([-89.5, 44.1], ring[0]) * 3.28084).toBeCloseTo(POINT_SURVEY_RADIUS_FT, 0)
+    expect(surveyRing({ ...traveler, kind: 'center', radius_ft: 1300 })).toEqual(
+      pivotOutline({ ...traveler, kind: 'center', radius_ft: 1300 }, 48),
+    )
+  })
+
+  it('keep no dimensions from the draft', () => {
+    const draft = { ...shapeDraft({ radius_ft: 900, arc_start_deg: 0, arc_end_deg: 90 }), kind: 'drip' as const }
+    draft.latitude = 44.1
+    draft.longitude = -89.5
+    expect(draftShape(draft)).toMatchObject({ kind: 'drip', radius_ft: null, arc_start_deg: null, length_ft: null })
+  })
+})
+
+describe('convexHull', () => {
+  it('rings the outermost points, counterclockwise and closed', () => {
+    const hull = convexHull([
+      [0, 0],
+      [2, 0],
+      [1, 1],
+      [2, 2],
+      [0, 2],
+      [1, 0],
+    ])
+    expect(hull).toEqual([
+      [0, 0],
+      [2, 0],
+      [2, 2],
+      [0, 2],
+      [0, 0],
+    ])
+  })
+
+  it('is empty without points', () => {
+    expect(convexHull([])).toEqual([])
   })
 })
 

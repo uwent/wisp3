@@ -7,6 +7,7 @@
   import NumberField from '@/lib/components/NumberField.svelte'
   import { fileSlug } from '@/lib/csv'
   import { formatDate } from '@/lib/dates'
+  import { isPoint, KIND_NOUNS } from '@/lib/geo'
   import { units as unitsFor, type Units } from '@/lib/units'
   import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots, weatherPivot } from '@/routes'
   import type { Pivot, PivotIrrigation, WeatherPanelDay } from '@/types/serializers'
@@ -28,6 +29,8 @@
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  // "pivot", "drip block"
+  const noun = $derived(KIND_NOUNS[pivot.kind])
   const today = new Date().toLocaleDateString('en-CA')
   const panels = $derived((u: Units) => weatherPanels(u, { gddSince: formatDate(weather_from) }))
   const canUseHours = $derived(
@@ -64,19 +67,22 @@
   }
 </script>
 
-<svelte:head><title>{pivot.name} · WISP</title></svelte:head>
+<svelte:head><title>{pivot.kind_name}: {pivot.name} · WISP</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
     <Link href={dashboard.show()} class="text-sm text-brand-600 hover:underline">← Dashboard</Link>
-    <h1 class="text-2xl font-semibold"><span class="font-normal text-ink-muted">Pivot:</span> {pivot.name}</h1>
+    <h1 class="text-2xl font-semibold">
+      <span class="font-normal text-ink-muted">{pivot.kind_name}:</span>
+      {pivot.name}
+    </h1>
     <p class="text-sm text-ink-muted">
       Farm: {farm.name} · Fields:
       {#each pivot.fields as field, i (field.id)}{i ? ', ' : ''}<Link
           href={fieldRoutes.show(field.id)}
           class="text-brand-600 underline underline-offset-2">{field.name}</Link
         >{:else}no fields yet{/each}
-      · <Link href={pivots.edit(pivot.id)} class="text-brand-600 underline underline-offset-2">Edit pivot</Link>
+      · <Link href={pivots.edit(pivot.id)} class="text-brand-600 underline underline-offset-2">Edit {noun}</Link>
     </p>
   </div>
   <select
@@ -94,7 +100,8 @@
     <div>
       <h2 class="text-lg font-medium">{editing ? `Edit ${formatDate(editing.date)}` : 'Add an irrigation'}</h2>
       <p class="text-sm text-ink-muted">
-        Enter each irrigation once here and it applies to the pivot's fields. A field's own entry for a day replaces it.
+        Enter each irrigation once here and it applies to the {noun}'s fields. A field's own entry for a day replaces
+        it.
       </p>
     </div>
     <Form
@@ -154,7 +161,8 @@
               </label>
             {:else}
               <span class="text-ink-muted"
-                >To enter run hours, add this pivot's pump capacity and an area for each field.</span
+                >To enter run hours, add this {noun}'s {isPoint(pivot.kind) ? 'flow' : 'pump capacity'} and an area for each
+                field.</span
               >
             {/if}
           </div>
@@ -249,7 +257,7 @@
 </section>
 
 <WeatherSection
-  title="Weather at this pivot, {year}"
+  title="Weather at this {noun}, {year}"
   {panels}
   days={weather}
   {units}

@@ -142,6 +142,23 @@ export const GLOSSARY: GlossaryEntry[] = [
       'can grow one crop after another, or several side by side. Rain is the field’s; a plot can have its own ' +
       'irrigation and soil moisture readings.',
   },
+  {
+    id: 'irrigation_system',
+    term: 'Irrigation system',
+    matches: ['irrigation system', 'irrigation systems'],
+    definition:
+      'A place watered one way: a center pivot, a linear move, a traveler, a solid set or drip block, or just a ' +
+      'location. Its location sets the weather for its fields, and irrigation entered for it applies to them. A ' +
+      'traveler moved between fields is set up at each field it waters.',
+  },
+  {
+    id: 'irrigation_group',
+    term: 'Irrigation group',
+    matches: ['irrigation group', 'irrigation groups'],
+    definition:
+      'Irrigation systems on one farm kept together, such as those near one rain gauge. Rain typed for the group ' +
+      'on Daily entry fills in every field of its systems.',
+  },
 ]
 
 const byId = new Map(GLOSSARY.map((entry) => [entry.id, entry]))

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -153,9 +153,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_120000) do
     t.index ["pivot_group_id"], name: "index_pivots_on_pivot_group_id"
     t.index ["weather_cell_id"], name: "index_pivots_on_weather_cell_id"
     t.check_constraint "(arc_start_deg IS NULL) = (arc_end_deg IS NULL)", name: "pivots_arc_both_or_neither"
-    t.check_constraint "kind::text = 'center'::text OR radius_ft IS NULL AND arc_start_deg IS NULL AND length_ft IS NOT NULL AND travel_ft IS NOT NULL AND travel_bearing_deg IS NOT NULL AND length_ft > 0::double precision AND length_ft <= 3300::double precision AND travel_ft > 0::double precision AND travel_ft <= 5280::double precision AND travel_bearing_deg >= 0 AND travel_bearing_deg <= 179", name: "pivots_linear_shape"
+    t.check_constraint "(kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying]::text[])) OR radius_ft IS NULL AND arc_start_deg IS NULL", name: "pivots_point_shape"
+    t.check_constraint "kind::text <> 'linear'::text OR radius_ft IS NULL AND arc_start_deg IS NULL AND length_ft IS NOT NULL AND travel_ft IS NOT NULL AND travel_bearing_deg IS NOT NULL AND length_ft > 0::double precision AND length_ft <= 3300::double precision AND travel_ft > 0::double precision AND travel_ft <= 5280::double precision AND travel_bearing_deg >= 0 AND travel_bearing_deg <= 179", name: "pivots_linear_shape"
     t.check_constraint "kind::text = 'linear'::text OR length_ft IS NULL AND travel_ft IS NULL AND travel_bearing_deg IS NULL", name: "pivots_center_shape"
-    t.check_constraint "kind::text = ANY (ARRAY['center'::character varying::text, 'linear'::character varying::text])", name: "pivots_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying, 'traveler'::character varying, 'solid_set'::character varying, 'drip'::character varying, 'point'::character varying]::text[])", name: "pivots_kind"
     t.check_constraint "pump_capacity_gpm IS NULL OR pump_capacity_gpm > 0::double precision", name: "pivots_pump_capacity_positive"
     t.check_constraint "radius_ft IS NULL OR radius_ft <= 3000::double precision", name: "pivots_radius_max"
     t.check_constraint "radius_ft IS NULL OR radius_ft > 0::double precision", name: "pivots_radius_positive"

@@ -174,9 +174,10 @@
 
     <h3>Weather</h3>
     <p>
-      Each pivot's weather comes from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>,
-      for an area about 9 km across around its location. It's updated at 5 am, 11 am and 5 pm Central and includes rain,
-      reference ET (FAO-56 Penman-Monteith), temperature, humidity, wind, and modeled soil moisture and soil
+      Each irrigation system's weather comes from <a href="https://open-meteo.com/" target="_blank" rel="noopener"
+        >Open-Meteo</a
+      >, for an area about 9 km across around its location. It's updated at 5 am, 11 am and 5 pm Central and includes
+      rain, reference ET (FAO-56 Penman-Monteith), temperature, humidity, wind, and modeled soil moisture and soil
       temperature. Recent days are revised as better data arrives, then settled. Modeled rain can miss a local storm, so
       you can enter your own rain gauge readings in its place on any day. For a whole operation or a single field, you
       can also choose to count only the rain you enter. The days ahead still use the forecast rain, and the outlook for
@@ -222,21 +223,43 @@
       Create an account with your email address. You can sign in with a password, or have WISP email you a sign-in link
       and code. Your account comes with an operation of your own. To work on the same farms as other people, add them to
       the operation by their email address (Operation and members, in the account menu). Every member can set up fields
-      and enter data. Owners can also change the operation's settings and members, and delete farms, pivots and fields.
+      and enter data. Owners can also change the operation's settings and members, and delete farms, irrigation systems
+      and fields.
     </p>
-    <h3>Farms, pivots, fields and plantings</h3>
+    <h3>Farms, irrigation systems, fields and plantings</h3>
     <p>WISP organizes everything the way irrigation is managed:</p>
     <ul>
-      <li><strong>Farm:</strong> any set of pivots you want to see together, such as one location.</li>
+      <li><strong>Farm:</strong> any set of irrigation systems you want to see together, such as one location.</li>
       <li>
-        <strong>Pivot:</strong> one irrigation system, placed on the map. Its location sets its weather, so put it where it
-        really is.
+        <strong>Irrigation system:</strong> a place watered one way, placed on the map. Its location sets its weather,
+        so put it where it really is. It's one of these:
+        <ul>
+          <li><strong>Pivot</strong> (center pivot): a circle, or part of one.</li>
+          <li><strong>Linear</strong> (linear move): the rectangle the machine travels along.</li>
+          <li>
+            <strong>Traveler:</strong> a hard hose reel or big gun moved between fields. Set up a traveler at each field (or
+            set of fields) it waters, and give each the machine's name under Equipment; enter irrigation on the one for the
+            field it ran on that day. Weather comes from where it is, so one traveler can't stand for fields miles apart.
+          </li>
+          <li>
+            <strong>Solid set</strong> and <strong>Drip:</strong> a block of sprinklers, or drip tape or emitters, placed
+            at the block.
+          </li>
+          <li><strong>Location:</strong> just where the field is, for anything else.</li>
+        </ul>
+        Only a pivot and a linear have a shape; the others are a point, and their area is their fields'. With a flow rate
+        (a pivot's pump capacity), any of them can take irrigation as hours run.
       </li>
       <li>
-        <strong>Field:</strong> a piece of land under a pivot, with one soil. A pivot split between two fields you
-        manage separately is two fields. The soil type sets field capacity and wilting point (see
-        <a href="#soils">Soils</a>); when you place the pivot, WISP suggests one from the USDA soil survey. If you know
-        better values for your field, from the
+        <strong>Irrigation group</strong> (optional): systems on one farm that you want together, such as those near one rain
+        gauge. Setup lists them together, the map outlines them, and on Daily entry rain typed for the group fills in every
+        field of its systems.
+      </li>
+      <li>
+        <strong>Field:</strong> a piece of land watered by one irrigation system, with one soil. A pivot split between
+        two fields you manage separately is two fields. The soil type sets field capacity and wilting point (see
+        <a href="#soils">Soils</a>); when you place the irrigation system, WISP suggests one from the USDA soil survey.
+        If you know better values for your field, from the
         <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a> or your own measurements,
         enter them instead.
       </li>
@@ -260,13 +283,13 @@
     <p>
       <strong>What's entered where:</strong> rain falls on the whole field, so it's entered for the field (on the field's
       page, a planting's page or Daily entry) and counts for every planting on it. Irrigation entered for the field, or applied
-      by its pivot, counts for every planting too. A plot can also have its own irrigation and soil moisture readings, entered
-      on its page, which it uses instead of the field's on those days.
+      by its irrigation system, counts for every planting too. A plot can also have its own irrigation and soil moisture readings,
+      entered on its page, which it uses instead of the field's on those days.
     </p>
     <p>
-      The quickest start is <strong>Set up a pivot</strong> on the Setup page: place the pivot, then add its fields and
-      crops in one form. Everything can be changed later in Setup, where each field shows its season's plantings on a
-      timeline; click one to change it. Each spring,
+      The quickest start is <strong>Set up an irrigation system</strong> on the Setup page: place it, then add its
+      fields and crops in one form. Everything can be changed later in Setup, where each field shows its season's
+      plantings on a timeline; click one to change it. Each spring,
       <strong>Copy last season's plantings</strong>
       brings your plantings forward a year with the same settings.
     </p>
@@ -274,25 +297,22 @@
     <h2 id="day-to-day">Day to day</h2>
     <ul>
       <li>
-        <strong>Dashboard:</strong> every field by farm and pivot, with its status, AD and outlook, and the last rain and
-        irrigation. A field growing several plantings at once lists each, and sorts by the one that needs water soonest.
+        <strong>Dashboard:</strong> every field by farm and irrigation system, with its status, AD and outlook, and the last
+        rain and irrigation. A field growing several plantings at once lists each, and sorts by the one that needs water soonest.
       </li>
       <li>
-        <strong>Map:</strong> shows each pivot where it is, colored by its most urgent field, with each field's status at
-        its center. The fields are listed beside the map, most urgent first or north to south. Choose "Needs water within
-        3 days" (or 7) to see which pivots to irrigate this week. Click a pivot, or a field in the list, to see its fields
-        and weather. Layers add radar, rain over the last 24 or 72 hours, the National Weather Service's forecast rain, and
-        the U.S. Drought Monitor; point at the map, or tap it, to see their values at that spot.
+        <strong>Map:</strong> shows each irrigation system where it is (a pivot or linear as its shape, the others as a dot),
+        colored by its most urgent field, with each field's status at its center, and each irrigation group outlined. The
+        fields are listed beside the map, most urgent first or north to south. Choose "Needs water within 3 days" (or 7) to
+        see which systems to run this week. Click one, or a field in the list, to see its fields and weather. Layers add radar,
+        rain over the last 24 or 72 hours, the National Weather Service's forecast rain, and the U.S. Drought Monitor; point
+        at the map, or tap it, to see their values at that spot.
       </li>
       <li>
         <strong>Daily entry:</strong> rain, irrigation, soil moisture and percent cover for every field on one day, a table
-        per farm. Rain typed for a pivot fills in its fields, and you can change any of them before saving. Irrigation can
-        be entered once for a pivot and its fields. Leave rain blank to use the modeled rain. Enter 0 if your gauge showed
-        no rain.
-      </li>
-      <li>
-        <strong>Pivot groups</strong> (in Setup): pivots on one farm that share a rain gauge. On Daily entry, rain typed for
-        the group fills in every field on its pivots.
+        per farm. Rain typed for an irrigation system or group fills in its fields, and you can change any of them before
+        saving. Irrigation can be entered once for a system and its fields. Leave rain blank to use the modeled rain. Enter
+        0 if your gauge showed no rain.
       </li>
       <li>
         <strong>A field's page:</strong> its plantings this season on a timeline, each one's status, the rain and irrigation
@@ -309,11 +329,11 @@
         since show as they are now.
       </li>
       <li>
-        <strong>Alerts:</strong> a morning email at about 6 am. It groups your fields by operation, farm, weather zone (pivots
-        that share the same weather) and pivot, and gives each zone's weather, which fields to irrigate or watch, and which
-        readings are due. You choose which fields it covers, which of those it lists (all, only those in season, only those
-        needing irrigation or readings, or only those needing irrigation), and how often it comes: daily during the season,
-        daily all year (with weather out of season too), only when a field needs irrigation, or never.
+        <strong>Alerts:</strong> a morning email at about 6 am. It groups your fields by operation, farm, weather zone (irrigation
+        systems that share the same weather) and irrigation system, and gives each zone's weather, which fields to irrigate
+        or watch, and which readings are due. You choose which fields it covers, which of those it lists (all, only those
+        in season, only those needing irrigation or readings, or only those needing irrigation), and how often it comes: daily
+        during the season, daily all year (with weather out of season too), only when a field needs irrigation, or never.
       </li>
     </ul>
 
@@ -324,11 +344,13 @@
     </p>
     <ul>
       <li>
-        <strong>Irrigation:</strong> enter every application, by pivot or by field. WISP can't know about water it isn't told
-        about.
+        <strong>Irrigation:</strong> enter every application, by irrigation system or by field. WISP can't know about water
+        it isn't told about. It counts what you enter as the water that reached the crop, so enter what a gun or traveler
+        actually put down after drift, if you know it. Drip goes in as the depth over the field's whole area (what run hours
+        work out); WISP doesn't yet model the part of the soil drip wets, or mulch.
       </li>
       <li>
-        <strong>Rain:</strong> rain is patchy, and the weather model's estimate for your pivot can miss a storm or catch one
+        <strong>Rain:</strong> rain is patchy, and the weather model's estimate for your field can miss a storm or catch one
         that missed you. A rain gauge at or near the field, read daily, is the best way to correct it. If you read it every
         day it rains, set the field to use only the rain you enter; the season details on its page compare your gauge with
         the model.
@@ -362,9 +384,10 @@
       enter them for the field and they replace its soil type's.
     </p>
     <p>
-      When you place a pivot, WISP looks up the USDA soil survey under it and suggests the soil type that covers most of
-      it, from the surface layer of each map unit's main soil; the pivot map's <strong>Soil types</strong> button shows them
-      around the pivot. It's a suggestion: check it against what you know of the field.
+      When you place an irrigation system, WISP looks up the USDA soil survey under it (around it, for one without a
+      shape) and suggests the soil type that covers most of it, from the surface layer of each map unit's main soil; the
+      setup map's <strong>Soil types</strong> button shows them around it. It's a suggestion: check it against what you know
+      of the field.
     </p>
     <div class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised">
       <table class="w-full text-sm">
@@ -571,10 +594,10 @@ t: days since emergence; t′: days since the decline starts</code
     <h2 id="weather">Weather</h2>
     <p>
       WISP's weather comes from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>, for the
-      grid cell (about 9 km across) around each pivot: the National Blend of Models (NBM) where it has a value, and
-      Open-Meteo's best match of other models where it doesn't. The last week is refreshed as the models revise it; the
-      next {defaults.forecast_days} days are the latest forecast, and the field chart's range of outcomes comes from the 31
-      runs of the GFS ensemble forecast.
+      grid cell (about 9 km across) around each irrigation system: the National Blend of Models (NBM) where it has a
+      value, and Open-Meteo's best match of other models where it doesn't. The last week is refreshed as the models
+      revise it; the next {defaults.forecast_days} days are the latest forecast, and the field chart's range of outcomes comes
+      from the 31 runs of the GFS ensemble forecast.
     </p>
     <h3 id="weather-corrections">Weather corrections</h3>
     <p>
@@ -587,8 +610,8 @@ t: days since emergence; t′: days since the decline starts</code
     </p>
     <WeatherCorrectionsTable {corrections} />
     <p>
-      The corrections were fitted in Wisconsin. Pivots elsewhere get them too until they're checked against stations in
-      other states.
+      The corrections were fitted in Wisconsin. Irrigation systems elsewhere get them too until they're checked against
+      stations in other states.
     </p>
 
     <h2 id="glossary">Glossary</h2>
@@ -618,9 +641,9 @@ t: days since emergence; t′: days since the decline starts</code
         reduced motion settings, and work with text enlarged to 200% and on screens as narrow as 320 pixels.
       </li>
       <li>
-        Dragging a pivot's handles on the map needs a mouse or touch, but every handle also has a box below the map
-        where you can type the same values. The optional map layers (radar, rain, drought) are images from outside
-        services and are described by their legends and by the values shown under the pointer.
+        Dragging a pivot's or linear's handles on the map needs a mouse or touch, but every handle also has a box below
+        the map where you can type the same values. The optional map layers (radar, rain, drought) are images from
+        outside services and are described by their legends and by the values shown under the pointer.
       </li>
     </ul>
     <p>

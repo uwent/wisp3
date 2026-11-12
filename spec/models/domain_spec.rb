@@ -158,6 +158,23 @@ RSpec.describe "Domain models" do
       write = ->(changes) { Pivot.transaction(requires_new: true) { pivot.update_columns(changes) } }
       expect { write.call(radius_ft: 5000) }.to raise_error(ActiveRecord::StatementInvalid, /pivots_radius_max/)
       expect { write.call(kind: "linear") }.to raise_error(ActiveRecord::StatementInvalid, /pivots_linear_shape/)
+      expect { write.call(kind: "drip", radius_ft: 1300) }.to raise_error(ActiveRecord::StatementInvalid, /pivots_point_shape/)
+      expect { write.call(kind: "boom") }.to raise_error(ActiveRecord::StatementInvalid, /pivots_kind/)
+    end
+
+    it "is a traveler, solid set, drip block or location: a point with no dimensions" do
+      Pivot::POINT_KINDS.each do |kind|
+        pivot = create(:pivot, kind:, radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300, length_ft: 1300)
+        expect(pivot.reload).to have_attributes(kind:, radius_ft: nil, arc_start_deg: nil, length_ft: nil)
+        expect(pivot).to be_point
+      end
+    end
+
+    it "names its kind as growers know it" do
+      expect(build(:pivot, name: "North 160").label).to eq("Pivot: North 160")
+      expect(build(:pivot, kind: "traveler", name: "Lane 3").label).to eq("Traveler: Lane 3")
+      expect(Pivot::KINDS.map { |kind| build(:pivot, kind:).kind_name })
+        .to eq(["Pivot", "Linear", "Traveler", "Solid set", "Drip", "Location"])
     end
   end
 

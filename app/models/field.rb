@@ -60,8 +60,8 @@ class Field < ApplicationRecord
   # with them stays; the setup form offers a new field under the other pivot instead (G.9)
   def pivot_kept_with_history
     return unless will_save_change_to_pivot_id? && history?
-    errors.add(:pivot_id, "can't change for a field with earlier seasons, which stay with its pivot. " \
-      "Set up a new field under the other pivot instead")
+    errors.add(:pivot_id, "can't change for a field with earlier seasons, which stay with it. " \
+      "Set up a new field under the other system instead")
   end
 
   def wilting_point_below_capacity

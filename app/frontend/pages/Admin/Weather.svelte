@@ -147,14 +147,16 @@
   aria-label="Weather cells"
 >
   {#if cells.length === 0}
-    <p class="p-6 text-center text-sm text-ink-muted">No weather cells yet. Cells are created when pivots are.</p>
+    <p class="p-6 text-center text-sm text-ink-muted">
+      No weather cells yet. Cells are created when irrigation systems are.
+    </p>
   {:else}
     <table class="w-full text-left text-sm">
       <thead class="border-b border-line text-xs text-ink-muted">
         <tr>
           <th class="px-3 py-2 font-medium">Cell</th>
           <th class="px-3 py-2 font-medium">Status</th>
-          <th class="px-3 py-2 font-medium">Pivots</th>
+          <th class="px-3 py-2 font-medium">Systems</th>
           <th class="px-3 py-2 font-medium">Season data</th>
           <th class="px-3 py-2 font-medium">Forecast</th>
           <th class="px-3 py-2 font-medium">Last fetch</th>

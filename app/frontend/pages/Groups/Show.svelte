@@ -90,7 +90,7 @@
               class="mt-0.5"
             />
             <span>
-              Modeled rain for each pivot's location
+              Modeled rain for each irrigation system's location
               <span class="block text-ink-muted">Your own gauge readings replace it on the days you enter them.</span>
             </span>
           </label>
@@ -116,7 +116,7 @@
       <dt class="text-ink-muted">Rainfall</dt>
       <dd>
         {group.use_model_precip
-          ? "Modeled for each pivot's location, and replaced by your gauge readings on the days you enter them"
+          ? "Modeled for each irrigation system's location, and replaced by your gauge readings on the days you enter them"
           : 'Only the rain you enter'}
       </dd>
     </dl>

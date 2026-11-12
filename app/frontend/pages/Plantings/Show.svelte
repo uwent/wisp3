@@ -16,6 +16,7 @@
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import Term from '@/lib/components/Term.svelte'
   import { addDays, formatDate, relativeDay } from '@/lib/dates'
+  import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
   import { guidance as guidanceFor } from '@/lib/guidance'
   import { outlook as outlookFor } from '@/lib/outlook'
   import { plotSize } from '@/lib/plantings'
@@ -54,7 +55,7 @@
     weather,
   }: {
     field: Field
-    pivot: { id: number; name: string; pump_capacity_gpm: number | null }
+    pivot: { id: number; name: string; kind: PivotKind; kind_name: string; pump_capacity_gpm: number | null }
     farm: { id: number; name: string }
     weather_updating: boolean
     /** Time travel (PLAN.md Phase 8 F): the earlier day the page shows, read-only; null for today */
@@ -69,6 +70,8 @@
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  // "pivot", "drip block"
+  const noun = $derived(KIND_NOUNS[pivot.kind])
   // Time travelling, nothing on the page edits, and the projection is the weather that followed
   const readOnly = $derived(as_of !== null)
   const replay = $derived(summary?.projection_source === 'observed')
@@ -269,7 +272,7 @@
     {#if !readOnly}
       <Link
         href={setup.show({ query: { year: planting.year } })}
-        title="Change this field, its pivot or its plantings on the setup page"
+        title="Change this field, its irrigation system or its plantings on the setup page"
         class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
       >
         Edit in setup
@@ -384,8 +387,8 @@
         Weather update failed. Refresh the page to try again. Until weather arrives, WISP can't estimate crop water use,
         so the numbers below won't change.
       {:else}
-        Weather for this pivot is on its way, usually within a few minutes of adding it. Until it arrives, WISP can't
-        estimate crop water use, so the numbers below won't change.{#if weatherState === 'updating'}{' This page updates when it arrives.'}{/if}
+        Weather for this location is on its way, usually within a few minutes of adding the {noun}. Until it arrives,
+        WISP can't estimate crop water use, so the numbers below won't change.{#if weatherState === 'updating'}{' This page updates when it arrives.'}{/if}
       {/if}
     </span>
   </p>
@@ -706,8 +709,8 @@
       <div class="space-y-2">
         {#if replay}
           <p class="text-xs text-ink-muted">
-            This is what happened after {formatDate(as_of)}: the weather that came for this pivot and what was entered
-            for those days, run through the water balance where the forecast would have been. Depths are in
+            This is what happened after {formatDate(as_of)}: the weather that came for this location and what was
+            entered for those days, run through the water balance where the forecast would have been. Depths are in
             {depthUnitName}.
           </p>
         {:else}
@@ -810,7 +813,7 @@
           The season up to {formatDate(as_of)}. Depths are in {depthUnitName}.
         {:else}
           Click a rain, irrigation, soil moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value, and press Enter
-          to save and move down. Clear a cell to go back to the modeled or pivot value. Depths are in {depthUnitName}.
+          to save and move down. Clear a cell to go back to the modeled value or the {noun}'s. Depths are in {depthUnitName}.
           From the keyboard, use the arrow keys to move between cells, and press Enter or start typing to edit one.
           {#if plot}
             Rain is the whole field's, so it's the same for every planting on it; irrigation, soil moisture readings and
@@ -889,14 +892,14 @@
                       <span class="text-ink-muted">–</span>
                     {:else}
                       <span class="font-medium">{depth(day.irrigation)}</span>
-                      {#if day.irrigation_source === 'pivot'}<span class="ml-1 text-xs text-brand-600">from pivot</span
+                      {#if day.irrigation_source === 'pivot'}<span class="ml-1 text-xs text-brand-600">from {noun}</span
                         >{/if}
                       {#if day.irrigation_source === 'field'}<span class="ml-1 text-xs text-brand-600">from field</span
                         >{/if}
                       {#if day.irrigation_source === 'entered' && day.field_inches !== null}
                         <span class="block text-xs text-ink-muted">field {depth(day.field_inches)}</span>
                       {:else if day.irrigation_source === 'entered' && day.pivot_inches !== null}
-                        <span class="block text-xs text-ink-muted">pivot {depth(day.pivot_inches)}</span>
+                        <span class="block text-xs text-ink-muted">{noun} {depth(day.pivot_inches)}</span>
                       {/if}
                     {/if}
                   </EditableCell>
@@ -959,10 +962,10 @@
         </table>
       </div>
       <p class="text-xs text-ink-muted">
-        Rain in gray is modeled for the pivot's location; bold values are ones you entered.{#if plot}{' '}Irrigation
-          marked “from field” was entered for the whole field.{/if} Irrigation marked “from pivot” was entered on the
+        Rain in gray is modeled for the {noun}'s location; bold values are ones you entered.{#if plot}{' '}Irrigation
+          marked “from field” was entered for the whole field.{/if} Irrigation marked “from {noun}” was entered on the
         <Link href={pivots.show(pivot.id)} class="text-brand-600 underline underline-offset-2"
-          >pivot's irrigation page</Link
+          >{noun}'s irrigation page</Link
         > or on the Daily entry page. * Crop ET is estimated from the past week because that day's weather is missing.
         {lai ? 'LAI' : 'Cover'} in gray is estimated: {planting?.effective_canopy_interpolation === 'curve'
           ? "the crop's typical curve, adjusted to your readings"

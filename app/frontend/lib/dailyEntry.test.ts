@@ -35,6 +35,8 @@ const field = (id: number, plantings: DayPlanting[] = [planting(id * 10)]): DayF
 const pivot = (id: number, fields: DayField[], pivot_group_id: number | null = null): DayPivot => ({
   id,
   name: `Pivot ${id}`,
+  kind: 'center',
+  kind_name: 'Pivot',
   pivot_group_id,
   pump_capacity_gpm: null,
   irrigation: null,

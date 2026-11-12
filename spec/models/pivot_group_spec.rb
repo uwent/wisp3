@@ -10,7 +10,7 @@ RSpec.describe PivotGroup do
 
     elsewhere = build(:pivot, farm: create(:farm, group: farm.group), pivot_group:)
     expect(elsewhere).not_to be_valid
-    expect(elsewhere.errors[:pivot_group]).to include("must be on the pivot's farm")
+    expect(elsewhere.errors[:pivot_group]).to include("must be on the same farm")
   end
 
   it "is kept on the pivot's farm by the database too" do

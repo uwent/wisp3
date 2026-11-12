@@ -12,7 +12,7 @@
   type Frequency = 'never' | 'daily' | 'daily_all_year' | 'needed'
   type Scope = 'all' | 'in_season' | 'needs_action' | 'needs_irrigation'
   type DigestField = { id: number; name: string }
-  type DigestPivot = { id: number; name: string; fields: DigestField[] }
+  type DigestPivot = { id: number; name: string; kind_name: string; fields: DigestField[] }
   type DigestFarm = { id: number; name: string; pivots: DigestPivot[] }
   type DigestGroup = { id: number; name: string; farms: DigestFarm[] }
 
@@ -43,7 +43,7 @@
     {
       value: 'daily_all_year',
       label: 'Daily all year',
-      hint: 'Every morning all year, with weather for your pivots even when nothing is in season.',
+      hint: 'Every morning all year, with weather for your irrigation systems even when nothing is in season.',
     },
     {
       value: 'needed',
@@ -56,7 +56,7 @@
     {
       value: 'all',
       label: 'All the fields it covers',
-      hint: 'Every field below, in season or not, with its pivot’s weather.',
+      hint: 'Every field below, in season or not, with its irrigation system’s weather.',
     },
     {
       value: 'in_season',
@@ -173,9 +173,9 @@
 <div>
   <h1 class="text-2xl font-semibold">Alerts</h1>
   <p class="text-sm text-ink-muted">
-    WISP can email you each morning at about 6 am. It lists your fields by operation, farm, weather zone (pivots that
-    share the same weather) and pivot, gives each zone's weather for the past and coming week, says which fields to
-    irrigate or watch and when and how much, and lists the readings due on each field.
+    WISP can email you each morning at about 6 am. It lists your fields by operation, farm, weather zone (irrigation
+    systems that share the same weather) and irrigation system, gives each zone's weather for the past and coming week,
+    says which fields to irrigate or watch and when and how much, and lists the readings due on each field.
   </p>
 </div>
 
@@ -246,7 +246,7 @@
                               {@attach mixed(pivot.fields)}
                               onchange={(event) => pickAll(pivot.fields, event.currentTarget.checked)}
                             />
-                            <span><span class="text-ink-muted">Pivot:</span> {pivot.name}</span>
+                            <span><span class="text-ink-muted">{pivot.kind_name}:</span> {pivot.name}</span>
                           </label>
                           <div class="grid gap-1 pl-6 sm:grid-cols-2">
                             {#each pivot.fields as field (field.id)}

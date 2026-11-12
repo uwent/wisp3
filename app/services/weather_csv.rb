@@ -1,4 +1,4 @@
-# A pivot's weather as CSV: frontmatter (CsvExport), then every variable WISP stores for its weather
+# An irrigation system's (a pivot's, in code) weather as CSV: frontmatter (CsvExport), then every variable WISP stores for its weather
 # grid cell, one row per day (WeatherPanel's days: the stored ones, then the latest forecast's,
 # marked), with growing degree days, Open-Meteo's values before the corrections, and the corrections
 # each day went through. Values as stored.
@@ -31,9 +31,9 @@ class WeatherCsv
   def to_csv
     cell = @pivot.weather_cell
     generate do |csv|
-      frontmatter(csv, "WISP weather, #{@pivot.name}, #{@year}", {
+      frontmatter(csv, "WISP weather, #{@pivot.label}, #{@year}", {
         "Operation" => @pivot.farm.group.name,
-        "Pivot" => "#{@pivot.farm.name} / #{@pivot.name}",
+        "Irrigation system" => "#{@pivot.farm.name} / #{@pivot.label}",
         "Location" => cell && "the weather grid cell centered at #{cell.latitude}, #{cell.longitude}" \
           "#{", #{cell.elevation_m.round} m above sea level" if cell.elevation_m}",
         "Days" => days_line,

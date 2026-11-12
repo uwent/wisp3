@@ -1,4 +1,4 @@
-# A pivot's irrigation entries for a year as CSV: frontmatter (CsvExport), then one row per entry
+# An irrigation system's (a pivot's, in code) irrigation entries for a year as CSV: frontmatter (CsvExport), then one row per entry
 # with the amount as entered and as applied (run hours converted to inches), oldest first.
 class PivotIrrigationCsv
   include CsvExport
@@ -10,9 +10,9 @@ class PivotIrrigationCsv
   def to_csv
     names = @pivot.fields.to_h { |field| [field.id, field.name] }
     generate do |csv|
-      frontmatter(csv, "WISP pivot irrigation, #{@pivot.name}, #{@year}", {
+      frontmatter(csv, "WISP irrigation, #{@pivot.label}, #{@year}", {
         "Operation" => @pivot.farm.group.name,
-        "Pivot" => "#{@pivot.farm.name} / #{@pivot.name}",
+        "Irrigation system" => "#{@pivot.farm.name} / #{@pivot.label}",
         "Equipment" => @pivot.equipment,
         "Entries" => "#{@irrigations.size}, totaling #{format("%.2f", @irrigations.sum { |i| i.applied_inches.to_f })} in applied",
         "Not included" => "irrigation entered on a field itself (each field's export has it)"
