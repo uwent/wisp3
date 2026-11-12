@@ -368,13 +368,12 @@ export function groupOutline(shapes: PivotShape[]): LngLat[] {
   return convexHull(points)
 }
 
-// A field's outline (PLAN.md Phase 8 G.10; FieldBoundary on the server): a GeoJSON Polygon or
-// MultiPolygon in longitude and latitude, for the map and the suggested area only
+// A field's outline (PLAN.md Phase 8 G.10, G.14; FieldBoundary on the server): a GeoJSON Polygon
+// with one ring (no holes, no parts) in longitude and latitude, for the map and the suggested area only
 
-export type Boundary =
-  { type: 'Polygon'; coordinates: LngLat[][] } | { type: 'MultiPolygon'; coordinates: LngLat[][][] }
+export type Boundary = { type: 'Polygon'; coordinates: [LngLat[]] }
 
-// FieldBoundary's limits: corners in all of an outline's rings, and its area in acres
+// FieldBoundary's limits: corners in the outline, and its area in acres
 export const MAX_BOUNDARY_VERTICES = 1000
 export const MAX_FIELD_ACRES = 1500
 export const MIN_FIELD_ACRES = 0.01
@@ -386,23 +385,14 @@ export const MAX_LONGITUDE = -52
 const SQUARE_METERS_PER_ACRE = 4046.8564224
 const DIGITS = 7
 
-/** An outline's polygons, each [outer, ...holes] */
-export const boundaryPolygons = (boundary: Boundary): LngLat[][][] =>
-  boundary.type === 'Polygon' ? [boundary.coordinates] : boundary.coordinates
+/** An outline's ring (closed: its last position repeats its first) */
+export const boundaryRing = (boundary: Boundary): LngLat[] => boundary.coordinates[0]
 
-/** An outline from polygons: a Polygon for one, a MultiPolygon for several, null for none */
-export function boundaryOf(polygons: LngLat[][][]): Boundary | null {
-  if (!polygons.length) return null
-  return polygons.length === 1
-    ? { type: 'Polygon', coordinates: polygons[0] }
-    : { type: 'MultiPolygon', coordinates: polygons }
-}
+/** An outline from a ring, closed if it isn't */
+export const boundaryFrom = (ring: LngLat[]): Boundary => ({ type: 'Polygon', coordinates: [closeRing(ring)] })
 
 /** Corners, each counted once (a ring's last position repeats its first) */
-export const vertexCount = (boundary: Boundary) =>
-  boundaryPolygons(boundary)
-    .flat()
-    .reduce((sum, ring) => sum + Math.max(ring.length - 1, 0), 0)
+export const vertexCount = (boundary: Boundary) => Math.max(boundaryRing(boundary).length - 1, 0)
 
 /** A ring's area on a spherical earth in m² (Chamberlain and Duquette, as FieldBoundary and Turf) */
 export function ringAreaM2(ring: LngLat[]): number {
@@ -418,28 +408,21 @@ export function ringAreaM2(ring: LngLat[]): number {
   return Math.abs((total * EARTH_RADIUS_M ** 2) / 2)
 }
 
-/** An outline's area in acres: each polygon's outer ring less its holes */
-export function boundaryAcres(boundary: Boundary): number {
-  const m2 = boundaryPolygons(boundary).reduce(
-    (sum, [outer, ...holes]) => sum + ringAreaM2(outer ?? []) - holes.reduce((h, hole) => h + ringAreaM2(hole), 0),
-    0,
-  )
-  return m2 / SQUARE_METERS_PER_ACRE
-}
+/** An outline's area in acres */
+export const boundaryAcres = (boundary: Boundary) => ringAreaM2(boundaryRing(boundary)) / SQUARE_METERS_PER_ACRE
 
 /** What's wrong with an outline, worded as the server words it (FieldBoundary.errors), or [] */
 export function boundaryErrors(boundary: Boundary): string[] {
-  const rings = boundaryPolygons(boundary).flat()
+  const ring = boundaryRing(boundary)
   const errors: string[] = []
-  if (rings.some((ring) => ring.length < 4)) errors.push('has a ring with fewer than 3 corners')
-  if (rings.some((ring) => ring.length >= 4 && !samePosition(ring[0], ring[ring.length - 1])))
-    errors.push("has a ring that isn't closed")
+  if (ring.length < 4) errors.push('has fewer than 3 corners')
+  if (ring.length >= 4 && !samePosition(ring[0], ring[ring.length - 1])) errors.push("isn't closed")
   if (vertexCount(boundary) > MAX_BOUNDARY_VERTICES)
     errors.push(`has too many corners (at most ${MAX_BOUNDARY_VERTICES.toLocaleString('en-US')}; simplify it)`)
   if (
-    !rings
-      .flat()
-      .every(([lng, lat]) => lat >= MIN_LATITUDE && lat <= MAX_LATITUDE && lng >= MIN_LONGITUDE && lng <= MAX_LONGITUDE)
+    !ring.every(
+      ([lng, lat]) => lat >= MIN_LATITUDE && lat <= MAX_LATITUDE && lng >= MIN_LONGITUDE && lng <= MAX_LONGITUDE,
+    )
   )
     errors.push('must be in the US or Canada')
   if (errors.length) return errors
@@ -455,10 +438,7 @@ const samePosition = (a: LngLat, b: LngLat) => a[0] === b[0] && a[1] === b[1]
 /** The outline as stored: positions rounded to about a centimeter, any altitude dropped */
 export function roundBoundary(boundary: Boundary): Boundary {
   const round = (n: number) => Number(n.toFixed(DIGITS))
-  const polygons = boundaryPolygons(boundary).map((polygon) =>
-    polygon.map((ring) => ring.map(([lng, lat]) => [round(lng), round(lat)] as LngLat)),
-  )
-  return boundaryOf(polygons)!
+  return { type: 'Polygon', coordinates: [boundaryRing(boundary).map(([lng, lat]) => [round(lng), round(lat)])] }
 }
 
 /** A ring closed (its last position repeating its first) */
@@ -511,26 +491,21 @@ function segmentDist2(p: number[], a: number[], b: number[]): number {
 
 /**
  * An outline with at most maxVertices corners: unchanged if it fits, else simplified with a
- * tolerance doubled from 0.25 m until it does. Rings left with fewer than three corners (slivers,
- * tiny holes) are dropped.
+ * tolerance doubled from 0.25 m until it does (keeping at least three corners)
  */
 export function simplifyBoundary(boundary: Boundary, maxVertices = MAX_BOUNDARY_VERTICES): Boundary {
   if (vertexCount(boundary) <= maxVertices) return boundary
   for (let tolerance = 0.25; tolerance < 1000; tolerance *= 2) {
-    const polygons = boundaryPolygons(boundary).flatMap(([outer, ...holes]) => {
-      const simpleOuter = simplifyRing(outer, tolerance)
-      if (simpleOuter.length < 4) return []
-      return [[simpleOuter, ...holes.map((hole) => simplifyRing(hole, tolerance)).filter((hole) => hole.length >= 4)]]
-    })
-    const simple = boundaryOf(polygons)
-    if (simple && vertexCount(simple) <= maxVertices) return simple
+    const ring = simplifyRing(boundaryRing(boundary), tolerance)
+    if (ring.length < 4) break
+    if (ring.length - 1 <= maxVertices) return { type: 'Polygon', coordinates: [ring] }
   }
   return boundary
 }
 
 /** [[west, south], [east, north]] around an outline */
 export function boundaryBounds(boundary: Boundary): [LngLat, LngLat] {
-  const points = boundaryPolygons(boundary).flatMap(([outer]) => outer ?? [])
+  const points = boundaryRing(boundary)
   const lngs = points.map(([lng]) => lng)
   const lats = points.map(([, lat]) => lat)
   return [
@@ -539,21 +514,15 @@ export function boundaryBounds(boundary: Boundary): [LngLat, LngLat] {
   ]
 }
 
-/** Whether a point is inside an outline (in one of its polygons, not in a hole) */
-export const inBoundary = (point: LngLat, boundary: Boundary) =>
-  boundaryPolygons(boundary).some((polygon) => pointInPolygon(point, polygon))
+/** Whether a point is inside an outline */
+export const inBoundary = (point: LngLat, boundary: Boundary) => pointInPolygon(point, boundary.coordinates)
 
 /**
- * A point inside the outline for its label or a pin: the largest polygon's area-weighted
- * centroid, or, when that falls outside (an L or a ring), the middle of the widest horizontal run
- * through it
+ * A point inside the outline for its label or a pin: its area-weighted centroid, or, when that
+ * falls outside (an L or a C), the middle of the widest horizontal run through it
  */
 export function boundaryCenter(boundary: Boundary): LngLat {
-  const polygons = boundaryPolygons(boundary)
-  const largest = polygons.reduce((best, polygon) =>
-    ringAreaM2(polygon[0] ?? []) > ringAreaM2(best[0] ?? []) ? polygon : best,
-  )
-  const outer = largest[0]
+  const outer = boundaryRing(boundary)
   let cx = 0
   let cy = 0
   let a = 0
@@ -566,17 +535,16 @@ export function boundaryCenter(boundary: Boundary): LngLat {
     cy += (y0 + y1) * cross
   }
   const centroid: LngLat = a ? [cx / (3 * a), cy / (3 * a)] : outer[0]
-  if (pointInPolygon(centroid, largest)) return centroid
+  if (pointInPolygon(centroid, [outer])) return centroid
   // Across the polygon at the centroid's latitude: the longest stretch inside
   const y = centroid[1]
-  const crossings = largest
-    .flatMap((ring) =>
-      ring.slice(1).flatMap((b, i) => {
-        const a = ring[i]
-        if (a[1] > y === b[1] > y) return []
-        return [a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1])]
-      }),
-    )
+  const crossings = outer
+    .slice(1)
+    .flatMap((b, i) => {
+      const a = outer[i]
+      if (a[1] > y === b[1] > y) return []
+      return [a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1])]
+    })
     .sort((p, q) => p - q)
   let best: LngLat = outer[0]
   let width = -1

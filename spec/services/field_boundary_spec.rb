@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# A field's outline (PLAN.md Phase 8 G.10). The same polygons and areas are in lib/geo.test.ts.
+# A field's outline (PLAN.md Phase 8 G.10; one ring since G.14). The same polygons and areas are in lib/geo.test.ts.
 RSpec.describe FieldBoundary do
   # 0.01° on a side at 43.3°N: 1,112 m north–south by 809 m east–west, about 222 acres
   let(:outer) { [[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.31], [-89.35, 43.3]] }
@@ -20,14 +20,9 @@ RSpec.describe FieldBoundary do
       expect(described_class.acres(square)).to be_within(0.01).of(222.338)
     end
 
-    it "takes out holes" do
-      expect(described_class.acres({"type" => "Polygon", "coordinates" => [outer, hole]})).to be_within(0.01).of(213.444)
-    end
-
-    it "adds up a multipolygon's parts, whichever way their rings wind" do
-      shifted = outer.map { |lng, lat| [lng + 0.02, lat] }.reverse
-      multi = {"type" => "MultiPolygon", "coordinates" => [[outer], [shifted]]}
-      expect(described_class.acres(multi)).to be_within(0.02).of(2 * 222.338)
+    it "measures it whichever way its ring winds" do
+      reversed = {"type" => "Polygon", "coordinates" => [outer.reverse]}
+      expect(described_class.acres(reversed)).to be_within(0.01).of(222.338)
     end
   end
 
@@ -36,17 +31,21 @@ RSpec.describe FieldBoundary do
       expect(described_class.errors(square)).to be_empty
     end
 
-    it "wants a polygon or multipolygon" do
-      expect(described_class.errors({"type" => "Point", "coordinates" => [-89.3, 43.3]}))
-        .to eq(["must be a polygon or multipolygon"])
-      expect(described_class.errors("nonsense")).to eq(["must be a polygon or multipolygon"])
+    it "wants a polygon" do
+      expect(described_class.errors({"type" => "Point", "coordinates" => [-89.3, 43.3]})).to eq(["must be a polygon"])
+      expect(described_class.errors({"type" => "MultiPolygon", "coordinates" => [[outer]]})).to eq(["must be a polygon"])
+      expect(described_class.errors("nonsense")).to eq(["must be a polygon"])
     end
 
-    it "wants closed rings of at least three corners" do
-      expect(described_class.errors({"type" => "Polygon", "coordinates" => [outer[0..3]]}))
-        .to eq(["has a ring that isn't closed"])
+    it "wants one shape without holes" do
+      expect(described_class.errors({"type" => "Polygon", "coordinates" => [outer, hole]}))
+        .to eq(["must be one shape without holes"])
+    end
+
+    it "wants a closed ring of at least three corners" do
+      expect(described_class.errors({"type" => "Polygon", "coordinates" => [outer[0..3]]})).to eq(["isn't closed"])
       expect(described_class.errors({"type" => "Polygon", "coordinates" => [outer[0..1] + [outer[0]]]}))
-        .to eq(["has a ring with fewer than 3 corners"])
+        .to eq(["has fewer than 3 corners"])
     end
 
     it "allows at most MAX_VERTICES corners" do
@@ -79,6 +78,8 @@ RSpec.describe FieldBoundary do
       expect(described_class.normalize("{not json")).to eq("{not json")
       odd = {"type" => "Polygon", "coordinates" => [[["a", "b"]]]}
       expect(described_class.normalize(odd)).to eq(odd)
+      multi = {"type" => "MultiPolygon", "coordinates" => [[outer]]}
+      expect(described_class.normalize(multi)).to eq(multi)
     end
   end
 
@@ -101,7 +102,7 @@ RSpec.describe FieldBoundary do
 
     it "refuses an outline that isn't one, saying why" do
       expect(field.update(boundary: "{not json")).to be(false)
-      expect(field.errors[:boundary]).to eq(["must be a polygon or multipolygon"])
+      expect(field.errors[:boundary]).to eq(["must be a polygon"])
     end
 
     it "leaves open plantings' area alone when the outline changes" do

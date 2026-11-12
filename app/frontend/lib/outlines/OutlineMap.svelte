@@ -7,11 +7,11 @@
   import 'maplibre-gl/dist/maplibre-gl.css'
 
   import { onMount, untrack } from 'svelte'
-  import type { GeoJSONSource, Map as MapLibreMap, Marker as MarkerClass } from 'maplibre-gl'
+  import type { Map as MapLibreMap, Marker as MarkerClass } from 'maplibre-gl'
   import type { GeoJSONStoreFeatures, TerraDraw as TerraDrawClass } from 'terra-draw'
 
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
-  import { type Boundary, boundaryBounds, boundaryOf, boundaryPolygons, closeRing, type LngLat } from '@/lib/geo'
+  import { type Boundary, boundaryBounds, boundaryFrom, boundaryRing, type LngLat } from '@/lib/geo'
   import { basemapStyle, type Basemap, setBasemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { loadMapLibre } from '@/lib/map/maplibre'
@@ -19,12 +19,12 @@
 
   import { addReferenceLayers, type Reference, referenceBounds } from './references'
 
-  // A field's outline on the map (PLAN.md Phase 8 G.10). terra-draw holds the outline's parts:
-  // shown as they are ('view'), a new part clicked corner by corner ('draw'), or parts selected to
-  // drag their corners, add one from a midpoint or remove one ('edit'). An outline with holes (from
-  // a file) is shown but can't be edited corner by corner, only replaced. The field's irrigation
-  // system, the operation's other systems and fields are drawn for reference, and its plots' pins
-  // are markers: dragged, or placed by a click while one is being pinned.
+  // A field's outline on the map (PLAN.md Phase 8 G.10, G.14: one polygon). terra-draw holds it:
+  // shown as it is ('view'), a new one clicked corner by corner ('draw'; the old one stays until the
+  // new one is finished, which replaces it), or selected to drag its corners, add one from a
+  // midpoint or remove one ('edit'). The field's irrigation system, the operation's other systems and
+  // fields are drawn for reference, and its plots' pins are markers: dragged, or placed by a click
+  // while one is being pinned.
   let {
     boundary = $bindable(),
     mode = $bindable(),
@@ -49,7 +49,7 @@
   } = $props()
 
   const COLOR = '#3987e5'
-  const OWN_SOURCES = ['reference', 'outline']
+  const OWN_SOURCES = ['reference']
   // Wisconsin's Central Sands, where most WISP fields are
   const DEFAULT_VIEW = { center: [-89.5, 44.25] as LngLat, zoom: 8 }
 
@@ -64,11 +64,6 @@
   // The outline as terra-draw last gave it, so the page's own changes (an import) can be told apart
   let written = untrack(() => JSON.stringify(boundary))
 
-  /** Holes can't be edited corner by corner */
-  export const hasHoles = (outline: Boundary | null) =>
-    !!outline && boundaryPolygons(outline).some((polygon) => polygon.length > 1)
-  const fixed = $derived(hasHoles(boundary))
-
   /** Fit the map to the outline, or else the field's system */
   export function fit() {
     if (!map) return
@@ -82,49 +77,29 @@
     container.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }
 
-  /** Remove the selected part, if one is selected; whether one was */
-  export function deleteSelected(): boolean {
-    const selected = draw?.getSnapshot().filter((feature) => feature.properties.selected) ?? []
-    if (!selected.length) return false
-    draw!.removeFeatures(selected.map((feature) => feature.id!))
-    readDraw()
-    return true
-  }
-
-  function addLayers(m: MapLibreMap) {
-    addReferenceLayers(m, references)
-    // An outline with holes, which terra-draw doesn't hold
-    m.addSource('outline', { type: 'geojson', data: outlineData() as never })
-    m.addLayer({
-      id: 'outline-fill',
-      type: 'fill',
-      source: 'outline',
-      paint: { 'fill-color': COLOR, 'fill-opacity': 0.3 },
-    })
-    m.addLayer({
-      id: 'outline-line',
-      type: 'line',
-      source: 'outline',
-      paint: { 'line-color': COLOR, 'line-width': 2.5 },
-    })
-  }
-
-  const outlineData = () => ({
-    type: 'FeatureCollection' as const,
-    features: fixed && boundary ? [{ type: 'Feature' as const, properties: {}, geometry: boundary }] : [],
-  })
-
-  // terra-draw's features as the outline: each finished polygon one part
+  // terra-draw's finished polygon as the outline (there's only ever one once a drawing finishes)
   function readDraw() {
     if (!draw || loading) return
-    const parts = draw
+    const ring = draw
       .getSnapshot()
       .filter((feature) => feature.geometry.type === 'Polygon' && !feature.properties.currentlyDrawing)
-      .map((feature) => [closeRing((feature.geometry.coordinates as LngLat[][])[0])])
-      .filter((polygon) => polygon[0].length >= 4)
-    const outline = boundaryOf(parts)
+      .map((feature) => (feature.geometry.coordinates as LngLat[][])[0])
+      .find((ring) => ring.length >= 4)
+    const outline = ring ? boundaryFrom(ring) : null
     written = JSON.stringify(outline)
     boundary = outline
+  }
+
+  // A finished drawing replaces the outline it was drawn over
+  function keepOnly(id: string | number) {
+    const others = draw!.getSnapshot().filter((feature) => feature.id !== id && feature.geometry.type === 'Polygon')
+    if (!others.length) return
+    loading = true
+    try {
+      draw!.removeFeatures(others.map((feature) => feature.id!))
+    } finally {
+      loading = false
+    }
   }
 
   // The outline into terra-draw (after the page changed it, or a basemap change cleared it)
@@ -136,15 +111,15 @@
     loading = true
     try {
       draw.clear()
-      if (!boundary || fixed) return
-      const features: GeoJSONStoreFeatures[] = boundaryPolygons(boundary).map(([outer]) => ({
+      if (!boundary) return
+      const feature: GeoJSONStoreFeatures = {
         id: crypto.randomUUID(),
         type: 'Feature',
-        geometry: { type: 'Polygon', coordinates: [outer] },
+        geometry: { type: 'Polygon', coordinates: [boundaryRing(boundary)] },
         properties: { mode: 'polygon' },
-      }))
-      const refused = draw.addFeatures(features).filter((result) => !result.valid)
-      if (refused.length) console.warn('Outline parts terra-draw refused:', refused)
+      }
+      const refused = draw.addFeatures([feature]).filter((result) => !result.valid)
+      if (refused.length) console.warn('An outline terra-draw refused:', refused)
     } finally {
       loading = false
     }
@@ -198,8 +173,9 @@
     draw.on('change', (_ids, type) => {
       if (type !== 'styling') readDraw()
     })
-    // A finished part is ready to adjust
-    draw.on('finish', () => {
+    // A finished outline replaces the old one and is ready to adjust
+    draw.on('finish', (id) => {
+      keepOnly(id)
       readDraw()
       mode = 'edit'
     })
@@ -210,7 +186,7 @@
 
   function applyMode() {
     if (!draw) return
-    const wanted = fixed ? 'static' : mode === 'draw' ? 'polygon' : mode === 'edit' ? 'select' : 'static'
+    const wanted = mode === 'draw' ? 'polygon' : mode === 'edit' ? 'select' : 'static'
     if (draw.getMode() !== wanted) draw.setMode(wanted)
   }
 
@@ -271,7 +247,7 @@
       m.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right')
       m.on('load', () => {
         map = m
-        addLayers(m)
+        addReferenceLayers(m, references)
         fit()
         startDraw(m)
         placePins()
@@ -302,14 +278,13 @@
     if (json === written) return
     written = json
     untrack(() => {
-      map?.getSource<GeoJSONSource>('outline')?.setData(outlineData() as never)
       loadDraw()
       fit()
     })
   })
 
   $effect(() => {
-    void [mode, fixed]
+    void mode
     untrack(applyMode)
   })
 

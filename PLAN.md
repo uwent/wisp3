@@ -1260,11 +1260,11 @@ A field can have an outline: drawn on the map, imported from a file, or none (as
 Ben, 2026-11-12, after trying G.10. Handoff: [docs/handoffs/g14-setup-and-map.md](docs/handoffs/g14-setup-and-map.md). Four parts, one commit each, in this order (the first simplifies what the others touch). On `beta-readiness`.
 
 **1. A field's outline is one polygon.**
-- [ ] `FieldBoundary` accepts only a GeoJSON `Polygon` with one ring (no holes, no `MultiPolygon`); `Boundary` in `lib/geo.ts` likewise (`boundaryPolygons`, `boundaryOf` and the multi-part branches go; area, center, bounds and `areaWkt` take the one ring).
-- [ ] Import (`lib/outlines/read.ts`, both pages): a shape's holes are dropped and only its largest part is kept, and the row says so ("Kept the largest of 3 parts; 1 hole removed"). Simplify after that.
-- [ ] Outline page: no "Add a part" or "Delete the selected part", and no read-only state for outlines with holes (`hasHoles`, the `outline` source in `OutlineMap`). Drawing makes the one polygon; with one already there, Draw replaces it (asking first).
-- [ ] A data migration reduces any stored outline to its largest part's outer ring (only demo and test data have outlines so far, but staging may).
-- [ ] Specs and vitests follow (`field_boundary_spec`, `boundary.test.ts`, `read.test.ts`; the `fields.geojson` fixture's MultiPolygon becomes the "largest part kept" case).
+- [x] `FieldBoundary` accepts only a GeoJSON `Polygon` with one ring (no holes, no `MultiPolygon`); `Boundary` in `lib/geo.ts` likewise (`boundaryPolygons`, `boundaryOf` and the multi-part branches go; area, center, bounds and `areaWkt` take the one ring).
+- [x] Import (`lib/outlines/read.ts`, both pages): a shape's holes are dropped and only its largest part is kept, and the row says so ("Kept the largest of 3 parts; 1 hole removed"). Simplify after that.
+- [x] Outline page: no "Add a part" or "Delete the selected part", and no read-only state for outlines with holes (`hasHoles`, the `outline` source in `OutlineMap`). Drawing makes the one polygon; with one already there, Draw replaces it (asking first).
+- [x] A data migration reduces any stored outline to its largest part's outer ring (only demo and test data have outlines so far, but staging may).
+- [x] Specs and vitests follow (`field_boundary_spec`, `boundary.test.ts`, `read.test.ts`; the `fields.geojson` fixture's MultiPolygon becomes the "largest part kept" case).
 
 **2. Setup: Edit last, Delete inside Edit, the field form with its shape.**
 - [ ] **Buttons per level, Edit last:** farm: Add irrigation system · Group systems · Edit; irrigation group: Edit; irrigation system: Irrigation · Add field · Edit; field: Add a planting · Edit. No Delete or Outline buttons on the rows.

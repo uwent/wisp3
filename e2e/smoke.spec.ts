@@ -889,7 +889,19 @@ test('a field outline is drawn corner by corner, or read from a file (G.10)', as
     await page.waitForTimeout(150)
   }
   await expect(page.getByRole('button', { name: 'Edit corners' })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByText(/^The outline: [\d.]+ (ac|ha)\./)).toBeVisible()
+  const drawn = page.getByText(/^The outline: [\d.]+ (ac|ha)\./)
+  await expect(drawn).toBeVisible()
+  const first = await drawn.textContent()
+
+  // Drawing again asks first, and the new outline replaces the old one: a field is one polygon
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Draw a new one' }).click()
+  for (const [x, y] of [at(0.45, 0.45), at(0.55, 0.45), at(0.55, 0.55), at(0.45, 0.55), at(0.45, 0.45)]) {
+    await page.mouse.click(x, y)
+    await page.waitForTimeout(150)
+  }
+  await expect(page.getByRole('button', { name: 'Edit corners' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(drawn).not.toHaveText(first!)
 
   // A KML file replaces it: one shape, 0.01° by 0.005° at 43.3°N
   await page.getByLabel('Outline file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')

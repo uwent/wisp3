@@ -2,9 +2,10 @@ import {
   type Boundary,
   boundaryAcres,
   boundaryErrors,
-  boundaryOf,
+  boundaryFrom,
   closeRing,
   type LngLat,
+  ringAreaM2,
   roundBoundary,
   simplifyBoundary,
   vertexCount,
@@ -13,7 +14,8 @@ import {
 // Field outlines from a file (PLAN.md Phase 8 G.10), read in the browser so nothing is uploaded
 // but the result: a zipped shapefile (FSA Common Land Units, John Deere and Climate FieldView
 // exports; shpjs reprojects with its .prj), GeoJSON, or KML and KMZ (Google Earth). Each feature
-// with a polygon becomes a shape, simplified to the corner limit; points and lines are counted and
+// with a polygon becomes a shape: a field's outline is one ring (G.14), so a feature's largest part
+// is kept, without its holes, then simplified to the corner limit; points and lines are counted and
 // left out. The parsers load only when a file is read.
 
 export type Properties = Record<string, unknown>
@@ -23,8 +25,8 @@ export type ImportedShape = {
   properties: Properties
   boundary: Boundary
   acres: number
-  /** Whether it was simplified to fit the corner limit */
-  simplified: boolean
+  /** What was changed to make it one outline ("kept the largest of 3 parts", "1 hole removed", "simplified to fewer corners") */
+  notes: string[]
   /** Why it can't be saved (FieldBoundary's wording), or [] */
   problems: string[]
 }
@@ -145,18 +147,23 @@ export function shapesFrom(collections: Collection[]): ReadResult {
     const polygons = polygonsOf(feature.geometry)
       .map((polygon) => polygon.map(closeRing))
       .filter((polygon) => polygon[0]?.length >= 4)
-    const outline = boundaryOf(polygons)
-    if (!outline) {
+    if (!polygons.length) {
       skipped++
       continue
     }
-    const rounded = roundBoundary(outline)
+    const largest = polygons.reduce((best, polygon) => (ringAreaM2(polygon[0]) > ringAreaM2(best[0]) ? polygon : best))
+    const holes = largest.length - 1
+    const rounded = roundBoundary(boundaryFrom(largest[0]))
     const boundary = simplifyBoundary(rounded)
+    const notes: string[] = []
+    if (polygons.length > 1) notes.push(`kept the largest of ${polygons.length} parts`)
+    if (holes) notes.push(holes === 1 ? '1 hole removed' : `${holes} holes removed`)
+    if (vertexCount(boundary) < vertexCount(rounded)) notes.push('simplified to fewer corners')
     shapes.push({
       properties: feature.properties ?? {},
       boundary,
       acres: boundaryAcres(boundary),
-      simplified: vertexCount(boundary) < vertexCount(rounded),
+      notes,
       problems: boundaryErrors(boundary),
     })
   }
@@ -198,4 +205,10 @@ export function nameKey(properties: Properties[]): string | null {
 export function shapeName(shape: ImportedShape, key: string | null): string {
   const value = key ? shape.properties[key] : null
   return value === null || value === undefined ? '' : String(value).trim()
+}
+
+/** A shape's notes as one sentence ("Kept the largest of 3 parts; 1 hole removed"), or '' */
+export function shapeNotes(shape: ImportedShape): string {
+  const text = shape.notes.join('; ')
+  return text && text[0].toUpperCase() + text.slice(1)
 }

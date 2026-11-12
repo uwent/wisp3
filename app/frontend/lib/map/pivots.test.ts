@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { bearing, distanceM, GROUP_MARGIN_M, type LngLat, pointInPolygon } from '@/lib/geo'
+import { bearing, type Boundary, distanceM, GROUP_MARGIN_M, type LngLat, pointInPolygon } from '@/lib/geo'
 import type { FieldCard } from '@/lib/overview'
 import type { PlantingSummary } from '@/types/serializers'
 
@@ -136,7 +136,7 @@ describe('pivotBounds', () => {
 })
 
 describe('fields with outlines and pinned plots (G.10)', () => {
-  const square = (lng: number, lat: number) => ({
+  const square = (lng: number, lat: number): Boundary => ({
     type: 'Polygon' as const,
     coordinates: [
       [

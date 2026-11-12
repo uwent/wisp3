@@ -1,7 +1,8 @@
-# A field's outline (PLAN.md Phase 8 G.10): a GeoJSON Polygon or MultiPolygon in WGS84 longitude
-# and latitude, for the map and the suggested area only (the balance never reads it). Drawn on the
-# field's outline page or imported from a file in the browser, which simplifies a detailed shape to
-# MAX_VERTICES. Limits and area are mirrored in lib/geo.ts.
+# A field's outline (PLAN.md Phase 8 G.10, G.14): a GeoJSON Polygon with one ring (no holes, no
+# parts) in WGS84 longitude and latitude, for the map and the suggested area only (the balance never
+# reads it). Drawn on the field's outline page or imported from a file in the browser, which keeps a
+# shape's largest part without its holes and simplifies it to MAX_VERTICES. Limits and area are
+# mirrored in lib/geo.ts.
 class FieldBoundary
   # Plenty for a field's edge; CLU and machine exports are simplified to it on import
   MAX_VERTICES = 1000
@@ -13,14 +14,14 @@ class FieldBoundary
   # About a centimeter; more digits are noise from reprojection
   DIGITS = 7
 
-  # The geometry as stored: a Polygon or MultiPolygon with 2D positions rounded to DIGITS, or the
-  # value as given when it isn't readable (errors says why). A JSON string is parsed.
+  # The geometry as stored: a Polygon with 2D positions rounded to DIGITS, or the value as given
+  # when it isn't readable (errors says why). A JSON string is parsed.
   def self.normalize(value)
     value = JSON.parse(value) if value.is_a?(String)
     return value unless value.is_a?(Hash)
     type = value["type"] || value[:type]
     coordinates = value["coordinates"] || value[:coordinates]
-    rounded = position_map(coordinates, (type == "MultiPolygon") ? 3 : 2)
+    rounded = position_map(coordinates, 2) if type == "Polygon"
     rounded ? {"type" => type, "coordinates" => rounded} : value
   rescue JSON::ParserError
     value
@@ -28,17 +29,18 @@ class FieldBoundary
 
   # What's wrong with a geometry, as sentences for the field's boundary attribute
   def self.errors(geometry)
-    polygons = polygons(geometry)
-    return ["must be a polygon or multipolygon"] unless polygons
-    rings = polygons.flatten(1)
+    unless geometry.is_a?(Hash) && geometry["type"] == "Polygon" && geometry["coordinates"].is_a?(Array)
+      return ["must be a polygon"]
+    end
+    return ["must be one shape without holes"] unless geometry["coordinates"].length == 1
+    ring = ring(geometry)
     errors = []
-    errors << "has a ring with fewer than 3 corners" if rings.any? { |ring| ring.length < 4 }
-    errors << "has a ring that isn't closed" if rings.any? { |ring| ring.length >= 4 && ring.first != ring.last }
+    errors << "has fewer than 3 corners" if ring.length < 4
+    errors << "isn't closed" if ring.length >= 4 && ring.first != ring.last
     if vertex_count(geometry) > MAX_VERTICES
       errors << "has too many corners (at most #{MAX_VERTICES.to_fs(:delimited)}; simplify it)"
     end
-    positions = rings.flatten(1)
-    unless positions.all? { |lng, lat| Pivot::LATITUDES.cover?(lat) && Pivot::LONGITUDES.cover?(lng) }
+    unless ring.all? { |lng, lat| Pivot::LATITUDES.cover?(lat) && Pivot::LONGITUDES.cover?(lng) }
       errors << "must be in the US or Canada"
     end
     return errors if errors.any?
@@ -48,25 +50,20 @@ class FieldBoundary
     errors
   end
 
-  # The polygons' rings, [[outer, *holes], ...], or nil for anything else
-  def self.polygons(geometry)
-    return unless geometry.is_a?(Hash)
-    case geometry["type"]
-    when "Polygon" then [geometry["coordinates"]]
-    when "MultiPolygon" then geometry["coordinates"]
-    end
+  # The outline's ring, or [] for anything that isn't a Polygon
+  def self.ring(geometry)
+    return [] unless geometry.is_a?(Hash) && geometry["type"] == "Polygon"
+    Array(geometry["coordinates"]&.first)
   end
 
-  # Corners counted once each (a ring's closing position repeats its first)
+  # Corners counted once each (the ring's closing position repeats its first)
   def self.vertex_count(geometry)
-    (polygons(geometry) || []).flatten(1).sum { |ring| [ring.length - 1, 0].max }
+    [ring(geometry).length - 1, 0].max
   end
 
-  # Area in acres on a spherical earth: each polygon's outer ring less its holes
+  # Area in acres on a spherical earth
   def self.acres(geometry)
-    (polygons(geometry) || []).sum do |outer, *holes|
-      ring_area_m2(outer) - holes.sum { |hole| ring_area_m2(hole) }
-    end / SQUARE_METERS_PER_ACRE
+    ring_area_m2(ring(geometry)) / SQUARE_METERS_PER_ACRE
   end
 
   # The spherical excess of a ring (Chamberlain and Duquette, 2007, as Turf computes it), in m²

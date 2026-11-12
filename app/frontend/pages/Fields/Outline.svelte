@@ -8,7 +8,7 @@
     type Boundary,
     boundaryAcres,
     boundaryErrors,
-    closeRing,
+    boundaryFrom,
     inBoundary,
     isPoint,
     KIND_NOUNS,
@@ -18,7 +18,14 @@
     roundBoundary,
   } from '@/lib/geo'
   import OutlineMap, { type DrawMode, type MapPin } from '@/lib/outlines/OutlineMap.svelte'
-  import { ACCEPT, type ImportedShape, OutlineFileError, readOutlineFile, shapeName } from '@/lib/outlines/read'
+  import {
+    ACCEPT,
+    type ImportedShape,
+    OutlineFileError,
+    readOutlineFile,
+    shapeName,
+    shapeNotes,
+  } from '@/lib/outlines/read'
   import type { Reference } from '@/lib/outlines/references'
   import { cropName, formatArea, plotSize } from '@/lib/plantings'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
@@ -61,7 +68,6 @@
 
   const acres = $derived(boundary ? boundaryAcres(boundary) : null)
   const problems = $derived(boundary ? boundaryErrors(boundary) : [])
-  const fixed = $derived(map?.hasHoles(boundary) ?? false)
 
   // The area: offered from the outline, used when the box is ticked (ticked to start when the
   // field has no area, or the outline is new and differs from it)
@@ -122,14 +128,27 @@
   function sameAsSystem() {
     const ring = pivotOutline(pivot, 96)
     if (!ring) return
-    boundary = roundBoundary({ type: 'Polygon', coordinates: [closeRing(ring)] })
+    boundary = roundBoundary(boundaryFrom(ring))
     mode = 'view'
+    fileNote = null
     useArea = field.area_acres === null || useArea
   }
 
   function removeOutline() {
     boundary = null
     mode = 'view'
+    fileNote = null
+  }
+
+  // Drawing over an outline replaces it once the new one is finished, so ask first
+  function toggleDraw() {
+    if (mode === 'draw') {
+      mode = 'view'
+      return
+    }
+    if (boundary && !confirm('Draw a new outline? It replaces this one once you finish it.')) return
+    mode = 'draw'
+    fileNote = null
   }
 
   // The server's errors arrive as a string or a list
@@ -139,6 +158,8 @@
   let fileInput = $state<HTMLInputElement>()
   let reading = $state(false)
   let fileError = $state<string | null>(null)
+  // What reading the file changed in the shape used ("Kept the largest of 3 parts")
+  let fileNote = $state<string | null>(null)
   let choices = $state<{ shapes: ImportedShape[]; nameKey: string | null; skipped: number } | null>(null)
 
   async function readFile(event: Event) {
@@ -166,13 +187,14 @@
     boundary = shape.boundary
     choices = null
     mode = 'view'
+    fileNote = shapeNotes(shape) || null
   }
 
   const backHref = $derived(from === 'setup' ? setup.show().url : fields.show(field.id).url)
   const MODE_HINTS: Record<DrawMode, string> = {
     view: '',
     draw: 'Click the map at each corner of the field. Click the first corner again, or press Enter, to finish.',
-    edit: 'Click a part to select it, then drag a corner to move it, drag a midpoint to add a corner, or right-click a corner to remove it.',
+    edit: 'Click the outline to select it, then drag a corner to move it, drag a midpoint to add a corner, or right-click a corner to remove it.',
   }
 </script>
 
@@ -195,10 +217,10 @@
       {#if hasShape}
         <Button type="button" variant="secondary" onclick={sameAsSystem}>Same as the {noun}</Button>
       {/if}
-      <Button type="button" variant={mode === 'draw' ? 'primary' : 'secondary'} onclick={() => (mode = 'draw')}
+      <Button type="button" variant={mode === 'draw' ? 'primary' : 'secondary'} onclick={toggleDraw}
         >Draw the outline</Button
       >
-    {:else if !fixed}
+    {:else}
       <Button
         type="button"
         variant={mode === 'edit' ? 'primary' : 'secondary'}
@@ -209,13 +231,8 @@
         type="button"
         variant={mode === 'draw' ? 'primary' : 'secondary'}
         aria-pressed={mode === 'draw'}
-        onclick={() => (mode = mode === 'draw' ? 'view' : 'draw')}>Add a part</Button
+        onclick={toggleDraw}>Draw a new one</Button
       >
-      {#if mode === 'edit'}
-        <Button type="button" variant="danger-ghost" onclick={() => map?.deleteSelected()}
-          >Delete the selected part</Button
-        >
-      {/if}
       {#if hasShape}
         <Button type="button" variant="ghost" onclick={sameAsSystem}>Same as the {noun}</Button>
       {/if}
@@ -236,13 +253,10 @@
       onchange={readFile}
     />
   </fieldset>
-  {#if MODE_HINTS[mode] && !fixed}
+  {#if MODE_HINTS[mode]}
     <p class="text-sm text-ink-muted" aria-live="polite">{MODE_HINTS[mode]}</p>
-  {:else if fixed}
-    <p class="text-sm text-ink-muted">
-      This outline has holes from its file, so its corners can't be edited here. Import it again, or remove it and draw
-      a new one.
-    </p>
+  {:else if fileNote}
+    <p class="text-sm text-ink-muted">From the file: {fileNote}. A field's outline is one shape without holes.</p>
   {/if}
   {#if fileError}
     <p class="text-sm text-status-irrigate-ink" role="alert">{fileError}</p>
@@ -390,7 +404,7 @@
     <div class="flex items-center gap-3">
       <Button type="submit" disabled={processing || problems.length > 0 || mode === 'draw'}>Save</Button>
       <Link href={backHref} class="text-sm text-brand-600 hover:underline">Cancel</Link>
-      {#if mode === 'draw'}<span class="text-sm text-ink-muted">Finish the part you're drawing first.</span>{/if}
+      {#if mode === 'draw'}<span class="text-sm text-ink-muted">Finish the outline you're drawing first.</span>{/if}
     </div>
   {/snippet}
 </Form>

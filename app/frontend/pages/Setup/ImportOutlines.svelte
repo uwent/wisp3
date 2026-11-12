@@ -7,7 +7,14 @@
   import type { PivotShape } from '@/lib/geo'
   import ImportMap from '@/lib/outlines/ImportMap.svelte'
   import { type Choice, initialChoices, suggestSystem } from '@/lib/outlines/matching'
-  import { ACCEPT, type ImportedShape, OutlineFileError, readOutlineFile, shapeName } from '@/lib/outlines/read'
+  import {
+    ACCEPT,
+    type ImportedShape,
+    OutlineFileError,
+    readOutlineFile,
+    shapeName,
+    shapeNotes,
+  } from '@/lib/outlines/read'
   import type { Reference } from '@/lib/outlines/references'
   import { formatArea } from '@/lib/plantings'
   import { fetchSoilSurvey, suggestSoil } from '@/lib/soils'
@@ -300,7 +307,7 @@
                 >{index + 1}. {shapeName(row.shape, nameKey) || 'Unnamed shape'}</button
               >
               <span class="text-ink-muted">{formatArea(units, row.shape.acres)}</span>
-              {#if row.shape.simplified}<span class="text-xs text-ink-muted">simplified to fewer corners</span>{/if}
+              {#if row.shape.notes.length}<span class="text-xs text-ink-muted">{shapeNotes(row.shape)}</span>{/if}
             </div>
             {#if row.shape.problems.length}
               <p class="mt-1 text-status-irrigate-ink">

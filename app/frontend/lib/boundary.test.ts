@@ -5,7 +5,7 @@ import {
   boundaryAcres,
   boundaryCenter,
   boundaryErrors,
-  boundaryOf,
+  boundaryFrom,
   closeRing,
   inBoundary,
   type LngLat,
@@ -17,7 +17,7 @@ import {
 } from './geo'
 import { areaWkt } from './soils'
 
-// A field's outline (PLAN.md Phase 8 G.10). The polygons and areas match
+// A field's outline (PLAN.md Phase 8 G.10; one ring since G.14). The polygons and areas match
 // spec/services/field_boundary_spec.rb, so the browser and the server agree.
 const outer: LngLat[] = [
   [-89.35, 43.3],
@@ -25,13 +25,6 @@ const outer: LngLat[] = [
   [-89.34, 43.31],
   [-89.35, 43.31],
   [-89.35, 43.3],
-]
-const hole: LngLat[] = [
-  [-89.348, 43.302],
-  [-89.348, 43.304],
-  [-89.346, 43.304],
-  [-89.346, 43.302],
-  [-89.348, 43.302],
 ]
 const square: Boundary = { type: 'Polygon', coordinates: [outer] }
 
@@ -48,12 +41,6 @@ describe('an outline’s area', () => {
     expect(boundaryAcres(square)).toBeCloseTo(222.338, 2)
   })
 
-  it('takes out holes and adds up a multipolygon’s parts', () => {
-    expect(boundaryAcres({ type: 'Polygon', coordinates: [outer, hole] })).toBeCloseTo(213.444, 2)
-    const shifted = outer.map(([lng, lat]): LngLat => [lng + 0.02, lat]).reverse()
-    expect(boundaryAcres({ type: 'MultiPolygon', coordinates: [[outer], [shifted]] })).toBeCloseTo(2 * 222.338, 1)
-  })
-
   it('agrees with a pivot’s acres for its circle', () => {
     const circle: Boundary = { type: 'Polygon', coordinates: [pivotRing([-89.5, 44.1], 1300, null, null, 360)] }
     expect(boundaryAcres(circle)).toBeCloseTo(pivotAcres(1300), 0)
@@ -63,9 +50,7 @@ describe('an outline’s area', () => {
 describe('checking an outline', () => {
   it('accepts a field and words problems as the server does', () => {
     expect(boundaryErrors(square)).toEqual([])
-    expect(boundaryErrors({ type: 'Polygon', coordinates: [outer.slice(0, 4)] })).toEqual([
-      "has a ring that isn't closed",
-    ])
+    expect(boundaryErrors({ type: 'Polygon', coordinates: [outer.slice(0, 4)] })).toEqual(["isn't closed"])
     expect(boundaryErrors({ type: 'Polygon', coordinates: [ring(1001)] })).toEqual([
       'has too many corners (at most 1,000; simplify it)',
     ])
@@ -82,7 +67,6 @@ describe('checking an outline', () => {
 
   it('counts corners once each', () => {
     expect(vertexCount(square)).toBe(4)
-    expect(vertexCount({ type: 'Polygon', coordinates: [outer, hole] })).toBe(8)
   })
 })
 
@@ -93,12 +77,10 @@ describe('preparing an outline', () => {
     expect(rounded.coordinates[0][0]).toEqual([-89.1234568, 43.3])
   })
 
-  it('closes a ring and makes one polygon a Polygon, several a MultiPolygon', () => {
+  it('closes a ring and makes it a Polygon', () => {
     expect(closeRing(outer.slice(0, 4))).toEqual(outer)
     expect(closeRing(outer)).toEqual(outer)
-    expect(boundaryOf([[outer]])?.type).toBe('Polygon')
-    expect(boundaryOf([[outer], [hole]])?.type).toBe('MultiPolygon')
-    expect(boundaryOf([])).toBeNull()
+    expect(boundaryFrom(outer.slice(0, 4))).toEqual(square)
   })
 
   it('simplifies a detailed outline to the limit, keeping its shape', () => {
@@ -118,7 +100,7 @@ describe('a point inside an outline', () => {
     expect(lat).toBeCloseTo(43.305, 3)
   })
 
-  it('stays inside an L-shaped or ring-shaped field', () => {
+  it('stays inside an L-shaped or C-shaped field', () => {
     const ell: Boundary = {
       type: 'Polygon',
       coordinates: [
@@ -134,26 +116,18 @@ describe('a point inside an outline', () => {
       ],
     }
     expect(inBoundary(boundaryCenter(ell), ell)).toBe(true)
-    const donut: Boundary = { type: 'Polygon', coordinates: [ring(32, undefined, 0.01), ring(32, undefined, 0.008)] }
-    expect(inBoundary(boundaryCenter(donut), donut)).toBe(true)
-  })
-
-  it('is in the largest part of a multipolygon', () => {
-    const small = ring(8, [-89.0, 43.3], 0.001)
-    const large = ring(8, [-89.1, 43.3], 0.01)
-    const center = boundaryCenter({ type: 'MultiPolygon', coordinates: [[small], [large]] })
-    expect(center[0]).toBeCloseTo(-89.1, 3)
+    // A C: a circle with a wedge cut out on its east side, where the centroid falls
+    const c = ring(32, undefined, 0.01).filter(
+      ([lng], i, all) => i === all.length - 1 || i === 0 || lng < -89.4 + 0.004,
+    )
+    const cee = boundaryFrom([[-89.4 + 0.002, 43.3], ...c.slice(1, -1)])
+    expect(inBoundary(boundaryCenter(cee), cee)).toBe(true)
   })
 })
 
 describe('the soil survey for an outline', () => {
-  it('reads one polygon with its holes, or several as a multipolygon', () => {
-    expect(areaWkt({ type: 'Polygon', coordinates: [outer, hole] })).toMatch(
-      /^POLYGON\(\(-89\.350000 43\.300000, .*\), \(-89\.348000 43\.302000, .*\)\)$/,
-    )
-    expect(areaWkt({ type: 'MultiPolygon', coordinates: [[outer], [hole]] })).toMatch(
-      /^MULTIPOLYGON\(\(\(.*\)\), \(\(.*\)\)\)$/,
-    )
-    expect(areaWkt(outer)).toMatch(/^POLYGON\(\(.*\)\)$/)
+  it('reads an outline or a ring as a polygon', () => {
+    expect(areaWkt(square)).toMatch(/^POLYGON\(\(-89\.350000 43\.300000, .*\)\)$/)
+    expect(areaWkt(outer)).toBe(areaWkt(square))
   })
 })

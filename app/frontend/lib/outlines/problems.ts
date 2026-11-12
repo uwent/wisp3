@@ -1,6 +1,6 @@
 import {
   type Boundary,
-  boundaryPolygons,
+  boundaryRing,
   FEET_PER_METER,
   inBoundary,
   isPoint,
@@ -40,18 +40,18 @@ function segmentDistanceM(point: LngLat, a: LngLat, b: LngLat): number {
 /** Meters from a point to the nearest edge of an outline (0 inside it) */
 export function distanceToBoundaryM(point: LngLat, boundary: Boundary): number {
   if (inBoundary(point, boundary)) return 0
+  const ring = boundaryRing(boundary)
   let best = Infinity
-  for (const ring of boundaryPolygons(boundary).flat())
-    for (let i = 0; i + 1 < ring.length; i++) best = Math.min(best, segmentDistanceM(point, ring[i], ring[i + 1]))
+  for (let i = 0; i + 1 < ring.length; i++) best = Math.min(best, segmentDistanceM(point, ring[i], ring[i + 1]))
   return best
 }
 
 /** Whether an outline and a ring overlap: a corner of either inside the other, or an edge crossing */
 function overlaps(boundary: Boundary, ring: LngLat[]): boolean {
-  const rings = boundaryPolygons(boundary).flat()
-  if (rings.flat().some((point) => pointInPolygon(point, [ring]))) return true
+  const outline = boundaryRing(boundary)
+  if (outline.some((point) => pointInPolygon(point, [ring]))) return true
   if (ring.some((point) => inBoundary(point, boundary))) return true
-  return rings.some((outline) => crosses(outline, ring))
+  return crosses(outline, ring)
 }
 
 function crosses(a: LngLat[], b: LngLat[]): boolean {

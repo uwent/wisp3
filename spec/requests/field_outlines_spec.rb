@@ -61,7 +61,7 @@ RSpec.describe "Field outlines", type: :request do
     patch field_outline_path(field), params: {outline: {boundary: {type: "Point", coordinates: [-89, 43]}.to_json, area_acres: "5"}}
     expect(response).to redirect_to(field_outline_path(field))
     follow_redirect!
-    expect(inertia.props[:errors]).to include("boundary" => ["must be a polygon or multipolygon"])
+    expect(inertia.props[:errors]).to include("boundary" => ["must be a polygon"])
     expect(field.reload).to have_attributes(boundary: nil, area_acres: 200)
   end
 

@@ -1,4 +1,4 @@
-import { type Boundary, boundaryPolygons, type LngLat } from './geo'
+import { type Boundary, boundaryRing, type LngLat } from './geo'
 
 // The soil survey under a pivot (PLAN.md Phase 7 F): USDA NRCS Soil Data Access (SSURGO), queried
 // from the browser. For each map unit under the pivot's circle or arc: its share of the area, and
@@ -62,13 +62,10 @@ export function soilKeyFor(texture: string | null): string | null {
 /** An area the survey is read in: one closed ring, or a field's outline (G.10) */
 export type SurveyArea = LngLat[] | Boundary
 
-/** The area as well-known text: a POLYGON, or a MULTIPOLYGON for an outline of several */
+/** The area as a well-known text POLYGON */
 export function areaWkt(area: SurveyArea): string {
-  const ring = (points: LngLat[]) => `(${points.map(([lng, lat]) => `${lng.toFixed(6)} ${lat.toFixed(6)}`).join(', ')})`
-  const polygon = (rings: LngLat[][]) => `(${rings.map(ring).join(', ')})`
-  if (Array.isArray(area)) return `POLYGON(${ring(area)})`
-  const polygons = boundaryPolygons(area)
-  return polygons.length === 1 ? `POLYGON${polygon(polygons[0])}` : `MULTIPOLYGON(${polygons.map(polygon).join(', ')})`
+  const points = Array.isArray(area) ? area : boundaryRing(area)
+  return `POLYGON((${points.map(([lng, lat]) => `${lng.toFixed(6)} ${lat.toFixed(6)}`).join(', ')}))`
 }
 
 /** The survey query for an area, its map units by share of it */

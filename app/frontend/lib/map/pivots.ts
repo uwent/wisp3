@@ -62,10 +62,7 @@ export type PinProperties = {
   dimmed: boolean
 }
 
-type Geometry =
-  | { type: 'Polygon'; coordinates: LngLat[][] }
-  | { type: 'MultiPolygon'; coordinates: LngLat[][][] }
-  | { type: 'Point'; coordinates: LngLat }
+type Geometry = { type: 'Polygon'; coordinates: LngLat[][] } | { type: 'Point'; coordinates: LngLat }
 export type MapFeature<P> = { type: 'Feature'; id: number; properties: P; geometry: Geometry }
 export type FeatureCollection<P> = { type: 'FeatureCollection'; features: MapFeature<P>[] }
 

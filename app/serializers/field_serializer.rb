@@ -13,7 +13,7 @@ class FieldSerializer < ApplicationSerializer
 
   many :plantings, resource: PlantingSerializer
 
-  # The outline (G.10), a GeoJSON Polygon or MultiPolygon, and its area: offered for area_acres
+  # The outline (G.10), a GeoJSON Polygon with one ring, and its area: offered for area_acres
   attributes :boundary, :boundary_acres
 
   # Years of seasons that have ended: they keep their soil, area and pivot (PLAN.md Phase 8 G.9)

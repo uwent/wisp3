@@ -19,7 +19,7 @@ class Field < ApplicationRecord
   # ended ones keep what their season ran with
   after_update :update_open_plantings
 
-  # The outline (G.10): a GeoJSON Polygon or MultiPolygon, or nil. A JSON string is parsed and
+  # The outline (G.10, G.14): a GeoJSON Polygon with one ring, or nil. A JSON string is parsed and
   # blank clears it; positions are rounded (FieldBoundary.normalize).
   def boundary=(value)
     super(value.blank? ? nil : FieldBoundary.normalize(value))
