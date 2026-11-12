@@ -59,6 +59,17 @@ test('selecting a pivot from the keyboard moves to its panel, and Escape comes b
   await expect(show).toBeFocused()
 })
 
+test("the map list's cards select from the keyboard, and Escape clears the selection (G.14)", async ({ page }) => {
+  await page.goto('/map')
+  const farm = page.getByRole('button', { name: /^Zoom the map to the farm / }).first()
+  await farm.focus()
+  await page.keyboard.press('Enter')
+  await expect(farm).toHaveAttribute('aria-pressed', 'true')
+  await expect(farm).toBeFocused() // no panel to move to
+  await page.keyboard.press('Escape')
+  await expect(farm).toHaveAttribute('aria-pressed', 'false')
+})
+
 test('the map layers panel opens from the keyboard and Escape closes it', async ({ page }) => {
   await page.goto('/map')
   const layers = page.getByRole('button', { name: 'Layers' })

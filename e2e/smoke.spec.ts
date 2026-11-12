@@ -80,9 +80,50 @@ test('the map lists the fields and selects a pivot from the list', async ({ page
   await page.keyboard.press('Escape')
   await expect(panel).toBeHidden()
   await list
-    .getByRole('link', { name: /^Open / })
+    .getByRole('link', { name: /^View / })
     .first()
     .click()
+  await expect(page).toHaveURL(/\/(fields|plantings)\/\d+/)
+  expect(errors).toEqual([])
+})
+
+test("the map's list is the operation as a tree, selected at any level (G.14)", async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/map')
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible()
+  const list = page.getByRole('complementary', { name: 'Fields' })
+  const panel = page.locator('[data-pivot-panel]')
+
+  // A farm or an irrigation group zooms the map to its systems, and opens no panel
+  const farm = list.getByRole('button', { name: 'Zoom the map to the farm Hancock Sands' })
+  await farm.click()
+  await expect(farm).toHaveAttribute('aria-pressed', 'true')
+  await expect(panel).toHaveCount(0)
+  const group = list.getByRole('button', { name: 'Zoom the map to the irrigation group River gauge' })
+  await group.click()
+  await expect(group).toHaveAttribute('aria-pressed', 'true')
+  await expect(farm).toHaveAttribute('aria-pressed', 'false')
+
+  // A system opens its panel
+  const system = list.getByRole('button', { name: 'Show Pivot North 160 on the map' })
+  await system.click()
+  await expect(system).toHaveAttribute('aria-pressed', 'true')
+  const north = page.getByRole('region', { name: 'Pivot: North 160' })
+  await expect(north).toBeVisible()
+  await expect(north.locator('li[aria-current="true"]')).toHaveCount(0)
+
+  // A card in the panel selects its field, there and in the list; View opens the field
+  await north.getByRole('button', { name: /North corn.*on the map$/ }).click()
+  await expect(north.locator('li[aria-current="true"]')).toContainText('North corn')
+  await expect(list.getByRole('button', { name: /North corn.*on the map$/ })).toHaveAttribute('aria-pressed', 'true')
+  await expect(system).toHaveAttribute('aria-pressed', 'false')
+
+  // The filter keeps a match with its parents
+  await list.getByRole('searchbox', { name: 'Filter fields' }).fill('North corn')
+  await expect(list.getByRole('button', { name: /on the map$/ })).toHaveCount(2) // the system and the field
+  await expect(list.getByRole('button', { name: /^Zoom the map to the farm / })).toHaveCount(1)
+
+  await north.getByRole('link', { name: 'View North corn' }).click()
   await expect(page).toHaveURL(/\/(fields|plantings)\/\d+/)
   expect(errors).toEqual([])
 })

@@ -15,7 +15,7 @@
 
   // A field's status card: on the dashboard (the whole card links to its planting), and compact on
   // the map, where pivotName labels it (linking to the pivot's page when pivotId is given) and
-  // onselect makes the card select it, with its own link. weather: whether the pivot's weather is
+  // onselect makes the card select it, with its own View link (G.14). weather: whether the pivot's weather is
   // being fetched (the page reloads until it lands) or the page gave up waiting.
   //
   // A field growing several plantings at once (plots, PLAN.md Phase 8 G.11) lists each, linking to
@@ -281,7 +281,7 @@
     <Link
       {href}
       class="relative mt-2 inline-block text-xs font-medium text-brand-600 hover:underline"
-      aria-label="Open field: {card.name}">Open field →</Link
+      aria-label="View {card.name}">View</Link
     >
   </div>
 {:else if several}

@@ -3,12 +3,17 @@ import { describe, expect, it } from 'vitest'
 import type { PlantingSummary } from '@/types/serializers'
 
 import {
+  buildTree,
   daysToIrrigate,
+  type FarmGroup,
+  type FarmNode,
   type FieldCard,
-  type ListItem,
+  type GroupNode,
   needsWaterWithin,
+  type PivotGroup,
   pivotStatus,
-  sortItems,
+  type SystemNode,
+  treeFields,
   urgency,
 } from './overview'
 
@@ -76,26 +81,125 @@ describe('pivotStatus', () => {
   })
 })
 
-describe('sortItems', () => {
-  const item = (c: FieldCard, pivot: string, latitude: number, id = latitude): ListItem => ({
-    card: c,
-    pivot: { id, name: pivot, kind_name: 'Pivot', latitude, weather_updating: false },
-    farm: { id: 1, name: 'Farm' },
+describe('buildTree', () => {
+  type P = PivotGroup & { latitude: number }
+  let nextId = 100
+  const pivot = (name: string, latitude: number, fields: FieldCard[], group: number | null = null): P => ({
+    id: nextId++,
+    name,
+    kind_name: 'Pivot',
+    pivot_group_id: group,
+    weather_updating: false,
+    latitude,
+    fields,
   })
-  const items = [
-    item(card('B ok'), 'South', 44.0),
-    item(card('A later', { status: 'caution', crossing: crossing(3) }), 'North', 44.5),
-    item(card('C sooner', { status: 'caution', crossing: crossing(1) }), 'Middle', 44.2),
-    item(card('D ended', { phase: 'ended' }), 'North', 44.5),
-    item(card('E dry', { status: 'irrigate' }), 'South', 44.0),
+  const field = (name: string, overrides: Partial<PlantingSummary> | null = {}): FieldCard => ({
+    ...card(name, overrides),
+    id: nextId++,
+  })
+  // Coloma: South (in the East half group) and North; Hancock: Middle and an empty pivot
+  const farms: FarmGroup<P>[] = [
+    {
+      id: 1,
+      name: 'Coloma',
+      pivot_groups: [{ id: 7, name: 'East half' }],
+      pivots: [
+        pivot('South', 44.0, [field('B ok'), field('E dry', { status: 'irrigate' })], 7),
+        pivot('North', 44.5, [
+          field('A later', { status: 'caution', crossing: crossing(3) }),
+          field('D ended', { phase: 'ended' }),
+        ]),
+      ],
+    },
+    {
+      id: 2,
+      name: 'Hancock',
+      pivot_groups: [],
+      pivots: [
+        pivot('Middle', 44.2, [field('C sooner', { status: 'caution', crossing: crossing(1) })]),
+        pivot('Empty', 44.3, []),
+      ],
+    },
   ]
-  const names = (sorted: ListItem[]) => sorted.map((i) => i.card.name)
+  // The tree as names, indented by level
+  const outline = (tree: FarmNode<P>[]) => {
+    const system = (node: SystemNode<P>, indent: string) => [
+      `${indent}${node.pivot.name}`,
+      ...node.fields.map((card) => `${indent}  ${card.name}`),
+    ]
+    return tree.flatMap((farm) => [
+      farm.name,
+      ...farm.children.flatMap((child: GroupNode<P> | SystemNode<P>) =>
+        child.kind === 'group'
+          ? [`  ${child.name}`, ...child.systems.flatMap((node) => system(node, '    '))]
+          : system(child, '  '),
+      ),
+    ])
+  }
 
-  it('sorts by need, soonest first, ended last', () => {
-    expect(names(sortItems(items, 'urgent'))).toEqual(['E dry', 'C sooner', 'A later', 'B ok', 'D ended'])
+  it('orders each level by its most urgent field, soonest to need water next', () => {
+    expect(outline(buildTree(farms, { order: 'urgent' }))).toEqual([
+      'Coloma',
+      '  East half',
+      '    South',
+      '      E dry',
+      '      B ok',
+      '  North',
+      '    A later',
+      '    D ended',
+      'Hancock',
+      '  Middle',
+      '    C sooner',
+      '  Empty',
+    ])
   })
 
-  it("sorts north to south, keeping a pivot's fields together", () => {
-    expect(names(sortItems(items, 'north'))).toEqual(['A later', 'D ended', 'C sooner', 'B ok', 'E dry'])
+  it('orders north to south, a parent by its northernmost system', () => {
+    expect(outline(buildTree(farms, { order: 'north' }))).toEqual([
+      'Coloma',
+      '  North',
+      '    A later',
+      '    D ended',
+      '  East half',
+      '    South',
+      '      B ok',
+      '      E dry',
+      'Hancock',
+      '  Empty',
+      '  Middle',
+      '    C sooner',
+    ])
+  })
+
+  it('keeps what matches the filter with its parents, and everything under a match', () => {
+    expect(outline(buildTree(farms, { order: 'urgent', query: 'dry' }))).toEqual([
+      'Coloma',
+      '  East half',
+      '    South',
+      '      E dry',
+    ])
+    expect(outline(buildTree(farms, { order: 'urgent', query: 'east HALF' }))).toEqual([
+      'Coloma',
+      '  East half',
+      '    South',
+      '      E dry',
+      '      B ok',
+    ])
+    // A system matched by name stays without fields
+    expect(outline(buildTree(farms, { order: 'urgent', query: 'empty' }))).toEqual(['Hancock', '  Empty'])
+    expect(buildTree(farms, { order: 'urgent', query: 'nothing' })).toEqual([])
+  })
+
+  it('keeps the fields needing water within the window, and the parents left with any', () => {
+    expect(outline(buildTree(farms, { order: 'urgent', windowDays: 1 }))).toEqual([
+      'Coloma',
+      '  East half',
+      '    South',
+      '      E dry',
+      'Hancock',
+      '  Middle',
+      '    C sooner',
+    ])
+    expect(treeFields(buildTree(farms, { order: 'urgent', windowDays: 0 })).map((c) => c.name)).toEqual(['E dry'])
   })
 })

@@ -87,25 +87,117 @@ export function pivotStatus(fields: FieldCard[]): Status | null {
   return STATUSES.find((status) => active.includes(status)) ?? null
 }
 
-export type ListItem = {
-  card: FieldCard
-  pivot: { id: number; name: string; kind_name: string; latitude: number; weather_updating: boolean }
-  farm: { id: number; name: string }
-}
-
 export type SortOrder = 'urgent' | 'north'
 
-const byName = (a: ListItem, b: ListItem) =>
-  a.pivot.name.localeCompare(b.pivot.name) || a.card.name.localeCompare(b.card.name)
+// The map's list (PLAN.md Phase 8 G.14): the operation as a tree of cards, farm › irrigation group
+// › system › field, as on the dashboard and Setup (a system in no group sits under its farm).
+
+/** What's selected on the map page: one card in the list, and its system or field on the map */
+export type Selection = { level: 'farm' | 'group' | 'system' | 'field'; id: number }
+
+export type SystemNode<P> = { kind: 'system'; pivot: P; fields: FieldCard[] }
+export type GroupNode<P> = { kind: 'group'; id: number; name: string; systems: SystemNode<P>[] }
+export type FarmNode<P> = { kind: 'farm'; id: number; name: string; children: (GroupNode<P> | SystemNode<P>)[] }
+
+export type TreeOptions = {
+  order: SortOrder
+  /** Text to match in a field's, system's, group's or farm's name; a match keeps its parents, and everything under it */
+  query?: string
+  /** Only fields needing water within these days (0: today), and the parents left with any; null for all */
+  windowDays?: number | null
+}
+
+// Where a card sorts: its most urgent field's urgency and days to water, its northernmost
+// system, and its name
+type SortKey = { urgency: number; soonest: number; north: number; name: string }
+
+const fieldKey = (card: FieldCard, latitude: number): SortKey => ({
+  urgency: urgency(card),
+  soonest: daysToIrrigate(card) ?? Infinity,
+  north: latitude,
+  name: card.name,
+})
+
+function compare(a: SortKey, b: SortKey, order: SortOrder): number {
+  const byName = a.name.localeCompare(b.name)
+  if (order === 'north') return b.north - a.north || byName
+  return a.urgency - b.urgency || a.soonest - b.soonest || byName
+}
+
+/** A parent's key from its children's: the most urgent of them, and the northernmost */
+function parentKey(children: SortKey[], name: string, north?: number): SortKey {
+  const first = children.toSorted((a, b) => compare(a, b, 'urgent'))[0]
+  return {
+    urgency: first?.urgency ?? Infinity,
+    soonest: first?.soonest ?? Infinity,
+    north: north ?? Math.max(...children.map((key) => key.north), -Infinity),
+    name,
+  }
+}
+
+function sortByKey<T>(items: T[], key: (item: T) => SortKey, order: SortOrder): T[] {
+  const keyed = items.map((item) => ({ item, key: key(item) }))
+  return keyed.toSorted((a, b) => compare(a.key, b.key, order)).map(({ item }) => item)
+}
 
 /**
- * Most urgent: by urgency, then soonest to need water (no projected date last), then by name.
- * North to south: by pivot latitude (the order they appear on the map), a pivot's fields together.
+ * The list's tree: each level ordered by its most urgent field ("Most urgent first", soonest to
+ * need water next) or by latitude ("North to south", a parent by its northernmost system), names
+ * breaking ties. A query keeps what matches with its parents; the window keeps fields needing water
+ * within it, and a parent left with none of them goes. Without either, systems without fields are
+ * listed too, to select them.
  */
-export function sortItems(items: ListItem[], order: SortOrder): ListItem[] {
-  if (order === 'north') {
-    return items.toSorted((a, b) => b.pivot.latitude - a.pivot.latitude || a.pivot.id - b.pivot.id || byName(a, b))
+export function buildTree<P extends PivotGroup & { latitude: number }>(
+  farms: FarmGroup<P>[],
+  { order, query = '', windowDays = null }: TreeOptions,
+): FarmNode<P>[] {
+  const text = query.trim().toLowerCase()
+  const matches = (name: string) => !text || name.toLowerCase().includes(text)
+  const filtering = text !== '' || windowDays !== null
+
+  const systemKey = (node: SystemNode<P>) =>
+    parentKey(
+      node.fields.map((card) => fieldKey(card, node.pivot.latitude)),
+      node.pivot.name,
+      node.pivot.latitude,
+    )
+  const keyOf = (node: GroupNode<P> | SystemNode<P>): SortKey =>
+    node.kind === 'system' ? systemKey(node) : parentKey(node.systems.map(systemKey), node.name)
+
+  const system = (pivot: P, matched: boolean): SystemNode<P> | null => {
+    const within = matched || matches(pivot.name)
+    const fields = pivot.fields.filter(
+      (card) => (within || matches(card.name)) && (windowDays === null || needsWaterWithin(card, windowDays)),
+    )
+    if (filtering && !fields.length && !(within && windowDays === null)) return null
+    const sorted = sortByKey(fields, (card) => fieldKey(card, pivot.latitude), order)
+    return { kind: 'system', pivot, fields: sorted }
   }
-  const soonest = (item: ListItem) => daysToIrrigate(item.card) ?? Infinity
-  return items.toSorted((a, b) => urgency(a.card) - urgency(b.card) || soonest(a) - soonest(b) || byName(a, b))
+
+  const tree = farms.flatMap((farm): FarmNode<P>[] => {
+    const farmMatched = matches(farm.name) && text !== ''
+    const groups = farm.pivot_groups.flatMap((group): GroupNode<P>[] => {
+      const matched = farmMatched || (text !== '' && matches(group.name))
+      const systems = farm.pivots
+        .filter((pivot) => pivot.pivot_group_id === group.id)
+        .flatMap((pivot) => system(pivot, matched) ?? [])
+      if (!systems.length) return []
+      return [{ kind: 'group', id: group.id, name: group.name, systems: sortByKey(systems, systemKey, order) }]
+    })
+    const ungrouped = farm.pivots
+      .filter((pivot) => pivot.pivot_group_id === null || !farm.pivot_groups.some((g) => g.id === pivot.pivot_group_id))
+      .flatMap((pivot) => system(pivot, farmMatched) ?? [])
+    const children = sortByKey<GroupNode<P> | SystemNode<P>>([...groups, ...ungrouped], keyOf, order)
+    if (!children.length && filtering) return []
+    return [{ kind: 'farm', id: farm.id, name: farm.name, children }]
+  })
+  return sortByKey(tree, (farm) => parentKey(farm.children.map(keyOf), farm.name), order)
 }
+
+/** The systems under a node of the tree */
+export const treeSystems = <P>(node: FarmNode<P> | GroupNode<P> | SystemNode<P>): SystemNode<P>[] =>
+  node.kind === 'system' ? [node] : node.kind === 'group' ? node.systems : node.children.flatMap(treeSystems)
+
+/** The fields listed in the tree */
+export const treeFields = <P>(tree: FarmNode<P>[]): FieldCard[] =>
+  tree.flatMap(treeSystems).flatMap((node) => node.fields)

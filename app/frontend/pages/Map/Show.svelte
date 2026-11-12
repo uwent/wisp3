@@ -2,11 +2,11 @@
   import { onDestroy, tick, untrack } from 'svelte'
   import { Link, page, router } from '@inertiajs/svelte'
 
-  import FieldCard from '@/lib/components/FieldCard.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
   import type { LngLat } from '@/lib/geo'
   import LayersControl from '@/lib/map/LayersControl.svelte'
+  import MapTree from '@/lib/map/MapTree.svelte'
   import { MapOverlays } from '@/lib/map/mapOverlays.svelte'
   import OverlayTooltip from '@/lib/map/OverlayTooltip.svelte'
   import OverviewMap from '@/lib/map/OverviewMap.svelte'
@@ -14,13 +14,23 @@
   import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
   import { groupFeatures, type MapPivot } from '@/lib/map/pivots'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
-  import { anyUpdating, updatingIds, type FarmGroup, type ListItem, needsWaterWithin, sortItems } from '@/lib/overview'
+  import {
+    anyUpdating,
+    buildTree,
+    type FarmGroup,
+    needsWaterWithin,
+    type Selection,
+    treeFields,
+    updatingIds,
+  } from '@/lib/overview'
   import { poll, weatherUpdate } from '@/lib/poll'
   import { units as unitsFor } from '@/lib/units'
   import { newQuickSetup } from '@/routes'
 
-  // Every pivot on a map with its fields' status, beside a list of the fields (PLAN.md Phase 7).
-  // Selecting a field in the list or a pivot on the map selects it in both.
+  // Every pivot on a map with its fields' status, beside a list of the operation as a tree of cards
+  // (PLAN.md Phase 7, G.14). One selection, at any level, is shared by the list, the map and the
+  // panel: a farm or irrigation group zooms the map to its systems; a system or field opens its
+  // system's panel and is marked on the map. A click on the map selects the system or field there.
   let { today, farms }: { today: string; farms: FarmGroup<MapPivot>[] } = $props()
 
   const auth = $derived(page.props.auth)
@@ -34,8 +44,7 @@
   /** Days ahead for "needs water within", or null for no window */
   let windowDays = $state<number | null>(null)
   let query = $state('')
-  let selectedPivotId = $state<number | null>(null)
-  let selectedFieldId = $state<number | null>(null)
+  let selection = $state<Selection | null>(null)
   let overview = $state<OverviewMap>()
   let mapWidth = $state(0)
   let mapHeight = $state(0)
@@ -71,38 +80,30 @@
   const mapPivots = $derived(shown.flatMap((farm) => farm.pivots))
   const mapGroups = $derived(groupFeatures(shown, mapPivots))
   const farmOf = $derived(new Map(farms.flatMap((farm) => farm.pivots.map((pivot) => [pivot.id, farm]))))
-  const items = $derived<ListItem[]>(
-    shown.flatMap((farm) =>
-      farm.pivots.flatMap((pivot) =>
-        pivot.fields.map((card) => ({
-          card,
-          pivot: {
-            id: pivot.id,
-            name: pivot.name,
-            kind_name: pivot.kind_name,
-            latitude: pivot.latitude,
-            weather_updating: pivot.weather_updating,
-          },
-          farm: { id: farm.id, name: farm.name },
-        })),
-      ),
-    ),
+  const pivotOfField = $derived(
+    new Map(farms.flatMap((farm) => farm.pivots.flatMap((pivot) => pivot.fields.map((card) => [card.id, pivot.id])))),
   )
-  const matches = (item: ListItem) => {
-    const text = query.trim().toLowerCase()
-    return !text || `${item.card.name} ${item.pivot.name} ${item.farm.name}`.toLowerCase().includes(text)
-  }
-  const listed = $derived(
-    sortItems(
-      items.filter((item) => matches(item) && (windowDays === null || needsWaterWithin(item.card, windowDays))),
-      prefs.sort,
-    ),
-  )
+  const cards = $derived(mapPivots.flatMap((pivot) => pivot.fields))
+  const tree = $derived(buildTree(shown, { order: prefs.sort, query, windowDays }))
+  const listedCount = $derived(treeFields(tree).length)
   const highlighted = $derived(
     windowDays === null
       ? null
-      : new Set(items.filter((item) => needsWaterWithin(item.card, windowDays!)).map((item) => item.pivot.id)),
+      : new Set(
+          mapPivots
+            .filter((pivot) => pivot.fields.some((card) => needsWaterWithin(card, windowDays!)))
+            .map((pivot) => pivot.id),
+        ),
   )
+  // The system and field the selection puts on the map and in the panel
+  const selectedPivotId = $derived(
+    selection?.level === 'system'
+      ? selection.id
+      : selection?.level === 'field'
+        ? (pivotOfField.get(selection.id) ?? null)
+        : null,
+  )
+  const selectedFieldId = $derived(selection?.level === 'field' ? selection.id : null)
   const selectedPivot = $derived(mapPivots.find((pivot) => pivot.id === selectedPivotId) ?? null)
   const anyPivots = $derived(farms.some((farm) => farm.pivots.length))
   // The Drought Monitor's category at the selected pivot, when that layer is on
@@ -121,8 +122,21 @@
 
   function chooseFarm(id: number | 'all') {
     farmId = id
-    if (selectedPivotId !== null && farmOf.get(selectedPivotId)?.id !== id && id !== 'all') clearSelection()
+    if (id !== 'all' && selection && selectionFarm(selection) !== id) clearSelection()
     overview?.fit(mapPivots)
+  }
+
+  /** The farm a selection is on */
+  function selectionFarm({ level, id }: Selection): number | undefined {
+    if (level === 'farm') return id
+    if (level === 'group') return farms.find((farm) => farm.pivot_groups.some((group) => group.id === id))?.id
+    return farmOf.get(level === 'system' ? id : (pivotOfField.get(id) ?? -1))?.id
+  }
+
+  /** The systems a farm or group selection zooms the map to */
+  function selectionPivots({ level, id }: Selection) {
+    if (level === 'farm') return farms.find((farm) => farm.id === id)?.pivots ?? []
+    return mapPivots.filter((pivot) => pivot.pivot_group_id === id)
   }
 
   function chooseWindow(days: number | null) {
@@ -142,22 +156,31 @@
     tick().then(() => document.querySelector<HTMLElement>('[data-pivot-panel]')?.focus())
   }
 
-  function selectField(item: ListItem) {
-    selectedPivotId = item.pivot.id
-    selectedFieldId = item.card.id
-    overview?.show(item.pivot.id)
+  // From the list (or the panel's cards): a farm or group zooms the map to its systems; a system or
+  // field opens its panel and flies to it
+  function select(next: Selection) {
+    const before = selectedPivotId
+    selection = next
+    if (next.level === 'farm' || next.level === 'group') {
+      overview?.fit(selectionPivots(next))
+      return
+    }
+    // Another field of the same system (in its panel, say) leaves the map where it is
+    if (selectedPivotId !== before) overview?.show(selectedPivotId!)
     focusPanel()
   }
 
-  // From the map: a system, or a field (its outline or a plot's pin) with its system
-  function selectPivot(pivotId: number | null, fieldId: number | null = null) {
-    selectedPivotId = pivotId
-    selectedFieldId = fieldId
-    if (pivotId !== null) focusPanel()
-    if (pivotId === null || !prefs.listOpen) return
-    // Bring its fields' cards into view in the list
+  // From the map: a system, or a field (its outline or a plot's pin) with its system; the list
+  // scrolls to its card
+  function selectOnMap(pivotId: number | null, fieldId: number | null = null) {
+    selection =
+      fieldId !== null ? { level: 'field', id: fieldId } : pivotId !== null ? { level: 'system', id: pivotId } : null
+    if (!selection) return
+    focusPanel()
+    if (!prefs.listOpen) return
+    const { level, id } = selection
     requestAnimationFrame(() =>
-      list?.querySelector(`[data-pivot="${pivotId}"]`)?.scrollIntoView({
+      list?.querySelector(`[data-node="${level}-${id}"]`)?.scrollIntoView({
         block: 'nearest',
         behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       }),
@@ -166,14 +189,10 @@
 
   function clearSelection() {
     const fromPanel = document.querySelector('[data-pivot-panel]')?.contains(document.activeElement)
-    selectedPivotId = null
-    selectedFieldId = null
+    selection = null
     if (fromPanel) opener?.focus()
     opener = null
   }
-
-  const isSelected = (item: ListItem) =>
-    selectedFieldId !== null ? item.card.id === selectedFieldId : item.pivot.id === selectedPivotId
 </script>
 
 <svelte:head><title>Map · WISP</title></svelte:head>
@@ -206,7 +225,7 @@
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <h1 class="text-xl font-semibold">Map</h1>
       <p class="text-sm text-ink-muted">{auth.group?.name} · {formatDate(today, { weekday: true, year: true })}</p>
-      <StatusCounts cards={items.map((item) => item.card)} />
+      <StatusCounts {cards} />
     </div>
     <div class="flex flex-wrap items-center gap-2 text-sm">
       {#if farms.length > 1}
@@ -253,7 +272,7 @@
     >
       <div class="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
         <h2 class="mr-auto text-sm font-medium">
-          Fields <span class="font-normal text-ink-muted">({listed.length})</span>
+          Fields <span class="font-normal text-ink-muted">({listedCount})</span>
         </h2>
         <label class="sr-only" for="list-sort">Order</label>
         <select id="list-sort" class="rounded-md py-1 text-xs" bind:value={prefs.sort}>
@@ -271,39 +290,26 @@
         <input
           type="search"
           bind:value={query}
-          placeholder="Filter by field, system or farm"
+          placeholder="Filter by field, system, group or farm"
           aria-label="Filter fields"
           class="block w-full rounded-md py-1 text-sm"
         />
       </div>
-      <ul bind:this={list} class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-        {#each listed as item (item.card.id)}
-          <li data-pivot={item.pivot.id}>
-            <FieldCard
-              card={item.card}
-              {today}
-              {units}
-              compact
-              weather={weatherFor(item.pivot)}
-              pivotName={item.pivot.name}
-              pivotKindName={item.pivot.kind_name}
-              pivotId={item.pivot.id}
-              selected={isSelected(item)}
-              onselect={() => selectField(item)}
-            />
-          </li>
+      <div bind:this={list} class="min-h-0 flex-1 overflow-y-auto p-2">
+        {#if tree.length}
+          <MapTree {tree} {selection} {today} {units} weatherFor={(pivot) => weatherFor(pivot)} onselect={select} />
         {:else}
-          <li class="px-1 py-4 text-sm text-ink-muted">
+          <p class="px-1 py-4 text-sm text-ink-muted">
             {#if windowDays !== null}
               No fields need water {windowDays === 0 ? 'today' : `within ${windowDays} days`}.
             {:else if query.trim()}
-              No fields match "{query.trim()}".
+              Nothing matches "{query.trim()}".
             {:else}
               No fields yet. Add them in Setup.
             {/if}
-          </li>
-        {/each}
-      </ul>
+          </p>
+        {/if}
+      </div>
     </aside>
 
     {#if !prefs.listOpen}
@@ -311,7 +317,7 @@
         type="button"
         class="order-3 border-t border-line bg-surface px-3 py-2 text-left text-sm font-medium md:hidden"
         aria-expanded="false"
-        onclick={() => (prefs.listOpen = true)}>Show the fields ({listed.length})</button
+        onclick={() => (prefs.listOpen = true)}>Show the fields ({listedCount})</button
       >
     {/if}
 
@@ -331,7 +337,7 @@
         basemap={prefs.basemap}
         view={prefs.view}
         unitSystem={auth.user?.unit_system}
-        onselect={selectPivot}
+        onselect={selectOnMap}
         onbasemap={(basemap) => (prefs.basemap = basemap)}
         onviewchange={(view) => (prefs.view = view)}
         onload={(map) => overlays.attach(map)}
@@ -377,6 +383,7 @@
               {today}
               {units}
               fieldId={selectedFieldId}
+              onselectfield={(id) => select({ level: 'field', id })}
               notes={panelNotes}
               onclose={clearSelection}
             />

@@ -8,9 +8,10 @@
 
   import type { MapPivot, WeatherTotals } from './pivots'
 
-  // The selected pivot's details over the map (PLAN.md Phase 7): its fields' cards, its weather
-  // zone's rain and ET, and extra lines from the overlays (the drought category there). A floating
-  // panel on wide screens, a sheet along the bottom on phones.
+  // The selected pivot's details over the map (PLAN.md Phase 7): its fields' cards, each selecting
+  // its field like the list's (G.14) with a View link to it, its weather zone's rain and ET, and
+  // extra lines from the overlays (the drought category there). A floating panel on wide screens, a
+  // sheet along the bottom on phones.
   let {
     pivot,
     farmName,
@@ -18,6 +19,7 @@
     units,
     notes = [],
     fieldId = null,
+    onselectfield,
     onclose,
   }: {
     pivot: MapPivot
@@ -27,6 +29,7 @@
     notes?: { label: string; value: string; swatch?: string }[]
     /** The field selected on the map (G.10), marked among the cards */
     fieldId?: number | null
+    onselectfield: (fieldId: number) => void
     onclose: () => void
   } = $props()
 
@@ -95,12 +98,15 @@
     {#if pivot.fields.length}
       <ul class="space-y-2">
         {#each pivot.fields as card (card.id)}
-          <li
-            data-field={card.id}
-            class={card.id === fieldId ? 'rounded-lg ring-2 ring-brand-500 ring-offset-2 ring-offset-surface' : ''}
-            aria-current={card.id === fieldId ? 'true' : undefined}
-          >
-            <FieldCard {card} {today} {units} compact />
+          <li data-field={card.id} aria-current={card.id === fieldId ? 'true' : undefined}>
+            <FieldCard
+              {card}
+              {today}
+              {units}
+              compact
+              selected={card.id === fieldId}
+              onselect={() => onselectfield(card.id)}
+            />
           </li>
         {/each}
       </ul>
