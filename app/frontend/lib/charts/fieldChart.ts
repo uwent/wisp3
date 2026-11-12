@@ -168,8 +168,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   const shading = forecastShading({
     dates,
     from: forecastDays.length ? observed : -1,
-    grids: 4,
-    axisOffset: 4,
+    grids: 5,
+    axisOffset: 5,
     palette,
   })
   // Time travelling (PLAN.md Phase 8 F), the projection is the weather that followed the day in view
@@ -208,22 +208,35 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       // forecast and range; rain with the modeled rain and the totals; irrigation with planned and its
       // total; the canopy with its readings). The thresholds, today and the forecast shading are on
       // series outside the legend, so they always stay.
-      data: [balanceName, ...(hasDry ? [DRY] : []), ...(drains ? [DRAINAGE] : []), RAIN, IRRIGATION, canopyName],
+      // Lines have no markers, so their entries are the line alone (the symbol hidden)
+      data: [
+        line(balanceName),
+        ...(hasDry ? [line(DRY)] : []),
+        ...(drains ? [DRAINAGE] : []),
+        RAIN,
+        IRRIGATION,
+        CROP_ET,
+        line(REFERENCE_ET),
+        line(canopyName),
+      ],
     },
     tooltip: {
       ...base.tooltip,
       formatter: (params: unknown) => tooltip(all, observed, summary, params, units, { canopy, totals }),
     },
     axisPointer: { link: [{ xAxisIndex: 'all' }] },
-    // Small multiples sharing the date axis: the balance, water in, its running totals, and the canopy
+    // Small multiples sharing the date axis: the balance, water in, its running totals, water out
+    // (crop ET; grid 4, drawn above the canopy so the dates stay on the canopy's axis at the bottom),
+    // and the canopy
     grid: [
-      { left: 48, right: 112, top: 56, height: '36%' },
-      { left: 48, right: 112, top: '49%', height: '11%' },
-      { left: 48, right: 112, top: '66%', height: '9%' },
-      { left: 48, right: 112, top: '81%', bottom: 56 },
+      { left: 48, right: 112, top: 56, height: '31%' },
+      { left: 48, right: 112, top: '42%', height: '10%' },
+      { left: 48, right: 112, top: '56%', height: '7%' },
+      { left: 48, right: 112, top: '82%', bottom: 56 },
+      { left: 48, right: 112, top: '68%', height: '9%' },
     ],
     xAxis: [
-      ...[0, 1, 2, 3].map((gridIndex) =>
+      ...[0, 1, 2, 3, 4].map((gridIndex) =>
         gridIndex === 3
           ? { type: 'category', data: dates, gridIndex, axisLabel, axisLine: base.axisLine }
           : {
@@ -280,13 +293,23 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         min: 0,
         ...(canopy === 'lai' ? {} : { max: 100 }),
       },
+      {
+        type: 'value',
+        gridIndex: 4,
+        name: `Crop ET (${units.label('depth')})`,
+        nameTextStyle: { color: palette.inkMuted, align: 'left' },
+        axisLabel: base.axisLabel,
+        splitLine: base.splitLine,
+        splitNumber: 2,
+        min: 0,
+      },
       ...shading.yAxis,
     ],
     dataZoom: [
-      { type: 'inside', xAxisIndex: [0, 1, 2, 3, ...shading.xAxisIndexes], startValue: dates[openingStart] },
+      { type: 'inside', xAxisIndex: [0, 1, 2, 3, 4, ...shading.xAxisIndexes], startValue: dates[openingStart] },
       {
         type: 'slider',
-        xAxisIndex: [0, 1, 2, 3, ...shading.xAxisIndexes],
+        xAxisIndex: [0, 1, 2, 3, 4, ...shading.xAxisIndexes],
         bottom: 8,
         height: 20,
         startValue: dates[openingStart],
@@ -533,6 +556,31 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         lineStyle: { width: 2, color: total.color, type: total.type },
         itemStyle: { color: total.color },
       })),
+      // Water out: the crop's ET (the balance's, the projection's in the forecast, lighter), under the
+      // reference ET it's adjusted from, the planting's own part of the weather (G.12)
+      {
+        id: 'crop-et',
+        name: CROP_ET,
+        type: 'bar',
+        xAxisIndex: 4,
+        yAxisIndex: 4,
+        data: all.map((day, i) =>
+          i < observed ? round(depth(day.adj_et)) : { value: round(depth(day.adj_et)), itemStyle: { opacity: 0.4 } },
+        ),
+        itemStyle: { color: palette.canopy },
+        barMaxWidth: 12,
+      },
+      {
+        id: 'reference-et',
+        name: REFERENCE_ET,
+        type: 'line',
+        xAxisIndex: 4,
+        yAxisIndex: 4,
+        data: all.map((day) => round(depth(day.et0))),
+        symbol: 'none',
+        lineStyle: { width: 1.5, color: palette.warm },
+        itemStyle: { color: palette.warm },
+      },
       {
         id: 'canopy',
         name: canopyName,
@@ -607,6 +655,10 @@ export function roundUp(value: number): number {
   return Number((Math.ceil(value / step) * step).toFixed(6))
 }
 const SLIDER = 'Slider outline'
+const CROP_ET = 'Crop ET'
+/** A line series' legend entry: the line without the symbol ECharts draws on it */
+const line = (name: string) => ({ name, itemStyle: { opacity: 0 } })
+const REFERENCE_ET = 'Reference ET'
 
 function tooltip(
   days: FieldDay[],
@@ -638,6 +690,7 @@ function tooltip(
       : []),
     ['Soil moisture', `${day.pct_moisture.toFixed(1)}%`],
     ['Crop ET', `${depth(day.adj_et)} ${source(ET_SOURCE_LABELS[day.et_source])}`],
+    ['Reference ET', depth(day.et0)],
     [
       'Rain',
       `${depth(day.rain)} ${source(SOURCE_LABELS[day.rain_source])}` +

@@ -121,6 +121,9 @@ RSpec.describe PlantingStatus, "projection" do
   it "stops where the forecast ends, and at the season's end" do
     short = weather.reject { |date, _| date > today + 5 }
     expect(status(weather: short).forecast_days.size).to eq(5)
+    # The forecast's partial last day is stored with no values: the projection stops before it too
+    partial = short.merge(today + 6 => {et0: nil, precip: nil, forecast: true})
+    expect(status(weather: partial).forecast_days.last.inputs.date).to eq(today + 5)
     planting.update!(end_date: today + 3)
     expect(status.forecast_days.size).to eq(3)
   end

@@ -13,6 +13,7 @@ export type Palette = {
   canopy: string
   ad: string
   warm: string
+  sun: string
   snow: string
   depths: [string, string, string, string]
   status: { full: string; ok: string; caution: string; irrigate: string }
@@ -29,6 +30,7 @@ const TOKENS = {
   canopy: '--color-chart-canopy',
   ad: '--color-chart-ad',
   warm: '--color-chart-warm',
+  sun: '--color-chart-sun',
   snow: '--color-chart-snow',
 } as const
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Form, router } from '@inertiajs/svelte'
 
+  import AdminTabs from '@/lib/components/AdminTabs.svelte'
   import Button from '@/lib/components/Button.svelte'
   import WeatherCorrectionsTable, { type WeatherCorrection } from '@/lib/docs/WeatherCorrectionsTable.svelte'
   import { formatTimestamp } from '@/lib/dates'
@@ -63,11 +64,13 @@
   }
 </script>
 
-<svelte:head><title>Weather status · WISP</title></svelte:head>
+<svelte:head><title>Weather data · WISP</title></svelte:head>
+
+<AdminTabs />
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
-    <h1 class="text-2xl font-semibold">Weather status</h1>
+    <h1 class="text-2xl font-semibold">Weather data</h1>
     <p class="text-sm text-ink-muted">
       Open-Meteo, {api.mode === 'customer' ? 'commercial API key' : 'free API (no key)'} · model {api.model}, soil from
       {api.soil_model}

@@ -47,7 +47,7 @@ Rails.application.routes.draw do
   resource :season_report, only: :show, path: "setup/report", defaults: {format: :csv}
   resources :farms, only: [:create, :update, :destroy]
   resources :pivots, only: [:show, :new, :create, :edit, :update, :destroy] do
-    # The pivot's weather (?year=) as CSV; its irrigation list (index) is a CSV too
+    # Its irrigation list (index) is a CSV; /pivots/:id/weather (the old weather CSV) redirects to its zone's
     get :weather, on: :member, defaults: {format: :csv}
     resources :irrigations, only: [:index, :create, :update, :destroy], controller: "pivot_irrigations"
   end
@@ -62,6 +62,11 @@ Rails.application.routes.draw do
   resource :daily_entry, only: [:show, :update], path: "daily"
   # Every pivot on a map with its fields' status, and optional weather and drought layers
   resource :map, only: :show, controller: "map"
+  # Weather by zone (G.12): the operation's zones with the week ahead, a zone's season of weather
+  # (?year=) and that as CSV
+  resources :weather_zones, path: "weather", only: [:index, :show] do
+    get :export, on: :member, defaults: {format: :csv}
+  end
   # The group's pivots whose weather is updating (JSON), for pages waiting on it
   resource :weather_updates, only: :show
 

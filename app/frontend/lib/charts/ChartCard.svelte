@@ -15,7 +15,7 @@
   // A chart in a card: its title, then (top right) a reset button once the chart has been zoomed
   // or had series toggled, and an (i) explaining what it shows. Below it, a closed "Summary and
   // data": the chart in words (also its text alternative), its daily values as a table, and (given
-  // download) a button saving them as CSV.
+  // download) a button saving them as CSV. controls: shown under the chart.
   let {
     title,
     info,
@@ -24,6 +24,7 @@
     summary,
     table,
     subtitle,
+    controls,
     download,
     group,
   }: {
@@ -34,6 +35,7 @@
     summary: string
     table: () => ChartTable
     subtitle?: Snippet
+    controls?: Snippet
     download?: () => void
     /** Charts that zoom together (Chart's group) */
     group?: string
@@ -77,6 +79,7 @@
     </div>
   </div>
   <Chart bind:this={chart} bind:modified {height} label="{title}. {summary}" {build} {group} />
+  {@render controls?.()}
   <details bind:open class="mt-1 text-xs">
     <summary class="cursor-pointer text-brand-600 hover:underline">Summary and data</summary>
     <p class="mt-1 text-ink-muted">{summary}</p>

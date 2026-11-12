@@ -6,7 +6,6 @@
   import { formatDate } from '../dates'
   import { downloadCsv, exportedAt, frontmatter, SOURCE, toCsv } from '../csv'
   import { units as unitsFor, type Units } from '../units'
-  import CollapsibleSection from '../components/CollapsibleSection.svelte'
   import Chart from './Chart.svelte'
   import ChartCard from './ChartCard.svelte'
   import {
@@ -22,16 +21,19 @@
   import { about } from '@/routes'
   import type { WeatherPanelDay } from '@/types/serializers'
 
-  // The weather panels for a pivot's cell (on a field's page or the pivot's), in a collapsible
-  // section; they're long on a phone, so they start collapsed there until opened once. panels builds them in some
-  // units: the user's for the charts, imperial (as stored) for each chart's CSV. exports: the
-  // place and file name for those CSVs, and the link to the pivot's whole weather CSV.
+  // A weather zone's panels (the weather page, G.12), a section under an h2. panels builds them in
+  // some units: the user's for the charts, imperial (as stored) for each chart's CSV. exports: the
+  // zone's name and file name for those CSVs, and the link to the zone's whole weather CSV.
+  // panelControls: shown in a panel's card, given its key (the GDD chart's planting); controlled: the
+  // keys of the panels that have them, whose charts are shortened by CONTROLS so the cards stay even.
   let {
-    title = 'Weather at this location',
+    title = 'Weather charts',
     panels: build,
     days,
     units,
     exports,
+    panelControls,
+    controlled = [],
     children,
   }: {
     title?: string
@@ -39,11 +41,18 @@
     days: WeatherPanelDay[]
     units: Units
     exports: { place: string; file: string; href: string }
+    panelControls?: Snippet<[string]>
+    controlled?: string[]
     children?: Snippet
   } = $props()
 
   const WIDE = '(min-width: 768px)'
-  const open = typeof matchMedia === 'undefined' || matchMedia(WIDE).matches
+  // The height of a panel's controls (one row of small text and a select, and its margin)
+  const CONTROLS = '1.625rem'
+  const chartHeight = (panel: WeatherPanel) => {
+    const height = panel.totals || panel.below ? '17rem' : '12rem'
+    return controlled.includes(panel.key) ? `calc(${height} - ${CONTROLS})` : height
+  }
   const panels = $derived(build(units))
 
   // Wide, the charts sit in two columns, each its own stack (alternate panels, so pairs sit side
@@ -115,7 +124,7 @@
     const rows = [
       ...frontmatter(`WISP weather chart: ${panel.title}, ${exports.place}`, {
         Operation: page.props.auth.group?.name,
-        'Irrigation system': exports.place,
+        'Weather zone': exports.place,
         Days:
           `${days[0].date} to ${days.at(-1)!.date}, one row each` +
           (forecast ? `; ${forecast === 1 ? 'the last is' : `the last ${forecast} are`} from the latest forecast` : ''),
@@ -133,17 +142,18 @@
 </script>
 
 {#if days.length}
-  <CollapsibleSection {title} id="weather" storageKey="weather" {open}>
+  <section id="weather" class="space-y-3" aria-labelledby="weather-heading">
+    <h2 id="weather-heading" class="text-lg font-medium">{title}</h2>
     <p class="text-xs text-ink-muted">
-      Modeled by Open-Meteo for the area around this pivot, with the forecast shaded; WISP corrects its sunshine and
-      humidity and works out reference ET from them (<a
+      Modeled by Open-Meteo for this weather zone, with the forecast shaded; WISP corrects its sunshine and humidity and
+      works out reference ET from them (<a
         href="{about().url}#weather-corrections"
         class="text-brand-600 underline underline-offset-2">weather corrections</a
       >). Drag the bar above the charts, or scroll or pinch any chart, to choose the days they all show, and select the
       (i) on a chart to learn what it shows. {@render children?.()}
       Each chart's data downloads from its "Summary and data", or
       <a href={exports.href} class="text-brand-600 underline underline-offset-2" download
-        >download all of this location's weather</a
+        >download all of this zone's weather</a
       >
       (CSV, in inches and °F).
     </p>
@@ -199,7 +209,7 @@
             <ChartCard
               title={panel.title}
               info={panel.info}
-              height={panel.totals || panel.below ? '17rem' : '12rem'}
+              height={chartHeight(panel)}
               build={(palette, view) => weatherChartOption(panel, days, units, palette, view)}
               summary={panelSummary(panel, days, units)}
               table={() => panelTable(panel, days, units)}
@@ -207,10 +217,11 @@
               {group}
             >
               {#snippet subtitle()}<span class="font-normal text-ink-muted">({panel.unit(units)})</span>{/snippet}
+              {#snippet controls()}{@render panelControls?.(panel.key)}{/snippet}
             </ChartCard>
           {/each}
         </div>
       {/each}
     </div>
-  </CollapsibleSection>
+  </section>
 {/if}

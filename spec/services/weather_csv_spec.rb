@@ -3,6 +3,7 @@ require "rails_helper"
 RSpec.describe WeatherCsv do
   let(:pivot) { create(:pivot, name: "North") }
   let(:dates) { Date.new(2026, 7, 1)..Date.new(2026, 7, 3) }
+  let(:zone) { WeatherZone.new(pivot.weather_cell, [pivot]) }
 
   before do
     pivot.weather_cell.weather_days.create!(date: Date.new(2026, 7, 1), et0_in: 0.21, tmax_f: 80, tmin_f: 60,
@@ -18,8 +19,8 @@ RSpec.describe WeatherCsv do
 
   it "opens with frontmatter, then one row per day with every variable, forecast days marked" do
     days = WeatherPanel.new(pivot.weather_cell, dates, emergence_date: dates.first).days
-    rows = CSV.parse(described_class.new(pivot, 2026, days).to_csv.delete_prefix(CsvExport::BOM))
-    expect(rows.first).to eq(["WISP weather, Pivot: North, 2026"])
+    rows = CSV.parse(described_class.new(zone, pivot.farm.group, 2026, days).to_csv.delete_prefix(CsvExport::BOM))
+    expect(rows.first).to eq(["WISP weather, North, 2026"])
     expect(rows).to include(["Days: 2026-07-01 to 2026-07-02, one row each; the last is from the latest forecast"])
     header = rows.index { |row| row.first == "Date" }
     data = rows[(header + 1)..].map { |row| rows[header].zip(row).to_h }
@@ -37,12 +38,12 @@ RSpec.describe WeatherCsv do
     cell.update!(elevation_m: 300.4)
     cell.weather_forecasts.create!(issued_at: Time.current, model: "m",
       payload: {days: [{date: "2026-07-02", tmax_f: 90}, {date: "2026-07-03", tmax_f: 91}]})
-    rows = CSV.parse(described_class.new(pivot, 2026, WeatherPanel.new(cell, dates, emergence_date: dates.first).days)
+    rows = CSV.parse(described_class.new(zone, pivot.farm.group, 2026, WeatherPanel.new(cell, dates, emergence_date: dates.first).days)
       .to_csv.delete_prefix(CsvExport::BOM))
-    expect(rows).to include(["Location: the weather grid cell centered at #{cell.latitude}, #{cell.longitude}, 300 m above sea level"],
+    expect(rows).to include(["Location: the weather grid cell centered at #{cell.latitude}, #{cell.longitude}, elevation 986 ft"],
       ["Days: 2026-07-01 to 2026-07-03, one row each; the last 2 are from the latest forecast"])
 
-    stored_only = CSV.parse(described_class.new(pivot, 2026, WeatherPanel.new(cell, dates.first..dates.first,
+    stored_only = CSV.parse(described_class.new(zone, pivot.farm.group, 2026, WeatherPanel.new(cell, dates.first..dates.first,
       emergence_date: dates.first).days).to_csv.delete_prefix(CsvExport::BOM))
     expect(stored_only).to include(["Days: 2026-07-01 to 2026-07-01, one row each"])
   end

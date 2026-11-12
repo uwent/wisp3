@@ -11,8 +11,8 @@ import { runningTotal } from './totals'
 
 export { runningTotal }
 
-// The weather panels on a field's page: small multiples, one measure each, sharing the date axis,
-// with the forecast days shaded
+// A weather zone's panels (the weather page, G.12): small multiples, one measure each, sharing the
+// date axis, with the forecast days shaded
 
 type Series = {
   name: string
@@ -33,6 +33,13 @@ type Series = {
   unit?: (units: Units) => string
   /** Its own decimals, when not the panel's */
   digits?: number
+  /**
+   * In the lower grid, added up from the first day in view (value is each day's) rather than drawn as
+   * it is; a view's total, so left out of tables, CSVs and summaries
+   */
+  inView?: boolean
+  /** In the lower grid, its line: solid for the first series, dashed for the rest unless given */
+  dash?: 'solid' | 'dashed' | 'dotted'
 }
 
 /** A field's rain by date as its balance resolved it (FieldDay), for the precipitation chart */
@@ -83,12 +90,26 @@ function otherPrecip(day: WeatherPanelDay): number | null {
   return Math.max(0, day.precip_in - (day.rain_in ?? 0))
 }
 
+/** The degree days added up from a day (ISO) by date: null before it */
+export function gddFrom(days: WeatherPanelDay[], from: string): Record<string, number | null> {
+  let total = 0
+  return Object.fromEntries(
+    days.map((day) => {
+      if (day.date < from) return [day.date, null]
+      total += day.gdd ?? 0
+      return [day.date, Math.round(total * 10) / 10]
+    }),
+  )
+}
+
 /**
- * The panels for a field's page, or a pivot's (no field):
+ * The panels for a weather zone. The options overlay one planting's own values (unused since the
+ * panels left the planting page, G.12):
  * - field: its capacity and wilting point, as reference lines on the modeled soil moisture
  * - cropEt: the field's crop-adjusted ET by date (the balance's adjusted ET), through the forecast
  *   (the projection's); without it the ET chart shows reference ET only
- * - gddSince: what growing degree days count from ('emergence', or a date's label)
+ * - gddSince: what the stored total (gdd_since_emergence) counts from ('emergence', or a date's label)
+ * - gddPlanting: a third degree-day total, from a planting's date (label: "planting (May 1)"), by date
  * - fieldRain: the field's rain as its balance used it; the precipitation chart then adds the rain
  *   entered, outlines the modeled rain the balance doesn't use, and totals both
  */
@@ -98,11 +119,13 @@ export function weatherPanels(
     field,
     cropEt,
     gddSince = 'emergence',
+    gddPlanting,
     fieldRain,
   }: {
     field?: { fieldCapacity: number; wiltingPoint: number }
     cropEt?: Record<string, number | null>
     gddSince?: string
+    gddPlanting?: { label: string; totals: Record<string, number | null> }
     fieldRain?: FieldRain
   } = {},
 ): WeatherPanel[] {
@@ -232,7 +255,7 @@ export function weatherPanels(
         'averaged over the day; cloudy days cut sunlight, which lowers ET and slows growth.',
       bars: 'group',
       corrected: 'openmeteo-shortwave',
-      series: [{ name: 'Solar radiation', color: (p) => p.warm, value: (day) => day.shortwave_mj }],
+      series: [{ name: 'Solar radiation', color: (p) => p.sun, value: (day) => day.shortwave_mj }],
       below: {
         name: 'Cloud cover (%)',
         max: 100,
@@ -254,25 +277,45 @@ export function weatherPanels(
       info:
         `Growing degree days add up the heat a crop can use. Each day counts the mean of its high and low, each held ` +
         `between ${temp(50)} and ${temp(86)}, minus ${temp(50)} (the 50/86 method used for corn and many other crops). ` +
-        `The bars are each day's; the lower panel is the total since ${gddSince}, from which crop stages are often predicted.`,
+        `The bars are each day's. The lower panel adds them up since ${gddSince}, since the first day in view, and ` +
+        `(choose one below the chart) since a planting's date; crop stages are often predicted from these totals.`,
       bars: 'group',
       series: [
         {
           name: 'Degree days (50/86)',
-          color: (p) => p.warm,
+          color: (p) => p.canopy,
           value: (day) => converted(units, 'degreeDays', day.gdd),
           digits: 1,
         },
       ],
       below: {
-        name: `Since ${gddSince}`,
+        name: 'Total',
         series: [
           {
-            name: `Total since ${gddSince}`,
-            color: (p) => p.warm,
+            name: `Since ${gddSince}`,
+            color: (p) => p.canopy,
             value: (day) => converted(units, 'degreeDays', day.gdd_since_emergence),
             digits: 0,
           },
+          {
+            name: 'Since the first day in view',
+            color: (p) => p.warm,
+            value: (day) => converted(units, 'degreeDays', day.gdd),
+            digits: 0,
+            inView: true,
+            dash: 'solid',
+          },
+          ...(gddPlanting
+            ? [
+                {
+                  name: `Since ${gddPlanting.label}`,
+                  color: (p: Palette) => p.ad,
+                  value: (day: WeatherPanelDay) => converted(units, 'degreeDays', gddPlanting.totals[day.date] ?? null),
+                  digits: 0,
+                  dash: 'solid' as const,
+                },
+              ]
+            : []),
         ],
       },
     },
@@ -489,9 +532,9 @@ export function weatherChartOption(
     type: 'line',
     xAxisIndex: 1,
     yAxisIndex: 1,
-    data: totals.length ? runningTotal(days, s.value, view) : days.map((day) => digits(s.value(day))),
+    data: totals.length || s.inView ? runningTotal(days, s.value, view) : days.map((day) => digits(s.value(day))),
     symbol: 'none',
-    lineStyle: { width: 2, color: s.color(palette), type: i === 0 ? 'solid' : 'dashed' },
+    lineStyle: { width: 2, color: s.color(palette), type: s.dash ?? (i === 0 ? 'solid' : 'dashed') },
     itemStyle: { color: s.color(palette) },
   }))
 
@@ -511,7 +554,13 @@ export function weatherChartOption(
           top: 0,
           left: 0,
           right: 0,
-          data: [...legendSeries(series, days, view), ...lower].map((s) => s.name),
+          // A line's legend entry is its line alone (the lines have no markers): its symbol hidden.
+          // A sparse line keeps its dot, as its lone days are drawn with one.
+          data: [...legendSeries(series, days, view), ...lower].map((s) =>
+            (lower.includes(s) || !panel.bars || s.style === 'line') && !s.sparse
+              ? { name: s.name, itemStyle: { opacity: 0 } }
+              : s.name,
+          ),
           textStyle: { color: palette.ink, fontSize: 11 },
           itemWidth: 14,
         }
@@ -712,6 +761,7 @@ export function panelSummary(panel: WeatherPanel, days: WeatherPanelDay[], units
   // The lower grid's measure on the latest observed day, in its own unit
   if (panel.below && latest) {
     const values = panel.below.series
+      .filter((s) => !s.inView)
       .map((s) => {
         const value = valueOn(s, latest)
         return value === null ? null : `${s.name} ${value.toFixed(digits(s))} ${formatOf(panel, s, units).unit}`
@@ -729,7 +779,7 @@ export function panelSummary(panel: WeatherPanel, days: WeatherPanelDay[], units
 /** The daily series a table or CSV lists: those the panel shows, then a lower grid's measure (not running totals) */
 const listedSeries = (panel: WeatherPanel, days: WeatherPanelDay[]) => [
   ...shownSeries(panel, days),
-  ...(panel.below?.series ?? []),
+  ...(panel.below?.series.filter((s) => !s.inView) ?? []),
 ]
 
 /** The panel's daily values as a table, newest first: one column per series it shows, named with its unit */

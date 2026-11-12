@@ -106,7 +106,7 @@ RSpec.describe "Weather jobs" do
       described_class.perform_now(cell.id)
       expect(fetcher).to have_received(:refresh).with([cell])
       expect(fetcher).to have_received(:refresh_ensemble).with([cell])
-      expect(fetcher).to have_received(:backfill).with(cell, from: Date.new(2026, 6, 20))
+      expect(fetcher).to have_received(:backfill).with(cell, from: Date.new(2026, 1, 1))
     end
 
     it "marks its cell as updating from when it's queued until it ends, failed or not" do
@@ -154,11 +154,25 @@ RSpec.describe "Weather jobs" do
   end
 
   describe WeatherBackfillJob do
-    it "fills from the season start, or the last 30 days" do
+    it "fills from January 1 (G.12), or from a season that began the year before" do
       fetcher = instance_double(Weather::Fetcher, backfill: 0)
       allow(Weather::Fetcher).to receive(:new).and_return(fetcher)
       described_class.perform_now(cell.id)
-      expect(fetcher).to have_received(:backfill).with(cell, from: Date.new(2026, 6, 20))
+      expect(fetcher).to have_received(:backfill).with(cell, from: Date.new(2026, 1, 1))
+
+      create(:planting, field: create(:field, pivot: create(:pivot, latitude: cell.latitude, longitude: cell.longitude)),
+        season_start: Date.new(2025, 11, 1), emergence_date: Date.new(2025, 11, 10), end_date: Date.new(2026, 8, 1))
+      described_class.perform_now(cell.id)
+      expect(fetcher).to have_received(:backfill).with(cell, from: Date.new(2025, 11, 1))
+    end
+
+    it "counts a cell complete without the days before its season and the last 30 (they fill in quietly)" do
+      cell.weather_forecasts.create!(issued_at: Time.current, model: "m", payload: {days: []})
+      ((Date.new(2026, 7, 20) - 30)..Date.new(2026, 7, 19)).each do |date|
+        cell.weather_days.create!(date:, model: "m", hours: 24, fetched_at: Time.current)
+      end
+      expect(cell.backfill_start).to eq(Date.new(2026, 1, 1))
+      expect(cell).not_to be_incomplete
     end
   end
 

@@ -11,6 +11,7 @@ RSpec.describe WeatherPanel do
     cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "m", payload: {days: [
       {date: "2026-07-03", tmax_f: 99, tmin_f: 99}, # stored already: the stored day wins
       {date: "2026-07-04", tmax_f: 90, tmin_f: 70},
+      {date: "2026-07-05", tmax_f: nil, tmin_f: nil}, # the forecast's partial last day: left out
       {date: "2026-07-20", tmax_f: 90, tmin_f: 70} # outside the range
     ]})
   end

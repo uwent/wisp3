@@ -8,6 +8,7 @@
   import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import Spinner from '@/lib/components/Spinner.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
+  import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { formatDate, isoDate } from '@/lib/dates'
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
   import { outlook } from '@/lib/outlook'
@@ -18,7 +19,7 @@
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { fieldDays, fields, pivots, planting as plantingRoute } from '@/routes'
-  import type { Field, GenericCurve, Plant, PlantingSummary, SoilType } from '@/types/serializers'
+  import type { Field, ForecastDay, GenericCurve, Plant, PlantingSummary, SoilType } from '@/types/serializers'
 
   // The field page (PLAN.md Phase 8 G.11): the land, not one crop on it. The season's plantings on
   // a timeline and with their status today, the field's own rain and irrigation (which every
@@ -39,6 +40,8 @@
     farm,
     year,
     weather_updating,
+    weather_zone,
+    forecast,
     plantings,
     days,
     plants,
@@ -51,6 +54,8 @@
     year: number
     years: number[]
     weather_updating: boolean
+    weather_zone: { id: number; name: string } | null
+    forecast: ForecastDay[]
     /** The season's plantings with their status today */
     plantings: PlantingSummary[]
     /** The field's own rain and irrigation, newest first */
@@ -202,6 +207,8 @@
     </p>
   {/if}
 </section>
+
+<ZoneWeather zone={weather_zone} {forecast} {units} query={year === new Date().getFullYear() ? {} : { year }} />
 
 {#if days.length}
   <CollapsibleSection title="Rain and irrigation on the field" storageKey="field-days">

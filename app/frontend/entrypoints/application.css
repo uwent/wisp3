@@ -66,13 +66,14 @@
 @theme static {
   /* Chart series (validated for color-vision deficiency, light and dark): rain, irrigation (the
      warm orange; the two never share a chart), crop canopy and crop ET (green), AD, a warm series
-     (e.g. high temperature), soil depths shallow → deep as an ordinal ramp, and snow (light gray,
-     near white in dark mode) */
+     (e.g. high temperature), sunshine (gold; never on a chart with the warm series), soil depths
+     shallow → deep as an ordinal ramp, and snow (light gray, near white in dark mode) */
   --color-chart-rain: #2a78d6;
   --color-chart-irrigation: #eb6834;
   --color-chart-canopy: #1baf7a;
   --color-chart-ad: #4a3aa7;
   --color-chart-warm: #eb6834;
+  --color-chart-sun: #d9a600;
   --color-chart-depth-1: #86b6ef;
   --color-chart-depth-2: #3987e5;
   --color-chart-depth-3: #1c5cab;
@@ -106,6 +107,7 @@
     --color-chart-canopy: #199e70;
     --color-chart-ad: #9085e9;
     --color-chart-warm: #d95926;
+    --color-chart-sun: #b38f00;
     --color-chart-depth-1: #184f95;
     --color-chart-depth-2: #2a78d6;
     --color-chart-depth-3: #6da7ec;
@@ -134,6 +136,7 @@
   --color-chart-canopy: #199e70;
   --color-chart-ad: #9085e9;
   --color-chart-warm: #d95926;
+  --color-chart-sun: #b38f00;
   --color-chart-depth-1: #184f95;
   --color-chart-depth-2: #2a78d6;
   --color-chart-depth-3: #6da7ec;

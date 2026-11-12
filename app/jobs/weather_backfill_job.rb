@@ -1,5 +1,5 @@
-# Fills a cell's missing days from its season start (or the last 30 days) through yesterday.
-# Runs after each refresh; does nothing when there are no gaps.
+# Fills a cell's missing days from January 1 (WeatherCell#backfill_start; a season begun the year before
+# from its start) through yesterday. Runs after each refresh; does nothing when there are no gaps.
 class WeatherBackfillJob < WeatherJob
   def perform(cell_id)
     cell = WeatherCell.find_by(id: cell_id) or return

@@ -27,7 +27,9 @@ class WeatherPanel
       .transform_values { |values| ALL_COLUMNS.to_h { |column| [column, values[column.to_s]&.round(3)] }.merge(corrections: values["corrections"] || []) }
 
     gdd_total = 0.0
-    stored.merge(forecast).sort.map do |date, values|
+    # A day with no values (the forecast's last, partial day) is left out, so no running total
+    # (degree days) carries on past the others
+    stored.merge(forecast).reject { |_, values| ALL_COLUMNS.all? { |column| values[column].nil? } }.sort.map do |date, values|
       gdd = Weather::DegreeDays.daily(values[:tmax_f], values[:tmin_f])
       gdd_total += gdd.to_f if date >= @emergence_date
       Day.new(date:, forecast: forecast.key?(date), gdd: gdd&.round(1),

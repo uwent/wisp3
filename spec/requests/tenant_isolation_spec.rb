@@ -97,8 +97,12 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_planting.reload.variety).not_to eq("Mine now")
   end
 
-  it "hides other groups' pivot weather and irrigation exports" do
+  it "hides other groups' weather zones and irrigation exports (G.12)" do
     get weather_pivot_path(their_pivot)
+    expect_not_found
+    get weather_zone_path(their_pivot.weather_cell_id)
+    expect_not_found
+    get export_weather_zone_path(their_pivot.weather_cell_id)
     expect_not_found
     get pivot_irrigations_path(their_pivot)
     expect_not_found

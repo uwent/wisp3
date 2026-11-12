@@ -42,6 +42,11 @@ export async function researchFieldPath(page: Page): Promise<string> {
   return new URL((await card.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
 }
 
+/** The first planting's weather zone (G.12), from its page's "Season's weather" link */
+export async function firstZonePath(page: Page): Promise<string> {
+  return firstLinkPath(page, await firstPlantingPath(page), 'a[href*="/weather/"]')
+}
+
 /** The path of the first link in main matching a selector, on the page at `from` */
 export async function firstLinkPath(page: Page, from: string, selector: string): Promise<string> {
   await page.goto(from)
@@ -76,6 +81,7 @@ export async function signedInPages(page: Page): Promise<string[]> {
   const planting = await firstPlantingPath(page)
   const pivot = await firstLinkPath(page, planting, 'a[href*="/pivots/"]')
   const field = await firstLinkPath(page, planting, 'a[href*="/fields/"]')
+  const zone = await firstLinkPath(page, planting, 'a[href*="/weather/"]')
   const research = await researchFieldPath(page)
   const plot = await firstLinkPath(page, research, 'nav a[href*="/plantings/"]')
   // A perennial with cuttings (G.3)
@@ -104,6 +110,8 @@ export async function signedInPages(page: Page): Promise<string[]> {
     traveler,
     `${traveler}/edit`,
     '/pivots/new',
+    '/weather',
+    zone,
     '/settings',
     '/alerts',
     '/operation',

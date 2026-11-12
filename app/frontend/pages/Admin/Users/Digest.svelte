@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Link } from '@inertiajs/svelte'
 
+  import AdminTabs from '@/lib/components/AdminTabs.svelte'
   import EmailPreview, { type DigestPreview } from '@/lib/components/EmailPreview.svelte'
   import { adminUsers } from '@/routes'
 
@@ -8,6 +9,8 @@
 </script>
 
 <svelte:head><title>Daily email · {user.email} · WISP</title></svelte:head>
+
+<AdminTabs />
 
 <div class="space-y-4">
   <div>

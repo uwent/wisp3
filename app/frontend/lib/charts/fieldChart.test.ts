@@ -4,8 +4,15 @@ import type { FieldDay, PlantingSummary } from '@/types/serializers'
 
 import { units } from '../units'
 import { fieldChartOption, roundUp, thresholds } from './fieldChart'
+import type { EChartsCoreOption } from './echarts'
 import type { Palette } from './palette'
 import { weatherPanels } from './weatherCharts'
+
+/** The legend's entry names (a line's entry is {name, itemStyle}) */
+const legendNames = (option: EChartsCoreOption) =>
+  (option.legend as { data: (string | { name: string })[] }).data.map((entry) =>
+    typeof entry === 'string' ? entry : entry.name,
+  )
 
 const palette: Palette = {
   ink: '#000',
@@ -17,6 +24,7 @@ const palette: Palette = {
   canopy: '#0a0',
   ad: '#40a',
   warm: '#f60',
+  sun: '#fc0',
   snow: '#ccc',
   depths: ['#1', '#2', '#3', '#4'],
   status: { full: '#00f', ok: '#0f0', caution: '#fa0', irrigate: '#f00' },
@@ -273,7 +281,7 @@ describe('field chart', () => {
     })
     const dry = (option.series as { name: string; data: unknown[] }[]).find((s) => s.name === 'If no rain falls')!
     expect(dry.data).toEqual([null, 0.2, 0.1])
-    expect((option.legend as { data: string[] }).data).toContain('If no rain falls')
+    expect(legendNames(option)).toContain('If no rain falls')
     const without = fieldChartOption({
       days,
       forecastDays,
@@ -299,10 +307,12 @@ describe('field chart', () => {
       mode: 'ad',
       palette,
     })
-    expect((option.legend as { data: string[] }).data).toEqual([
+    expect(legendNames(option)).toEqual([
       'Allowable depletion',
       'Rain',
       'Irrigation',
+      'Crop ET',
+      'Reference ET',
       'Canopy cover',
     ])
     const series = option.series as {
@@ -313,6 +323,9 @@ describe('field chart', () => {
     }[]
     const group = (name: string) => series.filter((s) => s.name === name).map((s) => s.id)
     expect(group('Allowable depletion')).toEqual(['balance', 'range-low', 'range', 'forecast'])
+    // Crop ET on its own grid under the water in, the forecast's lighter (G.12)
+    const cropEt = series.find((s) => s.id === 'crop-et') as unknown as { xAxisIndex: number; data: unknown[] }
+    expect(cropEt.xAxisIndex).toBe(4)
     expect(group('Rain')).toEqual(['rain', 'modeled-rain', 'total-rain'])
     expect(group('Irrigation')).toEqual(['irrigation', 'planned', 'total-irrigation'])
     // On the series outside the legend: four threshold lines and today; the zone below the trigger and the forecast
@@ -321,20 +334,21 @@ describe('field chart', () => {
     expect(always.markLine!.data.at(-1)).toMatchObject({ xAxis: '2026-07-02' })
     expect(always.markArea!.data).toHaveLength(2)
     expect(series.filter((s) => s.id !== 'slider').every((s) => !s.markLine && !s.markArea)).toBe(true)
-    // The forecast shaded edge to edge on all four panels, by full-width bars on hidden axes the zoom moves too
+    // The forecast shaded edge to edge on all five panels, by full-width bars on hidden axes the zoom moves too
     const shading = series.filter((s) => s.id.startsWith('shading-')) as unknown as {
       xAxisIndex: number
       data: unknown[]
       barWidth: string
     }[]
     expect(shading.map((s) => [s.xAxisIndex, s.barWidth])).toEqual([
-      [4, '100%'],
       [5, '100%'],
       [6, '100%'],
       [7, '100%'],
+      [8, '100%'],
+      [9, '100%'],
     ])
     expect(shading[0].data).toEqual([null, null, 1])
-    expect((option.dataZoom as { xAxisIndex: number[] }[])[0].xAxisIndex).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+    expect((option.dataZoom as { xAxisIndex: number[] }[])[0].xAxisIndex).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
   })
 
   it('stacks deep drainage on the field capacity line, and lists it in the tooltip even when none', () => {
@@ -347,7 +361,7 @@ describe('field chart', () => {
       stack: 'drainage',
       data: [0.3, 0],
     })
-    expect((option.legend as { data: string[] }).data).toContain('Deep drainage')
+    expect(legendNames(option)).toContain('Deep drainage')
     const formatter = (option.tooltip as { formatter: (params: unknown) => string }).formatter
     expect(formatter([{ dataIndex: 0 }])).toContain('Deep drainage</td><td>0.30 in')
     expect(formatter([{ dataIndex: 1 }])).toContain('Deep drainage</td><td>0.00 in')

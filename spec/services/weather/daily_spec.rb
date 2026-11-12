@@ -26,6 +26,11 @@ RSpec.describe Weather::Daily do
     expect(days[Date.new(2026, 7, 2)]["hours"]).to eq(1)
   end
 
+  it "keeps the day's most severe weather code (G.12)" do
+    days = from_hourly(hourly(times, {"weather_code" => [3.0] * 10 + [95.0] + [61.0] * 13 + [0.0]}))
+    expect(days[Date.new(2026, 7, 1)]["weather_code"]).to eq(95)
+  end
+
   it "leaves a value missing when more than 2 of its hours are missing, and when the model has none" do
     days = from_hourly(hourly(times.first(24), {
       "et0_fao_evapotranspiration" => [0.2] * 21 + [nil] * 3,

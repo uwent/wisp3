@@ -11,7 +11,6 @@
   import {
     about,
     adminUsers,
-    adminWeather,
     alerts,
     currentGroups,
     dailyEntries,
@@ -24,6 +23,7 @@
     settings,
     setup,
     usersSessions,
+    weatherZones,
   } from '@/routes'
 
   let { children }: { children: Snippet } = $props()
@@ -41,6 +41,7 @@
           { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields|plantings)\/\d+(\?|$)/] },
           { label: 'Map', route: map.show() },
           { label: 'Daily entry', route: dailyEntries.show() },
+          { label: 'Weather', route: weatherZones.index(), also: ['/weather/'] },
           { label: 'Alerts', route: alerts.show() },
           {
             label: 'Setup',
@@ -48,12 +49,8 @@
             also: [/^\/pivots\/(new|\d+\/edit)/, '/setup'],
           },
           { label: 'About', route: about() },
-          ...(auth.user.admin
-            ? [
-                { label: 'Weather', route: adminWeather.show() },
-                { label: 'Users', route: adminUsers.index(), also: ['/admin/users/'] },
-              ]
-            : []),
+          // Users and Weather data, switched between by AdminTabs
+          ...(auth.user.admin ? [{ label: 'Admin', route: adminUsers.index(), also: ['/admin/'] }] : []),
         ]
       : [{ label: 'About', route: about() }],
   )

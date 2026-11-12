@@ -23,6 +23,7 @@ class FieldsController < AuthenticatedController
       year:,
       years: (field.plantings.map(&:season_year) + [today.year, year]).uniq.sort,
       weather_updating:,
+      **WeatherZone.page_props(Current.group, field.pivot.weather_cell, forecast: year == today.year),
       plantings: summaries(field, plantings, today),
       days: field_days(field, year, plantings, today),
       plants: PlantSerializer.new(Plant.order(:name)).to_h,

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Link, page, router } from '@inertiajs/svelte'
 
+  import AdminTabs from '@/lib/components/AdminTabs.svelte'
   import Button from '@/lib/components/Button.svelte'
   import DataTable from '@/lib/components/DataTable.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
@@ -76,6 +77,8 @@
 </script>
 
 <svelte:head><title>Users · WISP</title></svelte:head>
+
+<AdminTabs />
 
 <div class="space-y-4">
   <div>

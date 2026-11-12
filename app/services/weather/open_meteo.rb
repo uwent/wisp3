@@ -19,10 +19,11 @@ module Weather
     # Shortwave and surface pressure feed WISP's own ET0 (D12, §8.5); RH and the vapor pressure
     # deficit are derived from temperature and the corrected dew point (Weather::Hours), so
     # Open-Meteo's aren't asked for. et0_fao_evapotranspiration is kept as the raw value.
+    # weather_code (WMO) gives the forecast its sky: thunder, fog, freezing rain (G.12).
     VARIABLES = %w[
       temperature_2m dew_point_2m et0_fao_evapotranspiration precipitation rain snowfall snow_depth
       pressure_msl surface_pressure shortwave_radiation wind_speed_10m wind_gusts_10m
-      wind_direction_10m cloud_cover cloud_cover_low cloud_cover_mid cloud_cover_high
+      wind_direction_10m cloud_cover cloud_cover_low cloud_cover_mid cloud_cover_high weather_code
     ].freeze
     SOIL_VARIABLES = %w[
       soil_temperature_0_to_7cm soil_temperature_7_to_28cm soil_temperature_28_to_100cm

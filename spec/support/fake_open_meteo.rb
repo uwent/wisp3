@@ -1,5 +1,5 @@
 # A stand-in for Weather::OpenMeteo#hourly in specs: constant weather (10 °C, 0.3 soil moisture,
-# et0_mm per hour of Open-Meteo's ET0; a 6 °C dew point, 1000 hPa, 10 km/h wind, and shortwave
+# et0_mm per hour of Open-Meteo's ET0; a 6 °C dew point, 1000 hPa, 10 km/h wind, overcast (WMO 3), and shortwave
 # from 6 am to 6 pm) for every requested variable over the local (Chicago) days asked, and a log of
 # the calls. From the ensemble endpoint, each of members has the same values as the control.
 class FakeOpenMeteo
@@ -27,6 +27,7 @@ class FakeOpenMeteo
     when /\Aet0/ then @et0_mm
     when "dew_point_2m" then 6.0
     when "surface_pressure" then 1000.0
+    when "weather_code" then 3.0
     when "shortwave_radiation" then time.in_time_zone("America/Chicago").hour.between?(7, 18) ? 500.0 : 0.0
     else 10.0
     end

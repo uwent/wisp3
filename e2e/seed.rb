@@ -38,7 +38,8 @@ WeatherCell.find_each do |cell|
   ahead = (today..today + 15).to_a
   cell.weather_forecasts.delete_all
   cell.weather_forecasts.create!(issued_at: now, model: "e2e", payload: {days: ahead.map do |date|
-    {date: date.iso8601, et0_in: 0.2, precip_in: (date == today + 6) ? 0.6 : 0.0, tmax_f: 84, tmin_f: 60}
+    {date: date.iso8601, et0_in: 0.2, precip_in: (date == today + 6) ? 0.6 : 0.0, tmax_f: 84, tmin_f: 60,
+     weather_code: (date == today + 6) ? 95 : 2, cloud_cover_pct: 30}
   end})
   cell.weather_forecasts.create!(kind: "ensemble", issued_at: now, model: "e2e", payload: {
     dates: ahead.map(&:iso8601),

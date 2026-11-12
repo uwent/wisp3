@@ -45,6 +45,8 @@ module Weather
       "cloud_cover_low_pct" => ["cloud_cover_low", :mean, same],
       "cloud_cover_mid_pct" => ["cloud_cover_mid", :mean, same],
       "cloud_cover_high_pct" => ["cloud_cover_high", :mean, same],
+      # The day's most severe hour, as Open-Meteo's own daily weather_code (WMO codes rise with severity)
+      "weather_code" => ["weather_code", :max, ->(code) { code.round }],
       "soil_temp_0_7cm_f" => ["soil_temperature_0_to_7cm", :mean, c_to_f],
       "soil_temp_7_28cm_f" => ["soil_temperature_7_to_28cm", :mean, c_to_f],
       "soil_temp_28_100cm_f" => ["soil_temperature_28_to_100cm", :mean, c_to_f],

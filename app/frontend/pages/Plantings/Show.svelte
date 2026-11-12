@@ -4,8 +4,6 @@
 
   import Chart from '@/lib/charts/Chart.svelte'
   import { fieldChartOption, type FieldChartMode } from '@/lib/charts/fieldChart'
-  import { weatherPanels } from '@/lib/charts/weatherCharts'
-  import WeatherSection from '@/lib/charts/WeatherSection.svelte'
   import Button from '@/lib/components/Button.svelte'
   import CollapsibleSection from '@/lib/components/CollapsibleSection.svelte'
   import EditableCell from '@/lib/components/EditableCell.svelte'
@@ -15,6 +13,7 @@
   import SeasonDetails from '@/lib/components/SeasonDetails.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import Term from '@/lib/components/Term.svelte'
+  import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { addDays, formatDate, relativeDay } from '@/lib/dates'
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
   import { guidance as guidanceFor } from '@/lib/guidance'
@@ -25,8 +24,7 @@
   import { save } from '@/lib/save'
   import { seasonStats } from '@/lib/seasonStats'
   import { stickyHeight } from '@/lib/stickyBars'
-  import { fileSlug } from '@/lib/csv'
-  import { formatNumber, parseNumber, units as unitsFor, type Units } from '@/lib/units'
+  import { formatNumber, parseNumber, units as unitsFor } from '@/lib/units'
   import {
     exportPlanting,
     fieldDays,
@@ -37,9 +35,8 @@
     plantingCutting,
     plantingCuttings,
     setup,
-    weatherPivot,
   } from '@/routes'
-  import type { Field, FieldDay, Planting, PlantingSummary, WeatherPanelDay } from '@/types/serializers'
+  import type { Field, FieldDay, ForecastDay, Planting, PlantingSummary } from '@/types/serializers'
 
   let {
     field,
@@ -52,7 +49,8 @@
     summary,
     days,
     forecast_days,
-    weather,
+    weather_zone,
+    forecast,
   }: {
     field: Field
     pivot: { id: number; name: string; kind: PivotKind; kind_name: string; pump_capacity_gpm: number | null }
@@ -66,7 +64,9 @@
     summary: PlantingSummary
     days: FieldDay[]
     forecast_days: FieldDay[]
-    weather: WeatherPanelDay[]
+    /** The zone the season ran on, and its week ahead while the season has days left (not time travelling) */
+    weather_zone: { id: number; name: string } | null
+    forecast: ForecastDay[]
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
@@ -180,32 +180,6 @@
   let chartMode = $state<FieldChartMode>('ad')
   // The season's sections, closed until opened; links in the summary open them
   let summaryOpen = $state(false)
-
-  // Crop ET and rain by date, through the projection, as a string so the weather charts rebuild only
-  // when they change (an edit to irrigation or a reading reloads the days, but leaves both alone)
-  const balanceJson = $derived(
-    JSON.stringify(
-      [...days, ...forecast_days].map(({ date, adj_et, rain, rain_source, rain_model }) => ({
-        date,
-        adj_et,
-        rain,
-        rain_source,
-        rain_model,
-      })),
-    ),
-  )
-  // In some units: the user's for the charts, imperial (as stored) for their CSVs (WeatherSection)
-  const panels = $derived.by(() => {
-    const balance: Pick<FieldDay, 'date' | 'adj_et' | 'rain' | 'rain_source' | 'rain_model'>[] = JSON.parse(balanceJson)
-    return (u: Units) =>
-      weatherPanels(u, {
-        field: { fieldCapacity: field.effective_field_capacity, wiltingPoint: field.effective_perm_wilting_pt },
-        cropEt: Object.fromEntries(balance.map((day) => [day.date, day.adj_et])),
-        fieldRain: Object.fromEntries(
-          balance.map(({ date, rain, rain_source, rain_model }) => [date, { rain, rain_source, rain_model }]),
-        ),
-      })
-  })
 
   // What it takes to refill the root zone to field capacity today
   const refill = $derived(
@@ -658,7 +632,7 @@
     {/snippet}
     <div class="space-y-2 rounded-lg border border-line bg-surface-raised p-4">
       <Chart
-        height="40rem"
+        height="44rem"
         label="Soil water, water inputs and their totals, and the crop canopy over the season; the daily table below has the same values"
         build={(palette, view) =>
           fieldChartOption({
@@ -975,20 +949,12 @@
   </CollapsibleSection>
 {/if}
 
-<WeatherSection
-  {panels}
-  days={weather}
+<ZoneWeather
+  zone={weather_zone}
+  {forecast}
   {units}
-  exports={{
-    place: `${farm.name} / ${pivot.name} / ${field.name}`,
-    file: `wisp-${fileSlug(field.name)}-${planting?.year}`,
-    href: weatherPivot(pivot.id, { query: { year: planting?.year } }).url,
-  }}
->
-  Precipitation also shows the rain you entered for this field, with the modeled rain its balance doesn't use outlined.
-  Soil moisture is the model's own estimate, not this field's balance; it's shown against the field's capacity and
-  wilting point for comparison.
-</WeatherSection>
+  query={{ ...(planting.year === new Date().getFullYear() ? {} : { year: planting.year }), planting: planting.id }}
+/>
 
 <!-- The season in numbers, and settings for this field's balance (its setup is on the setup page) -->
 {#if stats}

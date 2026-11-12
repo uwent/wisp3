@@ -1,5 +1,5 @@
 # Pivots are created and edited on the map picker. A pivot's page lists its irrigation by season,
-# and its cell's weather over that season.
+# with its weather zone's week ahead and a link to the zone (G.12).
 class PivotsController < AuthenticatedController
   before_action :require_owner, only: :destroy
 
@@ -8,26 +8,20 @@ class PivotsController < AuthenticatedController
     year = params.fetch(:year, Date.current.year).to_i
     WeatherCell.keep_current([pivot.weather_cell_id])
     irrigations = pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(date: :desc)
-    dates = weather_dates(pivot, year)
 
     render inertia: "Pivots/Show", props: {
       pivot: PivotSerializer.new(pivot).to_h,
       farm: {id: pivot.farm.id, name: pivot.farm.name},
       year:,
       irrigations: PivotIrrigationSerializer.new(irrigations).to_h,
-      weather_from: dates.first,
-      weather: WeatherPanelDaySerializer.new(WeatherPanel.new(pivot.weather_cell, dates, emergence_date: dates.first).days).to_h
+      **WeatherZone.page_props(Current.group, pivot.weather_cell, forecast: year == Date.current.year)
     }
   end
 
-  # The pivot's weather over the same days as its page, as CSV
+  # The weather CSV moved to the pivot's zone (G.12); old links follow it
   def weather
-    pivot = Current.group.pivots.includes(:weather_cell, farm: :group, fields: :plantings).find(params[:id])
-    year = params.fetch(:year, Date.current.year).to_i
-    dates = weather_dates(pivot, year)
-    days = WeatherPanel.new(pivot.weather_cell, dates, emergence_date: dates.first).days
-    send_data WeatherCsv.new(pivot, year, days, exported_by: current_user, about_url:).to_csv,
-      filename: "wisp-weather-#{pivot.name.parameterize}-#{year}.csv", type: "text/csv; charset=utf-8"
+    pivot = Current.group.pivots.find(params[:id])
+    redirect_to export_weather_zone_path(pivot.weather_cell_id, year: params[:year]), status: :moved_permanently
   end
 
   def new
@@ -65,16 +59,6 @@ class PivotsController < AuthenticatedController
   end
 
   private
-
-  # The year's season on this pivot: from its plantings' earliest start (or April 1) to their latest
-  # end (or October 31), and this year through the forecast
-  def weather_dates(pivot, year)
-    plantings = pivot.fields.flat_map(&:plantings).select { |planting| planting.season_year == year }
-    from = plantings.map(&:season_start).min || Date.new(year, 4, 1)
-    to = [plantings.map(&:end_date).max, Date.new(year, 10, 31)].compact.max
-    to = Date.current + Weather::Fetcher::FORECAST_DAYS if year == Date.current.year
-    from..to
-  end
 
   def pivot_params
     params.expect(pivot: [:farm_id, :name, :kind, :latitude, :longitude, :radius_ft, :arc_start_deg, :arc_end_deg,

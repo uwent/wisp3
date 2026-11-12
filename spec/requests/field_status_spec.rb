@@ -22,7 +22,7 @@ RSpec.describe "Field status and daily entry", type: :request do
   around { |example| travel_to(Time.zone.local(2026, 7, 20, 9)) { example.run } }
 
   describe "the field page" do
-    it "shows the season's balance, summary and weather" do
+    it "shows the season's balance, summary, and its zone's week ahead (G.12)" do
       pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: [{date: "2026-07-20", tmax_f: 90, tmin_f: 70}, {date: "2026-07-21", tmax_f: 88, tmin_f: 66}]})
 
@@ -34,8 +34,9 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(props[:days][4]).to include(date: "2026-07-05", rain: 0.4, rain_source: "model", et0: 0.2)
       expect(props[:summary]).to include(phase: "active", date: "2026-07-20", ad_max: 1.2) # 0.5 × (0.15 − 0.05) × 24 in
       expect(props[:summary][:totals]).to include(rain: 0.4)
-      expect(props[:weather].map { |day| [day[:date], day[:forecast]] }.last(2))
-        .to eq([["2026-07-20", true], ["2026-07-21", true]])
+      expect(props).not_to have_key(:weather)
+      expect(props[:weather_zone]).to eq({"id" => pivot.weather_cell_id, "name" => pivot.name})
+      expect(props[:forecast].map { |day| [day[:date], day[:tmax_f]] }).to eq([["2026-07-20", 90], ["2026-07-21", 88]])
     end
 
     it "gives the crop's canopy curve each day, and flags readings that run ahead of it (Phase 6.7)" do
@@ -228,7 +229,8 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(props[:forecast_days].map { |day| day[:date] }).to eq((Date.new(2026, 7, 11)..Date.new(2026, 7, 19)).map(&:iso8601))
       expect(props[:forecast_days].map { |day| day[:rain_source] }.uniq).to eq(["model"])
       expect(props[:summary][:projection].map { |day| day[:p50] }.uniq).to eq([nil])
-      expect(props[:weather].last[:date]).to eq("2026-07-10")
+      expect(props[:forecast]).to eq([]) # the zone's link only
+      expect(props[:weather_zone]).to include("id" => pivot.weather_cell_id)
 
       get planting_path(planting)
       expect(inertia.props).to include(as_of: nil)
@@ -412,18 +414,15 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(inertia.props[:irrigations].map { |i| i[:date] }).to eq(["2026-07-10"])
     end
 
-    it "shows the pivot's weather from its earliest season start through the forecast" do
+    it "shows the week ahead in the pivot's weather zone, linking to it (G.12)" do
       pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
-        payload: {days: [{date: "2026-07-20", tmax_f: 90, tmin_f: 70}]})
+        payload: {days: [{date: "2026-07-19", tmax_f: 80}, {date: "2026-07-20", tmax_f: 90, tmin_f: 70}]})
       get pivot_path(pivot)
-      expect(inertia.props[:weather_from]).to eq("2026-07-01")
-      weather = inertia.props[:weather]
-      expect(weather.map { |day| day[:date] }.values_at(0, -1)).to eq(%w[2026-07-01 2026-07-20])
-      expect(weather.last).to include(forecast: true, tmax_f: 90)
-      expect(weather[4]).to include(date: "2026-07-05", precip_in: 0.4)
+      expect(inertia.props[:weather_zone]).to eq({"id" => pivot.weather_cell_id, "name" => pivot.name})
+      expect(inertia.props[:forecast].map { |day| day[:date] }).to eq(["2026-07-20"])
 
-      get pivot_path(pivot, year: 2025) # no plantings or weather that year
-      expect(inertia.props).to include(weather_from: "2025-04-01", weather: [])
+      get pivot_path(pivot, year: 2025)
+      expect(inertia.props[:forecast]).to eq([])
     end
   end
 

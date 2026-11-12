@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_130001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -342,6 +342,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_130000) do
     t.float "rh_min_raw_pct"
     t.float "rh_max_raw_pct"
     t.jsonb "corrections", default: [], null: false
+    t.integer "weather_code"
     t.index ["weather_cell_id", "date"], name: "index_weather_days_on_weather_cell_id_and_date", unique: true
   end
 

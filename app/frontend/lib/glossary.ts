@@ -159,6 +159,14 @@ export const GLOSSARY: GlossaryEntry[] = [
       'Irrigation systems on one farm kept together, such as those near one rain gauge. Rain typed for the group ' +
       'on Daily entry fills in every field of its systems.',
   },
+  {
+    id: 'weather_zone',
+    term: 'Weather zone',
+    matches: ['weather zone', 'weather zones'],
+    definition:
+      'One cell of the weather model’s grid, about 6 miles (9 km) across. Irrigation systems in the same cell share ' +
+      'its weather; the Weather tab has each zone’s forecast and season.',
+  },
 ]
 
 const byId = new Map(GLOSSARY.map((entry) => [entry.id, entry]))

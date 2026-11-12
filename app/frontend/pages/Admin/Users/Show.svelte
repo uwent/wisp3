@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Form, Link, page, router } from '@inertiajs/svelte'
 
+  import AdminTabs from '@/lib/components/AdminTabs.svelte'
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
   import { formatDate, formatTimestamp } from '@/lib/dates'
@@ -89,6 +90,8 @@
 </script>
 
 <svelte:head><title>{user.email} · Users · WISP</title></svelte:head>
+
+<AdminTabs />
 
 <div class="space-y-6">
   <div>

@@ -63,17 +63,22 @@ class WeatherCell < ApplicationRecord
     issued.nil? || issued < now - WeatherForecast::STALE_AFTER
   end
 
-  # Missing weather the pages would show: no forecast within INCOMPLETE_AFTER, or a day missing
-  # since the backfill start (the season's, or 30 days back)
+  # Missing weather the balances would use: no forecast within INCOMPLETE_AFTER, or a day missing
+  # since the earliest season start this year, or 30 days back. Earlier days of the year (for the
+  # weather page) fill in quietly.
   def incomplete?(now = Time.current)
     issued = weather_forecasts.deterministic.maximum(:issued_at)
     return true if issued.nil? || issued < now - INCOMPLETE_AFTER
-    from, to = backfill_start, today - 1
+    from, to = [season_start, today - 30].compact.min, today - 1
     from <= to && weather_days.where(date: from..to).count < (to - from).to_i + 1
   end
 
-  # Backfills start at the earliest season start this year, or 30 days ago
-  def backfill_start = [season_start, today - 30].compact.min
+  # Backfills start on January 1, so a weather zone's page has the whole year (G.12), or at the
+  # earliest season start this year if it began the year before
+  def backfill_start = [season_start, today.beginning_of_year].compact.min
+
+  # Open-Meteo gives elevation in meters; growers see feet
+  def elevation_ft = elevation_m && (elevation_m / 0.3048).round
 
   def time_zone = ActiveSupport::TimeZone[timezone || Time.zone.name]
   def today = Time.current.in_time_zone(time_zone).to_date

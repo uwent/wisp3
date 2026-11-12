@@ -316,17 +316,25 @@
       </li>
       <li>
         <strong>A field's page:</strong> its plantings this season on a timeline, each one's status, the rain and irrigation
-        entered for the whole field, and which rain it uses. Tabs at the top open each planting.
+        entered for the whole field, which rain it uses, and the week ahead. Tabs at the top open each planting.
       </li>
       <li>
         <strong>A planting's page:</strong> its status and outlook, a chart of the season, the next
-        {defaults.forecast_days} days, every day's values, and the weather. Click a cell to enter or correct a value. Plan
-        irrigation by entering it on a future day: it counts as applied when the day comes, so change it if plans change.
-        Export the season as a CSV file. To see the page as it was on an earlier day of the season (for training, a demonstration,
-        or looking back at a decision), use the clock button at the top right and pick a date. The page then shows what was
-        entered up to that day, and in place of the forecast, what happened next: the weather that came, and the rain and
-        irrigation entered for those days. Nothing can be changed while viewing an earlier day, and values entered or corrected
-        since show as they are now.
+        {defaults.forecast_days} days, every day's values, its crop ET, and the week ahead. Click a cell to enter or correct
+        a value. Plan irrigation by entering it on a future day: it counts as applied when the day comes, so change it if
+        plans change. Export the season as a CSV file. To see the page as it was on an earlier day of the season (for training,
+        a demonstration, or looking back at a decision), use the clock button at the top right and pick a date. The page then
+        shows what was entered up to that day, and in place of the forecast, what happened next: the weather that came, and
+        the rain and irrigation entered for those days. Nothing can be changed while viewing an earlier day, and values entered
+        or corrected since show as they are now.
+      </li>
+      <li>
+        <strong>Weather:</strong> irrigation systems close together share a weather zone, one cell of the weather model's
+        grid. The Weather tab lists your zones with each one's week ahead: the sky, high and low, rain and its chance, and
+        reference ET. Open a zone for its year so far: rain, ET, sunshine, growing degree days (since January 1, since the
+        first day in view, and since a planting went in), temperature, humidity, wind and the soil, with each chart's values
+        and the whole year to download. Field, planting and irrigation system pages show their zone's week ahead and link
+        to it.
       </li>
       <li>
         <strong>Alerts:</strong> a morning email at about 6 am. It groups your fields by operation, farm, weather zone (irrigation
@@ -597,7 +605,9 @@ t: days since emergence; t′: days since the decline starts</code
       grid cell (about 9 km across) around each irrigation system: the National Blend of Models (NBM) where it has a
       value, and Open-Meteo's best match of other models where it doesn't. The last week is refreshed as the models
       revise it; the next {defaults.forecast_days} days are the latest forecast, and the field chart's range of outcomes comes
-      from the 31 runs of the GFS ensemble forecast.
+      from the 31 runs of the GFS ensemble forecast. The week ahead's chance of rain is the share of those runs with at least
+      0.01 in that day, and its sky is the day's most severe weather in the forecast (a thunderstorm, fog, freezing rain or
+      snow), or how cloudy the day is on average.
     </p>
     <h3 id="weather-corrections">Weather corrections</h3>
     <p>
@@ -654,6 +664,12 @@ t: days since emergence; t′: days since the decline starts</code
 
     <h2 id="changes">What's changed</h2>
     <dl>
+      <dt>November 2026: a Weather tab</dt>
+      <dd>
+        Weather has its own tab, by weather zone, with the week ahead and the season's charts (see
+        <a href="#day-to-day">Day to day</a>). Field, planting and irrigation system pages show the week ahead in brief,
+        and a planting's chart now has its crop ET under the rain and irrigation.
+      </dd>
       <dt>November 2026: plantings side by side</dt>
       <dd>
         A field can grow several plantings at once, each on part of the field, with its own water balance (see

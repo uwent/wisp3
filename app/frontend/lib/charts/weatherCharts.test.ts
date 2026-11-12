@@ -5,11 +5,13 @@ import type { WeatherPanelDay } from '@/types/serializers'
 import { addDays } from '../dates'
 import { units } from '../units'
 import { DEFAULT_WINDOW_DAYS } from './fieldChart'
+import type { EChartsCoreOption } from './echarts'
 import type { Palette } from './palette'
 import {
   correctedOn,
   defaultView,
   type FieldRain,
+  gddFrom,
   panelCsvRows,
   panelSummary,
   panelTable,
@@ -18,6 +20,12 @@ import {
   weatherChartOption,
   weatherPanels,
 } from './weatherCharts'
+
+/** The legend's entry names (a line's entry is {name, itemStyle}) */
+const legendNames = (option: EChartsCoreOption) =>
+  (option.legend as { data: (string | { name: string })[] }).data.map((entry) =>
+    typeof entry === 'string' ? entry : entry.name,
+  )
 
 const palette: Palette = {
   ink: '#000',
@@ -29,6 +37,7 @@ const palette: Palette = {
   canopy: '#0a0',
   ad: '#40a',
   warm: '#f60',
+  sun: '#fc0',
   snow: '#ccc',
   depths: ['#1', '#2', '#3', '#4'],
   status: { full: '#00f', ok: '#0f0', caution: '#fa0', irrigate: '#f00' },
@@ -167,8 +176,7 @@ describe('weather charts', () => {
 
   it('names snow in the legend only when the days in view have some', () => {
     const legend = (d: WeatherPanelDay[], view?: { start: number; end: number }) =>
-      (weatherChartOption(panel('precipitation'), d, units('imperial'), palette, view).legend as { data: string[] })
-        .data
+      legendNames(weatherChartOption(panel('precipitation'), d, units('imperial'), palette, view))
     // Snow early in the season, outside the opening view
     const snowy = days.map((day, i) => (i === 3 ? { ...day, snowfall_in: 1.5, snow_depth_in: 2 } : day))
     expect(legend(snowy)).toEqual(['Rain', 'Snow and other', 'Precipitation total'])
@@ -267,8 +275,7 @@ describe('weather charts', () => {
     })
 
     it('names entered rain in the legend and tooltip only where there is some', () => {
-      const legend = (view: { start: number; end: number }) =>
-        (option(fieldRain(), view).legend as { data: string[] }).data
+      const legend = (view: { start: number; end: number }) => legendNames(option(fieldRain(), view))
       expect(legend({ start: 0, end: 20 })).not.toContain('Entered rain')
       expect(legend({ start: 20, end: 40 })).toContain('Entered rain')
       const formatter = (option(fieldRain()).tooltip as { formatter: (params: unknown) => string }).formatter
@@ -302,21 +309,45 @@ describe('weather charts', () => {
     }))
     const option = weatherChartOption(panel('gdd'), warm, units('imperial'), palette)
     const series = option.series as SeriesOption[]
-    expect(series.map((s) => [s.name, s.type, s.xAxisIndex]).slice(0, 2)).toEqual([
+    expect(series.map((s) => [s.name, s.type, s.xAxisIndex]).slice(0, 3)).toEqual([
       ['Degree days (50/86)', 'bar', 0],
-      ['Total since emergence', 'line', 1],
+      ['Since emergence', 'line', 1],
+      ['Since the first day in view', 'line', 1],
     ])
     expect(series[1].data.slice(0, 3)).toEqual([20, 40, 60])
     const yAxis = option.yAxis as { name?: string; max?: number }[]
-    expect(yAxis[1].name).toBe('Since emergence')
+    expect(yAxis[1].name).toBe('Total')
     // Each series in the tooltip with its own decimals
     const formatter = (option.tooltip as { formatter: (params: unknown) => string }).formatter
     const html = formatter([
       { axisValue: warm[5].date, seriesIndex: 0, seriesName: 'Degree days (50/86)', marker: '', value: 20 },
-      { axisValue: warm[5].date, seriesIndex: 1, seriesName: 'Total since emergence', marker: '', value: 120 },
+      { axisValue: warm[5].date, seriesIndex: 1, seriesName: 'Since emergence', marker: '', value: 120 },
     ])
     expect(html).toContain('20.0 °F·d')
     expect(html).toContain('120 °F·d')
+
+    // Lines' legend entries hide the symbol ECharts draws on them; bars keep theirs
+    expect((option.legend as { data: unknown[] }).data).toEqual([
+      'Degree days (50/86)',
+      { name: 'Since emergence', itemStyle: { opacity: 0 } },
+      { name: 'Since the first day in view', itemStyle: { opacity: 0 } },
+    ])
+    // The total in view starts again at the first day in view; a planting's total from its date
+    const view = { start: 10, end: 20 }
+    const inView = weatherChartOption(panel('gdd'), warm, units('imperial'), palette, view).series as SeriesOption[]
+    expect(inView[2].data.slice(9, 13)).toEqual([null, 20, 40, 60])
+    const planted = weatherPanels(units('imperial'), {
+      gddPlanting: { label: 'planting (Jun 3)', totals: gddFrom(warm, warm[2].date) },
+    }).find((p) => p.key === 'gdd')!
+    const withPlanting = weatherChartOption(planted, warm, units('imperial'), palette).series as SeriesOption[]
+    expect(withPlanting[3].name).toBe('Since planting (Jun 3)')
+    expect(withPlanting[3].data.slice(0, 4)).toEqual([null, null, 20, 40])
+    // A view's total isn't a day's value, so tables leave it out
+    expect(panelTable(planted, warm, units('imperial')).columns).toEqual([
+      'Degree days (50/86) (°F·d)',
+      'Since emergence (°F·d)',
+      'Since planting (Jun 3) (°F·d)',
+    ])
 
     const solar = weatherChartOption(panel('solar'), warm, units('imperial'), palette)
     expect((solar.yAxis as { name?: string; max?: number }[])[1]).toMatchObject({ name: 'Cloud cover (%)', max: 100 })
@@ -378,6 +409,21 @@ describe('weather charts', () => {
     })
     expect(correctedOn(days[2], 'openmeteo-rh')).toBe(true)
     expect(correctedOn(days[0], 'openmeteo-rh')).toBe(false)
+  })
+})
+
+describe('gddFrom', () => {
+  it('counts degree days from another day, none before it', () => {
+    const counted = gddFrom(
+      [
+        { date: '2026-05-01', gdd: 5, gdd_since_emergence: 5 },
+        { date: '2026-05-02', gdd: 7.25, gdd_since_emergence: 12.3 },
+        { date: '2026-05-03', gdd: null, gdd_since_emergence: 12.3 },
+        { date: '2026-05-04', gdd: 4, gdd_since_emergence: 16.3 },
+      ] as unknown as WeatherPanelDay[],
+      '2026-05-02',
+    )
+    expect(Object.values(counted)).toEqual([null, 7.3, 7.3, 11.3])
   })
 })
 

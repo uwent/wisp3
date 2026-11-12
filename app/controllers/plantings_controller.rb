@@ -1,10 +1,8 @@
 class PlantingsController < AuthenticatedController
-  FORECAST_DAYS = Weather::Fetcher::FORECAST_DAYS
-
   # A planting's page (PLAN.md §11; its own URL since G.11): its season with the summary, daily grid,
-  # chart and weather. ?as_of= travels back to a day of the season before today (PLAN.md Phase 8 F):
-  # the page shows the season as it stood then, read-only. A date outside the season, ahead or
-  # malformed redirects without it.
+  # chart and the week ahead (its zone's panels are on the weather page, G.12). ?as_of= travels back
+  # to a day of the season before today (PLAN.md Phase 8 F): the page shows the season as it stood
+  # then, read-only. A date outside the season, ahead or malformed redirects without it.
   def show
     planting = Current.group.plantings.find(params[:id])
     field = Current.group.fields.includes(:soil_type, pivot: [:farm, :weather_cell],
@@ -27,6 +25,8 @@ class PlantingsController < AuthenticatedController
       as_of:,
       travel_dates: travel_dates(planting),
       planting: PlantingSerializer.new(planting).to_h,
+      # The zone the season ran on (G.9), and its week ahead while the season has days left
+      **WeatherZone.page_props(Current.group, planting.weather_cell, forecast: !as_of && planting.end_date >= Date.current),
       **season_props(field, planting, as_of)
     }
   end
@@ -106,8 +106,8 @@ class PlantingsController < AuthenticatedController
     nil
   end
 
-  # as_of: time travelling, the days run to the end of the days that followed it, canopy readings
-  # stop at it, and the weather panels end there
+  # as_of: time travelling, the days run to the end of the days that followed it, and canopy readings
+  # stop at it
   def season_props(field, planting, as_of)
     status = PlantingStatus.new(planting, as_of:)
     dates = as_of ? planting.season_start..[as_of + PlantingStatus::HORIZON, planting.end_date].min : planting.season_range
@@ -115,7 +115,6 @@ class PlantingsController < AuthenticatedController
     pivot_inches = field.pivot.pivot_irrigations.where(date: dates).select { |irrigation| irrigation.applies_to?(field) }
       .to_h { |irrigation| [irrigation.date, irrigation.applied_inches] }
     field_entries = field.field_entries.where(date: dates).index_by(&:date)
-    weather_dates = planting.season_start..(as_of || [planting.end_date, Date.current + FORECAST_DAYS].min)
 
     day_params = {
       # Notes: a part-field planting's own (G.11), else the field's
@@ -132,11 +131,7 @@ class PlantingsController < AuthenticatedController
       summary: PlantingSummarySerializer.new(status).to_h,
       days: FieldDaySerializer.new(status.days, params: day_params).to_h,
       # The projection's days, with planned irrigation (entries on future dates)
-      forecast_days: FieldDaySerializer.new(status.forecast_days, params: day_params).to_h,
-      weather: WeatherPanelDaySerializer.new(
-        # The weather the season ran on (G.9)
-        WeatherPanel.new(planting.weather_cell, weather_dates, emergence_date: planting.emergence_date).days
-      ).to_h
+      forecast_days: FieldDaySerializer.new(status.forecast_days, params: day_params).to_h
     }
   end
 

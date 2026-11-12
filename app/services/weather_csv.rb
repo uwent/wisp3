@@ -1,4 +1,4 @@
-# An irrigation system's (a pivot's, in code) weather as CSV: frontmatter (CsvExport), then every variable WISP stores for its weather
+# A weather zone's weather as CSV (WeatherZone, G.12): frontmatter (CsvExport), then every variable WISP stores for its weather
 # grid cell, one row per day (WeatherPanel's days: the stored ones, then the latest forecast's,
 # marked), with growing degree days, Open-Meteo's values before the corrections, and the corrections
 # each day went through. Values as stored.
@@ -24,18 +24,18 @@ class WeatherCsv
 
   UNITS = "inches, °F, mph, kPa, MJ/m² and percent, and soil moisture as a fraction of the soil's volume (m³/m³), as stored"
 
-  def initialize(pivot, year, days, exported_by: nil, about_url: nil)
-    @pivot, @year, @days, @exported_by, @about_url = pivot, year, days, exported_by, about_url
+  def initialize(zone, group, year, days, exported_by: nil, about_url: nil)
+    @zone, @group, @year, @days, @exported_by, @about_url = zone, group, year, days, exported_by, about_url
   end
 
   def to_csv
-    cell = @pivot.weather_cell
+    cell = @zone.cell
     generate do |csv|
-      frontmatter(csv, "WISP weather, #{@pivot.label}, #{@year}", {
-        "Operation" => @pivot.farm.group.name,
-        "Irrigation system" => "#{@pivot.farm.name} / #{@pivot.label}",
+      frontmatter(csv, "WISP weather, #{@zone.name}, #{@year}", {
+        "Operation" => @group.name,
+        "Irrigation systems" => @zone.pivots.map { |pivot| "#{pivot.farm.name} / #{pivot.label}" }.join("; ").presence,
         "Location" => cell && "the weather grid cell centered at #{cell.latitude}, #{cell.longitude}" \
-          "#{", #{cell.elevation_m.round} m above sea level" if cell.elevation_m}",
+          "#{", elevation #{cell.elevation_ft} ft" if cell.elevation_m}",
         "Days" => days_line,
         "Growing degree days" => @days.any? ? "the 50/86 °F method, added up from #{@days.first.date}" : nil,
         **weather_corrections

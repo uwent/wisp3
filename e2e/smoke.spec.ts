@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import { expect, type Page, test } from '@playwright/test'
 
-import { firstPlantingPath, signIn, watchErrors } from './session'
+import { firstPlantingPath, firstZonePath, signIn, watchErrors } from './session'
 
 // Smoke tests over the demo account seeded by e2e/seed.rb: the main ways of entering data save, and
 // the map and charts work. accessibility.spec.ts visits every page, failing on script errors too.
@@ -19,13 +19,45 @@ test('the dashboard shows field cards with a status', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /^Farm: / }).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
-  // A pivot's name links to its page: its irrigation and weather
+  // A pivot's name links to its page: its irrigation, and its weather zone's week ahead (G.12)
   const pivot = page.getByRole('heading', { name: /^Pivot: / }).first()
   const name = (await pivot.textContent())!.replace('Pivot:', '').trim()
   await expect(page.getByRole('link', { name: `Irrigation on ${name}` })).toBeVisible()
   await pivot.getByRole('link', { name }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Pivot: ${name}`)
-  await expect(page.getByRole('heading', { name: /^Weather at this pivot/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Weather/, level: 2 })).toBeVisible()
+  await page.getByRole('link', { name: /^Season's weather: / }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Weather:')
+  await expect(page.getByRole('heading', { name: 'Weather charts', level: 2 })).toBeVisible()
+})
+
+test('the Weather tab has the week ahead and a season of weather per zone (G.12)', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Weather', exact: true }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Weather')
+  const week = page.getByRole('list', { name: /^Forecast for / }).first()
+  await expect(week.getByRole('listitem')).toHaveCount(7)
+  await expect(week.getByRole('listitem').first()).toContainText('Today')
+  await expect(week.getByText('Thunderstorms')).toBeVisible()
+  await expect(week).toContainText('%')
+  await page.locator('main h2 a').first().click()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Weather:')
+  await expect(page.getByRole('heading', { name: 'The week ahead' })).toBeVisible()
+  await expect(page.getByLabel('Add the total since')).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('the Admin tab switches between Users and Weather data', async ({ page }) => {
+  await page.goto('/admin/users')
+  const pills = page.getByRole('navigation', { name: 'Admin' })
+  await expect(pills.getByRole('link', { name: 'Users' })).toHaveAttribute('aria-current', 'page')
+  await pills.getByRole('link', { name: 'Weather data' }).click()
+  await expect(page.getByRole('heading', { name: 'Weather data', level: 1 })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Admin' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
 })
 
 test('the map lists the fields and selects a pivot from the list', async ({ page }) => {
@@ -400,20 +432,12 @@ test('time travel shows a field on an earlier day, read-only, and returns to tod
   expect(await at()).toBe(before)
   expect(await heights()).toHaveLength(1)
 
-  // Once the card scrolls away, a bar across the top keeps the date in view, and the weather charts'
-  // range bar sticks below it rather than under it
+  // Once the card scrolls away, a bar across the top keeps the date in view
   const topBar = page.getByTestId('time-travel-bar')
   await expect(topBar).toHaveCount(0)
-  const range = page.locator('div.sticky', { hasText: 'Weather data range:' })
-  const weather = page.locator('#weather [data-section-toggle]')
-  if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
-  await range.scrollIntoViewIfNeeded()
-  await page.mouse.wheel(0, 600)
+  await page.evaluate(() => scrollTo(0, document.body.scrollHeight))
   await expect(topBar).toBeVisible()
   await expect(topBar).toContainText('as of')
-  await expect
-    .poll(async () => (await range.boundingBox())!.y - (await topBar.boundingBox())!.height)
-    .toBeGreaterThanOrEqual(-0.5)
   await page.evaluate(() => scrollTo(0, 0))
   await expect(topBar).toHaveCount(0)
 
@@ -681,9 +705,7 @@ test('adding a pivot irrigation on a date that has one offers to edit it instead
 
 test('the weather charts follow the page width without overlapping', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 900 })
-  await page.goto(await firstPlantingPath(page))
-  const weather = page.getByRole('button', { name: 'Weather at this location' })
-  if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
+  await page.goto(await firstZonePath(page))
   const card = (name: string) =>
     page
       .getByRole('button', { name: `About the ${name} chart` })
@@ -705,9 +727,7 @@ test('the weather charts follow the page width without overlapping', async ({ pa
 
 test('a weather chart explains itself, and zooms the rest with it', async ({ page }) => {
   const errors = watchErrors(page)
-  await page.goto(await firstPlantingPath(page))
-  const weather = page.getByRole('button', { name: 'Weather at this location' })
-  if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
+  await page.goto(await firstZonePath(page))
 
   const info = page.getByRole('button', { name: 'About the Precipitation chart' })
   await info.click()
@@ -719,6 +739,7 @@ test('a weather chart explains itself, and zooms the rest with it', async ({ pag
   // Zooming one chart moves the season slider (and the other charts) with it, whose reset puts them all back
   const reset = page.getByRole('button', { name: 'Reset', exact: true })
   await expect(reset).toBeHidden()
+  await card.locator('canvas').first().scrollIntoViewIfNeeded()
   const box = (await card.locator('canvas').first().boundingBox())!
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 3)
   await page.mouse.wheel(0, -400)
@@ -747,7 +768,7 @@ test('a weather chart explains itself, and zooms the rest with it', async ({ pag
   expect(errors).toEqual([])
 })
 
-test('setup downloads the season report, and a pivot its weather', async ({ page }) => {
+test('setup downloads the season report, and a weather zone its weather', async ({ page }) => {
   await page.goto('/setup')
   const [report] = await Promise.all([
     page.waitForEvent('download'),
@@ -758,12 +779,10 @@ test('setup downloads the season report, and a pivot its weather', async ({ page
   expect(csv).toMatch(/^\uFEFF"?WISP season report, \d{4}/)
   expect(csv).toContain('Irrigation by irrigation system')
 
-  await page.goto(await firstPlantingPath(page))
-  const weather = page.getByRole('button', { name: 'Weather at this location' })
-  if ((await weather.getAttribute('aria-expanded')) === 'false') await weather.click()
+  await page.goto(await firstZonePath(page))
   const [all] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('link', { name: "download all of this location's weather" }).click(),
+    page.getByRole('link', { name: "download all of this zone's weather" }).click(),
   ])
   expect(readFileSync(await all.path(), 'utf8')).toMatch(/^\uFEFF"?WISP weather, /)
 })
