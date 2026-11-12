@@ -15,6 +15,9 @@ export type Palette = {
   warm: string
   sun: string
   snow: string
+  /** Irrigation systems on the map (G.14), and the casing that keeps them visible */
+  system: string
+  systemCasing: string
   depths: [string, string, string, string]
   status: { full: string; ok: string; caution: string; irrigate: string }
   dark: boolean
@@ -32,6 +35,8 @@ const TOKENS = {
   warm: '--color-chart-warm',
   sun: '--color-chart-sun',
   snow: '--color-chart-snow',
+  system: '--color-map-system',
+  systemCasing: '--color-map-system-casing',
 } as const
 
 export function readPalette(element: Element = document.documentElement): Palette {

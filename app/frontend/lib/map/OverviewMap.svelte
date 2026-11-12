@@ -2,15 +2,6 @@
   /** Our sources (irrigation groups, fields, pivots, pins, and overlays named overlay-*), carried over when the basemap changes */
   export const isOwnSource = (id: string) =>
     ['pivots', 'groups', 'fields', 'pins'].includes(id) || id.startsWith('overlay-')
-  export const PIVOT_LAYER = 'pivots-fill'
-  /** Point kinds' dots (a traveler, drip, a location) */
-  export const POINT_LAYER = 'pivots-point'
-  /** Fields with an outline (G.10); overlays go under them */
-  export const FIELD_LAYER = 'fields-fill'
-  /** Plots with a pin (G.10) */
-  export const PIN_LAYER = 'pins'
-  /** The systems' own layers, which the Irrigation systems layer switch shows and hides */
-  const SYSTEM_LAYERS = [PIVOT_LAYER, 'pivots-casing', 'pivots-line', POINT_LAYER]
 </script>
 
 <script lang="ts">
@@ -40,14 +31,24 @@
     pivotFeatures,
   } from './pivots'
   import PlaceSearch from './PlaceSearch.svelte'
+  import {
+    addGlyphImages,
+    addSystemLayers,
+    CLICKABLE_LAYERS,
+    FIELD_LAYER,
+    PIN_LAYER,
+    setSystemColors,
+    SYSTEM_LAYERS,
+    systemHit,
+  } from './systemLayers'
 
-  // The operation's irrigation systems on a map (PLAN.md Phase 7): each drawn to scale in its most
-  // urgent field's status color (a point kind as a dot), with a marker of its fields' badges at the
-  // center, and each irrigation group lightly outlined around its systems. Fields with an outline
-  // (G.10) are filled in their status instead, the system then drawn as a line over them, and its
-  // marker shows only the fields without one; plots with a pin are dots in their status. Clicking a
-  // system selects it, and clicking a field or pin selects its system with that field; the page
-  // shows its details in the panel (children) and the toolbar adds to the top-left.
+  // The operation's irrigation systems on a map (PLAN.md Phase 7, G.14): each drawn in the system
+  // color, a pivot or linear to scale and a point kind as its glyph (systemLayers.ts), with a marker
+  // of its fields' badges at the center, and each irrigation group lightly outlined around its
+  // systems. Fields with an outline (G.10) are filled in their status, and its marker shows only the
+  // fields without one; plots with a pin are dots in their status. Clicking a system selects it, and
+  // clicking a field or pin selects its system with that field; the page shows its details in the
+  // panel (children) and the toolbar adds to the top-left.
   let {
     pivots,
     groups,
@@ -129,8 +130,6 @@
     ]
   }
 
-  const POLYGONS: ExpressionSpecification = ['==', ['geometry-type'], 'Polygon']
-
   function addPivotLayers(m: MapLibreMap) {
     // Irrigation groups: a light shade inside a dotted line, named along it
     m.addSource('groups', { type: 'geojson', data: groups })
@@ -202,56 +201,7 @@
       paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
     })
 
-    m.addSource('pivots', { type: 'geojson', data: features() })
-    m.addLayer({
-      id: PIVOT_LAYER,
-      type: 'fill',
-      source: 'pivots',
-      filter: POLYGONS,
-      paint: {
-        'fill-color': color,
-        // A system whose fields have outlines leaves the status to them
-        'fill-opacity': ['case', ['get', 'outlined'], 0, ['get', 'dimmed'], 0.05, ['get', 'selected'], 0.4, 0.22],
-      },
-    })
-    // A white casing under the status line keeps it visible on imagery
-    m.addLayer({
-      id: 'pivots-casing',
-      type: 'line',
-      source: 'pivots',
-      filter: POLYGONS,
-      paint: {
-        'line-color': '#ffffff',
-        'line-width': ['case', ['get', 'selected'], 6, 3.5],
-        'line-opacity': ['case', ['get', 'dimmed'], 0.3, 0.85],
-      },
-    })
-    m.addLayer({
-      id: 'pivots-line',
-      type: 'line',
-      source: 'pivots',
-      filter: POLYGONS,
-      paint: {
-        'line-color': color,
-        'line-width': ['case', ['get', 'selected'], 3.5, 2],
-        'line-opacity': ['case', ['get', 'dimmed'], 0.35, 1],
-      },
-    })
-    // A point kind (a traveler, drip, a location) is a dot under its marker, the same size at any zoom
-    m.addLayer({
-      id: POINT_LAYER,
-      type: 'circle',
-      source: 'pivots',
-      filter: ['==', ['geometry-type'], 'Point'],
-      paint: {
-        'circle-color': color,
-        'circle-radius': ['case', ['get', 'selected'], 22, 18],
-        'circle-opacity': ['case', ['get', 'dimmed'], 0.1, ['get', 'selected'], 0.55, 0.35],
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': ['case', ['get', 'selected'], 3, 2],
-        'circle-stroke-opacity': ['case', ['get', 'dimmed'], 0.3, 0.85],
-      },
-    })
+    addSystemLayers(m, features() as never, readPalette())
     for (const layer of SYSTEM_LAYERS) m.setLayoutProperty(layer, 'visibility', showSystems ? 'visible' : 'none')
 
     // Plots with a pin, over everything, named when zoomed in
@@ -363,6 +313,8 @@
     if (!map) return
     onbasemap(to)
     await setBasemap(map, to, isOwnSource)
+    // The new style has none of our icons
+    addGlyphImages(map)
     // The style's pivot layers have the palette of the old theme only if it changed meanwhile
     map.getSource<GeoJSONSource>('pivots')?.setData(features())
     map.getSource<GeoJSONSource>('fields')?.setData(fields() as never)
@@ -374,13 +326,10 @@
     placeSearch?.close()
     if (!map) return
     // A pin or a field selects its system with that field; else a system, or nothing
-    const layers = [PIN_LAYER, POINT_LAYER, FIELD_LAYER, PIVOT_LAYER].filter((layer) => map!.getLayer(layer))
-    const hit = map.queryRenderedFeatures(event.point, { layers })[0]
+    const hit = systemHit(map, event.point)
     if (!hit) return onselect(null)
-    const { properties } = hit
-    if (hit.layer.id === PIN_LAYER || hit.layer.id === FIELD_LAYER)
-      onselect(Number(properties.pivot_id), Number(hit.layer.id === PIN_LAYER ? properties.field_id : properties.id))
-    else onselect(Number(properties.id))
+    if (hit.kind === 'system') onselect(hit.pivotId)
+    else onselect(hit.pivotId, hit.fieldId)
   }
 
   onMount(() => {
@@ -413,7 +362,9 @@
         onload?.(m)
       })
       m.on('click', onClick)
-      for (const layer of [PIVOT_LAYER, POINT_LAYER, FIELD_LAYER, PIN_LAYER]) {
+      // A style image dropped with the old style (a basemap change) comes back
+      m.on('styleimagemissing', () => addGlyphImages(m))
+      for (const layer of CLICKABLE_LAYERS) {
         m.on('mouseenter', layer, () => (m.getCanvas().style.cursor = 'pointer'))
         m.on('mouseleave', layer, () => (m.getCanvas().style.cursor = ''))
       }
@@ -433,10 +384,8 @@
       cleanups.push(
         onThemeChange(() => {
           const color = statusColor()
-          if (!m.getLayer(PIVOT_LAYER)) return
-          m.setPaintProperty(PIVOT_LAYER, 'fill-color', color)
-          m.setPaintProperty('pivots-line', 'line-color', color)
-          m.setPaintProperty(POINT_LAYER, 'circle-color', color)
+          setSystemColors(m, readPalette())
+          if (!m.getLayer(FIELD_LAYER)) return
           m.setPaintProperty(FIELD_LAYER, 'fill-color', color)
           m.setPaintProperty('fields-line', 'line-color', ['case', ['get', 'selected'], '#ffffff', color])
           m.setPaintProperty(PIN_LAYER, 'circle-color', color)

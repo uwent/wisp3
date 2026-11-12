@@ -6,6 +6,7 @@ import type { PlantingSummary } from '@/types/serializers'
 
 import {
   allOutlined,
+  badgeRows,
   fieldFeatures,
   groupFeatures,
   type MapPivot,
@@ -13,6 +14,7 @@ import {
   pivotBounds,
   pivotFeatures,
 } from './pivots'
+import { drawnAsGlyph, glyphProperties, truePixels } from './systemLayers'
 
 const field = (status: PlantingSummary['status'], phase: PlantingSummary['phase'] = 'active'): FieldCard => ({
   id: 1,
@@ -42,13 +44,49 @@ const pivot = (id: number, latitude: number, fields: FieldCard[] = [], radius_ft
 })
 
 describe('pivotFeatures', () => {
-  it('colors each pivot by its most urgent field in season, and marks the selection and the window', () => {
+  it('gives each pivot its most urgent field in season, and marks the selection and the window', () => {
     const pivots = [pivot(1, 44.1, [field('ok'), field('caution')]), pivot(2, 44.2, [field('irrigate', 'ended')])]
     const { features } = pivotFeatures(pivots, 2, new Set([1]))
-    expect(features.map((f) => f.properties)).toEqual([
-      { id: 1, name: 'Pivot 1', status: 'caution', selected: false, dimmed: false, outlined: false },
-      { id: 2, name: 'Pivot 2', status: 'none', selected: true, dimmed: true, outlined: false },
+    // Each pivot is its circle and a point for its glyph, with the same properties
+    expect(features.map((f) => [f.id, f.geometry.type])).toEqual([
+      [1, 'Polygon'],
+      [1, 'Point'],
+      [2, 'Polygon'],
+      [2, 'Point'],
     ])
+    expect(
+      features
+        .map(({ properties: { id, name, status, selected, dimmed, outlined, glyph } }) => ({
+          id,
+          name,
+          status,
+          selected,
+          dimmed,
+          outlined,
+          glyph,
+        }))
+        .filter((_, i) => i % 2 === 0),
+    ).toEqual([
+      { id: 1, name: 'Pivot 1', status: 'caution', selected: false, dimmed: false, outlined: false, glyph: 'circle' },
+      { id: 2, name: 'Pivot 2', status: 'none', selected: true, dimmed: true, outlined: false, glyph: 'circle' },
+    ])
+  })
+
+  it('sizes each glyph to its system on the ground, switching pivots to it when they get small', () => {
+    // A 1,300 ft pivot at 44.1°N: 792 m across, 3.43 m a pixel at zoom 14
+    const props = pivotFeatures([pivot(1, 44.1)], null, null).features[0].properties
+    expect(truePixels(props.k, 14)).toBeCloseTo(231, 0)
+    expect(drawnAsGlyph(props, 14)).toBe(false)
+    expect(drawnAsGlyph(props, 11)).toBe(false) // 29 px
+    expect(truePixels(props.k, 10)).toBeCloseTo(14.4, 1)
+    expect(drawnAsGlyph(props, 10)).toBe(true)
+    // A traveler is always its glyph, 100 ft across: 71 px at zoom 17
+    const traveler = { ...pivot(2, 44.1), kind: 'traveler' as const, radius_ft: null }
+    const glyph = glyphProperties(traveler)
+    expect(glyph).toMatchObject({ glyph: 'diamond', point: true, rotate: 0 })
+    expect(truePixels(glyph.k, 17)).toBeCloseTo(71, 0)
+    expect(drawnAsGlyph(glyph, 17)).toBe(true)
+    expect(glyphProperties({ ...traveler, kind: 'point' }).glyph).toBe('triangle')
   })
 
   it('dims nothing without a window', () => {
@@ -206,5 +244,23 @@ describe('fields with outlines and pinned plots (G.10)', () => {
   it('fits the map around outlines that reach past the system', () => {
     const far = { ...outlined, outlines: [{ field_id: 10, boundary: square(-89.45, 44.1) }] }
     expect(pivotBounds([far])![1][0]).toBeCloseTo(-89.448, 3)
+  })
+})
+
+describe('badgeRows', () => {
+  it('packs badges into rows of about √n, longer rows first', () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(badgeRows)).toEqual([
+      [],
+      [1],
+      [2],
+      [2, 1],
+      [2, 2],
+      [3, 2],
+      [3, 3],
+      [3, 2, 2],
+      [3, 3, 2],
+      [3, 3, 3],
+      [4, 3, 3],
+    ])
   })
 })

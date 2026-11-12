@@ -79,9 +79,14 @@
   --color-chart-depth-3: #1c5cab;
   --color-chart-depth-4: #0d366b;
   --color-chart-snow: #c3c8cf;
-  /* Irrigation systems on the map and in their thumbnails (G.14): never a status, which is the
-     fields' fill; a cyan apart from the full status's blue (validated in part 3) */
-  --color-map-system: #1fa3db;
+  /* Irrigation systems on the map (G.14): never a status, which is the fields' fill. A light cyan,
+     at least ΔE 21 (OKLab) from every status color with normal vision and simulated protan, deutan
+     and tritan; 4.6:1 on imagery, and on the light streets basemap it's carried by its dark casing
+     (12:1 there, 6.9:1 against the cyan). On the page's own surfaces (Setup's shape thumbnails,
+     kind icons) it's the ink, darker in light mode: 4.8:1 on white, and the cyan at 8.1:1 in dark. */
+  --color-map-system: #2ec4f0;
+  --color-map-system-casing: #0c2d48;
+  --color-map-system-ink: #127aa6;
 }
 
 /*
@@ -116,6 +121,7 @@
     --color-chart-depth-3: #6da7ec;
     --color-chart-depth-4: #b7d3f6;
     --color-chart-snow: #e8eaed;
+    --color-map-system-ink: #2ec4f0;
   }
 }
 
@@ -145,6 +151,7 @@
   --color-chart-depth-3: #6da7ec;
   --color-chart-depth-4: #b7d3f6;
   --color-chart-snow: #e8eaed;
+  --color-map-system-ink: #2ec4f0;
 }
 
 /* Tailwind's dark: variant, matching the rules above */

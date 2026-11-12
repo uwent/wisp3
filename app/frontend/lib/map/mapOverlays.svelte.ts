@@ -2,7 +2,7 @@ import type { Map as MapLibreMap, MapMouseEvent, MapSourceDataEvent, RasterTileS
 
 import { type LngLat, pointInPolygon } from '@/lib/geo'
 
-import { FIELD_LAYER, PIN_LAYER, PIVOT_LAYER, POINT_LAYER } from './OverviewMap.svelte'
+import { FIELD_LAYER, PIVOT_LAYER, systemHit } from './systemLayers'
 import {
   type Bounds,
   DROUGHT_CATEGORIES,
@@ -96,8 +96,8 @@ export class MapOverlays {
       })
     }
     map.on('click', (event) => {
-      const systems = [PIVOT_LAYER, POINT_LAYER, FIELD_LAYER, PIN_LAYER].filter((layer) => map.getLayer(layer))
-      if (systems.length && map.queryRenderedFeatures(event.point, { layers: systems }).length) return
+      // A click that selects a system or field isn't a question about the layers under it
+      if (systemHit(map, event.point)) return
       this.probeAt(event)
     })
     map.on('movestart', () => this.#clearProbe())

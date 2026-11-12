@@ -10,10 +10,13 @@ import {
 import { type FarmGroup, primary, type PivotGroup, pivotStatus, type Status, summaryActive } from '@/lib/overview'
 import { cropName } from '@/lib/plantings'
 
+import { glyphProperties, type GlyphProperties } from './systemLayers'
+
 // The map page's irrigation systems (MapController): the dashboard's pivot with its location and
-// its weather zone's rain and ET, drawn as GeoJSON. Pivots and linears are their outline; the other
-// kinds (a traveler, drip, a location) are a point. Each irrigation group is a light outline around
-// its systems. Fields with an outline are drawn in their status (G.10), and plots with a pin as dots.
+// its weather zone's rain and ET, drawn as GeoJSON. Pivots and linears are their outline and a point
+// for their glyph (drawn when they're too small to see, G.14); the other kinds (a traveler, drip, a
+// location) are a point for their glyph. Each irrigation group is a light outline around its
+// systems. Fields with an outline are drawn in their status (G.10), and plots with a pin as dots.
 
 export type WeatherTotals = { days: number; precip: number | null; et0: number | null }
 export type PivotWeather = { past: WeatherTotals | null; ahead: WeatherTotals | null }
@@ -26,10 +29,10 @@ export type MapPin = { planting_id: number; field_id: number; latitude: number; 
 export type MapPivot = PivotGroup &
   PivotShape & { weather: PivotWeather | null; outlines: MapOutline[]; pins: MapPin[] }
 
-export type PivotProperties = {
+export type PivotProperties = GlyphProperties & {
   id: number
   name: string
-  /** The most urgent status among its fields in season, or none */
+  /** The most urgent status among its fields in season, or none (for the marker; the system is drawn in its own color) */
   status: Status | 'none'
   selected: boolean
   /** Outside the "needs water within" window */
@@ -66,12 +69,11 @@ type Geometry = { type: 'Polygon'; coordinates: LngLat[][] } | { type: 'Point'; 
 export type MapFeature<P> = { type: 'Feature'; id: number; properties: P; geometry: Geometry }
 export type FeatureCollection<P> = { type: 'FeatureCollection'; features: MapFeature<P>[] }
 
-/** Where a system is on the map: its outline, or a point kind's location */
-export function geometry(pivot: PivotShape): Geometry {
+/** Where a system is on the map: its outline (a pivot or linear) and its location, for its glyph */
+export function geometries(pivot: PivotShape): Geometry[] {
   const ring = pivotOutline(pivot)
-  return ring
-    ? { type: 'Polygon', coordinates: [ring] }
-    : { type: 'Point', coordinates: [pivot.longitude, pivot.latitude] }
+  const point: Geometry = { type: 'Point', coordinates: [pivot.longitude, pivot.latitude] }
+  return ring ? [{ type: 'Polygon', coordinates: [ring] }, point] : [point]
 }
 
 /** highlighted: the pivots in the "needs water within" window, or null when there's no window */
@@ -82,19 +84,18 @@ export function pivotFeatures(
 ): FeatureCollection<PivotProperties> {
   return {
     type: 'FeatureCollection',
-    features: pivots.map((pivot) => ({
-      type: 'Feature',
-      id: pivot.id,
-      properties: {
+    features: pivots.flatMap((pivot) => {
+      const properties: PivotProperties = {
         id: pivot.id,
         name: pivot.name,
         status: pivotStatus(pivot.fields) ?? 'none',
         selected: pivot.id === selectedId,
         dimmed: highlighted !== null && !highlighted.has(pivot.id),
         outlined: pivot.outlines.length > 0,
-      },
-      geometry: geometry(pivot),
-    })),
+        ...glyphProperties(pivot),
+      }
+      return geometries(pivot).map((geometry) => ({ type: 'Feature' as const, id: pivot.id, properties, geometry }))
+    }),
   }
 }
 
@@ -206,4 +207,16 @@ export function pivotBounds(pivots: MapPivot[]): [LngLat, LngLat] | null {
     [Math.min(...lngs), Math.min(...lats)],
     [Math.max(...lngs), Math.max(...lats)],
   ]
+}
+
+/**
+ * How a marker's badges are packed (G.14): rows of at most ⌈√n⌉, the longer rows first, so 2 sit
+ * side by side, 3 make a triangle, 4 a square, 5 three over two and 7 three, two and two
+ */
+export function badgeRows(count: number): number[] {
+  if (count <= 0) return []
+  const columns = Math.ceil(Math.sqrt(count))
+  const rows = Math.ceil(count / columns)
+  const base = Math.floor(count / rows)
+  return Array.from({ length: rows }, (_, row) => base + (row < count % rows ? 1 : 0))
 }

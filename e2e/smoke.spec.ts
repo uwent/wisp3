@@ -986,6 +986,16 @@ test('the map shades outlined fields instead of badging them, and marks the sele
   const panel = page.getByRole('region', { name: 'Pivot: North 160' })
   await expect(panel.locator('li[aria-current="true"]')).toContainText('North potatoes')
 
+  // A click in a field's outline selects that field, not the system drawn over it (G.14). The map
+  // flies the pivot to 170 px left of center beside the panel (wide screens), at zoom 13.5 or more,
+  // where its 1,300 ft radius is over 80 px: North corn is its east half.
+  if (test.info().project.name === 'desktop') {
+    await page.waitForTimeout(1500) // the flight ends
+    const box = (await page.locator('.maplibregl-canvas').boundingBox())!
+    await page.mouse.click(box.x + box.width / 2 - 170 + 40, box.y + box.height / 2)
+    await expect(panel.locator('li[aria-current="true"]')).toContainText('North corn')
+  }
+
   // The systems' shapes are a layer that can be switched off, and stays off
   await page.getByRole('button', { name: /^Layers/ }).click()
   const systems = page.getByRole('checkbox', { name: 'Irrigation systems' })

@@ -35,7 +35,7 @@
 >
   <path
     d={drawing}
-    class="fill-map-system/25 stroke-map-system"
+    class="fill-map-system-ink/25 stroke-map-system-ink"
     stroke-width="2"
     stroke-linejoin="round"
     vector-effect="non-scaling-stroke"
