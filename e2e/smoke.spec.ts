@@ -251,10 +251,12 @@ test('a linear move is sized by dragging a corner and turned by its handle', asy
   // Dragging a corner by pixels can nudge the length a few feet as well as the travel
   await expect(row).toContainText(/1,[23]\d\d ft long, travels [\d,]+ ft at \d+° from north/)
 
-  // Delete it again: a new pivot sorts first on the dashboard, and its weather cell has no seeded
-  // weather, so leaving it would change what later tests open
+  // Delete it again (from its edit page): a new pivot sorts first on the dashboard, and its weather
+  // cell has no seeded weather, so leaving it would change what later tests open
+  await row.getByRole('link', { name: `Edit ${name}` }).click()
   page.once('dialog', (dialog) => dialog.accept())
-  await row.getByRole('button', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Delete this linear move' }).click()
+  await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: `Linear: ${name}` })).toHaveCount(0)
 })
 
@@ -276,8 +278,10 @@ test('a traveler is placed with a click and keeps no shape', async ({ page }) =>
   await expect(row).toContainText('Hard hose reel #9')
   await expect(row).not.toContainText('radius')
 
+  await row.getByRole('link', { name: `Edit ${name}` }).click()
   page.once('dialog', (dialog) => dialog.accept())
-  await row.getByRole('button', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Delete this traveler' }).click()
+  await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
   await expect(heading).toHaveCount(0)
 })
 
@@ -864,8 +868,11 @@ test('a field outline is copied from its pivot, a plot pinned, and the outline s
   await expect(page.getByText('2.0 ac ·').first()).toBeVisible() // the area as it was
   await page.goto('/setup')
   await expect(page.getByText(/outline 2[56]\.\d ac/)).toBeVisible()
-  // The pin was saved
-  await page.getByRole('link', { name: 'Outline of Arlington 525' }).click()
+  // The field's dialog shows the shape; the pin was saved
+  await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('img', { name: 'The outline of Arlington 525' })).toBeVisible()
+  await dialog.getByRole('link', { name: 'Edit shape' }).click()
   await expect(page.locator('.maplibregl-marker', { hasText: 'Soybean' })).toBeVisible()
   expect(errors).toEqual([])
 })
@@ -873,7 +880,11 @@ test('a field outline is copied from its pivot, a plot pinned, and the outline s
 test('a field outline is drawn corner by corner, or read from a file (G.10)', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/setup')
-  await page.getByRole('link', { name: /^(Add outline|Outline) of Market garden$/ }).click()
+  await page.getByRole('button', { name: 'Edit Market garden' }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: /^(Add a shape|Edit shape)$/ })
+    .click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Outline: Market garden')
   if (await page.getByRole('button', { name: 'Remove the outline' }).isVisible())
     await page.getByRole('button', { name: 'Remove the outline' }).click()
@@ -951,7 +962,9 @@ test('field outlines are imported from a shapefile, matched to fields or new one
   await page.getByRole('button', { name: 'Save the outline' }).click()
   await expect(page.getByText('Saved an outline')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Outline of Market garden' })).toBeVisible()
+  await page.getByRole('button', { name: 'Edit Market garden' }).click()
+  await expect(page.getByRole('dialog').getByRole('img', { name: 'The outline of Market garden' })).toBeVisible()
+  await page.keyboard.press('Escape')
 
   // That shape is near Arlington, nowhere near Market garden's pivot at Coloma: Setup says so
   const issues = page.getByRole('region', { name: 'Outlines to check' })

@@ -3,6 +3,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
+  import FormFooter from '@/lib/components/FormFooter.svelte'
   import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { isoDate } from '@/lib/dates'
@@ -91,11 +92,11 @@
   }
   const close = () => (dialogOpen = false)
 
-  /** Asks first; true if the delete was sent */
-  function destroy(route: { url: string }, what: string): boolean {
-    if (!confirm(`Delete ${what}? This can't be undone.`)) return false
+  /** Asks first, then deletes and closes the dialog it was asked from */
+  function destroy(route: { url: string }, what: string) {
+    if (!confirm(`Delete ${what}? This can't be undone.`)) return
     router.delete(route.url, { preserveScroll: true })
-    return true
+    close()
   }
 
   const dialogTitle = $derived.by(() => {
@@ -125,35 +126,19 @@
             : 'only the rain you enter'}{/if}
       </p>
     </div>
-    <Button
-      variant="ghost"
-      class="px-2 py-1 text-xs"
-      aria-label="Add a planting to {field.name}"
-      onclick={() => plantingDialog?.open(field)}>Add a planting</Button
-    >
     <div class="flex gap-1 text-xs">
+      <Button
+        variant="ghost"
+        class="px-2 py-1 text-xs"
+        aria-label="Add a planting to {field.name}"
+        onclick={() => plantingDialog?.open(field)}>Add a planting</Button
+      >
       <Button
         variant="ghost"
         class="px-2 py-1 text-xs"
         aria-label="Edit {field.name}"
         onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button
       >
-      <Link
-        href={fieldOutline(field.id, { query: { from: 'setup' } })}
-        class="rounded-md px-2 py-1 text-brand-600 hover:bg-brand-50"
-        aria-label="{field.boundary ? 'Outline' : 'Add outline'} of {field.name}"
-        >{field.boundary ? 'Outline' : 'Add outline'}</Link
-      >
-      {#if owner}
-        <Button
-          variant="danger-ghost"
-          class="px-2 py-1 text-xs"
-          aria-label="Delete {field.name}"
-          onclick={() => destroy(fields.destroy(field.id), `${field.name} and all its plantings and entries`)}
-        >
-          Delete
-        </Button>
-      {/if}
     </div>
     <!-- The season's plantings on a timeline, each opening its form (PLAN.md Phase 8 G.11) -->
     <div class="w-full">
@@ -194,13 +179,8 @@
       <div class="flex flex-wrap gap-1 text-sm">
         <Link
           href={pivots.show(pivot.id)}
-          class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
+          class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
           aria-label="Irrigation, {pivot.name}">Irrigation</Link
-        >
-        <Link
-          href={pivots.edit(pivot.id)}
-          class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
-          aria-label="Edit {pivot.name}">Edit</Link
         >
         <Button
           variant="ghost"
@@ -208,16 +188,11 @@
           aria-label="Add field to {pivot.name}"
           onclick={() => open({ kind: 'field', pivot })}>Add field</Button
         >
-        {#if owner}
-          <Button
-            variant="danger-ghost"
-            class="px-3 py-1.5"
-            aria-label="Delete {pivot.name}"
-            onclick={() => destroy(pivots.destroy(pivot.id), `${pivot.name} and its fields`)}
-          >
-            Delete
-          </Button>
-        {/if}
+        <Link
+          href={pivots.edit(pivot.id)}
+          class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
+          aria-label="Edit {pivot.name}">Edit</Link
+        >
       </div>
     </div>
     {#if pivot.fields.length === 0}
@@ -263,12 +238,6 @@
     >
       {#each [...new Set([...years, year + 1])] as y (y)}<option value={y}>{y}</option>{/each}
     </select>
-    <Link
-      href={newQuickSetup()}
-      class="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface"
-    >
-      Set up an irrigation system
-    </Link>
   </div>
 </div>
 
@@ -320,7 +289,7 @@
       <div class="flex flex-wrap gap-1 text-sm">
         <Link
           href={pivots.new({ query: { farm_id: farm.id } })}
-          class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
+          class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
           aria-label="Add irrigation system to {farm.name}">Add irrigation system</Link
         >
         {#if farm.pivots.length > 1}
@@ -337,17 +306,6 @@
           aria-label="Edit {farm.name}"
           onclick={() => open({ kind: 'farm', farm })}>Edit</Button
         >
-        {#if owner}
-          <Button
-            variant="danger-ghost"
-            class="px-3 py-1.5"
-            aria-label="Delete {farm.name}"
-            onclick={() =>
-              destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its irrigation systems and fields`)}
-          >
-            Delete
-          </Button>
-        {/if}
       </div>
     </div>
 
@@ -372,16 +330,6 @@
               class="px-3 py-1.5"
               aria-label="Edit {pivotGroup.name}"
               onclick={() => open({ kind: 'pivotGroup', farm, group: pivotGroup })}>Edit</Button
-            >
-            <Button
-              variant="danger-ghost"
-              class="px-3 py-1.5"
-              aria-label="Delete {pivotGroup.name}"
-              onclick={() =>
-                destroy(
-                  pivotGroups.destroy(pivotGroup.id),
-                  `the group ${pivotGroup.name} (its irrigation systems stay, ungrouped)`,
-                )}>Delete</Button
             >
           </div>
         </div>
@@ -460,7 +408,15 @@
             >{dialog?.kind === 'farm' ? (dialog.farm?.notes ?? '') : ''}</textarea
           >
         </div>
-        <Button type="submit" disabled={processing}>Save</Button>
+        {@const farm = dialog?.kind === 'farm' ? dialog.farm : undefined}
+        <FormFooter
+          ondelete={farm && owner
+            ? () => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its irrigation systems and fields`)
+            : undefined}
+          deleteLabel="Delete this farm"
+        >
+          <Button type="submit" disabled={processing}>Save</Button>
+        </FormFooter>
       {/snippet}
     </Form>
   {:else if dialog?.kind === 'pivotGroup'}
@@ -501,7 +457,18 @@
           {/each}
           <p class="text-xs text-ink-muted">A system is in one group at most; checking it here moves it.</p>
         </fieldset>
-        <Button type="submit" disabled={processing}>Save</Button>
+        <FormFooter
+          ondelete={pivotGroup
+            ? () =>
+                destroy(
+                  pivotGroups.destroy(pivotGroup.id),
+                  `the group ${pivotGroup.name} (its irrigation systems stay, ungrouped)`,
+                )
+            : undefined}
+          deleteLabel="Delete this group"
+        >
+          <Button type="submit" disabled={processing}>Save</Button>
+        </FormFooter>
       {/snippet}
     </Form>
   {:else if dialog?.kind === 'field'}
@@ -511,6 +478,12 @@
       pivots={allPivots}
       soilTypes={soil_types}
       ondone={close}
+      ondelete={dialog.field && owner
+        ? () => {
+            const field = (dialog as { field: Field }).field
+            destroy(fields.destroy(field.id), `${field.name} and all its plantings and entries`)
+          }
+        : undefined}
     />
   {/if}
 </Dialog>

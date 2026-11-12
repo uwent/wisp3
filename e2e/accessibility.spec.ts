@@ -94,6 +94,22 @@ test('the bar shown while signed in as someone else', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test("Setup's field dialog, with its shape (G.14)", async ({ page }) => {
+  await signIn(page)
+  const errors = watchErrors(page)
+  await page.goto('/setup')
+  await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Field area')).toBeVisible()
+  const { violations } = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(TAGS).analyze()
+  expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
+  // WCAG 1.4.10: the dialog fits 320 px with no sideways scroll
+  await page.setViewportSize({ width: 320, height: 640 })
+  expect(await dialog.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+  expect(errors).toEqual([])
+})
+
 test('every page reflows at 320 px wide and at 200% text', async ({ page }) => {
   test.skip(test.info().project.name !== 'desktop', 'one run covers both sizes')
   test.setTimeout(120_000)

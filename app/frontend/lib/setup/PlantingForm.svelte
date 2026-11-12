@@ -3,6 +3,7 @@
   import { Form } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
+  import FormFooter from '@/lib/components/FormFooter.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
@@ -29,6 +30,7 @@
     genericCurves = [],
     template,
     ondone,
+    ondelete,
   }: {
     planting?: Planting
     field: Field
@@ -39,6 +41,8 @@
     genericCurves?: GenericCurve[]
     template?: Partial<Planting>
     ondone: () => void
+    /** Deletes the planting (asking first); left out for a new one */
+    ondelete?: () => void
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
@@ -554,6 +558,8 @@
       >
     </div>
     {#if errors.base}<p class="text-sm text-status-irrigate-ink">{errors.base}</p>{/if}
-    <Button type="submit" disabled={processing || tooBig}>{planting ? 'Save planting' : 'Add planting'}</Button>
+    <FormFooter {ondelete} deleteLabel="Delete this planting">
+      <Button type="submit" disabled={processing || tooBig}>{planting ? 'Save planting' : 'Add planting'}</Button>
+    </FormFooter>
   {/snippet}
 </Form>

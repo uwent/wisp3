@@ -78,15 +78,13 @@
         {genericCurves}
         {template}
         ondone={close}
+        ondelete={planting ? destroy : undefined}
       />
     {/key}
     {#if planting}
-      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-        <button type="button" class="text-brand-600 hover:underline" onclick={addNext}> Add the next planting </button>
-        <button type="button" class="text-status-irrigate-ink hover:underline" onclick={destroy}>
-          Delete this planting
-        </button>
-      </div>
+      <p class="mt-4 text-sm">
+        <button type="button" class="text-brand-600 hover:underline" onclick={addNext}>Add the next planting</button>
+      </p>
     {/if}
   {/if}
 </Dialog>

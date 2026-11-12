@@ -79,6 +79,9 @@
   --color-chart-depth-3: #1c5cab;
   --color-chart-depth-4: #0d366b;
   --color-chart-snow: #c3c8cf;
+  /* Irrigation systems on the map and in their thumbnails (G.14): never a status, which is the
+     fields' fill; a cyan apart from the full status's blue (validated in part 3) */
+  --color-map-system: #1fa3db;
 }
 
 /*

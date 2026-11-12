@@ -1,8 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { Form, Link } from '@inertiajs/svelte'
+  import { Form, Link, page, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
+  import FormFooter from '@/lib/components/FormFooter.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
@@ -43,6 +44,14 @@
     editing ? `Edit ${KIND_NAMES[pivot.kind ?? 'center']}: ${pivot.name}` : 'Add an irrigation system',
   )
   const noun = $derived(KIND_NOUNS[shape.kind])
+
+  // Only owners delete (Q8); the system's fields and their seasons go with it
+  function destroy() {
+    const name = `${KIND_NAMES[pivot.kind ?? 'center']}: ${pivot.name}`
+    if (!confirm(`Delete ${name} and its fields? This can't be undone.`)) return
+    saved = true
+    router.delete(pivots.destroy(pivot.id!).url)
+  }
   const EQUIPMENT_EXAMPLES: Record<PivotKind, string> = {
     center: 'e.g. Valley 8000, end gun',
     linear: 'e.g. Zimmatic 9500L, hose drag',
@@ -113,7 +122,12 @@
         </div>
       </section>
 
-      <Button type="submit" disabled={processing}>{editing ? 'Save' : 'Add irrigation system'}</Button>
+      <FormFooter
+        ondelete={editing && page.props.auth.owner ? destroy : undefined}
+        deleteLabel="Delete this {KIND_NOUNS[pivot.kind ?? 'center']}"
+      >
+        <Button type="submit" disabled={processing}>{editing ? 'Save' : 'Add irrigation system'}</Button>
+      </FormFooter>
     </div>
   {/snippet}
 </Form>
