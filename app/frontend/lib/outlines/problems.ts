@@ -9,6 +9,7 @@ import {
   type PivotShape,
   pivotOutline,
   pointInPolygon,
+  systemName,
 } from '@/lib/geo'
 import type { UnitSystem } from '@/lib/units'
 
@@ -74,7 +75,7 @@ export function formatReach(meters: number, system: UnitSystem): string {
 
 /** The fields whose outline doesn't sit with their irrigation system, worded for Setup */
 export function outlineProblems(system: System, fields: Outlined[], unitSystem: UnitSystem): OutlineProblem[] {
-  const label = `${KIND_NAMES[system.kind]}: ${system.name}`
+  const label = systemName({ name: system.name, kind_name: KIND_NAMES[system.kind] })
   const at: LngLat = [system.longitude, system.latitude]
   return fields.flatMap((field) => {
     if (!field.boundary) return []
@@ -85,7 +86,7 @@ export function outlineProblems(system: System, fields: Outlined[], unitSystem: 
       return [
         {
           fieldId: field.id,
-          message: `${field.name}'s outline isn't under ${label} (${formatReach(away, unitSystem)} away)`,
+          message: `${field.name}'s outline isn't under ${label}, ${formatReach(away, unitSystem)} away`,
         },
       ]
     }

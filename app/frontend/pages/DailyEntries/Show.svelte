@@ -22,7 +22,7 @@
     type DayPlanting,
   } from '@/lib/dailyEntry'
   import { addDays, formatDate } from '@/lib/dates'
-  import { KIND_NAMES, KIND_NOUNS } from '@/lib/geo'
+  import { KIND_NAMES, KIND_NOUNS, systemName } from '@/lib/geo'
   import { cropName, plotSize } from '@/lib/plantings'
   import { confirmUnsavedChanges, UNSAVED_MESSAGE } from '@/lib/unsaved.svelte'
   import { units as unitsFor } from '@/lib/units'
@@ -307,10 +307,8 @@
       <span class="flex items-start gap-1">
         {@render toggle(`Fields on ${pivot.name}`, open, () => remember(key, open))}
         <span>
-          <span class="font-medium">{pivot.name}</span>
-          <span class="block text-xs font-normal text-ink-muted"
-            >{`${pivot.kind_name} · ${count(pivot.fields.length, 'field')}`}</span
-          >
+          <span class="font-medium">{systemName(pivot)}</span>
+          <span class="block text-xs font-normal text-ink-muted">{count(pivot.fields.length, 'field')}</span>
         </span>
       </span>
     </th>

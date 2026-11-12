@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Form, Link, page } from '@inertiajs/svelte'
+  import { systemName } from '@/lib/geo'
 
   import Button from '@/lib/components/Button.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
@@ -66,7 +67,7 @@
   let saved = $state(false)
   confirmUnsavedChanges(() => !saved && rows.some((row) => row.choice.kind !== 'skip'))
 
-  const systemLabel = (system: System) => `${system.farm} › ${system.kind_name}: ${system.name}`
+  const systemLabel = (system: System) => `${system.farm} › ${systemName(system)}`
   const systemOptions = $derived([
     { value: '', label: 'Choose an irrigation system' },
     ...pivots.map((system) => ({ value: String(system.id), label: systemLabel(system) })),

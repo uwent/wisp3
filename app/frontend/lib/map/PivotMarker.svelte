@@ -1,8 +1,9 @@
 <script lang="ts">
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
-  import { type FieldCard, isActive, pivotStatus, primary, type Status } from '@/lib/overview'
+  import { systemName } from '@/lib/geo'
+  import { type FieldCard, isActive, pivotStatus, primary } from '@/lib/overview'
 
-  import { badgeRows, type MapPivot } from './pivots'
+  import { idleText, type MapPivot, packRows, STATUS_LABELS as LABELS } from './pivots'
 
   // What sits at an irrigation system's center (or point) on the map (PLAN.md Phase 7): a badge per
   // field in season, a gray dot per field that isn't, packed in rows of about √n (G.14), and its
@@ -16,31 +17,12 @@
     onselect,
   }: { pivot: MapPivot; selected: boolean; dimmed: boolean; onselect: () => void } = $props()
 
-  const LABELS: Record<Status, string> = {
-    irrigate: 'Irrigate',
-    caution: 'Caution',
-    needs_canopy: 'No canopy data',
-    ok: 'OK',
-    full: 'Full',
-  }
-
   const status = $derived(pivotStatus(pivot.fields))
   // The fields in rows: 3 over 2 for five
-  const rows = $derived(
-    badgeRows(pivot.fields.length).map((size, row, sizes) => {
-      const start = sizes.slice(0, row).reduce((sum, n) => sum + n, 0)
-      return pivot.fields.slice(start, start + size)
-    }),
-  )
-  const idle = (card: FieldCard) => {
-    const summary = primary(card)
-    if (!summary) return 'no crop this season'
-    if (summary.phase === 'upcoming') return 'season not started'
-    if (summary.phase === 'ended') return 'season ended'
-    return 'waiting for weather'
-  }
+  const rows = $derived(packRows(pivot.fields))
+  const idle = (card: FieldCard) => idleText(primary(card))
   const label = $derived(
-    `${pivot.kind_name} ${pivot.name}: ${pivot.fields.length} field${pivot.fields.length === 1 ? '' : 's'}` +
+    `${systemName(pivot)}: ${pivot.fields.length} field${pivot.fields.length === 1 ? '' : 's'}` +
       (status ? `, most urgent ${LABELS[status]}` : ', none in season'),
   )
 </script>
@@ -50,7 +32,7 @@
   class="flex cursor-pointer flex-col items-center gap-0.5 transition-opacity {dimmed ? 'opacity-35' : ''}"
   aria-label={label}
   aria-pressed={selected}
-  title="{pivot.kind_name}: {pivot.name}"
+  title={systemName(pivot)}
   onclick={(event) => {
     event.stopPropagation()
     onselect()

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Form, page, router } from '@inertiajs/svelte'
+  import { systemName } from '@/lib/geo'
   import { onDestroy, untrack } from 'svelte'
   import { SvelteSet } from 'svelte/reactivity'
 
@@ -246,7 +247,7 @@
                               {@attach mixed(pivot.fields)}
                               onchange={(event) => pickAll(pivot.fields, event.currentTarget.checked)}
                             />
-                            <span><span class="text-ink-muted">{pivot.kind_name}:</span> {pivot.name}</span>
+                            <span><span class="text-ink-muted">Irrigation system:</span> {systemName(pivot)}</span>
                           </label>
                           <div class="grid gap-1 pl-6 sm:grid-cols-2">
                             {#each pivot.fields as field (field.id)}

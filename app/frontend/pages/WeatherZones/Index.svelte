@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Link, page, router } from '@inertiajs/svelte'
+  import { systemName } from '@/lib/geo'
 
   import ForecastStrip from '@/lib/components/ForecastStrip.svelte'
   import GlossaryText from '@/lib/components/GlossaryText.svelte'
@@ -66,7 +67,7 @@
           </h2>
           <p class="text-xs text-ink-muted">{zone.coordinates}</p>
           <p class="text-sm text-ink-muted">
-            {zone.pivots.map((pivot) => `${pivot.kind_name}: ${pivot.name}`).join(', ')}
+            {zone.pivots.map(systemName).join(', ')}
           </p>
           {#if weatherState === 'updating' && updating(zone)}
             <p role="status" class="flex items-center gap-1.5 text-sm text-ink-muted"><Spinner />Updating weather…</p>

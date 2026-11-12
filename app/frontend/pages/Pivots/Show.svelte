@@ -5,7 +5,7 @@
   import NumberField from '@/lib/components/NumberField.svelte'
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { formatDate } from '@/lib/dates'
-  import { isPoint, KIND_NOUNS } from '@/lib/geo'
+  import { isPoint, KIND_NOUNS, systemName } from '@/lib/geo'
   import { units as unitsFor } from '@/lib/units'
   import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots } from '@/routes'
   import type { ForecastDay, Pivot, PivotIrrigation } from '@/types/serializers'
@@ -64,14 +64,14 @@
   }
 </script>
 
-<svelte:head><title>{pivot.kind_name}: {pivot.name} · WISP</title></svelte:head>
+<svelte:head><title>{systemName(pivot)} · WISP</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
     <Link href={dashboard.show()} class="text-sm text-brand-600 hover:underline">← Dashboard</Link>
     <h1 class="text-2xl font-semibold">
-      <span class="font-normal text-ink-muted">{pivot.kind_name}:</span>
-      {pivot.name}
+      <span class="font-normal text-ink-muted">Irrigation system:</span>
+      {systemName(pivot)}
     </h1>
     <p class="text-sm text-ink-muted">
       Farm: {farm.name} · Fields:

@@ -91,7 +91,7 @@ export async function signedInPages(page: Page): Promise<string[]> {
   const user = await firstLinkPath(page, '/admin/users', 'a[href*="/admin/users/"]')
   // A traveler, a point with no shape (G.5)
   await page.goto('/setup')
-  const travelerHeading = page.getByRole('heading', { name: 'Traveler: West lane' })
+  const travelerHeading = page.getByRole('heading', { name: 'Irrigation system: West lane (traveler)' })
   const traveler = new URL((await travelerHeading.getByRole('link').getAttribute('href'))!, page.url()).pathname
   return [
     '/',

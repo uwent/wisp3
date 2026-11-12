@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Link, page, router } from '@inertiajs/svelte'
+  import { systemName } from '@/lib/geo'
 
   import { gddFrom, weatherPanels } from '@/lib/charts/weatherCharts'
   import WeatherSection from '@/lib/charts/WeatherSection.svelte'
@@ -94,7 +95,7 @@
         · {zone.pivots.length === 1 ? 'Irrigation system' : 'Irrigation systems'}:
         {#each zone.pivots as pivot, i (pivot.id)}{i ? ', ' : ''}<Link
             href={pivotRoutes.show(pivot.id)}
-            class="text-brand-600 underline underline-offset-2">{pivot.kind_name}: {pivot.name}</Link
+            class="text-brand-600 underline underline-offset-2">{systemName(pivot)}</Link
           >{` (${pivot.farm})`}{/each}
       {/if}
     </p>

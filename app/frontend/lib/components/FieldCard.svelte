@@ -10,12 +10,11 @@
   import type { FieldCard } from '@/lib/overview'
   import { cropName, plotSize } from '@/lib/plantings'
   import type { Units } from '@/lib/units'
-  import { fields, pivots, planting as plantingRoute } from '@/routes'
+  import { fields, planting as plantingRoute } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
 
   // A field's status card: on the dashboard (the whole card links to its planting), and compact on
-  // the map, where pivotName labels it (linking to the pivot's page when pivotId is given) and
-  // onselect makes the card select it, with its own View link (G.14). weather: whether the pivot's weather is
+  // the map, where onselect makes the card select it, with its own View link (G.14). weather: whether the pivot's weather is
   // being fetched (the page reloads until it lands) or the page gave up waiting.
   //
   // A field growing several plantings at once (plots, PLAN.md Phase 8 G.11) lists each, linking to
@@ -27,9 +26,6 @@
     today,
     units,
     compact = false,
-    pivotName,
-    pivotKindName = 'Pivot',
-    pivotId,
     selected = false,
     onselect,
   }: {
@@ -38,10 +34,6 @@
     today: string
     units: Units
     compact?: boolean
-    pivotName?: string
-    /** "Pivot", "Traveler" */
-    pivotKindName?: string
-    pivotId?: number
     selected?: boolean
     onselect?: () => void
   } = $props()
@@ -78,19 +70,6 @@
 
 {#snippet heading()}
   <div class="min-w-0">
-    {#if pivotName}
-      <p class="truncate text-xs text-ink-muted">
-        {pivotKindName}:
-        {#if pivotId !== undefined && onselect}
-          <!-- Above the card's select button, like the field link -->
-          <Link
-            href={pivots.show(pivotId)}
-            class="pointer-events-auto relative underline decoration-ink-muted/50 underline-offset-2 hover:text-ink hover:decoration-current"
-            >{pivotName}</Link
-          >
-        {:else}{pivotName}{/if}
-      </p>
-    {/if}
     <h4 class="truncate font-medium">
       <span class="font-normal text-ink-muted">Field:</span>
       {card.name}
@@ -266,7 +245,7 @@
     <button
       type="button"
       class="absolute inset-0 rounded-lg focus-visible:outline-2 focus-visible:outline-brand-500"
-      aria-label="Show {card.name}{pivotName ? ` (${pivotName})` : ''} on the map"
+      aria-label="Show {card.name} on the map"
       aria-pressed={selected}
       onclick={onselect}
     ></button>

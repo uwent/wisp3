@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Link, page, router } from '@inertiajs/svelte'
+  import { systemName } from '@/lib/geo'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
@@ -119,10 +120,11 @@
         >
           <div class="flex items-center justify-between gap-3">
             <h3 id="pivot-{pivot.id}" class="min-w-0 truncate font-medium">
-              <span class="font-normal text-ink-muted">{pivot.kind_name}:</span>
+              <span class="font-normal text-ink-muted">Irrigation system:</span>
               <Link
                 href={pivots.show(pivot.id)}
-                class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current">{pivot.name}</Link
+                class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current"
+                >{systemName(pivot)}</Link
               >
             </h3>
             <div class="flex shrink-0 gap-3 text-sm">

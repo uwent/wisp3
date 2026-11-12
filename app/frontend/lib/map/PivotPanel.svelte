@@ -2,7 +2,7 @@
   import { Link } from '@inertiajs/svelte'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
-  import { KIND_NOUNS } from '@/lib/geo'
+  import { KIND_NOUNS, systemName } from '@/lib/geo'
   import type { Units } from '@/lib/units'
   import { pivots } from '@/routes'
 
@@ -61,10 +61,11 @@
     <div class="min-w-0">
       <p class="truncate text-xs text-ink-muted">Farm: {farmName}</p>
       <h2 id="pivot-panel-title" class="truncate font-medium">
-        <span class="font-normal text-ink-muted">{pivot.kind_name}:</span>
+        <span class="font-normal text-ink-muted">System:</span>
         <Link
           href={pivots.show(pivot.id)}
-          class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current">{pivot.name}</Link
+          class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current"
+          >{systemName(pivot)}</Link
         >
       </h2>
       <div class="flex gap-3 text-xs">

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Form, Link, page, router } from '@inertiajs/svelte'
+  import { systemName } from '@/lib/geo'
 
   import AdminTabs from '@/lib/components/AdminTabs.svelte'
   import Button from '@/lib/components/Button.svelte'
@@ -159,7 +160,7 @@
                     {#each farm.pivots as pivot (pivot.id)}
                       <li>
                         <div>
-                          {pivot.kind_name}: {pivot.name}
+                          {systemName(pivot)}
                           <a
                             class="font-mono text-xs text-brand-600 hover:underline"
                             href="https://www.openstreetmap.org/?mlat={pivot.latitude}&mlon={pivot.longitude}#map=15/{pivot.latitude}/{pivot.longitude}"

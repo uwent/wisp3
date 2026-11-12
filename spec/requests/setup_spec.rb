@@ -242,7 +242,7 @@ RSpec.describe "Setup", type: :request do
         export_planting_path(planting) => ["wisp-field-", "WISP daily report, 2026 season"],
         season_report_path(year: 2026) => ["wisp-season-", "WISP season report, 2026"],
         export_weather_zone_path(pivot.weather_cell_id, year: 2026) => ["wisp-weather-north-2026.csv", "WISP weather, North, 2026"],
-        pivot_irrigations_path(pivot, year: 2026) => ["wisp-irrigation-north-2026.csv", "WISP irrigation, Pivot: North, 2026"]
+        pivot_irrigations_path(pivot, year: 2026) => ["wisp-irrigation-north-2026.csv", "WISP irrigation, North (pivot), 2026"]
       }.each do |path, (filename, title)|
         get path
         expect(response.media_type).to eq("text/csv"), path

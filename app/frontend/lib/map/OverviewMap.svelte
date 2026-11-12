@@ -21,6 +21,7 @@
   import { ButtonControl, FIT_ICON } from './controls'
   import { loadMapLibre } from './maplibre'
   import PivotMarker from './PivotMarker.svelte'
+  import PlotMarker from './PlotMarker.svelte'
   import {
     allOutlined,
     type FeatureCollection,
@@ -29,13 +30,15 @@
     pinFeatures,
     pivotBounds,
     pivotFeatures,
+    type PlotPack,
+    plotPacks,
   } from './pivots'
   import PlaceSearch from './PlaceSearch.svelte'
   import {
     addGlyphImages,
     addSystemLayers,
-    CLICKABLE_LAYERS,
     FIELD_LAYER,
+    hoverLabel,
     PIN_LAYER,
     setSystemColors,
     SYSTEM_LAYERS,
@@ -46,9 +49,10 @@
   // color, a pivot or linear to scale and a point kind as its glyph (systemLayers.ts), with a marker
   // of its fields' badges at the center, and each irrigation group lightly outlined around its
   // systems. Fields with an outline (G.10) are filled in their status, and its marker shows only the
-  // fields without one; plots with a pin are dots in their status. Clicking a system selects it, and
-  // clicking a field or pin selects its system with that field; the page shows its details in the
-  // panel (children) and the toolbar adds to the top-left.
+  // fields without one. A field's pinned plots are packed as badges (PlotMarker), and up close are
+  // dots in their status at their pins. Clicking a system selects it, and clicking a field, its
+  // plots or a pin selects its system with that field; the page shows its details in the panel
+  // (children) and the toolbar adds to the top-left.
   let {
     pivots,
     groups,
@@ -94,6 +98,9 @@
   const FAR_ZOOM = 11.5
   const NAME_ZOOM = 13
   const PIVOT_ZOOM = 14
+  // From NAME_ZOOM to here a field's pinned plots are packed as badges under its name (PlotMarker);
+  // from here on, each pin is at its place
+  const SPREAD_ZOOM = 17
   // Wisconsin's Central Sands, where most WISP pivots are
   const DEFAULT_VIEW = { center: [-89.5, 44.25] as LngLat, zoom: 8 }
 
@@ -102,10 +109,15 @@
   let map = $state<MapLibreMap>()
   let zoom = $state(DEFAULT_VIEW.zoom)
   let placeSearch = $state<PlaceSearch>()
+  // What's under the pointer, named beside it
+  let hover = $state<{ x: number; y: number; text: string } | null>(null)
 
   type MarkerProps = { pivot: MapPivot; selected: boolean; dimmed: boolean; onselect: () => void }
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- bookkeeping for MapLibre's markers, not rendered from
   const markers = new Map<number, { marker: Marker; props: MarkerProps; component: ReturnType<typeof mount> }>()
+  type PlotProps = { pack: PlotPack; selected: boolean; dimmed: boolean; onselect: () => void }
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- as markers, by field
+  const plotMarkers = new Map<number, { marker: Marker; props: PlotProps; component: ReturnType<typeof mount> }>()
 
   const features = () => pivotFeatures(pivots, selectedId, highlighted)
   const fields = () => fieldFeatures(pivots, selectedFieldId, highlighted)
@@ -131,7 +143,8 @@
   }
 
   function addPivotLayers(m: MapLibreMap) {
-    // Irrigation groups: a light shade inside a dotted line, named along it
+    // Irrigation groups: a light shade inside a dashed line in the system color, named along it
+    const palette = readPalette()
     m.addSource('groups', { type: 'geojson', data: groups })
     m.addLayer({
       id: 'groups-fill',
@@ -143,14 +156,13 @@
       id: 'groups-casing',
       type: 'line',
       source: 'groups',
-      paint: { 'line-color': '#000000', 'line-width': 3, 'line-opacity': 0.3 },
+      paint: { 'line-color': palette.systemCasing, 'line-width': 4, 'line-opacity': 0.55 },
     })
     m.addLayer({
       id: 'groups-line',
       type: 'line',
       source: 'groups',
-      paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-dasharray': [1, 2] },
-      layout: { 'line-cap': 'round' },
+      paint: { 'line-color': palette.system, 'line-width': 2, 'line-dasharray': [3, 2] },
     })
     m.addLayer({
       id: 'groups-label',
@@ -163,7 +175,7 @@
         'text-font': LABEL_FONT,
         'text-offset': [0, -0.8],
       },
-      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
+      paint: { 'text-color': palette.system, 'text-halo-color': palette.systemCasing, 'text-halo-width': 1.5 },
     })
 
     // Fields with an outline: filled in their status, under the systems (G.10)
@@ -210,8 +222,8 @@
       id: PIN_LAYER,
       type: 'circle',
       source: 'pins',
-      // Plots are a few pixels apart until zoomed in
-      minzoom: PIVOT_ZOOM,
+      // Plots are a few pixels apart until zoomed in; until then PlotMarker packs them
+      minzoom: SPREAD_ZOOM,
       paint: {
         'circle-color': color,
         'circle-radius': ['case', ['get', 'selected'], 8, 6],
@@ -224,7 +236,7 @@
       id: 'pins-label',
       type: 'symbol',
       source: 'pins',
-      minzoom: PIVOT_ZOOM + 2,
+      minzoom: SPREAD_ZOOM,
       layout: {
         'text-field': ['get', 'name'],
         'text-size': 11,
@@ -270,6 +282,41 @@
       const component = mount(PivotMarker, { target: element, props })
       const marker = new Marker({ element, anchor: 'center' }).setLngLat([pivot.longitude, pivot.latitude]).addTo(m)
       markers.set(pivot.id, { marker, props, component })
+    }
+
+    // A field's pinned plots, packed as badges until the map is close enough to spread them
+    const packs = plotPacks(pivots)
+    const fieldIds = new Set(packs.map((pack) => pack.field_id))
+    for (const [id, entry] of plotMarkers) {
+      if (fieldIds.has(id)) continue
+      entry.marker.remove()
+      unmount(entry.component)
+      plotMarkers.delete(id)
+    }
+    for (const pack of packs) {
+      const state = {
+        pack,
+        selected: pack.field_id === selectedFieldId,
+        dimmed: highlighted !== null && !highlighted.has(pack.pivot_id),
+      }
+      const entry = plotMarkers.get(pack.field_id)
+      if (entry) {
+        Object.assign(entry.props, state)
+        entry.marker.setLngLat(pack.center)
+        continue
+      }
+      const element = document.createElement('div')
+      const props: PlotProps = $state({ ...state, onselect: () => onselect(pack.pivot_id, pack.field_id) })
+      const component = mount(PlotMarker, { target: element, props })
+      // Under the field's name when it has an outline
+      const marker = new Marker({
+        element,
+        anchor: pack.outlined ? 'top' : 'center',
+        offset: [0, pack.outlined ? 10 : 0],
+      })
+        .setLngLat(pack.center)
+        .addTo(m)
+      plotMarkers.set(pack.field_id, { marker, props, component })
     }
   }
 
@@ -364,10 +411,15 @@
       m.on('click', onClick)
       // A style image dropped with the old style (a basemap change) comes back
       m.on('styleimagemissing', () => addGlyphImages(m))
-      for (const layer of CLICKABLE_LAYERS) {
-        m.on('mouseenter', layer, () => (m.getCanvas().style.cursor = 'pointer'))
-        m.on('mouseleave', layer, () => (m.getCanvas().style.cursor = ''))
-      }
+      // Over a system, field, plot or group: say what it is beside the pointer, and point at what
+      // a click would select
+      m.on('mousemove', (event) => {
+        const text = hoverLabel(m, event.point)
+        hover = text ? { x: event.point.x, y: event.point.y, text } : null
+        m.getCanvas().style.cursor = text && !text.startsWith('Group:') ? 'pointer' : ''
+      })
+      m.on('mouseout', () => (hover = null))
+      m.on('movestart', () => (hover = null))
       m.on('zoom', () => (zoom = m.getZoom()))
       m.on('moveend', () => {
         const { lng, lat } = m.getCenter()
@@ -396,8 +448,9 @@
     return () => {
       disposed = true
       cleanups.forEach((cleanup) => cleanup())
-      for (const { component } of markers.values()) unmount(component)
+      for (const { component } of [...markers.values(), ...plotMarkers.values()]) unmount(component)
       markers.clear()
+      plotMarkers.clear()
       map?.remove()
     }
   })
@@ -408,6 +461,7 @@
   class="group/map relative h-full w-full overflow-hidden bg-surface"
   data-far={zoom < FAR_ZOOM ? '' : undefined}
   data-mid={zoom >= FAR_ZOOM && zoom < NAME_ZOOM ? '' : undefined}
+  data-plots={zoom >= NAME_ZOOM && zoom < SPREAD_ZOOM ? '' : undefined}
 >
   <div
     bind:this={container}
@@ -425,6 +479,19 @@
       <PlaceSearch bind:this={placeSearch} {map} maxZoom={PIVOT_ZOOM - 1} />
     </div>
   </div>
+
+  {#if hover}
+    <!-- Pointer users only: the list and the markers name everything for keyboards and screen readers -->
+    <div
+      class="pointer-events-none absolute z-10 max-w-64 -translate-x-1/2 -translate-y-full truncate rounded-md
+        bg-surface-raised px-2 py-1 text-xs font-medium text-ink shadow-md ring-1 ring-line"
+      style:left="{hover.x}px"
+      style:top="{hover.y - 12}px"
+      aria-hidden="true"
+    >
+      {hover.text}
+    </div>
+  {/if}
 
   {@render children?.()}
 </div>

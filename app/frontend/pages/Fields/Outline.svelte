@@ -16,6 +16,7 @@
     type PivotShape,
     pivotOutline,
     roundBoundary,
+    systemName,
   } from '@/lib/geo'
   import OutlineMap, { type DrawMode, type MapPin } from '@/lib/outlines/OutlineMap.svelte'
   import {
@@ -114,7 +115,7 @@
 
   // The map shows the field's own system first, then the others and the other fields' outlines
   const references = $derived<Reference[]>([
-    { name: `${pivot.kind_name}: ${pivot.name}`, shape: pivot },
+    { name: systemName(pivot), shape: pivot },
     ...other_pivots.map((other) => ({ name: other.name, shape: other })),
     ...other_fields.map((other) => ({ name: other.name, boundary: other.boundary })),
   ])
@@ -205,8 +206,8 @@
   >
   <h1 class="text-2xl font-semibold">Outline: {field.name}</h1>
   <p class="text-sm text-ink-muted">
-    {pivot.kind_name}: {pivot.name}. The outline draws the field on the map and suggests its area and soil; the water
-    balance doesn't use it.
+    Irrigation system: {systemName(pivot)}. The outline draws the field on the map and suggests its area and soil; the
+    water balance doesn't use it.
   </p>
 </div>
 

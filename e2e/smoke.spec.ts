@@ -20,11 +20,11 @@ test('the dashboard shows field cards with a status', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
   // A pivot's name links to its page: its irrigation, and its weather zone's week ahead (G.12)
-  const pivot = page.getByRole('heading', { name: /^Pivot: / }).first()
-  const name = (await pivot.textContent())!.replace('Pivot:', '').trim()
+  const pivot = page.getByRole('heading', { name: /^Irrigation system: / }).first()
+  const name = (await pivot.textContent())!.replace('Irrigation system:', '').trim()
   await expect(page.getByRole('link', { name: `Irrigation on ${name}` })).toBeVisible()
   await pivot.getByRole('link', { name }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Pivot: ${name}`)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Irrigation system: ${name}`)
   await expect(page.getByRole('heading', { name: /^Weather/, level: 2 })).toBeVisible()
   await page.getByRole('link', { name: /^Season's weather: / }).click()
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Weather:')
@@ -71,7 +71,7 @@ test('the map lists the fields and selects a pivot from the list', async ({ page
   const select = list.getByRole('button', { name: /on the map$/ }).first()
   await select.click()
   await expect(select).toHaveAttribute('aria-pressed', 'true')
-  const panel = page.getByRole('region', { name: /^Pivot: / })
+  const panel = page.getByRole('region', { name: /^System: / })
   await expect(panel).toBeVisible()
   await expect(panel.getByRole('heading').getByRole('link')).toBeVisible()
   await expect(panel.getByRole('link', { name: 'Irrigation', exact: true })).toBeVisible()
@@ -105,10 +105,10 @@ test("the map's list is the operation as a tree, selected at any level (G.14)", 
   await expect(farm).toHaveAttribute('aria-pressed', 'false')
 
   // A system opens its panel
-  const system = list.getByRole('button', { name: 'Show Pivot North 160 on the map' })
+  const system = list.getByRole('button', { name: 'Show system North 160 (pivot) on the map' })
   await system.click()
   await expect(system).toHaveAttribute('aria-pressed', 'true')
-  const north = page.getByRole('region', { name: 'Pivot: North 160' })
+  const north = page.getByRole('region', { name: 'System: North 160 (pivot)' })
   await expect(north).toBeVisible()
   await expect(north.locator('li[aria-current="true"]')).toHaveCount(0)
 
@@ -144,7 +144,7 @@ test('a map layer that fails says so, and the rest of the map carries on', async
     .getByRole('button', { name: /on the map$/ })
     .first()
     .click()
-  await expect(page.getByRole('region', { name: /^Pivot: / })).toBeVisible()
+  await expect(page.getByRole('region', { name: /^System: / })).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -180,7 +180,7 @@ test('the Drought Monitor layer gives the category at the selected pivot', async
     .getByRole('button', { name: /on the map$/ })
     .first()
     .click()
-  await expect(page.getByRole('region', { name: /^Pivot: / })).toContainText('D1 Moderate drought')
+  await expect(page.getByRole('region', { name: /^System: / })).toContainText('D1 Moderate drought')
 })
 
 test("tapping the map gives the rain layer's value there", async ({ page }) => {
@@ -288,7 +288,7 @@ test('a linear move is sized by dragging a corner and turned by its handle', asy
   await dragHandle(page, 'Drag to turn the linear move', 60, 0)
   await expect(direction).not.toHaveValue('0')
   await page.getByRole('button', { name: 'Add irrigation system' }).click()
-  const row = page.getByRole('heading', { name: `Linear: ${name}` }).locator('../..')
+  const row = page.getByRole('heading', { name: `Irrigation system: ${name}` }).locator('../..')
   // Dragging a corner by pixels can nudge the length a few feet as well as the travel
   await expect(row).toContainText(/1,[23]\d\d ft long, travels [\d,]+ ft at \d+° from north/)
 
@@ -298,7 +298,7 @@ test('a linear move is sized by dragging a corner and turned by its handle', asy
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Delete this linear move' }).click()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
-  await expect(page.getByRole('heading', { name: `Linear: ${name}` })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: `Irrigation system: ${name}` })).toHaveCount(0)
 })
 
 test('a traveler is placed with a click and keeps no shape', async ({ page }) => {
@@ -314,7 +314,7 @@ test('a traveler is placed with a click and keeps no shape', async ({ page }) =>
   await expect(page.getByText('Drag the pin to move the traveler.')).toBeVisible()
   await page.getByLabel('Equipment', { exact: true }).fill('Hard hose reel #9')
   await page.getByRole('button', { name: 'Add irrigation system' }).click()
-  const heading = page.getByRole('heading', { name: `Traveler: ${name}` })
+  const heading = page.getByRole('heading', { name: `Irrigation system: ${name} (traveler)` })
   const row = heading.locator('../..')
   await expect(row).toContainText('Hard hose reel #9')
   await expect(row).not.toContainText('radius')
@@ -557,7 +557,7 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   // Setup: each level labelled, the field's plantings on a timeline, each opening its form, with its size
   await page.goto('/setup')
   await expect(page.getByRole('heading', { name: 'Farm: Arlington Research' })).toBeVisible()
-  const station = page.getByRole('heading', { name: 'Pivot: Station pivot' })
+  const station = page.getByRole('heading', { name: 'Irrigation system: Station pivot' })
   await expect(station.getByRole('link', { name: 'Station pivot' })).toBeVisible()
   const bars = page.getByRole('list', { name: /^Plantings on Arlington 525/ })
   await bars.getByRole('button', { name: /^Edit Soybean/ }).click()
@@ -992,7 +992,7 @@ test('field outlines are imported from a shapefile, matched to fields or new one
   await page.locator('#shape-0-field').selectOption('new')
   await expect(first.getByText('Choose the system that waters it')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save the outline' })).toBeDisabled()
-  await page.locator('#shape-0-system').selectOption({ label: 'Arlington Research › Pivot: Station pivot' })
+  await page.locator('#shape-0-system').selectOption({ label: 'Arlington Research › Station pivot' })
   await expect(first.getByLabel("New field's name")).toHaveValue('Home North')
   await page.locator('#shape-0-field').selectOption('skip')
 
@@ -1009,7 +1009,7 @@ test('field outlines are imported from a shapefile, matched to fields or new one
 
   // That shape is near Arlington, nowhere near Market garden's pivot at Coloma: Setup says so
   const issues = page.getByRole('region', { name: 'Outlines to check' })
-  await expect(issues).toContainText(/Market garden's outline isn't under Pivot: Home pivot \(\d+\.\d mi away\)/)
+  await expect(issues).toContainText(/Market garden's outline isn't under Home pivot, \d+\.\d mi away/)
   expect(errors).toEqual([])
 })
 
@@ -1018,13 +1018,13 @@ test('the map shades outlined fields instead of badging them, and marks the sele
   await page.goto('/map')
   await expect(page.locator('.maplibregl-canvas')).toBeVisible()
   // North 160's two fields have outlines, so it has no marker; Home pivot's don't
-  await expect(page.getByRole('button', { name: /^Pivot Home pivot: / })).toBeAttached()
-  await expect(page.getByRole('button', { name: /^Pivot North 160: / })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^Home pivot: / })).toBeAttached()
+  await expect(page.getByRole('button', { name: /^North 160 \(pivot\): / })).toHaveCount(0)
 
   // A field picked from the list (as a click in its outline does) is marked in its system's panel
   const list = page.getByRole('complementary', { name: 'Fields' })
   await list.getByRole('button', { name: /North potatoes.*on the map$/ }).click()
-  const panel = page.getByRole('region', { name: 'Pivot: North 160' })
+  const panel = page.getByRole('region', { name: 'System: North 160 (pivot)' })
   await expect(panel.locator('li[aria-current="true"]')).toContainText('North potatoes')
 
   // A click in a field's outline selects that field, not the system drawn over it (G.14). The map

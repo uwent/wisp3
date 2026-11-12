@@ -4,6 +4,7 @@ import type {
   Map as MapLibreMap,
   MapGeoJSONFeature,
   PointLike,
+  SymbolLayerSpecification,
 } from 'maplibre-gl'
 
 import type { Palette } from '@/lib/charts/palette'
@@ -26,7 +27,15 @@ export const GLYPH_LAYER = 'pivots-glyph'
 export const FIELD_LAYER = 'fields-fill'
 export const PIN_LAYER = 'pins'
 /** The systems' own layers, which the Irrigation systems layer switch shows and hides */
-export const SYSTEM_LAYERS = [PIVOT_LAYER, 'pivots-casing', 'pivots-line', GLYPH_LAYER]
+export const SYSTEM_LAYERS = [
+  PIVOT_LAYER,
+  'pivots-casing',
+  'pivots-selected',
+  'pivots-line',
+  'pivots-center',
+  'pivots-glyph-selected',
+  GLYPH_LAYER,
+]
 
 /** Below this many pixels across, a pivot or linear is drawn as its glyph */
 export const MIN_SHAPE_PX = 16
@@ -104,6 +113,31 @@ const shapeOnly = (value: ExpressionSpecification | number) =>
   byZoom((zoom) => ['case', asGlyph(zoom), 0, value] as ExpressionSpecification)
 
 const POLYGONS: ExpressionSpecification = ['==', ['geometry-type'], 'Polygon']
+const POINTS: ExpressionSpecification = ['==', ['geometry-type'], 'Point']
+const SELECTED: ExpressionSpecification = ['get', 'selected']
+
+/** A glyph's icon-size: its true size or the minimum, the selected one `selectedScale` times that */
+const glyphSize = (selectedScale: number) =>
+  byZoom(
+    (zoom) => [
+      '*',
+      ['case', SELECTED, selectedScale, 1],
+      [
+        'max',
+        ['case', ['get', 'point'], MIN_POINT_PX / GLYPH_PX, MIN_SHAPE_PX / GLYPH_PX],
+        ['*', ['get', 'k'], 2 ** zoom],
+      ],
+    ],
+    true,
+  )
+const glyphLayout = (selectedScale: number): SymbolLayerSpecification['layout'] => ({
+  'icon-image': ['get', 'glyph'],
+  'icon-size': glyphSize(selectedScale),
+  'icon-rotate': ['get', 'rotate'],
+  'icon-rotation-alignment': 'map',
+  'icon-allow-overlap': true,
+  'icon-ignore-placement': true,
+})
 
 /** The systems' layers, from a source of their outlines and glyph points (pivotFeatures) */
 export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecification['data'], palette: Palette) {
@@ -130,7 +164,8 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
     },
   })
   // A dark casing under the line keeps it visible on the light streets map; on imagery the light
-  // cyan carries it
+  // cyan carries it. The selected system's line is thicker, on a white band inside a wider casing,
+  // so it stands out on either basemap.
   map.addLayer({
     id: 'pivots-casing',
     type: 'line',
@@ -138,9 +173,16 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
     filter: POLYGONS,
     paint: {
       'line-color': palette.systemCasing,
-      'line-width': ['case', ['get', 'selected'], 6.5, 4],
-      'line-opacity': shapeOnly(['case', ['get', 'dimmed'], 0.25, 0.7]),
+      'line-width': ['case', SELECTED, 11, 4],
+      'line-opacity': shapeOnly(['case', ['get', 'dimmed'], 0.25, SELECTED, 0.9, 0.7]),
     },
+  })
+  map.addLayer({
+    id: 'pivots-selected',
+    type: 'line',
+    source: 'pivots',
+    filter: ['all', POLYGONS, SELECTED],
+    paint: { 'line-color': '#ffffff', 'line-width': 7.5, 'line-opacity': shapeOnly(1) },
   })
   map.addLayer({
     id: 'pivots-line',
@@ -149,40 +191,50 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
     filter: POLYGONS,
     paint: {
       'line-color': palette.system,
-      'line-width': ['case', ['get', 'selected'], 3.5, 2],
+      'line-width': ['case', SELECTED, 4, 2],
       'line-opacity': shapeOnly(['case', ['get', 'dimmed'], 0.35, 1]),
+    },
+  })
+  // A pivot's or linear's center, where its machine turns or the middle of its run
+  map.addLayer({
+    id: 'pivots-center',
+    type: 'circle',
+    source: 'pivots',
+    filter: ['all', POINTS, ['!', ['get', 'point']]],
+    paint: {
+      'circle-color': palette.system,
+      'circle-radius': ['case', SELECTED, 4.5, 3],
+      'circle-stroke-color': ['case', SELECTED, '#ffffff', palette.systemCasing],
+      'circle-stroke-width': ['case', SELECTED, 2, 1.5],
+      'circle-opacity': shapeOnly(['case', ['get', 'dimmed'], 0.35, 1]),
+      'circle-stroke-opacity': shapeOnly(['case', ['get', 'dimmed'], 0.35, 1]),
+    },
+  })
+  // The selected glyph is half as large again, on a white copy of itself with a dark edge
+  map.addLayer({
+    id: 'pivots-glyph-selected',
+    type: 'symbol',
+    source: 'pivots',
+    filter: ['all', POINTS, SELECTED],
+    layout: glyphLayout(2.1),
+    paint: {
+      'icon-color': '#ffffff',
+      'icon-opacity': byZoom((zoom) => ['case', asGlyph(zoom), 1, 0]),
+      'icon-halo-color': palette.systemCasing,
+      'icon-halo-width': 2,
     },
   })
   map.addLayer({
     id: GLYPH_LAYER,
     type: 'symbol',
     source: 'pivots',
-    filter: ['==', ['geometry-type'], 'Point'],
-    layout: {
-      'icon-image': ['get', 'glyph'],
-      'icon-size': byZoom(
-        (zoom) => [
-          'max',
-          ['case', ['get', 'point'], MIN_POINT_PX / GLYPH_PX, MIN_SHAPE_PX / GLYPH_PX],
-          ['*', ['get', 'k'], 2 ** zoom],
-        ],
-        true,
-      ),
-      'icon-rotate': ['get', 'rotate'],
-      'icon-rotation-alignment': 'map',
-      'icon-allow-overlap': true,
-      'icon-ignore-placement': true,
-    },
+    filter: POINTS,
+    layout: glyphLayout(1.5),
     paint: {
       'icon-color': palette.system,
-      'icon-opacity': byZoom((zoom) => [
-        'case',
-        asGlyph(zoom),
-        ['case', ['get', 'dimmed'], 0.3, ['get', 'selected'], 1, 0.85],
-        0,
-      ]),
+      'icon-opacity': byZoom((zoom) => ['case', asGlyph(zoom), ['case', ['get', 'dimmed'], 0.3, SELECTED, 1, 0.85], 0]),
       'icon-halo-color': palette.systemCasing,
-      'icon-halo-width': ['case', ['get', 'selected'], 2.5, 1.5],
+      'icon-halo-width': ['case', SELECTED, 0, 1.5],
     },
   })
 }
@@ -195,6 +247,15 @@ export function setSystemColors(map: MapLibreMap, palette: Palette) {
   map.setPaintProperty('pivots-line', 'line-color', palette.system)
   map.setPaintProperty(GLYPH_LAYER, 'icon-color', palette.system)
   map.setPaintProperty(GLYPH_LAYER, 'icon-halo-color', palette.systemCasing)
+  map.setPaintProperty('pivots-glyph-selected', 'icon-halo-color', palette.systemCasing)
+  map.setPaintProperty('pivots-center', 'circle-color', palette.system)
+  map.setPaintProperty('pivots-center', 'circle-stroke-color', ['case', SELECTED, '#ffffff', palette.systemCasing])
+  if (map.getLayer('groups-line')) {
+    map.setPaintProperty('groups-line', 'line-color', palette.system)
+    map.setPaintProperty('groups-casing', 'line-color', palette.systemCasing)
+    map.setPaintProperty('groups-label', 'text-color', palette.system)
+    map.setPaintProperty('groups-label', 'text-halo-color', palette.systemCasing)
+  }
 }
 
 /**
@@ -243,10 +304,12 @@ function glyphImage(glyph: Glyph) {
   return image
 }
 
-export type SystemHit =
+/** What's under the pointer, and what it is in words ("Field: North corn") for the hover label */
+export type SystemHit = { label: string } & (
   | { kind: 'pin'; pivotId: number; fieldId: number }
   | { kind: 'field'; pivotId: number; fieldId: number }
   | { kind: 'system'; pivotId: number }
+)
 
 /**
  * What a click at a point selects, asking each layer in priority order (a pin, a field's outline, a
@@ -263,12 +326,25 @@ export function systemHit(map: MapLibreMap, point: PointLike): SystemHit | null 
     drawnAsGlyph({ point: !!feature.properties.point, k: Number(feature.properties.k) }, zoom)
 
   const pin = at(PIN_LAYER)
-  if (pin) return { kind: 'pin', pivotId: Number(pin.properties.pivot_id), fieldId: Number(pin.properties.field_id) }
+  if (pin) {
+    const { name, field_name, pivot_id, field_id } = pin.properties
+    return { kind: 'pin', pivotId: Number(pivot_id), fieldId: Number(field_id), label: `Plot: ${name}, ${field_name}` }
+  }
   const field = at(FIELD_LAYER)
-  if (field) return { kind: 'field', pivotId: Number(field.properties.pivot_id), fieldId: Number(field.properties.id) }
+  if (field) {
+    const { name, pivot_id, id } = field.properties
+    return { kind: 'field', pivotId: Number(pivot_id), fieldId: Number(id), label: `Field: ${name}` }
+  }
   const system = at(GLYPH_LAYER, glyph) ?? at(PIVOT_LAYER, (feature) => !glyph(feature))
-  return system ? { kind: 'system', pivotId: Number(system.properties.id) } : null
+  if (!system) return null
+  return { kind: 'system', pivotId: Number(system.properties.id), label: `System: ${system.properties.label}` }
 }
 
-/** The layers a click can select something on, for the pointer cursor */
-export const CLICKABLE_LAYERS = [PIN_LAYER, FIELD_LAYER, GLYPH_LAYER, PIVOT_LAYER]
+/** What the pointer is over, in words: what a click would select, or else an irrigation group */
+export function hoverLabel(map: MapLibreMap, point: PointLike): string | null {
+  const hit = systemHit(map, point)
+  if (hit) return hit.label
+  if (!map.getLayer('groups-fill')) return null
+  const group = map.queryRenderedFeatures(point, { layers: ['groups-fill'] })[0]
+  return group ? `Group: ${group.properties.name}` : null
+}

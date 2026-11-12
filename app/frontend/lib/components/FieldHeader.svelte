@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Link, router } from '@inertiajs/svelte'
+  import { systemName } from '@/lib/geo'
   import type { Snippet } from 'svelte'
 
   import { formatArea, seasonDates } from '@/lib/plantings'
@@ -55,7 +56,7 @@
     <div class="min-w-0">
       <nav aria-label="Breadcrumb" class="text-sm text-ink-muted">
         {farm.name} ›
-        <Link href={pivots.show(pivot.id)} class="underline underline-offset-2">{pivot.kind_name}: {pivot.name}</Link>
+        <Link href={pivots.show(pivot.id)} class="underline underline-offset-2">{systemName(pivot)}</Link>
       </nav>
       <h1 class="text-2xl font-semibold">{field.name}</h1>
       <p class="text-sm text-ink-muted">

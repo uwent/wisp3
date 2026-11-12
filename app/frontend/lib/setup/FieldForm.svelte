@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte'
+  import { systemName } from '@/lib/geo'
   import { Form, Link } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
@@ -83,7 +84,7 @@
         bind:value={pivotChoice}
         options={pivots.map((p) => ({
           value: String(p.id),
-          label: p.kind_name ? `${p.kind_name}: ${p.name}` : p.name,
+          label: p.kind_name ? systemName({ name: p.name, kind_name: p.kind_name }) : p.name,
         }))}
         disabled={endedYears.length > 0}
         error={errors.pivot_id}

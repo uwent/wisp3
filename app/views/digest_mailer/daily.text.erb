@@ -33,7 +33,7 @@ Nothing needs your attention today. <%= @digest.nothing_listed %>
    Irrigation systems in this zone: <%= digest_zone_pivots(zone) %>
 <% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
 
-   <%= pivot_section.pivot.label %>
+   Irrigation system: <%= pivot_section.pivot.label %>
 <% pivot_section.entries.each do |entry| %>
 
 <% if !entry.active? %>

@@ -30,6 +30,16 @@ export const KIND_NOUNS: Record<PivotKind, string> = {
   point: 'location',
 }
 
+/**
+ * How a system is named to growers (G.14, Pivot#label): "East gun (traveler)", or the name alone
+ * when it already says its kind ("Home pivot"). Pages put "Irrigation system:" (or "System:" where
+ * space is short) before it, never the kind.
+ */
+export function systemName(system: { name: string; kind_name: string }): string {
+  const kind = system.kind_name.toLowerCase()
+  return system.name.toLowerCase().includes(kind) ? system.name : `${system.name} (${kind})`
+}
+
 /** Kinds that are a point with no dimensions (Pivot::POINT_KINDS) */
 export const isPoint = (kind: PivotKind) => kind !== 'center' && kind !== 'linear'
 

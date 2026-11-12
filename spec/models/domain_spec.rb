@@ -171,8 +171,11 @@ RSpec.describe "Domain models" do
     end
 
     it "names its kind as growers know it" do
-      expect(build(:pivot, name: "North 160").label).to eq("Pivot: North 160")
-      expect(build(:pivot, kind: "traveler", name: "Lane 3").label).to eq("Traveler: Lane 3")
+      expect(build(:pivot, name: "North 160").label).to eq("North 160 (pivot)")
+      expect(build(:pivot, kind: "traveler", name: "Lane 3").label).to eq("Lane 3 (traveler)")
+      # The kind isn't repeated when the name says it, in any case
+      expect(build(:pivot, name: "Home PIVOT").label).to eq("Home PIVOT")
+      expect(build(:pivot, kind: "drip", name: "Drip block 2").label).to eq("Drip block 2")
       expect(Pivot::KINDS.map { |kind| build(:pivot, kind:).kind_name })
         .to eq(["Pivot", "Linear", "Traveler", "Solid set", "Drip", "Location"])
     end

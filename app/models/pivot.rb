@@ -67,8 +67,10 @@ class Pivot < ApplicationRecord
   # What growers call it: "Pivot", "Traveler", "Location"
   def kind_name = KIND_NAMES.fetch(kind, "Irrigation system")
 
-  # "Pivot: North 160"
-  def label = "#{kind_name}: #{name}"
+  # How a system is named to growers (G.14): "East gun (traveler)", or the name alone when it
+  # already says its kind ("Home pivot"). Mirrored by systemName in lib/geo.ts; pages put
+  # "Irrigation system:" (or "System:" where space is short) before it, never the kind.
+  def label = name.downcase.include?(kind_name.downcase) ? name : "#{name} (#{kind_name.downcase})"
 
   private
 

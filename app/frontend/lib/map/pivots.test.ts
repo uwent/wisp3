@@ -10,9 +10,11 @@ import {
   fieldFeatures,
   groupFeatures,
   type MapPivot,
+  packRows,
   pinFeatures,
   pivotBounds,
   pivotFeatures,
+  plotPacks,
 } from './pivots'
 import { drawnAsGlyph, glyphProperties, truePixels } from './systemLayers'
 
@@ -234,6 +236,21 @@ describe('fields with outlines and pinned plots (G.10)', () => {
     expect(features[0].geometry.coordinates).toEqual([-89.499, 44.099])
   })
 
+  it("packs a field's pinned plots as badges, at its outline's center or its pins' middle", () => {
+    const [pack] = plotPacks([outlined])
+    expect(pack).toMatchObject({ field_id: 11, pivot_id: 1, field_name: 'Plots', outlined: false })
+    expect(pack.center[0]).toBeCloseTo(-89.499)
+    expect(pack.center[1]).toBeCloseTo(44.09875)
+    expect(pack.plots).toEqual([
+      { planting_id: 110, status: 'ok', label: 'Soybean: OK' },
+      { planting_id: 111, status: null, label: 'Corn: season ended' },
+    ])
+    const withOutline = { ...outlined, outlines: [{ field_id: 11, boundary: square(-89.6, 44.2) }] }
+    expect(plotPacks([withOutline])[0]).toMatchObject({ outlined: true })
+    expect(pointInPolygon(plotPacks([withOutline])[0].center, square(-89.6, 44.2).coordinates)).toBe(true)
+    expect(plotPacks([{ ...outlined, pins: [] }])).toEqual([])
+  })
+
   it('draws a system with outlined fields as a line, and keeps its marker until every field has one', () => {
     expect(pivotFeatures([outlined], null, null).features[0].properties.outlined).toBe(true)
     expect(allOutlined(outlined)).toBe(false)
@@ -262,5 +279,13 @@ describe('badgeRows', () => {
       [3, 3, 3],
       [4, 3, 3],
     ])
+  })
+
+  it('slices items into those rows', () => {
+    expect(packRows(['a', 'b', 'c', 'd', 'e'])).toEqual([
+      ['a', 'b', 'c'],
+      ['d', 'e'],
+    ])
+    expect(packRows([])).toEqual([])
   })
 })

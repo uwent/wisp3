@@ -7,7 +7,7 @@
   import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { isoDate } from '@/lib/dates'
-  import { isPoint, KIND_NOUNS } from '@/lib/geo'
+  import { isPoint, KIND_NOUNS, systemName } from '@/lib/geo'
   import { units as unitsFor } from '@/lib/units'
   import { outlineProblems } from '@/lib/outlines/problems'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
@@ -163,8 +163,8 @@
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2">
       <div>
         <h3 class="font-medium">
-          <span class="font-normal text-ink-muted">{pivot.kind_name}:</span>
-          <Link href={pivots.show(pivot.id)} class="hover:underline">{pivot.name}</Link>
+          <span class="font-normal text-ink-muted">Irrigation system:</span>
+          <Link href={pivots.show(pivot.id)} class="hover:underline">{systemName(pivot)}</Link>
         </h3>
         <p class="text-xs text-ink-muted">
           {pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}
@@ -451,7 +451,7 @@
                 value={pivot.id}
                 checked={pivotGroup !== undefined && pivot.pivot_group_id === pivotGroup.id}
               />
-              {pivot.kind_name}: {pivot.name}
+              {systemName(pivot)}
               {#if other}<span class="text-xs text-ink-muted">{`(now in ${other.name})`}</span>{/if}
             </label>
           {/each}

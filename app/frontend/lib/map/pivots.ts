@@ -5,10 +5,12 @@ import {
   groupOutline,
   type LngLat,
   pivotOutline,
+  systemName,
   type PivotShape,
 } from '@/lib/geo'
 import { type FarmGroup, primary, type PivotGroup, pivotStatus, type Status, summaryActive } from '@/lib/overview'
 import { cropName } from '@/lib/plantings'
+import type { PlantingSummary } from '@/types/serializers'
 
 import { glyphProperties, type GlyphProperties } from './systemLayers'
 
@@ -32,6 +34,8 @@ export type MapPivot = PivotGroup &
 export type PivotProperties = GlyphProperties & {
   id: number
   name: string
+  /** "East gun (traveler)" (systemName) */
+  label: string
   /** The most urgent status among its fields in season, or none (for the marker; the system is drawn in its own color) */
   status: Status | 'none'
   selected: boolean
@@ -60,6 +64,8 @@ export type PinProperties = {
   pivot_id: number
   /** "Soybean" */
   name: string
+  /** The field it's on */
+  field_name: string
   status: Status | 'none'
   selected: boolean
   dimmed: boolean
@@ -88,6 +94,7 @@ export function pivotFeatures(
       const properties: PivotProperties = {
         id: pivot.id,
         name: pivot.name,
+        label: systemName(pivot),
         status: pivotStatus(pivot.fields) ?? 'none',
         selected: pivot.id === selectedId,
         dimmed: highlighted !== null && !highlighted.has(pivot.id),
@@ -157,6 +164,7 @@ export function pinFeatures(
             field_id: pin.field_id,
             pivot_id: pivot.id,
             name: summary ? cropName(summary) : '',
+            field_name: pivot.fields.find((card) => card.id === pin.field_id)?.name ?? '',
             status: summary && summaryActive(summary) ? summary.status! : ('none' as const),
             selected: pin.field_id === selectedFieldId,
             dimmed: highlighted !== null && !highlighted.has(pivot.id),
@@ -166,6 +174,62 @@ export function pinFeatures(
       }),
     ),
   }
+}
+
+/** A status in words, for badges' tooltips and labels */
+export const STATUS_LABELS: Record<Status, string> = {
+  irrigate: 'Irrigate',
+  caution: 'Caution',
+  needs_canopy: 'No canopy data',
+  ok: 'OK',
+  full: 'Full',
+}
+
+/** Why a planting (a field's primary one, or none) has no status, for its gray dot */
+export function idleText(summary: PlantingSummary | null): string {
+  if (!summary) return 'no crop this season'
+  if (summary.phase === 'upcoming') return 'season not started'
+  if (summary.phase === 'ended') return 'season ended'
+  return 'waiting for weather'
+}
+
+/** A field's pinned plots, packed together as badges until the map is close enough to place them */
+export type PlotPack = {
+  field_id: number
+  pivot_id: number
+  field_name: string
+  /** The outline's center, under the field's name, or else the middle of its pins */
+  center: LngLat
+  outlined: boolean
+  plots: { planting_id: number; status: Status | null; label: string }[]
+}
+
+/** The fields with pinned plots, each one's plots as badges (G.14) */
+export function plotPacks(pivots: MapPivot[]): PlotPack[] {
+  return pivots.flatMap((pivot) =>
+    pivot.fields.flatMap((card) => {
+      const pins = pivot.pins.filter((pin) => pin.field_id === card.id)
+      if (!pins.length) return []
+      const outline = pivot.outlines.find((o) => o.field_id === card.id)
+      const center: LngLat = outline
+        ? boundaryCenter(outline.boundary)
+        : [
+            pins.reduce((sum, pin) => sum + pin.longitude, 0) / pins.length,
+            pins.reduce((sum, pin) => sum + pin.latitude, 0) / pins.length,
+          ]
+      const plots = pins.map((pin) => {
+        const summary = card.plantings.find((p) => p.planting_id === pin.planting_id) ?? null
+        const name = summary ? cropName(summary) : 'Plot'
+        const status = summaryActive(summary) ? summary!.status! : null
+        return {
+          planting_id: pin.planting_id,
+          status,
+          label: `${name}: ${status ? STATUS_LABELS[status] : idleText(summary)}`,
+        }
+      })
+      return [{ field_id: card.id, pivot_id: pivot.id, field_name: card.name, center, outlined: !!outline, plots }]
+    }),
+  )
 }
 
 /** Whether every one of the system's fields has an outline (its marker then has nothing to show) */
@@ -219,4 +283,10 @@ export function badgeRows(count: number): number[] {
   const rows = Math.ceil(count / columns)
   const base = Math.floor(count / rows)
   return Array.from({ length: rows }, (_, row) => base + (row < count % rows ? 1 : 0))
+}
+
+/** Items packed in badgeRows' rows: five as three over two */
+export function packRows<T>(items: T[]): T[][] {
+  let start = 0
+  return badgeRows(items.length).map((size) => items.slice(start, (start += size)))
 }

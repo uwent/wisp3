@@ -1,5 +1,6 @@
 <script lang="ts">
   import FieldCard from '@/lib/components/FieldCard.svelte'
+  import { systemName } from '@/lib/geo'
   import KindIcon from '@/lib/components/KindIcon.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import type { WeatherUpdate } from '@/lib/poll'
@@ -44,13 +45,13 @@
       type="button"
       class={header}
       aria-pressed={isSelected('system', pivot.id)}
-      aria-label="Show {pivot.kind_name} {pivot.name} on the map"
+      aria-label="Show system {systemName(pivot)} on the map"
       onclick={() => onselect({ level: 'system', id: pivot.id })}
     >
       <KindIcon kind={pivot.kind} />
       <span class="min-w-0 flex-1 truncate">
-        <span class="text-ink-muted">{pivot.kind_name}:</span>
-        <span class="font-medium">{pivot.name}</span>
+        <span class="text-ink-muted">System:</span>
+        <span class="font-medium">{systemName(pivot)}</span>
       </span>
       {#if status}<StatusBadge {status} size="icon" />{/if}
     </button>
@@ -86,7 +87,7 @@
       onclick={() => onselect({ level: 'group', id: node.id })}
     >
       <span class="min-w-0 flex-1 truncate">
-        <span class="text-ink-muted">Irrigation group:</span>
+        <span class="text-ink-muted">Group:</span>
         <span class="font-medium">{node.name}</span>
       </span>
     </button>

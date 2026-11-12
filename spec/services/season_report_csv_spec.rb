@@ -51,7 +51,7 @@ RSpec.describe SeasonReportCsv do
     expect(pivot_row).to include("Fields" => "2", "Area (acres)" => "120.0", "Days irrigated" => "2", "Irrigation (in)" => "0.7000")
 
     zone = section("Weather by zone").sole
-    expect(zone).to include("Zone" => "1", "Irrigation systems" => "Pivot: North", "From" => "2026-07-01", "Through" => "2026-07-10",
+    expect(zone).to include("Zone" => "1", "Irrigation systems" => "North (pivot)", "From" => "2026-07-01", "Through" => "2026-07-10",
       "Days with weather" => "10", "Precipitation (in)" => "1.0000", "Reference ET (in)" => "2.0000",
       "GDD (50/86 °F)" => "200.0000", "Mean temperature (°F)" => "70.0000")
   end

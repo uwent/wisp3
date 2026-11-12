@@ -8,7 +8,16 @@
   import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import { draftShape, isPoint, KIND_NAMES, KIND_NOUNS, type PivotKind, type PivotShape, shapeDraft } from '@/lib/geo'
+  import {
+    draftShape,
+    isPoint,
+    KIND_NAMES,
+    KIND_NOUNS,
+    type PivotKind,
+    type PivotShape,
+    shapeDraft,
+    systemName,
+  } from '@/lib/geo'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { pivots, setup } from '@/routes'
   import type { Pivot, SoilType } from '@/types/serializers'
@@ -41,13 +50,15 @@
 
   // The kind as saved, for the title; the kind being chosen, for the words below it
   const title = $derived(
-    editing ? `Edit ${KIND_NAMES[pivot.kind ?? 'center']}: ${pivot.name}` : 'Add an irrigation system',
+    editing
+      ? `Edit ${systemName({ name: pivot.name ?? '', kind_name: KIND_NAMES[pivot.kind ?? 'center'] })}`
+      : 'Add an irrigation system',
   )
   const noun = $derived(KIND_NOUNS[shape.kind])
 
   // Only owners delete (Q8); the system's fields and their seasons go with it
   function destroy() {
-    const name = `${KIND_NAMES[pivot.kind ?? 'center']}: ${pivot.name}`
+    const name = systemName({ name: pivot.name ?? '', kind_name: KIND_NAMES[pivot.kind ?? 'center'] })
     if (!confirm(`Delete ${name} and its fields? This can't be undone.`)) return
     saved = true
     router.delete(pivots.destroy(pivot.id!).url)

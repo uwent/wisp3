@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  systemName,
   bearing,
   convexHull,
   destination,
@@ -248,5 +249,14 @@ describe('edgePointer', () => {
     expect(pointInPolygon([11, 5], [square(0, 10)])).toBe(false)
     expect(pointInPolygon([5, 5], [square(0, 10), square(4, 6)])).toBe(false)
     expect(pointInPolygon([2, 2], [square(0, 10), square(4, 6)])).toBe(true)
+  })
+})
+
+describe('systemName', () => {
+  it('adds the kind unless the name already says it, as Pivot#label does', () => {
+    expect(systemName({ name: 'East gun', kind_name: 'Traveler' })).toBe('East gun (traveler)')
+    expect(systemName({ name: 'Home pivot', kind_name: 'Pivot' })).toBe('Home pivot')
+    expect(systemName({ name: 'NORTH PIVOT 2', kind_name: 'Pivot' })).toBe('NORTH PIVOT 2')
+    expect(systemName({ name: 'Block A', kind_name: 'Solid set' })).toBe('Block A (solid set)')
   })
 })

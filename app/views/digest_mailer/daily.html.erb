@@ -63,7 +63,7 @@
         <tr>
           <td style="<%= email_style(:card_body) %>">
             <% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
-              <%= content_tag "h#{zone_level + 1}", style: "font-size:15px;line-height:1.3;margin:12px 0 4px" do %><span style="font-weight:400;<%= muted %>"><%= pivot_section.pivot.kind_name %>:</span> <%= email_link_to pivot_section.pivot.name, pivot_link(pivot_section.pivot) %><% end %>
+              <%= content_tag "h#{zone_level + 1}", style: "font-size:15px;line-height:1.3;margin:12px 0 4px" do %><span style="font-weight:400;<%= muted %>">Irrigation system:</span> <%= email_link_to pivot_section.pivot.label, pivot_link(pivot_section.pivot) %><% end %>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px">
                 <% pivot_section.entries.each do |entry| %>
                   <tr>
