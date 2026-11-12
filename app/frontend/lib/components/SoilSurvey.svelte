@@ -1,21 +1,28 @@
 <script lang="ts">
-  import { isPoint, KIND_NOUNS, type PivotShape, surveyRing } from '@/lib/geo'
+  import { type Boundary, isPoint, KIND_NOUNS, type PivotShape, surveyRing } from '@/lib/geo'
   import { fetchSoilSurvey, type MapUnit, soilKeyFor, type SoilSuggestion, suggestSoil } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
 
   // What the soil survey (SSURGO) says is under an irrigation system (its outline, or a small circle
-  // around a point kind's location), and the soil type it suggests (PLAN.md Phase 7 F). Looked up when the pivot is placed or moved; it never holds up the form, and a
-  // failure just says so.
+  // around a point kind's location) or a field's outline (G.10), and the soil type it suggests
+  // (PLAN.md Phase 7 F). Looked up when the area is placed or changes; it never holds up the form,
+  // and a failure just says so.
   let {
-    shape,
+    shape = null,
+    boundary = null,
     soilTypes,
     onsuggest,
+    onuse,
   }: {
     /** The pivot, or null until it's placed */
-    shape: PivotShape | null
+    shape?: PivotShape | null
+    /** A field's outline, read in place of a pivot */
+    boundary?: Boundary | null
     soilTypes: SoilType[]
     /** The suggested soil type (or null for none), each time the survey answers */
     onsuggest?: (soilType: SoilType | null) => void
+    /** With it, a button to use the suggested soil */
+    onuse?: (soilType: SoilType) => void
   } = $props()
 
   const SHOWN = 3
@@ -26,7 +33,11 @@
 
   // "of the pivot", "around this spot"
   const where = $derived(
-    !shape || !isPoint(shape.kind) ? `of the ${KIND_NOUNS[shape?.kind ?? 'center']}` : 'around this spot',
+    boundary
+      ? 'of the field'
+      : !shape || !isPoint(shape.kind)
+        ? `of the ${KIND_NOUNS[shape?.kind ?? 'center']}`
+        : 'around this spot',
   )
   const suggested = $derived(suggestion?.key ? (soilTypes.find((s) => s.key === suggestion!.key) ?? null) : null)
   const pct = (share: number) => `${Math.max(1, Math.round(share * 100))}%`
@@ -38,16 +49,16 @@
 
   // Look the pivot up again when it moves or changes size, once it settles
   $effect(() => {
-    if (!shape) {
+    if (!boundary && !shape) {
       lookup = 'idle'
       suggestion = null
       return
     }
-    const ring = surveyRing(shape)
+    const area = boundary ?? surveyRing(shape!)
     const request = new AbortController()
     const timer = setTimeout(() => {
       lookup = 'loading'
-      fetchSoilSurvey(ring, request.signal)
+      fetchSoilSurvey(area, request.signal)
         .then((units) => {
           suggestion = suggestSoil(units)
           lookup = 'done'
@@ -79,7 +90,15 @@
       <p>
         <span class="font-medium">Soil survey:</span>
         {#if suggested}
-          mostly <span class="font-medium">{suggested.name}</span> ({pct(suggestion.share)} {where}).
+          mostly <span class="font-medium">{suggested.name}</span> ({pct(suggestion.share)}
+          {where}).
+          {#if onuse}
+            <button
+              type="button"
+              class="ml-1 text-brand-600 underline underline-offset-2"
+              onclick={() => onuse(suggested!)}>Use {suggested.name}</button
+            >
+          {/if}
         {:else}
           no single soil type covers most {where}.
         {/if}

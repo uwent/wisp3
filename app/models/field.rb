@@ -11,12 +11,22 @@ class Field < ApplicationRecord
   validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}, allow_nil: true
   validate :wilting_point_below_capacity
   validate :pivot_kept_with_history, on: :update
+  validate :boundary_readable
 
   normalizes :notes, with: ->(text) { text.strip.presence }
 
   # Plantings that haven't ended follow the field's soil, area and pivot (PLAN.md Phase 8 G.9);
   # ended ones keep what their season ran with
   after_update :update_open_plantings
+
+  # The outline (G.10): a GeoJSON Polygon or MultiPolygon, or nil. A JSON string is parsed and
+  # blank clears it; positions are rounded (FieldBoundary.normalize).
+  def boundary=(value)
+    super(value.blank? ? nil : FieldBoundary.normalize(value))
+  end
+
+  # The outline's area in acres, or nil without one. Offered for area_acres, never copied to it.
+  def boundary_acres = boundary && FieldBoundary.acres(boundary)
 
   # Whether the field has plantings whose season has ended (they stay on its pivot, G.9)
   def history? = plantings.any?(&:ended?)
@@ -62,6 +72,11 @@ class Field < ApplicationRecord
     return unless will_save_change_to_pivot_id? && history?
     errors.add(:pivot_id, "can't change for a field with earlier seasons, which stay with it. " \
       "Set up a new field under the other system instead")
+  end
+
+  def boundary_readable
+    return if boundary.nil?
+    FieldBoundary.errors(boundary).each { |message| errors.add(:boundary, message) }
   end
 
   def wilting_point_below_capacity

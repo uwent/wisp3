@@ -13,8 +13,12 @@ class FieldSerializer < ApplicationSerializer
 
   many :plantings, resource: PlantingSerializer
 
+  # The outline (G.10), a GeoJSON Polygon or MultiPolygon, and its area: offered for area_acres
+  attributes :boundary, :boundary_acres
+
   # Years of seasons that have ended: they keep their soil, area and pivot (PLAN.md Phase 8 G.9)
   attribute(:ended_years) { |field| field.plantings.select(&:ended?).map(&:season_year).uniq.sort }
 
+  typelize boundary: "import('@/lib/geo').Boundary | null", boundary_acres: "number | null"
   typelize ended_years: "number[]", soil_type_name: :string, effective_field_capacity: :number, effective_perm_wilting_pt: :number
 end

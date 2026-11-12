@@ -61,7 +61,7 @@ class FieldsController < AuthenticatedController
 
   def field_params
     params.expect(field: [:pivot_id, :name, :area_acres, :soil_type_id, :field_capacity, :perm_wilting_pt, :notes,
-      :use_model_precip])
+      :use_model_precip, :boundary])
   end
 
   # Each planting of the season with its status today (PlantingSummarySerializer), sharing the

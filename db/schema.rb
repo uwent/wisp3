@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_130001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_145442) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -86,6 +86,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_130001) do
     t.index ["pivot_id"], name: "index_fields_on_pivot_id"
     t.index ["soil_type_id"], name: "index_fields_on_soil_type_id"
     t.check_constraint "area_acres IS NULL OR area_acres > 0::double precision", name: "fields_area_positive"
+    t.check_constraint "boundary IS NULL OR jsonb_typeof(boundary) = 'object'::text", name: "fields_boundary_object"
   end
 
   create_table "groups", force: :cascade do |t|
