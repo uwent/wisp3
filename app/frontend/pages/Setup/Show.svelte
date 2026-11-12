@@ -15,12 +15,13 @@
     fields,
     groups as groupRoutes,
     newQuickSetup,
+    pivotGroups,
     pivots,
     seasonCopies,
     seasonReport,
     setup,
   } from '@/routes'
-  import type { Farm, Field, GenericCurve, Pivot, Plant, SoilType } from '@/types/serializers'
+  import type { Farm, Field, GenericCurve, Pivot, PivotGroup, Plant, SoilType } from '@/types/serializers'
 
   let {
     year,
@@ -63,7 +64,14 @@
     allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
   )
 
-  type DialogState = { kind: 'farm'; farm?: Farm } | { kind: 'field'; pivot: Pivot; field?: Field }
+  // A farm's pivots in a group, and the ones in none (PLAN.md Phase 8 G.4)
+  const groupPivots = (farm: Farm, group: PivotGroup) => farm.pivots.filter((p) => p.pivot_group_id === group.id)
+  const ungrouped = (farm: Farm) => farm.pivots.filter((p) => p.pivot_group_id === null)
+
+  type DialogState =
+    | { kind: 'farm'; farm?: Farm }
+    | { kind: 'field'; pivot: Pivot; field?: Field }
+    | { kind: 'pivotGroup'; farm: Farm; group?: PivotGroup }
   // Plantings have their own dialog (also on the field page)
   let plantingDialog: PlantingDialog | undefined = $state()
   const today = isoDate(new Date())
@@ -85,6 +93,8 @@
   const dialogTitle = $derived.by(() => {
     if (!dialog) return ''
     if (dialog.kind === 'farm') return dialog.farm ? `Edit ${dialog.farm.name}` : 'Add a farm'
+    if (dialog.kind === 'pivotGroup')
+      return dialog.group ? `Edit ${dialog.group.name}` : `Group pivots on ${dialog.farm.name}`
     return dialog.field ? `Edit ${dialog.field.name}` : `Add a field to ${dialog.pivot.name}`
   })
 </script>
@@ -148,6 +158,79 @@
   </li>
 {/snippet}
 
+{#snippet pivotCard(pivot: Pivot)}
+  <div class="rounded-md border border-line">
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2">
+      <div>
+        <h3 class="font-medium">
+          <span class="font-normal text-ink-muted">Irrigation system:</span>
+          <Link href={pivots.show(pivot.id)} class="hover:underline">{pivot.name}</Link>
+        </h3>
+        <p class="text-xs text-ink-muted">
+          {pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}
+          {#if pivotSize(pivot)}
+            · {pivotSize(pivot)}{/if}
+          {#if pivot.pump_capacity_gpm}
+            · pump {units.format('flow', pivot.pump_capacity_gpm)}{/if}
+          {#if pivot.equipment}
+            · {pivot.equipment}{/if}
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-1 text-sm">
+        <Link
+          href={pivots.show(pivot.id)}
+          class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
+          aria-label="Irrigation, {pivot.name}">Irrigation</Link
+        >
+        <Link
+          href={pivots.edit(pivot.id)}
+          class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
+          aria-label="Edit {pivot.name}">Edit</Link
+        >
+        <Button
+          variant="ghost"
+          class="px-3 py-1.5"
+          aria-label="Add field to {pivot.name}"
+          onclick={() => open({ kind: 'field', pivot })}>Add field</Button
+        >
+        {#if owner}
+          <Button
+            variant="danger-ghost"
+            class="px-3 py-1.5"
+            aria-label="Delete {pivot.name}"
+            onclick={() => destroy(pivots.destroy(pivot.id), `${pivot.name} and its fields`)}
+          >
+            Delete
+          </Button>
+        {/if}
+      </div>
+    </div>
+    {#if pivot.fields.length === 0}
+      <p class="px-3 py-3 text-sm text-ink-muted">No fields on this pivot yet.</p>
+    {/if}
+    {#if used(pivot).length}
+      <ul class="divide-y divide-line">
+        {#each used(pivot) as field (field.id)}
+          {@render fieldRow(pivot, field)}
+        {/each}
+      </ul>
+    {/if}
+    {#if unused(pivot).length}
+      <!-- Fields used only in other seasons (rotated out, or set up for a later one) -->
+      <details class="border-t border-line first:border-t-0">
+        <summary class="cursor-pointer px-3 py-2 text-xs text-ink-muted hover:text-ink">
+          {unused(pivot).length === 1 ? '1 field' : `${unused(pivot).length} fields`} not used in {year - 1} or {year}
+        </summary>
+        <ul class="divide-y divide-line border-t border-line">
+          {#each unused(pivot) as field (field.id)}
+            {@render fieldRow(pivot, field)}
+          {/each}
+        </ul>
+      </details>
+    {/if}
+  </div>
+{/snippet}
+
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
     <h1 class="text-2xl font-semibold">Setup</h1>
@@ -200,6 +283,14 @@
           class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
           aria-label="Add pivot to {farm.name}">Add pivot</Link
         >
+        {#if farm.pivots.length > 1}
+          <Button
+            variant="ghost"
+            class="px-3 py-1.5"
+            aria-label="Group pivots on {farm.name}"
+            onclick={() => open({ kind: 'pivotGroup', farm })}>Group pivots</Button
+          >
+        {/if}
         <Button
           variant="ghost"
           class="px-3 py-1.5"
@@ -223,77 +314,45 @@
       <p class="text-sm text-ink-muted">No pivots on this farm yet.</p>
     {/if}
 
-    {#each farm.pivots as pivot (pivot.id)}
-      <div class="rounded-md border border-line">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2">
+    {#each farm.pivot_groups as pivotGroup (pivotGroup.id)}
+      <!-- Pivots sharing a rain gauge: daily entry fills the group's rain into their fields -->
+      <div class="space-y-3 rounded-md border border-dashed border-line p-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 class="font-medium">
-              <span class="font-normal text-ink-muted">Irrigation system:</span>
-              <Link href={pivots.show(pivot.id)} class="hover:underline">{pivot.name}</Link>
-            </h3>
+            <h3 class="font-medium"><span class="font-normal text-ink-muted">Pivot group:</span> {pivotGroup.name}</h3>
             <p class="text-xs text-ink-muted">
-              {pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}
-              {#if pivotSize(pivot)}
-                · {pivotSize(pivot)}{/if}
-              {#if pivot.pump_capacity_gpm}
-                · pump {units.format('flow', pivot.pump_capacity_gpm)}{/if}
-              {#if pivot.equipment}
-                · {pivot.equipment}{/if}
+              One rain gauge for these pivots: Daily entry fills its rain into their fields
             </p>
           </div>
-          <div class="flex flex-wrap gap-1 text-sm">
-            <Link
-              href={pivots.show(pivot.id)}
-              class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
-              aria-label="Irrigation, {pivot.name}">Irrigation</Link
-            >
-            <Link
-              href={pivots.edit(pivot.id)}
-              class="rounded-md px-3 py-1.5 text-brand-600 hover:bg-brand-50"
-              aria-label="Edit {pivot.name}">Edit</Link
-            >
+          <div class="flex gap-1 text-sm">
             <Button
               variant="ghost"
               class="px-3 py-1.5"
-              aria-label="Add field to {pivot.name}"
-              onclick={() => open({ kind: 'field', pivot })}>Add field</Button
+              aria-label="Edit {pivotGroup.name}"
+              onclick={() => open({ kind: 'pivotGroup', farm, group: pivotGroup })}>Edit</Button
             >
-            {#if owner}
-              <Button
-                variant="danger-ghost"
-                class="px-3 py-1.5"
-                aria-label="Delete {pivot.name}"
-                onclick={() => destroy(pivots.destroy(pivot.id), `${pivot.name} and its fields`)}
-              >
-                Delete
-              </Button>
-            {/if}
+            <Button
+              variant="danger-ghost"
+              class="px-3 py-1.5"
+              aria-label="Delete {pivotGroup.name}"
+              onclick={() =>
+                destroy(
+                  pivotGroups.destroy(pivotGroup.id),
+                  `the group ${pivotGroup.name} (its pivots stay, ungrouped)`,
+                )}>Delete</Button
+            >
           </div>
         </div>
-        {#if pivot.fields.length === 0}
-          <p class="px-3 py-3 text-sm text-ink-muted">No fields on this pivot yet.</p>
-        {/if}
-        {#if used(pivot).length}
-          <ul class="divide-y divide-line">
-            {#each used(pivot) as field (field.id)}
-              {@render fieldRow(pivot, field)}
-            {/each}
-          </ul>
-        {/if}
-        {#if unused(pivot).length}
-          <!-- Fields used only in other seasons (rotated out, or set up for a later one) -->
-          <details class="border-t border-line first:border-t-0">
-            <summary class="cursor-pointer px-3 py-2 text-xs text-ink-muted hover:text-ink">
-              {unused(pivot).length === 1 ? '1 field' : `${unused(pivot).length} fields`} not used in {year - 1} or {year}
-            </summary>
-            <ul class="divide-y divide-line border-t border-line">
-              {#each unused(pivot) as field (field.id)}
-                {@render fieldRow(pivot, field)}
-              {/each}
-            </ul>
-          </details>
-        {/if}
+        {#each groupPivots(farm, pivotGroup) as pivot (pivot.id)}
+          {@render pivotCard(pivot)}
+        {:else}
+          <p class="text-sm text-ink-muted">No pivots in this group.</p>
+        {/each}
       </div>
+    {/each}
+
+    {#each ungrouped(farm) as pivot (pivot.id)}
+      {@render pivotCard(pivot)}
     {/each}
   </section>
 {:else}
@@ -357,6 +416,47 @@
             >{dialog?.kind === 'farm' ? (dialog.farm?.notes ?? '') : ''}</textarea
           >
         </div>
+        <Button type="submit" disabled={processing}>Save</Button>
+      {/snippet}
+    </Form>
+  {:else if dialog?.kind === 'pivotGroup'}
+    {@const { farm, group: pivotGroup } = dialog}
+    <Form
+      action={pivotGroup ? pivotGroups.update(pivotGroup.id) : pivotGroups.create()}
+      class="space-y-4"
+      options={{ preserveScroll: true, preserveState: true }}
+      onSuccess={close}
+    >
+      {#snippet children({ errors, processing })}
+        {#if !pivotGroup}<input type="hidden" name="pivot_group[farm_id]" value={farm.id} />{/if}
+        <TextField
+          label="Group name"
+          name="pivot_group[name]"
+          value={pivotGroup?.name ?? ''}
+          placeholder="e.g. Home rain gauge"
+          hint="Pivots that share one rain gauge. On Daily entry, rain typed for the group fills into all their fields."
+          error={errors.name}
+          required
+        />
+        <fieldset class="space-y-1">
+          <legend class="text-sm font-medium">Pivots in this group</legend>
+          <input type="hidden" name="pivot_group[pivot_ids][]" value="" />
+          {#each farm.pivots as pivot (pivot.id)}
+            {@const other = farm.pivot_groups.find((g) => g.id === pivot.pivot_group_id && g.id !== pivotGroup?.id)}
+            <label class="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                class="rounded"
+                name="pivot_group[pivot_ids][]"
+                value={pivot.id}
+                checked={pivotGroup !== undefined && pivot.pivot_group_id === pivotGroup.id}
+              />
+              {pivot.name}
+              {#if other}<span class="text-xs text-ink-muted">{`(now in ${other.name})`}</span>{/if}
+            </label>
+          {/each}
+          <p class="text-xs text-ink-muted">A pivot is in one group at most; checking it here moves it.</p>
+        </fieldset>
         <Button type="submit" disabled={processing}>Save</Button>
       {/snippet}
     </Form>

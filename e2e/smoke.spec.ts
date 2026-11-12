@@ -562,8 +562,11 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   await expect(dialog.getByText('This overlaps a planting covering the whole field')).toBeVisible()
 })
 
+// Mid-season, so the demo's fields are in season whatever today's date (in November they're collapsed)
+const midSeason = `/daily?date=${new Date().getFullYear()}-07-15`
+
 test('daily entry saves rain for a field', async ({ page }) => {
-  await page.goto('/daily')
+  await page.goto(midSeason)
   const rain = page.getByLabel(/^Rain on /).first()
   await rain.fill('0.3')
   await page.getByRole('button', { name: /^Save / }).click()
@@ -578,8 +581,52 @@ test('daily entry saves rain for a field', async ({ page }) => {
   await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('')
 })
 
+test('daily entry fills a pivot group’s rain into its fields, and saves a plot’s irrigation and a cover reading', async ({
+  page,
+}) => {
+  await page.goto(midSeason)
+  const rain = (field: string) => page.getByLabel(`Rain on ${field}`, { exact: true })
+  const gauge = page.getByLabel('Rain for all fields in River gauge')
+  await gauge.fill('0.4')
+  await expect(rain('Hay north')).toHaveValue('0.4')
+  await expect(rain('River A')).toHaveValue('0.4')
+  await rain('River A').fill('0.5')
+  await expect(gauge).toHaveValue('')
+  await expect(gauge).toHaveAttribute('placeholder', 'varies')
+
+  const plots = page.getByRole('button', { name: 'Plots on Arlington 525' })
+  if ((await plots.getAttribute('aria-expanded')) === 'false') await plots.click()
+  const drip = page.getByLabel(/^Irrigation on Snap bean, .* on Arlington 525/)
+  await drip.fill('0.3')
+  const cover = page.getByLabel(/^Percent cover on Hay north/)
+  await cover.fill('30')
+  await page.getByRole('button', { name: /^Save / }).click()
+  await expect(page.getByText(/^Saved /)).toBeVisible()
+  await expect(rain('Hay north')).toHaveValue('0.4')
+  await expect(rain('River A')).toHaveValue('0.5')
+  await expect(drip).toHaveValue('0.3')
+  await expect(cover).toHaveValue('30')
+
+  // Collapsing the group is remembered
+  await page.getByRole('button', { name: 'Pivots in River gauge' }).click()
+  await expect(rain('Hay north')).toBeHidden()
+  await page.reload()
+  await expect(rain('Hay north')).toBeHidden()
+  await page.getByRole('button', { name: 'Pivots in River gauge' }).click()
+
+  // Leave the day as it was for other tests: one value from the group, then clear it from there
+  await gauge.fill('0.4')
+  await expect(rain('River A')).toHaveValue('0.4')
+  await gauge.fill('')
+  await drip.fill('')
+  await cover.fill('')
+  await page.getByRole('button', { name: /^Save / }).click()
+  await expect(page.getByText(/^Saved /)).toBeVisible()
+  await expect(rain('River A')).toHaveValue('')
+})
+
 test('daily entry asks before changing the date with unsaved values', async ({ page }) => {
-  await page.goto('/daily')
+  await page.goto(midSeason)
   const date = await page.getByLabel('Date', { exact: true }).inputValue()
   await page
     .getByLabel(/^Rain on /)

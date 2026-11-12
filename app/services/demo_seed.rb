@@ -91,6 +91,9 @@ class DemoSeed
     [[6, 1], [7, 10], [8, 18]].each { |month, day| alfalfa.canopy_cuttings.create!(date: date(month, day)) }
     alfalfa.canopy_observations.create!(date: date(6, 20), pct_cover: 55)
 
+    # One rain gauge for both Plover River pivots (G.4: daily entry fills its rain into their fields)
+    plover.pivot_groups.create!(name: "River gauge").pivots << [river, hay]
+
     # Vegetables sharing a rain gauge (field group)
     veg = coloma.pivots.create!(name: "Home pivot", latitude: 44.0337, longitude: -89.5208, radius_ft: 1100,
       pump_capacity_gpm: 750)

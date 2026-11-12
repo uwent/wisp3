@@ -94,7 +94,8 @@ export async function signedInPages(page: Page): Promise<string[]> {
     hay,
     '/setup',
     '/setup/start',
-    '/daily',
+    // Mid-season, so its rows are open (in November nothing is in season and they're collapsed)
+    `/daily?date=${new Date().getFullYear()}-07-15`,
     pivot,
     `${pivot}/edit`,
     '/pivots/new',

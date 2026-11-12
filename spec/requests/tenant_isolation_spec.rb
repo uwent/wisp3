@@ -146,6 +146,14 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_field.field_entries).to be_empty
   end
 
+  it "ignores other groups' plantings and canopy readings in bulk daily entry" do
+    plot = create(:planting, field: their_field, partial: true, area_acres: 0.5)
+    patch daily_entry_path, params: {date: "2026-07-01", plantings: {plot.id => {irrigation_in: 1}},
+                                     canopy: {plot.id => 40}}
+    expect(plot.planting_entries).to be_empty
+    expect(plot.canopy_observations).to be_empty
+  end
+
   it "won't apply my pivot's irrigation to another group's field" do
     post pivot_irrigations_path(my_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1, field_ids: [their_field.id]}}
     patch daily_entry_path, params: {date: "2026-07-03", pivots: {my_pivot.id => {inches: 1, field_ids: [their_field.id]}}}

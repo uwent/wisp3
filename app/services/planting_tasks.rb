@@ -27,25 +27,24 @@ class PlantingTasks
 
   def due = all.select(&:due)
 
-  private
+  # The percent cover (or LAI) reading's task for planting on date: nil before emergence, and on LAI
+  # until the grower starts entering readings (the curve stands in until then). A cutting restarts
+  # the canopy, so only readings since the latest one count (one on its date belongs to the
+  # regrowth, as in CutCanopy). Needs only the planting's readings and cuttings, not its balance
+  # (daily entry asks it for any date).
+  def self.canopy(planting, date)
+    return if date < planting.emergence_date
 
-  def soil_moisture
-    last = @status.days.rfind { |day| day.inputs.moisture_source }&.inputs&.date
-    reading(:soil_moisture, "Soil moisture", last, "Enter a soil moisture reading")
-  end
-
-  def canopy
-    return if @today < @planting.emergence_date
-
-    lai = @planting.et_method == "lai"
+    lai = planting.et_method == "lai"
     attribute = lai ? :lai : :pct_cover
-    last = @planting.canopy_observations.select { |obs| obs.date <= @today && obs[attribute] }.max_by(&:date)
-    # On LAI the curve stands in for readings until the grower starts entering them
+    cut = planting.canopy_cuttings.map(&:date).select { |day| day > planting.emergence_date && day <= date }.max
+    last = planting.canopy_observations
+      .select { |obs| obs.date <= date && (cut.nil? || obs.date >= cut) && obs[attribute] }.max_by(&:date)
     return if lai && !last
 
     label = lai ? "Leaf area index (LAI)" : "Percent cover"
     # From vine kill the canopy ramps down on its own; soil moisture readings carry on to harvest
-    if @planting.vine_kill_date && @today >= @planting.vine_kill_date
+    if planting.vine_kill_date && date >= planting.vine_kill_date
       return Task.new(kind: :canopy, label:, last_date: last&.date, due: false, note: "vines killed", todo: nil,
         message: nil)
     end
@@ -53,15 +52,27 @@ class PlantingTasks
       return Task.new(kind: :canopy, label:, last_date: last.date, due: false, note: "canopy closed", todo: nil,
         message: nil)
     end
-    reading(:canopy, label, last&.date, lai ? "Enter an LAI reading" : "Enter a percent cover reading")
+    reading(:canopy, label, last&.date, lai ? "Enter an LAI reading" : "Enter a percent cover reading", date,
+      none: cut && "none since the #{cut.strftime("%b %-d")} cutting")
   end
 
-  def reading(kind, label, last, todo)
-    due = last.nil? || (@today - last).to_i > READING_EVERY
-    since = last ? "last #{day(last)}" : "none yet this season"
+  def self.reading(kind, label, last, todo, today, none: nil)
+    due = last.nil? || (today - last).to_i > READING_EVERY
+    since = last ? "last #{last.strftime("%b %-d")}" : none || "none yet this season"
     Task.new(kind:, label:, last_date: last, due:, note: ("due" if due), todo: ("#{todo} (#{since})" if due),
       message: nil)
   end
+
+  private
+
+  def soil_moisture
+    last = @status.days.rfind { |day| day.inputs.moisture_source }&.inputs&.date
+    reading(:soil_moisture, "Soil moisture", last, "Enter a soil moisture reading")
+  end
+
+  def canopy = self.class.canopy(@planting, @today)
+
+  def reading(kind, label, last, todo) = self.class.reading(kind, label, last, todo, @today)
 
   def canopy_check
     check = @status.canopy.check or return

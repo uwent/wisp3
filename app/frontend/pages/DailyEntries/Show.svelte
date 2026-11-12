@@ -1,36 +1,33 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import { Form, Link, page, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
+  import {
+    applies,
+    appliedLabel,
+    common,
+    count,
+    farmRows,
+    fieldHasEntry,
+    inSeason,
+    pivotHasEntry,
+    plots,
+    rainFields,
+    wholeField,
+    type DayFarm,
+    type DayField,
+    type DayPivot,
+    type DayPlanting,
+  } from '@/lib/dailyEntry'
   import { addDays, formatDate } from '@/lib/dates'
+  import { cropName, plotSize } from '@/lib/plantings'
   import { confirmUnsavedChanges, UNSAVED_MESSAGE } from '@/lib/unsaved.svelte'
   import { units as unitsFor } from '@/lib/units'
-  import { dailyEntries, fields as fieldRoutes, newQuickSetup } from '@/routes'
-  import type { PivotIrrigation } from '@/types/serializers'
+  import { dailyEntries, fields as fieldRoutes, newQuickSetup, plantings as plantingRoutes } from '@/routes'
 
-  type DayField = {
-    id: number
-    name: string
-    area_acres: number | null
-    crop: string | null
-    rain_model: number | null
-    entry: {
-      rain_in: number | null
-      irrigation_in: number | null
-      soil_moisture_pct: number | null
-      notes: string | null
-    } | null
-  }
-  type DayPivot = {
-    id: number
-    name: string
-    pump_capacity_gpm: number | null
-    irrigation: PivotIrrigation | null
-    fields: DayField[]
-  }
-
-  let { date, farms }: { date: string; farms: { id: number; name: string; pivots: DayPivot[] }[] } = $props()
+  let { date, farms }: { date: string; farms: DayFarm[] } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const today = new Date().toLocaleDateString('en-CA')
@@ -46,27 +43,385 @@
     router.get(dailyEntries.show().url, { date: to })
     return true
   }
+
+  const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
+  const allFields = $derived(allPivots.flatMap((pivot) => pivot.fields))
+
+  // The values that other rows show or fill, from what's saved; reset when the page's data changes
+  // (another date, or after a save)
+  function saved(pivots: DayPivot[]) {
+    const fields = pivots.flatMap((pivot) => pivot.fields)
+    const hours = Object.fromEntries(pivots.map((p) => [p.id, p.irrigation !== null && p.irrigation.inches === null]))
+    return {
+      rain: Object.fromEntries(fields.map((f) => [f.id, f.entry?.rain_in ?? null])),
+      fieldIrrigation: Object.fromEntries(fields.map((f) => [f.id, f.entry?.irrigation_in ?? null])),
+      byHours: hours,
+      pivotAmount: Object.fromEntries(
+        pivots.map((p) => [p.id, hours[p.id] ? (p.irrigation?.run_hours ?? null) : (p.irrigation?.inches ?? null)]),
+      ),
+      applied: Object.fromEntries(pivots.map((p) => [p.id, p.irrigation?.field_ids ?? p.fields.map((f) => f.id)])),
+    }
+  }
+  const initial = untrack(() => saved(allPivots))
+  let rain = $state<Record<number, number | null>>(initial.rain)
+  let fieldIrrigation = $state<Record<number, number | null>>(initial.fieldIrrigation)
+  let pivotAmount = $state<Record<number, number | null>>(initial.pivotAmount)
+  let applied = $state<Record<number, number[]>>(initial.applied)
+  let byHours = $state<Record<number, boolean>>(initial.byHours)
+  $effect(() => {
+    const values = saved(allPivots)
+    untrack(() => {
+      ;({ rain, fieldIrrigation, pivotAmount, applied, byHours } = values)
+    })
+  })
+
   const canUseHours = (pivot: DayPivot) =>
     pivot.pump_capacity_gpm !== null && pivot.fields.every((f) => f.area_acres !== null)
 
-  // Which pivots are entered as run hours; starts from the saved irrigation
-  let byHours = $state<Record<number, boolean>>({})
-  const hours = (pivot: DayPivot) =>
-    byHours[pivot.id] ?? (pivot.irrigation !== null && pivot.irrigation.inches === null)
+  function switchHours(pivot: DayPivot, hours: boolean) {
+    byHours[pivot.id] = hours
+    pivotAmount[pivot.id] = hours ? (pivot.irrigation?.run_hours ?? null) : (pivot.irrigation?.inches ?? null)
+  }
 
-  const pivotApplies = (pivot: DayPivot, field: DayField) =>
-    pivot.irrigation !== null && (pivot.irrigation.field_ids === null || pivot.irrigation.field_ids.includes(field.id))
+  const pivotReaches = (pivot: DayPivot, field: DayField) =>
+    pivotAmount[pivot.id] != null && applies(applied[pivot.id] ?? null, field)
+
+  /** A group's or pivot's rain: the fields' common value, or "varies" */
+  const shared = (fields: DayField[]) => common(fields.map((f) => rain[f.id] ?? null))
+  function fill(fields: DayField[], value: number | null) {
+    for (const field of fields) rain[field.id] = value
+    dirty = true
+  }
+
+  // Collapsed rows. A pivot group's or pivot's choice is remembered in this browser; the rest
+  // (fields with no crop, plots, pivots with nothing in season) start closed unless something was
+  // entered there that day
+  const STORAGE_KEY = 'wisp.dailyEntry.collapsed'
+  let collapsed = $state<Record<string, boolean>>(
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+      } catch {
+        return {}
+      }
+    })(),
+  )
+  let opened = $state<Record<string, boolean>>({})
+  function remember(key: string, isCollapsed: boolean) {
+    collapsed[key] = isCollapsed
+    try {
+      const kept = Object.fromEntries(Object.entries(collapsed).filter(([, closed]) => closed))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(kept))
+    } catch {
+      // Not remembered (private window, blocked storage): it still works on this page
+    }
+  }
+  const isOpen = (key: string) => !collapsed[key]
+  const shown = (key: string, byDefault: boolean) => opened[key] ?? byDefault
+
+  const plotsOpenByDefault = (field: DayField) =>
+    plots(field).some((p) => p.entry !== null || p.cover?.value != null || p.cover?.due)
+
+  const anyCover = $derived(allFields.some((f) => f.plantings.some((p) => p.cover)))
+  const coverKinds = $derived(new Set(allFields.flatMap((f) => f.plantings.flatMap((p) => p.cover?.kind ?? []))))
+  const coverHeading = $derived(
+    coverKinds.size > 1 ? 'Cover (% or LAI)' : coverKinds.has('lai') ? 'LAI' : 'Percent cover (%)',
+  )
+  const columns = $derived(anyCover ? 5 : 4)
 
   const e = (errors: Record<string, string | string[]>, key: string) => errors[key]
+
+  // Indents for each level's name cell, with room for its expand toggle
+  const indent = ['pl-8', 'pl-13', 'pl-18', 'pl-23']
+  // Names stay in view while the table scrolls sideways (phones); each row sets its background
+  const nameCell = 'sticky left-0 z-10 min-w-40 py-1.5 pr-2 text-left'
 </script>
 
 <svelte:head><title>Daily entry · WISP</title></svelte:head>
+
+{#snippet toggle(label: string, expanded: boolean, onclick: () => void)}
+  <button
+    type="button"
+    class="relative -ml-5 inline-flex size-5 items-center justify-center rounded text-ink-muted hover:bg-surface hover:text-ink"
+    aria-expanded={expanded}
+    aria-label={label}
+    {onclick}
+  >
+    <span aria-hidden="true" class="inline-block transition-transform {expanded ? 'rotate-90' : ''}">▸</span>
+  </button>
+{/snippet}
+
+{#snippet coverCell(planting: DayPlanting, label: string, errs: Record<string, string | string[]>)}
+  {#if planting.cover}
+    {@const cover = planting.cover}
+    <NumberField
+      hideLabel
+      label="{cover.kind === 'lai' ? 'LAI' : 'Percent cover'} on {label}{cover.due ? ' (due)' : ''}"
+      name="canopy[{planting.id}]"
+      value={cover.value}
+      error={e(errs, `canopy.${planting.id}`)}
+    />
+    {#if cover.value === null}
+      <p class="mt-0.5 text-xs {cover.due ? 'font-medium text-status-caution-ink' : 'text-ink-muted'}">
+        {#if cover.due}Due{cover.last_date
+            ? ` · last ${formatDate(cover.last_date)}`
+            : ''}{:else if cover.last_date}Last
+          {formatDate(cover.last_date)}{/if}
+      </p>
+    {/if}
+  {/if}
+{/snippet}
+
+<!-- A field's row, and its plots under it -->
+{#snippet fieldRows(
+  pivot: DayPivot,
+  field: DayField,
+  depth: number,
+  hidden: boolean,
+  errs: Record<string, string | string[]>,
+)}
+  {@const whole = wholeField(field)}
+  {@const fieldPlots = plots(field)}
+  {@const plotsKey = `plots-${field.id}`}
+  {@const plotsOpen = shown(plotsKey, plotsOpenByDefault(field))}
+  <tr class="align-top" {hidden}>
+    <th scope="row" class="{nameCell} bg-surface-raised font-normal {indent[depth]}">
+      <span class="flex items-start gap-1">
+        {#if fieldPlots.length}
+          {@render toggle(`Plots on ${field.name}`, plotsOpen, () => (opened[plotsKey] = !plotsOpen))}
+        {/if}
+        <span>
+          <Link href={fieldRoutes.show(field.id)} class="hover:underline">{field.name}</Link>
+          <span class="block text-xs text-ink-muted">
+            {#if whole}{cropName(whole)}{fieldPlots.length ? ` + ${count(fieldPlots.length, 'plot')}` : ''}
+            {:else if fieldPlots.length}{count(fieldPlots.length, 'plot')}
+            {:else}No crop{/if}
+          </span>
+        </span>
+      </span>
+    </th>
+    <td class="w-36 px-2 py-1.5">
+      <NumberField
+        hideLabel
+        label="Rain on {field.name}"
+        name="fields[{field.id}][rain_in]"
+        quantity="depth"
+        bind:value={rain[field.id]}
+        placeholder={field.rain_model === null
+          ? ''
+          : `modeled ${units.format('depth', field.rain_model, { unit: false })}`}
+        error={e(errs, `fields.${field.id}.rain_in`)}
+      />
+    </td>
+    <td class="w-36 px-2 py-1.5">
+      <NumberField
+        hideLabel
+        label="Irrigation on {field.name} (replaces the pivot's)"
+        name="fields[{field.id}][irrigation_in]"
+        quantity="depth"
+        bind:value={fieldIrrigation[field.id]}
+        placeholder={pivotReaches(pivot, field) ? "pivot's" : ''}
+        error={e(errs, `fields.${field.id}.irrigation_in`)}
+      />
+    </td>
+    <td class="w-28 px-2 py-1.5">
+      {#if whole || !inSeason(field)}
+        <NumberField
+          hideLabel
+          label="Soil moisture reading on {field.name}"
+          name="fields[{field.id}][soil_moisture_pct]"
+          value={field.entry?.soil_moisture_pct ?? null}
+          error={e(errs, `fields.${field.id}.soil_moisture_pct`)}
+        />
+      {:else}
+        <!-- A field growing only plots: each plot's reading is on its own row -->
+        <input
+          type="hidden"
+          name="fields[{field.id}][soil_moisture_pct]"
+          value={field.entry?.soil_moisture_pct ?? ''}
+        />
+        <span class="block py-2 text-center text-ink-muted" aria-hidden="true">—</span>
+      {/if}
+    </td>
+    {#if anyCover}
+      <td class="w-28 px-2 py-1.5"
+        >{#if whole}{@render coverCell(whole, field.name, errs)}{/if}</td
+      >
+    {/if}
+  </tr>
+  {#each fieldPlots as plot (plot.id)}
+    {@const plotLabel = `${cropName(plot)}, ${plotSize(plot, units)}`}
+    <tr class="align-top" hidden={hidden || !plotsOpen}>
+      <th scope="row" class="{nameCell} bg-surface-raised font-normal {indent[depth + 1]}">
+        <Link href={plantingRoutes.show(plot.id)} class="hover:underline">{cropName(plot)}</Link>
+        <span class="block text-xs text-ink-muted">{plotSize(plot, units)}</span>
+      </th>
+      <td class="px-2 py-1.5 text-xs text-ink-muted"><span class="block py-2">field's</span></td>
+      <td class="px-2 py-1.5">
+        <NumberField
+          hideLabel
+          label="Irrigation on {plotLabel} on {field.name} (replaces the field's)"
+          name="plantings[{plot.id}][irrigation_in]"
+          quantity="depth"
+          value={plot.entry?.irrigation_in ?? null}
+          placeholder={fieldIrrigation[field.id] != null ? "field's" : pivotReaches(pivot, field) ? "pivot's" : ''}
+          error={e(errs, `plantings.${plot.id}.irrigation_in`)}
+        />
+      </td>
+      <td class="px-2 py-1.5">
+        <NumberField
+          hideLabel
+          label="Soil moisture reading on {plotLabel} on {field.name}"
+          name="plantings[{plot.id}][soil_moisture_pct]"
+          value={plot.entry?.soil_moisture_pct ?? null}
+          error={e(errs, `plantings.${plot.id}.soil_moisture_pct`)}
+        />
+      </td>
+      {#if anyCover}
+        <td class="px-2 py-1.5">{@render coverCell(plot, `${plotLabel} on ${field.name}`, errs)}</td>
+      {/if}
+    </tr>
+  {/each}
+{/snippet}
+
+<!-- A pivot's row (its irrigation, and rain for all its fields), its fields, then those with no crop -->
+{#snippet pivotRows(pivot: DayPivot, depth: number, hidden: boolean, errs: Record<string, string | string[]>)}
+  {@const key = `pivot-${pivot.id}`}
+  {@const open = isOpen(key)}
+  {@const growing = pivot.fields.filter(inSeason)}
+  {@const idle = pivot.fields.filter((f) => !inSeason(f))}
+  {@const idleKey = `idle-${pivot.id}`}
+  {@const idleOpen = shown(idleKey, idle.some(fieldHasEntry))}
+  {@const appliedKey = `applied-${pivot.id}`}
+  {@const appliedOpen = shown(appliedKey, false)}
+  {@const rainShared = shared(growing)}
+  <tr class="border-t border-line bg-surface align-top" {hidden}>
+    <th scope="row" class="{nameCell} bg-surface {indent[depth]}">
+      <span class="flex items-start gap-1">
+        {@render toggle(`Fields on ${pivot.name}`, open, () => remember(key, open))}
+        <span>
+          <span class="font-medium">{pivot.name}</span>
+          <span class="block text-xs font-normal text-ink-muted">{count(pivot.fields.length, 'field')}</span>
+        </span>
+      </span>
+    </th>
+    <td class="px-2 py-1.5">
+      {#if growing.length > 1}
+        <NumberField
+          hideLabel
+          id="pivot-{pivot.id}-rain"
+          label="Rain for all fields on {pivot.name}"
+          quantity="depth"
+          bind:value={() => rainShared.value, (value) => fill(growing, value)}
+          placeholder={rainShared.varies ? 'varies' : 'all fields'}
+        />
+      {/if}
+    </td>
+    <td class="px-2 py-1.5" colspan={columns - 2}>
+      <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
+        <div class="w-32">
+          {#if byHours[pivot.id]}
+            <NumberField
+              hideLabel
+              label="Run hours of {pivot.name}"
+              name="pivots[{pivot.id}][run_hours]"
+              unitLabel="h"
+              bind:value={pivotAmount[pivot.id]}
+              placeholder="hours"
+              error={e(errs, `pivots.${pivot.id}.run_hours`)}
+            />
+            <input type="hidden" name="pivots[{pivot.id}][inches]" value="" />
+          {:else}
+            <NumberField
+              hideLabel
+              label="Irrigation by {pivot.name}"
+              name="pivots[{pivot.id}][inches]"
+              quantity="depth"
+              bind:value={pivotAmount[pivot.id]}
+              placeholder="pivot"
+              error={e(errs, `pivots.${pivot.id}.inches`)}
+            />
+            <input type="hidden" name="pivots[{pivot.id}][run_hours]" value="" />
+          {/if}
+        </div>
+        {#if canUseHours(pivot)}
+          <label class="flex items-center gap-1.5 py-2 text-xs">
+            <input
+              type="checkbox"
+              class="rounded"
+              checked={byHours[pivot.id]}
+              onchange={(event) => switchHours(pivot, event.currentTarget.checked)}
+            />
+            Run hours
+          </label>
+        {/if}
+        {#if pivot.fields.length > 1}
+          <button
+            type="button"
+            class="py-2 text-xs text-brand-600 hover:underline"
+            aria-expanded={appliedOpen}
+            onclick={() => (opened[appliedKey] = !appliedOpen)}
+          >
+            Applied to: {appliedLabel(
+              (applied[pivot.id] ?? []).length === pivot.fields.length ? null : (applied[pivot.id] ?? []),
+              pivot.fields.length,
+            )}
+          </button>
+        {/if}
+      </div>
+      {#if e(errs, `pivots.${pivot.id}.field_ids`)}<p class="text-xs text-status-irrigate-ink">
+          {e(errs, `pivots.${pivot.id}.field_ids`)}
+        </p>{/if}
+    </td>
+  </tr>
+  {#if pivot.fields.length > 1}
+    <!-- Always in the form (a hidden row still submits), so a saved choice of fields isn't lost -->
+    <tr hidden={hidden || !appliedOpen}>
+      <td colspan={columns} class="pb-2 {indent[depth + 1]}">
+        <fieldset class="space-y-1">
+          <legend class="text-xs font-medium">{pivot.name}'s irrigation applied to</legend>
+          <input type="hidden" name="pivots[{pivot.id}][field_ids][]" value="" />
+          <div class="flex flex-wrap gap-x-4 gap-y-1">
+            {#each pivot.fields as field (field.id)}
+              <label class="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  class="rounded"
+                  name="pivots[{pivot.id}][field_ids][]"
+                  value={field.id}
+                  bind:group={applied[pivot.id]}
+                />
+                {field.name}
+              </label>
+            {/each}
+          </div>
+        </fieldset>
+      </td>
+    </tr>
+  {/if}
+  {#each growing as field (field.id)}
+    {@render fieldRows(pivot, field, depth + 1, hidden || !open, errs)}
+  {/each}
+  {#if idle.length}
+    <tr hidden={hidden || !open}>
+      <td colspan={columns} class="py-1.5 {indent[depth + 1]}">
+        <span class="flex items-center gap-1 text-xs text-ink-muted">
+          {@render toggle(`Fields with no crop on ${pivot.name}`, idleOpen, () => (opened[idleKey] = !idleOpen))}
+          {growing.length ? `${count(idle.length, 'field')} with no crop this season` : 'No crop this season'}
+        </span>
+      </td>
+    </tr>
+    {#each idle as field (field.id)}
+      {@render fieldRows(pivot, field, depth + 1, hidden || !open || !idleOpen, errs)}
+    {/each}
+  {/if}
+{/snippet}
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
     <h1 class="text-2xl font-semibold">Daily entry</h1>
     <p class="text-sm text-ink-muted">
-      Enter rain, irrigation and soil moisture readings for all your fields on one day.
+      Rain, irrigation, soil moisture and percent cover for all your fields on one day.
     </p>
   </div>
   <div class="flex items-center gap-1">
@@ -91,7 +446,7 @@
   </div>
 </div>
 
-{#if farms.every((farm) => farm.pivots.length === 0)}
+{#if allPivots.length === 0}
   <section
     class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted"
   >
@@ -112,147 +467,94 @@
       {#snippet children({ errors, processing, isDirty })}
         {@const errs = errors as Record<string, string | string[]>}
         <input type="hidden" name="date" value={date} />
-        <h2 class="text-lg font-medium">{formatDate(date, { weekday: true, year: true })}</h2>
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="text-lg font-medium">{formatDate(date, { weekday: true, year: true })}</h2>
+          <p class="text-xs text-ink-muted">
+            Rain typed for a pivot or a group fills in its fields; change any field before saving.
+          </p>
+        </div>
 
         {#each farms as farm (farm.id)}
+          {@const rows = farmRows(farm)}
+          {@const idleKey = `idle-farm-${farm.id}`}
+          {@const idleOpen = shown(idleKey, rows.idle.some(pivotHasEntry))}
           {#if farm.pivots.length}
-            <section class="space-y-3">
-              <h3 class="font-medium text-ink-muted">{farm.name}</h3>
-              {#each farm.pivots as pivot (pivot.id)}
-                <!-- A group named for the pivot, so its Irrigation and Run hours say whose they are -->
-                <div
-                  role="group"
-                  aria-labelledby="pivot-{pivot.id}-name"
-                  class="rounded-lg border border-line bg-surface-raised"
-                >
-                  <div class="flex flex-wrap items-start gap-x-6 gap-y-3 border-b border-line p-4">
-                    <div class="min-w-32">
-                      <h4 id="pivot-{pivot.id}-name" class="font-medium">{pivot.name}</h4>
-                      <p class="text-xs text-ink-muted">
-                        Irrigation applied by this pivot, to all its fields or only some
-                      </p>
-                    </div>
-                    <div class="w-40">
-                      {#if hours(pivot)}
-                        <NumberField
-                          label="Run hours"
-                          name="pivots[{pivot.id}][run_hours]"
-                          unitLabel="h"
-                          value={pivot.irrigation?.run_hours ?? null}
-                          error={e(errs, `pivots.${pivot.id}.run_hours`)}
-                        />
-                        <input type="hidden" name="pivots[{pivot.id}][inches]" value="" />
-                      {:else}
-                        <NumberField
-                          label="Irrigation"
-                          name="pivots[{pivot.id}][inches]"
-                          quantity="depth"
-                          value={pivot.irrigation?.inches ?? null}
-                          error={e(errs, `pivots.${pivot.id}.inches`)}
-                        />
-                        <input type="hidden" name="pivots[{pivot.id}][run_hours]" value="" />
-                      {/if}
-                    </div>
-                    {#if canUseHours(pivot)}
-                      <label class="flex items-center gap-2 self-end pb-2 text-sm">
-                        <input
-                          type="checkbox"
-                          class="rounded"
-                          checked={hours(pivot)}
-                          onchange={(event) => (byHours[pivot.id] = event.currentTarget.checked)}
-                        />
-                        Run hours
-                      </label>
+            <section class="space-y-2" aria-labelledby="farm-{farm.id}">
+              <h3 id="farm-{farm.id}" class="font-medium text-ink-muted">{farm.name}</h3>
+              <div class="relative overflow-x-auto rounded-lg border border-line bg-surface-raised">
+                <table class="w-full min-w-xl text-sm">
+                  <thead class="text-xs text-ink-muted">
+                    <tr class="text-left">
+                      <th class="sticky left-0 z-10 bg-surface-raised px-3 py-1.5 font-medium">Pivot or field</th>
+                      <th class="px-2 py-1.5 font-medium">Rain ({units.label('depth')})</th>
+                      <th class="px-2 py-1.5 font-medium">Irrigation ({units.label('depth')})</th>
+                      <th class="px-2 py-1.5 font-medium">Soil moisture (%)</th>
+                      {#if anyCover}<th class="px-2 py-1.5 font-medium">{coverHeading}</th>{/if}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each rows.groups as group (group.id)}
+                      {@const key = `group-${group.id}`}
+                      {@const open = isOpen(key)}
+                      {@const fields = rainFields(group.pivots)}
+                      {@const rainShared = shared(fields)}
+                      <tr class="border-t border-line bg-brand-50 align-top">
+                        <th scope="row" class="{nameCell} bg-brand-50 {indent[0]}">
+                          <span class="flex items-start gap-1">
+                            {@render toggle(`Pivots in ${group.name}`, open, () => remember(key, open))}
+                            <span>
+                              <span class="font-medium">{group.name}</span>
+                              <span class="block text-xs font-normal text-ink-muted"
+                                >Pivot group · {count(group.pivots.length, 'pivot')}</span
+                              >
+                            </span>
+                          </span>
+                        </th>
+                        <td class="px-2 py-1.5">
+                          <NumberField
+                            hideLabel
+                            id="group-{group.id}-rain"
+                            label="Rain for all fields in {group.name}"
+                            quantity="depth"
+                            bind:value={() => rainShared.value, (value) => fill(fields, value)}
+                            placeholder={rainShared.varies ? 'varies' : 'all fields'}
+                          />
+                        </td>
+                        <td colspan={columns - 2}></td>
+                      </tr>
+                      {#each group.pivots as pivot (pivot.id)}
+                        {@render pivotRows(pivot, 1, !open, errs)}
+                      {/each}
+                    {/each}
+                    {#each rows.pivots as pivot (pivot.id)}
+                      {@render pivotRows(pivot, 0, false, errs)}
+                    {/each}
+                    {#if rows.idle.length}
+                      <tr class="border-t border-line">
+                        <td colspan={columns} class="py-1.5 pl-8">
+                          <span class="flex items-center gap-1 text-xs text-ink-muted">
+                            {@render toggle(
+                              `Pivots with no crop on ${farm.name}`,
+                              idleOpen,
+                              () => (opened[idleKey] = !idleOpen),
+                            )}
+                            {count(rows.idle.length, 'pivot')} with no crop this season
+                          </span>
+                        </td>
+                      </tr>
+                      {#each rows.idle as pivot (pivot.id)}
+                        {@render pivotRows(pivot, 0, !idleOpen, errs)}
+                      {/each}
                     {/if}
-                    {#if pivot.fields.length > 1}
-                      <fieldset class="space-y-1 self-end pb-1">
-                        <legend class="text-sm font-medium">Applied to</legend>
-                        <input type="hidden" name="pivots[{pivot.id}][field_ids][]" value="" />
-                        <div class="flex flex-wrap gap-x-4 gap-y-1">
-                          {#each pivot.fields as field (field.id)}
-                            <label class="flex items-center gap-1.5 text-sm">
-                              <input
-                                type="checkbox"
-                                class="rounded"
-                                name="pivots[{pivot.id}][field_ids][]"
-                                value={field.id}
-                                checked={pivot.irrigation?.field_ids == null ||
-                                  pivot.irrigation.field_ids.includes(field.id)}
-                              />
-                              {field.name}
-                            </label>
-                          {/each}
-                        </div>
-                        {#if e(errs, `pivots.${pivot.id}.field_ids`)}<p class="text-xs text-status-irrigate-ink">
-                            {e(errs, `pivots.${pivot.id}.field_ids`)}
-                          </p>{/if}
-                      </fieldset>
-                    {/if}
-                  </div>
-
-                  <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                      <thead class="text-xs text-ink-muted">
-                        <tr class="text-left">
-                          <th class="px-4 py-2 font-medium">Field</th>
-                          <th class="px-2 py-2 font-medium">Rain ({units.label('depth')})</th>
-                          <th class="px-2 py-2 font-medium">Field's own irrigation ({units.label('depth')})</th>
-                          <th class="px-2 py-2 font-medium">Soil moisture reading (%)</th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-line">
-                        {#each pivot.fields as field (field.id)}
-                          <tr class="align-top">
-                            <th scope="row" class="px-4 py-2 text-left font-normal">
-                              <Link href={fieldRoutes.show(field.id)} class="hover:underline">{field.name}</Link>
-                              <span class="block text-xs text-ink-muted">{field.crop ?? 'No crop'}</span>
-                            </th>
-                            <td class="w-36 px-2 py-2">
-                              <NumberField
-                                hideLabel
-                                label="Rain on {field.name}"
-                                name="fields[{field.id}][rain_in]"
-                                quantity="depth"
-                                value={field.entry?.rain_in ?? null}
-                                placeholder={field.rain_model === null
-                                  ? ''
-                                  : `modeled ${units.format('depth', field.rain_model, { unit: false })}`}
-                                error={e(errs, `fields.${field.id}.rain_in`)}
-                              />
-                            </td>
-                            <td class="w-36 px-2 py-2">
-                              <NumberField
-                                hideLabel
-                                label="Irrigation on {field.name} (replaces the pivot's)"
-                                name="fields[{field.id}][irrigation_in]"
-                                quantity="depth"
-                                value={field.entry?.irrigation_in ?? null}
-                                placeholder={pivotApplies(pivot, field) ? "pivot's" : ''}
-                                error={e(errs, `fields.${field.id}.irrigation_in`)}
-                              />
-                            </td>
-                            <td class="w-36 px-2 py-2">
-                              <NumberField
-                                hideLabel
-                                label="Soil moisture reading on {field.name}"
-                                name="fields[{field.id}][soil_moisture_pct]"
-                                value={field.entry?.soil_moisture_pct ?? null}
-                                error={e(errs, `fields.${field.id}.soil_moisture_pct`)}
-                              />
-                            </td>
-                          </tr>
-                        {/each}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              {/each}
+                  </tbody>
+                </table>
+              </div>
             </section>
           {/if}
         {/each}
 
         <div
-          class="sticky bottom-0 -mx-4 flex items-center gap-3 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur"
+          class="sticky bottom-0 z-20 -mx-4 flex items-center gap-3 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur"
         >
           <Button type="submit" disabled={processing}>Save {formatDate(date)}</Button>
           <p class="text-sm text-ink-muted">

@@ -18,10 +18,11 @@
     unitLabel,
     scale = 1,
     hideLabel = false,
-    id = `field-${name.replace(/[^a-z0-9]+/gi, '-')}`,
+    id = `field-${(name ?? label).replace(/[^a-z0-9]+/gi, '-')}`,
   }: {
     label: string
-    name: string
+    /** Omit for a box that isn't submitted (give it an id) */
+    name?: string
     /** Omit for plain numbers (percents, degrees) */
     quantity?: Quantity
     /** The stored value */
@@ -85,7 +86,7 @@
     />
     {#if suffix && !hideLabel}<span class="shrink-0 text-sm text-ink-muted">{suffix}</span>{/if}
   </div>
-  <input type="hidden" {name} value={value ?? ''} />
+  {#if name}<input type="hidden" {name} value={value ?? ''} />{/if}
   {#if message}
     <p id="{id}-error" class="text-xs text-status-irrigate-ink sm:text-sm">{message}</p>
   {:else if hint}

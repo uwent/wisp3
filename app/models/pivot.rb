@@ -15,6 +15,7 @@ class Pivot < ApplicationRecord
   MAX_LINEAR_TRAVEL_FT = 5280
 
   belongs_to :farm
+  belongs_to :pivot_group, optional: true
   belongs_to :weather_cell, optional: true
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
   has_many :fields, -> { order(:name) }, dependent: :destroy
@@ -40,10 +41,13 @@ class Pivot < ApplicationRecord
   end
   validates :arc_start_deg, :arc_end_deg, numericality: {in: 0..360, message: "must be between 0 and 360"}, allow_nil: true
   validate :arc_complete
+  validate :pivot_group_on_farm
 
   normalizes :equipment, :notes, with: ->(text) { text.strip.presence }
 
   before_validation :clear_other_shape
+  # A pivot moved to another farm leaves its group (groups don't span farms)
+  before_validation -> { self.pivot_group = nil }, if: -> { persisted? && farm_id_changed? && pivot_group&.farm_id != farm_id }
 
   before_save :assign_weather_cell, if: -> { will_save_change_to_latitude? || will_save_change_to_longitude? }
   after_commit :update_weather, if: -> { saved_change_to_weather_cell_id? && weather_cell_id }
@@ -74,6 +78,10 @@ class Pivot < ApplicationRecord
   # A new or moved pivot gets its cell's forecast and season-to-date weather in the background
   def update_weather
     WeatherUpdateJob.perform_later(weather_cell_id)
+  end
+
+  def pivot_group_on_farm
+    errors.add(:pivot_group, "must be on the pivot's farm") if pivot_group && pivot_group.farm_id != farm_id
   end
 
   def arc_complete

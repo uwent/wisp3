@@ -31,6 +31,11 @@ FactoryBot.define do
     longitude { -89.53 }
   end
 
+  factory :pivot_group do
+    farm
+    sequence(:name) { |n| "Gauge #{n}" }
+  end
+
   factory :field do
     pivot
     soil_type

@@ -3,7 +3,7 @@
 class SetupController < AuthenticatedController
   def show
     year = params.fetch(:year, Date.current.year).to_i
-    farms = Current.group.farms.order(:name).includes(pivots: {fields: [:soil_type, {plantings: :plant}]})
+    farms = Current.group.farms.order(:name).includes(:pivot_groups, pivots: {fields: [:soil_type, {plantings: :plant}]})
     years = Current.group.plantings.distinct.pluck(Arel.sql("extract(year from season_start)::int"))
 
     render inertia: "Setup/Show", props: {

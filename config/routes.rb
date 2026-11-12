@@ -58,6 +58,7 @@ Rails.application.routes.draw do
     get :export, on: :member, defaults: {format: :csv}
     resources :cuttings, only: [:create, :destroy], controller: "canopy_cuttings"
   end
+  resources :pivot_groups, only: [:create, :update, :destroy]
   resources :field_groups, only: [:index, :show, :create, :update, :destroy] do
     resources :days, only: :update, controller: "field_group_days", param: :date
   end

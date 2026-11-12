@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -138,6 +138,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_100000) do
     t.index ["user_id"], name: "index_memberships_on_user_id"
   end
 
+  create_table "pivot_groups", force: :cascade do |t|
+    t.bigint "farm_id", null: false
+    t.string "name", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["farm_id"], name: "index_pivot_groups_on_farm_id"
+    t.index ["id", "farm_id"], name: "index_pivot_groups_on_id_and_farm_id", unique: true
+  end
+
   create_table "pivot_irrigations", force: :cascade do |t|
     t.bigint "pivot_id", null: false
     t.date "date", null: false
@@ -171,12 +180,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_100000) do
     t.float "length_ft"
     t.float "travel_ft"
     t.integer "travel_bearing_deg"
+    t.bigint "pivot_group_id"
     t.index ["farm_id"], name: "index_pivots_on_farm_id"
+    t.index ["pivot_group_id"], name: "index_pivots_on_pivot_group_id"
     t.index ["weather_cell_id"], name: "index_pivots_on_weather_cell_id"
     t.check_constraint "(arc_start_deg IS NULL) = (arc_end_deg IS NULL)", name: "pivots_arc_both_or_neither"
     t.check_constraint "kind::text = 'center'::text OR radius_ft IS NULL AND arc_start_deg IS NULL AND length_ft IS NOT NULL AND travel_ft IS NOT NULL AND travel_bearing_deg IS NOT NULL AND length_ft > 0::double precision AND length_ft <= 3300::double precision AND travel_ft > 0::double precision AND travel_ft <= 5280::double precision AND travel_bearing_deg >= 0 AND travel_bearing_deg <= 179", name: "pivots_linear_shape"
     t.check_constraint "kind::text = 'linear'::text OR length_ft IS NULL AND travel_ft IS NULL AND travel_bearing_deg IS NULL", name: "pivots_center_shape"
-    t.check_constraint "kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying]::text[])", name: "pivots_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['center'::character varying::text, 'linear'::character varying::text])", name: "pivots_kind"
     t.check_constraint "pump_capacity_gpm IS NULL OR pump_capacity_gpm > 0::double precision", name: "pivots_pump_capacity_positive"
     t.check_constraint "radius_ft IS NULL OR radius_ft <= 3000::double precision", name: "pivots_radius_max"
     t.check_constraint "radius_ft IS NULL OR radius_ft > 0::double precision", name: "pivots_radius_positive"
@@ -232,8 +243,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_100000) do
     t.check_constraint "(plot_length_ft IS NULL) = (plot_width_ft IS NULL)", name: "plantings_plot_both"
     t.check_constraint "NOT partial OR area_acres IS NOT NULL", name: "plantings_partial_area"
     t.check_constraint "area_acres IS NULL OR area_acres > 0::double precision", name: "plantings_area_positive"
-    t.check_constraint "canopy_interpolation::text = ANY (ARRAY['linear'::character varying, 'curve'::character varying]::text[])", name: "plantings_canopy_interpolation"
-    t.check_constraint "et_method::text = ANY (ARRAY['pct_cover'::character varying, 'lai'::character varying]::text[])", name: "plantings_et_method"
+    t.check_constraint "canopy_interpolation::text = ANY (ARRAY['linear'::character varying::text, 'curve'::character varying::text])", name: "plantings_canopy_interpolation"
+    t.check_constraint "et_method::text = ANY (ARRAY['pct_cover'::character varying::text, 'lai'::character varying::text])", name: "plantings_et_method"
     t.check_constraint "initial_moisture_pct IS NULL OR initial_moisture_pct >= 0::double precision AND initial_moisture_pct <= 100::double precision", name: "plantings_initial_moisture_range"
     t.check_constraint "mad_frac >= 0.05::double precision AND mad_frac <= 0.95::double precision", name: "plantings_mad_frac_range"
     t.check_constraint "max_root_zone_depth > 0::double precision", name: "plantings_mrzd_positive"
@@ -297,8 +308,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_100000) do
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
-    t.check_constraint "digest_frequency::text = ANY (ARRAY['never'::character varying, 'daily'::character varying, 'daily_all_year'::character varying, 'needed'::character varying]::text[])", name: "users_digest_frequency"
-    t.check_constraint "digest_scope::text = ANY (ARRAY['all'::character varying, 'in_season'::character varying, 'needs_action'::character varying, 'needs_irrigation'::character varying]::text[])", name: "users_digest_scope"
+    t.check_constraint "digest_frequency::text = ANY (ARRAY['never'::character varying::text, 'daily'::character varying::text, 'daily_all_year'::character varying::text, 'needed'::character varying::text])", name: "users_digest_frequency"
+    t.check_constraint "digest_scope::text = ANY (ARRAY['all'::character varying::text, 'in_season'::character varying::text, 'needs_action'::character varying::text, 'needs_irrigation'::character varying::text])", name: "users_digest_scope"
   end
 
   create_table "weather_cells", force: :cascade do |t|
@@ -374,7 +385,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_100000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["weather_cell_id", "issued_at"], name: "index_weather_forecasts_on_weather_cell_id_and_issued_at"
-    t.check_constraint "kind::text = ANY (ARRAY['deterministic'::character varying, 'ensemble'::character varying]::text[])", name: "weather_forecasts_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['deterministic'::character varying::text, 'ensemble'::character varying::text])", name: "weather_forecasts_kind"
   end
 
   add_foreign_key "canopy_cuttings", "plantings", on_delete: :cascade
@@ -390,8 +401,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_100000) do
   add_foreign_key "fields", "soil_types"
   add_foreign_key "memberships", "groups", on_delete: :cascade
   add_foreign_key "memberships", "users", on_delete: :cascade
+  add_foreign_key "pivot_groups", "farms", on_delete: :cascade
   add_foreign_key "pivot_irrigations", "pivots"
   add_foreign_key "pivots", "farms"
+  add_foreign_key "pivots", "pivot_groups", column: ["pivot_group_id", "farm_id"], primary_key: ["id", "farm_id"], name: "pivots_pivot_group_same_farm"
   add_foreign_key "pivots", "weather_cells"
   add_foreign_key "planting_entries", "plantings"
   add_foreign_key "plantings", "fields"

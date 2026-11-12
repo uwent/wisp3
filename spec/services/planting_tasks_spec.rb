@@ -33,6 +33,27 @@ RSpec.describe PlantingTasks do
     expect(tasks.find { |task| task.kind == :canopy }).to have_attributes(due: false, note: "canopy closed")
   end
 
+  it "asks again after a cutting, counting only readings since it" do
+    planting.update!(plant: create(:plant, key: "alfalfa", name: "Alfalfa"))
+    create(:canopy_observation, planting:, date: Date.new(2026, 7, 6), pct_cover: 85)
+    expect(tasks.find { |task| task.kind == :canopy }).to have_attributes(note: "canopy closed")
+
+    planting.canopy_cuttings.create!(date: Date.new(2026, 7, 10))
+    expect(tasks.find { |task| task.kind == :canopy })
+      .to have_attributes(due: true, last_date: nil, todo: "Enter a percent cover reading (none since the Jul 10 cutting)")
+
+    # A reading on the cutting's date belongs to the regrowth
+    create(:canopy_observation, planting:, date: Date.new(2026, 7, 10), pct_cover: 5)
+    expect(tasks.find { |task| task.kind == :canopy }).to have_attributes(due: true, last_date: Date.new(2026, 7, 10))
+  end
+
+  it "answers for any date, without a balance" do
+    create(:canopy_observation, planting:, date: Date.new(2026, 7, 8), pct_cover: 40)
+    expect(described_class.canopy(planting, Date.new(2026, 6, 30))).to be_nil
+    expect(described_class.canopy(planting, Date.new(2026, 7, 12))).to have_attributes(due: false, last_date: Date.new(2026, 7, 8))
+    expect(described_class.canopy(planting, Date.new(2026, 7, 16))).to have_attributes(due: true)
+  end
+
   it "stops asking for percent cover at vine kill, but not soil moisture" do
     planting.update!(plant: create(:plant, key: "potato", name: "Potato"), vine_kill_date: Date.new(2026, 7, 18))
     expect(tasks.map { |task| [task.kind, task.due, task.note] }).to eq([

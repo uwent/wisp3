@@ -20,6 +20,7 @@ RSpec.describe DemoSeed do
     expect(PlantingEntry.joins(:planting).where(plantings: {field_id: research.id})).to exist
     expect(group.fields.find_by!(name: "Market garden").plantings.size).to eq(3)
     expect(group.plantings.joins(:plant).find_by!(plants: {key: "alfalfa"}).canopy_cuttings.size).to eq(3)
+    expect(group.pivot_groups.sole.pivots.map(&:name)).to eq(["Hay pivot", "River pivot"])
   end
 
   it "rebuilds rather than duplicating, and keeps the user's password" do
