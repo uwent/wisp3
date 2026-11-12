@@ -43,6 +43,8 @@ Rails.application.routes.draw do
   resource :setup, only: :show, controller: "setup"
   resource :quick_setup, only: [:new, :create], path: "setup/start", path_names: {new: ""}
   resource :season_copy, only: :create, path: "setup/copy_season"
+  # Field outlines for many fields from one file (G.10)
+  resource :outline_import, only: [:new, :create], path: "setup/outlines", path_names: {new: "import"}
   # The operation's season as one CSV (?year=): its fields' totals, irrigation by pivot, weather by zone
   resource :season_report, only: :show, path: "setup/report", defaults: {format: :csv}
   resources :farms, only: [:create, :update, :destroy]

@@ -99,6 +99,21 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_plot.reload.latitude).to be_nil
   end
 
+  it "won't import outlines onto another group's fields or systems (G.10)" do
+    square = {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.3]]]}.to_json
+    post outline_import_path, params: {outline_import: {rows: [{boundary: square, field_id: their_field.id}]}}
+    expect_not_found
+    expect(their_field.reload.boundary).to be_nil
+    post outline_import_path, params: {outline_import: {rows: [{boundary: square, pivot_id: their_pivot.id, name: "Sneaky",
+                                                                soil_type_id: their_field.soil_type_id, area_acres: "5"}]}}
+    expect_not_found
+    expect(their_pivot.fields.where(name: "Sneaky")).to be_empty
+    my_pivot
+    get new_outline_import_path
+    expect(inertia.props[:pivots].map { |p| p["id"] }).to eq([my_pivot.id])
+    expect(inertia.props[:fields]).to be_empty
+  end
+
   it "shows only my group's other fields and systems on a field's outline page (G.10)" do
     their_field.update!(boundary: {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.3]]]})
     their_pivot

@@ -24,7 +24,7 @@ class FieldOutlinesController < AuthenticatedController
     field = Current.group.fields.find(params[:field_id])
     values = outline_params
     plots = field.plantings.where(partial: true)
-    pins = Array(values[:pins]).map { |pin| [plots.find(pin[:id]), pin] }
+    pins = indexed_list(values[:pins]).map { |pin| [plots.find(pin[:id]), pin] }
 
     errors = nil
     Field.transaction do

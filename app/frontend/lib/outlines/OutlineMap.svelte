@@ -1,7 +1,6 @@
 <script module lang="ts">
   export type DrawMode = 'view' | 'draw' | 'edit'
   export type MapPin = { id: number; label: string; at: LngLat | null }
-  export type Reference = { name: string; boundary?: Boundary | null; shape?: PivotShape }
 </script>
 
 <script lang="ts">
@@ -12,21 +11,13 @@
   import type { GeoJSONStoreFeatures, TerraDraw as TerraDrawClass } from 'terra-draw'
 
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
-  import {
-    type Boundary,
-    boundaryBounds,
-    boundaryCenter,
-    boundaryOf,
-    boundaryPolygons,
-    closeRing,
-    type LngLat,
-    type PivotShape,
-    pivotOutline,
-  } from '@/lib/geo'
-  import { basemapStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
+  import { type Boundary, boundaryBounds, boundaryOf, boundaryPolygons, closeRing, type LngLat } from '@/lib/geo'
+  import { basemapStyle, type Basemap, setBasemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { loadMapLibre } from '@/lib/map/maplibre'
   import PlaceSearch from '@/lib/map/PlaceSearch.svelte'
+
+  import { addReferenceLayers, type Reference, referenceBounds } from './references'
 
   // A field's outline on the map (PLAN.md Phase 8 G.10). terra-draw holds the outline's parts:
   // shown as they are ('view'), a new part clicked corner by corner ('draw'), or parts selected to
@@ -100,98 +91,8 @@
     return true
   }
 
-  function referenceBounds(reference: Reference): [LngLat, LngLat] | null {
-    if (reference.boundary) return boundaryBounds(reference.boundary)
-    if (!reference.shape) return null
-    const ring = pivotOutline(reference.shape)
-    if (!ring) {
-      const { longitude: lng, latitude: lat } = reference.shape
-      return [
-        [lng - 0.004, lat - 0.003],
-        [lng + 0.004, lat + 0.003],
-      ]
-    }
-    return boundaryBounds({ type: 'Polygon', coordinates: [ring] })
-  }
-
-  // The systems and other fields: outlines, a point kind's dot, and their names
-  function referenceData() {
-    const features = references.flatMap((reference, index) => {
-      const own = index === 0
-      if (reference.boundary) {
-        return [
-          {
-            type: 'Feature' as const,
-            properties: { name: '', own, kind: 'field' },
-            geometry: reference.boundary,
-          },
-          {
-            type: 'Feature' as const,
-            properties: { name: reference.name, own, kind: 'field' },
-            geometry: { type: 'Point' as const, coordinates: boundaryCenter(reference.boundary) },
-          },
-        ]
-      }
-      const shape = reference.shape!
-      const ring = pivotOutline(shape)
-      const at: LngLat = [shape.longitude, shape.latitude]
-      return [
-        ring
-          ? {
-              type: 'Feature' as const,
-              properties: { name: '', own, kind: 'system' },
-              geometry: { type: 'Polygon' as const, coordinates: [ring] },
-            }
-          : {
-              type: 'Feature' as const,
-              properties: { name: '', own, kind: 'dot' },
-              geometry: { type: 'Point' as const, coordinates: at },
-            },
-        {
-          type: 'Feature' as const,
-          properties: { name: reference.name, own, kind: 'label' },
-          geometry: { type: 'Point' as const, coordinates: at },
-        },
-      ]
-    })
-    return { type: 'FeatureCollection' as const, features }
-  }
-
   function addLayers(m: MapLibreMap) {
-    m.addSource('reference', { type: 'geojson', data: referenceData() as never })
-    m.addLayer({
-      id: 'reference-line',
-      type: 'line',
-      source: 'reference',
-      filter: ['==', ['geometry-type'], 'Polygon'],
-      paint: {
-        'line-color': '#ffffff',
-        'line-width': ['case', ['get', 'own'], 2.5, 1.5],
-        'line-opacity': ['case', ['get', 'own'], 0.95, 0.6],
-        'line-dasharray': [2, 2],
-      },
-    })
-    m.addLayer({
-      id: 'reference-dot',
-      type: 'circle',
-      source: 'reference',
-      filter: ['==', ['get', 'kind'], 'dot'],
-      paint: { 'circle-radius': ['case', ['get', 'own'], 7, 5], 'circle-color': '#ffffff', 'circle-opacity': 0.85 },
-    })
-    m.addLayer({
-      id: 'reference-label',
-      type: 'symbol',
-      source: 'reference',
-      filter: ['all', ['==', ['geometry-type'], 'Point'], ['!=', ['get', 'name'], '']],
-      layout: {
-        'text-field': ['get', 'name'],
-        'text-size': 12,
-        'text-font': LABEL_FONT,
-        'text-variable-anchor': ['top', 'center'],
-        'text-radial-offset': 0.9,
-      },
-      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
-    })
+    addReferenceLayers(m, references)
     // An outline with holes, which terra-draw doesn't hold
     m.addSource('outline', { type: 'geojson', data: outlineData() as never })
     m.addLayer({

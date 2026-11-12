@@ -17,8 +17,9 @@
     pivotOutline,
     roundBoundary,
   } from '@/lib/geo'
-  import OutlineMap, { type DrawMode, type MapPin, type Reference } from '@/lib/outlines/OutlineMap.svelte'
+  import OutlineMap, { type DrawMode, type MapPin } from '@/lib/outlines/OutlineMap.svelte'
   import { ACCEPT, type ImportedShape, OutlineFileError, readOutlineFile, shapeName } from '@/lib/outlines/read'
+  import type { Reference } from '@/lib/outlines/references'
   import { cropName, formatArea, plotSize } from '@/lib/plantings'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { units as unitsFor } from '@/lib/units'
@@ -283,10 +284,10 @@
     {#if soilTypeId !== null}
       <input type="hidden" name="outline[soil_type_id]" value={soilTypeId} />
     {/if}
-    {#each pinsChanged as plot (plot.id)}
-      <input type="hidden" name="outline[pins][][id]" value={plot.id} />
-      <input type="hidden" name="outline[pins][][latitude]" value={pinAt[plot.id]?.[1] ?? ''} />
-      <input type="hidden" name="outline[pins][][longitude]" value={pinAt[plot.id]?.[0] ?? ''} />
+    {#each pinsChanged as plot, position (plot.id)}
+      <input type="hidden" name="outline[pins][{position}][id]" value={plot.id} />
+      <input type="hidden" name="outline[pins][{position}][latitude]" value={pinAt[plot.id]?.[1] ?? ''} />
+      <input type="hidden" name="outline[pins][{position}][longitude]" value={pinAt[plot.id]?.[0] ?? ''} />
     {/each}
 
     {#if problems.length || errors.boundary}

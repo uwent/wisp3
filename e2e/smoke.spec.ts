@@ -864,6 +864,9 @@ test('a field outline is copied from its pivot, a plot pinned, and the outline s
   await expect(page.getByText('2.0 ac ·').first()).toBeVisible() // the area as it was
   await page.goto('/setup')
   await expect(page.getByText(/outline 2[56]\.\d ac/)).toBeVisible()
+  // The pin was saved
+  await page.getByRole('link', { name: 'Outline of Arlington 525' }).click()
+  await expect(page.locator('.maplibregl-marker', { hasText: 'Soybean' })).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -902,5 +905,40 @@ test('a field outline is drawn corner by corner, or read from a file (G.10)', as
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('link', { name: 'Cancel' }).click()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('field outlines are imported from a shapefile, matched to fields or new ones (G.10)', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/setup')
+  await page.getByRole('link', { name: 'Import field outlines' }).click()
+  await expect(page.getByRole('heading', { name: 'Import field outlines', level: 1 })).toBeVisible()
+  await page.getByLabel('Choose a file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
+
+  // Two shapes, named from FIELD_NAME, far from any system and matching no field: both skipped
+  await expect(page.getByText(/^2 shapes\./)).toBeVisible()
+  await expect(page.getByLabel('Names from')).toHaveValue('FIELD_NAME')
+  const first = page.locator('#shape-0')
+  const second = page.locator('#shape-1')
+  await expect(first.getByRole('button', { name: '1. Home North' })).toBeVisible()
+  await expect(page.locator('#shape-0-field')).toHaveValue('skip')
+  await expect(page.getByRole('button', { name: /^Save/ })).toBeDisabled()
+
+  // A new field asks for its system, and offers the outline's name and a soil
+  await page.locator('#shape-0-field').selectOption('new')
+  await expect(first.getByText('Choose the system that waters it')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save the outline' })).toBeDisabled()
+  await page.locator('#shape-0-system').selectOption({ label: 'Arlington Research › Pivot: Station pivot' })
+  await expect(first.getByLabel("New field's name")).toHaveValue('Home North')
+  await page.locator('#shape-0-field').selectOption('skip')
+
+  // The second outlines an existing field
+  const garden = await page.locator('#shape-1-field option', { hasText: /^Market garden/ }).getAttribute('value')
+  await page.locator('#shape-1-field').selectOption(garden!)
+  await expect(second.getByRole('combobox', { name: 'Field' })).toHaveValue(/^field:/)
+  await page.getByRole('button', { name: 'Save the outline' }).click()
+  await expect(page.getByText('Saved an outline')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Outline of Market garden' })).toBeVisible()
   expect(errors).toEqual([])
 })

@@ -17,6 +17,12 @@ class InertiaController < ApplicationController
 
   private
 
+  # A list sent as indexed names (rows[0][name]): an array, or a hash keyed "0", "1", … in order
+  def indexed_list(value)
+    return [] if value.blank?
+    value.is_a?(Array) ? value : value.to_h.sort_by { |key, _| key.to_i }.map(&:last)
+  end
+
   # Inertia expects validation errors as {field => [messages]} on a redirect back to the form.
   # Takes a record, its ActiveModel::Errors, or a hash already in that shape.
   def redirect_with_errors(path, record_or_errors)
