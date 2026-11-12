@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe "Field status, daily entry and field groups", type: :request do
+RSpec.describe "Field status and daily entry", type: :request do
   let(:user) { create(:user) }
   let(:group) { user.groups.first }
   let(:farm) { create(:farm, group:) }
@@ -240,7 +240,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       field.field_entries.create!(date: Date.new(2026, 7, 8), irrigation_in: 0.5, notes: "before")
       field.field_entries.create!(date: Date.new(2026, 7, 12), irrigation_in: 1.0, notes: "after")
       pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 14), inches: 0.8)
-      create(:field_group, group:, fields: [field]).field_group_entries.create!(date: Date.new(2026, 7, 13), rain_in: 2.0)
+      field.field_entries.create!(date: Date.new(2026, 7, 13), rain_in: 2.0)
       CanopyObservation.record(planting, Date.new(2026, 7, 6), 20)
       CanopyObservation.record(planting, Date.new(2026, 7, 15), 90)
 
@@ -249,7 +249,7 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(days["2026-07-08"]).to include(irrigation: 0.5, notes: "before")
       expect(inertia.props[:days].last[:date]).to eq("2026-07-10")
       expect(days["2026-07-12"]).to include(irrigation: 1.0, irrigation_source: "entered", notes: "after")
-      expect(days["2026-07-13"]).to include(rain: 2.0, rain_source: "group")
+      expect(days["2026-07-13"]).to include(rain: 2.0, rain_source: "entered")
       expect(days["2026-07-14"]).to include(irrigation: 0.8, irrigation_source: "pivot")
       expect(days["2026-07-06"][:canopy_entered]).to eq(20)
       expect(days["2026-07-15"]).to include(canopy_entered: nil)
@@ -487,71 +487,6 @@ RSpec.describe "Field status, daily entry and field groups", type: :request do
       expect(pivot.pivot_irrigations).to be_empty
       follow_redirect!
       expect(inertia.props[:errors]).to include("fields.#{field.id}.soil_moisture_pct")
-    end
-  end
-
-  describe "field groups" do
-    it "creates a group, edits its members, records values that reach member fields, and deletes it" do
-      post field_groups_path, params: {field_group: {name: "Home gauge", field_ids: ["", field.id]}}
-      gauge = group.field_groups.sole
-      expect(gauge.fields).to eq([field])
-
-      patch field_group_day_path(gauge, "2026-07-08"), params: {day: {rain_in: 1.2}}
-      expect(gauge.field_group_entries.sole.rain_in).to eq(1.2)
-
-      get planting_path(planting)
-      expect(inertia.props[:days].find { |day| day[:date] == "2026-07-08" }).to include(rain: 1.2, rain_source: "group")
-      expect(inertia.props[:field_groups]).to eq([{"id" => gauge.id, "name" => "Home gauge"}])
-
-      get field_group_path(gauge)
-      expect(inertia.props[:days].find { |day| day[:date] == "2026-07-08" }).to include(rain_in: 1.2)
-
-      patch field_group_path(gauge), params: {field_group: {name: "Gauge", field_ids: [""]}}
-      expect(gauge.reload).to have_attributes(name: "Gauge", fields: [])
-
-      delete field_group_path(gauge)
-      expect(group.field_groups).to be_empty
-    end
-
-    it "records percent cover on each member's percent-cover crop, and clears it" do
-      lai_field = create(:field, pivot:)
-      lai_planting = create(:planting, field: lai_field, plant: create(:plant, canopy_model: "field_corn"), et_method: "lai")
-      gauge = create(:field_group, group:, fields: [field, lai_field])
-
-      patch field_group_day_path(gauge, "2026-07-08"), params: {day: {pct_cover: 40}}
-      expect(planting.canopy_observations.sole).to have_attributes(date: Date.new(2026, 7, 8), pct_cover: 40)
-      expect(lai_planting.canopy_observations).to be_empty
-      expect(gauge.field_group_entries).to be_empty
-
-      get field_group_path(gauge)
-      expect(inertia.props[:has_cover]).to be(true)
-      expect(inertia.props[:days].find { |day| day[:date] == "2026-07-08" }).to include(pct_cover: 40, pct_cover_mixed: false)
-
-      patch field_group_day_path(gauge, "2026-07-08"), params: {day: {pct_cover: ""}}
-      expect(planting.canopy_observations).to be_empty
-    end
-
-    it "keeps the members when only the name changes" do
-      gauge = create(:field_group, group:, fields: [field])
-      patch field_group_path(gauge), params: {field_group: {name: "Gauge 2"}}
-      expect(gauge.reload).to have_attributes(name: "Gauge 2", fields: [field])
-    end
-
-    it "refuses a percent cover out of range, and rain with it" do
-      gauge = create(:field_group, group:, fields: [field])
-      patch field_group_day_path(gauge, "2026-07-08"), params: {day: {pct_cover: 140, rain_in: 0.5}},
-        headers: {"HTTP_REFERER" => field_group_path(gauge)}
-      follow_redirect!
-      expect(inertia.props[:errors]["pct_cover"].sole).to include("between 0 and 100")
-      expect([planting.canopy_observations.count, gauge.field_group_entries.count]).to eq([0, 0])
-    end
-
-    it "refuses percent cover on a day no member has a percent-cover crop" do
-      gauge = create(:field_group, group:, fields: [field])
-      patch field_group_day_path(gauge, "2026-06-01"), params: {day: {pct_cover: 40}},
-        headers: {"HTTP_REFERER" => field_group_path(gauge)}
-      follow_redirect!
-      expect(inertia.props[:errors]).to include("pct_cover")
     end
   end
 end

@@ -189,13 +189,6 @@ RSpec.describe "Domain models" do
     end
   end
 
-  describe FieldGroupMember do
-    it "can't add another account's field" do
-      field_group = create(:field_group)
-      expect(field_group.field_group_members.build(field: create(:field))).not_to be_valid
-    end
-  end
-
   describe Group do
     it "reaches its plantings, and only its own" do
       planting = create(:planting)

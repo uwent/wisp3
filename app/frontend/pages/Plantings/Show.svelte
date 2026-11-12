@@ -44,7 +44,6 @@
     field,
     pivot,
     farm,
-    field_groups,
     weather_updating,
     as_of,
     travel_dates,
@@ -57,7 +56,6 @@
     field: Field
     pivot: { id: number; name: string; pump_capacity_gpm: number | null }
     farm: { id: number; name: string }
-    field_groups: { id: number; name: string }[]
     weather_updating: boolean
     /** Time travel (PLAN.md Phase 8 F): the earlier day the page shows, read-only; null for today */
     as_of: string | null
@@ -256,7 +254,7 @@
   ><title>{as_of ? `As of ${formatDate(as_of)} · ` : ''}{planting.plant_name} · {field.name} · WISP</title></svelte:head
 >
 
-<FieldHeader {field} {pivot} {farm} {field_groups} {units} year={planting.year} current={planting.id}>
+<FieldHeader {field} {pivot} {farm} {units} year={planting.year} current={planting.id}>
   {#snippet actions()}
     {#if !readOnly}
       <a
@@ -871,7 +869,6 @@
                       <span class="text-ink-muted">{depth(day.rain)}</span>
                     {:else}
                       <span class="font-medium">{depth(day.rain)}</span>
-                      {#if day.rain_source === 'group'}<span class="ml-1 text-xs text-brand-600">from group</span>{/if}
                       {#if rainOverridden(day)}<span class="block text-xs text-ink-muted"
                           >modeled {depth(day.rain_model)}</span
                         >{/if}
@@ -896,8 +893,6 @@
                         >{/if}
                       {#if day.irrigation_source === 'field'}<span class="ml-1 text-xs text-brand-600">from field</span
                         >{/if}
-                      {#if day.irrigation_source === 'group'}<span class="ml-1 text-xs text-brand-600">from group</span
-                        >{/if}
                       {#if day.irrigation_source === 'entered' && day.field_inches !== null}
                         <span class="block text-xs text-ink-muted">field {depth(day.field_inches)}</span>
                       {:else if day.irrigation_source === 'entered' && day.pivot_inches !== null}
@@ -918,8 +913,6 @@
                   >
                     {#if day.soil_moisture_pct !== null}
                       <span class="font-medium">{day.soil_moisture_pct}</span>
-                      {#if day.moisture_source === 'group'}<span class="ml-1 text-xs text-brand-600">from group</span
-                        >{/if}
                     {:else}<span class="text-ink-muted">–</span>{/if}
                   </EditableCell>
                 </td>

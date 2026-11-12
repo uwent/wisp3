@@ -10,7 +10,6 @@ RSpec.describe "Tenant isolation", type: :request do
   let(:their_field) { create(:field, pivot: their_pivot) }
   let(:their_planting) { create(:planting, field: their_field) }
   let(:their_irrigation) { create(:pivot_irrigation, pivot: their_pivot) }
-  let(:their_field_group) { create(:field_group, group: outsider.groups.first) }
   let(:my_farm) { create(:farm, group: user.groups.first) }
   let(:my_pivot) { create(:pivot, farm: my_farm) }
   let(:my_field) { create(:field, pivot: my_pivot) }
@@ -125,20 +124,6 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_irrigation.reload.inches).to eq(0.75)
   end
 
-  it "hides other groups' field groups and won't add their fields to mine" do
-    get field_group_path(their_field_group)
-    expect_not_found
-    patch field_group_path(their_field_group), params: {field_group: {name: "Mine now"}}
-    expect_not_found
-    patch field_group_day_path(their_field_group, "2026-07-01"), params: {day: {rain_in: 1}}
-    expect_not_found
-    delete field_group_path(their_field_group)
-    expect_not_found
-
-    post field_groups_path, params: {field_group: {name: "Mine", field_ids: [my_field.id, their_field.id]}}
-    expect(user.groups.first.field_groups.sole.fields).to eq([my_field])
-  end
-
   it "ignores other groups' pivots and fields in bulk daily entry" do
     patch daily_entry_path, params: {date: "2026-07-01", pivots: {their_pivot.id => {inches: 1}},
                                      fields: {their_field.id => {rain_in: 1}}}
@@ -158,12 +143,6 @@ RSpec.describe "Tenant isolation", type: :request do
     post pivot_irrigations_path(my_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1, field_ids: [their_field.id]}}
     patch daily_entry_path, params: {date: "2026-07-03", pivots: {my_pivot.id => {inches: 1, field_ids: [their_field.id]}}}
     expect(my_pivot.pivot_irrigations).to be_empty
-  end
-
-  it "won't move another group's fields into my field group" do
-    group = create(:field_group, group: user.groups.first, fields: [my_field])
-    patch field_group_path(group), params: {field_group: {field_ids: [my_field.id, their_field.id]}}
-    expect(group.reload.fields).to eq([my_field])
   end
 
   it "won't show another group's planting on my field's page, or its own page" do
@@ -220,7 +199,7 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(response.parsed_body).to eq("pivot_ids" => [my_pivot.id])
   end
 
-  it "shows only the user's own records on the dashboard, map, setup, daily entry and field group pages" do
+  it "shows only the user's own records on the dashboard, map, setup and daily entry pages" do
     their_field
     my_field
     get root_path
@@ -231,7 +210,5 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
     get daily_entry_path
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
-    get field_groups_path
-    expect(inertia.props[:fields].map { |field| field[:id] }).to eq([my_field.id])
   end
 end

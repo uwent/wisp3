@@ -64,8 +64,7 @@ const total = (values: number[]): Total => ({
 })
 
 export function seasonStats(days: FieldDay[]): SeasonStats {
-  const isReading = (day: FieldDay) =>
-    (day.rain_source === 'entered' || day.rain_source === 'group') && day.rain !== null
+  const isReading = (day: FieldDay) => day.rain_source === 'entered' && day.rain !== null
   const readings = days.filter(isReading)
   const modeledRain = days.flatMap((day) =>
     day.rain_model !== null && day.rain_model >= RAIN_DAY ? [day.rain_model] : [],

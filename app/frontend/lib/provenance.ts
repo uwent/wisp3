@@ -8,7 +8,6 @@ export const SOURCE_LABELS: Record<Source, string> = {
   // A part-field planting's irrigation entered for its whole field (PLAN.md Phase 8 G.11)
   field: 'from field',
   pivot: 'from pivot',
-  group: 'field group',
   model: 'modeled',
   forecast: 'forecast',
   none: 'none',
@@ -21,6 +20,6 @@ export const ET_SOURCE_LABELS: Record<FieldDay['et_source'], string> = {
   missing: 'missing',
 }
 
-/** True when a grower's value (field or field group entry) replaced the modeled rain */
+/** True when the grower's entered rain replaced the modeled rain */
 export const rainOverridden = (day: Pick<FieldDay, 'rain_source' | 'rain_model'>) =>
-  (day.rain_source === 'entered' || day.rain_source === 'group') && day.rain_model !== null
+  day.rain_source === 'entered' && day.rain_model !== null

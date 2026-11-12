@@ -32,7 +32,7 @@ describe('season stats', () => {
       entered(1, 0, 0.3),
       modeled(2, 0.005),
       modeled(3, 0.4),
-      day(4, { rain_source: 'group', rain: 0.2, rain_model: null }),
+      day(4, { rain_source: 'entered', rain: 0.2, rain_model: null }),
     ])
     expect(stats.entered).toEqual({ readings: 3, rainDays: 2, inches: 1 })
     // 0.5 + 0.3 + 0.4: the 0.005 drizzle isn't a rain day

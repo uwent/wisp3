@@ -65,16 +65,6 @@ FactoryBot.define do
     date { Date.new(2026, 6, 1) }
   end
 
-  factory :field_group do
-    group
-    sequence(:name) { |n| "Rain gauge #{n}" }
-  end
-
-  factory :field_group_entry do
-    field_group
-    date { Date.new(2026, 6, 1) }
-  end
-
   factory :pivot_irrigation do
     pivot
     date { Date.new(2026, 6, 1) }

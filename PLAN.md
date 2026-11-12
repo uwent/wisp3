@@ -1053,7 +1053,7 @@ Daily entry has rain, irrigation and soil moisture per field, but nothing for a 
 - [x] **Cuttings in `PlantingTasks`** (a G.3 gap): a cutting restarts the canopy, so readings before the latest cutting don't close it ("canopy closed" for the rest of the season after an 85% reading before a cut).
 - [x] Fields with no crop on the date at the end of their pivot, collapsed ("3 fields with no crop this season"); a pivot with none at the end of its farm. Open if any has an entry that day.
 - [x] **Plots** as sub-rows of their field (G.11 item 5): their own irrigation, soil moisture and cover; rain "field's". Behind "4 plots", open when any has an entry or a due reading. The save takes `plantings: {id => values}` through `Current.group.plantings` (part-field only) with `PlantingEntry.record`; cross-tenant spec.
-- [ ] **Retire field groups**: model, tables, pages, `DailyInputs`' `:group` source, the demo seed, the About page and guidance.
+- [x] **Retire field groups**: model, tables, pages, `DailyInputs`' `:group` source, the demo seed, the About page and guidance. *(Migration `DropFieldGroups` copies each group entry onto its member fields wherever the field had none: rain and soil moisture, and irrigation only where the pivot didn't irrigate that field that day, since pivot irrigation outranked the group's; the oldest group's when a field was in several; notes stay behind. Checked on the dev data: every grouped planting's daily inputs and AD identical before and after. The demo's Coloma gauge is now rain entered on both fields.)*
 
 ##### G.5 Irrigation systems other than pivots
 

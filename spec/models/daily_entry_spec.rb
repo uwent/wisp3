@@ -22,7 +22,7 @@ RSpec.describe DailyEntry do
   end
 
   it "doesn't create anything for an empty day" do
-    FieldGroupEntry.record(create(:field_group).field_group_entries, date, rain_in: nil)
-    expect(FieldGroupEntry.count).to eq(0)
+    FieldEntry.record(field.field_entries, date, rain_in: nil)
+    expect(FieldEntry.count).to eq(0)
   end
 end

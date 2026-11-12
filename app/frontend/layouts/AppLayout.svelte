@@ -16,7 +16,6 @@
     currentGroups,
     dailyEntries,
     dashboard,
-    fieldGroups,
     groups,
     impersonations,
     map,
@@ -46,7 +45,7 @@
           {
             label: 'Setup',
             route: setup.show(),
-            also: [fieldGroups.index().url, /^\/pivots\/(new|\d+\/edit)/, '/setup'],
+            also: [/^\/pivots\/(new|\d+\/edit)/, '/setup'],
           },
           { label: 'About', route: about() },
           ...(auth.user.admin

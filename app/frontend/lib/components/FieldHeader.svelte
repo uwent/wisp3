@@ -4,7 +4,7 @@
 
   import { formatArea, seasonDates } from '@/lib/plantings'
   import { formatNumber, type Units } from '@/lib/units'
-  import { fieldGroups, fields, planting as plantingRoute, pivots } from '@/routes'
+  import { fields, planting as plantingRoute, pivots } from '@/routes'
   import type { Field } from '@/types/serializers'
 
   // The top of the field page and its plantings' pages (PLAN.md Phase 8 G.11): where the field is,
@@ -15,7 +15,6 @@
     field,
     pivot,
     farm,
-    field_groups,
     units,
     year,
     current,
@@ -24,7 +23,6 @@
     field: Field
     pivot: { id: number; name: string }
     farm: { id: number; name: string }
-    field_groups: { id: number; name: string }[]
     units: Units
     year: number
     current: 'field' | number
@@ -65,12 +63,6 @@
           field.effective_field_capacity * 100,
           1,
         )}%, wilting point {formatNumber(field.effective_perm_wilting_pt * 100, 1)}%)
-        {#if field_groups.length}
-          · in {#each field_groups as group, i (group.id)}{i ? ', ' : ''}<Link
-              href={fieldGroups.show(group.id)}
-              class="text-brand-600 underline underline-offset-2">{group.name}</Link
-            >{/each}
-        {/if}
       </p>
     </div>
     {#if actions}

@@ -113,14 +113,14 @@ export function weatherPanels(
       .replace('in', units.label('rootDepth'))
   const temp = (f: number) => units.format('temperature', f)
   const depth = (value: number | null) => converted(units, 'depth', value)
-  // The rain the grower entered (on the field or its group), and whether the balance left the model's out
+  // The rain the grower entered, and whether the balance left the model's out
   const enteredRain = (day: WeatherPanelDay) => {
     const rain = fieldRain?.[day.date]
-    return rain && (rain.rain_source === 'entered' || rain.rain_source === 'group') ? rain.rain : null
+    return rain && rain.rain_source === 'entered' ? rain.rain : null
   }
   const modelUnused = (day: WeatherPanelDay) => {
     const source = fieldRain?.[day.date]?.rain_source
-    return source === 'entered' || source === 'group' || source === 'none'
+    return source === 'entered' || source === 'none'
   }
   const hollow = fieldRain ? { hollow: modelUnused } : {}
   return [

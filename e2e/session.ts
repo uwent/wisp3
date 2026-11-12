@@ -71,7 +71,7 @@ export function watchErrors(page: Page): string[] {
   return errors
 }
 
-/** Every signed-in page, with the demo account's first field, pivot, field group and user */
+/** Every signed-in page, with the demo account's first field, pivot and user */
 export async function signedInPages(page: Page): Promise<string[]> {
   const planting = await firstPlantingPath(page)
   const pivot = await firstLinkPath(page, planting, 'a[href*="/pivots/"]')
@@ -82,7 +82,6 @@ export async function signedInPages(page: Page): Promise<string[]> {
   await page.goto('/')
   const hayCard = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Hay north' }) })
   const hay = new URL((await hayCard.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
-  const fieldGroup = await firstLinkPath(page, '/field_groups', 'a[href*="/field_groups/"]')
   const user = await firstLinkPath(page, '/admin/users', 'a[href*="/admin/users/"]')
   return [
     '/',
@@ -99,8 +98,6 @@ export async function signedInPages(page: Page): Promise<string[]> {
     pivot,
     `${pivot}/edit`,
     '/pivots/new',
-    '/field_groups',
-    fieldGroup,
     '/settings',
     '/alerts',
     '/operation',

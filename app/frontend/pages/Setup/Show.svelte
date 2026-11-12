@@ -11,7 +11,6 @@
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import {
     farms as farmRoutes,
-    fieldGroups,
     fields,
     groups as groupRoutes,
     newQuickSetup,
@@ -367,12 +366,6 @@
 
 <div class="flex flex-wrap gap-3">
   <Button variant="secondary" onclick={() => open({ kind: 'farm' })}>Add a farm</Button>
-  <Link
-    href={fieldGroups.index()}
-    class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
-  >
-    Field groups
-  </Link>
   <Link
     href={groupRoutes.show()}
     class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"

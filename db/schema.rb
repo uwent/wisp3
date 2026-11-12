@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -69,38 +69,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_110000) do
     t.check_constraint "irrigation_in IS NULL OR irrigation_in >= 0::double precision", name: "field_entries_irrigation_nonnegative"
     t.check_constraint "rain_in IS NULL OR rain_in >= 0::double precision", name: "field_entries_rain_nonnegative"
     t.check_constraint "soil_moisture_pct IS NULL OR soil_moisture_pct >= 0::double precision AND soil_moisture_pct <= 100::double precision", name: "field_entries_moisture_range"
-  end
-
-  create_table "field_group_entries", force: :cascade do |t|
-    t.bigint "field_group_id", null: false
-    t.date "date", null: false
-    t.float "rain_in"
-    t.float "irrigation_in"
-    t.float "soil_moisture_pct"
-    t.text "notes"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["field_group_id", "date"], name: "index_field_group_entries_on_field_group_id_and_date", unique: true
-    t.check_constraint "irrigation_in IS NULL OR irrigation_in >= 0::double precision", name: "field_group_entries_irrigation_nonnegative"
-    t.check_constraint "rain_in IS NULL OR rain_in >= 0::double precision", name: "field_group_entries_rain_nonnegative"
-    t.check_constraint "soil_moisture_pct IS NULL OR soil_moisture_pct >= 0::double precision AND soil_moisture_pct <= 100::double precision", name: "field_group_entries_moisture_range"
-  end
-
-  create_table "field_group_members", force: :cascade do |t|
-    t.bigint "field_group_id", null: false
-    t.bigint "field_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["field_group_id", "field_id"], name: "index_field_group_members_on_field_group_id_and_field_id", unique: true
-    t.index ["field_id"], name: "index_field_group_members_on_field_id"
-  end
-
-  create_table "field_groups", force: :cascade do |t|
-    t.bigint "group_id", null: false
-    t.string "name", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["group_id"], name: "index_field_groups_on_group_id"
   end
 
   create_table "fields", force: :cascade do |t|
@@ -393,10 +361,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_110000) do
   add_foreign_key "digest_exclusions", "users", on_delete: :cascade
   add_foreign_key "farms", "groups"
   add_foreign_key "field_entries", "fields"
-  add_foreign_key "field_group_entries", "field_groups"
-  add_foreign_key "field_group_members", "field_groups"
-  add_foreign_key "field_group_members", "fields"
-  add_foreign_key "field_groups", "groups"
   add_foreign_key "fields", "pivots"
   add_foreign_key "fields", "soil_types"
   add_foreign_key "memberships", "groups", on_delete: :cascade

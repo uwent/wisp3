@@ -59,9 +59,6 @@ Rails.application.routes.draw do
     resources :cuttings, only: [:create, :destroy], controller: "canopy_cuttings"
   end
   resources :pivot_groups, only: [:create, :update, :destroy]
-  resources :field_groups, only: [:index, :show, :create, :update, :destroy] do
-    resources :days, only: :update, controller: "field_group_days", param: :date
-  end
   resource :daily_entry, only: [:show, :update], path: "daily"
   # Every pivot on a map with its fields' status, and optional weather and drought layers
   resource :map, only: :show, controller: "map"

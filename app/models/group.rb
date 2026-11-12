@@ -7,7 +7,6 @@ class Group < ApplicationRecord
   has_many :pivots, through: :farms
   has_many :pivot_groups, through: :farms
   has_many :fields, through: :pivots
-  has_many :field_groups, dependent: :destroy
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
 
   # Plantings of this group's fields, for scoping lookups by ID

@@ -285,12 +285,14 @@
         the U.S. Drought Monitor; point at the map, or tap it, to see their values at that spot.
       </li>
       <li>
-        <strong>Daily entry:</strong> rain, irrigation and soil moisture for every field on one day. Irrigation can be entered
-        once for a pivot and its fields. Leave rain blank to use the modeled rain. Enter 0 if your gauge showed no rain.
+        <strong>Daily entry:</strong> rain, irrigation, soil moisture and percent cover for every field on one day, a table
+        per farm. Rain typed for a pivot fills in its fields, and you can change any of them before saving. Irrigation can
+        be entered once for a pivot and its fields. Leave rain blank to use the modeled rain. Enter 0 if your gauge showed
+        no rain.
       </li>
       <li>
-        <strong>Field groups</strong> (in Setup): fields that share readings, such as the same rain gauge. A value you enter
-        for a group applies to every field in it.
+        <strong>Pivot groups</strong> (in Setup): pivots on one farm that share a rain gauge. On Daily entry, rain typed for
+        the group fills in every field on its pivots.
       </li>
       <li>
         <strong>A field's page:</strong> its plantings this season on a timeline, each one's status, the rain and irrigation

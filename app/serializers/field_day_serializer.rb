@@ -4,7 +4,7 @@
 # field_inches {date => the field's entered irrigation} (a part-field planting's, shown under its own),
 # canopy (the planting's Canopy, for its crop's curve).
 class FieldDaySerializer < ApplicationSerializer
-  SOURCE = "'entered' | 'field' | 'pivot' | 'group' | 'model' | 'forecast' | 'none' | 'missing'"
+  SOURCE = "'entered' | 'field' | 'pivot' | 'model' | 'forecast' | 'none' | 'missing'"
 
   attribute(:date) { |day| day.inputs.date }
   attribute(:et0) { |day| day.inputs.et0 }
@@ -31,7 +31,7 @@ class FieldDaySerializer < ApplicationSerializer
   typelize date: :string, et0: "number | null", et0_source: "'model' | 'forecast' | 'missing'", adj_et: "number | null",
     et_source: "'computed' | 'gap_fill' | 'missing'", rain: "number | null", rain_source: SOURCE,
     rain_model: "number | null", irrigation: "number | null", irrigation_source: SOURCE,
-    pivot_inches: "number | null", field_inches: "number | null", soil_moisture_pct: "number | null", moisture_source: "'entered' | 'group' | null",
+    pivot_inches: "number | null", field_inches: "number | null", soil_moisture_pct: "number | null", moisture_source: "'entered' | null",
     canopy: :number, canopy_entered: "number | null", canopy_curve: "number | null", ad: :number, pct_moisture: :number, deep_drainage: :number,
     notes: "string | null"
 end

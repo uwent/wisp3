@@ -94,19 +94,17 @@ class DemoSeed
     # One rain gauge for both Plover River pivots (G.4: daily entry fills its rain into their fields)
     plover.pivot_groups.create!(name: "River gauge").pivots << [river, hay]
 
-    # Vegetables sharing a rain gauge (field group)
+    # Vegetables with their own rain gauge: each reading entered on both fields
     veg = coloma.pivots.create!(name: "Home pivot", latitude: 44.0337, longitude: -89.5208, radius_ft: 1100,
       pump_capacity_gpm: 750)
     cabbage = field(veg, "Cabbage", 30, "loam")
     pepper = field(veg, "Peppers", 25, "loam")
     planting(cabbage, "cabbage", emergence: date(5, 28), end_date: date(9, 5))
     planting(pepper, "pepper", emergence: date(6, 2), end_date: date(9, 20))
-    gauge = group.field_groups.create!(name: "Home rain gauge")
-    gauge.fields << [cabbage, pepper]
-    [[6, 12, 0.9], [7, 3, 1.4], [7, 27, 0.35], [8, 15, 0.6]].each do |month, day, rain|
-      gauge.field_group_entries.create!(date: date(month, day), rain_in: rain)
+    [[6, 12, 0.9], [7, 3, 1.4], [7, 15, 0.0], [7, 27, 0.35], [8, 15, 0.6]].each do |month, day, rain|
+      [cabbage, pepper].each { |f| f.field_entries.create!(date: date(month, day), rain_in: rain) }
     end
-    gauge.field_group_entries.create!(date: date(7, 15), rain_in: 0.0, notes: "Storm missed us")
+    cabbage.field_entries.find_by!(date: date(7, 15)).update!(notes: "Storm missed us")
 
     # A market garden field growing one crop after another
     garden = field(veg, "Market garden", 4, "loam")

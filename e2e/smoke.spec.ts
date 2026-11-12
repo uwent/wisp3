@@ -11,12 +11,6 @@ test.beforeEach(async ({ page }) => {
   await signIn(page)
 })
 
-test("a field group's page shows its grid", async ({ page }) => {
-  await page.goto('/field_groups')
-  await page.locator('main a[href*="/field_groups/"]').first().click()
-  await expect(page.locator('[data-grid="group-days"]').first()).toBeVisible()
-})
-
 test('the dashboard shows field cards with a status', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()

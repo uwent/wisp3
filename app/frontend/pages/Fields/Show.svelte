@@ -25,10 +25,10 @@
   type FieldDayRow = {
     date: string
     rain: number | null
-    rain_source: 'entered' | 'group' | 'model' | 'forecast' | 'none' | 'missing'
+    rain_source: 'entered' | 'model' | 'forecast' | 'none' | 'missing'
     rain_model: number | null
     irrigation: number | null
-    irrigation_source: 'entered' | 'pivot' | 'group' | 'none'
+    irrigation_source: 'entered' | 'pivot' | 'none'
     notes: string | null
   }
 
@@ -36,7 +36,6 @@
     field,
     pivot,
     farm,
-    field_groups,
     year,
     weather_updating,
     plantings,
@@ -48,7 +47,6 @@
     field: Field
     pivot: { id: number; name: string; pump_capacity_gpm: number | null }
     farm: { id: number; name: string }
-    field_groups: { id: number; name: string }[]
     year: number
     years: number[]
     weather_updating: boolean
@@ -131,7 +129,7 @@
 
 <svelte:head><title>{field.name} · WISP</title></svelte:head>
 
-<FieldHeader {field} {pivot} {farm} {field_groups} {units} {year} current="field">
+<FieldHeader {field} {pivot} {farm} {units} {year} current="field">
   {#snippet actions()}
     <Button variant="secondary" class="px-3 py-1.5" onclick={() => plantingDialog?.open(field)}>Add a planting</Button>
   {/snippet}
@@ -240,9 +238,8 @@
                     label={cellLabel(day, 'Rain')}
                     onsave={(t) => saveCell(day, 'rain_in', t)}
                   >
-                    {#if day.rain_source === 'entered' || day.rain_source === 'group'}
+                    {#if day.rain_source === 'entered'}
                       <span class="font-medium">{depth(day.rain)}</span>
-                      {#if day.rain_source === 'group'}<span class="ml-1 text-xs text-brand-600">from group</span>{/if}
                       {#if rainOverridden(day)}<span class="block text-xs text-ink-muted"
                           >modeled {depth(day.rain_model)}</span
                         >{/if}

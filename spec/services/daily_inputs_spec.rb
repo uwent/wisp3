@@ -51,11 +51,8 @@ RSpec.describe DailyInputs do
   end
 
   describe "precedence" do
-    let(:field_group) { create(:field_group, group: field.farm.group).tap { |g| g.fields << field } }
-
     it "prefers the field's entry, keeping the modeled rain alongside" do
       create(:field_entry, field:, date:, rain_in: 0.8, irrigation_in: 0.5, soil_moisture_pct: 14)
-      create(:field_group_entry, field_group:, date:, rain_in: 0.6, irrigation_in: 0.4, soil_moisture_pct: 12)
       create(:pivot_irrigation, pivot:, date:, inches: 0.7)
       expect(resolve).to have_attributes(rain: 0.8, rain_source: :entered, rain_model: 0.35, irrigation: 0.5,
         irrigation_source: :entered, soil_moisture_pct: 14, moisture_source: :entered)
@@ -66,18 +63,11 @@ RSpec.describe DailyInputs do
       expect(resolve).to have_attributes(rain: 0.0, rain_source: :entered)
     end
 
-    it "puts pivot irrigation above field group irrigation" do
-      create(:field_group_entry, field_group:, date:, rain_in: 0.6, irrigation_in: 0.4, soil_moisture_pct: 12)
+    it "takes pivot irrigation where the field has none of its own" do
+      create(:field_entry, field:, date:, rain_in: 0.6)
       create(:pivot_irrigation, pivot:, date:, inches: 0.7)
-      expect(resolve).to have_attributes(rain: 0.6, rain_source: :group, irrigation: 0.7, irrigation_source: :pivot,
-        soil_moisture_pct: 12, moisture_source: :group)
-    end
-
-    it "takes a field in two field groups from the older group" do
-      create(:field_group_entry, field_group:, date:, rain_in: 0.6)
-      newer = create(:field_group, group: field.farm.group).tap { |g| g.fields << field }
-      create(:field_group_entry, field_group: newer, date:, rain_in: 0.9)
-      expect(resolve.rain).to eq(0.6)
+      expect(resolve).to have_attributes(rain: 0.6, rain_source: :entered, irrigation: 0.7, irrigation_source: :pivot,
+        soil_moisture_pct: nil, moisture_source: nil)
     end
   end
 
@@ -101,9 +91,8 @@ RSpec.describe DailyInputs do
     it "resolves every field's days exactly as querying them one field at a time does" do
       dates = (date..date + 4).to_a
       weather = dates.to_h { |day| [day, {et0: 0.2, precip: 0.1}] }
-      gauge = create(:field_group, group: field.farm.group).tap { |g| g.fields << field }
       create(:field_entry, field:, date: date + 1, rain_in: 0.8, soil_moisture_pct: 12)
-      create(:field_group_entry, field_group: gauge, date: date + 2, rain_in: 0.4, irrigation_in: 0.3)
+      create(:field_entry, field:, date: date + 2, rain_in: 0.4, irrigation_in: 0.3)
       create(:pivot_irrigation, pivot:, date: date + 3, inches: 0.7, field_ids: [other_field.id])
       create(:field_entry, field: other_field, date: date + 4, irrigation_in: 0.2)
 

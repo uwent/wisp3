@@ -7,7 +7,6 @@ en:
         rain_in: Rain
         irrigation_in: Irrigation
         soil_moisture_pct: Soil moisture
-      field_group_entry: *daily_entry
       canopy_observation:
         pct_cover: Percent cover
         lai: Leaf area index (LAI)

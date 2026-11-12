@@ -7,7 +7,7 @@ class PlantingsController < AuthenticatedController
   # malformed redirects without it.
   def show
     planting = Current.group.plantings.find(params[:id])
-    field = Current.group.fields.includes(:soil_type, :field_groups, pivot: [:farm, :weather_cell],
+    field = Current.group.fields.includes(:soil_type, pivot: [:farm, :weather_cell],
       plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell]).find(planting.field_id)
     planting = field.plantings.find { |p| p.id == planting.id }
     past = requested_date&.then { |date| date if date < Date.current }
