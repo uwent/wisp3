@@ -1,10 +1,16 @@
 <script module lang="ts">
-  /** Our sources (irrigation groups, pivots, and overlays named overlay-*), carried over when the basemap changes */
-  export const isOwnSource = (id: string) => id === 'pivots' || id === 'groups' || id.startsWith('overlay-')
-  /** Overlays go under the pivots */
+  /** Our sources (irrigation groups, fields, pivots, pins, and overlays named overlay-*), carried over when the basemap changes */
+  export const isOwnSource = (id: string) =>
+    ['pivots', 'groups', 'fields', 'pins'].includes(id) || id.startsWith('overlay-')
   export const PIVOT_LAYER = 'pivots-fill'
   /** Point kinds' dots (a traveler, drip, a location) */
   export const POINT_LAYER = 'pivots-point'
+  /** Fields with an outline (G.10); overlays go under them */
+  export const FIELD_LAYER = 'fields-fill'
+  /** Plots with a pin (G.10) */
+  export const PIN_LAYER = 'pins'
+  /** The systems' own layers, which the Irrigation systems layer switch shows and hides */
+  const SYSTEM_LAYERS = [PIVOT_LAYER, 'pivots-casing', 'pivots-line', POINT_LAYER]
 </script>
 
 <script lang="ts">
@@ -24,18 +30,31 @@
   import { ButtonControl, FIT_ICON } from './controls'
   import { loadMapLibre } from './maplibre'
   import PivotMarker from './PivotMarker.svelte'
-  import { type FeatureCollection, type MapPivot, pivotBounds, pivotFeatures } from './pivots'
+  import {
+    allOutlined,
+    type FeatureCollection,
+    fieldFeatures,
+    type MapPivot,
+    pinFeatures,
+    pivotBounds,
+    pivotFeatures,
+  } from './pivots'
   import PlaceSearch from './PlaceSearch.svelte'
 
   // The operation's irrigation systems on a map (PLAN.md Phase 7): each drawn to scale in its most
   // urgent field's status color (a point kind as a dot), with a marker of its fields' badges at the
-  // center, and each irrigation group lightly outlined around its systems. Clicking a system selects
-  // it; the page shows its details in the panel (children) and the toolbar adds to the top-left.
+  // center, and each irrigation group lightly outlined around its systems. Fields with an outline
+  // (G.10) are filled in their status instead, the system then drawn as a line over them, and its
+  // marker shows only the fields without one; plots with a pin are dots in their status. Clicking a
+  // system selects it, and clicking a field or pin selects its system with that field; the page
+  // shows its details in the panel (children) and the toolbar adds to the top-left.
   let {
     pivots,
     groups,
     selectedId,
+    selectedFieldId = null,
     highlighted,
+    showSystems = true,
     basemap,
     view,
     unitSystem = 'imperial',
@@ -50,13 +69,17 @@
     /** The irrigation groups' outlines (groupFeatures) */
     groups: FeatureCollection<{ name: string }>
     selectedId: number | null
+    /** The field selected with its system (G.10), highlighted on the map */
+    selectedFieldId?: number | null
     /** The pivots in the "needs water within" window (others are dimmed), or null for none */
     highlighted: Set<number> | null
+    /** Draw the systems' shapes and dots (the Irrigation systems layer) */
+    showSystems?: boolean
     basemap: Basemap
     /** Where to start; without one the map fits every pivot */
     view: { center: LngLat; zoom: number } | null
     unitSystem?: UnitSystem
-    onselect: (pivotId: number | null) => void
+    onselect: (pivotId: number | null, fieldId?: number | null) => void
     onbasemap: (basemap: Basemap) => void
     onviewchange: (view: { center: LngLat; zoom: number }) => void
     /** Once the map and our layers are on it, and again after a basemap change */
@@ -84,6 +107,8 @@
   const markers = new Map<number, { marker: Marker; props: MarkerProps; component: ReturnType<typeof mount> }>()
 
   const features = () => pivotFeatures(pivots, selectedId, highlighted)
+  const fields = () => fieldFeatures(pivots, selectedFieldId, highlighted)
+  const pins = () => pinFeatures(pivots, selectedFieldId, highlighted)
 
   function statusColor(): ExpressionSpecification {
     const { status } = readPalette()
@@ -142,8 +167,42 @@
       paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
     })
 
-    m.addSource('pivots', { type: 'geojson', data: features() })
+    // Fields with an outline: filled in their status, under the systems (G.10)
     const color = statusColor()
+    m.addSource('fields', { type: 'geojson', data: fields() as never })
+    const OUTLINES: ExpressionSpecification = ['==', ['get', 'kind'], 'outline']
+    m.addLayer({
+      id: FIELD_LAYER,
+      type: 'fill',
+      source: 'fields',
+      filter: OUTLINES,
+      paint: {
+        'fill-color': color,
+        'fill-opacity': ['case', ['get', 'dimmed'], 0.05, ['get', 'selected'], 0.5, 0.3],
+      },
+    })
+    m.addLayer({
+      id: 'fields-line',
+      type: 'line',
+      source: 'fields',
+      filter: OUTLINES,
+      paint: {
+        'line-color': ['case', ['get', 'selected'], '#ffffff', color],
+        'line-width': ['case', ['get', 'selected'], 3, 1.5],
+        'line-opacity': ['case', ['get', 'dimmed'], 0.35, 1],
+      },
+    })
+    m.addLayer({
+      id: 'fields-label',
+      type: 'symbol',
+      source: 'fields',
+      filter: ['==', ['get', 'kind'], 'label'],
+      minzoom: NAME_ZOOM,
+      layout: { 'text-field': ['get', 'name'], 'text-size': 12, 'text-font': LABEL_FONT },
+      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
+    })
+
+    m.addSource('pivots', { type: 'geojson', data: features() })
     m.addLayer({
       id: PIVOT_LAYER,
       type: 'fill',
@@ -151,7 +210,8 @@
       filter: POLYGONS,
       paint: {
         'fill-color': color,
-        'fill-opacity': ['case', ['get', 'dimmed'], 0.05, ['get', 'selected'], 0.4, 0.22],
+        // A system whose fields have outlines leaves the status to them
+        'fill-opacity': ['case', ['get', 'outlined'], 0, ['get', 'dimmed'], 0.05, ['get', 'selected'], 0.4, 0.22],
       },
     })
     // A white casing under the status line keeps it visible on imagery
@@ -192,20 +252,59 @@
         'circle-stroke-opacity': ['case', ['get', 'dimmed'], 0.3, 0.85],
       },
     })
+    for (const layer of SYSTEM_LAYERS) m.setLayoutProperty(layer, 'visibility', showSystems ? 'visible' : 'none')
+
+    // Plots with a pin, over everything, named when zoomed in
+    m.addSource('pins', { type: 'geojson', data: pins() as never })
+    m.addLayer({
+      id: PIN_LAYER,
+      type: 'circle',
+      source: 'pins',
+      // Plots are a few pixels apart until zoomed in
+      minzoom: PIVOT_ZOOM,
+      paint: {
+        'circle-color': color,
+        'circle-radius': ['case', ['get', 'selected'], 8, 6],
+        'circle-opacity': ['case', ['get', 'dimmed'], 0.3, 1],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2,
+      },
+    })
+    m.addLayer({
+      id: 'pins-label',
+      type: 'symbol',
+      source: 'pins',
+      minzoom: PIVOT_ZOOM + 2,
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': 11,
+        'text-font': LABEL_FONT,
+        'text-anchor': 'left',
+        'text-offset': [0.8, 0],
+      },
+      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
+    })
   }
 
   async function syncMarkers() {
     const m = map
     if (!m) return
     const { Marker } = await loadMapLibre()
-    const ids = new Set(pivots.map((pivot) => pivot.id))
+    // A system's marker shows its fields without an outline, and goes once they all have one (G.10)
+    const marked = pivots
+      .filter((pivot) => !allOutlined(pivot))
+      .map((pivot) => ({
+        ...pivot,
+        fields: pivot.fields.filter((card) => !pivot.outlines.some((outline) => outline.field_id === card.id)),
+      }))
+    const ids = new Set(marked.map((pivot) => pivot.id))
     for (const [id, entry] of markers) {
       if (ids.has(id)) continue
       entry.marker.remove()
       unmount(entry.component)
       markers.delete(id)
     }
-    for (const pivot of pivots) {
+    for (const pivot of marked) {
       const state = {
         pivot,
         selected: pivot.id === selectedId,
@@ -226,9 +325,15 @@
 
   // Redraw when the pivots (farm filter), the selection or the window change
   $effect(() => {
-    void [pivots, selectedId, highlighted]
+    void [pivots, selectedId, selectedFieldId, highlighted]
     map?.getSource<GeoJSONSource>('pivots')?.setData(features())
+    map?.getSource<GeoJSONSource>('fields')?.setData(fields() as never)
+    map?.getSource<GeoJSONSource>('pins')?.setData(pins() as never)
     syncMarkers()
+  })
+  $effect(() => {
+    const visibility = showSystems ? 'visible' : 'none'
+    for (const layer of SYSTEM_LAYERS) if (map?.getLayer(layer)) map.setLayoutProperty(layer, 'visibility', visibility)
   })
   $effect(() => {
     map?.getSource<GeoJSONSource>('groups')?.setData(groups)
@@ -260,13 +365,22 @@
     await setBasemap(map, to, isOwnSource)
     // The style's pivot layers have the palette of the old theme only if it changed meanwhile
     map.getSource<GeoJSONSource>('pivots')?.setData(features())
+    map.getSource<GeoJSONSource>('fields')?.setData(fields() as never)
+    map.getSource<GeoJSONSource>('pins')?.setData(pins() as never)
     onload?.(map)
   }
 
   function onClick(event: MapMouseEvent) {
     placeSearch?.close()
-    const hit = map?.queryRenderedFeatures(event.point, { layers: [POINT_LAYER, PIVOT_LAYER] })[0]
-    onselect(hit ? Number(hit.properties.id) : null)
+    if (!map) return
+    // A pin or a field selects its system with that field; else a system, or nothing
+    const layers = [PIN_LAYER, POINT_LAYER, FIELD_LAYER, PIVOT_LAYER].filter((layer) => map!.getLayer(layer))
+    const hit = map.queryRenderedFeatures(event.point, { layers })[0]
+    if (!hit) return onselect(null)
+    const { properties } = hit
+    if (hit.layer.id === PIN_LAYER || hit.layer.id === FIELD_LAYER)
+      onselect(Number(properties.pivot_id), Number(hit.layer.id === PIN_LAYER ? properties.field_id : properties.id))
+    else onselect(Number(properties.id))
   }
 
   onMount(() => {
@@ -299,7 +413,7 @@
         onload?.(m)
       })
       m.on('click', onClick)
-      for (const layer of [PIVOT_LAYER, POINT_LAYER]) {
+      for (const layer of [PIVOT_LAYER, POINT_LAYER, FIELD_LAYER, PIN_LAYER]) {
         m.on('mouseenter', layer, () => (m.getCanvas().style.cursor = 'pointer'))
         m.on('mouseleave', layer, () => (m.getCanvas().style.cursor = ''))
       }
@@ -323,6 +437,9 @@
           m.setPaintProperty(PIVOT_LAYER, 'fill-color', color)
           m.setPaintProperty('pivots-line', 'line-color', color)
           m.setPaintProperty(POINT_LAYER, 'circle-color', color)
+          m.setPaintProperty(FIELD_LAYER, 'fill-color', color)
+          m.setPaintProperty('fields-line', 'line-color', ['case', ['get', 'selected'], '#ffffff', color])
+          m.setPaintProperty(PIN_LAYER, 'circle-color', color)
         }),
       )
     })

@@ -4,7 +4,15 @@ import { bearing, distanceM, GROUP_MARGIN_M, type LngLat, pointInPolygon } from 
 import type { FieldCard } from '@/lib/overview'
 import type { PlantingSummary } from '@/types/serializers'
 
-import { groupFeatures, type MapPivot, pivotBounds, pivotFeatures } from './pivots'
+import {
+  allOutlined,
+  fieldFeatures,
+  groupFeatures,
+  type MapPivot,
+  pinFeatures,
+  pivotBounds,
+  pivotFeatures,
+} from './pivots'
 
 const field = (status: PlantingSummary['status'], phase: PlantingSummary['phase'] = 'active'): FieldCard => ({
   id: 1,
@@ -29,6 +37,8 @@ const pivot = (id: number, latitude: number, fields: FieldCard[] = [], radius_ft
   travel_bearing_deg: null,
   weather: null,
   fields,
+  outlines: [],
+  pins: [],
 })
 
 describe('pivotFeatures', () => {
@@ -36,8 +46,8 @@ describe('pivotFeatures', () => {
     const pivots = [pivot(1, 44.1, [field('ok'), field('caution')]), pivot(2, 44.2, [field('irrigate', 'ended')])]
     const { features } = pivotFeatures(pivots, 2, new Set([1]))
     expect(features.map((f) => f.properties)).toEqual([
-      { id: 1, name: 'Pivot 1', status: 'caution', selected: false, dimmed: false },
-      { id: 2, name: 'Pivot 2', status: 'none', selected: true, dimmed: true },
+      { id: 1, name: 'Pivot 1', status: 'caution', selected: false, dimmed: false, outlined: false },
+      { id: 2, name: 'Pivot 2', status: 'none', selected: true, dimmed: true, outlined: false },
     ])
   })
 
@@ -122,5 +132,79 @@ describe('pivotBounds', () => {
 
   it('is null without pivots', () => {
     expect(pivotBounds([])).toBeNull()
+  })
+})
+
+describe('fields with outlines and pinned plots (G.10)', () => {
+  const square = (lng: number, lat: number) => ({
+    type: 'Polygon' as const,
+    coordinates: [
+      [
+        [lng, lat],
+        [lng + 0.002, lat],
+        [lng + 0.002, lat + 0.002],
+        [lng, lat + 0.002],
+        [lng, lat],
+      ] as LngLat[],
+    ],
+  })
+  const card = (id: number, name: string, plantings: Partial<PlantingSummary>[]): FieldCard => ({
+    id,
+    name,
+    plantings: plantings.map(
+      (p) => ({ phase: 'active', weather_pending: false, crossing: null, variety: null, ...p }) as PlantingSummary,
+    ),
+  })
+  const north = card(10, 'Home North', [{ planting_id: 100, status: 'irrigate', plant_name: 'Potato' }])
+  const plots = card(11, 'Plots', [
+    { planting_id: 110, status: 'ok', plant_name: 'Soybean' },
+    { planting_id: 111, status: 'caution', plant_name: 'Corn', phase: 'ended' },
+  ])
+  const outlined: MapPivot = {
+    ...pivot(1, 44.1, [north, plots]),
+    outlines: [{ field_id: 10, boundary: square(-89.501, 44.1) }],
+    pins: [
+      { planting_id: 110, field_id: 11, latitude: 44.099, longitude: -89.499 },
+      { planting_id: 111, field_id: 11, latitude: 44.0985, longitude: -89.499 },
+    ],
+  }
+
+  it('draws each outlined field in its status, with a point inside for its name', () => {
+    const { features } = fieldFeatures([outlined], 10, new Set([2]))
+    expect(features.map((f) => [f.properties.kind, f.geometry.type])).toEqual([
+      ['outline', 'Polygon'],
+      ['label', 'Point'],
+    ])
+    expect(features[0].properties).toEqual({
+      id: 10,
+      pivot_id: 1,
+      name: 'Home North',
+      status: 'irrigate',
+      selected: true,
+      dimmed: true,
+      kind: 'outline',
+    })
+    expect(pointInPolygon(features[1].geometry.coordinates as LngLat, square(-89.501, 44.1).coordinates)).toBe(true)
+  })
+
+  it("draws pinned plots in their planting's status, named for the crop", () => {
+    const { features } = pinFeatures([outlined], null, null)
+    expect(features.map((f) => [f.properties.name, f.properties.status])).toEqual([
+      ['Soybean', 'ok'],
+      ['Corn', 'none'],
+    ])
+    expect(features[0].geometry.coordinates).toEqual([-89.499, 44.099])
+  })
+
+  it('draws a system with outlined fields as a line, and keeps its marker until every field has one', () => {
+    expect(pivotFeatures([outlined], null, null).features[0].properties.outlined).toBe(true)
+    expect(allOutlined(outlined)).toBe(false)
+    expect(allOutlined({ ...outlined, fields: [north] })).toBe(true)
+    expect(allOutlined({ ...outlined, fields: [] })).toBe(false)
+  })
+
+  it('fits the map around outlines that reach past the system', () => {
+    const far = { ...outlined, outlines: [{ field_id: 10, boundary: square(-89.45, 44.1) }] }
+    expect(pivotBounds([far])![1][0]).toBeCloseTo(-89.448, 3)
   })
 })

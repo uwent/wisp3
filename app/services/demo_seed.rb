@@ -4,7 +4,9 @@
 # subset), a soil moisture reading, an irrigation group sharing a rain gauge, a research field with
 # four plots side by side (one with its own drip irrigation and readings), a market garden field with
 # successions (PLAN.md Phase 8 G.11), a traveler serving two fields (one Traveler system at each, the
-# same machine) and a drip block (G.5). Rebuilds the demo
+# same machine) and a drip block (G.5), and outlines for some fields (G.10: a pivot split in halves,
+# the research field with its plots pinned, the drip block's and the travelers' fields; generated
+# shapes, to be redrawn on the imagery when the demo is tidied). Rebuilds the demo
 # group from scratch each run. Weather comes from Phase 3's fetch.
 class DemoSeed
   GROUP_NAME = "Demo farms"
@@ -55,6 +57,8 @@ class DemoSeed
       vine_kill: date(8, 28))
     planting(corn, "field_corn", et_method: "lai", emergence: date(5, 12), end_date: date(9, 30))
     pivot_irrigations(north, [[6, 18, 0.8], [6, 29, 0.75], [7, 8, 0.9], [7, 21, 0.85], [8, 3, 0.8]])
+    potato.update!(boundary: slice(north, 180, 360))
+    corn.update!(boundary: slice(north, 0, 180))
     north.pivot_irrigations.create!(date: date(7, 14), run_hours: 20) # inches from pump capacity
     north.pivot_irrigations.create!(date: date(8, 12), inches: 0.6, field_ids: [potato.id]) # potatoes only
 
@@ -91,6 +95,7 @@ class DemoSeed
       readings: [])
     [[6, 1], [7, 10], [8, 18]].each { |month, day| alfalfa.canopy_cuttings.create!(date: date(month, day)) }
     alfalfa.canopy_observations.create!(date: date(6, 20), pct_cover: 55)
+    alfalfa.field.update!(boundary: slice(hay, 270, 450))
 
     # One rain gauge for both Plover River pivots (G.4: daily entry fills its rain into their fields)
     plover.pivot_groups.create!(name: "River gauge").pivots << [river, hay]
@@ -111,6 +116,7 @@ class DemoSeed
     block = coloma.pivots.create!(name: "Tomato block", kind: "drip", latitude: 44.0302, longitude: -89.5141,
       pump_capacity_gpm: 60, equipment: "15 mil tape, 12 in emitters")
     tomatoes = field(block, "Tomatoes", 3, "loam")
+    tomatoes.update!(boundary: rectangle(block.latitude, block.longitude, 360, 363))
     planting(tomatoes, "tomato", emergence: date(5, 30), end_date: date(9, 15))
     [[6, 18], [6, 25], [7, 2], [7, 9], [7, 13], [7, 20], [7, 24], [7, 31], [8, 7], [8, 14]].each do |month, day|
       block.pivot_irrigations.create!(date: date(month, day), run_hours: 4)
@@ -129,11 +135,14 @@ class DemoSeed
     station = arlington.pivots.create!(name: "Station pivot", latitude: 43.3006, longitude: -89.3807, radius_ft: 600,
       pump_capacity_gpm: 300)
     research = field(station, "Arlington 525", 2, "silt_loam")
-    plot = {partial: true, plot_length_ft: 300, plot_width_ft: 60}
-    planting(research, "soybean", emergence: date(5, 25), end_date: date(9, 25), **plot)
-    planting(research, "field_corn", et_method: "lai", emergence: date(5, 12), end_date: date(9, 30), **plot)
-    planting(research, "potato", variety: "Superior", emergence: date(5, 18), end_date: date(8, 30), **plot)
-    drip = planting(research, "snap_bean", emergence: date(6, 5), end_date: date(8, 25), readings: [], **plot)
+    # 290 × 300 ft north of the pivot's center, its plots side by side west to east, each pinned
+    middle = offset(station.latitude, station.longitude, 0, 250)
+    research.update!(boundary: rectangle(*middle, 290, 300))
+    plot = ->(east_ft) { {partial: true, plot_length_ft: 300, plot_width_ft: 60}.merge(%i[latitude longitude].zip(offset(*middle, east_ft, 0)).to_h) }
+    planting(research, "soybean", emergence: date(5, 25), end_date: date(9, 25), **plot.call(-90))
+    planting(research, "field_corn", et_method: "lai", emergence: date(5, 12), end_date: date(9, 30), **plot.call(-30))
+    planting(research, "potato", variety: "Superior", emergence: date(5, 18), end_date: date(8, 30), **plot.call(30))
+    drip = planting(research, "snap_bean", emergence: date(6, 5), end_date: date(8, 25), readings: [], **plot.call(90))
     [[6, 20], [6, 27], [7, 4], [7, 11], [7, 18], [7, 25], [8, 1], [8, 8]].each do |month, day|
       drip.planting_entries.create!(date: date(month, day), irrigation_in: 0.4)
     end
@@ -149,11 +158,39 @@ class DemoSeed
     east_lane = arlington.pivots.create!(name: "East lane", kind: "traveler", latitude: 43.3046, longitude: -89.3741,
       equipment: reel)
     sweet_corn = field(west_lane, "West 20", 20, "silt_loam")
+    sweet_corn.update!(boundary: rectangle(west_lane.latitude, west_lane.longitude, 660, 1320))
     planting(sweet_corn, "sweet_corn", emergence: date(5, 20), end_date: date(8, 25))
     beans = field(east_lane, "East 15", 15, "silt_loam")
+    beans.update!(boundary: rectangle(east_lane.latitude, east_lane.longitude, 660, 990))
     planting(beans, "snap_bean", emergence: date(6, 8), end_date: date(8, 28))
     pivot_irrigations(west_lane, [[6, 30, 1.0], [7, 14, 1.0], [7, 28, 1.1], [8, 11, 1.0]])
     pivot_irrigations(east_lane, [[7, 1, 1.0], [7, 15, 1.0], [7, 29, 1.1], [8, 12, 1.0]])
+  end
+
+  FEET_PER_DEGREE_LAT = 364_000.0
+
+  # [lat, lng] east_ft and north_ft from a point (flat earth, plenty across a field)
+  def offset(lat, lng, east_ft, north_ft)
+    [(lat + north_ft / FEET_PER_DEGREE_LAT).round(7),
+      (lng + east_ft / (FEET_PER_DEGREE_LAT * Math.cos(lat * Math::PI / 180))).round(7)]
+  end
+
+  # A width_ft (east–west) × height_ft (north–south) rectangle centered on a point, as GeoJSON
+  def rectangle(lat, lng, width_ft, height_ft)
+    corners = [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map do |east, north|
+      offset(lat, lng, east * width_ft / 2.0, north * height_ft / 2.0).reverse
+    end
+    {"type" => "Polygon", "coordinates" => [corners]}
+  end
+
+  # The part of a pivot's circle between two bearings (degrees clockwise from north), as GeoJSON
+  def slice(pivot, from_deg, to_deg)
+    arc = (from_deg..to_deg).step(5).map do |bearing|
+      radians = bearing * Math::PI / 180
+      offset(pivot.latitude, pivot.longitude, pivot.radius_ft * Math.sin(radians), pivot.radius_ft * Math.cos(radians)).reverse
+    end
+    center = [pivot.longitude, pivot.latitude]
+    {"type" => "Polygon", "coordinates" => [[center, *arc, center]]}
   end
 
   def field(pivot, name, acres, soil_key)

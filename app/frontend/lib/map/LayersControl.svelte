@@ -147,6 +147,16 @@
         </div>
       {/each}
 
+      <div>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" bind:checked={prefs.systems} />
+          Irrigation systems
+        </label>
+        <p class="mt-1 text-xs text-ink-muted">
+          Each system's shape. Fields with an outline are shaded in their own status either way.
+        </p>
+      </div>
+
       <p class="text-xs text-ink-muted">
         Point at the map, or tap it, to see the layers' values there. They come straight from public services, not from
         WISP, and can be slow or unavailable at times.

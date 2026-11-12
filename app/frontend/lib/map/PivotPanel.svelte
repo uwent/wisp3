@@ -17,6 +17,7 @@
     today,
     units,
     notes = [],
+    fieldId = null,
     onclose,
   }: {
     pivot: MapPivot
@@ -24,8 +25,16 @@
     today: string
     units: Units
     notes?: { label: string; value: string; swatch?: string }[]
+    /** The field selected on the map (G.10), marked among the cards */
+    fieldId?: number | null
     onclose: () => void
   } = $props()
+
+  // The selected field's card into view in the panel
+  $effect(() => {
+    if (fieldId === null) return
+    document.querySelector(`[data-pivot-panel] [data-field="${fieldId}"]`)?.scrollIntoView({ block: 'nearest' })
+  })
 
   const depth = (totals: WeatherTotals | null, key: 'precip' | 'et0') =>
     totals && totals[key] !== null ? units.format('depth', totals[key]) : null
@@ -86,7 +95,13 @@
     {#if pivot.fields.length}
       <ul class="space-y-2">
         {#each pivot.fields as card (card.id)}
-          <li><FieldCard {card} {today} {units} compact /></li>
+          <li
+            data-field={card.id}
+            class={card.id === fieldId ? 'rounded-lg ring-2 ring-brand-500 ring-offset-2 ring-offset-surface' : ''}
+            aria-current={card.id === fieldId ? 'true' : undefined}
+          >
+            <FieldCard {card} {today} {units} compact />
+          </li>
         {/each}
       </ul>
     {:else}

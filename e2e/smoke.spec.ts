@@ -942,3 +942,29 @@ test('field outlines are imported from a shapefile, matched to fields or new one
   await expect(page.getByRole('link', { name: 'Outline of Market garden' })).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('the map shades outlined fields instead of badging them, and marks the selected one (G.10)', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/map')
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible()
+  // North 160's two fields have outlines, so it has no marker; Home pivot's don't
+  await expect(page.getByRole('button', { name: /^Pivot Home pivot: / })).toBeAttached()
+  await expect(page.getByRole('button', { name: /^Pivot North 160: / })).toHaveCount(0)
+
+  // A field picked from the list (as a click in its outline does) is marked in its system's panel
+  const list = page.getByRole('complementary', { name: 'Fields' })
+  await list.getByRole('button', { name: /North potatoes.*on the map$/ }).click()
+  const panel = page.getByRole('region', { name: 'Pivot: North 160' })
+  await expect(panel.locator('li[aria-current="true"]')).toContainText('North potatoes')
+
+  // The systems' shapes are a layer that can be switched off, and stays off
+  await page.getByRole('button', { name: /^Layers/ }).click()
+  const systems = page.getByRole('checkbox', { name: 'Irrigation systems' })
+  await expect(systems).toBeChecked()
+  await systems.uncheck()
+  await page.reload()
+  await page.getByRole('button', { name: /^Layers/ }).click()
+  await expect(page.getByRole('checkbox', { name: 'Irrigation systems' })).not.toBeChecked()
+  await page.getByRole('checkbox', { name: 'Irrigation systems' }).check()
+  expect(errors).toEqual([])
+})

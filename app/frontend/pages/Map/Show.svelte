@@ -149,9 +149,10 @@
     focusPanel()
   }
 
-  function selectPivot(pivotId: number | null) {
+  // From the map: a system, or a field (its outline or a plot's pin) with its system
+  function selectPivot(pivotId: number | null, fieldId: number | null = null) {
     selectedPivotId = pivotId
-    selectedFieldId = null
+    selectedFieldId = fieldId
     if (pivotId !== null) focusPanel()
     if (pivotId === null || !prefs.listOpen) return
     // Bring its fields' cards into view in the list
@@ -324,7 +325,9 @@
         pivots={mapPivots}
         groups={mapGroups}
         selectedId={selectedPivotId}
+        {selectedFieldId}
         {highlighted}
+        showSystems={prefs.systems}
         basemap={prefs.basemap}
         view={prefs.view}
         unitSystem={auth.user?.unit_system}
@@ -373,6 +376,7 @@
               farmName={farmOf.get(selectedPivot.id)?.name ?? ''}
               {today}
               {units}
+              fieldId={selectedFieldId}
               notes={panelNotes}
               onclose={clearSelection}
             />

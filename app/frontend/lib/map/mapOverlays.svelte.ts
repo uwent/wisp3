@@ -2,7 +2,7 @@ import type { Map as MapLibreMap, MapMouseEvent, MapSourceDataEvent, RasterTileS
 
 import { type LngLat, pointInPolygon } from '@/lib/geo'
 
-import { PIVOT_LAYER, POINT_LAYER } from './OverviewMap.svelte'
+import { FIELD_LAYER, PIN_LAYER, PIVOT_LAYER, POINT_LAYER } from './OverviewMap.svelte'
 import {
   type Bounds,
   DROUGHT_CATEGORIES,
@@ -96,7 +96,7 @@ export class MapOverlays {
       })
     }
     map.on('click', (event) => {
-      const systems = [PIVOT_LAYER, POINT_LAYER].filter((layer) => map.getLayer(layer))
+      const systems = [PIVOT_LAYER, POINT_LAYER, FIELD_LAYER, PIN_LAYER].filter((layer) => map.getLayer(layer))
       if (systems.length && map.queryRenderedFeatures(event.point, { layers: systems }).length) return
       this.probeAt(event)
     })
@@ -182,10 +182,10 @@ export class MapOverlays {
     return this.#opacity[id] ?? OVERLAYS.find((overlay) => overlay.id === id)!.opacity
   }
 
-  /** The layer to insert under: the next overlay up that's shown, or the pivots */
+  /** The layer to insert under: the next overlay up that's shown, or the fields and pivots */
   #before(map: MapLibreMap, id: OverlayId) {
     const above = OVERLAY_ORDER.slice(OVERLAY_ORDER.indexOf(id) + 1).map(sourceId)
-    return above.find((layer) => map.getLayer(layer)) ?? (map.getLayer(PIVOT_LAYER) ? PIVOT_LAYER : undefined)
+    return above.find((layer) => map.getLayer(layer)) ?? [FIELD_LAYER, PIVOT_LAYER].find((layer) => map.getLayer(layer))
   }
 
   #showRaster(map: MapLibreMap, overlay: RasterOverlay) {

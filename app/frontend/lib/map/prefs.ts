@@ -19,6 +19,8 @@ export type MapPrefs = {
   overlays: string[]
   /** Overlay opacity by id, where the user changed it */
   opacity: Record<string, number>
+  /** Draw the irrigation systems' shapes (off to see outlined fields alone, G.10) */
+  systems: boolean
 }
 
 export const DEFAULT_PREFS: MapPrefs = {
@@ -29,6 +31,7 @@ export const DEFAULT_PREFS: MapPrefs = {
   rain: null,
   overlays: [],
   opacity: {},
+  systems: true,
 }
 
 const key = (groupId: number | undefined) => `wisp-map:${groupId ?? 'none'}`
