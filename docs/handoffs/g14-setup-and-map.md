@@ -1,6 +1,6 @@
 # Handoff: G.14 Setup and the map, tidied after G.10
 
-Written 2026-11-12, at the end of G.10. Read PLAN.md's **G.14** first: it is the agreed work list (Ben, 2026-11-12, after trying G.10). This note covers where things stand, where the code is, and what to watch. CLAUDE.md's rule applies: the design is agreed, but put the open questions below to Ben before building the parts they touch.
+Written 2026-11-12, at the end of G.10. Read PLAN.md's **G.14** first: it is the agreed work list (Ben, 2026-11-12, after trying G.10), and its questions are settled (below). This note covers where things stand, where the code is, and what to watch.
 
 ## Where things stand
 
@@ -8,11 +8,12 @@ Written 2026-11-12, at the end of G.10. Read PLAN.md's **G.14** first: it is the
 - **Checks:** `bin/ci` passes, including the browser suite (95 passed, 1 skipped as before).
 - **After G.14:** G.6 wording (its Delete item moved here), G.13 forms, G.7 crops, G.8 operations and the example farm.
 
-## Questions to put to Ben first
+## Settled with Ben (2026-11-12)
 
-1. **The location kind's shape** on the map. Agreed: pivot a circle, traveler a diamond, solid set a square, drip a pentagon. A triangle is suggested for location.
-2. **The map's panel on wide screens.** Once the list shows a system's card with its fields, the panel overlaps it. The recommendation is to keep the panel, because it holds the weather and the links, and the list can be hidden.
-3. **A selected farm or irrigation group** fits the map to its systems and outlines them. Should anything more show (no panel is recommended)?
+1. **Location** is a triangle on the map.
+2. **The map's panel stays** on wide screens.
+3. **Selecting a farm or irrigation group** only zooms the map to its systems: no panel, no other highlight.
+4. **Pivots and linears keep a minimum size** zoomed out (about 16 px across), drawn as their kind's glyph below that, rather than shrinking to specks at their true size.
 
 ## Part 1: one polygon per field
 
@@ -52,6 +53,9 @@ Written 2026-11-12, at the end of G.10. Read PLAN.md's **G.14** first: it is the
 - **Point kinds** are `pivots-point`, a circle layer sized in pixels. That's why a traveler doesn't keep its size on the ground.
   - The recommended way: a symbol layer with SDF icons drawn on a canvas (`map.addImage(id, imageData, { sdf: true })`). Give it `icon-size` as `['interpolate', ['exponential', 2], ['zoom'], …]` to match 50 ft at the system's latitude, with a pixel minimum. `isOwnSource` already carries the source over a basemap switch, but images aren't carried: re-add them after `setBasemap`.
   - Keep `POINT_LAYER` exported; `mapOverlays` uses it.
+- **Minimum size for pivots and linears:** they're polygons in `pivots-fill`/`pivots-line`, so they shrink with the map. Two ways to swap in the glyph below the zoom where one is under ~16 px:
+  - Compute that zoom per system from its size and latitude (meters per pixel = 156543.03 × cos(lat) / 2^zoom). Give each feature a `minZoom` property, and filter the polygon layers with `['>=', ['zoom'], ['get', 'minZoom']]` and the glyph layer with `<`. Zoom expressions in filters must be top-level comparisons; check MapLibre accepts this, or else split the features into two sources by zoom band.
+  - Or draw every system as a glyph symbol sized `max(true size, minimum)` with an exponential zoom interpolation, and the polygon only from the zoom it's larger. Either way the click query in `onClick` must include the glyph layer.
 - **Badge cluster:** `PivotMarker`'s badge span is a wrapping flex row (`max-w-36 flex-wrap`). Lay out rows of ⌈√n⌉, centered. Zoomed out (`data-far`) it's one status dot; keep that.
 
 ## Part 4: the map's list (`pages/Map/Show.svelte`, `lib/overview.ts`, `FieldCard.svelte`, `PivotPanel.svelte`)
