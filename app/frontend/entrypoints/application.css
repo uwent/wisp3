@@ -87,6 +87,10 @@
   --color-map-system: #2ec4f0;
   --color-map-system-casing: #0c2d48;
   --color-map-system-ink: #127aa6;
+  /* Outlined fields on the map (G.14): white, not a status (the plantings' badges carry that), a
+     thin black edge keeping the line visible on the light streets basemap */
+  --color-map-field: #ffffff;
+  --color-map-field-casing: #000000;
 }
 
 /*

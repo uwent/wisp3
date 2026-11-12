@@ -9,16 +9,11 @@
     selected,
     dimmed,
     onselect,
-    onhover,
-  }: {
-    field: FieldBadges
-    selected: boolean
-    dimmed: boolean
-    onselect: () => void
-    onhover: (badge: { label: string; element: HTMLElement } | null) => void
-  } = $props()
+  }: { field: FieldBadges; selected: boolean; dimmed: boolean; onselect: () => void } = $props()
 
-  const label = $derived(`Field: ${field.field_name}, ${field.badges.map((badge) => badge.label).join('; ')}`)
+  const label = $derived(
+    `Field: ${field.field_name}, ${field.badges.map((badge) => badge.lines.join(', ')).join('; ')}`,
+  )
 </script>
 
 <button
@@ -31,5 +26,5 @@
     onselect()
   }}
 >
-  <BadgeRows badges={field.badges} {selected} {onhover} />
+  <BadgeRows badges={field.badges} {selected} />
 </button>

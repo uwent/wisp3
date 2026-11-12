@@ -7,7 +7,7 @@
   import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { isoDate } from '@/lib/dates'
-  import { isPoint, KIND_NOUNS, systemName } from '@/lib/geo'
+  import { isPoint, KIND_NOUNS, shapeAcres, systemName } from '@/lib/geo'
   import { units as unitsFor } from '@/lib/units'
   import { outlineProblems } from '@/lib/outlines/problems'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
@@ -48,12 +48,27 @@
   // Only owners delete farms, pivots and fields (Q8)
   const owner = $derived(page.props.auth.owner)
   const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
-  const pivotSize = (pivot: (typeof allPivots)[number]) =>
-    pivot.kind === 'linear' && pivot.length_ft && pivot.travel_ft
-      ? `${units.format('distance', pivot.length_ft)} long, travels ${units.format('distance', pivot.travel_ft)} at ${pivot.travel_bearing_deg}° from north`
-      : pivot.radius_ft
-        ? `radius ${units.format('distance', pivot.radius_ft)}`
-        : null
+  // A system's shape in its row: "Radius 600 ft · Arc 0–270° · Area 80 ac"
+  const pivotSize = (pivot: (typeof allPivots)[number]) => {
+    const acres = shapeAcres(pivot)
+    return [
+      pivot.kind === 'linear' && pivot.length_ft && pivot.travel_ft
+        ? `${units.format('distance', pivot.length_ft)} long, travels ${units.format('distance', pivot.travel_ft)} at ${pivot.travel_bearing_deg}° from north`
+        : pivot.radius_ft && `Radius ${units.format('distance', pivot.radius_ft)}`,
+      pivot.arc_start_deg !== null && pivot.arc_end_deg !== null && `Arc ${pivot.arc_start_deg}–${pivot.arc_end_deg}°`,
+      acres !== null && `Area ${units.format('area', acres)}`,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }
+  // A field's area in its row: "Mapped as 2.0 ac" when it's its outline's, else as entered (with the
+  // outline's beside it when that differs)
+  const fieldArea = (field: Field) => {
+    const entered = units.format('area', field.area_acres)
+    if (field.boundary_acres === null) return entered
+    const mapped = units.format('area', field.boundary_acres)
+    return mapped === entered ? `Mapped as ${mapped}` : `${entered} · Mapped as ${mapped}`
+  }
   const seasonPlantings = (field: Field) => field.plantings.filter((planting) => planting.year === year)
   // A field listed for the season: it has a crop in it or the season before (to plan from), or no
   // crop at all yet. Fields used only in other seasons (rotated out, or set up for a later one) are
@@ -118,8 +133,7 @@
         <Link href={fields.show(field.id)} class="font-medium hover:underline">{field.name}</Link>
       </p>
       <p class="text-xs text-ink-muted">
-        {units.format('area', field.area_acres)} · {field.soil_type_name}
-        {#if field.boundary_acres !== null}· outline {units.format('area', field.boundary_acres)}{/if}
+        {fieldArea(field)} · {field.soil_type_name}
         {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(own field capacity and wilting point){/if}
         {#if field.use_model_precip !== null}· {field.use_model_precip
             ? 'modeled rain'
@@ -171,7 +185,7 @@
           {#if pivotSize(pivot)}
             · {pivotSize(pivot)}{/if}
           {#if pivot.pump_capacity_gpm}
-            · {isPoint(pivot.kind) ? 'flow' : 'pump'} {units.format('flow', pivot.pump_capacity_gpm)}{/if}
+            · {isPoint(pivot.kind) ? 'Flow' : 'Pump'} {units.format('flow', pivot.pump_capacity_gpm)}{/if}
           {#if pivot.equipment}
             · {pivot.equipment}{/if}
         </p>

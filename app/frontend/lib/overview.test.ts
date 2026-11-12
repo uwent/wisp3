@@ -202,4 +202,28 @@ describe('buildTree', () => {
     ])
     expect(treeFields(buildTree(farms, { order: 'urgent', windowDays: 0 })).map((c) => c.name)).toEqual(['E dry'])
   })
+
+  it('keeps only fields with a planting growing today, and the parents left with any', () => {
+    expect(treeFields(buildTree(farms, { order: 'north', growing: true })).map((c) => c.name)).toEqual([
+      'A later',
+      'B ok',
+      'E dry',
+      'C sooner',
+    ])
+  })
+
+  it('breaks ties in urgency north to south before by name', () => {
+    const tied: FarmGroup<P>[] = [
+      {
+        id: 3,
+        name: 'Farm',
+        pivot_groups: [],
+        pivots: [
+          pivot('A south', 44.0, [field('South field', { status: 'ok' })]),
+          pivot('B north', 44.6, [field('North field', { status: 'ok' })]),
+        ],
+      },
+    ]
+    expect(treeFields(buildTree(tied, { order: 'urgent' })).map((c) => c.name)).toEqual(['North field', 'South field'])
+  })
 })

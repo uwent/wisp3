@@ -2,9 +2,22 @@ import { describe, expect, it } from 'vitest'
 
 import { units } from '@/lib/units'
 
-import { clashes, nextSeason, plotAcres, plotSize, typicalEnd } from './plantings'
+import { clashes, nextSeason, plantingLabel, plantingWhen, plotAcres, plotSize, typicalEnd } from './plantings'
 
 const sized = { partial: true, area_acres: plotAcres(100, 20), plot_length_ft: 100, plot_width_ft: 20 }
+
+describe('plantingWhen and plantingLabel', () => {
+  const potato = { plant_name: 'Potato', variety: 'Superior', season_start: '2026-04-01', end_date: '2026-08-30' }
+  it('names a planting by when it is: its start and days in season, else its dates', () => {
+    expect(plantingWhen(potato, '2026-05-15')).toBe('Apr 1, 44 days')
+    expect(plantingWhen(potato, '2026-11-12')).toBe('Apr 1 – Aug 30')
+    expect(plantingWhen(potato, '2026-03-01')).toBe('Apr 1 – Aug 30')
+  })
+  it('puts the variety and when in one pair of brackets', () => {
+    expect(plantingLabel(potato, '2026-11-12')).toBe('Potato (Superior, Apr 1 – Aug 30)')
+    expect(plantingLabel({ ...potato, variety: null }, '2026-11-12')).toBe('Potato (Apr 1 – Aug 30)')
+  })
+})
 
 describe('plotSize', () => {
   it('gives length × width with the acres, or just the acres', () => {

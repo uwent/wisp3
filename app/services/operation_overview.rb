@@ -4,20 +4,25 @@
 # Pivots without fields are listed too, so the hierarchy matches setup. weather_updating marks a pivot
 # whose cell has a WeatherUpdateJob queued or running; the pages reload until it clears.
 class OperationOverview
-  attr_reader :today, :farms
+  attr_reader :today, :year, :farms
 
-  def initialize(group, today: Date.current)
+  # year: the season shown (the map's, G.14); this year by default
+  def initialize(group, today: Date.current, year: today.year)
     @today = today
+    @year = year
     @farms = group.farms.order(:name).includes(:pivot_groups, pivots: [:weather_cell,
       {fields: [:soil_type, {plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type]}]}]).to_a
     cell_ids = pivots.map(&:weather_cell_id).uniq
     WeatherCell.keep_current(cell_ids)
     # Read before the balances, so weather landing in between still gets a reload
     @updating = WeatherCell.updating_ids(cell_ids).to_set
-    @statuses = FieldStatuses.for(pivots.flat_map(&:fields), today:)
+    @statuses = FieldStatuses.for(pivots.flat_map(&:fields), today:, year:)
   end
 
   def pivots = @pivots ||= farms.flat_map { |farm| sorted(farm) }
+
+  # The seasons there's something to show for: this year and every year with a planting, latest first
+  def years = (pivots.flat_map { |pivot| pivot.fields.flat_map { |field| field.plantings.map(&:season_year) } } << today.year).uniq.sort.reverse
 
   # Farms (with their irrigation groups) › pivots › field cards; a block adds to each pivot's hash
   def props

@@ -36,7 +36,8 @@
     addGlyphImages,
     addSystemLayers,
     FIELD_LAYER,
-    hoverLabel,
+    FAR_ZOOM,
+    hoverLines,
     setSystemColors,
     SYSTEM_LAYERS,
     systemHit,
@@ -49,13 +50,16 @@
   // fields without one; each outlined field has a badge per planting at its center (FieldMarker) and
   // its name along its top. Clicking a system selects it, and clicking a field or its badges selects
   // its system with that field; the page shows its details in the panel (children) and the toolbar
-  // adds to the top-left. Everything names itself beside the pointer (hover).
+  // adds to the top-left. Beside the pointer, the hover label names what's under it, down the stack
+  // (group, system, field, then a marker's badge).
   let {
     pivots,
     groups,
+    today,
     selectedId,
     selectedFieldId = null,
     highlighted,
+    highlightedFields = null,
     showSystems = true,
     basemap,
     view,
@@ -70,11 +74,15 @@
     pivots: MapPivot[]
     /** The irrigation groups' outlines (groupFeatures) */
     groups: FeatureCollection<{ name: string }>
+    /** For the plantings' days in the hover label */
+    today: string
     selectedId: number | null
     /** The field selected with its system (G.10), highlighted on the map */
     selectedFieldId?: number | null
-    /** The pivots in the "needs water within" window (others are dimmed), or null for none */
+    /** The pivots the list's filters keep (others are muted), or null when nothing's filtered */
     highlighted: Set<number> | null
+    /** Likewise the fields */
+    highlightedFields?: Set<number> | null
     /** Draw the systems' shapes and dots (the Irrigation systems layer) */
     showSystems?: boolean
     basemap: Basemap
@@ -92,7 +100,6 @@
 
   // Below FAR_ZOOM a pivot is a few pixels across: its marker is one dot. Below NAME_ZOOM the
   // marker shows badges without the pivot's name.
-  const FAR_ZOOM = 11.5
   const NAME_ZOOM = 13
   const PIVOT_ZOOM = 14
   // Wisconsin's Central Sands, where most WISP pivots are
@@ -104,15 +111,16 @@
   let zoom = $state(DEFAULT_VIEW.zoom)
   let placeSearch = $state<PlaceSearch>()
   // What's under the pointer, named beside it
-  let hover = $state<{ x: number; y: number; text: string } | null>(null)
+  // What's under the pointer, named beside it; flipped to its left near the map's right edge
+  let hover = $state<{ x: number; y: number; lines: string[]; flip: boolean } | null>(null)
 
   type MarkerProps = {
     pivot: MapPivot
     fields: FieldCard[]
+    today: string
     selected: boolean
     dimmed: boolean
     onselect: () => void
-    onhover: typeof hoverBadge
   }
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- bookkeeping for MapLibre's markers, not rendered from
   const markers = new Map<number, { marker: Marker; props: MarkerProps; component: ReturnType<typeof mount> }>()
@@ -121,40 +129,38 @@
     selected: boolean
     dimmed: boolean
     onselect: () => void
-    onhover: typeof hoverBadge
   }
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- as markers, by field
   const fieldMarkers = new Map<number, { marker: Marker; props: FieldProps; component: ReturnType<typeof mount> }>()
 
-  /** A marker's badge under the pointer: named above it, like the map's own features */
-  function hoverBadge(badge: { label: string; element: HTMLElement } | null) {
-    if (!badge) return (hover = null)
-    const box = badge.element.getBoundingClientRect()
-    const frame = wrapper.getBoundingClientRect()
-    hover = { x: box.left + box.width / 2 - frame.left, y: box.top - frame.top + 8, text: badge.label }
+  // The hover label follows the pointer, worked out once a frame from the last pointer event: the
+  // map's features under it (hoverLines) and the marker badge it's on (data-hover)
+  let lastPointer: PointerEvent | null = null
+  let frame = 0
+  function onPointer(event: PointerEvent) {
+    lastPointer = event
+    frame ||= requestAnimationFrame(updateHover)
+  }
+  function updateHover() {
+    frame = 0
+    const m = map
+    const event = lastPointer
+    if (!m || !event || event.buttons) return (hover = null)
+    const box = m.getCanvasContainer().getBoundingClientRect()
+    const point: [number, number] = [event.clientX - box.left, event.clientY - box.top]
+    const target = event.target instanceof Element ? event.target : null
+    const badge = target?.closest<HTMLElement>('[data-hover]')?.dataset.hover?.split('\n') ?? []
+    const lines = [...new Set([...hoverLines(m, point), ...badge])]
+    const frameBox = wrapper.getBoundingClientRect()
+    const x = event.clientX - frameBox.left
+    hover = lines.length ? { x, y: event.clientY - frameBox.top, lines, flip: x > frameBox.width - 340 } : null
+    // A pointer where a click selects something
+    const selectable = badge.length > 0 || lines.some((line) => !line.startsWith('Group:'))
+    m.getCanvas().style.cursor = selectable ? 'pointer' : ''
   }
 
   const features = () => pivotFeatures(pivots, selectedId, highlighted)
-  const fields = () => fieldFeatures(pivots, selectedFieldId, highlighted)
-
-  function statusColor(): ExpressionSpecification {
-    const { status } = readPalette()
-    return [
-      'match',
-      ['get', 'status'],
-      'irrigate',
-      status.irrigate,
-      'caution',
-      status.caution,
-      'needs_canopy',
-      status.caution,
-      'ok',
-      status.ok,
-      'full',
-      status.full,
-      '#9ca3af',
-    ]
-  }
+  const fields = () => fieldFeatures(pivots, selectedFieldId, highlighted, highlightedFields)
 
   function addPivotLayers(m: MapLibreMap) {
     // Irrigation groups: a light shade inside a dashed line in the system color, named along it
@@ -192,8 +198,8 @@
       paint: { 'text-color': palette.system, 'text-halo-color': palette.systemCasing, 'text-halo-width': 1.5 },
     })
 
-    // Fields with an outline: filled in their status, under the systems (G.10)
-    const color = statusColor()
+    // Fields with an outline, under the systems (G.10): a white line with a thin black edge around a
+    // faint white fill (their plantings' badges carry the status, G.14)
     m.addSource('fields', { type: 'geojson', data: fields() as never })
     const OUTLINES: ExpressionSpecification = ['==', ['get', 'kind'], 'outline']
     m.addLayer({
@@ -202,8 +208,19 @@
       source: 'fields',
       filter: OUTLINES,
       paint: {
-        'fill-color': color,
-        'fill-opacity': ['case', ['get', 'dimmed'], 0.05, ['get', 'selected'], 0.5, 0.3],
+        'fill-color': palette.field,
+        'fill-opacity': ['case', ['get', 'dimmed'], 0.03, ['get', 'selected'], 0.25, 0.1],
+      },
+    })
+    m.addLayer({
+      id: 'fields-casing',
+      type: 'line',
+      source: 'fields',
+      filter: OUTLINES,
+      paint: {
+        'line-color': palette.fieldCasing,
+        'line-width': ['case', ['get', 'selected'], 5, 3],
+        'line-opacity': ['case', ['get', 'dimmed'], 0.25, 0.8],
       },
     })
     m.addLayer({
@@ -212,7 +229,7 @@
       source: 'fields',
       filter: OUTLINES,
       paint: {
-        'line-color': ['case', ['get', 'selected'], '#ffffff', color],
+        'line-color': palette.field,
         'line-width': ['case', ['get', 'selected'], 3, 1.5],
         'line-opacity': ['case', ['get', 'dimmed'], 0.35, 1],
       },
@@ -263,14 +280,14 @@
         continue
       }
       const element = document.createElement('div')
-      const props: MarkerProps = $state({ ...state, onselect: () => onselect(pivot.id), onhover: hoverBadge })
+      const props: MarkerProps = $state({ ...state, today, onselect: () => onselect(pivot.id) })
       const component = mount(PivotMarker, { target: element, props })
       const marker = new Marker({ element, anchor: 'center' }).setLngLat([pivot.longitude, pivot.latitude]).addTo(m)
       markers.set(pivot.id, { marker, props, component })
     }
 
     // An outlined field's plantings, as badges at its center
-    const outlined = fieldBadges(pivots)
+    const outlined = fieldBadges(pivots, today)
     const fieldIds = new Set(outlined.map((field) => field.field_id))
     for (const [id, entry] of fieldMarkers) {
       if (fieldIds.has(id)) continue
@@ -282,7 +299,9 @@
       const state = {
         field,
         selected: field.field_id === selectedFieldId,
-        dimmed: highlighted !== null && !highlighted.has(field.pivot_id),
+        dimmed:
+          (highlighted !== null && !highlighted.has(field.pivot_id)) ||
+          (highlightedFields !== null && !highlightedFields.has(field.field_id)),
       }
       const entry = fieldMarkers.get(field.field_id)
       if (entry) {
@@ -294,7 +313,6 @@
       const props: FieldProps = $state({
         ...state,
         onselect: () => onselect(field.pivot_id, field.field_id),
-        onhover: hoverBadge,
       })
       const component = mount(FieldMarker, { target: element, props })
       const marker = new Marker({ element, anchor: 'center' }).setLngLat(field.center).addTo(m)
@@ -304,7 +322,7 @@
 
   // Redraw when the pivots (farm filter), the selection or the window change
   $effect(() => {
-    void [pivots, selectedId, selectedFieldId, highlighted]
+    void [pivots, selectedId, selectedFieldId, highlighted, highlightedFields]
     map?.getSource<GeoJSONSource>('pivots')?.setData(features())
     map?.getSource<GeoJSONSource>('fields')?.setData(fields() as never)
     syncMarkers()
@@ -393,15 +411,15 @@
       m.on('styleimagemissing', () => addGlyphImages(m))
       // Over a system, field, plot or group: say what it is beside the pointer, and point at what
       // a click would select
-      m.on('mousemove', (event) => {
-        // A marker's badges name themselves (hoverBadge)
-        if ((event.originalEvent.target as Element).closest('.maplibregl-marker')) return
-        const text = hoverLabel(m, event.point)
-        hover = text ? { x: event.point.x, y: event.point.y, text } : null
-        m.getCanvas().style.cursor = text && !text.startsWith('Group:') ? 'pointer' : ''
+      // The hover label: over the map and its markers, cleared on leaving, recomputed as the map moves
+      // under a still pointer
+      const canvasContainer = m.getCanvasContainer()
+      canvasContainer.addEventListener('pointermove', onPointer)
+      canvasContainer.addEventListener('pointerleave', () => {
+        lastPointer = null
+        hover = null
       })
-      m.on('mouseout', () => (hover = null))
-      m.on('movestart', () => (hover = null))
+      m.on('moveend', () => lastPointer && onPointer(lastPointer))
       m.on('zoom', () => (zoom = m.getZoom()))
       m.on('moveend', () => {
         const { lng, lat } = m.getCenter()
@@ -417,17 +435,19 @@
       // Status colors follow the light or dark theme
       cleanups.push(
         onThemeChange(() => {
-          const color = statusColor()
-          setSystemColors(m, readPalette())
+          const palette = readPalette()
+          setSystemColors(m, palette)
           if (!m.getLayer(FIELD_LAYER)) return
-          m.setPaintProperty(FIELD_LAYER, 'fill-color', color)
-          m.setPaintProperty('fields-line', 'line-color', ['case', ['get', 'selected'], '#ffffff', color])
+          m.setPaintProperty(FIELD_LAYER, 'fill-color', palette.field)
+          m.setPaintProperty('fields-casing', 'line-color', palette.fieldCasing)
+          m.setPaintProperty('fields-line', 'line-color', palette.field)
         }),
       )
     })
 
     return () => {
       disposed = true
+      cancelAnimationFrame(frame)
       cleanups.forEach((cleanup) => cleanup())
       for (const { component } of [...markers.values(), ...fieldMarkers.values()]) unmount(component)
       markers.clear()
@@ -463,13 +483,15 @@
   {#if hover}
     <!-- Pointer users only: the list and the markers name everything for keyboards and screen readers -->
     <div
-      class="pointer-events-none absolute z-10 max-w-64 -translate-x-1/2 -translate-y-full truncate rounded-md
-        bg-surface-raised px-2 py-1 text-xs font-medium text-ink shadow-md ring-1 ring-line"
-      style:left="{hover.x}px"
-      style:top="{hover.y - 12}px"
+      class="pointer-events-none absolute z-10 w-max max-w-80 space-y-0.5 rounded-md bg-surface-raised px-2 py-1 text-xs
+        text-ink shadow-md ring-1 ring-line {hover.flip ? '-translate-x-full' : ''}"
+      style:left="{hover.flip ? hover.x - 12 : hover.x + 14}px"
+      style:top="{hover.y + 16}px"
       aria-hidden="true"
     >
-      {hover.text}
+      {#each hover.lines as line, index (index)}
+        <p>{line}</p>
+      {/each}
     </div>
   {/if}
 

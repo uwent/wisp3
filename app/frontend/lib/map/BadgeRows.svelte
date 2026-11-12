@@ -4,20 +4,11 @@
   import { type Badge, packRows } from './pivots'
 
   // Badges packed in rows of about √n (G.14: three make a triangle, four a square), on a dark
-  // backing. Each names itself through the map's hover label (onhover) and to screen readers.
-  let {
-    badges,
-    selected = false,
-    onhover,
-  }: {
-    badges: Badge[]
-    selected?: boolean
-    /** The badge under the pointer, or null when it leaves */
-    onhover: (badge: { label: string; element: HTMLElement } | null) => void
-  } = $props()
+  // backing. Each carries its hover label's lines (data-hover, read by OverviewMap under the
+  // pointer) and names itself to screen readers.
+  let { badges, selected = false }: { badges: Badge[]; selected?: boolean } = $props()
 
   const rows = $derived(packRows(badges))
-  const enter = (event: MouseEvent, label: string) => onhover({ label, element: event.currentTarget as HTMLElement })
 </script>
 
 <span
@@ -27,14 +18,12 @@
   {#each rows as row, index (index)}
     <span class="flex gap-0.5">
       {#each row as badge (badge.key)}
-        <!-- Hover only, for the map's label: the button names it -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <span class="flex" onmouseenter={(event) => enter(event, badge.label)} onmouseleave={() => onhover(null)}>
+        <span class="flex" data-hover={badge.lines.join('\n')}>
           {#if badge.status}
-            <StatusBadge status={badge.status} size="icon" title={badge.label} tooltip={false} />
+            <StatusBadge status={badge.status} size="icon" title={badge.lines.join(', ')} tooltip={false} />
           {:else}
             <span class="inline-flex size-5 rounded-full border-2 border-white/80 bg-gray-400/70"
-              ><span class="sr-only">{badge.label}</span></span
+              ><span class="sr-only">{badge.lines.join(', ')}</span></span
             >
           {/if}
         </span>

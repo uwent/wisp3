@@ -18,20 +18,23 @@
     anyUpdating,
     buildTree,
     type FarmGroup,
-    needsWaterWithin,
+    treeSystems,
     type Selection,
     treeFields,
     updatingIds,
   } from '@/lib/overview'
   import { poll, weatherUpdate } from '@/lib/poll'
   import { units as unitsFor } from '@/lib/units'
-  import { newQuickSetup } from '@/routes'
+  import { map as mapRoute, newQuickSetup } from '@/routes'
 
   // Every pivot on a map with its fields' status, beside a list of the operation as a tree of cards
   // (PLAN.md Phase 7, G.14). One selection, at any level, is shared by the list, the map and the
   // panel: a farm or irrigation group zooms the map to its systems; a system or field opens its
   // system's panel and is marked on the map. A click on the map selects the system or field there.
-  let { today, farms }: { today: string; farms: FarmGroup<MapPivot>[] } = $props()
+  // A season (?year=, G.14) shows that year's plantings; this year's can be narrowed to those
+  // growing now.
+  let { today, year, years, farms }: { today: string; year: number; years: number[]; farms: FarmGroup<MapPivot>[] } =
+    $props()
 
   const auth = $derived(page.props.auth)
   const units = $derived(unitsFor(auth.user?.unit_system))
@@ -44,6 +47,10 @@
   /** Days ahead for "needs water within", or null for no window */
   let windowDays = $state<number | null>(null)
   let query = $state('')
+  /** Only the plantings growing today (this year's season only) */
+  let growing = $state(false)
+  const thisYear = $derived(year === Number(today.slice(0, 4)))
+  const onlyGrowing = $derived(growing && thisYear)
   let selection = $state<Selection | null>(null)
   let overview = $state<OverviewMap>()
   let mapWidth = $state(0)
@@ -76,7 +83,25 @@
   })
   const weatherFor = (pivot: { weather_updating: boolean }) => weatherUpdate(pivot.weather_updating, timedOut)
 
-  const shown = $derived(farms.filter((farm) => farmId === 'all' || farm.id === farmId))
+  // The farms shown, with only the plantings growing today when asked (fields without one go)
+  const shown = $derived(
+    farms
+      .filter((farm) => farmId === 'all' || farm.id === farmId)
+      .map((farm) =>
+        onlyGrowing
+          ? {
+              ...farm,
+              pivots: farm.pivots.map((pivot) => ({
+                ...pivot,
+                fields: pivot.fields.flatMap((card) => {
+                  const plantings = card.plantings.filter((summary) => summary.phase === 'active')
+                  return plantings.length ? [{ ...card, plantings }] : []
+                }),
+              })),
+            }
+          : farm,
+      ),
+  )
   const mapPivots = $derived(shown.flatMap((farm) => farm.pivots))
   const mapGroups = $derived(groupFeatures(shown, mapPivots))
   const farmOf = $derived(new Map(farms.flatMap((farm) => farm.pivots.map((pivot) => [pivot.id, farm]))))
@@ -84,17 +109,12 @@
     new Map(farms.flatMap((farm) => farm.pivots.flatMap((pivot) => pivot.fields.map((card) => [card.id, pivot.id])))),
   )
   const cards = $derived(mapPivots.flatMap((pivot) => pivot.fields))
-  const tree = $derived(buildTree(shown, { order: prefs.sort, query, windowDays }))
+  const tree = $derived(buildTree(shown, { order: prefs.sort, query, windowDays, growing: onlyGrowing }))
   const listedCount = $derived(treeFields(tree).length)
-  const highlighted = $derived(
-    windowDays === null
-      ? null
-      : new Set(
-          mapPivots
-            .filter((pivot) => pivot.fields.some((card) => needsWaterWithin(card, windowDays!)))
-            .map((pivot) => pivot.id),
-        ),
-  )
+  // What the list's filters leave out is muted on the map
+  const filtering = $derived(windowDays !== null || query.trim() !== '')
+  const highlighted = $derived(filtering ? new Set(tree.flatMap(treeSystems).map((node) => node.pivot.id)) : null)
+  const highlightedFields = $derived(filtering ? new Set(treeFields(tree).map((card) => card.id)) : null)
   // The system and field the selection puts on the map and in the panel
   const selectedPivotId = $derived(
     selection?.level === 'system'
@@ -113,11 +133,11 @@
     return [{ label: 'Drought Monitor', value: category?.label ?? 'None', swatch: category?.color }]
   })
 
+  // Irrigate: fields needing water now (today), soon (within 3 days), or any
   const WINDOWS = [
-    { days: null, label: 'Any time' },
-    { days: 0, label: 'Today' },
-    { days: 3, label: '3 days' },
-    { days: 7, label: '7 days' },
+    { days: null, label: 'Any', title: 'All fields' },
+    { days: 3, label: 'Soon', title: 'Fields needing water within 3 days' },
+    { days: 0, label: 'Now', title: 'Fields needing water today' },
   ]
 
   function chooseFarm(id: number | 'all') {
@@ -195,6 +215,24 @@
   }
 </script>
 
+<!-- A compact pill menu with its label: "Irrigate  Any | Soon | Now" -->
+{#snippet pills(label: string, options: { label: string; title: string; pressed: boolean; onclick: () => void }[])}
+  <div class="flex items-center gap-1.5 text-sm" role="group" aria-label={label}>
+    <span class="text-ink-muted" aria-hidden="true">{label}</span>
+    <div class="flex overflow-hidden rounded-md border border-line bg-surface-raised text-xs">
+      {#each options as option (option.label)}
+        <button
+          type="button"
+          class="px-2.5 py-1 {option.pressed ? 'bg-brand-600 text-white dark:text-surface' : 'hover:bg-surface'}"
+          aria-pressed={option.pressed}
+          title={option.title}
+          onclick={option.onclick}>{option.label}</button
+        >
+      {/each}
+    </div>
+  </div>
+{/snippet}
+
 <svelte:head><title>Map · WISP</title></svelte:head>
 <svelte:window
   onkeydown={(event) => {
@@ -228,39 +266,44 @@
       <StatusCounts {cards} />
     </div>
     <div class="flex flex-wrap items-center gap-2 text-sm">
-      {#if farms.length > 1}
-        <label class="sr-only" for="farm-filter">Farm</label>
+      <label class="flex items-center gap-1.5">
+        <span class="text-ink-muted">Season</span>
         <select
-          id="farm-filter"
           class="rounded-md py-1 text-sm"
-          value={farmId}
-          onchange={(event) => {
-            const value = event.currentTarget.value
-            chooseFarm(value === 'all' ? 'all' : Number(value))
-          }}
+          value={year}
+          onchange={(event) =>
+            router.get(mapRoute.show({ query: { year: event.currentTarget.value } }).url, {}, { preserveState: true })}
         >
-          <option value="all">All farms</option>
-          {#each farms as farm (farm.id)}<option value={farm.id}>{farm.name}</option>{/each}
+          {#each years as option (option)}<option value={option}>{option}</option>{/each}
         </select>
+      </label>
+      {#if farms.length > 1}
+        <label class="flex items-center gap-1.5">
+          <span class="text-ink-muted">Farm</span>
+          <select
+            class="rounded-md py-1 text-sm"
+            value={farmId}
+            onchange={(event) => {
+              const value = event.currentTarget.value
+              chooseFarm(value === 'all' ? 'all' : Number(value))
+            }}
+          >
+            <option value="all">All farms</option>
+            {#each farms as farm (farm.id)}<option value={farm.id}>{farm.name}</option>{/each}
+          </select>
+        </label>
       {/if}
-      <div class="flex items-center gap-1.5" role="group" aria-labelledby="window-label">
-        <span id="window-label" class="text-ink-muted">Needs water</span>
-        <div class="flex overflow-hidden rounded-md border border-line bg-surface-raised text-xs">
-          {#each WINDOWS as option (option.label)}
-            <button
-              type="button"
-              class="px-2.5 py-1.5 {windowDays === option.days
-                ? 'bg-brand-600 text-white dark:text-surface'
-                : 'hover:bg-surface'}"
-              aria-pressed={windowDays === option.days}
-              aria-label={option.days ? `Within ${option.label}` : option.label}
-              onclick={() => chooseWindow(option.days)}
-              >{#if option.days !== null && option.days > 0}<span class="hidden sm:inline">{'Within '}</span
-                >{/if}{option.label}</button
-            >
-          {/each}
-        </div>
-      </div>
+      {#if thisYear}
+        {@render pills('Plantings', [
+          { label: 'All', title: "All this season's plantings", pressed: !growing, onclick: () => (growing = false) },
+          {
+            label: 'Current',
+            title: 'Only plantings growing today',
+            pressed: growing,
+            onclick: () => (growing = true),
+          },
+        ])}
+      {/if}
     </div>
   </div>
 
@@ -274,11 +317,13 @@
         <h2 class="mr-auto text-sm font-medium">
           Fields <span class="font-normal text-ink-muted">({listedCount})</span>
         </h2>
-        <label class="sr-only" for="list-sort">Order</label>
-        <select id="list-sort" class="rounded-md py-1 text-xs" bind:value={prefs.sort}>
-          <option value="urgent">Most urgent first</option>
-          <option value="north">North to south</option>
-        </select>
+        <label class="flex items-center gap-1.5 text-xs">
+          <span class="text-ink-muted">Sort</span>
+          <select class="rounded-md py-1 text-xs" bind:value={prefs.sort}>
+            <option value="urgent">Most urgent first</option>
+            <option value="north">North to south</option>
+          </select>
+        </label>
         <button
           type="button"
           class="rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-surface-raised hover:text-ink md:hidden"
@@ -286,7 +331,16 @@
           onclick={() => (prefs.listOpen = !prefs.listOpen)}>{prefs.listOpen ? 'Hide' : 'Show'}</button
         >
       </div>
-      <div class="border-b border-line px-3 py-2">
+      <div class="space-y-2 border-b border-line px-3 py-2">
+        {@render pills(
+          'Irrigate',
+          WINDOWS.map((option) => ({
+            label: option.label,
+            title: option.title,
+            pressed: windowDays === option.days,
+            onclick: () => chooseWindow(option.days),
+          })),
+        )}
         <input
           type="search"
           bind:value={query}
@@ -302,6 +356,8 @@
           <p class="px-1 py-4 text-sm text-ink-muted">
             {#if windowDays !== null}
               No fields need water {windowDays === 0 ? 'today' : `within ${windowDays} days`}.
+            {:else if onlyGrowing && !query.trim()}
+              Nothing is growing today.
             {:else if query.trim()}
               Nothing matches "{query.trim()}".
             {:else}
@@ -330,16 +386,20 @@
         bind:this={overview}
         pivots={mapPivots}
         groups={mapGroups}
+        {today}
         selectedId={selectedPivotId}
         {selectedFieldId}
         {highlighted}
+        {highlightedFields}
         showSystems={prefs.systems}
         basemap={prefs.basemap}
         view={prefs.view}
         unitSystem={auth.user?.unit_system}
         onselect={selectOnMap}
         onbasemap={(basemap) => (prefs.basemap = basemap)}
-        onviewchange={(view) => (prefs.view = view)}
+        onviewchange={(view) => {
+          prefs.view = view
+        }}
         onload={(map) => overlays.attach(map)}
       >
         {#snippet toolbar()}

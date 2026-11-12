@@ -371,13 +371,22 @@ export const GROUP_MARGIN_M = 120
  * its system
  */
 export function groupOutline(shapes: PivotShape[], boundaries: Boundary[] = []): LngLat[] {
-  const corners = [
-    ...shapes.flatMap((shape) => surveyRing(shape, 24)),
-    // A field's hull is enough, and far fewer corners than its outline may have
-    ...boundaries.flatMap((boundary) => convexHull(boundaryRing(boundary))),
-  ]
+  return bufferedHull(
+    [...shapes.flatMap((shape) => surveyRing(shape, 24)), ...boundaries.flatMap(boundaryRing)],
+    GROUP_MARGIN_M,
+    6,
+  )
+}
+
+/**
+ * The convex hull around points with a margin (meters), rounded at its corners: each of the hull's
+ * corners pushed out in `directions` directions (the hull first: far fewer corners than an outline)
+ */
+export function bufferedHull(points: LngLat[], marginM: number, directions = 12): LngLat[] {
   return convexHull(
-    corners.flatMap((vertex) => [0, 60, 120, 180, 240, 300].map((b) => destination(vertex, GROUP_MARGIN_M, b))),
+    convexHull(points).flatMap((vertex) =>
+      Array.from({ length: directions }, (_, i) => destination(vertex, marginM, (360 * i) / directions)),
+    ),
   )
 }
 

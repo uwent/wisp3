@@ -20,7 +20,7 @@
 
   // A field's outline on the map (PLAN.md Phase 8 G.10, G.14: one polygon). terra-draw holds it:
   // shown as it is ('view'), a new one clicked corner by corner ('draw'; the old one stays until the
-  // new one is finished, which replaces it), or selected to drag its corners, add one from a
+  // new one is finished, which replaces it), or selected to drag it whole or by its corners, add one from a
   // midpoint or remove one ('edit'). The field's irrigation system, the operation's other systems and
   // fields are drawn for reference.
   let {
@@ -131,7 +131,8 @@
             polygon: {
               feature: {
                 validation,
-                draggable: false,
+                // The whole outline drags, its corners and midpoints too
+                draggable: true,
                 coordinates: { midpoints: true, draggable: true, deletable: true },
               },
             },

@@ -1,44 +1,35 @@
 <script lang="ts">
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { systemName } from '@/lib/geo'
-  import { type FieldCard, pivotStatus, primary, summaryActive } from '@/lib/overview'
+  import { type FieldCard, pivotStatus } from '@/lib/overview'
 
   import BadgeRows from './BadgeRows.svelte'
-  import { type Badge, type MapPivot, STATUS_LABELS as LABELS, statusText } from './pivots'
+  import { fieldBadge, type MapPivot, STATUS_LABELS as LABELS } from './pivots'
 
   // What sits at an irrigation system's center (or point) on the map (PLAN.md Phase 7): a badge per
   // field without an outline (an outlined field has its own, FieldMarker), packed in rows of about
-  // √n (G.14), and its name when zoomed in. Zoomed out (the map sets data-far), it's one dot in the
-  // most urgent status of all its fields, outlined or not. Where those fields are under the pivot
-  // isn't known without outlines, so they aren't drawn as areas.
+  // √n (G.14), inside the system's glyph (sized to hold them, systemLayers.ts), and its name when
+  // zoomed in. Zoomed out (the map sets data-far), it's one dot in the most urgent status of all its
+  // fields, outlined or not. Badges and name carry their hover label's lines (data-hover).
   let {
     pivot,
     fields,
+    today,
     selected,
     dimmed,
     onselect,
-    onhover,
   }: {
     pivot: MapPivot
     /** Its fields without an outline */
     fields: FieldCard[]
+    today: string
     selected: boolean
     dimmed: boolean
     onselect: () => void
-    onhover: (badge: { label: string; element: HTMLElement } | null) => void
   } = $props()
 
   const status = $derived(pivotStatus(pivot.fields))
-  const badges = $derived<Badge[]>(
-    fields.map((card) => {
-      const summary = primary(card)
-      return {
-        key: card.id,
-        status: summaryActive(summary) ? summary!.status! : null,
-        label: `Field: ${card.name} · ${statusText(summary)}`,
-      }
-    }),
-  )
+  const badges = $derived(fields.map((card) => fieldBadge(card, today)))
   const name = $derived(systemName(pivot))
   const label = $derived(
     `${name}: ${pivot.fields.length} field${pivot.fields.length === 1 ? '' : 's'}` +
@@ -46,8 +37,6 @@
   )
   // Every field outlined: nothing to show here until zoomed out
   const farOnly = $derived(pivot.fields.length > 0 && fields.length === 0)
-  const hoverName = (event: MouseEvent) =>
-    onhover({ label: `System: ${name}`, element: event.currentTarget as HTMLElement })
 </script>
 
 <button
@@ -63,26 +52,20 @@
 >
   <span class="group-data-far/map:hidden">
     {#if badges.length}
-      <BadgeRows {badges} {selected} {onhover} />
+      <BadgeRows {badges} {selected} />
     {:else if !farOnly}
-      <!-- Hover only, for the map's label: the button names it -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <span
         class="block rounded-full bg-black/50 px-1.5 py-0.5 text-[0.65rem] text-white {selected
           ? 'ring-2 ring-white'
           : ''}"
-        onmouseenter={hoverName}
-        onmouseleave={() => onhover(null)}>No fields</span
+        data-hover={`System: ${name}\nNo fields`}>No fields</span
       >
     {/if}
   </span>
   <!-- Zoomed out, the most urgent status with its icon, not color alone -->
-  <!-- Hover only, for the map's label: the button names it -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <span
     class="hidden rounded-full group-data-far/map:block {selected ? 'outline-2 outline-offset-2 outline-white' : ''}"
-    onmouseenter={hoverName}
-    onmouseleave={() => onhover(null)}
+    data-hover="System: {name}"
   >
     {#if status}
       <StatusBadge {status} size="icon" title="{pivot.name}: {LABELS[status]}" tooltip={false} />
@@ -90,12 +73,9 @@
       <span class="block size-3.5 rounded-full bg-gray-400 ring-2 ring-white"></span>
     {/if}
   </span>
-  <!-- Hover only, for the map's label: the button names it -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <span
     class="max-w-40 truncate text-xs font-semibold text-white [text-shadow:0_0_3px_#000,0_0_2px_#000]
       group-data-far/map:hidden group-data-mid/map:hidden"
-    onmouseenter={hoverName}
-    onmouseleave={() => onhover(null)}>{pivot.name}</span
+    data-hover="System: {name}">{pivot.name}</span
   >
 </button>

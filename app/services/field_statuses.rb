@@ -7,9 +7,10 @@ class FieldStatuses
   RANK = {irrigate: 0, caution: 1, needs_canopy: 2, ok: 3, full: 4}.freeze
 
   # {field_id => [PlantingStatus, …]}, whole-field planting first, then by season start; empty for a
-  # field with no planting this year
-  def self.for(fields, today: Date.current)
-    plantings = fields.to_h { |field| [field.id, plantings_for(field, today)] }
+  # field with no planting this year. Another year (the map's season, G.14) gives every planting
+  # that started in it, as they ended (or stand, or will start).
+  def self.for(fields, today: Date.current, year: today.year)
+    plantings = fields.to_h { |field| [field.id, plantings_for(field, today, year)] }
 
     current = plantings.values.flatten
     last = [today + PlantingStatus::HORIZON, current.map(&:end_date).max].compact.min
@@ -30,9 +31,10 @@ class FieldStatuses
   end
 
   # The plantings in season today; with none, the one this year nearest today and those it shares
-  # days with (so a field of plots shows them all out of season, and a succession just the one)
-  def self.plantings_for(field, today)
-    on = field.plantings_on(today)
+  # days with (so a field of plots shows them all out of season, and a succession just the one); in
+  # another year, all of that year's
+  def self.plantings_for(field, today, year = today.year)
+    on = (year == today.year) ? field.plantings_on(today) : field.plantings.select { |p| p.season_year == year }
     if on.empty?
       year = field.plantings.select { |p| p.season_year == today.year }
       nearest = year.min_by { |p| (p.season_start - today).abs }

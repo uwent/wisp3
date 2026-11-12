@@ -13,12 +13,13 @@
 <script lang="ts" generics="T extends TimelinePlanting">
   import { Link } from '@inertiajs/svelte'
 
-  import { cropName, plotSize, seasonDates } from '@/lib/plantings'
+  import { cropName, plantingWhen, plotSize, seasonDates } from '@/lib/plantings'
   import { timeline } from '@/lib/timeline'
   import type { Units } from '@/lib/units'
   import type { PlantingSummary } from '@/types/serializers'
 
-  // A field's plantings for one season as bars across it (PLAN.md Phase 8 G.11), like a Gantt chart:
+  // A field's plantings for one season as bars across it (PLAN.md Phase 8 G.11), like a Gantt chart,
+  // each named by its crop and when it is (G.14):
   // plots in season together in rows of their own, successions along one row. Each bar opens its
   // planting: onselect (Setup's form) or href (its page). status colors a bar's dot by its planting's
   // status today; current marks the planting whose page this is.
@@ -49,7 +50,7 @@
   const describe = (p: T) => [cropName(p), seasonDates(p), plotSize(p, units) ?? 'whole field'].join(', ')
   // What the bar doesn't show, for screen readers after its visible text (which its name must contain)
   const more = (p: T) =>
-    [p.variety && `(${p.variety})`, seasonDates(p), p.partial ? 'part of the field' : 'whole field']
+    [p.variety && `(${p.variety})`, p.partial ? `part of the field, ${plotSize(p, units)}` : 'whole field']
       .filter(Boolean)
       .join(', ')
   const dots: Record<string, string> = {
@@ -92,7 +93,7 @@
           {#if status[p.id]}<span class="size-2 shrink-0 rounded-full {dots[status[p.id]!]}" aria-hidden="true"
             ></span>{/if}
           <span class="truncate">{p.plant_name}</span>
-          {#if p.partial}<span class="truncate text-ink-muted">{plotSize(p, units)}</span>{/if}
+          <span class="truncate text-xs text-ink-muted">{plantingWhen(p, today)}</span>
           <span class="sr-only">{`, ${more(p)}`}</span>
         {/snippet}
         {#if href}

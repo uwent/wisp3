@@ -3,7 +3,8 @@
   import { systemName } from '@/lib/geo'
   import type { Snippet } from 'svelte'
 
-  import { formatArea, seasonDates } from '@/lib/plantings'
+  import { isoDate } from '@/lib/dates'
+  import { plantingWhen } from '@/lib/plantings'
   import { formatNumber, type Units } from '@/lib/units'
   import { fieldOutline, fields, planting as plantingRoute, pivots } from '@/routes'
   import type { Field } from '@/types/serializers'
@@ -36,13 +37,9 @@
       .toSorted((a, b) => Number(a.partial) - Number(b.partial) || a.season_start.localeCompare(b.season_start)),
   )
   const years = $derived([...new Set([...field.plantings.map((p) => p.year), year])].sort((a, b) => b - a))
-  // A tab's second line: a plot's size, or the dates when the season has the same crop twice
-  const detail = (p: Field['plantings'][number]) =>
-    p.partial
-      ? formatArea(units, p.area_acres)
-      : seasonPlantings.filter((other) => other.plant_name === p.plant_name).length > 1
-        ? seasonDates(p)
-        : null
+  // A tab's second line: when the planting is, as plantings are named (G.14)
+  const today = isoDate(new Date())
+  const detail = (p: Field['plantings'][number]) => plantingWhen(p, today)
   const tab = (active: boolean) =>
     `flex shrink-0 flex-col rounded-t-md border-b-2 px-3 py-1.5 text-sm leading-tight ${
       active

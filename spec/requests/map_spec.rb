@@ -43,4 +43,19 @@ RSpec.describe "Map", type: :request do
     shown = inertia.props[:farms].sole[:pivots].sole
     expect(shown[:outlines]).to eq([{"field_id" => field.id, "boundary" => outline}])
   end
+
+  it "shows another season's plantings, and offers the seasons there are (G.14)" do
+    create(:planting, field:, season_start: Date.new(2025, 5, 1), emergence_date: Date.new(2025, 5, 20),
+      end_date: Date.new(2025, 9, 15))
+    get map_path
+    expect(inertia.props).to include(year: 2026, years: [2026, 2025])
+
+    get map_path(year: 2025)
+    expect(inertia.props[:year]).to eq(2025)
+    plantings = inertia.props[:farms].sole[:pivots].sole[:fields].sole[:plantings]
+    expect(plantings.map { |summary| [summary[:season_start], summary[:phase]] }).to eq([["2025-05-01", "ended"]])
+
+    get map_path(year: 1900)
+    expect(inertia.props[:year]).to eq(2026)
+  end
 end

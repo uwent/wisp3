@@ -41,6 +41,8 @@ const palette: Palette = {
   snow: '#ccc',
   system: '#2ec4f0',
   systemCasing: '#0c2d48',
+  field: '#ffffff',
+  fieldCasing: '#000000',
   depths: ['#1', '#2', '#3', '#4'],
   status: { full: '#00f', ok: '#0f0', caution: '#fa0', irrigate: '#f00' },
   dark: false,

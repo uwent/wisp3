@@ -1,4 +1,4 @@
-import { addDays, formatDate } from '@/lib/dates'
+import { addDays, daysBetween, formatDate } from '@/lib/dates'
 import type { Units } from '@/lib/units'
 
 // How a planting is named and sized in the interface (PLAN.md Phase 8 G.11): a planting covers the
@@ -32,6 +32,23 @@ export const cropName = (planting: { plant_name: string; variety: string | null 
 /** "Apr 1 – Sep 30" */
 export const seasonDates = (planting: { season_start: string; end_date: string }) =>
   `${formatDate(planting.season_start)} – ${formatDate(planting.end_date)}`
+
+/**
+ * When a planting is, the way plantings are named (G.14): in season, its start and the days since
+ * ("May 15, 65 days"); otherwise its season ("Apr 1 – Sep 15")
+ */
+export function plantingWhen(planting: { season_start: string; end_date: string }, today: string): string {
+  const growing = planting.season_start <= today && today <= planting.end_date
+  return growing
+    ? `${formatDate(planting.season_start)}, ${daysBetween(planting.season_start, today)} days`
+    : seasonDates(planting)
+}
+
+/** A planting in a line: its crop, with its variety and when in one pair of brackets: "Potato (Russet Burbank, Apr 1 – Sep 15)" */
+export const plantingLabel = (
+  planting: { plant_name: string; variety: string | null; season_start: string; end_date: string },
+  today: string,
+) => `${planting.plant_name} (${[planting.variety, plantingWhen(planting, today)].filter(Boolean).join(', ')})`
 
 /** Square feet in an acre (Planting::SQUARE_FEET_PER_ACRE) */
 export const SQUARE_FEET_PER_ACRE = 43_560

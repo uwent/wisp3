@@ -537,7 +537,9 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   const card = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Arlington 525' }) })
   const plantings = card.getByRole('list', { name: 'Plantings on Arlington 525' })
   await expect(plantings.getByRole('listitem')).toHaveCount(4)
-  await expect(card.getByText('Soybean, 300 × 60 ft (0.41 ac)')).toBeVisible()
+  // Each named by its crop, with its dates below (G.14)
+  await expect(plantings.getByText('Soybean', { exact: true })).toBeVisible()
+  await expect(plantings.getByText(/^Apr 1 – /).first()).toBeVisible()
 
   // The field page: its timeline, a status card per planting, and tabs for each
   await card.getByRole('link', { name: /Arlington 525/ }).click()
@@ -897,7 +899,8 @@ test('a field outline is copied from its pivot and saved (G.10)', async ({ page 
   await expect(page.getByRole('heading', { name: 'Arlington 525', level: 1 })).toBeVisible()
   await expect(page.getByText('2.0 ac ·').first()).toBeVisible() // the area as it was
   await page.goto('/setup')
-  await expect(page.getByText(/outline 2[56]\.\d ac/)).toBeVisible()
+  // The area entered, and the outline's beside it (G.14)
+  await expect(page.getByText(/2\.0 ac · Mapped as 2[56]\.\d ac/)).toBeVisible()
   // The field's dialog shows the shape
   await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
   const dialog = page.getByRole('dialog')
@@ -1018,7 +1021,7 @@ test('the map shades outlined fields and badges them at their center, and marks 
   const panel = page.getByRole('region', { name: 'System: North 160 (pivot)' })
   await expect(panel.locator('li[aria-current="true"]')).toContainText('North potatoes')
   // Closer in, the outlined fields carry their plantings' badges, and the system's marker goes
-  const badges = page.getByRole('button', { name: /^Field: North potatoes, Potato/ })
+  const badges = page.getByRole('button', { name: /^Field: North potatoes, Planting: Potato/ })
   await expect(badges).toBeVisible()
   await expect(badges).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { name: /^North 160 \(pivot\): / })).toBeHidden()

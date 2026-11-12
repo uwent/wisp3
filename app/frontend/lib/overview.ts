@@ -105,6 +105,8 @@ export type TreeOptions = {
   query?: string
   /** Only fields needing water within these days (0: today), and the parents left with any; null for all */
   windowDays?: number | null
+  /** Only fields with a planting growing today (the map's Growing now), and the parents left with any */
+  growing?: boolean
 }
 
 // Where a card sorts: its most urgent field's urgency and days to water, its northernmost
@@ -121,7 +123,7 @@ const fieldKey = (card: FieldCard, latitude: number): SortKey => ({
 function compare(a: SortKey, b: SortKey, order: SortOrder): number {
   const byName = a.name.localeCompare(b.name)
   if (order === 'north') return b.north - a.north || byName
-  return a.urgency - b.urgency || a.soonest - b.soonest || byName
+  return a.urgency - b.urgency || a.soonest - b.soonest || b.north - a.north || byName
 }
 
 /** A parent's key from its children's: the most urgent of them, and the northernmost */
@@ -142,18 +144,18 @@ function sortByKey<T>(items: T[], key: (item: T) => SortKey, order: SortOrder): 
 
 /**
  * The list's tree: each level ordered by its most urgent field ("Most urgent first", soonest to
- * need water next) or by latitude ("North to south", a parent by its northernmost system), names
- * breaking ties. A query keeps what matches with its parents; the window keeps fields needing water
+ * need water next, then north to south) or by latitude ("North to south", a parent by its
+ * northernmost system), names breaking ties. A query keeps what matches with its parents; the window keeps fields needing water
  * within it, and a parent left with none of them goes. Without either, systems without fields are
  * listed too, to select them.
  */
 export function buildTree<P extends PivotGroup & { latitude: number }>(
   farms: FarmGroup<P>[],
-  { order, query = '', windowDays = null }: TreeOptions,
+  { order, query = '', windowDays = null, growing = false }: TreeOptions,
 ): FarmNode<P>[] {
   const text = query.trim().toLowerCase()
   const matches = (name: string) => !text || name.toLowerCase().includes(text)
-  const filtering = text !== '' || windowDays !== null
+  const filtering = text !== '' || windowDays !== null || growing
 
   const systemKey = (node: SystemNode<P>) =>
     parentKey(
@@ -167,9 +169,12 @@ export function buildTree<P extends PivotGroup & { latitude: number }>(
   const system = (pivot: P, matched: boolean): SystemNode<P> | null => {
     const within = matched || matches(pivot.name)
     const fields = pivot.fields.filter(
-      (card) => (within || matches(card.name)) && (windowDays === null || needsWaterWithin(card, windowDays)),
+      (card) =>
+        (within || matches(card.name)) &&
+        (windowDays === null || needsWaterWithin(card, windowDays)) &&
+        (!growing || card.plantings.some((summary) => summary.phase === 'active')),
     )
-    if (filtering && !fields.length && !(within && windowDays === null)) return null
+    if (filtering && !fields.length && !(within && windowDays === null && !growing)) return null
     const sorted = sortByKey(fields, (card) => fieldKey(card, pivot.latitude), order)
     return { kind: 'system', pivot, fields: sorted }
   }

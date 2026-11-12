@@ -10,7 +10,7 @@ import type {
 import type { Palette } from '@/lib/charts/palette'
 import { DEFAULT_RADIUS_FT, FEET_PER_METER, isPoint, linearOf, type PivotShape } from '@/lib/geo'
 
-import { type Glyph, GLYPH_PATHS, KIND_GLYPHS } from './glyphs'
+import { type Glyph, GLYPH_CORNERS, GLYPH_INRADIUS, KIND_GLYPHS, segmentDistance } from './glyphs'
 
 // The irrigation systems on the overview map (PLAN.md Phase 8 G.14), in the system color (never a
 // status: that's the outlined fields' fill and the markers' badges). A pivot is its circle and a
@@ -19,7 +19,8 @@ import { type Glyph, GLYPH_PATHS, KIND_GLYPHS } from './glyphs'
 // under MIN_SHAPE_PX across, it's drawn as its glyph at that size instead, and a point kind's glyph
 // keeps MIN_POINT_PX. MapLibre allows the zoom only as the input of a top-level interpolate, so the
 // sizes and the switch between shape and glyph are interpolated over stops at each whole zoom, each
-// stop's output computed per system from its true size (`k`).
+// stop's output computed per system from its true size (`k`). A glyph is never smaller than the
+// badges its marker shows (`fit`, `fit_far` zoomed out): it encloses them.
 
 export const PIVOT_LAYER = 'pivots-fill'
 /** Every system's glyph: point kinds always, pivots and linears when they're small */
@@ -40,15 +41,17 @@ export const SYSTEM_LAYERS = [
 export const MIN_SHAPE_PX = 16
 /** A point kind's glyph is never smaller than this */
 export const MIN_POINT_PX = 10
+/** Below this zoom a system's marker is one dot (OverviewMap's data-far) */
+export const FAR_ZOOM = 11.5
 /** A point kind's glyph on the ground: about 50 ft in radius */
 export const POINT_SIZE_M = 100 / FEET_PER_METER
 // MapLibre's world is 512 px across at zoom 0
 const METERS_PER_PX_AT_ZOOM_0 = 40_075_016.686 / 512
-// The glyph images: 64 px with an 8 px margin for the distance field, at pixel ratio 2, so the
-// shape is GLYPH_PX (24) CSS pixels across at icon-size 1
-const IMAGE_PX = 64
-const MARGIN_PX = 8
-const PIXEL_RATIO = 2
+// The glyph images: 128 px with a 16 px margin for the distance field, at pixel ratio 4, so the
+// shape is GLYPH_PX (24) CSS pixels across at icon-size 1 and its edges stay smooth drawn large
+const IMAGE_PX = 128
+const MARGIN_PX = 16
+const PIXEL_RATIO = 4
 const GLYPH_PX = (IMAGE_PX - 2 * MARGIN_PX) / PIXEL_RATIO
 const ZOOMS = Array.from({ length: 23 }, (_, zoom) => zoom)
 
@@ -60,6 +63,27 @@ export type GlyphProperties = {
   k: number
   /** A linear's direction of travel, which its rectangle is turned to */
   rotate: number
+  /** Pixels across the glyph needs to enclose its marker's badges (0: none), and zoomed out */
+  fit: number
+  fit_far: number
+}
+
+// A marker's badges (BadgeRows): 20 px each, 2 px apart, on a backing 2 px wider all round
+const BADGE_PX = 20
+const BADGE_GAP_PX = 2
+const BADGE_PAD_PX = 2
+
+/**
+ * Pixels across a glyph must be to enclose a marker's rows of badges: the circle around them (or
+ * around the one round badge) inside the glyph's inscribed circle, with a few pixels to spare
+ */
+export function badgeFit(glyph: Glyph, rows: number[]): number {
+  if (!rows.length) return 0
+  const columns = Math.max(...rows)
+  const across = (n: number) => n * BADGE_PX + (n - 1) * BADGE_GAP_PX + 2 * BADGE_PAD_PX
+  const radius =
+    rows.length === 1 && columns === 1 ? across(1) / 2 : Math.hypot(across(columns), across(rows.length)) / 2
+  return Math.ceil((radius + 3) / GLYPH_INRADIUS[glyph])
 }
 
 /** The icon-size at zoom 0 that draws something sizeM across at its true size at a latitude */
@@ -69,32 +93,53 @@ export const glyphScale = (sizeM: number, latitude: number) =>
 /** Pixels across a system's true size is at a zoom */
 export const truePixels = (k: number, zoom: number) => k * GLYPH_PX * 2 ** zoom
 
-/** A system's glyph, its scale and turn */
-export function glyphProperties(shape: PivotShape): GlyphProperties {
-  const point = isPoint(shape.kind)
+/**
+ * A system's glyph, its scale and turn. badgeRows: its marker's rows of badges, which the glyph
+ * encloses. outlineM: for a point kind whose fields have outlines, the size of the area drawn
+ * around them (systemOutline), which it then has like a pivot's circle.
+ */
+export function glyphProperties(
+  shape: PivotShape,
+  badgeRows: number[] = [],
+  outlineM: number | null = null,
+): GlyphProperties {
   const linear = shape.kind === 'linear' ? linearOf(shape) : null
-  const sizeFt = point
-    ? null
-    : linear
-      ? Math.max(linear.lengthFt, linear.travelFt)
-      : 2 * (shape.radius_ft ?? DEFAULT_RADIUS_FT)
+  const point = isPoint(shape.kind) && outlineM === null
+  const sizeM =
+    outlineM ??
+    (point
+      ? POINT_SIZE_M
+      : (linear ? Math.max(linear.lengthFt, linear.travelFt) : 2 * (shape.radius_ft ?? DEFAULT_RADIUS_FT)) /
+        FEET_PER_METER)
+  const glyph = KIND_GLYPHS[shape.kind]
   return {
-    glyph: KIND_GLYPHS[shape.kind],
+    glyph,
     point,
-    k: glyphScale(sizeFt === null ? POINT_SIZE_M : sizeFt / FEET_PER_METER, shape.latitude),
+    k: glyphScale(sizeM, shape.latitude),
     rotate: linear?.bearingDeg ?? 0,
+    fit: badgeFit(glyph, badgeRows),
+    fit_far: badgeRows.length ? badgeFit(glyph, [1]) : 0,
   }
 }
 
-/** Whether a system is drawn as its glyph at a zoom: a point kind, or a pivot or linear too small to see */
-export const drawnAsGlyph = (properties: Pick<GlyphProperties, 'point' | 'k'>, zoom: number) =>
-  properties.point || truePixels(properties.k, zoom) < MIN_SHAPE_PX
+/** The pixels a glyph must enclose at a zoom (its badges', or one dot's zoomed out) */
+const fitAt = (properties: Pick<GlyphProperties, 'fit' | 'fit_far'>, zoom: number) =>
+  zoom < FAR_ZOOM ? properties.fit_far : properties.fit
+
+/**
+ * Whether a system is drawn as its glyph at a zoom: a point kind, or a pivot or linear (or a point
+ * kind's outline) too small to see or to hold its badges
+ */
+export const drawnAsGlyph = (properties: Pick<GlyphProperties, 'point' | 'k' | 'fit' | 'fit_far'>, zoom: number) =>
+  properties.point || truePixels(properties.k, zoom) < Math.max(MIN_SHAPE_PX, fitAt(properties, zoom))
+
+const fitExpression = (zoom: number): ExpressionSpecification => ['get', zoom < FAR_ZOOM ? 'fit_far' : 'fit']
 
 // The same test as an expression at one whole zoom
 const asGlyph = (zoom: number): ExpressionSpecification => [
   'any',
   ['get', 'point'],
-  ['<', ['*', ['get', 'k'], GLYPH_PX * 2 ** zoom], MIN_SHAPE_PX],
+  ['<', ['*', ['get', 'k'], GLYPH_PX * 2 ** zoom], ['max', MIN_SHAPE_PX, fitExpression(zoom)]],
 ]
 
 /** A property interpolated over the whole zooms, its value at each from output(zoom) */
@@ -115,7 +160,10 @@ const POLYGONS: ExpressionSpecification = ['==', ['geometry-type'], 'Polygon']
 const POINTS: ExpressionSpecification = ['==', ['geometry-type'], 'Point']
 const SELECTED: ExpressionSpecification = ['get', 'selected']
 
-/** A glyph's icon-size: its true size or the minimum, the selected one `selectedScale` times that */
+/**
+ * A glyph's icon-size: its true size, or the minimum or what encloses its badges if that's more,
+ * the selected one `selectedScale` times that
+ */
 const glyphSize = (selectedScale: number) =>
   byZoom(
     (zoom) => [
@@ -124,6 +172,7 @@ const glyphSize = (selectedScale: number) =>
       [
         'max',
         ['case', ['get', 'point'], MIN_POINT_PX / GLYPH_PX, MIN_SHAPE_PX / GLYPH_PX],
+        ['/', fitExpression(zoom), GLYPH_PX],
         ['*', ['get', 'k'], 2 ** zoom],
       ],
     ],
@@ -258,13 +307,13 @@ export function setSystemColors(map: MapLibreMap, palette: Palette) {
 }
 
 /**
- * The glyphs as signed distance field icons, so they take the system color and a halo: drawn on a
- * canvas, then each pixel's alpha set from its distance to the shape's edge (MapLibre's SDF edge is
- * alpha 0.75, falling off over the margin). Added once per style; a basemap change drops them, and
- * styleimagemissing adds them back.
+ * The glyphs as signed distance field icons, so they take the system color and a halo: each pixel's
+ * alpha from its exact distance to the glyph's edges (MapLibre's SDF edge is alpha 0.75, falling off
+ * over the margin), so edges stay straight and smooth however large a glyph is drawn. Added once per
+ * style; a basemap change drops them, and styleimagemissing adds them back.
  */
 export function addGlyphImages(map: MapLibreMap) {
-  for (const glyph of Object.keys(GLYPH_PATHS) as Glyph[]) {
+  for (const glyph of Object.keys(GLYPH_CORNERS) as Glyph[]) {
     if (!map.hasImage(glyph)) map.addImage(glyph, glyphImage(glyph), { sdf: true, pixelRatio: PIXEL_RATIO })
   }
 }
@@ -274,28 +323,28 @@ const images = new Map<Glyph, { width: number; height: number; data: Uint8Array 
 function glyphImage(glyph: Glyph) {
   const cached = images.get(glyph)
   if (cached) return cached
-  const canvas = document.createElement('canvas')
-  canvas.width = canvas.height = IMAGE_PX
-  const context = canvas.getContext('2d')!
-  context.translate(MARGIN_PX, MARGIN_PX)
-  context.scale((IMAGE_PX - 2 * MARGIN_PX) / 24, (IMAGE_PX - 2 * MARGIN_PX) / 24)
-  context.fill(new Path2D(GLYPH_PATHS[glyph]))
-  const pixels = context.getImageData(0, 0, IMAGE_PX, IMAGE_PX).data
-  const inside = (x: number, y: number) => pixels[(y * IMAGE_PX + x) * 4 + 3] > 127
-  // The edge: pixels whose neighbor across is on the other side
-  const edge: [number, number][] = []
-  for (let y = 0; y < IMAGE_PX; y++)
-    for (let x = 0; x < IMAGE_PX; x++) {
-      const here = inside(x, y)
-      if ((x + 1 < IMAGE_PX && inside(x + 1, y) !== here) || (y + 1 < IMAGE_PX && inside(x, y + 1) !== here))
-        edge.push([x + 0.5, y + 0.5])
+  // The corners in image pixels
+  const scale = (IMAGE_PX - 2 * MARGIN_PX) / 24
+  const corners = GLYPH_CORNERS[glyph].map(
+    ([x, y]) => [MARGIN_PX + x * scale, MARGIN_PX + y * scale] as [number, number],
+  )
+  const inside = ([x, y]: [number, number]) => {
+    let odd = false
+    for (let i = 0, j = corners.length - 1; i < corners.length; j = i++) {
+      const [xi, yi] = corners[i]
+      const [xj, yj] = corners[j]
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) odd = !odd
     }
+    return odd
+  }
   const data = new Uint8Array(IMAGE_PX * IMAGE_PX * 4)
   for (let y = 0; y < IMAGE_PX; y++)
     for (let x = 0; x < IMAGE_PX; x++) {
+      const at: [number, number] = [x + 0.5, y + 0.5]
       let nearest = Infinity
-      for (const [ex, ey] of edge) nearest = Math.min(nearest, (ex - x) ** 2 + (ey - y) ** 2)
-      const outside = Math.sqrt(nearest) * (inside(x, y) ? -1 : 1)
+      for (let i = 0; i < corners.length; i++)
+        nearest = Math.min(nearest, segmentDistance(at, corners[i], corners[(i + 1) % corners.length]))
+      const outside = inside(at) ? -nearest : nearest
       data[(y * IMAGE_PX + x) * 4 + 3] = Math.max(0, Math.min(255, Math.round(255 * (0.75 - outside / MARGIN_PX))))
     }
   const image = { width: IMAGE_PX, height: IMAGE_PX, data }
@@ -303,10 +352,8 @@ function glyphImage(glyph: Glyph) {
   return image
 }
 
-/** What's under the pointer, and what it is in words ("Field: North corn") for the hover label */
-export type SystemHit = { label: string } & (
-  { kind: 'field'; pivotId: number; fieldId: number } | { kind: 'system'; pivotId: number }
-)
+/** What a click selects */
+export type SystemHit = { kind: 'field'; pivotId: number; fieldId: number } | { kind: 'system'; pivotId: number }
 
 /**
  * What a click at a point selects, asking each layer in priority order (a field's outline, a
@@ -319,24 +366,39 @@ export function systemHit(map: MapLibreMap, point: PointLike): SystemHit | null 
   const shown = (layer: string) => map.getLayer(layer) && map.getLayoutProperty(layer, 'visibility') !== 'none'
   const at = (layer: string, keep: (feature: MapGeoJSONFeature) => boolean = () => true) =>
     shown(layer) ? map.queryRenderedFeatures(point, { layers: [layer] }).find(keep) : undefined
-  const glyph = (feature: MapGeoJSONFeature) =>
-    drawnAsGlyph({ point: !!feature.properties.point, k: Number(feature.properties.k) }, zoom)
+  const glyph = (feature: MapGeoJSONFeature) => drawnAsGlyph(glyphOf(feature), zoom)
 
   const field = at(FIELD_LAYER)
   if (field) {
-    const { name, pivot_id, id } = field.properties
-    return { kind: 'field', pivotId: Number(pivot_id), fieldId: Number(id), label: `Field: ${name}` }
+    return { kind: 'field', pivotId: Number(field.properties.pivot_id), fieldId: Number(field.properties.id) }
   }
   const system = at(GLYPH_LAYER, glyph) ?? at(PIVOT_LAYER, (feature) => !glyph(feature))
-  if (!system) return null
-  return { kind: 'system', pivotId: Number(system.properties.id), label: `System: ${system.properties.label}` }
+  return system ? { kind: 'system', pivotId: Number(system.properties.id) } : null
 }
 
-/** What the pointer is over, in words: what a click would select, or else an irrigation group */
-export function hoverLabel(map: MapLibreMap, point: PointLike): string | null {
-  const hit = systemHit(map, point)
-  if (hit) return hit.label
-  if (!map.getLayer('groups-fill')) return null
-  const group = map.queryRenderedFeatures(point, { layers: ['groups-fill'] })[0]
-  return group ? `Group: ${group.properties.name}` : null
+const glyphOf = ({ properties }: MapGeoJSONFeature) => ({
+  point: !!properties.point,
+  k: Number(properties.k),
+  fit: Number(properties.fit),
+  fit_far: Number(properties.fit_far),
+})
+
+/**
+ * What's under the pointer, down the stack (G.14): the irrigation group, the system and the field,
+ * each a line ("System: Home pivot", "Field: North potatoes"), whichever are there
+ */
+export function hoverLines(map: MapLibreMap, point: PointLike): string[] {
+  const zoom = map.getZoom()
+  const shown = (layer: string) => map.getLayer(layer) && map.getLayoutProperty(layer, 'visibility') !== 'none'
+  const at = (layer: string, keep: (feature: MapGeoJSONFeature) => boolean = () => true) =>
+    shown(layer) ? map.queryRenderedFeatures(point, { layers: [layer] }).find(keep) : undefined
+  const glyph = (feature: MapGeoJSONFeature) => drawnAsGlyph(glyphOf(feature), zoom)
+  const group = at('groups-fill')
+  const system = at(GLYPH_LAYER, glyph) ?? at(PIVOT_LAYER, (feature) => !glyph(feature))
+  const field = at(FIELD_LAYER)
+  return [
+    ...(group ? [`Group: ${group.properties.name}`] : []),
+    ...(system ? [`System: ${system.properties.label}`] : []),
+    ...(field ? [`Field: ${field.properties.name}`] : []),
+  ]
 }

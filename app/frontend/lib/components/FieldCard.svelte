@@ -8,7 +8,7 @@
   import { formatDate, relativeDay } from '@/lib/dates'
   import { outlook } from '@/lib/outlook'
   import type { FieldCard } from '@/lib/overview'
-  import { cropName, plotSize } from '@/lib/plantings'
+  import { cropName, plantingWhen } from '@/lib/plantings'
   import type { Units } from '@/lib/units'
   import { fields, planting as plantingRoute } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
@@ -48,9 +48,6 @@
   // "3 days ago" during the season; a plain date once it's over
   const when = (summary: PlantingSummary, date: string) =>
     summary.phase === 'active' ? relativeDay(date, today) : formatDate(date)
-  // "Soybean, 100 × 20 ft (0.05 ac)"
-  const plantingName = (summary: PlantingSummary) =>
-    summary.partial ? `${cropName(summary)}, ${plotSize(summary, units)}` : cropName(summary)
 
   const frame = $derived(
     `block h-full rounded-lg border bg-surface-raised ${compact ? 'space-y-2 p-3' : 'space-y-3 p-4'}
@@ -75,7 +72,8 @@
       {card.name}
     </h4>
     {#if single && !several}
-      <p class="truncate text-xs text-ink-muted">{plantingName(single)}</p>
+      <p class="truncate text-xs text-ink-muted">{cropName(single)}</p>
+      <p class="truncate text-[0.7rem] text-ink-muted">{plantingWhen(single, today)}</p>
     {:else if several}
       <p class="truncate text-xs text-ink-muted">{card.plantings.length} plantings</p>
     {/if}
@@ -187,7 +185,7 @@
 {/snippet}
 
 <!-- A field with several plantings: each in brief, or one line each when there are many (its crop,
-     size and status; the planting's page has the rest) -->
+     when it is and its status; the planting's page has the rest) -->
 {#snippet each(linked: boolean)}
   {#if list}
     <ul class="divide-y divide-line border-t border-line text-sm" aria-label="Plantings on {card.name}">
@@ -196,7 +194,8 @@
         <li>
           {#snippet row()}
             <span class="min-w-0 flex-1">
-              <span class="block">{plantingName(summary)}</span>
+              <span class="block">{cropName(summary)}</span>
+              <span class="block text-xs text-ink-muted">{plantingWhen(summary, today)}</span>
               {#if look}<span class="block truncate text-xs text-ink-muted">{look.headline}</span>{/if}
             </span>
             {@render badge(summary)}
@@ -217,7 +216,10 @@
         <li class="border-t border-line pt-2">
           {#snippet brief()}
             <div class="flex items-start justify-between gap-2">
-              <p class="min-w-0 truncate text-sm font-medium">{plantingName(summary)}</p>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-medium">{cropName(summary)}</p>
+                <p class="truncate text-xs text-ink-muted">{plantingWhen(summary, today)}</p>
+              </div>
               {@render badge(summary)}
             </div>
             {@render status(summary, true)}

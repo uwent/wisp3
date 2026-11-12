@@ -14,8 +14,9 @@ import {
   packRows,
   pivotBounds,
   pivotFeatures,
+  systemOutline,
 } from './pivots'
-import { drawnAsGlyph, glyphProperties, truePixels } from './systemLayers'
+import { badgeFit, drawnAsGlyph, glyphProperties, truePixels } from './systemLayers'
 
 const field = (status: PlantingSummary['status'], phase: PlantingSummary['phase'] = 'active'): FieldCard => ({
   id: 1,
@@ -100,6 +101,37 @@ describe('pivotFeatures', () => {
     expect(truePixels(glyph.k, 17)).toBeCloseTo(71, 0)
     expect(drawnAsGlyph(glyph, 17)).toBe(true)
     expect(glyphProperties({ ...traveler, kind: 'point' }).glyph).toBe('triangle')
+  })
+
+  it("encloses its marker's badges: a glyph at least that size, a pivot too small to hold them as its glyph", () => {
+    // One badge: a 24 px round backing; four: two rows of two, 46 px square
+    expect(badgeFit('circle', [1])).toBe(31)
+    expect(badgeFit('diamond', [2, 2])).toBeGreaterThan(badgeFit('diamond', [1]))
+    expect(badgeFit('triangle', [1])).toBeGreaterThan(badgeFit('circle', [1]))
+    expect(badgeFit('circle', [])).toBe(0)
+    // A 1,300 ft pivot is 29 px at zoom 11, too small for its four fields' badges (68 px)
+    const four = [field('ok'), field('ok'), field('ok'), field('ok')].map((card, i) => ({ ...card, id: i + 1 }))
+    const props = pivotFeatures([pivot(1, 44.1, four)], null, null).features[0].properties
+    expect(props.fit).toBe(badgeFit('circle', [2, 2]))
+    expect(props.fit_far).toBe(badgeFit('circle', [1]))
+    expect(drawnAsGlyph(props, 11)).toBe(true)
+    expect(drawnAsGlyph(props, 14)).toBe(false)
+  })
+
+  it('draws a point kind whose fields have outlines as the area around them, 50 ft out', () => {
+    const traveler: MapPivot = {
+      ...pivot(2, 44.1, [{ ...field('ok'), id: 10, name: 'East' }]),
+      kind: 'traveler',
+      radius_ft: null,
+      outlines: [{ field_id: 10, boundary: square(-89.5, 44.1) }],
+    }
+    const ring = systemOutline(traveler)!
+    expect(pointInPolygon([-89.5001, 44.0999], [ring])).toBe(true) // 11 m outside the field's corner
+    expect(pointInPolygon([-89.501, 44.099], [ring])).toBe(false)
+    const [shape, point] = pivotFeatures([traveler], null, null).features
+    expect(shape.geometry.type).toBe('Polygon')
+    expect(point.properties).toMatchObject({ point: false, glyph: 'diamond' })
+    expect(systemOutline({ ...traveler, outlines: [] })).toBeNull()
   })
 
   it('dims nothing without a window', () => {
@@ -198,13 +230,22 @@ describe('fields with outlines and pinned plots (G.10)', () => {
     id,
     name,
     plantings: plantings.map(
-      (p) => ({ phase: 'active', weather_pending: false, crossing: null, variety: null, ...p }) as PlantingSummary,
+      (p) =>
+        ({
+          phase: 'active',
+          weather_pending: false,
+          crossing: null,
+          variety: null,
+          season_start: '2026-05-15',
+          end_date: '2026-09-15',
+          ...p,
+        }) as PlantingSummary,
     ),
   })
   const north = card(10, 'Home North', [{ planting_id: 100, status: 'irrigate', plant_name: 'Potato' }])
   const plots = card(11, 'Plots', [
     { planting_id: 110, status: 'ok', plant_name: 'Soybean' },
-    { planting_id: 111, status: 'caution', plant_name: 'Corn', phase: 'ended' },
+    { planting_id: 111, status: 'caution', plant_name: 'Corn', phase: 'ended', end_date: '2026-07-01' },
   ])
   const outlined: MapPivot = {
     ...pivot(1, 44.1, [north, plots]),
@@ -233,17 +274,17 @@ describe('fields with outlines and pinned plots (G.10)', () => {
 
   it('gives each outlined field a badge per planting at its center, named for the hover label', () => {
     const both = { ...outlined, outlines: [...outlined.outlines, { field_id: 11, boundary: square(-89.6, 44.2) }] }
-    const [home, plotted] = fieldBadges([both])
+    const [home, plotted] = fieldBadges([both], '2026-07-19')
     expect(home).toMatchObject({ field_id: 10, pivot_id: 1, field_name: 'Home North' })
-    expect(home.badges).toEqual([{ key: 100, status: 'irrigate', label: 'Potato (Home North) · Irrigate' }])
+    expect(home.badges).toEqual([{ key: 100, status: 'irrigate', lines: ['Planting: Potato (May 15, 65 days)'] }])
     expect(plotted.badges).toEqual([
-      { key: 110, status: 'ok', label: 'Soybean (Plots) · OK' },
-      { key: 111, status: null, label: 'Corn (Plots) · Season ended' },
+      { key: 110, status: 'ok', lines: ['Planting: Soybean (May 15, 65 days)'] },
+      { key: 111, status: null, lines: ['Planting: Corn (May 15 – Jul 1)'] },
     ])
     expect(pointInPolygon(plotted.center, square(-89.6, 44.2).coordinates)).toBe(true)
     // A field with nothing planted is a gray dot; one without an outline has none here
-    const empty = fieldBadges([{ ...outlined, fields: [card(10, 'Home North', [])] }])
-    expect(empty[0].badges).toEqual([{ key: 0, status: null, label: 'Home North · No crop this season' }])
+    const empty = fieldBadges([{ ...outlined, fields: [card(10, 'Home North', [])] }], '2026-07-19')
+    expect(empty[0].badges).toEqual([{ key: 0, status: null, lines: ['No crop this season'] }])
   })
 
   it('draws a system with outlined fields as a line, and keeps its marker until every field has one', () => {

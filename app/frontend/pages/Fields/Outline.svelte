@@ -159,7 +159,7 @@
   const MODE_HINTS: Record<DrawMode, string> = {
     view: '',
     draw: 'Click the map at each corner of the field. Click the first corner again, or press Enter, to finish.',
-    edit: 'Click the outline to select it, then drag a corner to move it, drag a midpoint to add a corner, or right-click a corner to remove it.',
+    edit: 'Click the outline to select it, then drag inside it to move the whole outline, drag a corner to move it, drag a midpoint to add a corner, or right-click a corner to remove it.',
   }
 </script>
 

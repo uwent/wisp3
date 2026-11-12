@@ -18,6 +18,9 @@ export type Palette = {
   /** Irrigation systems on the map (G.14), and the casing that keeps them visible */
   system: string
   systemCasing: string
+  /** Outlined fields on the map (G.14): one color, not a status (their badges carry that) */
+  field: string
+  fieldCasing: string
   depths: [string, string, string, string]
   status: { full: string; ok: string; caution: string; irrigate: string }
   dark: boolean
@@ -37,6 +40,8 @@ const TOKENS = {
   snow: '--color-chart-snow',
   system: '--color-map-system',
   systemCasing: '--color-map-system-casing',
+  field: '--color-map-field',
+  fieldCasing: '--color-map-field-casing',
 } as const
 
 export function readPalette(element: Element = document.documentElement): Palette {
