@@ -2,6 +2,7 @@ import {
   type Boundary,
   boundaryBounds,
   boundaryCenter,
+  boundaryTop,
   groupOutline,
   type LngLat,
   pivotOutline,
@@ -18,18 +19,16 @@ import { glyphProperties, type GlyphProperties } from './systemLayers'
 // its weather zone's rain and ET, drawn as GeoJSON. Pivots and linears are their outline and a point
 // for their glyph (drawn when they're too small to see, G.14); the other kinds (a traveler, drip, a
 // location) are a point for their glyph. Each irrigation group is a light outline around its
-// systems. Fields with an outline are drawn in their status (G.10), and plots with a pin as dots.
+// systems and their fields. Fields with an outline are drawn in their status (G.10), named along
+// their top, with a badge per planting at their center (G.14).
 
 export type WeatherTotals = { days: number; precip: number | null; et0: number | null }
 export type PivotWeather = { past: WeatherTotals | null; ahead: WeatherTotals | null }
 
 /** A field's outline (G.10) */
 export type MapOutline = { field_id: number; boundary: Boundary }
-/** A plot with a pin, in this season (G.10) */
-export type MapPin = { planting_id: number; field_id: number; latitude: number; longitude: number }
 
-export type MapPivot = PivotGroup &
-  PivotShape & { weather: PivotWeather | null; outlines: MapOutline[]; pins: MapPin[] }
+export type MapPivot = PivotGroup & PivotShape & { weather: PivotWeather | null; outlines: MapOutline[] }
 
 export type PivotProperties = GlyphProperties & {
   id: number
@@ -56,19 +55,6 @@ export type FieldProperties = {
   dimmed: boolean
   /** An outline, or the point its name is drawn at */
   kind: 'outline' | 'label'
-}
-
-export type PinProperties = {
-  planting_id: number
-  field_id: number
-  pivot_id: number
-  /** "Soybean" */
-  name: string
-  /** The field it's on */
-  field_name: string
-  status: Status | 'none'
-  selected: boolean
-  dimmed: boolean
 }
 
 type Geometry = { type: 'Polygon'; coordinates: LngLat[][] } | { type: 'Point'; coordinates: LngLat }
@@ -106,7 +92,7 @@ export function pivotFeatures(
   }
 }
 
-/** The fields with outlines, in their status, each with a point inside for its name */
+/** The fields with outlines, in their status, each with a point on its top edge for its name */
 export function fieldFeatures(
   pivots: MapPivot[],
   selectedFieldId: number | null,
@@ -137,40 +123,9 @@ export function fieldFeatures(
             type: 'Feature' as const,
             id: field_id,
             properties: { ...properties, kind: 'label' as const },
-            geometry: { type: 'Point' as const, coordinates: boundaryCenter(boundary) },
+            geometry: { type: 'Point' as const, coordinates: boundaryTop(boundary) },
           },
         ]
-      }),
-    ),
-  }
-}
-
-/** The plots with a pin, in their planting's status, named for their crop */
-export function pinFeatures(
-  pivots: MapPivot[],
-  selectedFieldId: number | null,
-  highlighted: Set<number> | null,
-): FeatureCollection<PinProperties> {
-  return {
-    type: 'FeatureCollection',
-    features: pivots.flatMap((pivot) =>
-      pivot.pins.map((pin) => {
-        const summary = pivot.fields.flatMap((card) => card.plantings).find((p) => p.planting_id === pin.planting_id)
-        return {
-          type: 'Feature' as const,
-          id: pin.planting_id,
-          properties: {
-            planting_id: pin.planting_id,
-            field_id: pin.field_id,
-            pivot_id: pivot.id,
-            name: summary ? cropName(summary) : '',
-            field_name: pivot.fields.find((card) => card.id === pin.field_id)?.name ?? '',
-            status: summary && summaryActive(summary) ? summary.status! : ('none' as const),
-            selected: pin.field_id === selectedFieldId,
-            dimmed: highlighted !== null && !highlighted.has(pivot.id),
-          },
-          geometry: { type: 'Point' as const, coordinates: [pin.longitude, pin.latitude] as LngLat },
-        }
       }),
     ),
   }
@@ -193,41 +148,38 @@ export function idleText(summary: PlantingSummary | null): string {
   return 'waiting for weather'
 }
 
-/** A field's pinned plots, packed together as badges until the map is close enough to place them */
-export type PlotPack = {
+/** A badge: a status, or a gray dot when there's none, and what it is in words for its hover label */
+export type Badge = { key: number; status: Status | null; label: string }
+
+const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
+/** A status, or why there's none, in words: "Irrigate", "Season ended" */
+export const statusText = (summary: PlantingSummary | null) =>
+  summaryActive(summary) ? STATUS_LABELS[summary!.status!] : capitalized(idleText(summary))
+
+/** An outlined field's plantings as badges at its center (G.14) */
+export type FieldBadges = {
   field_id: number
   pivot_id: number
   field_name: string
-  /** The outline's center, under the field's name, or else the middle of its pins */
   center: LngLat
-  outlined: boolean
-  plots: { planting_id: number; status: Status | null; label: string }[]
+  badges: Badge[]
 }
 
-/** The fields with pinned plots, each one's plots as badges (G.14) */
-export function plotPacks(pivots: MapPivot[]): PlotPack[] {
+/** The outlined fields, each with a badge per planting (a gray dot when it has none) */
+export function fieldBadges(pivots: MapPivot[]): FieldBadges[] {
   return pivots.flatMap((pivot) =>
-    pivot.fields.flatMap((card) => {
-      const pins = pivot.pins.filter((pin) => pin.field_id === card.id)
-      if (!pins.length) return []
-      const outline = pivot.outlines.find((o) => o.field_id === card.id)
-      const center: LngLat = outline
-        ? boundaryCenter(outline.boundary)
-        : [
-            pins.reduce((sum, pin) => sum + pin.longitude, 0) / pins.length,
-            pins.reduce((sum, pin) => sum + pin.latitude, 0) / pins.length,
-          ]
-      const plots = pins.map((pin) => {
-        const summary = card.plantings.find((p) => p.planting_id === pin.planting_id) ?? null
-        const name = summary ? cropName(summary) : 'Plot'
-        const status = summaryActive(summary) ? summary!.status! : null
-        return {
-          planting_id: pin.planting_id,
-          status,
-          label: `${name}: ${status ? STATUS_LABELS[status] : idleText(summary)}`,
-        }
-      })
-      return [{ field_id: card.id, pivot_id: pivot.id, field_name: card.name, center, outlined: !!outline, plots }]
+    pivot.outlines.flatMap(({ field_id, boundary }) => {
+      const card = pivot.fields.find((field) => field.id === field_id)
+      if (!card) return []
+      const badges: Badge[] = card.plantings.length
+        ? card.plantings.map((summary) => ({
+            key: summary.planting_id,
+            status: summaryActive(summary) ? summary.status! : null,
+            label: `${cropName(summary)} (${card.name}) · ${statusText(summary)}`,
+          }))
+        : [{ key: 0, status: null, label: `${card.name} · ${statusText(null)}` }]
+      return [{ field_id, pivot_id: pivot.id, field_name: card.name, center: boundaryCenter(boundary), badges }]
     }),
   )
 }
@@ -236,7 +188,7 @@ export function plotPacks(pivots: MapPivot[]): PlotPack[] {
 export const allOutlined = (pivot: MapPivot) =>
   pivot.fields.length > 0 && pivot.fields.every((card) => pivot.outlines.some((o) => o.field_id === card.id))
 
-/** The irrigation groups among these pivots, each outlined around its systems shown */
+/** The irrigation groups among these pivots, each outlined around its systems shown and their fields */
 export function groupFeatures(farms: FarmGroup<MapPivot>[], pivots: MapPivot[]): FeatureCollection<{ name: string }> {
   const shown = new Set(pivots.map((pivot) => pivot.id))
   return {
@@ -250,7 +202,15 @@ export function groupFeatures(farms: FarmGroup<MapPivot>[], pivots: MapPivot[]):
             type: 'Feature' as const,
             id: group.id,
             properties: { name: group.name },
-            geometry: { type: 'Polygon' as const, coordinates: [groupOutline(members)] },
+            geometry: {
+              type: 'Polygon' as const,
+              coordinates: [
+                groupOutline(
+                  members,
+                  members.flatMap((pivot) => pivot.outlines.map((o) => o.boundary)),
+                ),
+              ],
+            },
           },
         ]
       }),

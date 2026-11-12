@@ -3,8 +3,8 @@ class PlantingSerializer < ApplicationSerializer
     :max_root_zone_depth, :mad_frac, :et_method, :canopy_interpolation, :target_ad_pct, :initial_moisture_pct, :notes,
     # The values the season runs on, copied from the field (PLAN.md Phase 8 G.9)
     :soil_type_id, :field_capacity, :perm_wilting_pt, :area_acres,
-    # Whole field, or part of it: a plot (length × width, ft) or acres, with an optional pin (G.11)
-    :partial, :plot_length_ft, :plot_width_ft, :latitude, :longitude,
+    # Whole field, or part of it: a plot (length × width, ft) or acres (G.11)
+    :partial, :plot_length_ft, :plot_width_ft,
     # A plot on its own soil, which the field's soil edits leave alone
     :own_soil,
     # A crop without its own curve: the generic one picked, or none (readings only); null its default (G.3)

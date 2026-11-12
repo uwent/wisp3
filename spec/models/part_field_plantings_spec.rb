@@ -64,10 +64,10 @@ RSpec.describe "Part-field plantings" do
       expect(second.exceeds_field_area?).to be(true)
     end
 
-    it "goes back to the whole field: no plot or pin, the field's area, unless it has its own entries" do
-      part = plot(latitude: 44.1, longitude: -89.5)
+    it "goes back to the whole field: no plot, the field's area, unless it has its own entries" do
+      part = plot
       part.update!(partial: false)
-      expect(part).to have_attributes(plot_length_ft: nil, latitude: nil, area_acres: 10)
+      expect(part).to have_attributes(plot_length_ft: nil, area_acres: 10)
       other = create(:field, pivot:, area_acres: 10)
       entered = create(:planting, field: other, partial: true, area_acres: 1, **season)
       entered.planting_entries.create!(date: Date.new(2026, 6, 1), irrigation_in: 0.3)

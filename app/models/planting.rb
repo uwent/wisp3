@@ -1,6 +1,6 @@
 # One crop on one field for one season. A planting covers the whole field (the usual case) or part
-# of it (partial, PLAN.md Phase 8 G.11: a plot of plot_length_ft × plot_width_ft, or just its acres,
-# with an optional pin). A whole-field planting can't overlap another planting on its field, which
+# of it (partial, PLAN.md Phase 8 G.11: a plot of plot_length_ft × plot_width_ft, or just its acres;
+# it has no place in the field, G.14). A whole-field planting can't overlap another planting on its field, which
 # allows double cropping (legacy picked the crop with the latest emergence, C10); part-field ones may
 # overlap each other (a research field or market garden growing several crops at once). A
 # part-field planting can have its own irrigation, soil moisture readings and notes
@@ -36,8 +36,6 @@ class Planting < ApplicationRecord
   validates :area_acres, numericality: {greater_than: 0}, allow_nil: true
   validates :area_acres, presence: {message: "is needed for part of a field (or its length and width)"}, if: :partial?
   validates :plot_length_ft, :plot_width_ft, numericality: {greater_than: 0}, allow_nil: true
-  validates :latitude, numericality: {in: Pivot::LATITUDES}, allow_nil: true
-  validates :longitude, numericality: {in: Pivot::LONGITUDES}, allow_nil: true
   validates :target_ad_pct, :initial_moisture_pct, numericality: {in: 0..100, message: "must be between 0 and 100"},
     allow_nil: true
   validate :dates_in_order
@@ -52,7 +50,7 @@ class Planting < ApplicationRecord
 
   # Only crops that are vine killed keep a vine kill date, so changing the crop leaves none behind
   before_validation { self.vine_kill_date = nil unless vine_kill_crop? }
-  # A whole-field planting has no plot or pin, and covers the field's area; a plot's area is its
+  # A whole-field planting has no plot, and covers the field's area; a plot's area is its
   # length × width
   before_validation :fit_area
   # A whole-field planting grows on the field's soil; a plot set back to it takes the field's again
@@ -173,7 +171,7 @@ class Planting < ApplicationRecord
         self.area_acres = (plot_length_ft * plot_width_ft / SQUARE_FEET_PER_ACRE).round(6)
       end
     else
-      self.plot_length_ft = self.plot_width_ft = self.latitude = self.longitude = nil
+      self.plot_length_ft = self.plot_width_ft = nil
       # Back to the whole field: its area again (a new planting gets it in copy_from_field)
       self.area_acres = field&.area_acres if persisted? && will_save_change_to_partial?
     end

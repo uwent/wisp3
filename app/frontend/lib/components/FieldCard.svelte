@@ -186,7 +186,8 @@
   {/if}
 {/snippet}
 
-<!-- A field with several plantings: each in brief, or one line each when there are many -->
+<!-- A field with several plantings: each in brief, or one line each when there are many (its crop,
+     size and status; the planting's page has the rest) -->
 {#snippet each(linked: boolean)}
   {#if list}
     <ul class="divide-y divide-line border-t border-line text-sm" aria-label="Plantings on {card.name}">
@@ -195,12 +196,9 @@
         <li>
           {#snippet row()}
             <span class="min-w-0 flex-1">
-              <span class="block truncate">{plantingName(summary)}</span>
+              <span class="block">{plantingName(summary)}</span>
               {#if look}<span class="block truncate text-xs text-ink-muted">{look.headline}</span>{/if}
             </span>
-            {#if summary.phase !== 'upcoming' && !summary.weather_pending}
-              <span class="shrink-0 text-xs text-ink-muted tabular-nums">AD {units.format('depth', summary.ad)}</span>
-            {/if}
             {@render badge(summary)}
           {/snippet}
           {#if linked}

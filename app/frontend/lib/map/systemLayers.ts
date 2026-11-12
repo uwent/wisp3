@@ -25,7 +25,6 @@ export const PIVOT_LAYER = 'pivots-fill'
 /** Every system's glyph: point kinds always, pivots and linears when they're small */
 export const GLYPH_LAYER = 'pivots-glyph'
 export const FIELD_LAYER = 'fields-fill'
-export const PIN_LAYER = 'pins'
 /** The systems' own layers, which the Irrigation systems layer switch shows and hides */
 export const SYSTEM_LAYERS = [
   PIVOT_LAYER,
@@ -306,13 +305,11 @@ function glyphImage(glyph: Glyph) {
 
 /** What's under the pointer, and what it is in words ("Field: North corn") for the hover label */
 export type SystemHit = { label: string } & (
-  | { kind: 'pin'; pivotId: number; fieldId: number }
-  | { kind: 'field'; pivotId: number; fieldId: number }
-  | { kind: 'system'; pivotId: number }
+  { kind: 'field'; pivotId: number; fieldId: number } | { kind: 'system'; pivotId: number }
 )
 
 /**
- * What a click at a point selects, asking each layer in priority order (a pin, a field's outline, a
+ * What a click at a point selects, asking each layer in priority order (a field's outline, a
  * system's glyph, a system's shape) rather than taking the top-most rendered feature, which would
  * be a system's fill drawn over its fields even where it's transparent. Glyphs and shapes count
  * only at zooms they're drawn at. Null for none.
@@ -325,11 +322,6 @@ export function systemHit(map: MapLibreMap, point: PointLike): SystemHit | null 
   const glyph = (feature: MapGeoJSONFeature) =>
     drawnAsGlyph({ point: !!feature.properties.point, k: Number(feature.properties.k) }, zoom)
 
-  const pin = at(PIN_LAYER)
-  if (pin) {
-    const { name, field_name, pivot_id, field_id } = pin.properties
-    return { kind: 'pin', pivotId: Number(pivot_id), fieldId: Number(field_id), label: `Plot: ${name}, ${field_name}` }
-  }
   const field = at(FIELD_LAYER)
   if (field) {
     const { name, pivot_id, id } = field.properties

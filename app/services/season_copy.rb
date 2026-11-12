@@ -24,8 +24,7 @@ class SeasonCopy
 
   def copy(planting)
     attributes = planting.attributes.slice(*%w[field_id plant_id variety max_root_zone_depth mad_frac et_method
-      canopy_interpolation target_ad_pct initial_moisture_pct notes partial plot_length_ft plot_width_ft latitude
-      longitude])
+      canopy_interpolation target_ad_pct initial_moisture_pct notes partial plot_length_ft plot_width_ft])
     # A plot keeps its size; a whole-field planting takes the field's area as it is now (G.9). A plot
     # on its own soil keeps that too; the rest take the field's soil as it is now.
     attributes["area_acres"] = planting.area_acres if planting.partial?

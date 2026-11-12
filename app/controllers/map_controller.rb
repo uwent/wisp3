@@ -1,6 +1,6 @@
 # The map (PLAN.md Phase 7): the dashboard's farms, pivots and field cards, with each pivot's
 # location and its weather zone's rain and ET over the last 7 days and the next 7, and its fields'
-# outlines and this season's plot pins (G.10).
+# outlines (G.10).
 class MapController < AuthenticatedController
   def show
     overview = OperationOverview.new(Current.group)
@@ -11,8 +11,7 @@ class MapController < AuthenticatedController
       farms: overview.props do |pivot|
         pivot.slice(*PivotSerializer::SHAPE).symbolize_keys.merge(
           weather: weather[pivot.weather_cell_id]&.transform_values { |span| span && totals(span) },
-          outlines: pivot.fields.select(&:boundary).map { |field| {field_id: field.id, boundary: field.boundary} },
-          pins: pins(pivot, overview.today.year)
+          outlines: pivot.fields.select(&:boundary).map { |field| {field_id: field.id, boundary: field.boundary} }
         )
       end
     }
@@ -21,12 +20,4 @@ class MapController < AuthenticatedController
   private
 
   def totals(span) = {days: span.days, precip: span.precip, et0: span.et0}
-
-  # The pivot's plots this season with a pin (already loaded with its fields)
-  def pins(pivot, year)
-    pivot.fields.flat_map do |field|
-      field.plantings.select { |planting| planting.partial? && planting.latitude && planting.season_year == year }
-        .map { |planting| {planting_id: planting.id, field_id: field.id, latitude: planting.latitude, longitude: planting.longitude} }
-    end
-  end
 end

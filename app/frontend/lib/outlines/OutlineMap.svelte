@@ -1,13 +1,12 @@
 <script module lang="ts">
   export type DrawMode = 'view' | 'draw' | 'edit'
-  export type MapPin = { id: number; label: string; at: LngLat | null }
 </script>
 
 <script lang="ts">
   import 'maplibre-gl/dist/maplibre-gl.css'
 
   import { onMount, untrack } from 'svelte'
-  import type { Map as MapLibreMap, Marker as MarkerClass } from 'maplibre-gl'
+  import type { Map as MapLibreMap } from 'maplibre-gl'
   import type { GeoJSONStoreFeatures, TerraDraw as TerraDrawClass } from 'terra-draw'
 
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
@@ -23,15 +22,11 @@
   // shown as it is ('view'), a new one clicked corner by corner ('draw'; the old one stays until the
   // new one is finished, which replaces it), or selected to drag its corners, add one from a
   // midpoint or remove one ('edit'). The field's irrigation system, the operation's other systems and
-  // fields are drawn for reference, and its plots' pins are markers: dragged, or placed by a click
-  // while one is being pinned.
+  // fields are drawn for reference.
   let {
     boundary = $bindable(),
     mode = $bindable(),
     references,
-    pins = [],
-    pinning = null,
-    onpin,
     ready = $bindable(false),
     height = '32rem',
   }: {
@@ -39,10 +34,6 @@
     mode: DrawMode
     /** The field's own system first (outlined more strongly), then the others */
     references: Reference[]
-    pins?: MapPin[]
-    /** The plot being pinned: the next click places it */
-    pinning?: number | null
-    onpin?: (id: number, at: LngLat) => void
     /** Set once the map and drawing tools are ready */
     ready?: boolean
     height?: string
@@ -56,9 +47,6 @@
   let container: HTMLDivElement
   let map = $state<MapLibreMap>()
   let draw: TerraDrawClass | undefined
-  let Marker: typeof MarkerClass | undefined
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- bookkeeping for MapLibre's markers, not rendered from
-  const markers = new Map<number, MarkerClass>()
   let basemap = $state<Basemap>('imagery')
   let placeSearch = $state<PlaceSearch>()
   // The outline as terra-draw last gave it, so the page's own changes (an import) can be told apart
@@ -70,11 +58,6 @@
     const own = references[0]
     const area = boundary ? boundaryBounds(boundary) : own ? referenceBounds(own) : null
     if (area) map.fitBounds(area, { padding: 48, maxZoom: 16, duration: 0 })
-  }
-
-  /** Scroll the map into view (to place a pin with a click) */
-  export function show() {
-    container.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }
 
   // terra-draw's finished polygon as the outline (there's only ever one once a drawing finishes)
@@ -201,40 +184,10 @@
     applyMode()
   }
 
-  function placePins() {
-    if (!map || !Marker) return
-    for (const [id, marker] of markers) {
-      if (!pins.some((pin) => pin.id === id && pin.at)) {
-        marker.remove()
-        markers.delete(id)
-      }
-    }
-    for (const pin of pins) {
-      if (!pin.at) continue
-      const existing = markers.get(pin.id)
-      if (existing) {
-        existing.setLngLat(pin.at)
-        continue
-      }
-      const element = document.createElement('div')
-      element.className =
-        'rounded-full border-2 border-white bg-[#7c3aed] px-2 py-0.5 text-xs font-medium text-white shadow cursor-grab'
-      element.textContent = pin.label
-      element.title = `${pin.label}: drag to move`
-      const marker = new Marker({ element, draggable: true }).setLngLat(pin.at).addTo(map)
-      marker.on('dragend', () => {
-        const { lng, lat } = marker.getLngLat()
-        onpin?.(pin.id, [lng, lat])
-      })
-      markers.set(pin.id, marker)
-    }
-  }
-
   onMount(() => {
     let removed = false
     loadMapLibre().then((maplibre) => {
       if (removed) return
-      Marker = maplibre.Marker
       const m = new maplibre.Map({
         container,
         style: basemapStyle(basemap),
@@ -250,20 +203,7 @@
         addReferenceLayers(m, references)
         fit()
         startDraw(m)
-        placePins()
       })
-      // A click places the plot being pinned. Listened for on the canvas itself, as terra-draw takes
-      // the map's pointer events.
-      m.getCanvasContainer().addEventListener(
-        'click',
-        (event) => {
-          if (pinning === null || mode !== 'view') return
-          const box = m.getCanvasContainer().getBoundingClientRect()
-          const { lng, lat } = m.unproject([event.clientX - box.left, event.clientY - box.top])
-          onpin?.(pinning, [lng, lat])
-        },
-        { capture: true },
-      )
     })
     return () => {
       removed = true
@@ -286,15 +226,6 @@
   $effect(() => {
     void mode
     untrack(applyMode)
-  })
-
-  $effect(() => {
-    void pins
-    untrack(placePins)
-  })
-
-  $effect(() => {
-    if (map) map.getCanvas().style.cursor = pinning !== null && mode === 'view' ? 'crosshair' : ''
   })
 </script>
 

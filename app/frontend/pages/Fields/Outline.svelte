@@ -9,16 +9,14 @@
     boundaryAcres,
     boundaryErrors,
     boundaryFrom,
-    inBoundary,
     isPoint,
     KIND_NOUNS,
-    type LngLat,
     type PivotShape,
     pivotOutline,
     roundBoundary,
     systemName,
   } from '@/lib/geo'
-  import OutlineMap, { type DrawMode, type MapPin } from '@/lib/outlines/OutlineMap.svelte'
+  import OutlineMap, { type DrawMode } from '@/lib/outlines/OutlineMap.svelte'
   import {
     ACCEPT,
     type ImportedShape,
@@ -28,7 +26,7 @@
     shapeNotes,
   } from '@/lib/outlines/read'
   import type { Reference } from '@/lib/outlines/references'
-  import { cropName, formatArea, plotSize } from '@/lib/plantings'
+  import { formatArea } from '@/lib/plantings'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { fieldOutlines, fields, setup } from '@/routes'
@@ -37,15 +35,14 @@
   type System = PivotShape & { id: number; name: string; kind_name?: string }
 
   // A field's outline (PLAN.md Phase 8 G.10): drawn, copied from its irrigation system, or read from
-  // a file; its acres offered for the field's area and the soil survey's main soil for its soil; and
-  // pins for the field's plots. For the map and suggestions only: the balance doesn't use it.
+  // a file; its acres offered for the field's area and the soil survey's main soil for its soil. For
+  // the map and suggestions only: the balance doesn't use it.
   let {
     field,
     pivot,
     other_pivots,
     other_fields,
     soil_types,
-    year,
     from,
   }: {
     field: Field
@@ -53,7 +50,6 @@
     other_pivots: System[]
     other_fields: { id: number; name: string; boundary: Boundary }[]
     soil_types: SoilType[]
-    year: number
     from: 'setup' | 'field'
   } = $props()
 
@@ -81,38 +77,6 @@
   const currentSoil = $derived(soil_types.find((soil) => soil.id === field.soil_type_id))
   const chosenSoil = $derived(soil_types.find((soil) => soil.id === soilTypeId))
 
-  // Plots this season and ahead, with their pins
-  const plots = $derived(
-    field.plantings.filter((planting) => planting.partial && Number(planting.season_start.slice(0, 4)) >= year),
-  )
-  let pinAt = $state<Record<number, LngLat | null>>(
-    untrack(() =>
-      Object.fromEntries(
-        field.plantings
-          .filter((planting) => planting.partial)
-          .map((planting) => [
-            planting.id,
-            planting.latitude !== null && planting.longitude !== null ? [planting.longitude, planting.latitude] : null,
-          ]),
-      ),
-    ),
-  )
-  let pinning = $state<number | null>(null)
-  const pins = $derived<MapPin[]>(
-    plots.map((plot) => ({ id: plot.id, label: cropName(plot), at: pinAt[plot.id] ?? null })),
-  )
-  const pinsChanged = $derived(
-    plots.filter((plot) => {
-      const at = pinAt[plot.id]
-      return (at?.[0] ?? null) !== plot.longitude || (at?.[1] ?? null) !== plot.latitude
-    }),
-  )
-
-  function placePin(id: number, at: LngLat) {
-    pinAt[id] = [Math.round(at[0] * 1e6) / 1e6, Math.round(at[1] * 1e6) / 1e6]
-    pinning = null
-  }
-
   // The map shows the field's own system first, then the others and the other fields' outlines
   const references = $derived<Reference[]>([
     { name: systemName(pivot), shape: pivot },
@@ -123,7 +87,7 @@
   // Unsaved changes
   const initial = untrack(() => JSON.stringify(field.boundary))
   let saved = $state(false)
-  const changed = $derived(JSON.stringify(boundary) !== initial || soilTypeId !== null || pinsChanged.length > 0)
+  const changed = $derived(JSON.stringify(boundary) !== initial || soilTypeId !== null)
   confirmUnsavedChanges(() => !saved && changed)
 
   function sameAsSystem() {
@@ -283,7 +247,7 @@
     </div>
   {/if}
 
-  <OutlineMap bind:this={map} bind:boundary bind:mode bind:ready {references} {pins} {pinning} onpin={placePin} />
+  <OutlineMap bind:this={map} bind:boundary bind:mode bind:ready {references} />
 </div>
 
 <Form
@@ -299,11 +263,6 @@
     {#if soilTypeId !== null}
       <input type="hidden" name="outline[soil_type_id]" value={soilTypeId} />
     {/if}
-    {#each pinsChanged as plot, position (plot.id)}
-      <input type="hidden" name="outline[pins][{position}][id]" value={plot.id} />
-      <input type="hidden" name="outline[pins][{position}][latitude]" value={pinAt[plot.id]?.[1] ?? ''} />
-      <input type="hidden" name="outline[pins][{position}][longitude]" value={pinAt[plot.id]?.[0] ?? ''} />
-    {/each}
 
     {#if problems.length || errors.boundary}
       <div class="rounded-md border border-status-irrigate px-3 py-2 text-sm" role="alert">
@@ -355,52 +314,6 @@
         {/if}
       </section>
     </div>
-
-    {#if plots.length}
-      <section class="space-y-2 rounded-lg border border-line bg-surface-raised p-4 text-sm">
-        <h2 class="font-medium">Plots</h2>
-        <p class="text-ink-muted">Pin each plot where it is in the field, to show it on the map.</p>
-        <ul class="space-y-1">
-          {#each plots as plot (plot.id)}
-            {@const at = pinAt[plot.id]}
-            <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span class="font-medium">{cropName(plot)}</span>
-              <span class="text-ink-muted">{plotSize(plot, units)}</span>
-              {#if pinning === plot.id}
-                <span class="text-ink-muted">Click the map where it is.</span>
-                <button
-                  type="button"
-                  class="text-brand-600 underline underline-offset-2"
-                  onclick={() => (pinning = null)}>Cancel</button
-                >
-              {:else}
-                <button
-                  type="button"
-                  class="text-brand-600 underline underline-offset-2"
-                  disabled={!ready}
-                  onclick={() => {
-                    pinning = plot.id
-                    mode = 'view'
-                    map?.show()
-                  }}>{at ? 'Move its pin' : 'Place its pin'}</button
-                >
-                {#if at}
-                  <button
-                    type="button"
-                    class="text-status-irrigate-ink underline underline-offset-2"
-                    onclick={() => (pinAt[plot.id] = null)}>Remove its pin</button
-                  >
-                {/if}
-              {/if}
-              {#if at && boundary && !inBoundary(at, boundary)}
-                <span class="text-status-caution-ink">Outside the outline</span>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-        {#if errors.pins}<p class="text-status-irrigate-ink">{listed(errors.pins).join('; ')}</p>{/if}
-      </section>
-    {/if}
 
     <div class="flex items-center gap-3">
       <Button type="submit" disabled={processing || problems.length > 0 || mode === 'draw'}>Save</Button>

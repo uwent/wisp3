@@ -27,18 +27,13 @@ RSpec.describe DemoSeed do
     drip = group.pivots.find_by!(kind: "drip")
     expect(drip.pivot_irrigations.first.applied_inches).to be_within(0.01).of(0.18)
 
-    # Some fields have outlines near their acres, and the research field's plots are pinned in it (G.10)
+    # Some fields have outlines near their acres, (G.10)
     outlined = group.fields.where.not(boundary: nil)
     expect(outlined.map(&:name)).to contain_exactly("North potatoes", "North corn", "Hay north", "Tomatoes",
       "Arlington 525", "West 20", "East 15")
     expect(group.fields.find_by!(name: "West 20").boundary_acres).to be_within(0.5).of(20)
     expect(research.boundary_acres).to be_within(0.1).of(2)
-    research.plantings.each do |plot|
-      expect(FieldBoundary.errors(research.boundary)).to be_empty
-      inside = plot.longitude.between?(*research.boundary["coordinates"][0].map(&:first).minmax) &&
-        plot.latitude.between?(*research.boundary["coordinates"][0].map(&:last).minmax)
-      expect(inside).to be(true)
-    end
+    expect(FieldBoundary.errors(research.boundary)).to be_empty
   end
 
   it "rebuilds rather than duplicating, and keeps the user's password" do

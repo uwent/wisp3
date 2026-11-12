@@ -366,16 +366,19 @@ export function convexHull(points: LngLat[]): LngLat[] {
 export const GROUP_MARGIN_M = 120
 
 /**
- * The outline around an irrigation group's systems: the convex hull of their outlines (a point
- * kind's small circle) with a margin, so even a group of one shows around its system
+ * The outline around an irrigation group's systems and their fields' outlines: the convex hull of
+ * their outlines (a point kind's small circle) with a margin, so even a group of one shows around
+ * its system
  */
-export function groupOutline(shapes: PivotShape[]): LngLat[] {
-  const points = shapes.flatMap((shape) =>
-    surveyRing(shape, 24).flatMap((vertex) =>
-      [0, 60, 120, 180, 240, 300].map((b) => destination(vertex, GROUP_MARGIN_M, b)),
-    ),
+export function groupOutline(shapes: PivotShape[], boundaries: Boundary[] = []): LngLat[] {
+  const corners = [
+    ...shapes.flatMap((shape) => surveyRing(shape, 24)),
+    // A field's hull is enough, and far fewer corners than its outline may have
+    ...boundaries.flatMap((boundary) => convexHull(boundaryRing(boundary))),
+  ]
+  return convexHull(
+    corners.flatMap((vertex) => [0, 60, 120, 180, 240, 300].map((b) => destination(vertex, GROUP_MARGIN_M, b))),
   )
-  return convexHull(points)
 }
 
 // A field's outline (PLAN.md Phase 8 G.10, G.14; FieldBoundary on the server): a GeoJSON Polygon
@@ -522,6 +525,23 @@ export function boundaryBounds(boundary: Boundary): [LngLat, LngLat] {
     [Math.min(...lngs), Math.min(...lats)],
     [Math.max(...lngs), Math.max(...lats)],
   ]
+}
+
+/**
+ * Where a field's name goes (G.14): on the outline's top edge, above its center (boundaryCenter),
+ * so it stays clear of the badges there
+ */
+export function boundaryTop(boundary: Boundary): LngLat {
+  const ring = boundaryRing(boundary)
+  const center = boundaryCenter(boundary)
+  const x = center[0]
+  // The northernmost place the outline crosses the center's meridian
+  const crossings = ring.slice(1).flatMap((b, i) => {
+    const a = ring[i]
+    if (a[0] > x === b[0] > x) return []
+    return [a[1] + ((x - a[0]) * (b[1] - a[1])) / (b[0] - a[0])]
+  })
+  return [x, crossings.length ? Math.max(...crossings) : center[1]]
 }
 
 /** Whether a point is inside an outline */

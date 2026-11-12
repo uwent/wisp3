@@ -7,7 +7,14 @@
     status,
     size = 'md',
     title,
-  }: { status: PlantingSummary['status']; size?: 'icon' | 'sm' | 'md'; title?: string } = $props()
+    tooltip = true,
+  }: {
+    status: PlantingSummary['status']
+    size?: 'icon' | 'sm' | 'md'
+    title?: string
+    /** false: no browser tooltip (the map shows its own hover label) */
+    tooltip?: boolean
+  } = $props()
 
   const styles = {
     full: { label: 'Full', icon: '●', class: 'bg-status-full text-white' },
@@ -28,7 +35,7 @@
   <span
     class="inline-flex size-5 items-center justify-center rounded-full text-[0.65rem] leading-none font-bold
       ring-1 ring-white/80 {style.class}"
-    title={title ?? style.label}
+    title={tooltip ? (title ?? style.label) : undefined}
   >
     <span aria-hidden="true">{style.icon}</span><span class="sr-only">{title ?? style.label}</span>
   </span>

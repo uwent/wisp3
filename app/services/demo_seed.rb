@@ -5,7 +5,7 @@
 # four plots side by side (one with its own drip irrigation and readings), a market garden field with
 # successions (PLAN.md Phase 8 G.11), a traveler serving two fields (one Traveler system at each, the
 # same machine) and a drip block (G.5), and outlines for some fields (G.10: a pivot split in halves,
-# the research field with its plots pinned, the drip block's and the travelers' fields; generated
+# the research field, the drip block's and the travelers' fields; generated
 # shapes, to be redrawn on the imagery when the demo is tidied). Rebuilds the demo
 # group from scratch each run. Weather comes from Phase 3's fetch.
 class DemoSeed
@@ -135,14 +135,14 @@ class DemoSeed
     station = arlington.pivots.create!(name: "Station pivot", latitude: 43.3006, longitude: -89.3807, radius_ft: 600,
       pump_capacity_gpm: 300)
     research = field(station, "Arlington 525", 2, "silt_loam")
-    # 290 × 300 ft north of the pivot's center, its plots side by side west to east, each pinned
+    # 290 × 300 ft north of the pivot's center
     middle = offset(station.latitude, station.longitude, 0, 250)
     research.update!(boundary: rectangle(*middle, 290, 300))
-    plot = ->(east_ft) { {partial: true, plot_length_ft: 300, plot_width_ft: 60}.merge(%i[latitude longitude].zip(offset(*middle, east_ft, 0)).to_h) }
-    planting(research, "soybean", emergence: date(5, 25), end_date: date(9, 25), **plot.call(-90))
-    planting(research, "field_corn", et_method: "lai", emergence: date(5, 12), end_date: date(9, 30), **plot.call(-30))
-    planting(research, "potato", variety: "Superior", emergence: date(5, 18), end_date: date(8, 30), **plot.call(30))
-    drip = planting(research, "snap_bean", emergence: date(6, 5), end_date: date(8, 25), readings: [], **plot.call(90))
+    plot = {partial: true, plot_length_ft: 300, plot_width_ft: 60}
+    planting(research, "soybean", emergence: date(5, 25), end_date: date(9, 25), **plot)
+    planting(research, "field_corn", et_method: "lai", emergence: date(5, 12), end_date: date(9, 30), **plot)
+    planting(research, "potato", variety: "Superior", emergence: date(5, 18), end_date: date(8, 30), **plot)
+    drip = planting(research, "snap_bean", emergence: date(6, 5), end_date: date(8, 25), readings: [], **plot)
     [[6, 20], [6, 27], [7, 4], [7, 11], [7, 18], [7, 25], [8, 1], [8, 8]].each do |month, day|
       drip.planting_entries.create!(date: date(month, day), irrigation_in: 0.4)
     end

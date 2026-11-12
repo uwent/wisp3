@@ -878,7 +878,7 @@ test('glossary terms explain themselves on hover or tap', async ({ page }) => {
   await expect(page.getByText('The water left in the root zone that the crop can use without stress.')).toBeHidden()
 })
 
-test('a field outline is copied from its pivot, a plot pinned, and the outline saved (G.10)', async ({ page }) => {
+test('a field outline is copied from its pivot and saved (G.10)', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto(await researchFieldPath(page))
   await page.getByRole('link', { name: /^(Add an outline|Outline)$/ }).click()
@@ -892,29 +892,18 @@ test('a field outline is copied from its pivot, a plot pinned, and the outline s
   const useArea = page.getByRole('checkbox', { name: /for the field's area$/ })
   await expect(useArea).not.toBeChecked()
 
-  // A plot pinned by a click on the map
-  const plot = page.getByRole('listitem').filter({ hasText: 'Soybean' })
-  await plot.getByRole('button', { name: /^(Place|Move) its pin$/ }).click()
-  await expect(plot.getByText('Click the map where it is.')).toBeVisible()
-  await expect(page.locator('.maplibregl-canvas')).toBeInViewport({ ratio: 0.9 })
-  await page.waitForTimeout(500) // the scroll settles
-  const box = (await page.locator('.maplibregl-canvas').boundingBox())!
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
-  await expect(plot.getByRole('button', { name: 'Move its pin', exact: true })).toBeVisible()
-  await expect(page.locator('.maplibregl-marker', { hasText: 'Soybean' })).toBeVisible()
-
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Saved the outline of Arlington 525')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Arlington 525', level: 1 })).toBeVisible()
   await expect(page.getByText('2.0 ac ·').first()).toBeVisible() // the area as it was
   await page.goto('/setup')
   await expect(page.getByText(/outline 2[56]\.\d ac/)).toBeVisible()
-  // The field's dialog shows the shape; the pin was saved
+  // The field's dialog shows the shape
   await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('img', { name: 'The outline of Arlington 525' })).toBeVisible()
   await dialog.getByRole('link', { name: 'Edit shape' }).click()
-  await expect(page.locator('.maplibregl-marker', { hasText: 'Soybean' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Outline: Arlington 525')
   expect(errors).toEqual([])
 })
 
@@ -1013,19 +1002,26 @@ test('field outlines are imported from a shapefile, matched to fields or new one
   expect(errors).toEqual([])
 })
 
-test('the map shades outlined fields instead of badging them, and marks the selected one (G.10)', async ({ page }) => {
+test('the map shades outlined fields and badges them at their center, and marks the selected one (G.10, G.14)', async ({
+  page,
+}) => {
   const errors = watchErrors(page)
   await page.goto('/map')
   await expect(page.locator('.maplibregl-canvas')).toBeVisible()
-  // North 160's two fields have outlines, so it has no marker; Home pivot's don't
-  await expect(page.getByRole('button', { name: /^Home pivot: / })).toBeAttached()
-  await expect(page.getByRole('button', { name: /^North 160 \(pivot\): / })).toHaveCount(0)
+  // Zoomed out, every system is a dot, North 160 too, though its two fields have outlines
+  await expect(page.getByRole('button', { name: /^Home pivot: / })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^North 160 \(pivot\): / })).toBeVisible()
 
   // A field picked from the list (as a click in its outline does) is marked in its system's panel
   const list = page.getByRole('complementary', { name: 'Fields' })
   await list.getByRole('button', { name: /North potatoes.*on the map$/ }).click()
   const panel = page.getByRole('region', { name: 'System: North 160 (pivot)' })
   await expect(panel.locator('li[aria-current="true"]')).toContainText('North potatoes')
+  // Closer in, the outlined fields carry their plantings' badges, and the system's marker goes
+  const badges = page.getByRole('button', { name: /^Field: North potatoes, Potato/ })
+  await expect(badges).toBeVisible()
+  await expect(badges).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: /^North 160 \(pivot\): / })).toBeHidden()
 
   // A click in a field's outline selects that field, not the system drawn over it (G.14). The map
   // flies the pivot to 170 px left of center beside the panel (wide screens), at zoom 13.5 or more,

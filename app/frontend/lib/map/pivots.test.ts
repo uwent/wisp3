@@ -8,13 +8,12 @@ import {
   allOutlined,
   badgeRows,
   fieldFeatures,
+  fieldBadges,
   groupFeatures,
   type MapPivot,
   packRows,
-  pinFeatures,
   pivotBounds,
   pivotFeatures,
-  plotPacks,
 } from './pivots'
 import { drawnAsGlyph, glyphProperties, truePixels } from './systemLayers'
 
@@ -42,7 +41,19 @@ const pivot = (id: number, latitude: number, fields: FieldCard[] = [], radius_ft
   weather: null,
   fields,
   outlines: [],
-  pins: [],
+})
+
+const square = (lng: number, lat: number): Boundary => ({
+  type: 'Polygon' as const,
+  coordinates: [
+    [
+      [lng, lat],
+      [lng + 0.002, lat],
+      [lng + 0.002, lat + 0.002],
+      [lng, lat + 0.002],
+      [lng, lat],
+    ] as LngLat[],
+  ],
 })
 
 describe('pivotFeatures', () => {
@@ -149,6 +160,13 @@ describe('groupFeatures', () => {
     expect(pointInPolygon([-89.5, 44.3], outline)).toBe(false)
   })
 
+  it("reaches around its systems' field outlines too", () => {
+    const pivots = [{ ...grouped(1, 44.1, 7), outlines: [{ field_id: 1, boundary: square(-89.44, 44.1) }] }]
+    const farms = [{ id: 1, name: 'Farm', pivot_groups: [{ id: 7, name: 'East gauge' }], pivots }]
+    const outline = groupFeatures(farms, pivots).features[0].geometry.coordinates as LngLat[][]
+    expect(pointInPolygon([-89.438, 44.102], outline)).toBe(true)
+  })
+
   it('leaves out a group with none of its systems shown', () => {
     const pivots = [grouped(1, 44.1, 7)]
     const farms = [{ id: 1, name: 'Farm', pivot_groups: [{ id: 7, name: 'East gauge' }], pivots }]
@@ -176,18 +194,6 @@ describe('pivotBounds', () => {
 })
 
 describe('fields with outlines and pinned plots (G.10)', () => {
-  const square = (lng: number, lat: number): Boundary => ({
-    type: 'Polygon' as const,
-    coordinates: [
-      [
-        [lng, lat],
-        [lng + 0.002, lat],
-        [lng + 0.002, lat + 0.002],
-        [lng, lat + 0.002],
-        [lng, lat],
-      ] as LngLat[],
-    ],
-  })
   const card = (id: number, name: string, plantings: Partial<PlantingSummary>[]): FieldCard => ({
     id,
     name,
@@ -203,13 +209,9 @@ describe('fields with outlines and pinned plots (G.10)', () => {
   const outlined: MapPivot = {
     ...pivot(1, 44.1, [north, plots]),
     outlines: [{ field_id: 10, boundary: square(-89.501, 44.1) }],
-    pins: [
-      { planting_id: 110, field_id: 11, latitude: 44.099, longitude: -89.499 },
-      { planting_id: 111, field_id: 11, latitude: 44.0985, longitude: -89.499 },
-    ],
   }
 
-  it('draws each outlined field in its status, with a point inside for its name', () => {
+  it('draws each outlined field in its status, with a point on its top edge for its name', () => {
     const { features } = fieldFeatures([outlined], 10, new Set([2]))
     expect(features.map((f) => [f.properties.kind, f.geometry.type])).toEqual([
       ['outline', 'Polygon'],
@@ -224,31 +226,24 @@ describe('fields with outlines and pinned plots (G.10)', () => {
       dimmed: true,
       kind: 'outline',
     })
-    expect(pointInPolygon(features[1].geometry.coordinates as LngLat, square(-89.501, 44.1).coordinates)).toBe(true)
+    const [lng, lat] = features[1].geometry.coordinates as LngLat
+    expect(lng).toBeCloseTo(-89.5, 6)
+    expect(lat).toBeCloseTo(44.102, 6)
   })
 
-  it("draws pinned plots in their planting's status, named for the crop", () => {
-    const { features } = pinFeatures([outlined], null, null)
-    expect(features.map((f) => [f.properties.name, f.properties.status])).toEqual([
-      ['Soybean', 'ok'],
-      ['Corn', 'none'],
+  it('gives each outlined field a badge per planting at its center, named for the hover label', () => {
+    const both = { ...outlined, outlines: [...outlined.outlines, { field_id: 11, boundary: square(-89.6, 44.2) }] }
+    const [home, plotted] = fieldBadges([both])
+    expect(home).toMatchObject({ field_id: 10, pivot_id: 1, field_name: 'Home North' })
+    expect(home.badges).toEqual([{ key: 100, status: 'irrigate', label: 'Potato (Home North) · Irrigate' }])
+    expect(plotted.badges).toEqual([
+      { key: 110, status: 'ok', label: 'Soybean (Plots) · OK' },
+      { key: 111, status: null, label: 'Corn (Plots) · Season ended' },
     ])
-    expect(features[0].geometry.coordinates).toEqual([-89.499, 44.099])
-  })
-
-  it("packs a field's pinned plots as badges, at its outline's center or its pins' middle", () => {
-    const [pack] = plotPacks([outlined])
-    expect(pack).toMatchObject({ field_id: 11, pivot_id: 1, field_name: 'Plots', outlined: false })
-    expect(pack.center[0]).toBeCloseTo(-89.499)
-    expect(pack.center[1]).toBeCloseTo(44.09875)
-    expect(pack.plots).toEqual([
-      { planting_id: 110, status: 'ok', label: 'Soybean: OK' },
-      { planting_id: 111, status: null, label: 'Corn: season ended' },
-    ])
-    const withOutline = { ...outlined, outlines: [{ field_id: 11, boundary: square(-89.6, 44.2) }] }
-    expect(plotPacks([withOutline])[0]).toMatchObject({ outlined: true })
-    expect(pointInPolygon(plotPacks([withOutline])[0].center, square(-89.6, 44.2).coordinates)).toBe(true)
-    expect(plotPacks([{ ...outlined, pins: [] }])).toEqual([])
+    expect(pointInPolygon(plotted.center, square(-89.6, 44.2).coordinates)).toBe(true)
+    // A field with nothing planted is a gray dot; one without an outline has none here
+    const empty = fieldBadges([{ ...outlined, fields: [card(10, 'Home North', [])] }])
+    expect(empty[0].badges).toEqual([{ key: 0, status: null, label: 'Home North · No crop this season' }])
   })
 
   it('draws a system with outlined fields as a line, and keeps its marker until every field has one', () => {

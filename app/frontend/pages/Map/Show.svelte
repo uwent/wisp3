@@ -170,7 +170,7 @@
     focusPanel()
   }
 
-  // From the map: a system, or a field (its outline or a plot's pin) with its system; the list
+  // From the map: a system, or a field (its outline or its badges) with its system; the list
   // scrolls to its card
   function selectOnMap(pivotId: number | null, fieldId: number | null = null) {
     selection =

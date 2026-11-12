@@ -269,9 +269,9 @@
           shapefile, GeoJSON, or KML, and matches each to a field of the same name or adds it as a new field. The file is
           read in your browser; only the outlines you save are sent. The outline shades the field by its status on the map,
           and WISP offers its acres for the field's area and the soil survey's main soil in it for its soil; the water balance
-          doesn't use it otherwise. A field's plots can be pinned where they are in it. An irrigation system doesn't move
-          with its fields' outlines, since its location sets the weather, so Setup lists any outline that isn't under its
-          pivot or linear, or is more than a quarter mile from its other system.
+          doesn't use it otherwise. On the map, each outlined field shows a badge per planting at its center. An irrigation
+          system doesn't move with its fields' outlines, since its location sets the weather, so Setup lists any outline that
+          isn't under its pivot or linear, or is more than a quarter mile from its other system.
         </p>
       </li>
       <li>
@@ -680,8 +680,9 @@ t: days since emergence; t′: days since the decline starts</code
       <dt>November 2026: field outlines</dt>
       <dd>
         A field can have an outline, drawn, copied from its pivot or linear, or imported with others from a shapefile,
-        GeoJSON or KML file. Outlined fields are shaded by their status on the map, and plots can be pinned in their
-        field (see <a href="#getting-started">Getting started</a>).
+        GeoJSON or KML file. Outlined fields are shaded by their status on the map, with a badge per planting (see <a
+          href="#getting-started">Getting started</a
+        >).
       </dd>
       <dt>November 2026: a Weather tab</dt>
       <dd>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_202655) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -201,15 +201,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_170000) do
     t.boolean "partial", default: false, null: false
     t.float "plot_length_ft"
     t.float "plot_width_ft"
-    t.float "latitude"
-    t.float "longitude"
     t.boolean "own_soil", default: false, null: false
     t.string "canopy_curve_key"
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
     t.index ["soil_type_id"], name: "index_plantings_on_soil_type_id"
     t.index ["weather_cell_id"], name: "index_plantings_on_weather_cell_id"
-    t.check_constraint "(latitude IS NULL) = (longitude IS NULL)", name: "plantings_pin_both"
     t.check_constraint "(plot_length_ft IS NULL) = (plot_width_ft IS NULL)", name: "plantings_plot_both"
     t.check_constraint "NOT partial OR area_acres IS NOT NULL", name: "plantings_partial_area"
     t.check_constraint "area_acres IS NULL OR area_acres > 0::double precision", name: "plantings_area_positive"

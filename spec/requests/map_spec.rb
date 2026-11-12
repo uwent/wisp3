@@ -35,18 +35,12 @@ RSpec.describe "Map", type: :request do
     expect(card[:plantings].sole).to include(phase: "active")
   end
 
-  it "gives each pivot its fields' outlines and this season's plot pins (G.10)" do
+  it "gives each pivot its fields' outlines (G.10)" do
     outline = {"type" => "Polygon", "coordinates" => [[[-89.53, 44.13], [-89.52, 44.13], [-89.52, 44.14], [-89.53, 44.13]]]}
     field.update!(boundary: outline)
     create(:field, pivot:, name: "No outline")
-    plot_field = create(:field, pivot:, name: "Plots")
-    pinned = create(:planting, field: plot_field, partial: true, area_acres: 1, latitude: 44.134, longitude: -89.522)
-    create(:planting, field: plot_field, partial: true, area_acres: 1) # no pin
-    create(:planting, field: plot_field, partial: true, area_acres: 1, latitude: 44.135, longitude: -89.521,
-      season_start: Date.new(2025, 5, 1), emergence_date: Date.new(2025, 5, 20), end_date: Date.new(2025, 9, 15))
     get map_path
     shown = inertia.props[:farms].sole[:pivots].sole
     expect(shown[:outlines]).to eq([{"field_id" => field.id, "boundary" => outline}])
-    expect(shown[:pins]).to eq([{"planting_id" => pinned.id, "field_id" => plot_field.id, "latitude" => 44.134, "longitude" => -89.522}])
   end
 end

@@ -64,28 +64,4 @@ RSpec.describe "Field outlines", type: :request do
     expect(inertia.props[:errors]).to include("boundary" => ["must be a polygon"])
     expect(field.reload).to have_attributes(boundary: nil, area_acres: 200)
   end
-
-  it "pins the field's plots and removes a pin, in one save with the outline" do
-    plot = create(:planting, field:, partial: true, area_acres: 1)
-    other = create(:planting, field:, partial: true, area_acres: 1, latitude: 43.305, longitude: -89.345)
-    patch field_outline_path(field), params: {outline: {boundary: square.to_json, pins: [
-      {id: plot.id, latitude: "43.302", longitude: "-89.348"},
-      {id: other.id, latitude: "", longitude: ""}
-    ]}}
-    expect(plot.reload).to have_attributes(latitude: 43.302, longitude: -89.348)
-    expect(other.reload).to have_attributes(latitude: nil, longitude: nil)
-  end
-
-  it "won't pin a whole-field planting, and saves nothing when a pin is refused" do
-    whole = create(:planting, field:)
-    get field_outline_path(field) # Devise's test sign_in is saved by a request that doesn't 404
-    patch field_outline_path(field), params: {outline: {boundary: square.to_json, pins: [{id: whole.id, latitude: "43.3", longitude: "-89.3"}]}}
-    expect(response).to have_http_status(:not_found)
-    plot = create(:planting, field:, partial: true, area_acres: 1, season_start: Date.new(2026, 10, 1),
-      emergence_date: Date.new(2026, 10, 2), end_date: Date.new(2026, 10, 30))
-    patch field_outline_path(field), params: {outline: {boundary: square.to_json, pins: [{id: plot.id, latitude: "10", longitude: "-89.3"}]}}
-    follow_redirect!
-    expect(inertia.props[:errors]["pins"]).to be_present
-    expect(field.reload.boundary).to be_nil
-  end
 end
