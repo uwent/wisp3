@@ -244,7 +244,8 @@ export class MapOverlays {
     if (!map.getSource(id)) {
       map.addSource(id, {
         type: 'geojson',
-        data: this.drought,
+        // Features without a geometry, which @types/geojson doesn't allow, MapLibre skips
+        data: this.drought as never,
         attribution: OVERLAYS.find((o) => o.id === 'drought')!.attribution,
       })
     }

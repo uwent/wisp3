@@ -12,6 +12,7 @@
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import {
     farms as farmRoutes,
+    fieldOutline,
     fields,
     groups as groupRoutes,
     newQuickSetup,
@@ -110,6 +111,7 @@
       </p>
       <p class="text-xs text-ink-muted">
         {units.format('area', field.area_acres)} · {field.soil_type_name}
+        {#if field.boundary_acres !== null}· outline {units.format('area', field.boundary_acres)}{/if}
         {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(own field capacity and wilting point){/if}
         {#if field.use_model_precip !== null}· {field.use_model_precip
             ? 'modeled rain'
@@ -128,6 +130,12 @@
         class="px-2 py-1 text-xs"
         aria-label="Edit {field.name}"
         onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button
+      >
+      <Link
+        href={fieldOutline(field.id, { query: { from: 'setup' } })}
+        class="rounded-md px-2 py-1 text-brand-600 hover:bg-brand-50"
+        aria-label="{field.boundary ? 'Outline' : 'Add outline'} of {field.name}"
+        >{field.boundary ? 'Outline' : 'Add outline'}</Link
       >
       {#if owner}
         <Button

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Fields</name>
+    <Placemark>
+      <name>River 80</name>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              -89.36,43.30,0 -89.35,43.30,0 -89.35,43.305,0 -89.36,43.305,0 -89.36,43.30,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+    <Placemark>
+      <name>Well</name>
+      <Point><coordinates>-89.355,43.302,0</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>

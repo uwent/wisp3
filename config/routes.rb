@@ -53,6 +53,8 @@ Rails.application.routes.draw do
   end
   resources :fields, only: [:show, :create, :update, :destroy] do
     resources :days, only: :update, controller: "field_days", param: :date
+    # Its outline, drawn, copied from its irrigation system or read from a file, and its plots' pins (G.10)
+    resource :outline, only: [:show, :update], controller: "field_outlines"
   end
   resources :plantings, only: [:show, :create, :update, :destroy] do
     get :export, on: :member, defaults: {format: :csv}

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import { expect, type Page, test } from '@playwright/test'
 
-import { firstPlantingPath, firstZonePath, signIn, watchErrors } from './session'
+import { firstPlantingPath, firstZonePath, researchFieldPath, signIn, watchErrors } from './session'
 
 // Smoke tests over the demo account seeded by e2e/seed.rb: the main ways of entering data save, and
 // the map and charts work. accessibility.spec.ts visits every page, failing on script errors too.
@@ -831,4 +831,76 @@ test('glossary terms explain themselves on hover or tap', async ({ page }) => {
   await expect(page.getByText('The water left in the root zone that the crop can use without stress.')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByText('The water left in the root zone that the crop can use without stress.')).toBeHidden()
+})
+
+test('a field outline is copied from its pivot, a plot pinned, and the outline saved (G.10)', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto(await researchFieldPath(page))
+  await page.getByRole('link', { name: /^(Add an outline|Outline)$/ }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Outline: Arlington 525')
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible()
+
+  // The 600 ft pivot's circle, about 26 acres, offered for the 2 acre field's area (left unticked)
+  await expect(page.getByRole('group', { name: 'Outline tools' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Same as the pivot' }).first().click()
+  await expect(page.getByText(/The outline: 2[56]\.\d ac/)).toBeVisible()
+  const useArea = page.getByRole('checkbox', { name: /for the field's area$/ })
+  await expect(useArea).not.toBeChecked()
+
+  // A plot pinned by a click on the map
+  const plot = page.getByRole('listitem').filter({ hasText: 'Soybean' })
+  await plot.getByRole('button', { name: /^(Place|Move) its pin$/ }).click()
+  await expect(plot.getByText('Click the map where it is.')).toBeVisible()
+  await expect(page.locator('.maplibregl-canvas')).toBeInViewport({ ratio: 0.9 })
+  await page.waitForTimeout(500) // the scroll settles
+  const box = (await page.locator('.maplibregl-canvas').boundingBox())!
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  await expect(plot.getByRole('button', { name: 'Move its pin', exact: true })).toBeVisible()
+  await expect(page.locator('.maplibregl-marker', { hasText: 'Soybean' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Saved the outline of Arlington 525')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Arlington 525', level: 1 })).toBeVisible()
+  await expect(page.getByText('2.0 ac ·').first()).toBeVisible() // the area as it was
+  await page.goto('/setup')
+  await expect(page.getByText(/outline 2[56]\.\d ac/)).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('a field outline is drawn corner by corner, or read from a file (G.10)', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/setup')
+  await page.getByRole('link', { name: /^(Add outline|Outline) of Market garden$/ }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Outline: Market garden')
+  if (await page.getByRole('button', { name: 'Remove the outline' }).isVisible())
+    await page.getByRole('button', { name: 'Remove the outline' }).click()
+
+  // Four corners, then the first again to close it: the part is ready to adjust
+  await expect(page.getByRole('group', { name: 'Outline tools' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Draw the outline' }).click()
+  await expect(page.getByText(/Click the map at each corner/)).toBeVisible()
+  const box = (await page.locator('.maplibregl-canvas').boundingBox())!
+  const at = (x: number, y: number) => [box.x + box.width * x, box.y + box.height * y] as const
+  for (const [x, y] of [at(0.4, 0.4), at(0.6, 0.4), at(0.6, 0.6), at(0.4, 0.6), at(0.4, 0.4)]) {
+    await page.mouse.click(x, y)
+    await page.waitForTimeout(150)
+  }
+  await expect(page.getByRole('button', { name: 'Edit corners' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText(/^The outline: [\d.]+ (ac|ha)\./)).toBeVisible()
+
+  // A KML file replaces it: one shape, 0.01° by 0.005° at 43.3°N
+  await page.getByLabel('Outline file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')
+  await expect(page.getByText(/^The outline: 111\.2 ac\./)).toBeVisible()
+
+  // A shapefile with two fields asks which one
+  await page.getByLabel('Outline file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
+  await expect(page.getByText('This file has 2 shapes. Which is Market garden?')).toBeVisible()
+  await page.getByRole('button', { name: 'Home South' }).click()
+  await expect(page.getByText(/^The outline: 10\d\.\d ac\./)).toBeVisible()
+
+  // Leaving asks first; nothing is saved
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('link', { name: 'Cancel' }).click()
+  await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
+  expect(errors).toEqual([])
 })

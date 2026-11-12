@@ -85,6 +85,28 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_plot.planting_entries).to be_empty
   end
 
+  it "hides other groups' field outlines and won't pin another group's plot (G.10)" do
+    square = {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.31], [-89.35, 43.3]]]}
+    get field_outline_path(their_field)
+    expect_not_found
+    patch field_outline_path(their_field), params: {outline: {boundary: square.to_json}}
+    expect_not_found
+    expect(their_field.reload.boundary).to be_nil
+
+    their_plot = create(:planting, field: their_field, partial: true, area_acres: 1)
+    patch field_outline_path(my_field), params: {outline: {boundary: "", pins: [{id: their_plot.id, latitude: 43.3, longitude: -89.3}]}}
+    expect_not_found
+    expect(their_plot.reload.latitude).to be_nil
+  end
+
+  it "shows only my group's other fields and systems on a field's outline page (G.10)" do
+    their_field.update!(boundary: {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.3]]]})
+    their_pivot
+    get field_outline_path(my_field)
+    expect(inertia.props[:other_fields]).to be_empty
+    expect(inertia.props[:other_pivots]).to be_empty
+  end
+
   it "hides other groups' plantings" do
     post plantings_path, params: {planting: {field_id: their_field.id, plant_id: their_planting.plant_id}}
     expect_not_found

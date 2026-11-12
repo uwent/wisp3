@@ -4,7 +4,7 @@
 
   import { formatArea, seasonDates } from '@/lib/plantings'
   import { formatNumber, type Units } from '@/lib/units'
-  import { fields, planting as plantingRoute, pivots } from '@/routes'
+  import { fieldOutline, fields, planting as plantingRoute, pivots } from '@/routes'
   import type { Field } from '@/types/serializers'
 
   // The top of the field page and its plantings' pages (PLAN.md Phase 8 G.11): where the field is,
@@ -62,7 +62,10 @@
         {units.format('area', field.area_acres)} · {field.soil_type_name} (field capacity {formatNumber(
           field.effective_field_capacity * 100,
           1,
-        )}%, wilting point {formatNumber(field.effective_perm_wilting_pt * 100, 1)}%)
+        )}%, wilting point {formatNumber(field.effective_perm_wilting_pt * 100, 1)}%){' · '}<Link
+          href={fieldOutline(field.id)}
+          class="underline underline-offset-2">{field.boundary ? 'Outline' : 'Add an outline'}</Link
+        >
       </p>
     </div>
     {#if actions}

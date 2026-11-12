@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "Field Name": "Hill", "id": 7 },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [[[-89.37, 43.3], [-89.365, 43.3], [-89.365, 43.303], [-89.37, 43.303], [-89.37, 43.3]]],
+          [[[-89.364, 43.3], [-89.362, 43.3], [-89.362, 43.302], [-89.364, 43.3]]]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "Field Name": "Lane", "id": 8 },
+      "geometry": { "type": "LineString", "coordinates": [[-89.37, 43.31], [-89.36, 43.31]] }
+    }
+  ]
+}

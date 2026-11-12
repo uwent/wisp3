@@ -99,6 +99,8 @@ export async function signedInPages(page: Page): Promise<string[]> {
     planting,
     field,
     research,
+    // The field outline page (G.10), with the research field's plots to pin
+    `${research}/outline`,
     plot,
     hay,
     '/setup',
