@@ -131,16 +131,45 @@ export type SoilSuggestion = {
   units: MapUnit[]
 }
 
+/** Each soil type's share of the area, adding up map units of the same type (unmatched ones left out) */
+export function soilShares(units: MapUnit[]): Map<string, number> {
+  const shares = new Map<string, number>()
+  for (const unit of units) {
+    const key = soilKeyFor(unit.texture)
+    if (key) shares.set(key, (shares.get(key) ?? 0) + unit.share)
+  }
+  return shares
+}
+
+/**
+ * Soil types for a menu, those in the area first by their share of it ("Silt loam, 72% of the
+ * field"), then the rest as given (G.11's plot soil, on a field's outline)
+ */
+export function soilOptionsByShare<T extends { id: number; key: string; name: string }>(
+  soilTypes: T[],
+  shares: Map<string, number>,
+  where = 'the field',
+): { value: string; label: string }[] {
+  const pct = (share: number) => `${Math.max(1, Math.round(share * 100))}%`
+  const present = soilTypes
+    .filter((soil) => (shares.get(soil.key) ?? 0) > 0)
+    .sort((a, b) => shares.get(b.key)! - shares.get(a.key)!)
+  const rest = soilTypes.filter((soil) => !present.includes(soil))
+  return [
+    ...present.map((soil) => ({
+      value: String(soil.id),
+      label: `${soil.name}, ${pct(shares.get(soil.key)!)} of ${where}`,
+    })),
+    ...rest.map((soil) => ({ value: String(soil.id), label: soil.name })),
+  ]
+}
+
 /**
  * The soil type covering the most of the pivot (adding up map units of the same type), if the map
  * units we can match cover at least half of it (not mostly water, peat or unsurveyed)
  */
 export function suggestSoil(units: MapUnit[]): SoilSuggestion {
-  const byKey = new Map<string, number>()
-  for (const unit of units) {
-    const key = soilKeyFor(unit.texture)
-    if (key) byKey.set(key, (byKey.get(key) ?? 0) + unit.share)
-  }
+  const byKey = soilShares(units)
   const matched = [...byKey.values()].reduce((sum, share) => sum + share, 0)
   const [best] = [...byKey.entries()].sort((a, b) => b[1] - a[1])
   return best && matched >= 0.5 ? { key: best[0], share: best[1], units } : { key: null, share: 0, units }

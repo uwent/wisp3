@@ -1,5 +1,7 @@
 # Handoff: G.10 field boundaries and import
 
+**Done (2026-11-12).** What was built, and how it differs from this note, is in PLAN.md's G.10 ("Built"). Kept for the history.
+
 Written 2026-11-11, at the end of G.5. Read PLAN.md's **G.10 Field boundaries (optional)** first: it holds the agreed design. This note covers where things stand, what the code already has, and what to settle with Ben before building. CLAUDE.md's rule applies: **propose a plan and wait for Ben's go-ahead before implementing.**
 
 ## Where things stand

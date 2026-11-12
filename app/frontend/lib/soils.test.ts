@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
 import { pivotRing } from './geo'
-import { parseSoilAreas, parseSoilTable, soilAreaQuery, soilKeyFor, soilQuery, suggestSoil, wktPolygons } from './soils'
+import {
+  parseSoilAreas,
+  parseSoilTable,
+  soilAreaQuery,
+  soilKeyFor,
+  soilOptionsByShare,
+  soilQuery,
+  soilShares,
+  suggestSoil,
+  wktPolygons,
+} from './soils'
 
 // Soil Data Access's answer for the demo's North 160 pivot (44.1335, −89.5213, 1300 ft), 2026-10-17
 const NORTH_160 = {
@@ -127,5 +137,28 @@ describe('soil types around a pivot', () => {
     const query = soilAreaQuery([-89.55, 44.11, -89.49, 44.15])
     expect(query).toContain('POLYGON((-89.550000 44.110000, -89.490000 44.110000')
     expect(query).toContain('STAsText()')
+  })
+})
+
+describe("a plot's soil menu on a field with an outline (G.11, G.10)", () => {
+  it('lists the soils in the field first, by their share, then the rest', () => {
+    const units = [
+      { mukey: '1', share: 0.6, name: 'Plano silt loam', component: 'Plano', texture: 'Silt loam' },
+      { mukey: '2', share: 0.15, name: 'Griswold loam', component: 'Griswold', texture: 'Loam' },
+      { mukey: '3', share: 0.2, name: 'Plano silt loam, eroded', component: 'Plano', texture: 'Silt loam' },
+      { mukey: '4', share: 0.05, name: 'Water', component: null, texture: null },
+    ]
+    const shares = soilShares(units)
+    expect(shares.get('silt_loam')).toBeCloseTo(0.8)
+    const soils = [
+      { id: 1, key: 'sand', name: 'Sand' },
+      { id: 2, key: 'loam', name: 'Loam' },
+      { id: 3, key: 'silt_loam', name: 'Silt loam' },
+    ]
+    expect(soilOptionsByShare(soils, shares)).toEqual([
+      { value: '3', label: 'Silt loam, 80% of the field' },
+      { value: '2', label: 'Loam, 15% of the field' },
+      { value: '1', label: 'Sand' },
+    ])
   })
 })

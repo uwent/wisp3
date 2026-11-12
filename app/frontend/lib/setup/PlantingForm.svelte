@@ -8,6 +8,7 @@
   import TextField from '@/lib/components/TextField.svelte'
   import { addDays, formatDate } from '@/lib/dates'
   import { clashes, cropName, formatArea, plotAcres, seasonDates, typicalEnd } from '@/lib/plantings'
+  import { fetchSoilSurvey, soilOptionsByShare, soilShares } from '@/lib/soils'
   import { units as unitsFor } from '@/lib/units'
   import { plantings } from '@/routes'
   import type { Field, GenericCurve, Plant, Planting, SoilType } from '@/types/serializers'
@@ -72,6 +73,22 @@
   let ownSoil = $state(untrack(() => planting?.own_soil ?? false))
   let plotSoilId = $state(untrack(() => String(planting?.own_soil ? planting.soil_type_id : field.soil_type_id)))
   const plotSoil = $derived(soilTypes.find((s) => String(s.id) === plotSoilId))
+  // On a field with an outline, the soils in it first, with their share (G.11 item 10, G.10): read
+  // from the soil survey once the plot is given its own soil
+  let fieldShares = $state<Map<string, number> | null>(null)
+  $effect(() => {
+    if (!ownSoil || !field.boundary || fieldShares) return
+    const request = new AbortController()
+    fetchSoilSurvey(field.boundary, request.signal)
+      .then((units) => (fieldShares = soilShares(units)))
+      .catch(() => {}) // the survey can't be reached: the plain list stays
+    return () => request.abort()
+  })
+  const plotSoilOptions = $derived(
+    fieldShares
+      ? soilOptionsByShare(soilTypes, fieldShares)
+      : soilTypes.map((s) => ({ value: String(s.id), label: s.name })),
+  )
 
   // Form fields start from the props; the dialog mounts a new form each time it opens
   let plantId = $state(untrack(() => String(planting?.plant_id ?? '')))
@@ -276,7 +293,8 @@
                   label="Soil"
                   name="planting[soil_type_id]"
                   bind:value={plotSoilId}
-                  options={soilTypes.map((s) => ({ value: String(s.id), label: s.name }))}
+                  options={plotSoilOptions}
+                  hint={fieldShares ? "From the soil survey of the field's outline" : undefined}
                   error={errors.soil_type}
                 />
                 <NumberField

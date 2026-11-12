@@ -260,8 +260,19 @@
         two fields you manage separately is two fields. The soil type sets field capacity and wilting point (see
         <a href="#soils">Soils</a>); when you place the irrigation system, WISP suggests one from the USDA soil survey.
         If you know better values for your field, from the
-        <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a> or your own measurements,
-        enter them instead.
+        <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a> or your own
+        measurements, enter them instead.
+        <p>
+          A field can have an <strong>outline</strong> (optional): copied from its pivot's or linear's shape, drawn on
+          the map, or read from a file. <strong>Import field outlines</strong> in Setup reads FSA field boundaries (Common
+          Land Units) or boundaries exported from John Deere Operations Center, Climate FieldView or Google Earth, as a zipped
+          shapefile, GeoJSON, or KML, and matches each to a field of the same name or adds it as a new field. The file is
+          read in your browser; only the outlines you save are sent. The outline shades the field by its status on the map,
+          and WISP offers its acres for the field's area and the soil survey's main soil in it for its soil; the water balance
+          doesn't use it otherwise. A field's plots can be pinned where they are in it. An irrigation system doesn't move
+          with its fields' outlines, since its location sets the weather, so Setup lists any outline that isn't under its
+          pivot or linear, or is more than a quarter mile from its other system.
+        </p>
       </li>
       <li>
         <strong>Planting:</strong> a crop on a field for one season, with its emergence date, harvest date, root zone
@@ -652,8 +663,10 @@ t: days since emergence; t′: days since the decline starts</code
       </li>
       <li>
         Dragging a pivot's or linear's handles on the map needs a mouse or touch, but every handle also has a box below
-        the map where you can type the same values. The optional map layers (radar, rain, drought) are images from
-        outside services and are described by their legends and by the values shown under the pointer.
+        the map where you can type the same values. Drawing a field's outline also needs a mouse or touch; an outline
+        can instead be copied from its pivot or linear with one button, or read from a file. The optional map layers
+        (radar, rain, drought) are images from outside services and are described by their legends and by the values
+        shown under the pointer.
       </li>
     </ul>
     <p>
@@ -664,6 +677,12 @@ t: days since emergence; t′: days since the decline starts</code
 
     <h2 id="changes">What's changed</h2>
     <dl>
+      <dt>November 2026: field outlines</dt>
+      <dd>
+        A field can have an outline, drawn, copied from its pivot or linear, or imported with others from a shapefile,
+        GeoJSON or KML file. Outlined fields are shaded by their status on the map, and plots can be pinned in their
+        field (see <a href="#getting-started">Getting started</a>).
+      </dd>
       <dt>November 2026: a Weather tab</dt>
       <dd>
         Weather has its own tab, by weather zone, with the week ahead and the season's charts (see
