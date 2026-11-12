@@ -8,6 +8,7 @@
   import { isoDate } from '@/lib/dates'
   import { isPoint, KIND_NOUNS } from '@/lib/geo'
   import { units as unitsFor } from '@/lib/units'
+  import { outlineProblems } from '@/lib/outlines/problems'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import {
@@ -64,6 +65,11 @@
   const hasSeason = $derived(allPivots.some((p) => p.fields.some((f) => seasonPlantings(f).length)))
   const hasLastSeason = $derived(
     allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
+  )
+
+  // Fields whose outline isn't with their irrigation system (G.10), to fix by hand
+  const outlineIssues = $derived(
+    allPivots.flatMap((pivot) => outlineProblems(pivot, pivot.fields, page.props.auth.user?.unit_system ?? 'imperial')),
   )
 
   // A farm's pivots in a group, and the ones in none (PLAN.md Phase 8 G.4)
@@ -265,6 +271,29 @@
     </Link>
   </div>
 </div>
+
+{#if outlineIssues.length}
+  <section
+    class="space-y-1 rounded-lg border border-status-caution bg-surface-raised px-4 py-3 text-sm"
+    aria-labelledby="outline-issues"
+  >
+    <h2 id="outline-issues" class="font-medium">Outlines to check</h2>
+    <p class="text-ink-muted">
+      An irrigation system doesn't move with its field's outline, since its location sets the weather. Move the outline,
+      or the system if it's in the wrong place.
+    </p>
+    <ul class="list-disc pl-5">
+      {#each outlineIssues as issue (issue.fieldId)}
+        <li>
+          {issue.message}.
+          <Link href={fieldOutline(issue.fieldId, { query: { from: 'setup' } })} class="underline underline-offset-2"
+            >Edit the outline</Link
+          >
+        </li>
+      {/each}
+    </ul>
+  </section>
+{/if}
 
 {#if hasLastSeason}
   <Form

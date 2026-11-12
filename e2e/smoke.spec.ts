@@ -940,6 +940,10 @@ test('field outlines are imported from a shapefile, matched to fields or new one
   await expect(page.getByText('Saved an outline')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Outline of Market garden' })).toBeVisible()
+
+  // That shape is near Arlington, nowhere near Market garden's pivot at Coloma: Setup says so
+  const issues = page.getByRole('region', { name: 'Outlines to check' })
+  await expect(issues).toContainText(/Market garden's outline isn't under Pivot: Home pivot \(\d+\.\d mi away\)/)
   expect(errors).toEqual([])
 })
 
