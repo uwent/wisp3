@@ -17,9 +17,9 @@
   import FieldSoilInput from './FieldSoilInput.svelte'
   import ShapeThumbnail from './ShapeThumbnail.svelte'
 
-  // Create a field under a pivot, or edit one (including moving it to another pivot, while it has
-  // no seasons that have ended: those stay with their pivot, PLAN.md Phase 8 G.9). Its shape (the
-  // outline, G.10) is shown small and edited on its own page (G.14).
+  // Create a field under a pivot, or edit one (including moving it to another pivot, which its
+  // seasons that haven't ended follow; ended ones keep theirs, PLAN.md Phase 8 G.9, G.14 part 7).
+  // Its shape (the outline, G.10) is shown small and edited on its own page (G.14).
   let {
     field,
     pivotId,
@@ -58,12 +58,11 @@
       : null,
   )
   let area = $state(untrack(() => field?.area_acres ?? null))
-  // Seasons that have ended keep their soil, area and pivot
+  // Seasons that have ended keep their soil, area and irrigation system
   const endedYears = $derived(field?.ended_years ?? [])
   const endedText = $derived(
     endedYears.length === 1 ? `The ${endedYears[0]} season` : `Earlier seasons (${endedYears.join(', ')})`,
   )
-  const currentPivot = $derived(pivots.find((p) => p.id === field?.pivot_id))
   const pct = (fraction: number | undefined) => (fraction === undefined ? '' : `${Math.round(fraction * 1000) / 10}%`)
 </script>
 
@@ -84,11 +83,7 @@
           value: String(p.id),
           label: p.kind_name ? systemName({ name: p.name, kind_name: p.kind_name }) : p.name,
         }))}
-        disabled={endedYears.length > 0}
         error={errors.pivot_id}
-        hint={endedYears.length
-          ? `${endedText} ${endedYears.length === 1 ? 'stays' : 'stay'} with ${currentPivot?.name ?? 'this irrigation system'}. To grow under another system, add a new field there.`
-          : undefined}
       />
       <fieldset class="space-y-2">
         <legend class="text-sm font-medium">Field area</legend>
@@ -135,9 +130,10 @@
       />
       {#if endedYears.length}
         <p class="text-sm text-ink-muted">
-          Changes to the soil and area apply to seasons that haven't ended. {endedText}
-          {endedYears.length === 1 ? 'keeps the soil and area it ran with' : 'keep the soil and area they ran with'}; to
-          correct one, edit that season's crop.
+          Changes to the soil, area and irrigation system apply to seasons that haven't ended. {endedText}
+          {endedYears.length === 1
+            ? 'keeps the soil, area and system it ran with'
+            : 'keep the soil, area and system they ran with'}; to correct a soil or area, edit that season's crop.
         </p>
       {/if}
       <details class="text-sm" open={field?.field_capacity !== null && field?.field_capacity !== undefined}>

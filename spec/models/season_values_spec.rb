@@ -1,7 +1,7 @@
 require "rails_helper"
 
-# PLAN.md Phase 8 G.9: a planting keeps its field's soil and area and its pivot's weather cell, so
-# setup edits for a new season leave earlier seasons as they ran.
+# PLAN.md Phase 8 G.9: a planting keeps its field's soil and area, its system (G.14 part 7) and that
+# system's weather cell, so setup edits for a new season leave earlier seasons as they ran.
 RSpec.describe "Season values on plantings" do
   let(:sand) { create(:soil_type, name: "Sand", field_capacity: 0.10, perm_wilting_pt: 0.04) }
   let(:loam) { create(:soil_type, name: "Loam", field_capacity: 0.30, perm_wilting_pt: 0.12) }
@@ -20,7 +20,7 @@ RSpec.describe "Season values on plantings" do
     planting = create(:planting, field:, season_start: Date.new(2027, 4, 1), emergence_date: Date.new(2027, 5, 1),
       end_date: Date.new(2027, 9, 30))
     expect(planting).to have_attributes(soil_type: sand, field_capacity: 0.12, perm_wilting_pt: nil, area_acres: 60,
-      weather_cell: pivot.weather_cell)
+      pivot:, weather_cell: pivot.weather_cell)
     expect(planting.effective_perm_wilting_pt).to eq(0.04)
   end
 
@@ -53,17 +53,62 @@ RSpec.describe "Season values on plantings" do
     expect(last_year.reload.weather_cell).to eq(old_cell)
   end
 
-  it "keeps a field with earlier seasons on its pivot" do
-    other = create(:pivot, farm: pivot.farm, latitude: 45.6, longitude: -91.2)
-    expect(field.update(pivot: other)).to be(false)
-    expect(field.errors[:pivot_id].first).to start_with("can't change for a field with earlier seasons")
-  end
+  describe "a field moved to another system (G.14 part 7)" do
+    let(:other) { create(:pivot, farm: pivot.farm, latitude: 45.6, longitude: -91.2) }
 
-  it "moves a field without earlier seasons, its plantings following the new pivot's weather" do
-    last_year.destroy!
-    other = create(:pivot, farm: pivot.farm, latitude: 45.6, longitude: -91.2)
-    expect(field.update(pivot: other)).to be(true)
-    expect(this_year.reload.weather_cell).to eq(other.weather_cell)
+    it "moves freely with earlier seasons, which keep their system and weather" do
+      old_cell = pivot.weather_cell
+      expect(field.update(pivot: other)).to be(true)
+      expect(this_year.reload).to have_attributes(pivot: other, weather_cell: other.weather_cell)
+      expect(last_year.reload).to have_attributes(pivot:, weather_cell: old_cell)
+      expect(pivot.plantings).to eq([last_year])
+    end
+
+    it "keeps the old system's irrigation on an ended season, and takes the new one's after" do
+      create(:pivot_irrigation, pivot:, date: Date.new(2025, 7, 1), inches: 0.8)
+      create(:pivot_irrigation, pivot: other, date: Date.new(2025, 7, 2), inches: 0.5)
+      field.update!(pivot: other)
+      create(:pivot_irrigation, pivot: other, date: Date.new(2026, 7, 3), inches: 0.6)
+      create(:pivot_irrigation, pivot:, date: Date.new(2026, 7, 4), inches: 0.9)
+
+      earlier = PlantingBalance.new(last_year.reload, weather: {}).days.to_h { |day| [day.inputs.date, day.inputs] }
+      expect(earlier[Date.new(2025, 7, 1)]).to have_attributes(irrigation: 0.8, irrigation_source: :pivot)
+      expect(earlier[Date.new(2025, 7, 2)]).to have_attributes(irrigation: 0.0, irrigation_source: :none)
+      now = PlantingBalance.new(this_year.reload, weather: {}).days.to_h { |day| [day.inputs.date, day.inputs] }
+      expect(now[Date.new(2026, 7, 3)].irrigation).to eq(0.6)
+      expect(now[Date.new(2026, 7, 4)].irrigation).to eq(0.0)
+
+      # Preloaded as on the dashboard, the same
+      records = DailyInputs.preload([field.reload], Date.new(2025, 4, 1)..Date.new(2026, 9, 30))[field.id]
+      preloaded = PlantingBalance.new(last_year, weather: {}, records:).days.to_h { |day| [day.inputs.date, day.inputs] }
+      expect(preloaded[Date.new(2025, 7, 1)].irrigation).to eq(0.8)
+      expect(PlantingBalance.new(this_year, weather: {}, records:).days.find { |day| day.inputs.date == Date.new(2026, 7, 3) }
+        .inputs.irrigation).to eq(0.6)
+      # The field as a whole: each day's system
+      whole = DailyInputs.new(field, [Date.new(2025, 7, 1), Date.new(2025, 12, 1), Date.new(2026, 7, 3)]).days
+      expect(whole.map(&:irrigation)).to eq([0.8, 0.0, 0.6])
+    end
+
+    it "lists the field under each system on the days its seasons ran there" do
+      field.update!(pivot: other)
+      expect(pivot.fields_on(Date.new(2025, 7, 1))).to eq([field])
+      expect(other.fields_on(Date.new(2025, 7, 1))).to eq([])
+      expect(pivot.fields_on(Date.new(2026, 7, 1))).to eq([])
+      expect(other.fields_on(Date.new(2026, 7, 1))).to eq([field])
+    end
+
+    it "accepts the old system's irrigation applied to the field on an earlier date" do
+      field.update!(pivot: other)
+      create(:field, pivot:)
+      expect(build(:pivot_irrigation, pivot:, date: Date.new(2025, 7, 1), field_ids: [field.id])).to be_valid
+      expect(build(:pivot_irrigation, pivot:, date: Date.new(2026, 7, 1), field_ids: [field.id])).not_to be_valid
+    end
+
+    it "hands its seasons to the field's system when the old system is deleted" do
+      field.update!(pivot: other)
+      pivot.destroy!
+      expect(last_year.reload.pivot).to eq(other)
+    end
   end
 
   it "counts a cell as active for this year's ended plantings after their pivot moved" do
@@ -100,6 +145,14 @@ RSpec.describe "Season values on plantings" do
 
     it "counts the fields' areas on a day with no planting" do
       expect(irrigation(Date.new(2026, 3, 1)).irrigated_acres).to eq(60)
+    end
+
+    it "counts the plantings that ran on the system that day, wherever their field is now" do
+      create(:planting, field: neighbor)
+      earlier = irrigation(Date.new(2025, 7, 1))
+      field.update!(pivot: create(:pivot, farm: pivot.farm))
+      expect(PivotIrrigation.find(earlier.id).irrigated_acres).to eq(60) # last year's planting, still here
+      expect(irrigation(Date.new(2026, 7, 1)).irrigated_acres).to eq(60) # the neighbor only
     end
   end
 end

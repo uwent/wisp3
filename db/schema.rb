@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_202655) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_13_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -203,7 +203,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_202655) do
     t.float "plot_width_ft"
     t.boolean "own_soil", default: false, null: false
     t.string "canopy_curve_key"
+    t.bigint "pivot_id", null: false
     t.index ["field_id"], name: "index_plantings_on_field_id"
+    t.index ["pivot_id"], name: "index_plantings_on_pivot_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
     t.index ["soil_type_id"], name: "index_plantings_on_soil_type_id"
     t.index ["weather_cell_id"], name: "index_plantings_on_weather_cell_id"
@@ -372,6 +374,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_202655) do
   add_foreign_key "pivots", "weather_cells"
   add_foreign_key "planting_entries", "plantings"
   add_foreign_key "plantings", "fields"
+  add_foreign_key "plantings", "pivots"
   add_foreign_key "plantings", "plants"
   add_foreign_key "plantings", "soil_types"
   add_foreign_key "plantings", "weather_cells", on_delete: :nullify

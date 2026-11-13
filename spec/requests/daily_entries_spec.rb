@@ -28,6 +28,22 @@ RSpec.describe "Daily entry", type: :request do
       expect(field_props[:plantings].sole).to include(id: whole.id, plant_name: "Corn", partial: false, entry: nil)
     end
 
+    it "lists a moved field under the system its season ran on (G.14 part 7)" do
+      whole.update!(end_date: Date.new(2026, 7, 16))
+      other = create(:pivot, farm:, name: "Lane 3")
+      field.update!(pivot: other)
+      pivots = ->(on) {
+        get daily_entry_path(date: on)
+        inertia.props[:farms].sole[:pivots].to_h { |props| [props[:name], props[:fields].map { |f| f[:name] }] }
+      }
+      expect(pivots.call(date)).to eq("Lane 3" => [], "River" => ["North"])
+      expect(pivots.call(Date.new(2026, 7, 18))).to eq("Lane 3" => ["North"], "River" => [])
+
+      # Its old system's irrigation that day can still name it
+      patch daily_entry_path, params: {date: date.iso8601, pivots: {pivot.id => {inches: "0.5", field_ids: ["", field.id]}}}
+      expect(pivot.pivot_irrigations.sole).to have_attributes(date:, field_ids: nil) # every field on it that day
+    end
+
     it "lists a field's plots after its whole-field planting, with their own entries" do
       field.update!(area_acres: 40)
       whole.update!(end_date: Date.new(2026, 6, 30))

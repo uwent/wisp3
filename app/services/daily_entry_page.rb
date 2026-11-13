@@ -2,7 +2,9 @@
 # with its irrigation groups and systems ("pivots" in code, G.5); each pivot's irrigation that day and its fields; each field's
 # entry, the rain the model would use, and its plantings in season that day, with a part-field
 # planting's own entry and each planting's canopy reading (when one is wanted: PlantingTasks.canopy).
-# Loads everything up front, with no query per field.
+# Each field is under the system it was on that day (Field#pivot_id_on: a season keeps the system
+# it ran on, G.14 part 7), which for today is its own. Loads everything up front, with no query per
+# field.
 class DailyEntryPage
   def initialize(group, date)
     @group, @date = group, date
@@ -14,6 +16,8 @@ class DailyEntryPage
   end
 
   def pivots = farms.flat_map(&:pivots)
+
+  def fields = pivots.flat_map(&:fields)
 
   def props
     {date: @date, farms: farms.map { |farm| farm_props(farm) }}
@@ -32,7 +36,7 @@ class DailyEntryPage
     {id: pivot.id, name: pivot.name, kind: pivot.kind, kind_name: pivot.kind_name, pivot_group_id: pivot.pivot_group_id,
      pump_capacity_gpm: pivot.pump_capacity_gpm,
      irrigation: irrigation && PivotIrrigationSerializer.new(irrigation).to_h,
-     fields: pivot.fields.map { |field| field_props(pivot, field) }}
+     fields: fields_by_pivot.fetch(pivot.id, []).map { |field| field_props(pivot, field) }}
   end
 
   def field_props(pivot, field)
@@ -67,16 +71,20 @@ class DailyEntryPage
      last_date: (task&.last_date unless task&.last_date == @date)}
   end
 
+  def fields_by_pivot
+    @fields_by_pivot ||= fields.sort_by(&:name).group_by { |field| field.pivot_id_on(@date) }
+  end
+
   def irrigations
     @irrigations ||= PivotIrrigation.where(pivot: pivots, date: @date).index_by(&:pivot_id)
   end
 
   def field_entries
-    @field_entries ||= FieldEntry.where(field_id: pivots.flat_map(&:fields).map(&:id), date: @date).index_by(&:field_id)
+    @field_entries ||= FieldEntry.where(field_id: fields.map(&:id), date: @date).index_by(&:field_id)
   end
 
   def planting_entries
-    @planting_entries ||= PlantingEntry.where(planting_id: pivots.flat_map(&:fields).flat_map(&:plantings).map(&:id),
+    @planting_entries ||= PlantingEntry.where(planting_id: fields.flat_map(&:plantings).map(&:id),
       date: @date).index_by(&:planting_id)
   end
 

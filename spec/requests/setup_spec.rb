@@ -132,16 +132,14 @@ RSpec.describe "Setup", type: :request do
       expect(field.reload.perm_wilting_pt).to be_nil
     end
 
-    it "keeps a field with an ended season on its pivot, and says why (G.9)" do
+    it "moves a field with an ended season, which keeps its system (G.14 part 7)" do
       field = create(:field, pivot:, soil_type: sand)
-      create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
+      ended = create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
         end_date: Date.new(2025, 9, 30))
       other = create(:pivot, farm:, name: "South")
       patch field_path(field), params: {field: {pivot_id: other.id}}, headers: {"HTTP_REFERER" => setup_url}
-      expect(field.reload.pivot).to eq(pivot)
-      follow_redirect!
-      expect(inertia.props[:errors][:pivot_id].first).to start_with("Irrigation system can't change for a field with earlier seasons")
-      expect(inertia.props[:farms].first[:pivots].first[:fields].first[:ended_years]).to eq([2025])
+      expect(field.reload.pivot).to eq(other)
+      expect(ended.reload.pivot).to eq(pivot)
     end
   end
 

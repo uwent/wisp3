@@ -6,6 +6,7 @@
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { formatDate } from '@/lib/dates'
   import { isPoint, KIND_NOUNS, systemName } from '@/lib/geo'
+  import { type FieldSeasons, fieldsOn } from '@/lib/irrigation'
   import { units as unitsFor } from '@/lib/units'
   import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots } from '@/routes'
   import type { ForecastDay, Pivot, PivotIrrigation } from '@/types/serializers'
@@ -15,6 +16,7 @@
     farm,
     year,
     irrigations,
+    field_seasons,
     weather_zone,
     forecast,
   }: {
@@ -22,6 +24,7 @@
     farm: { id: number; name: string }
     year: number
     irrigations: PivotIrrigation[]
+    field_seasons: FieldSeasons[]
     weather_zone: { id: number; name: string } | null
     forecast: ForecastDay[]
   } = $props()
@@ -49,10 +52,14 @@
     formKey++
   }
 
+  // The fields on the system on the form's date: a field moved here or away is on it for the
+  // seasons that ran here
+  const dayFields = $derived(date ? fieldsOn(field_seasons, date) : pivot.fields)
+
   const fieldNames = (ids: number[] | null) =>
     ids === null
       ? 'All fields'
-      : pivot.fields
+      : field_seasons
           .filter((field) => ids.includes(field.id))
           .map((field) => field.name)
           .join(', ')
@@ -164,12 +171,12 @@
             {/if}
           </div>
         </div>
-        {#if pivot.fields.length > 1}
+        {#if dayFields.length > 1}
           <fieldset class="space-y-2">
             <legend class="text-sm font-medium">Applied to</legend>
             <input type="hidden" name="pivot_irrigation[field_ids][]" value="" />
             <div class="flex flex-wrap gap-x-5 gap-y-2">
-              {#each pivot.fields as field (field.id)}
+              {#each dayFields as field (field.id)}
                 <label class="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"

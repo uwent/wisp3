@@ -54,7 +54,7 @@ class DailyEntriesController < AuthenticatedController
         irrigation.destroy! if irrigation.persisted?
         next
       end
-      submitted["field_ids"] = PivotIrrigation.normalize_field_ids(pivot, submitted["field_ids"])
+      submitted["field_ids"] = PivotIrrigation.normalize_field_ids(pivot, submitted["field_ids"], date)
       next if irrigation.update(submitted)
       irrigation.errors.to_hash(true).each { |attribute, messages| errors["pivots.#{pivot.id}.#{attribute}"] = messages }
     end

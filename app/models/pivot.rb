@@ -26,6 +26,12 @@ class Pivot < ApplicationRecord
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
   has_many :fields, -> { order(:name) }, dependent: :destroy
   has_many :pivot_irrigations, dependent: :destroy
+  # The plantings whose seasons ran on this system (G.14 part 7): its fields' and, for seasons that
+  # ended before their field moved to another system, theirs
+  has_many :plantings, dependent: nil
+  # Its own fields' plantings go with them; seasons that ran here on fields since moved elsewhere
+  # are handed to their field's system, as this one's irrigation goes too
+  before_destroy :hand_over_plantings
 
   validates :name, presence: true, length: {maximum: 100}
   validates :latitude, presence: true, numericality: {in: LATITUDES, message: "must be in the US or Canada"}
@@ -72,6 +78,26 @@ class Pivot < ApplicationRecord
   # "Irrigation system:" (or "System:" where space is short) before it, never the kind.
   def label = name.downcase.include?(kind_name.downcase) ? name : "#{name} (#{kind_name.downcase})"
 
+  # The fields this system watered on date (Field#pivot_id_on): those whose planting then ran on it,
+  # and its own fields with nothing planted. Its fields today, apart from a field since moved here
+  # whose earlier season was elsewhere, or one moved away whose season ran here.
+  def fields_on(date)
+    Field.where(pivot_id: id).or(Field.where(id: plantings.on(date).select(:field_id)))
+      .includes(:plantings).order(:name).select { |field| field.pivot_id_on(date) == id }
+  end
+
+  # Every field that is or was on this system, for working out fields_on in the browser
+  # (fieldsOn in lib/irrigation.ts): whether it's on it now, and its seasons in the order
+  # Field#planting_on picks them, each saying whether it ran here
+  def field_seasons
+    Field.where(pivot_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
+      .map do |field|
+        seasons = field.plantings.sort_by { |planting| [planting.partial? ? 1 : 0, planting.season_start, planting.id] }
+        {id: field.id, name: field.name, here: field.pivot_id == id,
+         seasons: seasons.map { |planting| {from: planting.season_start, to: planting.end_date, here: planting.pivot_id == id} }}
+      end
+  end
+
   private
 
   # Only the kind's own dimensions are kept, so switching kinds leaves no stale shape behind
@@ -81,7 +107,12 @@ class Pivot < ApplicationRecord
   end
 
   def move_open_plantings
-    Planting.open.where(field_id: fields.select(:id)).update_all(weather_cell_id:)
+    plantings.open.update_all(weather_cell_id:)
+  end
+
+  def hand_over_plantings
+    plantings.where.not(field_id: fields.select(:id))
+      .update_all("pivot_id = (SELECT fields.pivot_id FROM fields WHERE fields.id = plantings.field_id)")
   end
 
   def assign_weather_cell

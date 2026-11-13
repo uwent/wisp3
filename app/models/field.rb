@@ -2,7 +2,7 @@ class Field < ApplicationRecord
   belongs_to :pivot
   belongs_to :soil_type
   has_one :farm, through: :pivot
-  has_many :plantings, -> { order(:season_start) }, dependent: :destroy
+  has_many :plantings, -> { order(:season_start, :id) }, dependent: :destroy
   has_many :field_entries, dependent: :destroy
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
 
@@ -10,13 +10,12 @@ class Field < ApplicationRecord
   validates :area_acres, numericality: {greater_than: 0}, allow_nil: true
   validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}, allow_nil: true
   validate :wilting_point_below_capacity
-  validate :pivot_kept_with_history, on: :update
   validate :boundary_readable
 
   normalizes :notes, with: ->(text) { text.strip.presence }
 
-  # Plantings that haven't ended follow the field's soil, area and pivot (PLAN.md Phase 8 G.9);
-  # ended ones keep what their season ran with
+  # Plantings that haven't ended follow the field's soil, area and system (PLAN.md Phase 8 G.9, G.14
+  # part 7); ended ones keep what their season ran with, so a field can move at any time
   after_update :update_open_plantings
 
   # The outline (G.10, G.14): a GeoJSON Polygon with one ring, or nil. A JSON string is parsed and
@@ -27,9 +26,6 @@ class Field < ApplicationRecord
 
   # The outline's area in acres, or nil without one. Offered for area_acres, never copied to it.
   def boundary_acres = boundary && FieldBoundary.acres(boundary)
-
-  # Whether the field has plantings whose season has ended (they stay on its pivot, G.9)
-  def history? = plantings.any?(&:ended?)
 
   # NULL means "use the soil type's value" (C14)
   def effective_field_capacity = field_capacity || soil_type.field_capacity
@@ -52,26 +48,25 @@ class Field < ApplicationRecord
     plantings.select { |planting| planting.season_range.cover?(date) }
   end
 
+  # The irrigation system the field was on that day: its planting's (a season keeps the system it
+  # ran on, G.14 part 7), else, with nothing planted, the one it's on now
+  def pivot_id_on(date) = planting_on(date)&.pivot_id || pivot_id
+
   private
 
   def update_open_plantings
     changed = Planting::FIELD_VALUES.select { |attribute| saved_change_to_attribute?(attribute) }
     values = changed.to_h { |attribute| [attribute, self[attribute]] }
-    values[:weather_cell_id] = pivot.weather_cell_id if saved_change_to_pivot_id?
+    if saved_change_to_pivot_id?
+      values[:pivot_id] = pivot_id
+      values[:weather_cell_id] = pivot.weather_cell_id
+    end
     soil = values.slice(:soil_type_id, :field_capacity, :perm_wilting_pt)
     # Plots on their own soil keep it (G.11)
     plantings.open.where(own_soil: false).update_all(soil) if soil.any?
-    plantings.open.update_all(values.slice(:weather_cell_id)) if values.key?(:weather_cell_id)
+    plantings.open.update_all(values.slice(:pivot_id, :weather_cell_id)) if values.key?(:pivot_id)
     # Part-field plantings keep their own area (G.11)
     plantings.open.where(partial: false).update_all(area_acres:) if values.key?(:area_acres)
-  end
-
-  # Earlier seasons' pivot irrigation and weather belong to the pivot the field was on, so a field
-  # with them stays; the setup form offers a new field under the other pivot instead (G.9)
-  def pivot_kept_with_history
-    return unless will_save_change_to_pivot_id? && history?
-    errors.add(:pivot_id, "can't change for a field with earlier seasons, which stay with it. " \
-      "Set up a new field under the other system instead")
   end
 
   # Checked when the outline changes, so one saved under older limits doesn't block other edits

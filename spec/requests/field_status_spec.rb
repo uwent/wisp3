@@ -425,6 +425,17 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(inertia.props[:irrigations].map { |i| i[:date] }).to eq(["2026-07-10"])
     end
 
+    it "lists the fields on the pivot with their seasons, a field moved away among them (G.14 part 7)" do
+      planting.update!(end_date: Date.new(2026, 7, 15))
+      field.update!(pivot: create(:pivot, farm:))
+      get pivot_path(pivot)
+      expect(inertia.props[:field_seasons]).to eq([
+        {"id" => other_field.id, "name" => "North corn", "here" => true, "seasons" => []},
+        {"id" => field.id, "name" => "North potatoes", "here" => false,
+         "seasons" => [{"from" => "2026-07-01", "to" => "2026-07-15", "here" => true}]}
+      ])
+    end
+
     it "shows the week ahead in the pivot's weather zone, linking to it (G.12)" do
       pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: [{date: "2026-07-19", tmax_f: 80}, {date: "2026-07-20", tmax_f: 90, tmin_f: 70}]})

@@ -9,9 +9,10 @@
 #
 # A planting keeps the values its balance runs on (PLAN.md Phase 8 G.9): the field's soil type and
 # its own field capacity and wilting point (NULL follows the soil type, as on fields), the field's
-# area, and the pivot's weather cell. They're copied when the planting is created; editing the
-# field or moving the pivot changes them on plantings that haven't ended (Field, Pivot), so earlier
-# seasons keep what they ran with.
+# area, its irrigation system (G.14 part 7: a system's irrigation applies to the plantings that were
+# on it, DailyInputs) and that system's weather cell. They're copied when the
+# planting is created; editing the field, moving it to another system or moving the system changes
+# them on plantings that haven't ended (Field, Pivot), so earlier seasons keep what they ran with.
 class Planting < ApplicationRecord
   ET_METHODS = %w[pct_cover lai].freeze
   CANOPY_INTERPOLATIONS = %w[linear curve].freeze
@@ -20,6 +21,8 @@ class Planting < ApplicationRecord
   belongs_to :field
   belongs_to :plant
   belongs_to :soil_type
+  # The irrigation system the season ran on: its field's, kept when an ended season's field moves
+  belongs_to :pivot
   belongs_to :weather_cell, optional: true
   has_many :canopy_observations, -> { order(:date) }, dependent: :destroy
   has_many :planting_entries, dependent: :delete_all
@@ -149,7 +152,8 @@ class Planting < ApplicationRecord
   private
 
   # A new planting takes its field's soil and area, unless given its own soil type (with its
-  # overrides) or area, and its pivot's weather cell. A plot given a soil type keeps it as its own.
+  # overrides) or area, and its system and that system's weather cell. A plot given a soil type
+  # keeps it as its own.
   def copy_from_field
     return unless field
     self.own_soil = false unless partial?
@@ -162,6 +166,7 @@ class Planting < ApplicationRecord
         perm_wilting_pt != field.perm_wilting_pt
     end
     self.area_acres ||= field.area_acres unless partial?
+    self.pivot ||= field.pivot
     self.weather_cell ||= field.pivot&.weather_cell
   end
 

@@ -112,7 +112,8 @@ class PlantingsController < AuthenticatedController
     status = PlantingStatus.new(planting, as_of:)
     dates = as_of ? planting.season_start..[as_of + PlantingStatus::HORIZON, planting.end_date].min : planting.season_range
     attribute = (planting.et_method == "lai") ? :lai : :pct_cover
-    pivot_inches = field.pivot.pivot_irrigations.where(date: dates).select { |irrigation| irrigation.applies_to?(field) }
+    # The irrigation of the system the season ran on (G.14 part 7)
+    pivot_inches = PivotIrrigation.where(pivot_id: planting.pivot_id, date: dates).select { |irrigation| irrigation.covers?(field.id) }
       .to_h { |irrigation| [irrigation.date, irrigation.applied_inches] }
     field_entries = field.field_entries.where(date: dates).index_by(&:date)
 

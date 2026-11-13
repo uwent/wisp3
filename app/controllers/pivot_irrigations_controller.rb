@@ -29,8 +29,11 @@ class PivotIrrigationsController < AuthenticatedController
     @pivot = Current.group.pivots.includes(:fields, farm: :group).find(params[:pivot_id])
   end
 
+  # field_ids: every field on the pivot that day, or none sent, means "all" (stored as NULL)
   def save(irrigation)
-    irrigation.assign_attributes(irrigation_params)
+    values = irrigation_params
+    irrigation.assign_attributes(values.except(:field_ids))
+    irrigation.field_ids = PivotIrrigation.normalize_field_ids(@pivot, values[:field_ids], irrigation.date)
     if irrigation.save
       redirect_back_or_to pivot_path(@pivot), notice: "Irrigation saved"
     else
@@ -38,10 +41,7 @@ class PivotIrrigationsController < AuthenticatedController
     end
   end
 
-  # field_ids: every field under the pivot, or none sent, means "all" (stored as NULL)
   def irrigation_params
-    values = params.expect(pivot_irrigation: [:date, :inches, :run_hours, :notes, field_ids: []])
-    values[:field_ids] = PivotIrrigation.normalize_field_ids(@pivot, values[:field_ids])
-    values
+    params.expect(pivot_irrigation: [:date, :inches, :run_hours, :notes, field_ids: []])
   end
 end

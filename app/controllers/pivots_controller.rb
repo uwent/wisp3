@@ -14,6 +14,8 @@ class PivotsController < AuthenticatedController
       farm: {id: pivot.farm.id, name: pivot.farm.name},
       year:,
       irrigations: PivotIrrigationSerializer.new(irrigations).to_h,
+      # The fields an irrigation on a date can apply to (G.14 part 7: a field moved here or away)
+      field_seasons: pivot.field_seasons,
       **WeatherZone.page_props(Current.group, pivot.weather_cell, forecast: year == Date.current.year)
     }
   end
