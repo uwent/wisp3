@@ -186,6 +186,16 @@
     summary?.ad !== null && summary?.ad !== undefined ? Math.max(0, summary.ad_max - summary.ad) : null,
   )
 
+  // Soil moisture at a given AD: moisture is linear in AD, from the irrigation point (AD 0) to field
+  // capacity (AD at its maximum)
+  const moistureAt = (ad: number) =>
+    summary
+      ? summary.pct_at_ad_zero + ((summary.field_capacity_pct - summary.pct_at_ad_zero) * ad) / summary.ad_max
+      : null
+  // An ended season's day counts beside its totals (G.6): "24 days"
+  const dayCount = (n: number) => (n === 1 ? '1 day' : `${n} days`)
+  const counted = (n: number) => (summary?.phase === 'ended' ? ` (${dayCount(n)})` : '')
+
   type Column = 'rain_in' | 'irrigation_in' | 'soil_moisture_pct' | 'canopy' | 'notes'
 
   function inputText(day: FieldDay, column: Column): string {
@@ -411,12 +421,7 @@
     {#if summary.phase === 'upcoming'}
       <p class="text-sm">The season starts {formatDate(summary.season_start, { year: true })}.</p>
     {:else}
-      <p class="text-sm">
-        {#if summary.phase === 'ended'}At the end of the season{:else if as_of}On {formatDate(as_of)}{:else}Today{/if}:
-        <strong class="tabular-nums">{units.format('depth', summary.ad)}</strong>
-        <Term id="ad">allowable depletion</Term> of
-        {units.format('depth', summary.ad_max)}, <strong>{formatNumber(summary.pct_moisture, 1)}%</strong> soil moisture.
-      </p>
+      <!-- The outlook leads (G.6), then where the soil is -->
       {#if outlook}
         <div
           class="rounded-md border px-3 py-2 text-sm {outlook.urgent
@@ -434,23 +439,33 @@
           Refilling to field capacity takes about <strong>{units.format('depth', refill)}</strong>.
         </p>
       {/if}
+      <p class="text-sm">
+        {#if summary.phase === 'ended'}At the end of the season{:else if as_of}On {formatDate(as_of)}{:else}Today{/if}:
+        <strong class="tabular-nums">{formatNumber(summary.pct_moisture, 1)}%</strong> soil moisture,
+        <strong class="tabular-nums">{units.format('depth', summary.ad)}</strong>
+        <Term id="ad">allowable depletion</Term> of {units.format('depth', summary.ad_max)}.
+      </p>
     {/if}
   </div>
 
   <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
     <div>
-      <dt class="text-ink-muted">At <Term id="field_capacity">field capacity</Term></dt>
-      <dd class="tabular-nums">{units.format('depth', summary.ad_max)} AD</dd>
+      <dt class="text-ink-muted"><Term id="field_capacity">Field capacity</Term></dt>
+      <dd class="tabular-nums">
+        {formatNumber(summary.field_capacity_pct, 1)}% moisture (AD {units.format('depth', summary.ad_max)})
+      </dd>
     </div>
     <div>
       <dt class="text-ink-muted">Target</dt>
       <dd class="tabular-nums">
-        {summary.target_in === null ? 'Not set' : `${units.format('depth', summary.target_in)} AD`}
+        {summary.target_in === null
+          ? 'Not set'
+          : `${formatNumber(moistureAt(summary.target_in), 1)}% moisture (AD ${units.format('depth', summary.target_in)})`}
       </dd>
     </div>
     <div>
-      <dt class="text-ink-muted">Irrigate at</dt>
-      <dd class="tabular-nums">0 AD ({formatNumber(summary.pct_at_ad_zero, 1)}% moisture)</dd>
+      <dt class="text-ink-muted">Irrigation point</dt>
+      <dd class="tabular-nums">{formatNumber(summary.pct_at_ad_zero, 1)}% moisture (AD 0)</dd>
     </div>
     <div>
       <dt class="text-ink-muted">Root zone</dt>
@@ -478,16 +493,20 @@
   </dl>
 
   <div class="text-sm">
-    <h3 class="font-medium">Totals so far</h3>
+    <h3 class="font-medium">{summary.phase === 'ended' ? 'Season totals' : 'Totals so far'}</h3>
     <dl class="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 tabular-nums">
       <dt class="text-ink-muted">Rain</dt>
-      <dd>{units.format('depth', summary.totals.rain)}</dd>
+      <dd>{units.format('depth', summary.totals.rain)}{counted(summary.totals.rain_days)}</dd>
       <dt class="text-ink-muted">Irrigation</dt>
-      <dd>{units.format('depth', summary.totals.irrigation)}</dd>
+      <dd>{units.format('depth', summary.totals.irrigation)}{counted(summary.totals.irrigation_days)}</dd>
       <dt class="text-ink-muted"><Term id="crop_et">Crop ET</Term></dt>
       <dd>{units.format('depth', summary.totals.adj_et)}</dd>
       <dt class="text-ink-muted"><Term id="deep_drainage">Deep drainage</Term></dt>
-      <dd>{units.format('depth', summary.totals.deep_drainage)}</dd>
+      <dd>{units.format('depth', summary.totals.deep_drainage)}{counted(summary.totals.drainage_days)}</dd>
+      {#if summary.phase === 'ended'}
+        <dt class="text-ink-muted">Below the irrigation point</dt>
+        <dd>{summary.totals.stress_days ? dayCount(summary.totals.stress_days) : 'Never'}</dd>
+      {/if}
     </dl>
     {#if !summary.use_model_precip}
       <p class="mt-2 text-xs">

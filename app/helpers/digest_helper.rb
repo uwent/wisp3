@@ -22,13 +22,11 @@ module DigestHelper
   # The pivots of a weather zone in this email: "North 160, South 80"
   def digest_zone_pivots(zone) = zone.pivots.map { |section| section.pivot.label }.join(", ")
 
-  # "Allowable depletion 0.45 in of 1.20 in · 9.5% soil moisture", or just "Allowable depletion 0.45 in"
+  # "9.5% soil moisture · AD 0.45 in of 1.20 in", or short "9.5% soil moisture · AD 0.45 in" (G.6)
   def digest_ad(entry, digest, short: false)
     result = entry.status.current.result
-    return "Allowable depletion #{digest.depth(result.ad)}" if short
-
-    "Allowable depletion #{digest.depth(result.ad)} of #{digest.depth(entry.status.params.ad_max)} · " \
-      "#{format("%.1f", result.pct_moisture)}% soil moisture"
+    moisture = "#{format("%.1f", result.pct_moisture)}% soil moisture · AD #{digest.depth(result.ad)}"
+    short ? moisture : "#{moisture} of #{digest.depth(entry.status.params.ad_max)}"
   end
 
   # The latest rain or irrigation: "0.40 in, Oct 1", or "none recorded"

@@ -21,32 +21,32 @@ RSpec.describe DailyDigest do
     expect(digest.entries.map(&:field)).to eq([now, soon, fine])
     expect(digest.attention.map(&:field)).to eq([now, soon])
     expect(digest.entries.map { |entry| entry.status.status }).to eq(%i[irrigate caution ok])
-    expect(digest.entries[1].outlook).to have_attributes(urgent: true, headline: "Irrigate by Wed, Jul 22")
-    expect(digest.entries[1].outlook.detail).to match(/\AProjected to reach the irrigation point in 2 days, when about 1\.\d\d in would refill/)
+    expect(digest.entries[1].outlook).to have_attributes(urgent: true, headline: start_with("Irrigate by Wed, Jul 22 · about "))
+    expect(digest.entries[1].outlook.detail).to eq("Projected to reach the irrigation point in 2 days; that amount then refills the root zone to field capacity.")
     expect(digest.subject).to eq("WISP: 1 field to irrigate, 1 to watch (Mon, Jul 20)")
     expect(digest).to be_deliverable
   end
 
   it "moves \"Irrigate by\" back for planned irrigation, and forward for heat" do
     field = field_at("North", 12)
-    expect(described_class.new(user).entries.sole.outlook.headline).to eq("Irrigate by Wed, Jul 22")
+    expect(described_class.new(user).entries.sole.outlook.headline).to start_with("Irrigate by Wed, Jul 22 · about ")
 
     field.field_entries.create!(date: Date.new(2026, 7, 21), irrigation_in: 1.0)
-    expect(described_class.new(user).entries.sole.outlook.headline).to eq("Irrigate by Mon, Jul 27")
+    expect(described_class.new(user).entries.sole.outlook.headline).to start_with("Irrigate by Mon, Jul 27 · about ")
 
     forecast = pivot.weather_cell.weather_forecasts.sole
     forecast.update!(payload: {days: forecast.payload["days"].map { |day| day.merge("et0_in" => 0.35) }})
-    expect(described_class.new(user).entries.sole.outlook.headline).to eq("Irrigate by Fri, Jul 24")
+    expect(described_class.new(user).entries.sole.outlook.headline).to start_with("Irrigate by Fri, Jul 24 · about ")
   end
 
   it "moves \"Irrigate by\" back for rain in the forecast" do
     field_at("North", 15)
-    expect(described_class.new(user).entries.sole.outlook.headline).to eq("Irrigate by Sat, Jul 25")
+    expect(described_class.new(user).entries.sole.outlook.headline).to start_with("Irrigate by Sat, Jul 25 · about ")
 
     forecast = pivot.weather_cell.weather_forecasts.sole
     forecast.update!(payload: {days: forecast.payload["days"].map { |day| day.merge("precip_in" => (day["date"] == "2026-07-21") ? 1.5 : 0.0) }})
     digest = described_class.new(user)
-    expect(digest.entries.sole.outlook.headline).to eq("Irrigate by Mon, Jul 27")
+    expect(digest.entries.sole.outlook.headline).to start_with("Irrigate by Mon, Jul 27 · about ")
     expect(digest.subject).to eq("WISP: 1 field OK (Mon, Jul 20)")
   end
 

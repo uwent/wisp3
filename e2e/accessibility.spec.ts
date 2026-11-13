@@ -100,7 +100,7 @@ test("Setup's field dialog, with its shape (G.14)", async ({ page }) => {
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByText('Field area')).toBeVisible()
+  await expect(dialog.getByText('Field area', { exact: true })).toBeVisible()
   const { violations } = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(TAGS).analyze()
   expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
   // WCAG 1.4.10: the dialog fits 320 px with no sideways scroll

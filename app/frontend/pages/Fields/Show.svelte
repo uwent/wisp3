@@ -12,7 +12,7 @@
   import { formatDate, isoDate } from '@/lib/dates'
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
   import { outlook } from '@/lib/outlook'
-  import { cropName, plotSize, seasonDates } from '@/lib/plantings'
+  import { cardWhen, cropName, plotSize, seasonDates, seasonLine } from '@/lib/plantings'
   import { poll, weatherUpdate } from '@/lib/poll'
   import { rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
@@ -180,18 +180,22 @@
               {/if}
             </div>
             <p class="text-xs text-ink-muted">
-              {plotSize(summary, units) ?? 'Whole field'} · {seasonDates(summary)}
+              {plotSize(summary, units) ?? 'Whole field'} · {summary.phase === 'ended'
+                ? cardWhen(summary, today)
+                : seasonDates(summary)}
             </p>
-            {#if summary.phase !== 'upcoming' && !summary.weather_pending}
-              <p class="text-sm">
-                AD {summary.phase === 'ended' ? 'at season end' : 'today'}
-                <span class="font-semibold tabular-nums">{units.format('depth', summary.ad)}</span>
-                <span class="text-xs text-ink-muted">of {units.format('depth', summary.ad_max)}</span>
-              </p>
-            {/if}
-            {#if look}<p class="text-sm {look.urgent ? 'font-medium text-status-irrigate-ink' : ''}">
+            <!-- The outlook leads, with moisture and AD beneath it; an ended season in a line (G.6) -->
+            {#if look}<p class="text-sm font-medium {look.urgent ? 'text-status-irrigate-ink' : ''}">
                 {look.headline}
               </p>{/if}
+            {#if summary.phase === 'ended' && !summary.weather_pending}
+              <p class="text-xs text-ink-muted">{seasonLine(summary.totals, units)}</p>
+            {:else if summary.phase === 'active' && !summary.weather_pending}
+              <p class="text-xs text-ink-muted tabular-nums">
+                {#if summary.pct_moisture !== null}{summary.pct_moisture.toFixed(1)}% soil moisture ·{' '}{/if}AD
+                {units.format('depth', summary.ad)} of {units.format('depth', summary.ad_max)}
+              </p>
+            {/if}
           </Link>
         </li>
       {/each}

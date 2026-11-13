@@ -24,7 +24,7 @@
     },
     {
       label: 'Its fields',
-      detail: 'The land each system waters, with its soil. Type them in or import outlines.',
+      detail: 'The land each system waters, with its soil. Type them in or import their shapes.',
       done: progress.fields > 0,
       href: setup.show(),
       action: 'Add fields in Setup',

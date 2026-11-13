@@ -86,12 +86,12 @@ export function outlineProblems(system: System, fields: Outlined[], unitSystem: 
       return [
         {
           fieldId: field.id,
-          message: `${field.name}'s outline isn't under ${label}, ${formatReach(away, unitSystem)} away`,
+          message: `${field.name}'s shape isn't under ${label}, ${formatReach(away, unitSystem)} away`,
         },
       ]
     }
     const away = distanceToBoundaryM(at, field.boundary)
     if (away <= POINT_REACH_M) return []
-    return [{ fieldId: field.id, message: `${field.name}'s outline is ${formatReach(away, unitSystem)} from ${label}` }]
+    return [{ fieldId: field.id, message: `${field.name}'s shape is ${formatReach(away, unitSystem)} from ${label}` }]
   })
 }

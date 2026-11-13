@@ -8,7 +8,7 @@
   import { formatDate, relativeDay } from '@/lib/dates'
   import { outlook } from '@/lib/outlook'
   import type { FieldCard } from '@/lib/overview'
-  import { cropName, plantingWhen } from '@/lib/plantings'
+  import { cardWhen, cropName, seasonLine, seasonStats } from '@/lib/plantings'
   import type { Units } from '@/lib/units'
   import { fields, planting as plantingRoute } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
@@ -45,9 +45,9 @@
   const single = $derived(card.plantings[0] ?? null)
   const href = $derived(single && !several ? plantingRoute(single.planting_id) : fields.show(card.id))
 
-  // "3 days ago" during the season; a plain date once it's over
-  const when = (summary: PlantingSummary, date: string) =>
-    summary.phase === 'active' ? relativeDay(date, today) : formatDate(date)
+  // "9.2% soil moisture · AD 0.31 in of 0.48 in", under the outlook (G.6)
+  const moistureLine = (summary: PlantingSummary) =>
+    `${summary.pct_moisture === null ? '' : `${summary.pct_moisture.toFixed(1)}% soil moisture · `}AD ${units.format('depth', summary.ad)} of ${units.format('depth', summary.ad_max)}`
 
   const frame = $derived(
     `block h-full rounded-lg border bg-surface-raised ${compact ? 'space-y-2 p-3' : 'space-y-3 p-4'}
@@ -73,7 +73,7 @@
     </h4>
     {#if single && !several}
       <p class="truncate text-xs text-ink-muted">{cropName(single)}</p>
-      <p class="truncate text-[0.7rem] text-ink-muted">{plantingWhen(single, today)}</p>
+      <p class="truncate text-[0.7rem] text-ink-muted">{cardWhen(single, today)}</p>
     {:else if several}
       <p class="truncate text-xs text-ink-muted">{card.plantings.length} plantings</p>
     {/if}
@@ -93,57 +93,61 @@
     </p>
   {:else if summary.phase === 'upcoming'}
     <p class="text-sm text-ink-muted">The season starts {formatDate(summary.season_start)}.</p>
+  {:else if summary.phase === 'ended'}
+    <!-- An ended season in brief (G.6): what it took, in place of AD and the outlook -->
+    {#if small}
+      <p class="text-xs text-ink-muted">{seasonLine(summary.totals, units)}</p>
+    {:else}
+      <dl class="grid grid-cols-2 gap-2 text-xs">
+        {#each seasonStats(summary.totals, units) as stat (stat.label)}
+          <div>
+            <dt class="text-ink-muted">{stat.label}</dt>
+            <dd>{stat.value}</dd>
+          </div>
+        {/each}
+      </dl>
+    {/if}
   {:else}
+    <!-- The outlook leads (G.6), with moisture and AD beneath it -->
+    {#if look}
+      <p
+        class="{small ? 'text-sm font-medium' : 'text-base font-semibold'} {look.urgent
+          ? 'text-status-irrigate-ink'
+          : ''}"
+      >
+        {look.headline}
+      </p>
+    {/if}
     <div class="flex items-end justify-between gap-3">
-      <div>
-        {#if small}
-          <div class="text-sm">
-            <span class="text-xs text-ink-muted">AD {summary.phase === 'ended' ? 'at season end' : 'today'}</span>
-            <span class="font-semibold tabular-nums">{units.format('depth', summary.ad)}</span>
-            <span class="text-xs text-ink-muted">of {units.format('depth', summary.ad_max)}</span>
-          </div>
-        {:else}
-          <div class="text-xs text-ink-muted">
-            AD {summary.phase === 'ended' ? `at season end (${formatDate(summary.end_date)})` : 'today'}
-          </div>
-          <div class="text-xl font-semibold tabular-nums">{units.format('depth', summary.ad)}</div>
-          <div class="text-xs text-ink-muted">
-            of {units.format('depth', summary.ad_max)} · {summary.pct_moisture?.toFixed(1)}% moisture
-          </div>
-        {/if}
-      </div>
+      <p class="text-xs text-ink-muted tabular-nums">{moistureLine(summary)}</p>
       <Sparkline
         class={small ? 'max-w-24' : 'max-w-32'}
         values={summary.recent.map((day) => day.ad)}
-        projected={summary.phase === 'active' ? summary.projection.map((day) => day.ad) : []}
+        projected={summary.projection.map((day) => day.ad)}
         max={summary.ad_max}
         min={summary.ad_pwp}
-        label="Allowable depletion over the last {summary.recent.length} days{summary.phase === 'active' &&
-        summary.projection.length
+        label="Allowable depletion over the last {summary.recent.length} days{summary.projection.length
           ? `, and the ${summary.projection.length} days ahead`
           : ''}"
       />
     </div>
-    {#if look}
-      <p class="text-sm {look.urgent ? 'font-medium text-status-irrigate-ink' : ''}">{look.headline}</p>
-    {/if}
     {#if !small}
       <dl class="grid grid-cols-2 gap-2 text-xs">
         <div>
           <dt class="text-ink-muted">Last rain</dt>
           <dd>
-            {#if summary.last_rain}{units.format('depth', summary.last_rain.inches)}, {when(
-                summary,
+            {#if summary.last_rain}{units.format('depth', summary.last_rain.inches)}, {relativeDay(
                 summary.last_rain.date,
+                today,
               )}{:else}None{/if}
           </dd>
         </div>
         <div>
           <dt class="text-ink-muted">Last irrigation</dt>
           <dd>
-            {#if summary.last_irrigation}{units.format('depth', summary.last_irrigation.inches)}, {when(
-                summary,
+            {#if summary.last_irrigation}{units.format('depth', summary.last_irrigation.inches)}, {relativeDay(
                 summary.last_irrigation.date,
+                today,
               )}{:else}None{/if}
           </dd>
         </div>
@@ -195,8 +199,17 @@
           {#snippet row()}
             <span class="min-w-0 flex-1">
               <span class="block">{cropName(summary)}</span>
-              <span class="block text-xs text-ink-muted">{plantingWhen(summary, today)}</span>
-              {#if look}<span class="block truncate text-xs text-ink-muted">{look.headline}</span>{/if}
+              <span class="block text-xs text-ink-muted">{cardWhen(summary, today)}</span>
+              {#if look}<span
+                  class="block text-xs {look.urgent ? 'font-medium text-status-irrigate-ink' : 'text-ink-muted'}"
+                  >{look.headline}</span
+                >{/if}
+              <!-- Moisture and AD in season, the stats once ended; nothing while weather is on its way (the card's note says so) -->
+              {#if !summary.weather_pending && summary.phase === 'ended'}
+                <span class="block text-xs text-ink-muted">{seasonLine(summary.totals, units)}</span>
+              {:else if !summary.weather_pending && summary.phase === 'active' && summary.status !== 'needs_canopy'}
+                <span class="block text-xs text-ink-muted tabular-nums">{moistureLine(summary)}</span>
+              {/if}
             </span>
             {@render badge(summary)}
           {/snippet}
@@ -218,7 +231,7 @@
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
                 <p class="truncate text-sm font-medium">{cropName(summary)}</p>
-                <p class="truncate text-xs text-ink-muted">{plantingWhen(summary, today)}</p>
+                <p class="truncate text-xs text-ink-muted">{cardWhen(summary, today)}</p>
               </div>
               {@render badge(summary)}
             </div>

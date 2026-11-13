@@ -49,9 +49,24 @@ RSpec.describe FieldBoundary do
     end
 
     it "allows at most MAX_VERTICES corners" do
-      expect(described_class.errors({"type" => "Polygon", "coordinates" => [ring(1000)]})).to be_empty
-      expect(described_class.errors({"type" => "Polygon", "coordinates" => [ring(1001)]}))
-        .to eq(["has too many corners (at most 1,000; simplify it)"])
+      expect(described_class.errors({"type" => "Polygon", "coordinates" => [ring(100)]})).to be_empty
+      expect(described_class.errors({"type" => "Polygon", "coordinates" => [ring(101)]}))
+        .to eq(["has too many corners (at most 100; simplify it)"])
+    end
+
+    # As in boundary.test.ts: an L is concave and fine, a bowtie's edges cross
+    def corner(east, north) = [-89.4 + east * 0.002, 43.3 + north * 0.002]
+
+    it "refuses a shape whose edges cross" do
+      bowtie = [corner(0, 0), corner(2, 2), corner(2, 0), corner(0, 1), corner(0, 0)] # lopsided: its halves don't cancel
+      expect(described_class.errors({"type" => "Polygon", "coordinates" => [bowtie]})).to eq(["crosses itself"])
+    end
+
+    it "accepts a concave shape, and edges that only touch" do
+      ell = [corner(0, 0), corner(2, 0), corner(2, 1), corner(1, 1), corner(1, 2), corner(0, 2), corner(0, 0)]
+      expect(described_class.errors({"type" => "Polygon", "coordinates" => [ell]})).to be_empty
+      touching = [corner(0, 0), corner(2, 0), corner(2, 2), corner(1, 0), corner(0, 0)]
+      expect(described_class.crosses_itself?(touching)).to be(false)
     end
 
     it "wants it in the US or Canada" do

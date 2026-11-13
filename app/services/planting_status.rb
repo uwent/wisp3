@@ -11,8 +11,10 @@
 # entered for them. Canopy readings after the date are left out, since they'd refit the curve
 # before it too.
 class PlantingStatus
+  # The season so far: amounts, and (G.6, for an ended season's card) the days with irrigation, rain
+  # and deep drainage and the days below the irrigation point (AD under 0)
   Totals = Data.define(:rain, :irrigation, :adj_et, :deep_drainage, :rain_model, :entered_rain_days,
-    :entered_rain, :entered_rain_model)
+    :entered_rain, :entered_rain_model, :irrigation_days, :rain_days, :drainage_days, :stress_days)
   # The first day (today or ahead) the projection is at or below the threshold, and the depth that
   # refills the root zone to field capacity then
   Crossing = Data.define(:date, :days, :ad, :refill)
@@ -141,7 +143,11 @@ class PlantingStatus
       rain: measured(days) { |day| day.inputs.rain }, irrigation: sum(days) { |day| day.inputs.irrigation },
       adj_et: measured(days) { |day| day.result.adj_et }, deep_drainage: sum(days) { |day| day.result.deep_drainage },
       rain_model: measured(days) { |day| day.inputs.rain_model }, entered_rain_days: entered.size,
-      entered_rain: sum(entered) { |day| day.inputs.rain }, entered_rain_model: sum(entered) { |day| day.inputs.rain_model }
+      entered_rain: sum(entered) { |day| day.inputs.rain }, entered_rain_model: sum(entered) { |day| day.inputs.rain_model },
+      irrigation_days: days.count { |day| day.inputs.irrigation.to_f.positive? },
+      rain_days: days.count { |day| day.inputs.rain.to_f.positive? },
+      drainage_days: days.count { |day| day.result.deep_drainage.to_f.positive? },
+      stress_days: days.count { |day| day.result.ad.negative? }
     )
   end
 

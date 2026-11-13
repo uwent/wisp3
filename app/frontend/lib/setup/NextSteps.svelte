@@ -56,15 +56,15 @@
       >
     {:else if pivot.fields.length === 0}
       <p class="text-sm">
-        Add the fields {systemName(pivot)} waters. Type each one in, or import outlines from a shapefile, KML or GeoJSON file
-        to make them from the shapes.
+        Add the fields {systemName(pivot)} waters. Type each one in, or import their shapes from a shapefile, KML or GeoJSON
+        file to make them from those.
       </p>
       <div class="flex flex-wrap gap-2">
         <Button onclick={() => onaddfield(pivot)}>Add a field</Button>
         <Link
           href={newOutlineImport()}
           class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
-          >Import field outlines</Link
+          >Import field shapes</Link
         >
       </div>
     {:else if unplanted.length}
@@ -85,8 +85,8 @@
     {:else}
       <p class="text-sm">
         {systemName(pivot)} and its fields are set up, and WISP is tracking each planting's soil water.
-        <Link href={root()} class={link}>See them on the dashboard</Link>, or draw each field's outline from its page
-        when you're ready.
+        <Link href={root()} class={link}>See them on the dashboard</Link>, or draw each field's shape from its page when
+        you're ready.
       </p>
     {/if}
   </section>

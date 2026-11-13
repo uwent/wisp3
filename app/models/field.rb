@@ -74,8 +74,9 @@ class Field < ApplicationRecord
       "Set up a new field under the other system instead")
   end
 
+  # Checked when the outline changes, so one saved under older limits doesn't block other edits
   def boundary_readable
-    return if boundary.nil?
+    return if boundary.nil? || !will_save_change_to_boundary?
     FieldBoundary.errors(boundary).each { |message| errors.add(:boundary, message) }
   end
 

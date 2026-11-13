@@ -32,7 +32,7 @@ RSpec.describe "Outline imports", type: :request do
     ]}}
     expect { post outline_import_path, params: rows }.to change(Field, :count).by(1)
     expect(response).to redirect_to(setup_path)
-    expect(flash[:notice]).to eq("Saved 2 outlines (1 new field)")
+    expect(flash[:notice]).to eq("Saved 2 field shapes (1 new field)")
     expect(field.reload).to have_attributes(boundary: square(-89.35, 43.3), area_acres: 200)
     expect(pivot.fields.find_by!(name: "River")).to have_attributes(soil_type: sand, area_acres: 222.34,
       boundary: square(-89.33, 43.3))
@@ -40,7 +40,7 @@ RSpec.describe "Outline imports", type: :request do
 
   it "sets existing fields' area from their outlines when asked" do
     post outline_import_path, params: {outline_import: {use_area: "1", rows: [{boundary: square(-89.35, 43.3).to_json, field_id: field.id}]}}
-    expect(flash[:notice]).to eq("Saved an outline")
+    expect(flash[:notice]).to eq("Saved a field shape")
     expect(field.reload.area_acres).to eq(222.34)
   end
 

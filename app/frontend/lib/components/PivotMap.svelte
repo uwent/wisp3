@@ -36,7 +36,11 @@
   import { resizeCursor, ROTATE_CURSOR } from '@/lib/map/cursors'
   import { loadMapLibre } from '@/lib/map/maplibre'
   import PlaceSearch from '@/lib/map/PlaceSearch.svelte'
-  import { type Bounds, fetchSoilAreas, SOIL_COLORS, type SoilAreas } from '@/lib/soils'
+  import { SOIL_SOURCE, SoilTypesLayer } from '@/lib/map/soilTypes.svelte'
+  import SoilTypesHover from '@/lib/map/SoilTypesHover.svelte'
+  import SoilTypesLegend from '@/lib/map/SoilTypesLegend.svelte'
+  import SoilTypesToggle from '@/lib/map/SoilTypesToggle.svelte'
+  import type { Bounds } from '@/lib/soils'
 
   type Outline = PivotShape & { id: number; name: string }
 
@@ -68,7 +72,7 @@
   const MIN_SWEEP_DEG = 5
 
   // Our sources, carried over when the basemap changes
-  const OWN_SOURCES = ['others', 'pivot', 'soil-types']
+  const OWN_SOURCES = ['others', 'pivot', SOIL_SOURCE]
   // Soil types are shown around the pivot, or in the view once zoomed in this far without one
   const SOIL_ZOOM = 13
   const SOIL_MARGIN_M = 900
@@ -92,12 +96,7 @@
   let handles: Partial<Record<Handle, MarkerClass>> = {}
   let handleSet = ''
   let basemap = $state<Basemap>('imagery')
-  let soils = $state(false)
-  let soilStatus = $state<'loading' | 'ready' | 'error' | 'zoom'>('zoom')
-  let soilKeys = $state<string[]>([])
-  let soilHover = $state<{ x: number; y: number; type: string; unit: string } | null>(null)
-  let soilBox: Bounds | null = null
-  let soilRequest: AbortController | undefined
+  const soilLayer = new SoilTypesLayer(() => soilTypes, soilArea, 'others-line')
   let locating = $state(false)
   let locateError = $state<string | null>(null)
   let pointer = $state<{ x: number; y: number; angle: number } | null>(null)
@@ -392,9 +391,6 @@
   // Soil types around the pivot (PLAN.md Phase 7 F): the survey's map units colored and labeled by
   // the WISP soil type their surface texture suggests, loaded for an area around the pivot (or the
   // view, zoomed in, before it's placed) and again when the pivot moves out of it
-  const soilName = (key: string | null) =>
-    key ? (soilTypes.find((type) => type.key === key)?.name ?? key.replace(/_/g, ' ')) : 'No soil type'
-
   function soilArea(): Bounds | null {
     if (center) {
       const margin = reachM + SOIL_MARGIN_M
@@ -407,101 +403,10 @@
     return [view.getWest(), view.getSouth(), view.getEast(), view.getNorth()]
   }
 
-  const covers = ([west, south, east, north]: Bounds, area: Bounds) =>
-    area[0] >= west && area[1] >= south && area[2] <= east && area[3] <= north
-
-  function loadSoils() {
-    if (!map || !soils) return
-    const area = soilArea()
-    if (!area) {
-      soilStatus = soilBox ? soilStatus : 'zoom'
-      return
-    }
-    if (soilBox && covers(soilBox, area)) return
-    soilRequest?.abort()
-    const request = (soilRequest = new AbortController())
-    soilStatus = 'loading'
-    fetchSoilAreas(area, request.signal)
-      .then((areas) => {
-        if (request !== soilRequest || !map) return
-        soilBox = area
-        showSoilAreas(map, areas)
-        soilKeys = [...new Set(areas.features.map((f) => f.properties.key).filter((key) => key !== null))]
-        soilStatus = 'ready'
-      })
-      .catch((error: Error) => {
-        if (error.name !== 'AbortError' && request === soilRequest) soilStatus = 'error'
-      })
-  }
-
-  function showSoilAreas(m: MapLibreMap, areas: SoilAreas) {
-    const data = {
-      ...areas,
-      features: areas.features.map((f) => ({
-        ...f,
-        properties: { ...f.properties, name: soilName(f.properties.key) },
-      })),
-    }
-    const source = m.getSource<GeoJSONSource>('soil-types')
-    if (source) return source.setData(data as never)
-    m.addSource('soil-types', {
-      type: 'geojson',
-      data: data as never,
-      attribution: 'Soils: <a href="https://websoilsurvey.nrcs.usda.gov/">USDA NRCS</a>',
-    })
-    const color = ['match', ['get', 'key'], ...Object.entries(SOIL_COLORS).flat(), '#9ca3af']
-    const below = m.getLayer('others-line') ? 'others-line' : undefined
-    m.addLayer(
-      {
-        id: 'soil-types-fill',
-        type: 'fill',
-        source: 'soil-types',
-        paint: { 'fill-color': color as never, 'fill-opacity': 0.55 },
-      },
-      below,
-    )
-    m.addLayer(
-      {
-        id: 'soil-types-line',
-        type: 'line',
-        source: 'soil-types',
-        paint: { 'line-color': '#ffffff', 'line-width': 0.8, 'line-opacity': 0.7 },
-      },
-      below,
-    )
-    m.addLayer(
-      {
-        id: 'soil-types-label',
-        type: 'symbol',
-        source: 'soil-types',
-        minzoom: 14,
-        layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-font': LABEL_FONT },
-        paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
-      },
-      below,
-    )
-  }
-
-  function hideSoilAreas() {
-    soilRequest?.abort()
-    soilBox = null
-    soilHover = null
-    for (const layer of ['soil-types-label', 'soil-types-line', 'soil-types-fill']) {
-      if (map?.getLayer(layer)) map.removeLayer(layer)
-    }
-    if (map?.getSource('soil-types')) map.removeSource('soil-types')
-  }
-
-  function toggleSoils() {
-    soils = !soils
-    if (soils) loadSoils()
-    else hideSoilAreas()
-  }
-
   // Load again when the pivot moves out of the loaded area
   $effect(() => {
     void [center, reachM]
-    if (soils) loadSoils()
+    soilLayer.load()
   })
 
   async function switchBase(to: Basemap) {
@@ -554,18 +459,7 @@
         addLayers(m)
         placeMarkers()
       })
-      m.on('moveend', loadSoils)
-      m.on('mousemove', 'soil-types-fill', (event) => {
-        const feature = event.features?.[0]
-        if (!feature) return
-        soilHover = {
-          x: event.point.x,
-          y: event.point.y,
-          type: String(feature.properties.name),
-          unit: String(feature.properties.unit),
-        }
-      })
-      m.on('mouseleave', 'soil-types-fill', () => (soilHover = null))
+      soilLayer.attach(m)
       m.on('move', updatePointer)
       m.on('resize', updatePointer)
       m.on('rotate', placeMarkers)
@@ -609,14 +503,7 @@
     <div class="absolute top-2 left-2">
       <div class="flex gap-2">
         <BasemapToggle value={basemap} onchange={switchBase} />
-        <button
-          type="button"
-          class="rounded-md border border-line px-2.5 py-1.5 text-xs shadow
-            {soils ? 'bg-brand-600 text-white dark:text-surface' : 'bg-surface-raised hover:bg-surface'}"
-          aria-pressed={soils}
-          title="Shade the map by soil type, from the USDA soil survey"
-          onclick={toggleSoils}>Soil types</button
-        >
+        <SoilTypesToggle layer={soilLayer} />
       </div>
     </div>
 
@@ -654,17 +541,7 @@
       </button>
     {/if}
 
-    {#if soilHover}
-      <div
-        class="pointer-events-none absolute z-10 max-w-60 rounded-md border border-line bg-surface-raised px-2.5 py-1.5
-          text-xs shadow-lg"
-        style:left="{soilHover.x + 14}px"
-        style:top="{soilHover.y + 14}px"
-      >
-        <p class="font-medium">{soilHover.type}</p>
-        <p class="text-ink-muted">{soilHover.unit}</p>
-      </div>
-    {/if}
+    <SoilTypesHover layer={soilLayer} />
 
     <div class="absolute bottom-2 left-2 w-[min(18rem,calc(100%-6rem))]">
       <PlaceSearch bind:this={placeSearch} {map} maxZoom={PIVOT_ZOOM - 1} />
@@ -690,33 +567,5 @@
               : 'Drag the pin to move the pivot, or the round handle to set its radius.'}</span
       >{/if}
   </div>
-  {#if soils}
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" aria-live="polite">
-      <span class="font-medium">Soil types:</span>
-      {#if soilStatus === 'loading'}
-        <span class="text-ink-muted">loading from the soil survey…</span>
-      {:else if soilStatus === 'error'}
-        <span class="text-ink-muted">the soil survey can't be reached right now.</span>
-      {:else if soilStatus === 'zoom'}
-        <span class="text-ink-muted">place the {noun}, or zoom in, to see them.</span>
-      {:else}
-        {#each soilTypes.filter((type) => soilKeys.includes(type.key)) as type (type.key)}
-          <span class="flex items-center gap-1"
-            ><span class="size-3 rounded-sm border border-line" style:background={SOIL_COLORS[type.key]}
-            ></span>{type.name}</span
-          >
-        {:else}
-          <span class="text-ink-muted">no soil types matched here.</span>
-        {/each}
-        <span class="text-ink-muted"
-          >From each map unit's main soil in the <a
-            href="https://websoilsurvey.nrcs.usda.gov/"
-            target="_blank"
-            rel="noopener"
-            class="text-brand-600 hover:underline">USDA soil survey</a
-          >.</span
-        >
-      {/if}
-    </div>
-  {/if}
+  <SoilTypesLegend layer={soilLayer} {soilTypes} zoomHint="place the {noun}, or zoom in, to see them." />
 </div>

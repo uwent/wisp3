@@ -38,8 +38,8 @@
       },
       "expected": {
         "urgent": true,
-        "headline": "Irrigate by Sun, Jul 12",
-        "detail": "Projected to reach the irrigation point in 2 days, when about 1.30 in would refill the root zone to field capacity.",
+        "headline": "Irrigate by Sun, Jul 12 · about 1.30 in refills it",
+        "detail": "Projected to reach the irrigation point in 2 days; that amount then refills the root zone to field capacity.",
         "chance": "15 of 30 forecast scenarios reach it by then.",
         "dry": null
       }
@@ -58,8 +58,8 @@
       },
       "expected": {
         "urgent": true,
-        "headline": "Irrigate by Sat, Jul 11",
-        "detail": "Projected to reach its target tomorrow, when about 0.70 in would refill the root zone to field capacity.",
+        "headline": "Irrigate by Sat, Jul 11 · about 0.70 in refills it",
+        "detail": "Projected to reach its target tomorrow; that amount then refills the root zone to field capacity.",
         "chance": "3 of 30 forecast scenarios reach it by then.",
         "dry": null
       }
@@ -77,8 +77,8 @@
       },
       "expected": {
         "urgent": false,
-        "headline": "Irrigate by Wed, Jul 15",
-        "detail": "Projected to reach the irrigation point in 5 days, when about 2.05 in would refill the root zone to field capacity.",
+        "headline": "Irrigate by Wed, Jul 15 · about 2.05 in refills it",
+        "detail": "Projected to reach the irrigation point in 5 days; that amount then refills the root zone to field capacity.",
         "chance": null,
         "dry": null
       }
@@ -102,8 +102,8 @@
       },
       "expected": {
         "urgent": true,
-        "headline": "At the irrigation point now",
-        "detail": "About 1.30 in refills the root zone to field capacity.",
+        "headline": "Irrigate now · about 1.30 in refills it",
+        "detail": "At or below the irrigation point today; that amount refills the root zone to field capacity.",
         "chance": null,
         "dry": null
       }
@@ -122,8 +122,8 @@
       },
       "expected": {
         "urgent": true,
-        "headline": "Below target now",
-        "detail": "About 17.8 mm refills the root zone to field capacity.",
+        "headline": "Below target now · about 17.8 mm refills it",
+        "detail": "Below its target today; that amount refills the root zone to field capacity.",
         "chance": null,
         "dry": null
       }
@@ -218,8 +218,8 @@
       },
       "expected": {
         "urgent": false,
-        "headline": "Irrigate by Tue, Jul 14",
-        "detail": "Projected to reach the irrigation point in 4 days, when about 1.30 in would refill the root zone to field capacity.",
+        "headline": "Irrigate by Tue, Jul 14 · about 1.30 in refills it",
+        "detail": "Projected to reach the irrigation point in 4 days; that amount then refills the root zone to field capacity.",
         "chance": null,
         "dry": "If no rain falls, irrigate by Sun, Jul 12 (in 2 days)."
       }
@@ -243,8 +243,8 @@
       },
       "expected": {
         "urgent": true,
-        "headline": "Irrigate by Sun, Jul 12",
-        "detail": "Projected to reach the irrigation point in 2 days, when about 1.30 in would refill the root zone to field capacity.",
+        "headline": "Irrigate by Sun, Jul 12 · about 1.30 in refills it",
+        "detail": "Projected to reach the irrigation point in 2 days; that amount then refills the root zone to field capacity.",
         "chance": "15 of 30 forecast scenarios reach it by then.",
         "dry": null
       }

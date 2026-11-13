@@ -2,7 +2,18 @@ import { describe, expect, it } from 'vitest'
 
 import { units } from '@/lib/units'
 
-import { clashes, nextSeason, plantingLabel, plantingWhen, plotAcres, plotSize, typicalEnd } from './plantings'
+import {
+  cardWhen,
+  clashes,
+  nextSeason,
+  plantingLabel,
+  plantingWhen,
+  plotAcres,
+  plotSize,
+  seasonLine,
+  seasonStats,
+  typicalEnd,
+} from './plantings'
 
 const sized = { partial: true, area_acres: plotAcres(100, 20), plot_length_ft: 100, plot_width_ft: 20 }
 
@@ -66,5 +77,49 @@ describe('typicalEnd', () => {
     expect(typicalEnd(105, '2026-05-20')).toBe('2026-09-02')
     expect(typicalEnd(140, '2026-08-01')).toBe('2026-11-30')
     expect(typicalEnd(null, '2026-05-01')).toBe('2026-11-30')
+  })
+})
+
+describe('an ended season on its card (G.6)', () => {
+  const imperial = units('imperial')
+  const totals = {
+    rain: 11.8,
+    irrigation: 7.2,
+    deep_drainage: 1.9,
+    irrigation_days: 9,
+    rain_days: 24,
+    drainage_days: 4,
+    stress_days: 3,
+  }
+
+  it("gives an ended season's dates their length, and leaves the others as they are", () => {
+    const potato = { season_start: '2026-05-20', end_date: '2026-09-15' }
+    expect(cardWhen(potato, '2026-10-01')).toBe('May 20 – Sep 15 (118 days)')
+    expect(cardWhen(potato, '2026-07-01')).toBe(plantingWhen(potato, '2026-07-01'))
+  })
+
+  it('counts irrigation, rain, drainage and stress', () => {
+    expect(seasonStats(totals, imperial)).toEqual([
+      { label: 'Irrigated', value: '9 times, 7.20 in' },
+      { label: 'Rain', value: '24 days, 11.80 in' },
+      { label: 'Deep drainage', value: '4 days, 1.90 in' },
+      { label: 'Below the irrigation point', value: '3 days' },
+    ])
+    expect(seasonLine(totals, imperial)).toBe('Irrigated 7.20 in · rain 11.80 in · 3 days below the irrigation point')
+  })
+
+  it('says never and none, and no data for rain without weather', () => {
+    const quiet = {
+      ...totals,
+      rain: null,
+      irrigation: 0,
+      irrigation_days: 0,
+      deep_drainage: 0,
+      drainage_days: 0,
+      stress_days: 0,
+    }
+    expect(seasonStats({ ...quiet, irrigation_days: 1, irrigation: 1 }, imperial)[0].value).toBe('once, 1.00 in')
+    expect(seasonStats(quiet, imperial).map((stat) => stat.value)).toEqual(['Never', 'No data', 'None', 'Never'])
+    expect(seasonLine(quiet, imperial)).toBe('No irrigation · never below the irrigation point')
   })
 })

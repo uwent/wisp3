@@ -205,16 +205,17 @@
   }
 </script>
 
-<svelte:head><title>Import field outlines · WISP</title></svelte:head>
+<svelte:head><title>Import field shapes · WISP</title></svelte:head>
 
 <div class="space-y-1">
   <Link href={setup.show()} class="text-sm text-brand-600 hover:underline">← Setup</Link>
-  <h1 class="text-2xl font-semibold">Import field outlines</h1>
+  <h1 class="text-2xl font-semibold">Import field shapes</h1>
   <p class="max-w-prose text-sm text-ink-muted">
-    Outlines draw your fields on the map and suggest their area and soil; the water balance doesn't use them. Most
-    growers already have them: FSA field boundaries (Common Land Units) from your county office, or boundaries exported
-    from John Deere Operations Center, Climate FieldView or Google Earth. WISP reads a zipped shapefile (.zip with the
-    .shp, .dbf and .prj), GeoJSON, or KML and KMZ. The file stays on your computer; only the outlines you save are sent.
+    Field shapes draw your fields on the map and measure their area, and the soil survey under them suggests their soil;
+    the water balance doesn't use the shapes themselves. Most growers already have them: FSA field boundaries (Common
+    Land Units) from your county office, or boundaries exported from John Deere Operations Center, Climate FieldView or
+    Google Earth. WISP reads a zipped shapefile (.zip with the .shp, .dbf and .prj), GeoJSON, or KML and KMZ. The file
+    stays on your computer; only the shapes you save are sent.
   </p>
 </div>
 
@@ -325,7 +326,7 @@
                   error={usedBy[index] !== undefined
                     ? `Also chosen for shape ${usedBy[index] + 1}`
                     : rowError(errors, index, 'field_id')}
-                  hint={existing?.outlined ? 'Replaces its outline' : undefined}
+                  hint={existing?.outlined ? 'Replaces its shape' : undefined}
                 />
                 {#if row.choice.kind === 'new'}
                   <SelectField
@@ -356,13 +357,13 @@
                       row.soilTypeId = Number((event.currentTarget as HTMLSelectElement).value)
                       row.soil = 'chosen'
                     }}
-                    hint={row.soil === 'survey' ? 'The main soil in the outline, from the soil survey' : undefined}
+                    hint={row.soil === 'survey' ? 'The main soil in the shape, from the soil survey' : undefined}
                     error={rowError(errors, index, 'soil_type')}
                   />
                 {/if}
               </div>
               {#if rowError(errors, index, 'boundary')}
-                <p class="mt-2 text-status-irrigate-ink">The outline {rowError(errors, index, 'boundary')}</p>
+                <p class="mt-2 text-status-irrigate-ink">The shape {rowError(errors, index, 'boundary')}</p>
               {/if}
             {/if}
           </li>
@@ -371,12 +372,12 @@
 
       <label class="flex items-start gap-2 text-sm">
         <input type="checkbox" class="mt-0.5 rounded" bind:checked={useArea} />
-        <span>Set existing fields' area from their outlines (seasons that have ended keep theirs)</span>
+        <span>Set existing fields' area from their shapes (seasons that have ended keep theirs)</span>
       </label>
       {#if errors.rows}<p class="text-sm text-status-irrigate-ink">{[errors.rows].flat()[0]}</p>{/if}
       <div class="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={processing || !included.length || unready.length > 0}
-          >Save {included.length === 1 ? 'the outline' : `${included.length} outlines`}</Button
+          >Save {included.length === 1 ? 'the shape' : `${included.length} shapes`}</Button
         >
         <span class="text-sm text-ink-muted">
           {counts.existing} existing {counts.existing === 1 ? 'field' : 'fields'}, {counts.added} new

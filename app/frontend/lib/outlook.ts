@@ -56,8 +56,8 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
   if (crossing && crossing.days === 0) {
     return {
       urgent: true,
-      headline: summary.target_in === null ? 'At the irrigation point now' : 'Below target now',
-      detail: `About ${depth(crossing.refill)} refills the root zone to field capacity.`,
+      headline: `${summary.target_in === null ? 'Irrigate now' : 'Below target now'} · about ${depth(crossing.refill)} refills it`,
+      detail: `${summary.target_in === null ? 'At or below the irrigation point' : 'Below its target'} today; that amount refills the root zone to field capacity.`,
       chance: null,
       dry: null,
     }
@@ -68,10 +68,10 @@ export function outlook(summary: PlantingSummary, units: Units): Outlook | null 
       urgent: crossing.days <= LEAD_DAYS,
       headline: replay
         ? `Reached ${level} ${formatDate(crossing.date, { weekday: true })}`
-        : `Irrigate by ${formatDate(crossing.date, { weekday: true })}`,
+        : `Irrigate by ${formatDate(crossing.date, { weekday: true })} · about ${depth(crossing.refill)} refills it`,
       detail: replay
         ? `With the weather that followed and what was entered for those days, it reached ${level} ${crossing.days === 1 ? 'the next day' : `${crossing.days} days later`}, when about ${depth(crossing.refill)} would have refilled the root zone to field capacity.`
-        : `Projected to reach ${level} ${relativeDay(crossing.date, today)}, when about ${depth(crossing.refill)} would refill the root zone to field capacity.`,
+        : `Projected to reach ${level} ${relativeDay(crossing.date, today)}; that amount then refills the root zone to field capacity.`,
       chance: scenarios && `${scenarios} reach it by then.`,
       dry,
     }

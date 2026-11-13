@@ -6,41 +6,58 @@
   import 'maplibre-gl/dist/maplibre-gl.css'
 
   import { onMount, untrack } from 'svelte'
-  import type { Map as MapLibreMap } from 'maplibre-gl'
+  import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
   import type { GeoJSONStoreFeatures, TerraDraw as TerraDrawClass } from 'terra-draw'
 
+  import Button from '@/lib/components/Button.svelte'
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
-  import { type Boundary, boundaryBounds, boundaryFrom, boundaryRing, type LngLat } from '@/lib/geo'
+  import { type Boundary, boundaryBounds, boundaryFrom, boundaryRing, type LngLat, pathCrossesItself } from '@/lib/geo'
   import { basemapStyle, type Basemap, setBasemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { loadMapLibre } from '@/lib/map/maplibre'
-  import PlaceSearch from '@/lib/map/PlaceSearch.svelte'
+  import { SOIL_SOURCE, SoilTypesLayer, viewArea } from '@/lib/map/soilTypes.svelte'
+  import SoilTypesHover from '@/lib/map/SoilTypesHover.svelte'
+  import SoilTypesLegend from '@/lib/map/SoilTypesLegend.svelte'
+  import SoilTypesToggle from '@/lib/map/SoilTypesToggle.svelte'
 
-  import { addReferenceLayers, type Reference, referenceBounds } from './references'
+  import { addReferenceLayers, FIRST_REFERENCE_LAYER, type Reference, referenceBounds } from './references'
 
-  // A field's outline on the map (PLAN.md Phase 8 G.10, G.14: one polygon). terra-draw holds it:
-  // shown as it is ('view'), a new one clicked corner by corner ('draw'; the old one stays until the
-  // new one is finished, which replaces it), or selected to drag it whole or by its corners, add one from a
-  // midpoint or remove one ('edit'). The field's irrigation system, the operation's other systems and
-  // fields are drawn for reference.
+  // A field's outline on the map (PLAN.md Phase 8 G.10, G.14: one polygon), drawn in white as fields
+  // are on the overview map, its system in the system color. terra-draw holds it: shown as it is
+  // ('view'), a new one clicked corner by corner ('draw'; the old one stays until the new one is
+  // finished, which replaces it), or selected to drag it whole or by its corners, add one from a
+  // midpoint or remove one ('edit'). Drawing and editing end with the map's own Done editing or Cancel (the
+  // shape as it was), which don't submit the page. Corners go anywhere: a shape whose edges cross
+  // turns orange, and can't be kept. The saved shape stays dashed under one that's changed.
   let {
     boundary = $bindable(),
     mode = $bindable(),
+    saved = null,
     references,
+    soilTypes,
     ready = $bindable(false),
     height = '32rem',
   }: {
     boundary: Boundary | null
     mode: DrawMode
-    /** The field's own system first (outlined more strongly), then the others */
+    /** The shape as saved, shown dashed while the one on the map differs */
+    saved?: Boundary | null
+    /** The field's own system first (drawn more strongly), then the others */
     references: Reference[]
+    /** Names for the Soil types layer */
+    soilTypes: { key: string; name: string }[]
     /** Set once the map and drawing tools are ready */
     ready?: boolean
     height?: string
   } = $props()
 
-  const COLOR = '#3987e5'
-  const OWN_SOURCES = ['reference']
+  type Hex = `#${string}`
+  // A field on the map (--color-map-field), on a dark edge
+  const FIELD: Hex = '#ffffff'
+  const EDGE: Hex = '#000000'
+  // A shape whose edges cross (the caution status color)
+  const CROSSED: Hex = '#e49e22'
+  const OWN_SOURCES = ['reference', 'saved', 'shape-edge', SOIL_SOURCE]
   // Wisconsin's Central Sands, where most WISP fields are
   const DEFAULT_VIEW = { center: [-89.5, 44.25] as LngLat, zoom: 8 }
 
@@ -48,9 +65,11 @@
   let map = $state<MapLibreMap>()
   let draw: TerraDrawClass | undefined
   let basemap = $state<Basemap>('imagery')
-  let placeSearch = $state<PlaceSearch>()
   // The outline as terra-draw last gave it, so the page's own changes (an import) can be told apart
   let written = untrack(() => JSON.stringify(boundary))
+  const soilLayer = new SoilTypesLayer(() => soilTypes, viewArea, FIRST_REFERENCE_LAYER)
+
+  const crossing = $derived(boundary ? pathCrossesItself(boundaryRing(boundary)) : false)
 
   /** Fit the map to the outline, or else the field's system */
   export function fit() {
@@ -108,29 +127,66 @@
     }
   }
 
+  // Whether a feature's edges cross: while it's being drawn, the corners placed and the edge to the
+  // pointer, not the edge closing it back to the first corner (an L would cross that halfway)
+  function crossed(feature: GeoJSONStoreFeatures) {
+    if (feature.geometry.type !== 'Polygon') return false
+    const ring = (feature.geometry.coordinates as LngLat[][])[0]
+    return pathCrossesItself(feature.properties.currentlyDrawing ? ring.slice(0, -1) : ring)
+  }
+  const colored = (normal: Hex) => (feature: GeoJSONStoreFeatures) => (crossed(feature) ? CROSSED : normal)
+
+  // Under terra-draw's white line: a dark edge, so the shape shows on the streets map too, and the
+  // saved shape, dashed, while the one on the map differs
+  const collection = (geometry: Boundary | null) => ({
+    type: 'FeatureCollection' as const,
+    features: geometry ? [{ type: 'Feature' as const, properties: {}, geometry }] : [],
+  })
+  const savedChanged = $derived(JSON.stringify(saved) !== JSON.stringify(boundary))
+  function addShapeLayers(m: MapLibreMap) {
+    m.addSource('shape-edge', { type: 'geojson', data: collection(boundary) as never })
+    m.addLayer({
+      id: 'shape-edge',
+      type: 'line',
+      source: 'shape-edge',
+      paint: { 'line-color': EDGE, 'line-width': 4.5, 'line-opacity': 0.6 },
+    })
+    m.addSource('saved', { type: 'geojson', data: collection(savedChanged ? saved : null) as never })
+    m.addLayer({
+      id: 'saved-line',
+      type: 'line',
+      source: 'saved',
+      paint: { 'line-color': FIELD, 'line-width': 2, 'line-opacity': 0.85, 'line-dasharray': [1, 1.5] },
+    })
+  }
+  $effect(() => {
+    const [shape, old] = [collection(boundary), collection(savedChanged ? saved : null)]
+    if (!map) return
+    map.getSource<GeoJSONSource>('shape-edge')?.setData(shape as never)
+    map.getSource<GeoJSONSource>('saved')?.setData(old as never)
+  })
+
   async function startDraw(m: MapLibreMap) {
-    const { TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode, ValidateNotSelfIntersecting } =
-      await import('terra-draw')
+    const { TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode } = await import('terra-draw')
     const { TerraDrawMapLibreGLAdapter } = await import('terra-draw-maplibre-gl-adapter')
-    const validation = (feature: GeoJSONStoreFeatures) => ValidateNotSelfIntersecting(feature)
     const style = {
-      fillColor: COLOR,
-      fillOpacity: 0.3,
-      outlineColor: COLOR,
+      fillColor: colored(FIELD),
+      fillOpacity: 0.15,
+      outlineColor: colored(FIELD),
       outlineWidth: 2.5,
-    } as const
+    }
     draw = new TerraDraw({
       adapter: new TerraDrawMapLibreGLAdapter({ map: m, coordinatePrecision: 7 }),
       modes: [
         new TerraDrawPolygonMode({
-          validation,
-          styles: { ...style, closingPointColor: '#ffffff', closingPointOutlineColor: COLOR, closingPointWidth: 6 },
+          styles: { ...style, closingPointColor: FIELD, closingPointOutlineColor: EDGE, closingPointWidth: 6 },
         }),
         new TerraDrawSelectMode({
+          // Editing keeps the shape selected, its corners showing
+          allowManualDeselection: false,
           flags: {
             polygon: {
               feature: {
-                validation,
                 // The whole outline drags, its corners and midpoints too
                 draggable: true,
                 coordinates: { midpoints: true, draggable: true, deletable: true },
@@ -138,16 +194,16 @@
             },
           },
           styles: {
-            selectedPolygonColor: COLOR,
-            selectedPolygonFillOpacity: 0.35,
-            selectedPolygonOutlineColor: '#1c5cab',
+            selectedPolygonColor: colored(FIELD),
+            selectedPolygonFillOpacity: 0.2,
+            selectedPolygonOutlineColor: colored(FIELD),
             selectedPolygonOutlineWidth: 3,
-            selectionPointColor: '#1c5cab',
-            selectionPointOutlineColor: '#ffffff',
+            selectionPointColor: FIELD,
+            selectionPointOutlineColor: EDGE,
             selectionPointWidth: 6,
             selectionPointOutlineWidth: 2,
-            midPointColor: '#ffffff',
-            midPointOutlineColor: '#1c5cab',
+            midPointColor: EDGE,
+            midPointOutlineColor: FIELD,
             midPointWidth: 4,
           },
         }),
@@ -168,21 +224,65 @@
     ready = true
   }
 
+  // terra-draw's mode for ours; editing selects the shape so its corners show at once
   function applyMode() {
     if (!draw) return
     const wanted = mode === 'draw' ? 'polygon' : mode === 'edit' ? 'select' : 'static'
     if (draw.getMode() !== wanted) draw.setMode(wanted)
+    if (mode !== 'edit') return
+    const shape = draw.getSnapshot().find((feature) => feature.geometry.type === 'Polygon')
+    if (shape && !shape.properties.selected) draw.selectFeature(shape.id!)
   }
 
-  async function changeBasemap(next: Basemap) {
+  // The shape when drawing or editing started, for Cancel
+  let before: Boundary | null = untrack(() => boundary)
+  let previousMode: DrawMode = untrack(() => mode)
+  $effect(() => {
+    const now = mode
+    untrack(() => {
+      if (previousMode === 'view' && now !== 'view') before = boundary
+      previousMode = now
+      applyMode()
+    })
+  })
+
+  function keep() {
+    mode = 'view'
+  }
+
+  function cancel() {
+    boundary = before
+    written = JSON.stringify(before)
+    mode = 'view'
+    loadDraw()
+  }
+
+  // terra-draw's layers don't survive a new style: it stops for the switch and starts again with what
+  // it held (only around a switch that happens: setBasemap skips one a later click replaced)
+  function changeBasemap(next: Basemap) {
     if (!map || next === basemap) return
     basemap = next
-    const snapshot = draw?.getSnapshot() ?? []
-    draw?.stop()
-    await setBasemap(map, next, (id) => OWN_SOURCES.includes(id))
-    draw?.start()
-    if (snapshot.length) draw?.addFeatures(snapshot.filter((feature) => !feature.properties.currentlyDrawing))
-    applyMode()
+    let snapshot: GeoJSONStoreFeatures[] = []
+    setBasemap(map, next, (id) => OWN_SOURCES.includes(id), {
+      before: () => {
+        // The finished shape only: not one half drawn, nor the corner and midpoint handles
+        snapshot = (draw?.getSnapshot() ?? [])
+          .filter((feature) => feature.properties.mode === 'polygon' && !feature.properties.currentlyDrawing)
+          .map((feature) => ({ ...feature, properties: { mode: 'polygon' } }))
+        draw?.stop()
+      },
+      after: () => {
+        if (!draw) return
+        draw.start()
+        loading = true
+        try {
+          if (snapshot.length) draw.addFeatures(snapshot)
+        } finally {
+          loading = false
+        }
+        applyMode()
+      },
+    })
   }
 
   onMount(() => {
@@ -202,6 +302,8 @@
       m.on('load', () => {
         map = m
         addReferenceLayers(m, references)
+        addShapeLayers(m)
+        soilLayer.attach(m)
         fit()
         startDraw(m)
       })
@@ -213,7 +315,7 @@
     }
   })
 
-  // The page changed the outline (an import, "Same as", Start over): load it and show it
+  // The page changed the outline (an import, Remove): load it and show it
   $effect(() => {
     const json = JSON.stringify(boundary)
     if (json === written) return
@@ -223,24 +325,38 @@
       fit()
     })
   })
-
-  $effect(() => {
-    void mode
-    untrack(applyMode)
-  })
 </script>
 
-<div class="relative overflow-hidden rounded-lg border border-line" style:height>
-  <div
-    bind:this={container}
-    class="h-full w-full"
-    role="application"
-    aria-label="Map of the field's outline: draw it here, or use Same as the irrigation system or Import from a file above"
-  ></div>
-  <div class="absolute top-2 left-2">
-    <BasemapToggle value={basemap} onchange={changeBasemap} />
+<div class="space-y-2">
+  <div class="relative overflow-hidden rounded-lg border border-line" style:height>
+    <div
+      bind:this={container}
+      class="h-full w-full"
+      role="application"
+      aria-label="Map of the field's shape: draw it here, or import it from a file above"
+    ></div>
+    <div class="absolute top-2 left-2 flex gap-2">
+      <BasemapToggle value={basemap} onchange={changeBasemap} />
+      <SoilTypesToggle layer={soilLayer} />
+    </div>
+    <SoilTypesHover layer={soilLayer} />
+    {#if mode !== 'view'}
+      <div
+        class="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-lg"
+        role="group"
+        aria-label="The shape on the map"
+      >
+        {#if mode === 'edit'}
+          <Button type="button" disabled={crossing || !boundary} onclick={keep}>Done editing</Button>
+        {/if}
+        <Button type="button" variant="secondary" onclick={cancel}>Cancel</Button>
+        {#if mode === 'edit' && crossing}
+          <span class="text-sm text-status-caution-ink">Its edges cross: move a corner to fix it.</span>
+        {:else if mode === 'draw'}
+          <span class="text-sm text-ink-muted">Click the first corner again, or press Enter, to finish.</span>
+        {/if}
+      </div>
+    {/if}
   </div>
-  <div class="absolute bottom-2 left-2 w-[min(18rem,calc(100%-6rem))]">
-    <PlaceSearch bind:this={placeSearch} {map} maxZoom={15} />
-  </div>
+  <SoilTypesLegend layer={soilLayer} {soilTypes} zoomHint="zoom in to see them." />
 </div>

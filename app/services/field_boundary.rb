@@ -4,8 +4,8 @@
 # shape's largest part without its holes and simplifies it to MAX_VERTICES. Limits and area are
 # mirrored in lib/geo.ts.
 class FieldBoundary
-  # Plenty for a field's edge; CLU and machine exports are simplified to it on import
-  MAX_VERTICES = 1000
+  # Plenty for a field drawn by hand; CLU and machine exports are simplified to it on import
+  MAX_VERTICES = 100
   # Over two full sections; a field is rarely more than one
   MAX_ACRES = 1500
   MIN_ACRES = 0.01
@@ -44,10 +44,25 @@ class FieldBoundary
       errors << "must be in the US or Canada"
     end
     return errors if errors.any?
+    errors << "crosses itself" if crosses_itself?(ring)
     acres = acres(geometry)
     errors << "is too small (at least #{MIN_ACRES} acres)" if acres < MIN_ACRES
     errors << "is larger than a field (at most #{MAX_ACRES.to_fs(:delimited)} acres)" if acres > MAX_ACRES
     errors
+  end
+
+  # Whether two of a ring's edges cross (pathCrossesItself in lib/geo.ts); edges that only touch,
+  # at a shared corner or end to end in a line, don't count
+  def self.crosses_itself?(ring)
+    side = ->(p, q, r) { ((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])) <=> 0 }
+    edges = ring.length - 1
+    (0...edges).any? do |i|
+      ((i + 2)...edges).any? do |j|
+        next false if i.zero? && j == edges - 1
+        a, b, c, d = ring[i], ring[i + 1], ring[j], ring[j + 1]
+        side.call(a, b, c) * side.call(a, b, d) < 0 && side.call(c, d, a) * side.call(c, d, b) < 0
+      end
+    end
   end
 
   # The outline's ring, or [] for anything that isn't a Polygon

@@ -62,7 +62,7 @@
           1,
         )}%, wilting point {formatNumber(field.effective_perm_wilting_pt * 100, 1)}%){' · '}<Link
           href={fieldOutline(field.id)}
-          class="underline underline-offset-2">{field.boundary ? 'Outline' : 'Add an outline'}</Link
+          class="underline underline-offset-2">{field.boundary ? 'Edit field shape' : 'Draw/import field shape'}</Link
         >
       </p>
     </div>

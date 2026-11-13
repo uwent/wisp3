@@ -72,7 +72,8 @@ class PlantingSummarySerializer < ApplicationSerializer
     recent: "{ date: string; ad: number }[]",
     totals: "{ rain: number | null; irrigation: number; adj_et: number | null; deep_drainage: number; " \
       "rain_model: number | null; " \
-      "entered_rain_days: number; entered_rain: number; entered_rain_model: number }",
+      "entered_rain_days: number; entered_rain: number; entered_rain_model: number; " \
+      "irrigation_days: number; rain_days: number; drainage_days: number; stress_days: number }",
     threshold: :number, crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     use_model_precip: :boolean, dry_crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     ensemble_size: :number, projection_source: "'forecast' | 'observed'", canopy_fit: "{ shift: number; stretch: number; height: number } | null",

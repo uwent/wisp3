@@ -155,8 +155,8 @@
           Irrigation systems
         </label>
         <p class="mt-1 text-xs text-ink-muted">
-          Pivots and linears at their size, the others by their kind's mark. Fields with an outline are shaded in their
-          own status either way.
+          Pivots and linears at their size, the others by their kind's mark. Fields with a shape are drawn in white,
+          with their plantings' status badges at the center.
         </p>
         <ul class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs" aria-label="Irrigation system kinds">
           {#each Object.entries(KIND_NAMES) as [kind, name] (kind)}

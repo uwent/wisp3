@@ -298,7 +298,7 @@
                   name="planting[soil_type_id]"
                   bind:value={plotSoilId}
                   options={plotSoilOptions}
-                  hint={fieldShares ? "From the soil survey of the field's outline" : undefined}
+                  hint={fieldShares ? "From the soil survey of the field's shape" : undefined}
                   error={errors.soil_type}
                 />
                 <NumberField

@@ -1,20 +1,20 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { isPoint, systemName } from '@/lib/geo'
+  import { boundaryAcres, systemName } from '@/lib/geo'
   import { Form, Link } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import FormFooter from '@/lib/components/FormFooter.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
-  import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import type { PivotShape } from '@/lib/geo'
-  import { soilFit, soilOptionsByShare } from '@/lib/soils'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { fieldOutline, fields } from '@/routes'
   import type { Field, Pivot, SoilType } from '@/types/serializers'
 
+  import FieldAreaInput from './FieldAreaInput.svelte'
+  import FieldSoilInput from './FieldSoilInput.svelte'
   import ShapeThumbnail from './ShapeThumbnail.svelte'
 
   // Create a field under a pivot, or edit one (including moving it to another pivot, while it has
@@ -48,33 +48,16 @@
   )
   const soil = $derived(soilTypes.find((s) => String(s.id) === soilTypeId))
 
-  // A new field takes the soil survey's suggestion for its pivot until the user picks a soil
+  // The soil survey reads the field's shape, or for a new field its pivot's, whose suggestion it
+  // takes until the user picks a soil (G.6)
   let pivotChoice = $state(untrack(() => String(field?.pivot_id ?? pivotId)))
-  let soilChosen = $state(false)
-  let fromSurvey = $state(false)
   const pivot = $derived(pivots.find((p) => String(p.id) === pivotChoice))
-  const shape = $derived(
-    !field && pivot?.latitude != null && pivot.longitude != null ? ({ kind: 'center', ...pivot } as PivotShape) : null,
-  )
-  // Each soil type's share under the pivot once the survey answers, to label the menu and note a
-  // soil that doesn't fit it (G.6)
-  let shares = $state<Map<string, number> | null>(null)
-  const fit = $derived(
-    soil && shares && shape
-      ? soilFit(soil, shares, soilTypes, `${isPoint(shape.kind) ? 'around' : 'under'} ${pivot!.name}`)
+  const system = $derived(
+    !field && pivot?.latitude != null && pivot.longitude != null
+      ? ({ kind: 'center', ...pivot } as PivotShape & { name: string })
       : null,
   )
-  const soilOptions = $derived(
-    shares && shape
-      ? soilOptionsByShare(soilTypes, shares, pivot!.name)
-      : soilTypes.map((s) => ({ value: String(s.id), label: s.name })),
-  )
-  function suggestSoil(suggested: SoilType | null, found: Map<string, number>) {
-    shares = found
-    if (soilChosen || !suggested) return
-    soilTypeId = String(suggested.id)
-    fromSurvey = true
-  }
+  let area = $state(untrack(() => field?.area_acres ?? null))
   // Seasons that have ended keep their soil, area and pivot
   const endedYears = $derived(field?.ended_years ?? [])
   const endedText = $derived(
@@ -110,18 +93,19 @@
       <fieldset class="space-y-2">
         <legend class="text-sm font-medium">Field area</legend>
         <div class="grid gap-4 sm:grid-cols-2">
-          <NumberField
-            label="Acreage"
+          <FieldAreaInput
             name="field[area_acres]"
-            quantity="area"
-            value={field?.area_acres ?? null}
+            bind:value={area}
+            saved={field ? field.area_acres : undefined}
+            drawn={field?.boundary ? boundaryAcres(field.boundary) : null}
             error={errors.area_acres}
+            onchange={() => (edited = true)}
           />
           <div class="space-y-1">
             <p class="text-sm font-medium" id="field-shape">Shape</p>
             <div class="flex items-center gap-3 text-sm">
               {#if field?.boundary}
-                <ShapeThumbnail boundary={field.boundary} label="The outline of {field.name}" />
+                <ShapeThumbnail boundary={field.boundary} label="The shape of {field.name}" />
               {:else}
                 <span class="text-ink-muted">None</span>
               {/if}
@@ -138,33 +122,17 @@
           </div>
         </div>
       </fieldset>
-      <SelectField
-        label="Soil"
+      <FieldSoilInput
         name="field[soil_type_id]"
         bind:value={soilTypeId}
-        onchange={() => {
-          soilChosen = true
-          fromSurvey = false
-        }}
-        options={soilOptions}
+        {soilTypes}
+        saved={field ? field.soil_type_id : undefined}
+        boundary={field?.boundary ?? null}
+        {system}
+        suggest={!field}
         error={errors.soil_type}
-        hint={fromSurvey ? 'From the soil survey' : undefined}
-        note={fit ? soilNote : undefined}
+        onchange={() => (edited = true)}
       />
-      {#snippet soilNote()}
-        <p class={fit!.absent ? 'text-status-caution-ink' : 'text-ink-muted'}>{fit!.note}</p>
-        {#if fit!.main}<button
-            type="button"
-            class="mt-0.5 block text-brand-600 underline underline-offset-2"
-            onclick={() => {
-              soilTypeId = String(fit!.main!.id)
-              soilChosen = true
-            }}>Use {fit!.main.name}</button
-          >{/if}
-      {/snippet}
-      {#if shape}
-        <SoilSurvey {shape} {soilTypes} onsuggest={suggestSoil} />
-      {/if}
       {#if endedYears.length}
         <p class="text-sm text-ink-muted">
           Changes to the soil and area apply to seasons that haven't ended. {endedText}

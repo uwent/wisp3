@@ -23,13 +23,15 @@ class Outlook
         detail: "WISP can't estimate #{@status.planting.plant.name.downcase} water use until you enter a percent cover reading.",
         chance: nil, dry: nil)
     elsif crossing&.days&.zero?
-      Result.new(urgent: true, headline: target? ? "Below target now" : "At the irrigation point now",
-        detail: "About #{@depth.call(crossing.refill)} refills the root zone to field capacity.", chance: nil, dry: nil)
+      Result.new(urgent: true,
+        headline: "#{target? ? "Below target now" : "Irrigate now"} · about #{@depth.call(crossing.refill)} refills it",
+        detail: "#{target? ? "Below its target" : "At or below the irrigation point"} today; that amount refills the root zone to field capacity.",
+        chance: nil, dry: nil)
     elsif crossing
       scenarios = chance_by(crossing.date)
-      Result.new(urgent: crossing.days <= PlantingStatus::LEAD_DAYS, headline: "Irrigate by #{Outlook.day(crossing.date)}",
-        detail: "Projected to reach #{level} #{relative_day(crossing.date)}, when about " \
-          "#{@depth.call(crossing.refill)} would refill the root zone to field capacity.",
+      Result.new(urgent: crossing.days <= PlantingStatus::LEAD_DAYS,
+        headline: "Irrigate by #{Outlook.day(crossing.date)} · about #{@depth.call(crossing.refill)} refills it",
+        detail: "Projected to reach #{level} #{relative_day(crossing.date)}; that amount then refills the root zone to field capacity.",
         chance: scenarios && "#{scenarios} reach it by then.", dry:)
     elsif (last = @status.forecast_days.last)
       scenarios = chance_by(last.inputs.date)

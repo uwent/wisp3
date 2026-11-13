@@ -17,7 +17,7 @@ RSpec.describe DigestMailer do
     expect(mail.subject).to eq("WISP: 1 field to watch (Mon, Jul 20)")
 
     text = mail.text_part.body.decoded
-    expect(text).to include("NEEDS ATTENTION\n\n- Field: Soon [! Caution] Home › Pivot 1: Irrigate by Wed, Jul 22\n")
+    expect(text).to match(/NEEDS ATTENTION\n\n- Field: Soon \[! Caution\] Home › Pivot 1: Irrigate by Wed, Jul 22 · about [\d.]+ in refills it\n/)
     cell = pivot.weather_cell
     zone = format("Weather zone 1 (%.2f°N, %.2f°W)", cell.latitude, -cell.longitude)
     expect(text).to start_with("Your fields this morning, Monday, July 20\nOperation: #{user.groups.first.name} · Farm: Home\n")
@@ -27,8 +27,8 @@ RSpec.describe DigestMailer do
       "   Next 7 days: 0.00 in rain · 1.40 in ET · highs 88°F, lows 62°F\n" \
       "   Irrigation systems in this zone: Pivot 1\n\n   Irrigation system: Pivot 1\n")
     expect(text).to include("This email lists 2 fields on 1 pivot, out of the 2 fields on 1 pivot in your alert settings (2 have a crop this season).")
-    expect(text).to include("     Field: Fine [✓ OK] Potato · Allowable depletion 1.00 in\n     Irrigate by Sat, Jul 25\n")
-    expect(text).to include("     Field: Soon [! Caution] Potato · Allowable depletion 0.28 in of 1.20 in · 11.2% soil moisture\n     Irrigate by Wed, Jul 22. Projected")
+    expect(text).to match(/     Field: Fine \[✓ OK\] Potato · [\d.]+% soil moisture · AD 1.00 in\n     Irrigate by Sat, Jul 25 · about [\d.]+ in refills it\n/)
+    expect(text).to match(/     Field: Soon \[! Caution\] Potato · 11.2% soil moisture · AD 0.28 in of 1.20 in\n     Irrigate by Wed, Jul 22 · about [\d.]+ in refills it\. Projected/)
     expect(text).to include("Last rain: none recorded · Last irrigation: none recorded")
     # In the tree, fields are in name order
     expect(text.index("Field: Fine")).to be < text.index("     Field: Soon")
@@ -124,6 +124,6 @@ RSpec.describe DigestMailer do
   it "uses the reader's units" do
     user.update!(unit_system: "metric")
     digest_field(pivot, "Fine", 15)
-    expect(described_class.daily(DailyDigest.new(user)).text_part.body.decoded).to include("Allowable depletion 25.4 mm")
+    expect(described_class.daily(DailyDigest.new(user)).text_part.body.decoded).to include("AD 25.4 mm")
   end
 end

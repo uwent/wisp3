@@ -9,6 +9,8 @@ import {
   closeRing,
   inBoundary,
   type LngLat,
+  MAX_BOUNDARY_VERTICES,
+  pathCrossesItself,
   pivotAcres,
   pivotRing,
   roundBoundary,
@@ -51,9 +53,11 @@ describe('checking an outline', () => {
   it('accepts a field and words problems as the server does', () => {
     expect(boundaryErrors(square)).toEqual([])
     expect(boundaryErrors({ type: 'Polygon', coordinates: [outer.slice(0, 4)] })).toEqual(["isn't closed"])
-    expect(boundaryErrors({ type: 'Polygon', coordinates: [ring(1001)] })).toEqual([
-      'has too many corners (at most 1,000; simplify it)',
+    expect(boundaryErrors({ type: 'Polygon', coordinates: [ring(100)] })).toEqual([])
+    expect(boundaryErrors({ type: 'Polygon', coordinates: [ring(101)] })).toEqual([
+      'has too many corners (at most 100; simplify it)',
     ])
+    expect(boundaryErrors({ type: 'Polygon', coordinates: [bowtie] })).toEqual(['crosses itself'])
     expect(boundaryErrors({ type: 'Polygon', coordinates: [outer.map(([lng, lat]): LngLat => [-lng, lat])] })).toEqual([
       'must be in the US or Canada',
     ])
@@ -67,6 +71,41 @@ describe('checking an outline', () => {
 
   it('counts corners once each', () => {
     expect(vertexCount(square)).toBe(4)
+  })
+})
+
+// An L-shaped field (concave, and fine) and a bowtie (two edges cross), as in field_boundary_spec.rb
+const corner = (east: number, north: number): LngLat => [-89.4 + east * 0.002, 43.3 + north * 0.002]
+const ell = [corner(0, 0), corner(2, 0), corner(2, 1), corner(1, 1), corner(1, 2), corner(0, 2), corner(0, 0)]
+// (lopsided, so its halves don't cancel to no area)
+const bowtie = [corner(0, 0), corner(2, 2), corner(2, 0), corner(0, 1), corner(0, 0)]
+
+describe('an outline that crosses itself', () => {
+  it('finds edges that cross, not a concave corner', () => {
+    expect(pathCrossesItself(ell)).toBe(false)
+    expect(pathCrossesItself(square.coordinates[0])).toBe(false)
+    expect(pathCrossesItself(bowtie)).toBe(true)
+  })
+
+  it("doesn't count edges that only touch", () => {
+    // The fourth corner sits on the first edge
+    expect(pathCrossesItself([corner(0, 0), corner(2, 0), corner(2, 2), corner(1, 0), corner(0, 0)])).toBe(false)
+  })
+
+  it('checks a path being drawn without its closing edge', () => {
+    // A spiral drawn inward: the corners so far don't cross, but closing it now would
+    const drawn = [
+      corner(0, 0),
+      corner(3, 0),
+      corner(3, 3),
+      corner(0, 3),
+      corner(0, 1),
+      corner(2, 1),
+      corner(2, 2),
+      corner(1, 2),
+    ]
+    expect(pathCrossesItself(drawn)).toBe(false)
+    expect(pathCrossesItself([...drawn, drawn[0]])).toBe(true)
   })
 })
 
@@ -86,7 +125,7 @@ describe('preparing an outline', () => {
   it('simplifies a detailed outline to the limit, keeping its shape', () => {
     const detailed: Boundary = { type: 'Polygon', coordinates: [ring(5000, undefined, 0.005)] }
     const simple = simplifyBoundary(detailed)
-    expect(vertexCount(simple)).toBeLessThanOrEqual(1000)
+    expect(vertexCount(simple)).toBeLessThanOrEqual(MAX_BOUNDARY_VERTICES)
     expect(boundaryErrors(simple)).toEqual([])
     expect(boundaryAcres(simple)).toBeCloseTo(boundaryAcres(detailed), -1) // within a few acres of ~60
     expect(simplifyBoundary(square)).toBe(square)

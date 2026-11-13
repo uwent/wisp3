@@ -31,7 +31,7 @@ RSpec.describe "Field outlines", type: :request do
     planting = create(:planting, field:)
     patch field_outline_path(field), params: {outline: {boundary: square.to_json}}
     expect(response).to redirect_to(field_path(field))
-    expect(flash[:notice]).to eq("Saved the outline of #{field.name}")
+    expect(flash[:notice]).to eq("Saved the shape of #{field.name}")
     expect(field.reload.boundary).to eq(square)
     expect(field.area_acres).to eq(200)
     expect(planting.reload.area_acres).to eq(200)
@@ -49,6 +49,24 @@ RSpec.describe "Field outlines", type: :request do
     expect(field.reload).to have_attributes(area_acres: 222.34, soil_type: loam)
     expect(open.reload).to have_attributes(area_acres: 222.34, soil_type: loam)
     expect(ended.reload).to have_attributes(area_acres: 200, soil_type: sand)
+  end
+
+  it "keeps an outline saved under older limits while the field's other values change, but not a new one" do
+    # 150 corners: allowed before G.14 part 7 lowered the limit to 100
+    # (rounded as stored, so the page sending it back unchanged isn't a change)
+    circle = (0...150).map do |i|
+      angle = 2 * Math::PI * i / 150
+      [(-89.4 + 0.001 * Math.cos(angle)).round(7), (43.3 + 0.001 * Math.sin(angle)).round(7)]
+    end
+    old = {"type" => "Polygon", "coordinates" => [circle + [circle.first]]}
+    field.update_column(:boundary, old)
+    patch field_outline_path(field), params: {outline: {boundary: old.to_json, area_acres: "190"}}
+    expect(field.reload).to have_attributes(area_acres: 190, boundary: old)
+    expect(field.update(name: "Renamed")).to be(true)
+
+    redrawn = {"type" => "Polygon", "coordinates" => [circle.reverse + [circle.last]]}
+    patch field_outline_path(field), params: {outline: {boundary: redrawn.to_json}}
+    expect(field.reload.boundary).to eq(old)
   end
 
   it "removes the outline when sent blank" do

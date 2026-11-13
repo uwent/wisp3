@@ -52,6 +52,15 @@ RSpec.describe PlantingStatus do
     expect(totals.adj_et).to be > 0
   end
 
+  it "counts an ended season's days of irrigation, rain, deep drainage and stress (G.6)" do
+    planting.canopy_observations.create!(date: Date.new(2026, 7, 1), pct_cover: 80) # adjusted ET = et0
+    field.field_entries.create!(date: Date.new(2026, 7, 6), irrigation_in: 1.5)
+    # AD 0.7 on Jul 5; 1.5 in fills it past 1.2, draining the rest. Then 0.2 a day: 0 on Jul 12,
+    # below from Jul 13 through Jul 31
+    totals = status(Date.new(2026, 8, 15)).totals
+    expect(totals).to have_attributes(irrigation_days: 1, rain_days: 1, drainage_days: 1, stress_days: 19)
+  end
+
   it "runs the balance on to harvest after vine kill, on bare-soil evaporation once the vines are gone" do
     planting.update!(plant: create(:plant, key: "potato"), vine_kill_date: Date.new(2026, 7, 10))
     planting.canopy_observations.create!(date: Date.new(2026, 7, 10), pct_cover: 80) # on vine kill: taken as is

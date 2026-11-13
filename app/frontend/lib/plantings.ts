@@ -44,6 +44,71 @@ export function plantingWhen(planting: { season_start: string; end_date: string 
     : seasonDates(planting)
 }
 
+/**
+ * When a planting is, on a status card: as plantingWhen, with an ended season's length
+ * ("May 20 – Sep 15 (118 days)", G.6)
+ */
+export function cardWhen(planting: { season_start: string; end_date: string }, today: string): string {
+  if (today <= planting.end_date) return plantingWhen(planting, today)
+  return `${seasonDates(planting)} (${daysBetween(planting.season_start, planting.end_date)} days)`
+}
+
+/** An ended season's totals as PlantingStatus counts them */
+type SeasonTotals = {
+  rain: number | null
+  irrigation: number
+  deep_drainage: number
+  irrigation_days: number
+  rain_days: number
+  drainage_days: number
+  stress_days: number
+}
+
+const times = (n: number) => (n === 1 ? 'once' : `${n} times`)
+const dayCount = (n: number) => (n === 1 ? '1 day' : `${n} days`)
+
+/**
+ * An ended season in four stats, for its card (G.6): irrigation, rain, deep drainage, and the days
+ * spent below the irrigation point
+ */
+export function seasonStats(totals: SeasonTotals, units: Units): { label: string; value: string }[] {
+  const depth = (inches: number) => units.format('depth', inches)
+  return [
+    {
+      label: 'Irrigated',
+      value: totals.irrigation_days ? `${times(totals.irrigation_days)}, ${depth(totals.irrigation)}` : 'Never',
+    },
+    {
+      label: 'Rain',
+      value:
+        totals.rain === null
+          ? 'No data'
+          : totals.rain_days
+            ? `${dayCount(totals.rain_days)}, ${depth(totals.rain)}`
+            : 'None',
+    },
+    {
+      label: 'Deep drainage',
+      value: totals.drainage_days ? `${dayCount(totals.drainage_days)}, ${depth(totals.deep_drainage)}` : 'None',
+    },
+    { label: 'Below the irrigation point', value: totals.stress_days ? dayCount(totals.stress_days) : 'Never' },
+  ]
+}
+
+/** An ended season in a line, for a compact card: "Irrigated 7.20 in · rain 11.80 in · 3 days below the irrigation point" */
+export function seasonLine(totals: SeasonTotals, units: Units): string {
+  const depth = (inches: number) => units.format('depth', inches)
+  return [
+    totals.irrigation_days ? `Irrigated ${depth(totals.irrigation)}` : 'No irrigation',
+    totals.rain === null ? null : `rain ${depth(totals.rain)}`,
+    totals.stress_days
+      ? `${dayCount(totals.stress_days)} below the irrigation point`
+      : 'never below the irrigation point',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 /** A planting in a line: its crop, with its variety and when in one pair of brackets: "Potato (Russet Burbank, Apr 1 – Sep 15)" */
 export const plantingLabel = (
   planting: { plant_name: string; variety: string | null; season_start: string; end_date: string },

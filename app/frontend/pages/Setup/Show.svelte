@@ -274,17 +274,17 @@
     class="space-y-1 rounded-lg border border-status-caution bg-surface-raised px-4 py-3 text-sm"
     aria-labelledby="outline-issues"
   >
-    <h2 id="outline-issues" class="font-medium">Outlines to check</h2>
+    <h2 id="outline-issues" class="font-medium">Field shapes to check</h2>
     <p class="text-ink-muted">
-      An irrigation system doesn't move with its field's outline, since its location sets the weather. Move the outline,
-      or the system if it's in the wrong place.
+      An irrigation system doesn't move with its field's shape, since its location sets the weather. Move the shape, or
+      the system if it's in the wrong place.
     </p>
     <ul class="list-disc pl-5">
       {#each outlineIssues as issue (issue.fieldId)}
         <li>
           {issue.message}.
           <Link href={fieldOutline(issue.fieldId, { query: { from: 'setup' } })} class="underline underline-offset-2"
-            >Edit the outline</Link
+            >Edit the shape</Link
           >
         </li>
       {/each}
@@ -396,7 +396,7 @@
       href={newOutlineImport()}
       class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
     >
-      Import field outlines
+      Import field shapes
     </Link>
   {/if}
   {#if hasSeason}

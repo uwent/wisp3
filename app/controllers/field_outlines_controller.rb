@@ -27,7 +27,7 @@ class FieldOutlinesController < AuthenticatedController
     return redirect_with_errors(field_outline_path(field, from: params[:from]), field.errors.to_hash) unless field.save
 
     destination = (params[:from] == "setup") ? setup_path : field_path(field)
-    redirect_to destination, notice: "Saved the outline of #{field.name}"
+    redirect_to destination, notice: "Saved the shape of #{field.name}"
   end
 
   private

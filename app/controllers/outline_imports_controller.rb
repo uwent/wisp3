@@ -45,7 +45,7 @@ class OutlineImportsController < AuthenticatedController
     return redirect_with_errors(new_outline_import_path, errors) if errors.any?
 
     count = rows.length
-    notice = "Saved #{(count == 1) ? "an outline" : "#{count} outlines"}"
+    notice = "Saved #{(count == 1) ? "a field shape" : "#{count} field shapes"}"
     notice += if added.zero?
       ""
     else

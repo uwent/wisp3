@@ -169,7 +169,7 @@ export function shapesFrom(collections: Collection[]): ReadResult {
   }
   if (!shapes.length) {
     throw new OutlineFileError(
-      skipped ? 'This file has points or lines but no field outlines (polygons).' : 'This file has no shapes in it.',
+      skipped ? 'This file has points or lines but no field shapes (polygons).' : 'This file has no shapes in it.',
     )
   }
   return { shapes, skipped, nameKey: nameKey(shapes.map((shape) => shape.properties)) }

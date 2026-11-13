@@ -15,7 +15,7 @@ test('the dashboard shows field cards with a status', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   await expect(page.locator('main ul li').first()).toBeVisible()
-  await expect(page.getByText('AD today').first()).toBeVisible()
+  await expect(page.getByText(/% soil moisture · AD /).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: /^Farm: / }).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
@@ -941,37 +941,44 @@ test('glossary terms explain themselves on hover or tap', async ({ page }) => {
   await expect(page.getByText('The water left in the root zone that the crop can use without stress.')).toBeHidden()
 })
 
-test('a field outline is copied from its pivot and saved (G.10)', async ({ page }) => {
+test('a field shape is read from a file, its area offered, and saved (G.10, G.6)', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto(await researchFieldPath(page))
-  await page.getByRole('link', { name: /^(Add an outline|Outline)$/ }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Outline: Arlington 525')
+  await page.getByRole('link', { name: /^(Draw\/import field shape|Edit field shape)$/ }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Field shape: Arlington 525')
   await expect(page.locator('.maplibregl-canvas')).toBeVisible()
 
-  // The 600 ft pivot's circle, about 26 acres, offered for the 2 acre field's area (left unticked)
-  await expect(page.getByRole('group', { name: 'Outline tools' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Same as the pivot' }).first().click()
-  await expect(page.getByText(/The outline: 2[56]\.\d ac/)).toBeVisible()
-  const useArea = page.getByRole('checkbox', { name: /for the field's area$/ })
-  await expect(useArea).not.toBeChecked()
+  // A KML field of about 111 acres beside the 2 acre field: said and warned under the box, which keeps
+  // 2 acres until asked (G.14 part 7)
+  await expect(page.getByRole('group', { name: 'Shape tools' })).toBeEnabled()
+  await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')
+  await expect(page.getByText('Current area').locator('xpath=following-sibling::p')).toHaveText('2.00 ac')
+  await expect(page.getByLabel('New field area')).toHaveValue(/^2(\.0+)?$/)
+  await expect(
+    page.getByText(/^Field as drawn: 111\.\d\d ac, 109\.\d\d ac more than the area above\. Check that/),
+  ).toBeVisible()
+  await page.getByRole('button', { name: /^Use 111\.\d\d ac$/ }).click()
+  await expect(page.getByLabel('New field area')).toHaveValue(/^111\.\d\d$/)
+  await expect(page.getByText(/^Field as drawn: 111\.\d\d ac\.\s*$/)).toBeVisible()
+  await page.getByLabel('New field area').fill('2')
 
   await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Saved the outline of Arlington 525')).toBeVisible()
+  await expect(page.getByText('Saved the shape of Arlington 525')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Arlington 525', level: 1 })).toBeVisible()
   await expect(page.getByText('2.0 ac ·').first()).toBeVisible() // the area as it was
   await page.goto('/setup')
-  // The area entered, and the outline's beside it (G.14)
-  await expect(page.getByText(/2\.0 ac · Mapped as 2[56]\.\d ac/)).toBeVisible()
+  // The area entered, and the shape's beside it (G.14)
+  await expect(page.getByText(/2\.0 ac · Mapped as 111\.\d ac/)).toBeVisible()
   // The field's dialog shows the shape
   await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByRole('img', { name: 'The outline of Arlington 525' })).toBeVisible()
+  await expect(dialog.getByRole('img', { name: 'The shape of Arlington 525' })).toBeVisible()
   await dialog.getByRole('link', { name: 'Edit shape' }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Outline: Arlington 525')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Field shape: Arlington 525')
   expect(errors).toEqual([])
 })
 
-test('a field outline is drawn corner by corner, or read from a file (G.10)', async ({ page }) => {
+test('a field shape is drawn corner by corner, or read from a file (G.10)', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Edit Market garden' }).click()
@@ -979,13 +986,13 @@ test('a field outline is drawn corner by corner, or read from a file (G.10)', as
     .getByRole('dialog')
     .getByRole('link', { name: /^(Add a shape|Edit shape)$/ })
     .click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Outline: Market garden')
-  if (await page.getByRole('button', { name: 'Remove the outline' }).isVisible())
-    await page.getByRole('button', { name: 'Remove the outline' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Field shape: Market garden')
+  if (await page.getByRole('button', { name: 'Remove the shape' }).isVisible())
+    await page.getByRole('button', { name: 'Remove the shape' }).click()
 
   // Four corners, then the first again to close it: the part is ready to adjust
-  await expect(page.getByRole('group', { name: 'Outline tools' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Draw the outline' }).click()
+  await expect(page.getByRole('group', { name: 'Shape tools' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Draw the shape' }).click()
   await expect(page.getByText(/Click the map at each corner/)).toBeVisible()
   const box = (await page.locator('.maplibregl-canvas').boundingBox())!
   const at = (x: number, y: number) => [box.x + box.width * x, box.y + box.height * y] as const
@@ -993,30 +1000,48 @@ test('a field outline is drawn corner by corner, or read from a file (G.10)', as
     await page.mouse.click(x, y)
     await page.waitForTimeout(150)
   }
-  await expect(page.getByRole('button', { name: 'Edit corners' })).toHaveAttribute('aria-pressed', 'true')
-  const drawn = page.getByText(/^The outline: [\d.]+ (ac|ha)\./)
+  // Finished, it's selected to adjust until Done editing (G.14 part 7)
+  const shapeBar = page.getByRole('group', { name: 'The shape on the map' })
+  await shapeBar.getByRole('button', { name: 'Done editing' }).click()
+  const drawn = page.getByText(/^Field as drawn: [\d.]+ (ac|ha)/)
   await expect(drawn).toBeVisible()
   const first = await drawn.textContent()
 
-  // Drawing again asks first, and the new outline replaces the old one: a field is one polygon
+  // Drawing again asks first, and the new shape replaces the old one: a field is one polygon
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Draw a new one' }).click()
   for (const [x, y] of [at(0.45, 0.45), at(0.55, 0.45), at(0.55, 0.55), at(0.45, 0.55), at(0.45, 0.45)]) {
     await page.mouse.click(x, y)
     await page.waitForTimeout(150)
   }
-  await expect(page.getByRole('button', { name: 'Edit corners' })).toHaveAttribute('aria-pressed', 'true')
+  await shapeBar.getByRole('button', { name: 'Done editing' }).click()
   await expect(drawn).not.toHaveText(first!)
+  const second = await drawn.textContent()
+
+  // Corners go anywhere, but a shape whose edges cross can't be kept; Cancel puts back the one before
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Draw a new one' }).click()
+  for (const [x, y] of [at(0.4, 0.4), at(0.6, 0.6), at(0.6, 0.4), at(0.4, 0.5), at(0.4, 0.4)]) {
+    await page.mouse.click(x, y)
+    await page.waitForTimeout(150)
+  }
+  await expect(shapeBar.getByText('Its edges cross: move a corner to fix it.')).toBeVisible()
+  await expect(shapeBar.getByRole('button', { name: 'Done editing' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
+  await expect(page.getByText('The shape crosses itself.')).toBeVisible()
+  await shapeBar.getByRole('button', { name: 'Cancel' }).click()
+  await expect(shapeBar).toBeHidden()
+  await expect(drawn).toHaveText(second!)
 
   // A KML file replaces it: one shape, 0.01° by 0.005° at 43.3°N
-  await page.getByLabel('Outline file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')
-  await expect(page.getByText(/^The outline: 111\.2 ac\./)).toBeVisible()
+  await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')
+  await expect(page.getByText(/^Field as drawn: 111\.17 ac/)).toBeVisible()
 
   // A shapefile with two fields asks which one
-  await page.getByLabel('Outline file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
+  await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
   await expect(page.getByText('This file has 2 shapes. Which is Market garden?')).toBeVisible()
   await page.getByRole('button', { name: 'Home South' }).click()
-  await expect(page.getByText(/^The outline: 10\d\.\d ac\./)).toBeVisible()
+  await expect(page.getByText(/^Field as drawn: 10\d\.\d\d ac/)).toBeVisible()
 
   // Leaving asks first; nothing is saved
   page.once('dialog', (dialog) => dialog.accept())
@@ -1025,11 +1050,11 @@ test('a field outline is drawn corner by corner, or read from a file (G.10)', as
   expect(errors).toEqual([])
 })
 
-test('field outlines are imported from a shapefile, matched to fields or new ones (G.10)', async ({ page }) => {
+test('field shapes are imported from a shapefile, matched to fields or new ones (G.10)', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/setup')
-  await page.getByRole('link', { name: 'Import field outlines' }).click()
-  await expect(page.getByRole('heading', { name: 'Import field outlines', level: 1 })).toBeVisible()
+  await page.getByRole('link', { name: 'Import field shapes' }).click()
+  await expect(page.getByRole('heading', { name: 'Import field shapes', level: 1 })).toBeVisible()
   await page.getByLabel('Choose a file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
 
   // Two shapes, named from FIELD_NAME, far from any system and matching no field: both skipped
@@ -1044,7 +1069,7 @@ test('field outlines are imported from a shapefile, matched to fields or new one
   // A new field asks for its system, and offers the outline's name and a soil
   await page.locator('#shape-0-field').selectOption('new')
   await expect(first.getByText('Choose the system that waters it')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save the outline' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Save the shape' })).toBeDisabled()
   await page.locator('#shape-0-system').selectOption({ label: 'Arlington Research › Station pivot' })
   await expect(first.getByLabel("New field's name")).toHaveValue('Home North')
   await page.locator('#shape-0-field').selectOption('skip')
@@ -1053,16 +1078,16 @@ test('field outlines are imported from a shapefile, matched to fields or new one
   const garden = await page.locator('#shape-1-field option', { hasText: /^Market garden/ }).getAttribute('value')
   await page.locator('#shape-1-field').selectOption(garden!)
   await expect(second.getByRole('combobox', { name: 'Field' })).toHaveValue(/^field:/)
-  await page.getByRole('button', { name: 'Save the outline' }).click()
-  await expect(page.getByText('Saved an outline')).toBeVisible()
+  await page.getByRole('button', { name: 'Save the shape' }).click()
+  await expect(page.getByText('Saved a field shape')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
   await page.getByRole('button', { name: 'Edit Market garden' }).click()
-  await expect(page.getByRole('dialog').getByRole('img', { name: 'The outline of Market garden' })).toBeVisible()
+  await expect(page.getByRole('dialog').getByRole('img', { name: 'The shape of Market garden' })).toBeVisible()
   await page.keyboard.press('Escape')
 
   // That shape is near Arlington, nowhere near Market garden's pivot at Coloma: Setup says so
-  const issues = page.getByRole('region', { name: 'Outlines to check' })
-  await expect(issues).toContainText(/Market garden's outline isn't under Home pivot, \d+\.\d mi away/)
+  const issues = page.getByRole('region', { name: 'Field shapes to check' })
+  await expect(issues).toContainText(/Market garden's shape isn't under Home pivot, \d+\.\d mi away/)
   expect(errors).toEqual([])
 })
 

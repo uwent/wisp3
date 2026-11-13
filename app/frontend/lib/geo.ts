@@ -395,8 +395,9 @@ export function bufferedHull(points: LngLat[], marginM: number, directions = 12)
 
 export type Boundary = { type: 'Polygon'; coordinates: [LngLat[]] }
 
-// FieldBoundary's limits: corners in the outline, and its area in acres
-export const MAX_BOUNDARY_VERTICES = 1000
+// FieldBoundary's limits: corners in the outline (plenty for a field drawn by hand; files are
+// simplified to it), and its area in acres
+export const MAX_BOUNDARY_VERTICES = 100
 export const MAX_FIELD_ACRES = 1500
 export const MIN_FIELD_ACRES = 0.01
 // Where WISP works (Pivot::LATITUDES and LONGITUDES): the US and Canada
@@ -448,6 +449,7 @@ export function boundaryErrors(boundary: Boundary): string[] {
   )
     errors.push('must be in the US or Canada')
   if (errors.length) return errors
+  if (pathCrossesItself(ring)) errors.push('crosses itself')
   const acres = boundaryAcres(boundary)
   if (acres < MIN_FIELD_ACRES) errors.push(`is too small (at least ${MIN_FIELD_ACRES} acres)`)
   if (acres > MAX_FIELD_ACRES)
@@ -456,6 +458,28 @@ export function boundaryErrors(boundary: Boundary): string[] {
 }
 
 const samePosition = (a: LngLat, b: LngLat) => a[0] === b[0] && a[1] === b[1]
+
+/**
+ * Whether a path of positions (a closed ring, or the corners placed so far while drawing) has two
+ * edges that cross (FieldBoundary.crosses_itself? on the server). Edges that only touch, at a
+ * shared corner or end to end in a line, don't count.
+ */
+export function pathCrossesItself(path: LngLat[]): boolean {
+  const side = (p: LngLat, q: LngLat, r: LngLat) =>
+    Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]))
+  const closed = path.length > 3 && samePosition(path[0], path[path.length - 1])
+  const edges = path.length - 1
+  for (let i = 0; i < edges; i++)
+    for (let j = i + 2; j < edges; j++) {
+      // A ring's first and last edges share its first corner
+      if (closed && i === 0 && j === edges - 1) continue
+      const [a, b, c, d] = [path[i], path[i + 1], path[j], path[j + 1]]
+      const ab = side(a, b, c) * side(a, b, d)
+      const cd = side(c, d, a) * side(c, d, b)
+      if (ab < 0 && cd < 0) return true
+    }
+  return false
+}
 
 /** The outline as stored: positions rounded to about a centimeter, any altitude dropped */
 export function roundBoundary(boundary: Boundary): Boundary {

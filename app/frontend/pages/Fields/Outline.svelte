@@ -3,19 +3,7 @@
   import { Form, Link, page } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
-  import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
-  import {
-    type Boundary,
-    boundaryAcres,
-    boundaryErrors,
-    boundaryFrom,
-    isPoint,
-    KIND_NOUNS,
-    type PivotShape,
-    pivotOutline,
-    roundBoundary,
-    systemName,
-  } from '@/lib/geo'
+  import { type Boundary, boundaryAcres, boundaryErrors, type PivotShape, systemName } from '@/lib/geo'
   import OutlineMap, { type DrawMode } from '@/lib/outlines/OutlineMap.svelte'
   import {
     ACCEPT,
@@ -27,6 +15,8 @@
   } from '@/lib/outlines/read'
   import type { Reference } from '@/lib/outlines/references'
   import { formatArea } from '@/lib/plantings'
+  import FieldAreaInput from '@/lib/setup/FieldAreaInput.svelte'
+  import FieldSoilInput from '@/lib/setup/FieldSoilInput.svelte'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { fieldOutlines, fields, setup } from '@/routes'
@@ -34,9 +24,10 @@
 
   type System = PivotShape & { id: number; name: string; kind_name?: string }
 
-  // A field's outline (PLAN.md Phase 8 G.10): drawn, copied from its irrigation system, or read from
-  // a file; its acres offered for the field's area and the soil survey's main soil for its soil. For
-  // the map and suggestions only: the balance doesn't use it.
+  // A field's outline (PLAN.md Phase 8 G.10), called its shape on the page (G.6): drawn or read from a
+  // file; its acres are offered for the field's area and the soil survey under it labels the soil
+  // menu, with the field dialog's own inputs (G.14 part 5). For the map and suggestions only: the
+  // balance doesn't use it.
   let {
     field,
     pivot,
@@ -54,8 +45,6 @@
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
-  const noun = $derived(KIND_NOUNS[pivot.kind])
-  const hasShape = $derived(!isPoint(pivot.kind))
 
   let boundary = $state<Boundary | null>(untrack(() => field.boundary))
   let mode = $state<DrawMode>('view')
@@ -66,16 +55,8 @@
   const acres = $derived(boundary ? boundaryAcres(boundary) : null)
   const problems = $derived(boundary ? boundaryErrors(boundary) : [])
 
-  // The area: offered from the outline, used when the box is ticked (ticked to start when the
-  // field has no area, or the outline is new and differs from it)
-  let useArea = $state(untrack(() => field.area_acres === null))
-  const areaDiffers = $derived(acres !== null && Math.abs(acres - (field.area_acres ?? 0)) >= 0.05)
-  const roundedAcres = $derived(acres === null ? null : Math.round(acres * 100) / 100)
-
-  // The soil: the survey's suggestion, used only when asked
-  let soilTypeId = $state<number | null>(null)
-  const currentSoil = $derived(soil_types.find((soil) => soil.id === field.soil_type_id))
-  const chosenSoil = $derived(soil_types.find((soil) => soil.id === soilTypeId))
+  let area = $state<number | null>(untrack(() => field.area_acres))
+  let soilTypeId = $state(untrack(() => String(field.soil_type_id)))
 
   // The map shows the field's own system first, then the others and the other fields' outlines
   const references = $derived<Reference[]>([
@@ -87,17 +68,11 @@
   // Unsaved changes
   const initial = untrack(() => JSON.stringify(field.boundary))
   let saved = $state(false)
-  const changed = $derived(JSON.stringify(boundary) !== initial || soilTypeId !== null)
-  confirmUnsavedChanges(() => !saved && changed)
 
-  function sameAsSystem() {
-    const ring = pivotOutline(pivot, 96)
-    if (!ring) return
-    boundary = roundBoundary(boundaryFrom(ring))
-    mode = 'view'
-    fileNote = null
-    useArea = field.area_acres === null || useArea
-  }
+  const changed = $derived(
+    JSON.stringify(boundary) !== initial || soilTypeId !== String(field.soil_type_id) || area !== field.area_acres,
+  )
+  confirmUnsavedChanges(() => !saved && changed)
 
   function removeOutline() {
     boundary = null
@@ -106,12 +81,8 @@
   }
 
   // Drawing over an outline replaces it once the new one is finished, so ask first
-  function toggleDraw() {
-    if (mode === 'draw') {
-      mode = 'view'
-      return
-    }
-    if (boundary && !confirm('Draw a new outline? It replaces this one once you finish it.')) return
+  function startDraw() {
+    if (boundary && !confirm('Draw a new shape? It replaces this one once you finish it.')) return
     mode = 'draw'
     fileNote = null
   }
@@ -158,55 +129,37 @@
   const backHref = $derived(from === 'setup' ? setup.show().url : fields.show(field.id).url)
   const MODE_HINTS: Record<DrawMode, string> = {
     view: '',
-    draw: 'Click the map at each corner of the field. Click the first corner again, or press Enter, to finish.',
-    edit: 'Click the outline to select it, then drag inside it to move the whole outline, drag a corner to move it, drag a midpoint to add a corner, or right-click a corner to remove it.',
+    draw: 'Click the map at each corner of the field. The shape turns orange while its edges cross.',
+    edit: 'Drag inside the shape to move it, drag a corner to move it, drag a midpoint to add a corner, or right-click a corner to remove it. The saved shape stays dashed until the page is saved.',
   }
 </script>
 
-<svelte:head><title>Outline: {field.name} · WISP</title></svelte:head>
+<svelte:head><title>Field shape: {field.name} · WISP</title></svelte:head>
 
 <div class="space-y-1">
   <Link href={backHref} class="text-sm text-brand-600 hover:underline">← {from === 'setup' ? 'Setup' : field.name}</Link
   >
-  <h1 class="text-2xl font-semibold">Outline: {field.name}</h1>
+  <h1 class="text-2xl font-semibold">Field shape: {field.name}</h1>
   <p class="text-sm text-ink-muted">
-    Irrigation system: {systemName(pivot)}. The outline draws the field on the map and suggests its area and soil; the
-    water balance doesn't use it.
+    Irrigation system: {systemName(pivot)}. The shape draws the field on the map and measures its area, and the soil
+    survey under it suggests its soil; the water balance doesn't use the shape itself.
   </p>
 </div>
 
 <div class="space-y-3">
-  <!-- The tools wait for the map to load -->
-  <fieldset class="flex flex-wrap items-center gap-2" disabled={!ready} aria-label="Outline tools">
+  <!-- The tools wait for the map, and for the shape being drawn or edited to be saved or canceled on it -->
+  <fieldset class="flex flex-wrap items-center gap-2" disabled={!ready || mode !== 'view'} aria-label="Shape tools">
     {#if !boundary}
-      {#if hasShape}
-        <Button type="button" variant="secondary" onclick={sameAsSystem}>Same as the {noun}</Button>
-      {/if}
-      <Button type="button" variant={mode === 'draw' ? 'primary' : 'secondary'} onclick={toggleDraw}
-        >Draw the outline</Button
-      >
+      <Button type="button" variant="secondary" onclick={startDraw}>Draw the shape</Button>
     {:else}
-      <Button
-        type="button"
-        variant={mode === 'edit' ? 'primary' : 'secondary'}
-        aria-pressed={mode === 'edit'}
-        onclick={() => (mode = mode === 'edit' ? 'view' : 'edit')}>Edit corners</Button
-      >
-      <Button
-        type="button"
-        variant={mode === 'draw' ? 'primary' : 'secondary'}
-        aria-pressed={mode === 'draw'}
-        onclick={toggleDraw}>Draw a new one</Button
-      >
-      {#if hasShape}
-        <Button type="button" variant="ghost" onclick={sameAsSystem}>Same as the {noun}</Button>
-      {/if}
+      <Button type="button" variant="secondary" onclick={() => (mode = 'edit')}>Edit corners</Button>
+      <Button type="button" variant="secondary" onclick={startDraw}>Draw a new one</Button>
     {/if}
     <Button type="button" variant="ghost" disabled={reading} onclick={() => fileInput?.click()}
       >{reading ? 'Reading…' : 'Import from a file'}</Button
     >
     {#if boundary}
-      <Button type="button" variant="danger-ghost" onclick={removeOutline}>Remove the outline</Button>
+      <Button type="button" variant="danger-ghost" onclick={removeOutline}>Remove the shape</Button>
     {/if}
     <input
       bind:this={fileInput}
@@ -214,14 +167,14 @@
       accept={ACCEPT}
       class="sr-only"
       tabindex="-1"
-      aria-label="Outline file"
+      aria-label="Shape file"
       onchange={readFile}
     />
   </fieldset>
   {#if MODE_HINTS[mode]}
     <p class="text-sm text-ink-muted" aria-live="polite">{MODE_HINTS[mode]}</p>
   {:else if fileNote}
-    <p class="text-sm text-ink-muted">From the file: {fileNote}. A field's outline is one shape without holes.</p>
+    <p class="text-sm text-ink-muted">From the file: {fileNote}. A field's shape is one piece without holes.</p>
   {/if}
   {#if fileError}
     <p class="text-sm text-status-irrigate-ink" role="alert">{fileError}</p>
@@ -243,11 +196,21 @@
           </li>
         {/each}
       </ul>
-      <p class="mt-2 text-xs text-ink-muted">To outline several fields at once, use Import field outlines in Setup.</p>
+      <p class="mt-2 text-xs text-ink-muted">
+        To add shapes for several fields at once, use Import field shapes in Setup.
+      </p>
     </div>
   {/if}
 
-  <OutlineMap bind:this={map} bind:boundary bind:mode bind:ready {references} />
+  <OutlineMap
+    bind:this={map}
+    bind:boundary
+    bind:mode
+    bind:ready
+    saved={field.boundary}
+    {references}
+    soilTypes={soil_types}
+  />
 </div>
 
 <Form
@@ -257,68 +220,52 @@
 >
   {#snippet children({ errors, processing })}
     <input type="hidden" name="outline[boundary]" value={boundary ? JSON.stringify(boundary) : ''} />
-    {#if boundary && useArea && roundedAcres !== null}
-      <input type="hidden" name="outline[area_acres]" value={roundedAcres} />
-    {/if}
-    {#if soilTypeId !== null}
-      <input type="hidden" name="outline[soil_type_id]" value={soilTypeId} />
-    {/if}
 
     {#if problems.length || errors.boundary}
       <div class="rounded-md border border-status-irrigate px-3 py-2 text-sm" role="alert">
-        The outline {(errors.boundary ? listed(errors.boundary) : problems).join('; ')}.
+        The shape {(errors.boundary ? listed(errors.boundary) : problems).join('; ')}.
       </div>
     {/if}
 
-    <div class="grid gap-4 md:grid-cols-2">
+    <!-- Each card its own height: the soil survey arriving doesn't stretch the area's -->
+    <div class="grid items-start gap-4 md:grid-cols-2">
       <section class="space-y-2 rounded-lg border border-line bg-surface-raised p-4 text-sm">
         <h2 class="font-medium">Area</h2>
-        {#if acres !== null}
-          <p>
-            The outline: <span class="font-medium">{formatArea(units, acres)}</span>. The field: {field.area_acres ===
-            null
-              ? 'no area set'
-              : formatArea(units, field.area_acres)}.
-          </p>
-          {#if areaDiffers}
-            <label class="flex items-start gap-2">
-              <input type="checkbox" class="mt-0.5 rounded" bind:checked={useArea} />
-              <span>Use {formatArea(units, acres)} for the field's area</span>
-            </label>
-            {#if field.ended_years.length}
-              <p class="text-xs text-ink-muted">Seasons that have ended keep the area they ran with.</p>
-            {/if}
-          {/if}
-        {:else}
-          <p class="text-ink-muted">Draw or import the outline to measure it.</p>
+        {#if acres === null}
+          <p class="text-ink-muted">Draw or import the field's shape to measure it.</p>
         {/if}
-        {#if errors.area_acres}<p class="text-status-irrigate-ink">Area {listed(errors.area_acres).join('; ')}</p>{/if}
+        <FieldAreaInput
+          name="outline[area_acres]"
+          bind:value={area}
+          saved={field.area_acres}
+          drawn={acres}
+          error={errors.area_acres}
+        />
+        {#if field.ended_years.length && area !== field.area_acres}
+          <p class="text-xs text-ink-muted">Seasons that have ended keep the area they ran with.</p>
+        {/if}
       </section>
 
       <section class="space-y-2 rounded-lg border border-line bg-surface-raised p-4 text-sm">
         <h2 class="font-medium">Soil</h2>
-        <p>
-          The field: {currentSoil?.name}{#if chosenSoil}
-            {` → ${chosenSoil.name} when saved `}<button
-              type="button"
-              class="text-brand-600 underline underline-offset-2"
-              onclick={() => (soilTypeId = null)}>Keep {currentSoil?.name}</button
-            >{/if}
-        </p>
-        {#if boundary && !problems.length}
-          <SoilSurvey
-            {boundary}
-            soilTypes={soil_types}
-            onuse={(soil) => (soilTypeId = soil.id === field.soil_type_id ? null : soil.id)}
-          />
+        <FieldSoilInput
+          name="outline[soil_type_id]"
+          bind:value={soilTypeId}
+          soilTypes={soil_types}
+          saved={field.soil_type_id}
+          boundary={boundary && !problems.length ? boundary : null}
+          error={errors.soil_type}
+        />
+        {#if field.ended_years.length && soilTypeId !== String(field.soil_type_id)}
+          <p class="text-xs text-ink-muted">Seasons that have ended keep the soil they ran with.</p>
         {/if}
       </section>
     </div>
 
     <div class="flex items-center gap-3">
-      <Button type="submit" disabled={processing || problems.length > 0 || mode === 'draw'}>Save</Button>
+      <Button type="submit" disabled={processing || problems.length > 0 || mode !== 'view'}>Save</Button>
       <Link href={backHref} class="text-sm text-brand-600 hover:underline">Cancel</Link>
-      {#if mode === 'draw'}<span class="text-sm text-ink-muted">Finish the outline you're drawing first.</span>{/if}
+      {#if mode !== 'view'}<span class="text-sm text-ink-muted">Save or cancel the shape on the map first.</span>{/if}
     </div>
   {/snippet}
 </Form>

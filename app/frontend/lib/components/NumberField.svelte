@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte'
+  import { type Snippet, untrack } from 'svelte'
   import { page } from '@inertiajs/svelte'
 
   import { parseNumber, type Quantity, units as unitsFor } from '@/lib/units'
@@ -18,6 +18,7 @@
     unitLabel,
     scale = 1,
     hideLabel = false,
+    after,
     id = `field-${(name ?? label).replace(/[^a-z0-9]+/gi, '-')}`,
   }: {
     label: string
@@ -37,6 +38,8 @@
     scale?: number
     /** Label for screen readers only (in table cells) */
     hideLabel?: boolean
+    /** Beside the box, after its unit (a button that fills it) */
+    after?: Snippet
     id?: string
   } = $props()
 
@@ -85,6 +88,7 @@
       {placeholder}
     />
     {#if suffix && !hideLabel}<span class="shrink-0 text-sm text-ink-muted">{suffix}</span>{/if}
+    {@render after?.()}
   </div>
   {#if name}<input type="hidden" {name} value={value ?? ''} />{/if}
   {#if message}

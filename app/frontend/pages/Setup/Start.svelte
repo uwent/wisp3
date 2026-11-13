@@ -242,13 +242,13 @@
             <h2 class="text-lg font-medium">3. Fields</h2>
             <p class="text-sm text-ink-muted">
               Add each field this {noun} waters; a pivot split between two fields you manage separately is two fields. A field
-              is the land: after saving, you'll add what's planted on each one this season. You can draw each field's outline
-              on the map later, or import outlines from a shapefile, KML or GeoJSON file.
+              is the land: after saving, you'll add what's planted on each one this season. You can draw each field's shape
+              on the map later, or import shapes from a shapefile, KML or GeoJSON file.
             </p>
           </div>
           {#if fieldsLater}
             <p class="text-sm">
-              You'll add fields in Setup, by hand or by importing their outlines.
+              You'll add fields in Setup, by hand or by importing their shapes.
               <button
                 type="button"
                 class="text-brand-600 underline underline-offset-2"

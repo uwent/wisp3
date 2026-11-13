@@ -264,16 +264,17 @@
         <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a> or your own
         measurements, enter them instead.
         <p>
-          A field can have an <strong>outline</strong> (optional): copied from its pivot's or linear's shape, drawn on
-          the map, or read from a file. <strong>Import field outlines</strong> in Setup reads FSA field boundaries (Common
-          Land Units) or boundaries exported from John Deere Operations Center, Climate FieldView or Google Earth, as a zipped
-          shapefile, GeoJSON, or KML, and matches each to a field of the same name or adds it as a new field. The file is
-          read in your browser; only the outlines you save are sent. On the map an outlined field is drawn in white with its
-          name, and each of its plantings' status badges sits at its center. WISP offers the outline's acres for the field's
-          area and the soil survey's main soil in it for its soil; the water balance doesn't use it otherwise. An irrigation
-          system doesn't move with its fields' outlines, since its location sets the weather, so Setup lists any outline that
-          isn't under its pivot or linear, or is more than a quarter mile from its traveler, drip block or other system without
-          a shape.
+          A field can have a <strong>shape</strong> (optional): copied from its pivot's or linear's, drawn on the map,
+          or read from a file, with <strong>Draw/import field shape</strong> on the field's page.
+          <strong>Import field shapes</strong> in Setup reads FSA field boundaries (Common Land Units) or boundaries exported
+          from John Deere Operations Center, Climate FieldView or Google Earth, as a zipped shapefile, GeoJSON, or KML, and
+          matches each to a field of the same name or adds it as a new field. The file is read in your browser; only the shapes
+          you save are sent. On the map a field with a shape is drawn in white with its name, and each of its plantings' status
+          badges sits at its center. A new or changed shape sets the field's area to its acres unless you type another (with
+          a warning if the two are far apart), and the soil survey's main soil in it is offered for its soil; the water balance
+          doesn't use the shape otherwise. An irrigation system doesn't move with its fields' shapes, since its location sets
+          the weather, so Setup lists any field shape that isn't under its pivot or linear, or is more than a quarter mile
+          from its traveler, drip block or other system without a shape.
         </p>
       </li>
       <li>
@@ -304,9 +305,9 @@
       places its irrigation system on the map, and lists the fields it waters with their soil; the system and the fields
       can each wait if you'd rather set them up later. Setup then shows the next steps: the fields still to add (by
       hand, or with
-      <strong>Import field outlines</strong>), and a planting for each field this season. Until the first planting is
-      in, the dashboard keeps a checklist of what's left. Everything can be changed later in Setup, where each field
-      shows its season's plantings on a timeline; click one to change it. Each spring,
+      <strong>Import field shapes</strong>), and a planting for each field this season. Until the first planting is in,
+      the dashboard keeps a checklist of what's left. Everything can be changed later in Setup, where each field shows
+      its season's plantings on a timeline; click one to change it. Each spring,
       <strong>Copy last season's plantings</strong>
       brings your plantings forward a year with the same settings.
     </p>
@@ -320,8 +321,8 @@
       <li>
         <strong>Map:</strong> one season at a time. Each irrigation system is drawn where it is, in its own color: a
         pivot or linear as its shape, the others as their kind's symbol. Each field shows a status badge per planting,
-        at the center of its outline if it has one, and each irrigation group is outlined. Beside the map the operation
-        is listed farm by farm, most urgent first or north to south; <strong>Irrigate: Soon</strong> or
+        at the center of its shape if it has one, and each irrigation group is outlined. Beside the map the operation is
+        listed farm by farm, most urgent first or north to south; <strong>Irrigate: Soon</strong> or
         <strong>Now</strong> narrows it to fields needing water within 3 days or today. Choose a farm or group to zoom to
         it, or a system or field, on the map or in the list, to see its plantings and weather. Layers add radar, rain over
         the last 24 or 72 hours, the National Weather Service's forecast rain, and the U.S. Drought Monitor; point at the
@@ -672,10 +673,10 @@ t: days since emergence; t′: days since the decline starts</code
       </li>
       <li>
         Dragging a pivot's or linear's handles on the map needs a mouse or touch, but every handle also has a box below
-        the map where you can type the same values. Drawing a field's outline also needs a mouse or touch; an outline
-        can instead be copied from its pivot or linear with one button, or read from a file. The optional map layers
-        (radar, rain, drought) are images from outside services and are described by their legends and by the values
-        shown under the pointer.
+        the map where you can type the same values. Drawing a field's shape also needs a mouse or touch; a shape can
+        instead be copied from its pivot or linear with one button, or read from a file. The optional map layers (radar,
+        rain, drought) are images from outside services and are described by their legends and by the values shown under
+        the pointer.
       </li>
     </ul>
     <p>
@@ -697,10 +698,10 @@ t: days since emergence; t′: days since the decline starts</code
         The map shows one season at a time, draws each irrigation system in its own color with its kind's symbol, and
         lists the operation farm by farm beside it (see <a href="#day-to-day">Day to day</a>).
       </dd>
-      <dt>November 2026: field outlines</dt>
+      <dt>November 2026: field shapes</dt>
       <dd>
-        A field can have an outline, drawn, copied from its pivot or linear, or imported with others from a shapefile,
-        GeoJSON or KML file. Outlined fields are drawn on the map, with a badge per planting at the center (see <a
+        A field can have a shape, drawn, copied from its pivot or linear, or imported with others from a shapefile,
+        GeoJSON or KML file. Fields with a shape are drawn on the map, with a badge per planting at the center (see <a
           href="#getting-started">Getting started</a
         >).
       </dd>

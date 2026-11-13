@@ -44,7 +44,7 @@ describe('outlines to check', () => {
   it("lists a field that isn't under its pivot, with how far", () => {
     const pivot = { ...system('center', -89.5, 44.1), name: 'North 160' }
     expect(outlineProblems(pivot, [{ id: 1, name: 'Home North', boundary: square(-89.45, 44.1) }], 'imperial')).toEqual(
-      [{ fieldId: 1, message: "Home North's outline isn't under North 160 (pivot), 2.2 mi away" }],
+      [{ fieldId: 1, message: "Home North's shape isn't under North 160 (pivot), 2.2 mi away" }],
     )
   })
 
@@ -54,7 +54,7 @@ describe('outlines to check', () => {
     const far = square(-89.37, 44.1)
     expect(outlineProblems(traveler, [{ id: 1, name: 'Near', boundary: near }], 'imperial')).toEqual([])
     expect(outlineProblems(traveler, [{ id: 2, name: 'Far', boundary: far }], 'metric')).toEqual([
-      { fieldId: 2, message: "Far's outline is 2.4 km from Lane 3 (traveler)" },
+      { fieldId: 2, message: "Far's shape is 2.4 km from Lane 3 (traveler)" },
     ])
   })
 
