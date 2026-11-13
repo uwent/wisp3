@@ -34,10 +34,11 @@ class FieldsController < AuthenticatedController
 
   def create
     field = Current.group.pivots.find(field_params[:pivot_id]).fields.build(field_params)
+    # Back to Setup as it was (its season, or quick setup's next steps)
     if field.save
-      redirect_to setup_path, notice: "Added #{field.name}"
+      redirect_back_or_to setup_path, notice: "Added #{field.name}"
     else
-      redirect_with_errors setup_path, field
+      redirect_with_errors(request.referer || setup_path, field)
     end
   end
 

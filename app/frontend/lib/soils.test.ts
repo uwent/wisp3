@@ -5,6 +5,7 @@ import {
   parseSoilAreas,
   parseSoilTable,
   soilAreaQuery,
+  soilFit,
   soilKeyFor,
   soilOptionsByShare,
   soilQuery,
@@ -160,5 +161,47 @@ describe("a plot's soil menu on a field with an outline (G.11, G.10)", () => {
       { value: '2', label: 'Loam, 15% of the field' },
       { value: '1', label: 'Sand' },
     ])
+  })
+})
+
+describe("a field's chosen soil against the survey under its pivot (G.6)", () => {
+  const soils = [
+    { key: 'sand', name: 'Sand' },
+    { key: 'loamy_sand', name: 'Loamy Sand' },
+    { key: 'muck', name: 'Muck' },
+  ]
+  const [sand, loamySand, muck] = soils
+  const shares = new Map([
+    ['sand', 0.7],
+    ['loamy_sand', 0.2],
+  ])
+
+  it('says nothing for the main soil', () => {
+    expect(soilFit(sand, shares, soils)).toBeNull()
+  })
+
+  it('notes a soil the survey finds none of, offering the main one', () => {
+    expect(soilFit(muck, shares, soils)).toEqual({
+      note: "The soil survey finds no muck under the pivot; it's mostly sand.",
+      main: sand,
+      absent: true,
+    })
+  })
+
+  it("notes a soil that's only part of the area", () => {
+    expect(soilFit(loamySand, shares, soils)?.absent).toBe(false)
+    expect(soilFit(loamySand, shares, soils, 'around the traveler')?.note).toBe(
+      "The soil survey finds only 20% loamy sand around the traveler; it's mostly sand.",
+    )
+  })
+
+  it('with no main soil, notes only a soil that is absent', () => {
+    const mixed = new Map([['sand', 0.3]])
+    expect(soilFit(sand, mixed, soils)).toBeNull()
+    expect(soilFit(muck, mixed, soils)).toEqual({
+      note: 'The soil survey finds no muck under the pivot.',
+      main: null,
+      absent: true,
+    })
   })
 })

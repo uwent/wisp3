@@ -29,7 +29,7 @@ function regular(corners: number, radius = 12): Point[] {
 
 export const GLYPH_CORNERS: Record<Glyph, Point[]> = {
   circle: regular(64),
-  // A linear move is wider than it travels, drawn turned to its direction of travel
+  // A linear is wider than it travels, drawn turned to its direction of travel
   rectangle: [
     [0, 5],
     [24, 5],

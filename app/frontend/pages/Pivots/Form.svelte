@@ -106,6 +106,7 @@
           error={(attribute) => errors[attribute]}
           others={other_pivots}
           soilTypes={soil_types}
+          surveyLevel="h2"
         />
       </section>
 

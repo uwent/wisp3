@@ -5,7 +5,7 @@ class Pivot < ApplicationRecord
   LONGITUDES = -180.0..-52.0
 
   # A pivot in code is any irrigation system (PLAN.md Phase 8 G.5); growers see its kind's name.
-  # A center pivot is a circle (or an arc of one) around its location; a linear move is a machine
+  # A center pivot is a circle (or an arc of one) around its location; a linear is a machine
   # length_ft long traveling travel_ft along travel_bearing_deg (whole degrees from north, 0–179, as
   # it runs both ways), a rectangle centered on its location. The other kinds are a point with no
   # dimensions: the place watered one way, whose area comes from its fields (a traveler is set up at

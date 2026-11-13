@@ -162,6 +162,30 @@ export function soilOptionsByShare<T extends { id: number; key: string; name: st
 }
 
 /**
+ * How a chosen soil fits the survey of the area (G.6): null when it's the main soil there, or the
+ * survey has no main soil and finds some of it; otherwise a note ("The soil survey finds no muck
+ * under the pivot; it's mostly sand.") and the main soil to offer instead. `near` places the area
+ * ("under the pivot", "around the traveler").
+ */
+export function soilFit<T extends { key: string; name: string }>(
+  chosen: T,
+  shares: Map<string, number>,
+  soilTypes: T[],
+  near = 'under the pivot',
+): { note: string; main: T | null; absent: boolean } | null {
+  const share = shares.get(chosen.key) ?? 0
+  const matched = [...shares.values()].reduce((sum, value) => sum + value, 0)
+  const [best] = [...shares.entries()].sort((a, b) => b[1] - a[1])
+  const main = best && matched >= 0.5 ? (soilTypes.find((soil) => soil.key === best[0]) ?? null) : null
+  if (main?.key === chosen.key || (!main && share > 0)) return null
+  const name = chosen.name.toLowerCase()
+  const mostly = main ? `; it's mostly ${main.name.toLowerCase()}` : ''
+  const amount = share === 0 ? 'no' : `only ${Math.max(1, Math.round(share * 100))}%`
+  const note = `The soil survey finds ${amount} ${name} ${near}${mostly}.`
+  return { note, main, absent: share === 0 }
+}
+
+/**
  * The soil type covering the most of the pivot (adding up map units of the same type), if the map
  * units we can match cover at least half of it (not mostly water, peat or unsurveyed)
  */

@@ -372,12 +372,23 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(cards["Bare"][:plantings]).to eq([])
     end
 
-    # Dashboard/Show offers the guided setup when there are no farms; the props are all the server decides
-    it "gives a new account's dashboard no farms" do
-      sign_in create(:user)
+    # Dashboard/Show shows the getting started checklist until there's a planting (G.6); the counts
+    # are all the server decides
+    it "gives a new account's dashboard no farms and the checklist's counts" do
+      newcomer = create(:user)
+      sign_in newcomer
       get root_path
       expect_inertia.to render_component("Dashboard/Show")
-      expect(inertia.props).to include(farms: [], today: "2026-07-20")
+      expect(inertia.props).to include(farms: [], today: "2026-07-20", getting_started: {"farms" => 0, "systems" => 0, "fields" => 0})
+
+      create(:field, pivot: create(:pivot, farm: create(:farm, group: newcomer.groups.first)))
+      get root_path
+      expect(inertia.props[:getting_started]).to eq("farms" => 1, "systems" => 1, "fields" => 1)
+    end
+
+    it "drops the checklist once the operation has a planting" do
+      get root_path
+      expect(inertia.props[:getting_started]).to be_nil
     end
   end
 

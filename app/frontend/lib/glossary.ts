@@ -147,7 +147,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Irrigation system',
     matches: ['irrigation system', 'irrigation systems'],
     definition:
-      'A place watered one way: a center pivot, a linear move, a traveler, a solid set or drip block, or just a ' +
+      'A place watered one way: a center pivot, a linear, a traveler, a solid set or drip block, or just a ' +
       'location. Its location sets the weather for its fields, and irrigation entered for it applies to them. A ' +
       'traveler moved between fields is set up at each field it waters.',
   },

@@ -235,7 +235,7 @@
         so put it where it really is. It's one of these:
         <ul>
           <li><strong>Pivot</strong> (center pivot): a circle, or part of one.</li>
-          <li><strong>Linear</strong> (linear move): the rectangle the machine travels along.</li>
+          <li><strong>Linear</strong>: the rectangle the machine travels along.</li>
           <li>
             <strong>Traveler:</strong> a hard hose reel or big gun moved between fields. Set up a traveler at each field (or
             set of fields) it waters, and give each the machine's name under Equipment; enter irrigation on the one for the

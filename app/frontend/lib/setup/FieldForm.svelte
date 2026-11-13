@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { systemName } from '@/lib/geo'
+  import { isPoint, systemName } from '@/lib/geo'
   import { Form, Link } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
@@ -10,6 +10,7 @@
   import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import type { PivotShape } from '@/lib/geo'
+  import { soilFit, soilOptionsByShare } from '@/lib/soils'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { fieldOutline, fields } from '@/routes'
   import type { Field, Pivot, SoilType } from '@/types/serializers'
@@ -55,7 +56,21 @@
   const shape = $derived(
     !field && pivot?.latitude != null && pivot.longitude != null ? ({ kind: 'center', ...pivot } as PivotShape) : null,
   )
-  function suggestSoil(suggested: SoilType | null) {
+  // Each soil type's share under the pivot once the survey answers, to label the menu and note a
+  // soil that doesn't fit it (G.6)
+  let shares = $state<Map<string, number> | null>(null)
+  const fit = $derived(
+    soil && shares && shape
+      ? soilFit(soil, shares, soilTypes, `${isPoint(shape.kind) ? 'around' : 'under'} ${pivot!.name}`)
+      : null,
+  )
+  const soilOptions = $derived(
+    shares && shape
+      ? soilOptionsByShare(soilTypes, shares, pivot!.name)
+      : soilTypes.map((s) => ({ value: String(s.id), label: s.name })),
+  )
+  function suggestSoil(suggested: SoilType | null, found: Map<string, number>) {
+    shares = found
     if (soilChosen || !suggested) return
     soilTypeId = String(suggested.id)
     fromSurvey = true
@@ -131,10 +146,22 @@
           soilChosen = true
           fromSurvey = false
         }}
-        options={soilTypes.map((s) => ({ value: String(s.id), label: s.name }))}
+        options={soilOptions}
         error={errors.soil_type}
         hint={fromSurvey ? 'From the soil survey' : undefined}
+        note={fit ? soilNote : undefined}
       />
+      {#snippet soilNote()}
+        <p class={fit!.absent ? 'text-status-caution-ink' : 'text-ink-muted'}>{fit!.note}</p>
+        {#if fit!.main}<button
+            type="button"
+            class="mt-0.5 block text-brand-600 underline underline-offset-2"
+            onclick={() => {
+              soilTypeId = String(fit!.main!.id)
+              soilChosen = true
+            }}>Use {fit!.main.name}</button
+          >{/if}
+      {/snippet}
       {#if shape}
         <SoilSurvey {shape} {soilTypes} onsuggest={suggestSoil} />
       {/if}

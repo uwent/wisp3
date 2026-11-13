@@ -1,6 +1,6 @@
 <script lang="ts">
   import { type Boundary, isPoint, KIND_NOUNS, type PivotShape, surveyRing } from '@/lib/geo'
-  import { fetchSoilSurvey, type MapUnit, soilKeyFor, type SoilSuggestion, suggestSoil } from '@/lib/soils'
+  import { fetchSoilSurvey, type MapUnit, soilKeyFor, soilShares, type SoilSuggestion, suggestSoil } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
 
   // What the soil survey (SSURGO) says is under an irrigation system (its outline, or a small circle
@@ -19,8 +19,9 @@
     /** A field's outline, read in place of a pivot */
     boundary?: Boundary | null
     soilTypes: SoilType[]
-    /** The suggested soil type (or null for none), each time the survey answers */
-    onsuggest?: (soilType: SoilType | null) => void
+    /** The suggested soil type (or null for none) and each soil type's share of the area, each time
+     * the survey answers */
+    onsuggest?: (soilType: SoilType | null, shares: Map<string, number>) => void
     /** With it, a button to use the suggested soil */
     onuse?: (soilType: SoilType) => void
   } = $props()
@@ -63,7 +64,7 @@
           suggestion = suggestSoil(units)
           lookup = 'done'
           const key = suggestion.key
-          onsuggest?.(key ? (soilTypes.find((s) => s.key === key) ?? null) : null)
+          onsuggest?.(key ? (soilTypes.find((s) => s.key === key) ?? null) : null, soilShares(units))
         })
         .catch((error: Error) => {
           if (error.name !== 'AbortError') lookup = 'error'

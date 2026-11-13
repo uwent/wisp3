@@ -64,7 +64,7 @@ describe('geo', () => {
   })
 })
 
-describe('linear moves', () => {
+describe('linears', () => {
   const feet = (a: LngLat, b: LngLat) => distanceM(a, b) * 3.28084
 
   const north = { lengthFt: 1300, travelFt: 2640, bearingDeg: 0 }

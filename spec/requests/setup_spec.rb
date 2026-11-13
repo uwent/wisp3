@@ -53,7 +53,7 @@ RSpec.describe "Setup", type: :request do
       expect(WeatherUpdateJob).to have_been_enqueued.with(pivot.weather_cell_id)
     end
 
-    it "creates a linear move" do
+    it "creates a linear" do
       post pivots_path, params: {pivot: {farm_id: farm.id, name: "Ditch linear", kind: "linear", latitude: 44.11,
                                          longitude: -89.54, length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30,
                                          radius_ft: 1300}}
@@ -258,9 +258,7 @@ RSpec.describe "Setup", type: :request do
   end
 
   describe "guided first-run setup" do
-    let(:corn) { create(:plant, :field_corn) }
-
-    it "creates a farm, a pivot and its fields with this season's crops in one go" do
+    it "creates a farm, an irrigation system and its fields, with no plantings, then shows the next steps" do
       get new_quick_setup_path
       expect_inertia.to render_component("Setup/Start")
 
@@ -269,64 +267,67 @@ RSpec.describe "Setup", type: :request do
         pivot: {name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300, arc_start_deg: 30,
                 arc_end_deg: 300},
         fields: {
-          "0" => {name: "North potatoes", area_acres: 70, soil_type_id: sand.id, plant_id: potato.id, emergence_date: "2026-05-20"},
-          "1" => {name: "North corn", area_acres: 55, soil_type_id: sand.id, plant_id: corn.id, end_date: "2026-09-20"}
+          "0" => {name: "North potatoes", area_acres: 70, soil_type_id: sand.id},
+          "1" => {name: "North corn", area_acres: 55, soil_type_id: sand.id}
         }
       }}
-      expect(response).to redirect_to(root_path)
       pivot = group.farms.sole.pivots.sole
+      expect(response).to redirect_to(setup_path(started_pivot: pivot.id))
       expect(pivot).to have_attributes(kind: "center", arc_start_deg: 30, arc_end_deg: 300)
-      expect(pivot.fields.map(&:name)).to eq(["North corn", "North potatoes"])
-      expect(pivot.fields.flat_map(&:plantings).map { |p| [p.plant.name, p.emergence_date] })
-        .to contain_exactly(["Field Corn", Date.new(2026, 5, 1)], ["Potato", Date.new(2026, 5, 20)])
-      # The harvest given, or the crop's typical one after the emergence (G.2)
-      expect(pivot.fields.flat_map(&:plantings).map { |p| [p.plant.name, p.end_date] })
-        .to contain_exactly(["Field Corn", Date.new(2026, 9, 20)], ["Potato", Date.new(2026, 9, 2)])
+      expect(pivot.fields.map(&:name)).to contain_exactly("North corn", "North potatoes")
+      expect(Planting.count).to eq(0)
+
+      follow_redirect!
+      expect(inertia.props[:started]).to eq("farm_id" => pivot.farm_id, "pivot_id" => pivot.id)
     end
 
-    it "saves nothing and reports every problem by input" do
+    it "saves a new farm alone when the irrigation system is left for later" do
+      post quick_setup_path, params: {setup: {farm: {name: "Hancock"}}}
+      farm = group.farms.sole
+      expect(response).to redirect_to(setup_path(started_farm: farm.id))
+      expect(farm.pivots).to be_empty
+      follow_redirect!
+      expect(inertia.props[:started]).to eq("farm_id" => farm.id, "pivot_id" => nil)
+    end
+
+    it "saves an irrigation system without fields, skipping blank rows" do
+      post quick_setup_path, params: {setup: {farm: {name: "Hancock"}, pivot: {name: "North", latitude: 44.1, longitude: -89.5},
+                                              fields: {"0" => {name: "", area_acres: "", soil_type_id: sand.id}}}}
+      pivot = group.farms.sole.pivots.sole
+      expect(response).to redirect_to(setup_path(started_pivot: pivot.id))
+      expect(pivot.fields).to be_empty
+    end
+
+    it "saves nothing and reports every problem by input, keeping each row's own index" do
       post quick_setup_path, params: {setup: {
         farm: {name: "Hancock"},
         pivot: {name: "North", latitude: 44.1, longitude: -89.5},
-        fields: {"0" => {name: "", soil_type_id: sand.id, plant_id: potato.id}, "1" => {name: "B", soil_type_id: sand.id}}
+        fields: {"0" => {name: "", soil_type_id: sand.id}, "1" => {name: "", area_acres: "-3", soil_type_id: sand.id}}
       }}
       follow_redirect!
-      expect(inertia.props[:errors]).to include("fields.0.name", "fields.1.plant_id")
+      expect(inertia.props[:errors].keys).to contain_exactly("fields.1.name", "fields.1.area_acres")
       expect(group.farms).to be_empty
     end
 
-    it "keys the farm's, pivot's and crop's errors by their inputs" do
+    it "keys the farm's and system's errors by their inputs" do
       post quick_setup_path, params: {setup: {farm: {name: ""}, pivot: {name: "North"}, fields: {}}}
       follow_redirect!
       expect(inertia.props[:errors].keys).to include("farm.name", "pivot.latitude", "pivot.longitude")
-
-      post quick_setup_path, params: {setup: {farm: {name: "Hancock"}, pivot: {name: "North", latitude: 44.1, longitude: -89.5},
-                                              fields: {"0" => {name: "East", soil_type_id: sand.id, plant_id: potato.id, emergence_date: "2026-12-15"}}}}
-      follow_redirect!
-      expect(inertia.props[:errors]).to include("fields.0.end_date" => ["Harvest or kill date must be on or after emergence"])
-      expect(group.farms).to be_empty
-    end
-
-    it "creates a pivot without fields, skipping blank rows, and points to setup to add them" do
-      post quick_setup_path, params: {setup: {farm: {name: "Hancock"}, pivot: {name: "North", latitude: 44.1, longitude: -89.5},
-                                              fields: {"0" => {name: "", area_acres: "", soil_type_id: sand.id, plant_id: "", emergence_date: ""}}}}
-      expect(response).to redirect_to(setup_path)
-      expect(flash[:notice]).to include("Add its fields")
-      expect(group.farms.sole.pivots.sole.fields).to be_empty
-    end
-
-    it "reports errors by each row's own index when an earlier row is blank" do
-      post quick_setup_path, params: {setup: {farm: {name: "Hancock"}, pivot: {name: "North", latitude: 44.1, longitude: -89.5},
-                                              fields: {"0" => {name: "", soil_type_id: sand.id}, "1" => {name: "B", soil_type_id: sand.id}}}}
-      follow_redirect!
-      expect(inertia.props[:errors].keys).to eq(["fields.1.plant_id"])
       expect(group.farms).to be_empty
     end
 
     it "adds to an existing farm" do
       post quick_setup_path, params: {setup: {farm_id: farm.id, pivot: {name: "East", latitude: 44.1, longitude: -89.5},
-                                              fields: {"0" => {name: "East", soil_type_id: sand.id, plant_id: potato.id}}}}
+                                              fields: {"0" => {name: "East", soil_type_id: sand.id}}}}
       expect(farm.pivots.sole.fields.sole.name).to eq("East")
+    end
+
+    it "shows no next steps for another group's farm or system" do
+      other = create(:pivot)
+      get setup_path(started_pivot: other.id)
+      expect(inertia.props[:started]).to be_nil
+      get setup_path(started_farm: other.farm_id)
+      expect(inertia.props[:started]).to be_nil
     end
   end
 

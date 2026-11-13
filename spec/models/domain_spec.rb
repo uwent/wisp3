@@ -126,7 +126,7 @@ RSpec.describe "Domain models" do
       expect(pivot.errors[:radius_ft].sole).to include("longer than any center pivot")
     end
 
-    it "is a linear move with its length, travel and direction, within a machine's size" do
+    it "is a linear with its length, travel and direction, within a machine's size" do
       linear = ->(**shape) { build(:pivot, kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 0, **shape) }
       expect(linear.call).to be_valid
       expect(linear.call(length_ft: 3300, travel_ft: 5280, travel_bearing_deg: 179)).to be_valid

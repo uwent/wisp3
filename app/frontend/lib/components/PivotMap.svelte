@@ -42,7 +42,7 @@
 
   // The pivot location picker (PLAN.md §4): click the map to place the pivot's center, drag the
   // center or the handles to adjust it. A center pivot has a handle on its edge for the radius and,
-  // for a partial circle, one at each end of the arc; a linear move has handles on two opposite
+  // for a partial circle, one at each end of the arc; a linear has handles on two opposite
   // corners (its front left and back right, facing its direction of travel) and one past its front
   // end that turns it. A point kind (a traveler, drip, a location) is just the pin. The group's
   // other irrigation systems are drawn for reference. A place search moves
@@ -52,7 +52,7 @@
     shape = $bindable(),
     others = [],
     soilTypes = [],
-    height = '24rem',
+    height = 'min(36rem, 60vh)',
   }: {
     shape: ShapeDraft
     others?: Outline[]
@@ -76,7 +76,7 @@
   // Where to click, for each kind
   const PLACE_HINTS: Record<PivotKind, string> = {
     center: 'Click the map at the center of the pivot, or enter its coordinates below',
-    linear: 'Click the map in the middle of the area the linear move irrigates, or enter its coordinates below',
+    linear: 'Click the map in the middle of the area the linear irrigates, or enter its coordinates below',
     traveler: 'Click the map at the field this traveler waters, or enter its coordinates below',
     solid_set: 'Click the map at the middle of the solid set block, or enter its coordinates below',
     drip: 'Click the map at the middle of the drip block, or enter its coordinates below',
@@ -257,9 +257,9 @@
     radius: { className: 'rounded-full bg-[#1c5cab]', title: 'Drag to set the radius' },
     start: { className: 'rounded-full bg-white', title: 'Drag to set where the arc starts' },
     end: { className: 'rounded-full bg-white', title: 'Drag to set where the arc ends' },
-    frontLeft: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear move' },
-    backRight: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear move' },
-    rotate: { className: 'rounded-full bg-white', title: 'Drag to turn the linear move' },
+    frontLeft: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear' },
+    backRight: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear' },
+    rotate: { className: 'rounded-full bg-white', title: 'Drag to turn the linear' },
   }
 
   // Each handle's cursor: circling arrows for those that turn about the center, and a double arrow
@@ -684,7 +684,7 @@
         >{point
           ? `Drag the pin to move the ${noun}.`
           : linear
-            ? 'Drag the pin to move the linear move, the square corner handles to resize it, or the round handle to turn it.'
+            ? 'Drag the pin to move the linear, the square corner handles to resize it, or the round handle to turn it.'
             : arc
               ? 'Drag the pin to move the pivot, the blue handle to set its radius, or the white handles to set the ends of its arc.'
               : 'Drag the pin to move the pivot, or the round handle to set its radius.'}</span

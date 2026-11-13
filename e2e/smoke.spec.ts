@@ -239,10 +239,70 @@ test('quick setup suggests the soil from the soil survey under the pivot', async
     }),
   )
   await page.goto('/setup/start')
+  await expect(page.getByText('Place the pivot on the map to see the soils around it')).toBeVisible()
+  await expect(page.getByLabel('Radius')).toHaveValue('')
   await page.getByRole('application', { name: /click to place the pivot/ }).click()
+  await expect(page.getByLabel('Radius')).not.toHaveValue('')
   await expect(page.getByText(/Soil survey:\s*mostly Sand/)).toBeVisible()
-  await expect(page.getByLabel('Soil').locator('option:checked')).toHaveText('Sand')
+  // The menu gives each soil's share, the survey's main one chosen
+  const soil = page.getByLabel('Soil', { exact: true })
+  await expect(soil.locator('option:checked')).toHaveText('Sand, 55% of the pivot')
+  await expect(soil.locator('option').nth(1)).toHaveText('Loamy Sand, 45% of the pivot')
   await expect(page.getByText('From the soil survey')).toBeVisible()
+
+  // A soil the survey doesn't find there is noted, with the main one offered (G.6)
+  await soil.selectOption({ label: 'Muck' })
+  await expect(page.getByText("The soil survey finds no muck under the pivot; it's mostly sand.")).toBeVisible()
+  await page.getByRole('button', { name: 'Use Sand' }).click()
+  await expect(soil.locator('option:checked')).toHaveText('Sand, 55% of the pivot')
+})
+
+test("quick setup makes fields without crops, then Setup's next steps add each planting (G.6)", async ({ page }) => {
+  await page.goto('/setup/start')
+  await page.getByLabel('Farm', { exact: true }).selectOption({ label: 'A new farm…' })
+  // The save waits for what the server needs, saying what's missing
+  const save = page.getByRole('button', { name: 'Save and continue' })
+  await expect(save).toBeDisabled()
+  await expect(page.getByText(/^Still needed: a farm name, the pivot's name and its location/)).toBeVisible()
+  await page.getByLabel('Farm name').fill('Zz Start Farm')
+  await page.getByLabel('Name', { exact: true }).fill('Zz Pivot')
+  await expect(page.getByText('Still needed: its location (click the map).')).toBeVisible()
+  await placePivot(page)
+  await expect(save).toBeEnabled()
+  await expect(page.getByLabel('Crop')).toHaveCount(0)
+  await page.getByLabel('Field name').fill('Zz North')
+  await page.getByRole('button', { name: 'Save and continue' }).click()
+
+  const steps = page.getByRole('region', { name: 'Next steps' })
+  await expect(steps).toContainText('Zz North')
+  await steps.getByRole('button', { name: 'Add a planting to Zz North' }).click()
+  const dialog = page.getByRole('dialog', { name: /^Add a \d{4} planting to Zz North/ })
+  await dialog.getByLabel('Crop').selectOption({ label: 'Soybean' })
+  await dialog.getByRole('button', { name: 'Add planting' }).click()
+  await expect(page.getByRole('region', { name: 'Set up' })).toContainText('Zz Pivot and its fields are set up')
+
+  // Leave the demo account as it was
+  await page.getByRole('button', { name: 'Edit Zz Start Farm' }).click()
+  page.once('dialog', (confirm) => confirm.accept())
+  await page.getByRole('button', { name: 'Delete this farm' }).click()
+  await expect(page.getByRole('heading', { name: 'Farm: Zz Start Farm' })).toHaveCount(0)
+})
+
+test('quick setup can save a farm alone, leaving the rest for later (G.6)', async ({ page }) => {
+  await page.goto('/setup/start')
+  await page.getByLabel('Farm', { exact: true }).selectOption({ label: 'A new farm…' })
+  await page.getByLabel('Farm name').fill('Zz Later Farm')
+  await page.getByRole('button', { name: 'set up an irrigation system later' }).click()
+  await expect(page.getByRole('heading', { name: '3. Fields' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Save the farm' }).click()
+  await expect(page.getByRole('region', { name: 'Next steps' })).toContainText(
+    'Add an irrigation system to Zz Later Farm',
+  )
+
+  await page.getByRole('button', { name: 'Edit Zz Later Farm' }).click()
+  page.once('dialog', (confirm) => confirm.accept())
+  await page.getByRole('button', { name: 'Delete this farm' }).click()
+  await expect(page.getByRole('heading', { name: 'Farm: Zz Later Farm' })).toHaveCount(0)
 })
 
 /** Drags a map handle (a marker, found by its title) by dx, dy pixels, once the map has settled */
@@ -273,19 +333,19 @@ async function dragHandle(page: Page, title: string, dx: number, dy: number) {
   await page.mouse.up()
 }
 
-test('a linear move is sized by dragging a corner and turned by its handle', async ({ page }) => {
+test('a linear is sized by dragging a corner and turned by its handle', async ({ page }) => {
   const name = `Ditch linear ${Date.now()}`
   await page.goto('/pivots/new')
   await page.getByLabel('Name', { exact: true }).fill(name)
-  await page.getByLabel(/Linear move/).check()
+  await page.getByRole('radio', { name: /Linear/ }).check()
   await placePivot(page)
   const travel = page.getByLabel('Travel distance')
   const before = await travel.inputValue()
-  await dragHandle(page, 'Drag to resize the linear move', 0, 20)
+  await dragHandle(page, 'Drag to resize the linear', 0, 20)
   await expect(travel).not.toHaveValue(before)
   const direction = page.getByLabel('Direction of travel')
   await expect(direction).toHaveValue('0')
-  await dragHandle(page, 'Drag to turn the linear move', 60, 0)
+  await dragHandle(page, 'Drag to turn the linear', 60, 0)
   await expect(direction).not.toHaveValue('0')
   await page.getByRole('button', { name: 'Add irrigation system' }).click()
   const row = page.getByRole('heading', { name: `Irrigation system: ${name}` }).locator('../..')
@@ -296,7 +356,7 @@ test('a linear move is sized by dragging a corner and turned by its handle', asy
   // cell has no seeded weather, so leaving it would change what later tests open
   await row.getByRole('link', { name: `Edit ${name}` }).click()
   page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: 'Delete this linear move' }).click()
+  await page.getByRole('button', { name: 'Delete this linear' }).click()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: `Irrigation system: ${name}` })).toHaveCount(0)
 })
@@ -329,7 +389,8 @@ test('a traveler is placed with a click and keeps no shape', async ({ page }) =>
 test("a partial circle's arc is set by dragging its ends", async ({ page }) => {
   await page.goto('/pivots/new')
   await placePivot(page)
-  await page.getByLabel(/Partial circle/).check()
+  await page.getByText('Partial circle', { exact: true }).click()
+  await expect(page.getByRole('radio', { name: 'Partial circle' })).toBeChecked()
   const arcEnd = page.getByLabel('Arc ends at')
   await expect(arcEnd).toHaveValue('270')
   await dragHandle(page, 'Drag to set where the arc ends', 0, -80)

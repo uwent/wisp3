@@ -1,6 +1,6 @@
 // Pivot geometry for the map. A center pivot is a center, a radius in feet, and optionally an arc
 // (start and end bearings in degrees clockwise from north; the pivot sweeps clockwise from start
-// to end). A linear move is a machine length_ft long traveling travel_ft along travel_bearing_deg
+// to end). A linear is a machine length_ft long traveling travel_ft along travel_bearing_deg
 // (whole degrees from north, 0–179, as it runs both ways): a rectangle centered on its location.
 // The other kinds (a traveler, solid set, drip, or a location only; Pivot::POINT_KINDS) are a
 // point with no outline. Spherical-earth math, which is plenty at pivot scale.
@@ -23,7 +23,7 @@ export const KIND_NAMES: Record<PivotKind, string> = {
 /** The kind in a sentence: "place the drip block" */
 export const KIND_NOUNS: Record<PivotKind, string> = {
   center: 'pivot',
-  linear: 'linear move',
+  linear: 'linear',
   traveler: 'traveler',
   solid_set: 'solid set block',
   drip: 'drip block',
@@ -56,7 +56,7 @@ export type PivotShape = {
   travel_bearing_deg: number | null
 }
 
-/** A linear move's machine length and travel in feet, and its direction of travel */
+/** A linear's machine length and travel in feet, and its direction of travel */
 export type Linear = { lengthFt: number; travelFt: number; bearingDeg: number }
 
 const EARTH_RADIUS_M = 6_371_008.8
@@ -140,7 +140,7 @@ export function offset(point: LngLat, alongM: number, acrossM: number, bearingDe
 }
 
 /**
- * A linear move's corners: front left, front right, back right, back left, facing its direction
+ * A linear's corners: front left, front right, back right, back left, facing its direction
  * of travel (for a linear traveling north: northwest, northeast, southeast, southwest)
  */
 export function linearCorners(center: LngLat, { lengthFt, travelFt, bearingDeg }: Linear): LngLat[] {
@@ -154,7 +154,7 @@ export function linearCorners(center: LngLat, { lengthFt, travelFt, bearingDeg }
   ]
 }
 
-/** A linear move's irrigated area as a closed ring */
+/** A linear's irrigated area as a closed ring */
 export function linearRing(center: LngLat, linear: Linear): LngLat[] {
   const corners = linearCorners(center, linear)
   return [...corners, corners[0]]
@@ -211,7 +211,7 @@ export function snapBearing(degrees: number): number {
   return cardinal !== undefined ? cardinal % 180 : Math.round(half) % 180
 }
 
-/** A linear move's sizes and direction, with the defaults for any missing */
+/** A linear's sizes and direction, with the defaults for any missing */
 export function linearOf(shape: Pick<PivotShape, 'length_ft' | 'travel_ft' | 'travel_bearing_deg'>): Linear {
   return {
     lengthFt: shape.length_ft ?? DEFAULT_LINEAR.lengthFt,
@@ -221,7 +221,7 @@ export function linearOf(shape: Pick<PivotShape, 'length_ft' | 'travel_ft' | 'tr
 }
 
 /**
- * A pivot's irrigated area as a closed ring: a circle, a sector, or a linear move's rectangle; null
+ * A pivot's irrigated area as a closed ring: a circle, a sector, or a linear's rectangle; null
  * for a point kind, which has no outline
  */
 export function pivotOutline(shape: PivotShape, steps = 96): LngLat[] | null {

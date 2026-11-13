@@ -11,6 +11,7 @@
   import { units as unitsFor } from '@/lib/units'
   import { outlineProblems } from '@/lib/outlines/problems'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
+  import NextSteps from '@/lib/setup/NextSteps.svelte'
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import {
     farms as farmRoutes,
@@ -34,6 +35,7 @@
     plants,
     soil_types,
     generic_curves,
+    started,
   }: {
     year: number
     years: number[]
@@ -41,6 +43,8 @@
     plants: Plant[]
     soil_types: SoilType[]
     generic_curves: GenericCurve[]
+    /** What quick setup just made, for its next steps (PLAN.md G.6) */
+    started: { farm_id: number; pivot_id: number | null } | null
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
@@ -254,6 +258,16 @@
     </select>
   </div>
 </div>
+
+{#if started}
+  <NextSteps
+    {started}
+    {farms}
+    {year}
+    onaddfield={(pivot) => open({ kind: 'field', pivot })}
+    onaddplanting={(field) => plantingDialog?.open(field)}
+  />
+{/if}
 
 {#if outlineIssues.length}
   <section

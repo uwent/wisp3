@@ -104,6 +104,8 @@ export async function signedInPages(page: Page): Promise<string[]> {
     plot,
     hay,
     '/setup',
+    // Quick setup's next steps box (G.6), for a system whose fields all have plantings
+    `/setup?started_pivot=${pivot.split('/').pop()}`,
     '/setup/start',
     '/setup/outlines/import',
     // Mid-season, so its rows are open (in November nothing is in season and they're collapsed)

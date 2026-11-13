@@ -3,14 +3,24 @@
   import { systemName } from '@/lib/geo'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
+  import GettingStarted from '@/lib/components/GettingStarted.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
   import { anyUpdating, updatingIds, type FarmGroup, type FieldCard as Card } from '@/lib/overview'
   import { poll, weatherUpdate } from '@/lib/poll'
   import { units as unitsFor } from '@/lib/units'
-  import { dailyEntries, newQuickSetup, pivots, setup } from '@/routes'
+  import { dailyEntries, pivots, setup } from '@/routes'
 
-  let { today, farms }: { today: string; farms: FarmGroup[] } = $props()
+  let {
+    today,
+    farms,
+    getting_started,
+  }: {
+    today: string
+    farms: FarmGroup[]
+    /** Until the operation has any planting: what's set up so far (PLAN.md G.6) */
+    getting_started: { farms: number; systems: number; fields: number } | null
+  } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   let farmId = $state<number | 'all'>('all')
@@ -82,28 +92,11 @@
   {/if}
 </div>
 
-{#if farms.length === 0}
-  <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-12 text-center">
-    <h2 class="text-lg font-medium">Set up your first irrigation system</h2>
-    <p class="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-      Place your pivot, traveler, drip block or other system on the map and add its fields and crops. It takes a few
-      minutes, and WISP starts tracking each field's soil water straight away.
-    </p>
-    <Link
-      href={newQuickSetup()}
-      class="mt-6 inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface"
-    >
-      Get started
-    </Link>
-  </section>
-{:else}
-  {#if !anyFields}
-    <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-8 text-center">
-      <h2 class="text-lg font-medium">No fields yet</h2>
-      <p class="mt-2 text-sm text-ink-muted">Add fields to your irrigation systems to see their water status here.</p>
-      <Link href={setup.show()} class="mt-4 inline-block text-sm text-brand-600 hover:underline">Go to setup</Link>
-    </section>
-  {:else}
+{#if getting_started}
+  <GettingStarted progress={getting_started} year={Number(today.slice(0, 4))} />
+{/if}
+{#if farms.length}
+  {#if anyFields && !getting_started}
     <StatusCounts {cards} />
   {/if}
 

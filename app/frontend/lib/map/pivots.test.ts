@@ -144,7 +144,7 @@ describe('pivotFeatures', () => {
     expect(distanceM([-89.5, 44.1], ring[0][0])).toBeCloseTo(1300 / 3.28084, 0)
   })
 
-  it('draws a linear move as its rectangle', () => {
+  it('draws a linear as its rectangle', () => {
     const linear = {
       ...pivot(1, 44.1),
       kind: 'linear' as const,
