@@ -1050,6 +1050,54 @@ test('a field shape is drawn corner by corner, or read from a file (G.10)', asyn
   expect(errors).toEqual([])
 })
 
+test('a field shape away from its system can move the field to a new Location (G.14 part 7)', async ({ page }) => {
+  const errors = watchErrors(page)
+  // Each size moves its own field (they share the database), each on a traveler a kilometer or
+  // more west of the KML's field
+  const [name, system] =
+    test.info().project.name === 'phone' ? ['West 20', 'West lane (traveler)'] : ['East 15', 'East lane (traveler)']
+  await page.goto('/setup')
+  await page.getByRole('button', { name: `Edit ${name}` }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: /^(Add a shape|Edit shape)$/ })
+    .click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Field shape: ${name}`)
+  await expect(page.getByRole('group', { name: 'Shape tools' })).toBeEnabled()
+
+  await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')
+  const escaped = system.replace(/[()]/g, '\\$&')
+  await expect(
+    page.getByText(
+      new RegExp(`^This field is [\\d.]+ (mi|ft) away from its assigned irrigation system, ${escaped}\\. All fields`),
+    ),
+  ).toBeVisible()
+  const menu = page.getByLabel(`Irrigation system for ${name}`)
+  await expect(menu).toHaveValue('keep')
+  // Then any system within half a mile (the other size's Location, after its run), then Create a new system
+  await expect(menu.locator('option').first()).toHaveText(new RegExp(`^Keep with ${escaped} – [\\d.]+ (mi|ft) away$`))
+  await expect(menu.locator('option').last()).toHaveText('Create a new system')
+  // Out far enough to see the arrow back to the traveler
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom out' }).click()
+  await page.waitForTimeout(1500)
+  await page.screenshot({ path: `test-results/shape-away-${test.info().project.name}.png`, fullPage: true })
+
+  await menu.selectOption('location')
+  await expect(
+    page.getByText(
+      /^This will create a new location-only system named .* at the center of this field when you save your changes\. You will need to configure this system later in Setup\.$/,
+    ),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText(`Saved the shape of ${name} and moved it to ${name} (location)`)).toBeVisible()
+
+  // On Setup, under its new Location, with no shape to check
+  await page.goto('/setup')
+  await expect(page.getByRole('button', { name: `Edit ${name}` })).toBeVisible()
+  await expect(page.getByText(`${name}'s shape`)).toBeHidden()
+  expect(errors).toEqual([])
+})
+
 test('field shapes are imported from a shapefile, matched to fields or new ones (G.10)', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/setup')

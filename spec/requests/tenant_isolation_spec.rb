@@ -109,6 +109,13 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(inertia.props[:fields]).to be_empty
   end
 
+  it "won't move a field to another group's system from its shape page (G.14 part 7)" do
+    square = {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.31], [-89.35, 43.3]]]}
+    patch field_outline_path(my_field), params: {outline: {boundary: square.to_json, pivot_id: their_pivot.id}}
+    expect_not_found
+    expect(my_field.reload).to have_attributes(pivot: my_pivot, boundary: nil)
+  end
+
   it "shows only my group's other fields and systems on a field's outline page (G.10)" do
     their_field.update!(boundary: {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.3]]]})
     their_pivot

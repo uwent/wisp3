@@ -63,8 +63,8 @@ export function referenceData(references: Reference[]) {
 }
 
 // The map's system color and its casing (--color-map-system, --color-map-system-casing)
-const SYSTEM = '#2ec4f0'
-const SYSTEM_CASING = '#0c2d48'
+export const SYSTEM = '#2ec4f0'
+export const SYSTEM_CASING = '#0c2d48'
 const isSystem = ['==', ['get', 'kind'], 'system']
 
 /** The first of the reference layers, to draw others (soil types) under */

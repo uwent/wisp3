@@ -12,7 +12,7 @@
   import Button from '@/lib/components/Button.svelte'
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
   import { type Boundary, boundaryBounds, boundaryFrom, boundaryRing, type LngLat, pathCrossesItself } from '@/lib/geo'
-  import { basemapStyle, type Basemap, setBasemap } from '@/lib/map/basemaps'
+  import { basemapStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { loadMapLibre } from '@/lib/map/maplibre'
   import { SOIL_SOURCE, SoilTypesLayer, viewArea } from '@/lib/map/soilTypes.svelte'
@@ -20,7 +20,14 @@
   import SoilTypesLegend from '@/lib/map/SoilTypesLegend.svelte'
   import SoilTypesToggle from '@/lib/map/SoilTypesToggle.svelte'
 
-  import { addReferenceLayers, FIRST_REFERENCE_LAYER, type Reference, referenceBounds } from './references'
+  import {
+    addReferenceLayers,
+    FIRST_REFERENCE_LAYER,
+    type Reference,
+    referenceBounds,
+    SYSTEM,
+    SYSTEM_CASING,
+  } from './references'
 
   // A field's outline on the map (PLAN.md Phase 8 G.10, G.14: one polygon), drawn in white as fields
   // are on the overview map, its system in the system color. terra-draw holds it: shown as it is
@@ -28,12 +35,15 @@
   // finished, which replaces it), or selected to drag it whole or by its corners, add one from a
   // midpoint or remove one ('edit'). Drawing and editing end with the map's own Done editing or Cancel (the
   // shape as it was), which don't submit the page. Corners go anywhere: a shape whose edges cross
-  // turns orange, and can't be kept. The saved shape stays dashed under one that's changed.
+  // turns orange, and can't be kept. The saved shape stays dashed under one that's changed. A shape
+  // away from its system has a dashed arrow back to it (G.14 part 7), on the ground, so it leads
+  // there from off the screen too.
   let {
     boundary = $bindable(),
     mode = $bindable(),
     saved = null,
     references,
+    arrow = null,
     soilTypes,
     ready = $bindable(false),
     height = '32rem',
@@ -44,6 +54,8 @@
     saved?: Boundary | null
     /** The field's own system first (drawn more strongly), then the others */
     references: Reference[]
+    /** A line from the shape to its system, with a label ("Lane 3 · 0.4 mi"), or null */
+    arrow?: { from: LngLat; to: LngLat; label: string } | null
     /** Names for the Soil types layer */
     soilTypes: { key: string; name: string }[]
     /** Set once the map and drawing tools are ready */
@@ -57,7 +69,8 @@
   const EDGE: Hex = '#000000'
   // A shape whose edges cross (the caution status color)
   const CROSSED: Hex = '#e49e22'
-  const OWN_SOURCES = ['reference', 'saved', 'shape-edge', SOIL_SOURCE]
+  const OWN_SOURCES = ['reference', 'saved', 'shape-edge', 'shape-arrow', SOIL_SOURCE]
+  const ARROWHEAD = 'shape-arrowhead'
   // Wisconsin's Central Sands, where most WISP fields are
   const DEFAULT_VIEW = { center: [-89.5, 44.25] as LngLat, zoom: 8 }
 
@@ -160,11 +173,109 @@
     })
   }
   $effect(() => {
-    const [shape, old] = [collection(boundary), collection(savedChanged ? saved : null)]
+    const [shape, old, line] = [collection(boundary), collection(savedChanged ? saved : null), arrowData(arrow)]
     if (!map) return
     map.getSource<GeoJSONSource>('shape-edge')?.setData(shape as never)
     map.getSource<GeoJSONSource>('saved')?.setData(old as never)
+    map.getSource<GeoJSONSource>('shape-arrow')?.setData(line as never)
   })
+
+  // The arrow back to the system: its line (labeled along it, so the label shows wherever the line
+  // does), and its head at the system pointing along it
+  function arrowData(line: typeof arrow) {
+    if (!line) return { type: 'FeatureCollection' as const, features: [] }
+    const { from, to, label } = line
+    const bearing = (Math.atan2((to[0] - from[0]) * Math.cos((to[1] * Math.PI) / 180), to[1] - from[1]) * 180) / Math.PI
+    const point = (coordinates: LngLat, properties: object) => ({
+      type: 'Feature' as const,
+      properties,
+      geometry: { type: 'Point' as const, coordinates },
+    })
+    return {
+      type: 'FeatureCollection' as const,
+      features: [
+        {
+          type: 'Feature' as const,
+          properties: { label },
+          geometry: { type: 'LineString' as const, coordinates: [from, to] },
+        },
+        point(to, { head: true, bearing }),
+      ],
+    }
+  }
+
+  // The arrowhead: a triangle pointing up, 18 px, in the system color on its casing
+  function addArrowhead(m: MapLibreMap) {
+    if (m.hasImage(ARROWHEAD)) return
+    const size = 36
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = size
+    const context = canvas.getContext('2d')!
+    context.beginPath()
+    context.moveTo(size / 2, 3)
+    context.lineTo(size - 4, size - 4)
+    context.lineTo(4, size - 4)
+    context.closePath()
+    context.fillStyle = SYSTEM
+    context.strokeStyle = SYSTEM_CASING
+    context.lineWidth = 3
+    context.lineJoin = 'round'
+    context.fill()
+    context.stroke()
+    m.addImage(ARROWHEAD, context.getImageData(0, 0, size, size), { pixelRatio: 2 })
+  }
+
+  function addArrowLayers(m: MapLibreMap) {
+    addArrowhead(m)
+    m.addSource('shape-arrow', { type: 'geojson', data: arrowData(arrow) as never })
+    const isLine = ['==', ['geometry-type'], 'LineString']
+    m.addLayer({
+      id: 'shape-arrow-casing',
+      type: 'line',
+      source: 'shape-arrow',
+      filter: isLine as never,
+      layout: { 'line-cap': 'round' },
+      paint: { 'line-color': SYSTEM_CASING, 'line-width': 4.5, 'line-opacity': 0.8 },
+    })
+    m.addLayer({
+      id: 'shape-arrow-line',
+      type: 'line',
+      source: 'shape-arrow',
+      filter: isLine as never,
+      paint: { 'line-color': SYSTEM, 'line-width': 2.5, 'line-dasharray': [2, 1.5] },
+    })
+    m.addLayer({
+      id: 'shape-arrow-head',
+      type: 'symbol',
+      source: 'shape-arrow',
+      filter: ['has', 'head'],
+      layout: {
+        'icon-image': ARROWHEAD,
+        'icon-rotate': ['get', 'bearing'],
+        'icon-rotation-alignment': 'map',
+        'icon-anchor': 'top',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    })
+    m.addLayer({
+      id: 'shape-arrow-label',
+      type: 'symbol',
+      source: 'shape-arrow',
+      filter: ['has', 'label'],
+      layout: {
+        'symbol-placement': 'line',
+        'symbol-spacing': 220,
+        'text-allow-overlap': true,
+        'text-field': ['get', 'label'],
+        'text-size': 12,
+        'text-font': LABEL_FONT,
+        'text-keep-upright': true,
+        'text-offset': [0, -0.9],
+      },
+      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
+    })
+  }
 
   async function startDraw(m: MapLibreMap) {
     const { TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode } = await import('terra-draw')
@@ -299,10 +410,15 @@
         doubleClickZoom: false,
       })
       m.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right')
+      // A basemap switch drops the arrowhead's image with the style
+      m.on('styleimagemissing', (event) => {
+        if (event.id === ARROWHEAD) addArrowhead(m)
+      })
       m.on('load', () => {
         map = m
         addReferenceLayers(m, references)
         addShapeLayers(m)
+        addArrowLayers(m)
         soilLayer.attach(m)
         fit()
         startDraw(m)
