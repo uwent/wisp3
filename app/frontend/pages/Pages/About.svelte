@@ -145,8 +145,8 @@
     <h2 id="how-it-works">How it works</h2>
     <h3>The water balance</h3>
     <p>
-      WISP treats each field's root zone as a single bucket. How big the bucket is depends on the soil and the crop: it
-      is the water held between <Term id="field_capacity">field capacity</Term> and the <Term id="wilting_point"
+      WISP treats each planting's root zone as a single bucket. How big the bucket is depends on the soil and the crop:
+      it is the water held between <Term id="field_capacity">field capacity</Term> and the <Term id="wilting_point"
         >wilting point</Term
       >, over the depth of the root zone. The crop can use a share of that water without stress, set by its
       <Term id="mad">MAD</Term> ({defaults.mad_pct}% unless you change it). WISP tracks how much of that share is left,
@@ -186,14 +186,15 @@
 
     <h3>The outlook</h3>
     <p>
-      WISP runs each field's balance forward through the next {defaults.forecast_days} days of forecast, counting any irrigation
-      you've planned, to find the day it would reach 0 AD, or the target you've set for the field. That day is its
+      WISP runs each planting's balance forward through the next {defaults.forecast_days} days of forecast, counting any irrigation
+      you've planned, to find the day it would reach 0 AD, or the target you've set for the planting. That day is its
       <strong>Irrigate by</strong> date, along with how much water would refill the root zone then. It also runs the balance
       through 31 forecast scenarios, slightly different versions of the forecast, so you can see how sure that date is. If
       "24 of 31 forecast scenarios reach it by then," the other seven don't, so rain could well push the date back.
     </p>
-    <p>Each field gets a status for today:</p>
-    <table>
+    <p>Each planting gets a status for today:</p>
+    <!-- Badges on one line, each beside its explanation, centered (typography aligns cells by baseline) -->
+    <table class="[&_td]:align-middle [&_td:first-child]:whitespace-nowrap">
       <tbody>
         <tr><td><StatusBadge status="full" /></td><td>Near field capacity: AD at 90% of its maximum or more.</td></tr>
         <tr><td><StatusBadge status="ok" /></td><td>Above its target, or above half its maximum AD without one.</td></tr
@@ -267,11 +268,12 @@
           the map, or read from a file. <strong>Import field outlines</strong> in Setup reads FSA field boundaries (Common
           Land Units) or boundaries exported from John Deere Operations Center, Climate FieldView or Google Earth, as a zipped
           shapefile, GeoJSON, or KML, and matches each to a field of the same name or adds it as a new field. The file is
-          read in your browser; only the outlines you save are sent. The outline shades the field by its status on the map,
-          and WISP offers its acres for the field's area and the soil survey's main soil in it for its soil; the water balance
-          doesn't use it otherwise. On the map, each outlined field shows a badge per planting at its center. An irrigation
+          read in your browser; only the outlines you save are sent. On the map an outlined field is drawn in white with its
+          name, and each of its plantings' status badges sits at its center. WISP offers the outline's acres for the field's
+          area and the soil survey's main soil in it for its soil; the water balance doesn't use it otherwise. An irrigation
           system doesn't move with its fields' outlines, since its location sets the weather, so Setup lists any outline that
-          isn't under its pivot or linear, or is more than a quarter mile from its other system.
+          isn't under its pivot or linear, or is more than a quarter mile from its traveler, drip block or other system without
+          a shape.
         </p>
       </li>
       <li>
@@ -298,9 +300,13 @@
       entered on its page, which it uses instead of the field's on those days.
     </p>
     <p>
-      The quickest start is <strong>Set up an irrigation system</strong> on the Setup page: place it, then add its
-      fields and crops in one form. Everything can be changed later in Setup, where each field shows its season's
-      plantings on a timeline; click one to change it. Each spring,
+      The quickest start is <strong>Get started</strong> on the dashboard of a new account. One form names a farm,
+      places its irrigation system on the map, and lists the fields it waters with their soil; the system and the fields
+      can each wait if you'd rather set them up later. Setup then shows the next steps: the fields still to add (by
+      hand, or with
+      <strong>Import field outlines</strong>), and a planting for each field this season. Until the first planting is
+      in, the dashboard keeps a checklist of what's left. Everything can be changed later in Setup, where each field
+      shows its season's plantings on a timeline; click one to change it. Each spring,
       <strong>Copy last season's plantings</strong>
       brings your plantings forward a year with the same settings.
     </p>
@@ -312,12 +318,14 @@
         rain and irrigation. A field growing several plantings at once lists each, and sorts by the one that needs water soonest.
       </li>
       <li>
-        <strong>Map:</strong> shows each irrigation system where it is (a pivot or linear as its shape, the others as a dot),
-        colored by its most urgent field, with each field's status at its center, and each irrigation group outlined. The
-        fields are listed beside the map, most urgent first or north to south. Choose "Needs water within 3 days" (or 7) to
-        see which systems to run this week. Click one, or a field in the list, to see its fields and weather. Layers add radar,
-        rain over the last 24 or 72 hours, the National Weather Service's forecast rain, and the U.S. Drought Monitor; point
-        at the map, or tap it, to see their values at that spot.
+        <strong>Map:</strong> one season at a time. Each irrigation system is drawn where it is, in its own color: a
+        pivot or linear as its shape, the others as their kind's symbol. Each field shows a status badge per planting,
+        at the center of its outline if it has one, and each irrigation group is outlined. Beside the map the operation
+        is listed farm by farm, most urgent first or north to south; <strong>Irrigate: Soon</strong> or
+        <strong>Now</strong> narrows it to fields needing water within 3 days or today. Choose a farm or group to zoom to
+        it, or a system or field, on the map or in the list, to see its plantings and weather. Layers add radar, rain over
+        the last 24 or 72 hours, the National Weather Service's forecast rain, and the U.S. Drought Monitor; point at the
+        map, or tap it, to see their values at that spot.
       </li>
       <li>
         <strong>Daily entry:</strong> rain, irrigation, soil moisture and percent cover for every field on one day, a table
@@ -405,8 +413,9 @@
     <p>
       When you place an irrigation system, WISP looks up the USDA soil survey under it (around it, for one without a
       shape) and suggests the soil type that covers most of it, from the surface layer of each map unit's main soil; the
-      setup map's <strong>Soil types</strong> button shows them around it. It's a suggestion: check it against what you know
-      of the field.
+      setup map's <strong>Soil types</strong> button shows them around it. The soil menu for a new field then lists the soils
+      found there first, with their shares, and notes when the one chosen isn't the main one. It's a suggestion: check it
+      against what you know of the field.
     </p>
     <div class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised">
       <table class="w-full text-sm">
@@ -677,10 +686,21 @@ t: days since emergence; t′: days since the decline starts</code
 
     <h2 id="changes">What's changed</h2>
     <dl>
+      <dt>November 2026: getting started</dt>
+      <dd>
+        Setting up a new operation now takes a farm, its irrigation systems and their fields first, each of which can
+        wait, then a planting on each field, with a checklist on the dashboard until the first one is in (see
+        <a href="#getting-started">Getting started</a>).
+      </dd>
+      <dt>November 2026: the map</dt>
+      <dd>
+        The map shows one season at a time, draws each irrigation system in its own color with its kind's symbol, and
+        lists the operation farm by farm beside it (see <a href="#day-to-day">Day to day</a>).
+      </dd>
       <dt>November 2026: field outlines</dt>
       <dd>
         A field can have an outline, drawn, copied from its pivot or linear, or imported with others from a shapefile,
-        GeoJSON or KML file. Outlined fields are shaded by their status on the map, with a badge per planting (see <a
+        GeoJSON or KML file. Outlined fields are drawn on the map, with a badge per planting at the center (see <a
           href="#getting-started">Getting started</a
         >).
       </dd>
