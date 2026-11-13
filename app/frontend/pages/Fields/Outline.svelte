@@ -227,8 +227,7 @@
       </div>
     {/if}
 
-    <!-- Each card its own height: the soil survey arriving doesn't stretch the area's -->
-    <div class="grid items-start gap-4 md:grid-cols-2">
+    <div class="grid gap-4 md:grid-cols-2">
       <section class="space-y-2 rounded-lg border border-line bg-surface-raised p-4 text-sm">
         <h2 class="font-medium">Area</h2>
         {#if acres === null}
