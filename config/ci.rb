@@ -1,4 +1,5 @@
-# The same checks run locally (bin/ci) and on GitHub Actions (.github/workflows/ci.yml)
+# The same checks run locally (bin/ci) and on GitHub Actions (.github/workflows/ci.yml).
+# The browser tests are separate (bin/e2e, about 15 minutes), in their own job on GitHub Actions.
 CI.run do
   step "Setup", "bin/setup --skip-server"
 
@@ -10,5 +11,4 @@ CI.run do
 
   step "Tests: frontend", "pnpm test"
   step "Tests: Rails", "bundle exec rspec"
-  step "Tests: browser", "bin/e2e"
 end

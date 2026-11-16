@@ -10,11 +10,11 @@ WISP 3: a rewrite of the Wisconsin Irrigation Scheduling Program (legacy app in 
 
 ```bash
 bin/dev                          # Rails :3000 + Vite dev server
-bin/ci                           # full CI: standardrb, svelte-check/tsc, typelizer freshness, vitest, rspec
+bin/ci                           # CI without the browser: standardrb, prettier, eslint, svelte-check/tsc, typelizer freshness, vitest, rspec
 bundle exec rspec spec/path_spec.rb
 pnpm test                       # vitest
 pnpm check                      # svelte-check + tsc
-bin/e2e                          # Playwright smoke tests on their own database (args go to playwright test)
+bin/e2e                          # Playwright browser tests on their own database, ~15 min (args go to playwright test: a file, -g, --project desktop)
 bin/rails typelizer:generate     # after changing serializers or routes; commit the output
 bin/rails demo:seed              # demo account with farms, fields and entries (EMAIL, PASSWORD, YEAR)
 bin/rails weather:refresh        # fetch weather for active cells now (needs network; OPEN_METEO_API_KEY in .env optional)
@@ -115,6 +115,7 @@ Outside services:
 Working here:
 
 - **Propose a plan before building a new feature** unless it's a simple change: the design, the data model and any choices to make, then wait for Ben's go-ahead before implementing.
-- **Frontend and visual design work: Ben checks it before CI.** Once the planned changes are in, stop and ask Ben to look at them in the app before running the full CI suite, which takes a long time. Expect a few rounds of changes; when the design is settled, update the tests, run `bin/ci`, then commit.
+- **Frontend and visual design work: Ben checks it before CI.** Once the planned changes are in, stop and ask Ben to look at them in the app before running CI, which takes a long time. Expect a few rounds of changes; when the design is settled, update the tests, run `bin/ci` and the browser tests the change touches (`bin/e2e e2e/smoke.spec.ts -g …`), then commit.
+- **CI is two parts:** `bin/ci` (a few minutes) and `bin/e2e` (about 15 minutes), separate jobs on GitHub Actions. Run all of `bin/e2e` before merging to `main`, and after a change to shared layout, components or anything every page loads.
 - **Work on `main` by default.** Make a feature branch only when the work's scale justifies one (several sessions, a risky or wide change, something to review before it lands). When proposing a plan for a new feature, recommend whether it should get a branch.
 - `pkill -f` with a pattern that's also in the command line kills the shell running it; stop dev servers by port or PID.

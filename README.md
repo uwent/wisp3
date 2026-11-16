@@ -26,7 +26,8 @@ WISP 3 is a rewrite of the [original WISP](https://github.com/uwent/wisp). See [
 ```bash
 bin/setup          # installs gems and pnpm packages, prepares the database, starts the app
 bin/dev            # Rails on http://localhost:3000 plus the Vite dev server
-bin/ci             # everything CI runs: lint, type checks, frontend, Rails and browser tests
+bin/ci             # lint, type checks, frontend and Rails tests (a few minutes)
+bin/e2e            # browser tests (about 15 minutes; CI runs them as a separate job)
 ```
 
 Conventions for working in the code are in [CLAUDE.md](CLAUDE.md).
