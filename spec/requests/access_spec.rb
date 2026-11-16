@@ -12,7 +12,7 @@ RSpec.describe "Access", type: :request do
     next if klass._process_action_callbacks.none? { |callback| callback.filter == :authenticate_user! }
     next if route.path.spec.to_s == "/"
 
-    path = route.path.spec.to_s.delete_suffix("(.:format)").gsub(":date", "2026-07-01").gsub(/:\w+/, "1")
+    path = route.path.spec.to_s.delete_suffix("(.:format)").gsub(":date", "2026-07-01").gsub(":location", "44.12,-89.54").gsub(/:\w+/, "1")
     {verb: route.verb.downcase.to_sym, path:, admin: klass < Admin::BaseController, download: route.defaults.key?(:format)}
   end.uniq.freeze
 

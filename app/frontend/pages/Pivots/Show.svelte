@@ -25,7 +25,7 @@
     year: number
     irrigations: PivotIrrigation[]
     field_seasons: FieldSeasons[]
-    weather_zone: { id: number; name: string } | null
+    weather_zone: { id: number; name: string; location: string } | null
     forecast: ForecastDay[]
   } = $props()
 

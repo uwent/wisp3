@@ -107,6 +107,7 @@
           others={other_pivots}
           soilTypes={soil_types}
           surveyLevel="h2"
+          locked={editing}
         />
       </section>
 

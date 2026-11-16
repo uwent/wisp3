@@ -139,10 +139,15 @@ RSpec.describe "Tenant isolation", type: :request do
   it "hides other groups' weather zones and irrigation exports (G.12)" do
     get weather_pivot_path(their_pivot)
     expect_not_found
-    get weather_zone_path(their_pivot.weather_cell_id)
+    get "/weather/#{their_pivot.weather_cell_id}"
     expect_not_found
-    get export_weather_zone_path(their_pivot.weather_cell_id)
+    get "/weather/#{their_pivot.weather_cell_id}/export"
     expect_not_found
+    # By location, their cell is a place this operation has no zone (G.6)
+    get weather_zone_path(their_pivot.weather_cell.location)
+    expect(response).to redirect_to(weather_zones_path)
+    get export_weather_zone_path(their_pivot.weather_cell.location)
+    expect(response).to redirect_to(weather_zones_path)
     get pivot_irrigations_path(their_pivot)
     expect_not_found
   end

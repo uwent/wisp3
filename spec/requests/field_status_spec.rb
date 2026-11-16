@@ -35,8 +35,13 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(props[:summary]).to include(phase: "active", date: "2026-07-20", ad_max: 1.2) # 0.5 × (0.15 − 0.05) × 24 in
       expect(props[:summary][:totals]).to include(rain: 0.4)
       expect(props).not_to have_key(:weather)
-      expect(props[:weather_zone]).to eq({"id" => pivot.weather_cell_id, "name" => pivot.name})
+      expect(props[:weather_zone]).to eq({"id" => pivot.weather_cell_id, "name" => pivot.name, "location" => pivot.weather_cell.location})
       expect(props[:forecast].map { |day| [day[:date], day[:tmax_f]] }).to eq([["2026-07-20", 90], ["2026-07-21", 88]])
+
+      # An ended season still shows the location's week ahead (G.6)
+      planting.update!(end_date: Date.new(2026, 7, 15))
+      get planting_path(planting)
+      expect(inertia.props[:forecast].size).to eq(2)
     end
 
     it "gives the crop's canopy curve each day, and flags readings that run ahead of it (Phase 6.7)" do
@@ -440,7 +445,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: [{date: "2026-07-19", tmax_f: 80}, {date: "2026-07-20", tmax_f: 90, tmin_f: 70}]})
       get pivot_path(pivot)
-      expect(inertia.props[:weather_zone]).to eq({"id" => pivot.weather_cell_id, "name" => pivot.name})
+      expect(inertia.props[:weather_zone]).to eq({"id" => pivot.weather_cell_id, "name" => pivot.name, "location" => pivot.weather_cell.location})
       expect(inertia.props[:forecast].map { |day| day[:date] }).to eq(["2026-07-20"])
 
       get pivot_path(pivot, year: 2025)

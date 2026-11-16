@@ -25,8 +25,10 @@ class PlantingsController < AuthenticatedController
       as_of:,
       travel_dates: travel_dates(planting),
       planting: PlantingSerializer.new(planting).to_h,
-      # The zone the season ran on (G.9), and its week ahead while the season has days left
-      **WeatherZone.page_props(Current.group, planting.weather_cell, forecast: !as_of && planting.end_date >= Date.current),
+      # The zone the season ran on (G.9), and its week ahead for this year's plantings, ended ones
+      # too, as on the field page (G.6), but not while time travelling
+      **WeatherZone.page_props(Current.group, planting.weather_cell,
+        forecast: !as_of && planting.season_year == Date.current.year),
       **season_props(field, planting, as_of)
     }
   end

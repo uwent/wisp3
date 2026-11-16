@@ -10,7 +10,7 @@ class WeatherZone
 
   # The zones of the group's irrigation systems as they are now, by name
   def self.for_group(group)
-    pivots = group.pivots.includes(:farm, :weather_cell).where.not(weather_cell_id: nil).to_a
+    pivots = group.pivots.includes(:farm, :weather_cell, :fields).where.not(weather_cell_id: nil).to_a
     pivots.group_by(&:weather_cell).map { |cell, cell_pivots| new(cell, cell_pivots) }.sort_by(&:sort_key)
   end
 
@@ -18,9 +18,21 @@ class WeatherZone
   # ActiveRecord::RecordNotFound
   def self.find(group, cell_id)
     cell = WeatherCell.where(id: cell_ids(group)).find(cell_id)
-    pivots = group.pivots.includes(:farm).where(weather_cell_id: cell.id)
-      .or(group.pivots.includes(:farm).where(id: group.plantings.where(weather_cell_id: cell.id).select("pivots.id")))
+    pivots = group.pivots.includes(:farm, :fields).where(weather_cell_id: cell.id)
+      .or(group.pivots.includes(:farm, :fields).where(id: group.plantings.where(weather_cell_id: cell.id).select("pivots.id")))
     new(cell, pivots.to_a.uniq)
+  end
+
+  # The zone of the group's cell a point ("44.1234,-89.5") falls in, or nil: a point outside the
+  # group's cells, or not a place. Never creates a cell.
+  def self.at(group, location)
+    latitude, longitude = location.to_s.split(",").map { |part| Float(part, exception: false) }
+    return unless latitude && longitude && latitude.abs <= 90 && longitude.abs <= 180
+
+    point = Weather::Grid.cell_for(latitude, longitude)
+    cell = WeatherCell.where(id: cell_ids(group))
+      .find_by(latitude: point.latitude.round(6), longitude: point.longitude.round(6))
+    cell && find(group, cell.id)
   end
 
   # Every cell the group's pages may show
@@ -30,13 +42,13 @@ class WeatherZone
   end
 
   # A page's link to a cell's zone and, unless forecast: false, its week ahead (ForecastStrip):
-  # {weather_zone: {id, name} or nil, forecast: [ForecastDay]}
+  # {weather_zone: {id, name, location} or nil, forecast: [ForecastDay]}
   def self.page_props(group, cell, forecast: true)
     return {weather_zone: nil, forecast: []} unless cell
 
     pivots = group.pivots.where(weather_cell_id: cell.id).order(:name)
     {
-      weather_zone: {id: cell.id, name: new(cell, pivots.to_a).name},
+      weather_zone: {id: cell.id, name: new(cell, pivots.to_a).name, location: cell.location},
       forecast: forecast ? ForecastDaySerializer.new(ForecastDays.for(cell)).to_h : []
     }
   end
@@ -46,6 +58,14 @@ class WeatherZone
   end
 
   def id = cell.id
+
+  # Its address: weather_zone_path(zone) is /weather/44.12,-89.54
+  def location = cell.location
+
+  def to_param = location
+
+  # The fields on its systems, by name
+  def fields = pivots.flat_map(&:fields).sort_by { |field| [field.name.downcase, field.id] }
 
   # "North 160", "North 160 and River", "North 160, River and South", "A, B, C and 2 more"
   def name

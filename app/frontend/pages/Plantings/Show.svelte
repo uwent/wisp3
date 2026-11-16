@@ -26,6 +26,7 @@
   import { stickyHeight } from '@/lib/stickyBars'
   import { formatNumber, parseNumber, units as unitsFor } from '@/lib/units'
   import {
+    dailyEntries,
     exportPlanting,
     fieldDays,
     fields,
@@ -64,8 +65,8 @@
     summary: PlantingSummary
     days: FieldDay[]
     forecast_days: FieldDay[]
-    /** The zone the season ran on, and its week ahead while the season has days left (not time travelling) */
-    weather_zone: { id: number; name: string } | null
+    /** The zone the season ran on, and its week ahead for this year's plantings (not time travelling) */
+    weather_zone: { id: number; name: string; location: string } | null
     forecast: ForecastDay[]
   } = $props()
 
@@ -159,13 +160,13 @@
         summary?.canopy_fit ?? null,
       ),
   )
-  // Whether "How … is modeled" is open: open until closed, then remembered in this browser
-  const GUIDANCE_KEY = 'wisp:field-guidance-open'
-  let guidanceOpen = $state(true)
+  // Whether "More about how … is modeled" is open: closed until opened, then remembered in this browser (G.6)
+  const GUIDANCE_KEY = 'wisp:planting-guidance-more'
+  let guidanceOpen = $state(false)
   try {
-    guidanceOpen = localStorage.getItem(GUIDANCE_KEY) !== 'false'
+    guidanceOpen = localStorage.getItem(GUIDANCE_KEY) === 'true'
   } catch {
-    // Storage blocked: stay open
+    // Storage blocked: stay closed
   }
   function toggleGuidance(open: boolean) {
     guidanceOpen = open
@@ -178,8 +179,8 @@
   const thresholdName = $derived(summary?.target_in === null ? 'of reaching 0 AD' : 'of falling below target')
   const depthUnitName = $derived(units.label('depth') === 'mm' ? 'millimeters' : 'inches')
   let chartMode = $state<FieldChartMode>('ad')
-  // The season's sections, closed until opened; links in the summary open them
-  let summaryOpen = $state(false)
+  // The season summary: open, like every section, until closed; links in the summary open it
+  let summaryOpen = $state(true)
 
   // What it takes to refill the root zone to field capacity today
   const refill = $derived(
@@ -536,25 +537,22 @@
     {/if}
   </div>
 
-  {#if guidance?.warning}
-    <p
-      role="status"
-      class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2 text-sm lg:col-span-3"
-    >
-      {guidance.warning}
-    </p>
-  {/if}
-  {#if guidance}
-    <!-- The readings stay in view when the explanation is collapsed -->
-    <div class="border-t border-line pt-3 text-sm lg:col-span-3">
-      <details open={guidanceOpen} ontoggle={(event) => toggleGuidance(event.currentTarget.open)}>
-        <summary class="cursor-pointer font-medium">{guidance.title}</summary>
-        <div class="mt-2 max-w-3xl space-y-2 text-ink-muted">
-          <GlossaryText paragraphs={guidance.paragraphs} />
-        </div>
-      </details>
+  {#if guidance && (guidance.readings.length || guidance.warning)}
+    <!-- The readings that keep the model on track, each with when it was last entered; due ones marked (G.6) -->
+    <div class="space-y-2 border-t border-line pt-3 text-sm lg:col-span-3">
+      <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h3 class="font-medium">Data entry</h3>
+        {#if !readOnly && summary.phase === 'active'}
+          <Link href={dailyEntries.show()} class="text-brand-600 underline underline-offset-2">Daily entry →</Link>
+        {/if}
+      </div>
+      {#if guidance.warning}
+        <p role="status" class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2">
+          {guidance.warning}
+        </p>
+      {/if}
       {#if guidance.readings.length}
-        <ul class="mt-3 flex flex-wrap gap-2" aria-label="Last readings">
+        <ul class="flex flex-wrap gap-2" aria-label="Readings">
           {#each guidance.readings as reading (reading.label)}
             <li
               class="rounded-md border px-2.5 py-1 text-xs
@@ -566,6 +564,21 @@
           {/each}
         </ul>
       {/if}
+    </div>
+  {/if}
+  {#if guidance}
+    <!-- Two sentences first, the rest on request (G.6), the card's full width -->
+    <div class="border-t border-line pt-3 text-sm lg:col-span-3">
+      <h3 class="font-medium">{guidance.title}</h3>
+      <div class="mt-1 text-ink-muted">
+        <GlossaryText paragraphs={[guidance.summary]} />
+      </div>
+      <details class="mt-2" open={guidanceOpen} ontoggle={(event) => toggleGuidance(event.currentTarget.open)}>
+        <summary class="cursor-pointer text-brand-600 hover:underline">{guidance.more}</summary>
+        <div class="mt-2 space-y-2 text-ink-muted">
+          <GlossaryText paragraphs={guidance.paragraphs} />
+        </div>
+      </details>
     </div>
   {/if}
 </section>
@@ -633,6 +646,13 @@
     {/if}
   </section>
 {/if}
+
+<ZoneWeather
+  zone={weather_zone}
+  {forecast}
+  {units}
+  query={planting.year === new Date().getFullYear() ? {} : { year: planting.year }}
+/>
 
 {#if days.length}
   <!-- Chart -->
@@ -967,13 +987,6 @@
     </div>
   </CollapsibleSection>
 {/if}
-
-<ZoneWeather
-  zone={weather_zone}
-  {forecast}
-  {units}
-  query={{ ...(planting.year === new Date().getFullYear() ? {} : { year: planting.year }), planting: planting.id }}
-/>
 
 <!-- The season in numbers, and settings for this field's balance (its setup is on the setup page) -->
 {#if stats}

@@ -42,7 +42,7 @@ export async function researchFieldPath(page: Page): Promise<string> {
   return new URL((await card.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
 }
 
-/** The first planting's weather zone (G.12), from its page's "Season's weather" link */
+/** The first planting's weather zone (G.12), from its page's "View detailed weather charts" link */
 export async function firstZonePath(page: Page): Promise<string> {
   return firstLinkPath(page, await firstPlantingPath(page), 'a[href*="/weather/"]')
 }

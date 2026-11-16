@@ -78,7 +78,7 @@ class PlantingSummarySerializer < ApplicationSerializer
     use_model_precip: :boolean, dry_crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     ensemble_size: :number, projection_source: "'forecast' | 'observed'", canopy_fit: "{ shift: number; stretch: number; height: number } | null",
     tasks: "{ kind: 'soil_moisture' | 'canopy' | 'canopy_check'; label: string; last_date: string | null; " \
-      "due: boolean; note: 'due' | 'canopy closed' | 'vines killed' | null; todo: string | null; message: string | null }[]",
+      "due: boolean; note: 'due' | 'canopy closed' | 'vines killed' | 'optional' | null; todo: string | null; message: string | null }[]",
     projection: "{ date: string; ad: number; p10: number | null; p50: number | null; p90: number | null; " \
       "chance: number | null; dry_ad: number | null }[]"
 end

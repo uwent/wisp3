@@ -1,12 +1,12 @@
 # The operation's weather by zone (G.12; WeatherZone): /weather lists the zones with the week ahead,
-# /weather/:id has a zone's season of weather panels (?year=), and export its CSV. Cells are reached
-# only through the group's pivots and plantings.
+# /weather/44.12,-89.54 has a zone's season of weather panels (?year=), and export its CSV. A zone's
+# address is its cell's center (G.6); any point in one of the group's cells finds it, and a point
+# outside them goes back to the list. Cells are reached only through the group's pivots and plantings.
 class WeatherZonesController < AuthenticatedController
+  before_action :find_zone, only: [:show, :export]
+
   def index
     zones = WeatherZone.for_group(Current.group)
-    # One zone is the whole page
-    return redirect_to weather_zone_path(zones.first.id) if zones.one?
-
     cell_ids = zones.map(&:id)
     WeatherCell.keep_current(cell_ids)
     forecasts = ForecastDays.by_cell(cell_ids)
@@ -19,7 +19,7 @@ class WeatherZonesController < AuthenticatedController
   end
 
   def show
-    zone = WeatherZone.find(Current.group, params[:id])
+    zone = @zone
     year = params.fetch(:year, Date.current.year).to_i
     plantings = zone_plantings(zone)
     season = plantings.select { |planting| planting.season_year == year }
@@ -31,14 +31,14 @@ class WeatherZonesController < AuthenticatedController
 
     render inertia: "WeatherZones/Show", props: {
       zone: WeatherZoneSerializer.new(zone).to_h,
-      zones: zones.map { |other| {id: other.id, name: other.name} },
+      zones: zones.map { |other| {id: other.id, name: other.name, coordinates: other.coordinates, location: other.location} },
       year:,
       years: (plantings.map(&:season_year) + [Date.current.year]).uniq.sort.reverse,
       weather_from: dates.first,
       weather: WeatherPanelDaySerializer.new(WeatherPanel.new(zone.cell, dates, emergence_date: dates.first).days).to_h,
       # The year's plantings in the zone, which growing degree days can also count from (by planting date)
       plantings: season.sort_by { |planting| [planting.season_start, planting.id] }.map do |planting|
-        {id: planting.id, label: "#{planting.plant.name} on #{planting.field.name}", planted: planting.season_start}
+        {id: planting.id, label: "#{planting.field.name} #{planting.plant.name}", planted: planting.season_start}
       end,
       forecast: current ? ForecastDaySerializer.new(ForecastDays.for(zone.cell)).to_h : [],
       updating_pivot_ids: current ? updating_pivot_ids([zone]) : []
@@ -46,7 +46,7 @@ class WeatherZonesController < AuthenticatedController
   end
 
   def export
-    zone = WeatherZone.find(Current.group, params[:id])
+    zone = @zone
     year = params.fetch(:year, Date.current.year).to_i
     dates = year_dates(year)
     days = WeatherPanel.new(zone.cell, dates, emergence_date: dates.first).days
@@ -54,7 +54,30 @@ class WeatherZonesController < AuthenticatedController
       filename: "wisp-weather-#{zone.name.parameterize}-#{year}.csv", type: "text/csv; charset=utf-8"
   end
 
+  # The old addresses by cell id (/weather/1, /weather/1/export) move to the zone's location
+  def legacy
+    zone = WeatherZone.find(Current.group, params[:id])
+    redirect_to zone_address(zone, export: params[:export]), status: :moved_permanently
+  end
+
   private
+
+  # The zone the address falls in, sent to its exact address if it isn't that; a point outside the
+  # group's zones goes back to the list (the same whether another operation has weather there or not)
+  def find_zone
+    @zone = WeatherZone.at(Current.group, params[:location])
+    unless @zone
+      return redirect_to weather_zones_path,
+        alert: "This operation has no weather zone at #{params[:location].sub(",", ", ")}."
+    end
+    redirect_to zone_address(@zone, export: action_name == "export") unless params[:location] == @zone.location
+  end
+
+  # The zone's page or export at its location, keeping the query (?year=)
+  def zone_address(zone, export:)
+    query = request.query_parameters
+    export ? export_weather_zone_path(zone, query) : weather_zone_path(zone, query)
+  end
 
   # The group's plantings whose seasons ran on the zone's cell (G.9)
   def zone_plantings(zone)

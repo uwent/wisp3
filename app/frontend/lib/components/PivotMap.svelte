@@ -1,9 +1,10 @@
 <script lang="ts">
   import 'maplibre-gl/dist/maplibre-gl.css'
 
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import type { GeoJSONSource, Map as MapLibreMap, Marker as MarkerClass } from 'maplibre-gl'
 
+  import Button from '@/lib/components/Button.svelte'
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
   import {
     bearing,
@@ -51,18 +52,23 @@
   // end that turns it. A point kind (a traveler, drip, a location) is just the pin. The group's
   // other irrigation systems are drawn for reference. A place search moves
   // the map (it doesn't place the pivot), and an arrow at the edge points back to the pivot when
-  // it's out of view.
+  // it's out of view. A saved system's map starts locked (`locked`), so a stray click or drag
+  // can't move it: Edit on the map unlocks it, Done editing keeps the changes (the form's Save saves
+  // them) and Cancel puts back the shape from before, as on the field shape page (G.14).
   let {
     shape = $bindable(),
     others = [],
     soilTypes = [],
     height = 'min(36rem, 60vh)',
+    locked = false,
   }: {
     shape: ShapeDraft
     others?: Outline[]
     /** Names for the soil types layer */
     soilTypes?: { key: string; name: string }[]
     height?: string
+    /** Start locked (an existing system): the map moves nothing until Edit on the map */
+    locked?: boolean
   } = $props()
 
   // Wisconsin's Central Sands, where most WISP pivots are
@@ -101,6 +107,23 @@
   let locateError = $state<string | null>(null)
   let pointer = $state<{ x: number; y: number; angle: number } | null>(null)
   let placeSearch: PlaceSearch | undefined = $state()
+  // Whether clicks and drags change the shape; the shape when editing began, for Cancel
+  let editing = $state(untrack(() => !locked))
+  let before = $state.raw<ShapeDraft | null>(null)
+
+  function startEditing() {
+    before = { ...shape }
+    editing = true
+  }
+  function doneEditing() {
+    before = null
+    editing = false
+  }
+  // Puts back the location and size from before (the kind is the form's, not the map's)
+  function cancelEditing() {
+    if (before) Object.assign(shape, { ...before, kind: shape.kind })
+    doneEditing()
+  }
 
   const linear = $derived(shape.kind === 'linear')
   const point = $derived(isPoint(shape.kind))
@@ -343,15 +366,23 @@
       centerMarker = undefined
       return
     }
+    if (!editing) {
+      // Locked: the pin shows where the system is, and nothing moves
+      Object.values(handles).forEach((marker) => marker.remove())
+      handles = {}
+      handleSet = ''
+    }
     if (!centerMarker) {
-      centerMarker = new Marker({ draggable: true, color: '#1c5cab' }).setLngLat(center).addTo(map)
+      centerMarker = new Marker({ draggable: editing, color: '#1c5cab' }).setLngLat(center).addTo(map)
       centerMarker.on('drag', () => {
         const { lng, lat } = centerMarker!.getLngLat()
         setCenter([lng, lat])
       })
     } else {
       centerMarker.setLngLat(center)
+      centerMarker.setDraggable(editing)
     }
+    if (!editing) return
     for (const [name, position] of Object.entries(positions) as [Handle, LngLat][]) {
       const cursor = handleCursor(name, position)
       const existing = handles[name]
@@ -382,7 +413,7 @@
 
   // Redraw when the shape changes, whether from the map or the form's inputs
   $effect(() => {
-    void [outline, handleBearing, rotatePosition]
+    void [outline, handleBearing, rotatePosition, editing]
     drawPivot()
     placeMarkers()
     updatePointer()
@@ -465,6 +496,7 @@
       m.on('rotate', placeMarkers)
       m.on('click', (event) => {
         placeSearch?.close()
+        if (!editing) return
         // A click away from the pivot moves it; clicks on the markers are drags. Placing it zooms in
         // to fit it, handles and all, so they're apart and in view.
         const point: LngLat = [event.lngLat.lng, event.lngLat.lat]
@@ -494,9 +526,9 @@
     <div
       bind:this={container}
       class="h-full w-full"
-      aria-label="Map: click to place the {noun}, or enter its coordinates{point
-        ? ''
-        : ' and size'} in the fields below"
+      aria-label={editing
+        ? `Map: click to place the ${noun}, or enter its coordinates${point ? '' : ' and size'} in the fields below`
+        : `Map of the ${noun}: Edit on the map to move${point ? '' : ' or resize'} it`}
       role="application"
     ></div>
 
@@ -543,21 +575,44 @@
 
     <SoilTypesHover layer={soilLayer} />
 
-    <div class="absolute bottom-2 left-2 w-[min(18rem,calc(100%-6rem))]">
-      <PlaceSearch bind:this={placeSearch} {map} maxZoom={PIVOT_ZOOM - 1} />
-    </div>
+    {#if editing}
+      <div class="absolute bottom-2 left-2 w-[min(18rem,calc(100%-6rem))]">
+        <PlaceSearch bind:this={placeSearch} {map} maxZoom={PIVOT_ZOOM - 1} />
+      </div>
+    {/if}
+    <!-- A saved system's lock, under the map's toggles (the attribution covers the bottom corners on a
+         phone): Edit on the map, then keep or undo what the map changed, as on the field shape page -->
+    {#if editing && before}
+      <div
+        class="absolute top-12 left-2 flex max-w-[calc(100%-4rem)] flex-wrap items-center gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-lg"
+        role="group"
+        aria-label="The {noun} on the map"
+      >
+        <Button type="button" onclick={doneEditing}>Done editing</Button>
+        <Button type="button" variant="secondary" onclick={cancelEditing}>Cancel</Button>
+      </div>
+    {:else if !editing}
+      <div class="absolute top-12 left-2">
+        <Button type="button" variant="secondary" class="shadow-lg" onclick={startEditing}>Edit on the map</Button>
+      </div>
+    {/if}
   </div>
   <div class="flex flex-wrap items-center gap-3 text-sm">
-    <button
-      type="button"
-      class="text-brand-600 hover:underline disabled:opacity-60"
-      onclick={locate}
-      disabled={locating}
-    >
-      {locating ? 'Finding you…' : 'Use my location'}
-    </button>
+    {#if editing}
+      <button
+        type="button"
+        class="text-brand-600 hover:underline disabled:opacity-60"
+        onclick={locate}
+        disabled={locating}
+      >
+        {locating ? 'Finding you…' : 'Use my location'}
+      </button>
+    {/if}
     {#if locateError}<span class="text-status-irrigate-ink">{locateError}</span>{/if}
-    {#if center}<span class="text-ink-muted"
+    {#if center && !editing}<span class="text-ink-muted"
+        >Locked so a stray click can't move the {noun}: Edit on the map to move{point ? '' : ' or resize'} it.</span
+      >
+    {:else if center}<span class="text-ink-muted"
         >{point
           ? `Drag the pin to move the ${noun}.`
           : linear

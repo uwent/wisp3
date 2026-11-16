@@ -36,6 +36,10 @@ class WeatherCell < ApplicationRecord
       .flat_map { |user| user.digest_fields.joins(:pivot).distinct.pluck("pivots.weather_cell_id") }.uniq
   end
 
+  # The cell's address on the weather page, its center to 2 decimals: "44.12,-89.54" (G.6). Cells are
+  # about 9 km across, so it always falls back in the same cell (WeatherZone.at).
+  def location = format("%.2f,%.2f", latitude, longitude)
+
   # Cells with a pivot (inactive ones too), for a refresh asked for by hand
   def self.with_pivots = where(id: Pivot.select(:weather_cell_id))
 

@@ -66,9 +66,10 @@ RSpec.describe PlantingTasks do
     expect(tasks.map(&:kind)).to eq([:soil_moisture])
   end
 
-  it "asks for LAI only once the grower has started entering it" do
+  it "asks for LAI only once the grower has started entering it, listing it as optional until then" do
     planting.update!(plant: create(:plant, canopy_model: "field_corn"), et_method: "lai")
-    expect(tasks.map(&:kind)).to eq([:soil_moisture])
+    expect(tasks.last).to have_attributes(kind: :canopy, label: "Leaf area index (LAI)", due: false, note: "optional",
+      last_date: nil)
     create(:canopy_observation, planting:, date: Date.new(2026, 7, 10), pct_cover: nil, lai: 2.0)
     expect(tasks.last).to have_attributes(kind: :canopy, label: "Leaf area index (LAI)", due: true)
   end
@@ -108,8 +109,16 @@ RSpec.describe PlantingTasks do
     expect(check.message).not_to include("WISP still follows the typical curve")
   end
 
-  it "has nothing to do outside the season" do
+  it "has nothing to do before the season" do
     planting.update!(season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 1))
     expect(tasks).to eq([])
+  end
+
+  it "lists the readings with their last dates once the season has ended, none due (G.6)" do
+    planting.update!(end_date: Date.new(2026, 7, 15))
+    create(:canopy_observation, planting:, date: Date.new(2026, 7, 5), pct_cover: 85)
+    expect(tasks.map { |task| [task.kind, task.due, task.note, task.todo, task.last_date] }).to eq([
+      [:soil_moisture, false, nil, nil, nil], [:canopy, false, "canopy closed", nil, Date.new(2026, 7, 5)]
+    ])
   end
 end

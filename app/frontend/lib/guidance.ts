@@ -22,14 +22,18 @@ export type Reading = {
   last: string
   /** Due for another one: none yet, or older than READING_EVERY days */
   due: boolean
-  /** "due", "canopy closed", "vines killed", or null */
+  /** "due", "canopy closed", "vines killed", "optional", or null */
   note: string | null
 }
 
 export type Guidance = {
   title: string
+  /** Two sentences shown first (G.6): how the crop is modeled, and what to enter */
+  summary: string
+  /** The rest, under "More about how … is modeled" */
+  more: string
   paragraphs: string[]
-  /** Only while the season is on */
+  /** Each reading with when it was last entered: due ones only while the season is on, all of them once it's ended */
   readings: Reading[]
   /** When canopy readings disagree with the crop's curve (the canopy_check task) */
   warning: string | null
@@ -65,7 +69,7 @@ const CROP_NOTES: Record<string, string> = {
 export function guidance(
   planting: GuidedPlanting,
   units: Units,
-  /** The planting's tasks (summary.tasks): empty outside the season */
+  /** The planting's tasks (summary.tasks): empty before the season */
   tasks: Task[],
   /** Today, while the season is on; null before or after it */
   today: string | null,
@@ -86,8 +90,10 @@ export function guidance(
 
   return {
     title: `How ${crop.toLowerCase()} is modeled`,
+    summary: summaryText(planting),
+    more: `More about how ${crop.toLowerCase()} is modeled`,
     paragraphs,
-    readings: today ? tasks.filter((task) => task.kind !== 'canopy_check').map((task) => reading(task, today)) : [],
+    readings: tasks.filter((task) => task.kind !== 'canopy_check').map((task) => reading(task, today)),
     warning: tasks.find((task) => task.kind === 'canopy_check')?.message ?? null,
   }
 }
@@ -151,6 +157,25 @@ function fitText(planting: GuidedPlanting, fit: CanopyFit): string {
   return ` So far, fitted to your readings, the ${name} curve ${list}.`
 }
 
+/** The method and what to enter, in two sentences */
+function summaryText(planting: GuidedPlanting): string {
+  const crop = planting.plant_name.toLowerCase()
+  if (planting.et_method !== 'pct_cover') {
+    return (
+      `WISP estimates ${crop} water use from its leaf area index (LAI), following a field corn growth curve from ` +
+      'emergence until your readings correct it. Enter a soil moisture reading about once a week to correct any ' +
+      'drift, and LAI readings if you take them.'
+    )
+  }
+  const follows = planting.canopy_curve
+    ? 'following a typical curve from emergence until your readings correct it'
+    : 'from your readings only: until the first one, it counts the field as bare soil'
+  return (
+    `WISP estimates ${crop} water use from how much of the ground its canopy covers, ${follows}. Enter percent ` +
+    'cover about weekly until the canopy closes, and a soil moisture reading about once a week to correct any drift.'
+  )
+}
+
 function methodText(planting: GuidedPlanting, fit: CanopyFit = null): string {
   const crop = planting.plant_name
   if (planting.et_method === 'pct_cover') {
@@ -182,9 +207,11 @@ function methodText(planting: GuidedPlanting, fit: CanopyFit = null): string {
   )
 }
 
-function reading(task: Task, today: string): Reading {
-  const last = task.last_date
-    ? `${formatDate(task.last_date)} (${relativeDay(task.last_date, today)})`
-    : 'None entered this season'
+function reading(task: Task, today: string | null): Reading {
+  const last = !task.last_date
+    ? 'None entered this season'
+    : today
+      ? `${formatDate(task.last_date)} (${relativeDay(task.last_date, today)})`
+      : formatDate(task.last_date)
   return { label: task.label, last, due: task.due, note: task.note }
 }

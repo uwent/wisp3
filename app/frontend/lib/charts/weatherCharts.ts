@@ -90,6 +90,27 @@ function otherPrecip(day: WeatherPanelDay): number | null {
   return Math.max(0, day.precip_in - (day.rain_in ?? 0))
 }
 
+/** Longest planting-date label in the degree days menu before it's cut with "…" */
+export const PLANTING_START_LENGTH = 60
+
+/**
+ * The degree days menu's choices (G.6): one per planting date, naming every planting that went in
+ * that day, "Apr 1 – Home North Potato, River Sweet Corn", cut to PLANTING_START_LENGTH
+ */
+export function plantingStarts(plantings: { label: string; planted: string }[]): { date: string; label: string }[] {
+  const byDate = new Map<string, string[]>()
+  for (const planting of [...plantings].sort((a, b) => a.planted.localeCompare(b.planted))) {
+    byDate.set(planting.planted, [...(byDate.get(planting.planted) ?? []), planting.label])
+  }
+  return [...byDate].map(([date, labels]) => {
+    const label = `${formatDate(date)} – ${labels.join(', ')}`
+    return {
+      date,
+      label: label.length > PLANTING_START_LENGTH ? `${label.slice(0, PLANTING_START_LENGTH - 1).trimEnd()}…` : label,
+    }
+  })
+}
+
 /** The degree days added up from a day (ISO) by date: null before it */
 export function gddFrom(days: WeatherPanelDay[], from: string): Record<string, number | null> {
   let total = 0
@@ -330,6 +351,8 @@ export function weatherPanels(
         { name: 'High', color: (p) => p.warm, value: (day) => converted(units, 'temperature', day.tmax_f) },
         { name: 'Low', color: (p) => p.rain, value: (day) => converted(units, 'temperature', day.tmin_f) },
       ],
+      // Freezing, for frost
+      lines: [{ name: temp(32), value: converted(units, 'temperature', 32)! }],
     },
     {
       key: 'humidity',

@@ -33,6 +33,24 @@ const task = (kind: Task['kind'], label: string, last_date: string | null, due: 
 const today = '2026-07-20'
 
 describe('guidance', () => {
+  it('opens with two sentences: the method and what to enter (G.6)', () => {
+    const lai = guidance(corn, units('imperial'), [], today)
+    expect(lai.summary).toBe(
+      'WISP estimates field corn water use from its leaf area index (LAI), following a field corn growth curve from ' +
+        'emergence until your readings correct it. Enter a soil moisture reading about once a week to correct any ' +
+        'drift, and LAI readings if you take them.',
+    )
+    expect(lai.more).toBe('More about how field corn is modeled')
+    expect(guidance(potato, units('imperial'), [], today).summary).toMatch(
+      /^WISP estimates potato water use from how much of the ground its canopy covers, following a typical curve/,
+    )
+    const readingsOnly = guidance({ ...potato, canopy_curve: false }, units('imperial'), [], today)
+    expect(readingsOnly.summary).toContain(
+      'from your readings only: until the first one, it counts the field as bare soil.',
+    )
+    expect(readingsOnly.summary.split('. ')).toHaveLength(2)
+  })
+
   it('explains the LAI curve for field corn, and where to put sensors', () => {
     const result = guidance(corn, units('imperial'), [task('soil_moisture', 'Soil moisture', null, true)], today)
     expect(result.title).toBe('How field corn is modeled')
@@ -41,6 +59,17 @@ describe('guidance', () => {
     expect(result.paragraphs.at(-1)).toContain('(8 in and 24 in deep)')
     expect(result.readings).toEqual([
       { label: 'Soil moisture', last: 'None entered this season', due: true, note: 'due' },
+    ])
+  })
+
+  it('lists the readings with their dates once the season has ended (G.6)', () => {
+    const tasks = [
+      task('soil_moisture', 'Soil moisture', '2026-09-20', false),
+      task('canopy', 'Percent cover', '2026-08-01', false, { note: 'canopy closed' }),
+    ]
+    expect(guidance(potato, units('imperial'), tasks, null).readings).toEqual([
+      { label: 'Soil moisture', last: 'Sep 20', due: false, note: null },
+      { label: 'Percent cover', last: 'Aug 1', due: false, note: 'canopy closed' },
     ])
   })
 

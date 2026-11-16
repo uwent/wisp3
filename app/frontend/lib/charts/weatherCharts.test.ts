@@ -18,6 +18,8 @@ import {
   runningTotal,
   seasonSliderOption,
   weatherChartOption,
+  PLANTING_START_LENGTH,
+  plantingStarts,
   weatherPanels,
 } from './weatherCharts'
 
@@ -368,6 +370,29 @@ describe('weather charts', () => {
     const [inside] = chart.dataZoom as { startValue: string }[]
     expect(slider).toMatchObject({ type: 'slider', startValue: inside.startValue, showDetail: false })
     expect((option.xAxis as { data: string[] }).data).toHaveLength(days.length)
+  })
+
+  it('offers each planting date once in the degree days menu, naming its plantings (G.6)', () => {
+    expect(
+      plantingStarts([
+        { label: 'River Sweet Corn', planted: '2026-05-10' },
+        { label: 'Home North Potato', planted: '2026-04-01' },
+        { label: 'Home South Potato', planted: '2026-04-01' },
+      ]),
+    ).toEqual([
+      { date: '2026-04-01', label: 'Apr 1 – Home North Potato, Home South Potato' },
+      { date: '2026-05-10', label: 'May 10 – River Sweet Corn' },
+    ])
+    const [long] = plantingStarts(
+      ['A', 'B', 'C', 'D'].map((name) => ({ label: `Field ${name} Sweet Corn`, planted: '2026-04-01' })),
+    )
+    expect(long.label).toHaveLength(PLANTING_START_LENGTH)
+    expect(long.label).toMatch(/^Apr 1 – Field A Sweet Corn, .*…$/)
+  })
+
+  it("marks freezing on the air temperature chart, in the user's units", () => {
+    expect(panel('air_temperature').lines).toEqual([{ name: '32 °F', value: 32 }])
+    expect(panel('air_temperature', 'metric').lines).toEqual([{ name: '0 °C', value: 0 }])
   })
 
   it('explains every chart', () => {

@@ -26,7 +26,7 @@ test('the dashboard shows field cards with a status', async ({ page }) => {
   await pivot.getByRole('link', { name }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Irrigation system: ${name}`)
   await expect(page.getByRole('heading', { name: /^Weather/, level: 2 })).toBeVisible()
-  await page.getByRole('link', { name: /^Season's weather: / }).click()
+  await page.getByRole('link', { name: 'View detailed weather charts for this location →' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Weather:')
   await expect(page.getByRole('heading', { name: 'Weather charts', level: 2 })).toBeVisible()
 })
@@ -42,6 +42,8 @@ test('the Weather tab has the week ahead and a season of weather per zone (G.12)
   await expect(week.getByText('Thunderstorms')).toBeVisible()
   await expect(week).toContainText('%')
   await page.locator('main h2 a').first().click()
+  // A zone's address is its location (G.6)
+  await expect(page).toHaveURL(/\/weather\/-?\d+\.\d{2},-?\d+\.\d{2}$/)
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Weather:')
   await expect(page.getByRole('heading', { name: 'The week ahead' })).toBeVisible()
   await expect(page.getByLabel('Add the total since')).toBeVisible()
@@ -355,6 +357,16 @@ test('a linear is sized by dragging a corner and turned by its handle', async ({
   // Delete it again (from its edit page): a new pivot sorts first on the dashboard, and its weather
   // cell has no seeded weather, so leaving it would change what later tests open
   await row.getByRole('link', { name: `Edit ${name}` }).click()
+  // A saved system's map is locked until Edit on the map; Cancel puts back what the map changed
+  const saved = await travel.inputValue()
+  await expect(page.getByRole('application', { name: /^Map of the linear/ }).locator('canvas')).toBeVisible()
+  await expect(page.getByTitle('Drag to resize the linear', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Edit on the map' }).click()
+  await dragHandle(page, 'Drag to resize the linear', 0, 20)
+  await expect(travel).not.toHaveValue(saved)
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(travel).toHaveValue(saved)
+  await expect(page.getByRole('button', { name: 'Edit on the map' })).toBeVisible()
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Delete this linear' }).click()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
@@ -557,10 +569,9 @@ test('time travel shows a field on an earlier day, read-only, and returns to tod
 test('a field switches to entered rain only and back', async ({ page }) => {
   const planting = await firstPlantingPath(page)
   await page.goto(planting)
-  // The section starts closed; following the summary's links opens it
+  // The section starts open, like the page's others (G.6)
   const summary = page.locator('#season-summary')
-  await expect(page.getByRole('button', { name: 'Season summary' })).toHaveAttribute('aria-expanded', 'false')
-  await page.getByRole('button', { name: 'Season summary' }).click()
+  await expect(page.getByRole('button', { name: 'Season summary' })).toHaveAttribute('aria-expanded', 'true')
   await expect(summary).toContainText('Your gauge and the model')
   const note = page.getByText('Rain: only what you enter, plus the forecast for the days ahead.')
 

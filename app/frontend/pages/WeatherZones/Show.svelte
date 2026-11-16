@@ -2,7 +2,7 @@
   import { Link, page, router } from '@inertiajs/svelte'
   import { systemName } from '@/lib/geo'
 
-  import { gddFrom, weatherPanels } from '@/lib/charts/weatherCharts'
+  import { gddFrom, plantingStarts, weatherPanels } from '@/lib/charts/weatherCharts'
   import WeatherSection from '@/lib/charts/WeatherSection.svelte'
   import ForecastStrip from '@/lib/components/ForecastStrip.svelte'
   import Spinner from '@/lib/components/Spinner.svelte'
@@ -11,11 +11,11 @@
   import { formatDate } from '@/lib/dates'
   import { poll, weatherUpdate } from '@/lib/poll'
   import { units as unitsFor, type Units } from '@/lib/units'
-  import { exportWeatherZone, pivots as pivotRoutes, weatherZones } from '@/routes'
+  import { fields as fieldRoutes, pivots as pivotRoutes, weatherZones } from '@/routes'
+  import { weatherZone, weatherZoneExport } from '@/lib/weatherZones'
   import type { ForecastDay, WeatherPanelDay, WeatherZone } from '@/types/serializers'
 
   // A weather zone (G.12): its systems, the week ahead, and the season's weather panels (?year=).
-  // ?planting= adds a growing degree day total from that planting's date (the planting page's link).
   let {
     zone,
     zones,
@@ -28,7 +28,7 @@
     updating_pivot_ids,
   }: {
     zone: WeatherZone
-    zones: { id: number; name: string }[]
+    zones: { id: number; name: string; coordinates: string; location: string }[]
     year: number
     years: number[]
     weather_from: string
@@ -39,25 +39,32 @@
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  // The zone's fields by system, in the systems' order, then by name
+  const zoneFields = $derived(
+    [...zone.fields].sort(
+      (a, b) =>
+        zone.pivots.findIndex((pivot) => pivot.id === a.pivot_id) -
+          zone.pivots.findIndex((pivot) => pivot.id === b.pivot_id) || a.name.localeCompare(b.name),
+    ),
+  )
 
   // Growing degree days add up since January 1 and since the first day in view, and (picked under
-  // the chart) since one of the year's plantings went in
-  const requested = new URL(page.url, 'http://wisp').searchParams.get('planting')
-  let gddStart = $state(requested ?? '')
-  const gddPlanting = $derived(plantings.find((planting) => String(planting.id) === gddStart))
-  const plantingTotals = $derived(gddPlanting && gddFrom(weather, gddPlanting.planted))
+  // the chart) since a planting date, the year's plantings that day named together (G.6)
+  const starts = $derived(plantingStarts(plantings))
+  let gddStart = $state('')
+  const plantingTotals = $derived(gddStart ? gddFrom(weather, gddStart) : undefined)
   const panels = $derived((u: Units) =>
     weatherPanels(u, {
       gddSince: formatDate(weather_from),
       gddPlanting:
-        gddPlanting && plantingTotals
-          ? { label: `planting (${formatDate(gddPlanting.planted)})`, totals: plantingTotals }
+        gddStart && plantingTotals
+          ? { label: `planting (${formatDate(gddStart)})`, totals: plantingTotals }
           : undefined,
     }),
   )
 
-  function visit(id: number, y: number) {
-    router.get(weatherZones.show(id).url, y === new Date().getFullYear() ? {} : { year: y })
+  function visit(location: string, y: number) {
+    router.get(weatherZone(location).url, y === new Date().getFullYear() ? {} : { year: y })
   }
 
   // While the zone's weather is being fetched, reload until it lands
@@ -74,48 +81,59 @@
   const weatherState = $derived(weatherUpdate(updating_pivot_ids.length > 0, timedOut))
 </script>
 
-<svelte:head><title>Weather: {zone.name} · WISP</title></svelte:head>
+<svelte:head><title>Weather: {zone.coordinates} · WISP</title></svelte:head>
 
 <!-- Two columns until narrow, so a long list of systems wraps beside the pickers instead of pushing them below -->
 <div class="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
   <div>
-    {#if zones.length > 1}
-      <Link href={weatherZones.index()} class="text-sm text-brand-600 hover:underline">← Weather zones</Link>
-    {/if}
+    <Link href={weatherZones.index()} class="text-sm text-brand-600 hover:underline">← Weather zones</Link>
     <h1 class="text-2xl font-semibold">
       <span class="font-normal text-ink-muted">Weather:</span>
-      {zone.name}
+      {zone.coordinates}
     </h1>
+    <!-- The coordinates name the place; the systems in it follow (G.6) -->
     <p class="text-sm text-ink-muted">
-      <Term id="weather_zone">Weather zone</Term>
-      {` at ${zone.coordinates}`}{zone.elevation_ft === null
+      <Term id="weather_zone">Weather zone</Term>{zone.elevation_ft === null
         ? ''
         : `, elevation ${units.format('distance', zone.elevation_ft)}`}
-      {#if zone.pivots.length}
-        · {zone.pivots.length === 1 ? 'Irrigation system' : 'Irrigation systems'}:
+    </p>
+    <!-- Its systems, then their fields in the same order, each a link to its page (G.6) -->
+    {#if zone.pivots.length}
+      <p class="text-sm">
+        <span class="text-ink-muted">{zone.pivots.length === 1 ? 'Irrigation system' : 'Irrigation systems'}:</span>
         {#each zone.pivots as pivot, i (pivot.id)}{i ? ', ' : ''}<Link
             href={pivotRoutes.show(pivot.id)}
             class="text-brand-600 underline underline-offset-2">{systemName(pivot)}</Link
           >{` (${pivot.farm})`}{/each}
-      {/if}
-    </p>
+      </p>
+    {/if}
+    {#if zoneFields.length}
+      <p class="text-sm">
+        <span class="text-ink-muted">{zoneFields.length === 1 ? 'Field' : 'Fields'}:</span>
+        {#each zoneFields as field, i (field.id)}{i ? ', ' : ''}<Link
+            href={fieldRoutes.show(field.id)}
+            class="text-brand-600 underline underline-offset-2">{field.name}</Link
+          >{` (${field.pivot})`}{/each}
+      </p>
+    {/if}
   </div>
   <div class="flex flex-wrap gap-2 sm:justify-end">
     {#if zones.length > 1}
       <select
         class="max-w-64 rounded-md text-sm"
         aria-label="Weather zone"
-        value={zone.id}
-        onchange={(e) => visit(Number(e.currentTarget.value), year)}
+        value={zone.location}
+        onchange={(e) => visit(e.currentTarget.value, year)}
       >
-        {#each zones as other (other.id)}<option value={other.id}>{other.name}</option>{/each}
+        {#each zones as other (other.id)}<option value={other.location}>{other.coordinates}: {other.name}</option
+          >{/each}
       </select>
     {/if}
     <select
       class="rounded-md text-sm"
       aria-label="Season"
       value={year}
-      onchange={(e) => visit(zone.id, Number(e.currentTarget.value))}
+      onchange={(e) => visit(zone.location, Number(e.currentTarget.value))}
     >
       {#each years as y (y)}<option value={y}>{y}</option>{/each}
     </select>
@@ -145,7 +163,7 @@
     exports={{
       place: zone.name,
       file: `wisp-weather-${fileSlug(zone.name)}-${year}`,
-      href: exportWeatherZone(zone.id, { query: { year } }).url,
+      href: weatherZoneExport(zone.location, { query: { year } }).url,
     }}
   >
     {#snippet panelControls(key)}
@@ -154,9 +172,7 @@
           <span class="shrink-0">Add the total since</span>
           <select class="w-0 min-w-0 flex-1 rounded-md py-0.5 text-xs" bind:value={gddStart}>
             <option value="">no planting</option>
-            {#each plantings as planting (planting.id)}
-              <option value={String(planting.id)}>{planting.label}, planted {formatDate(planting.planted)}</option>
-            {/each}
+            {#each starts as start (start.date)}<option value={start.date}>{start.label}</option>{/each}
           </select>
         </label>
       {/if}

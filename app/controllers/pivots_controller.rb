@@ -23,7 +23,9 @@ class PivotsController < AuthenticatedController
   # The weather CSV moved to the pivot's zone (G.12); old links follow it
   def weather
     pivot = Current.group.pivots.find(params[:id])
-    redirect_to export_weather_zone_path(pivot.weather_cell_id, year: params[:year]), status: :moved_permanently
+    return head :not_found unless pivot.weather_cell
+
+    redirect_to export_weather_zone_path(pivot.weather_cell.location, year: params[:year]), status: :moved_permanently
   end
 
   def new

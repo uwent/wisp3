@@ -31,6 +31,7 @@
     children,
     surveyLevel = 'h3',
     surveyNote,
+    locked = false,
   }: {
     shape: ShapeDraft
     prefix: string
@@ -44,6 +45,8 @@
     surveyLevel?: 'h2' | 'h3'
     /** A line under the soil survey's heading */
     surveyNote?: string
+    /** The map starts locked (a saved system), unlocked with Edit on the map */
+    locked?: boolean
   } = $props()
 
   // Sizes stay blank until the system is placed (then the map's shape fills them) or one is typed
@@ -97,7 +100,7 @@
   {#if error('kind')}<p class="text-sm text-status-irrigate-ink">{error('kind')}</p>{/if}
 </fieldset>
 
-<PivotMap bind:shape {others} {soilTypes} />
+<PivotMap bind:shape {others} {soilTypes} {locked} />
 
 <div class="grid gap-4 sm:grid-cols-2 {children ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}">
   <NumberField label="Latitude" name="{prefix}[latitude]" bind:value={shape.latitude} error={error('latitude')} />

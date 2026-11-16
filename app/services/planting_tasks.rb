@@ -10,7 +10,7 @@ class PlantingTasks
   FULL_COVER_PCT = 80
 
   # kind: :soil_moisture, :canopy or :canopy_check. last_date: the latest reading, if any. due:
-  # whether it's to do now. note: "due", "canopy closed", "vines killed" or nil. todo: what to do, in
+  # whether it's to do now. note: "due", "canopy closed", "vines killed", "optional" or nil. todo: what to do, in
   # a line (when due). message: more about it, for the canopy check.
   Task = Data.define(:kind, :label, :last_date, :due, :note, :todo, :message)
 
@@ -19,10 +19,15 @@ class PlantingTasks
     @planting, @today = status.planting, status.today
   end
 
+  # In season, every reading with whether it's due, and the canopy check; once the season has ended,
+  # the readings with their last dates only (the planting page lists them, G.6), none of them due
   def all
-    return [] unless @status.phase == :active
-
-    [soil_moisture, canopy, canopy_check].compact
+    case @status.phase
+    when :active then [soil_moisture, canopy, canopy_check].compact
+    when :ended
+      [soil_moisture, canopy].compact.map { |task| task.with(due: false, note: (task.note unless task.due), todo: nil) }
+    else []
+    end
   end
 
   def due = all.select(&:due)
@@ -70,7 +75,14 @@ class PlantingTasks
     reading(:soil_moisture, "Soil moisture", last, "Enter a soil moisture reading")
   end
 
-  def canopy = self.class.canopy(@planting, @today)
+  # On LAI the curve stands in until the first reading, so the reading is listed as optional
+  def canopy
+    task = self.class.canopy(@planting, @today)
+    return task if task || @planting.et_method != "lai" || @today < @planting.emergence_date
+
+    Task.new(kind: :canopy, label: "Leaf area index (LAI)", last_date: nil, due: false, note: "optional", todo: nil,
+      message: nil)
+  end
 
   def reading(kind, label, last, todo) = self.class.reading(kind, label, last, todo, @today)
 

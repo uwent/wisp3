@@ -67,10 +67,15 @@ Rails.application.routes.draw do
   # Every pivot on a map with its fields' status, and optional weather and drought layers
   resource :map, only: :show, controller: "map"
   # Weather by zone (G.12): the operation's zones with the week ahead, a zone's season of weather
-  # (?year=) and that as CSV
-  resources :weather_zones, path: "weather", only: [:index, :show] do
+  # (?year=) and that as CSV. A zone's address is its cell's center, /weather/44.12,-89.54 (G.6);
+  # the old ids (/weather/1) redirect there.
+  resources :weather_zones, path: "weather", only: [:index, :show], param: :location,
+    constraints: {location: /-?\d+(\.\d+)?,-?\d+(\.\d+)?/} do
     get :export, on: :member, defaults: {format: :csv}
   end
+  get "weather/:id", to: "weather_zones#legacy", constraints: {id: /\d+/}, as: :legacy_weather_zone
+  get "weather/:id/export", to: "weather_zones#legacy", constraints: {id: /\d+/}, defaults: {export: true, format: :csv},
+    as: :legacy_export_weather_zone
   # The group's pivots whose weather is updating (JSON), for pages waiting on it
   resource :weather_updates, only: :show
 

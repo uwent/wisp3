@@ -67,11 +67,11 @@ export function skyFor(
 
 const weekdays = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short' })
 
-/** "Today", "Tomorrow" or "Thu" */
-export function dayName(iso: string, today: string): string {
+/** "Today", "Tomorrow" or "Thu" ("Today" or "Thu" when short) */
+export function dayName(iso: string, today: string, { short = false }: { short?: boolean } = {}): string {
   if (iso === today) return 'Today'
   const next = new Date(`${today}T00:00:00Z`)
   next.setUTCDate(next.getUTCDate() + 1)
-  if (iso === next.toISOString().slice(0, 10)) return 'Tomorrow'
+  if (!short && iso === next.toISOString().slice(0, 10)) return 'Tomorrow'
   return weekdays.format(new Date(`${iso}T00:00:00Z`))
 }

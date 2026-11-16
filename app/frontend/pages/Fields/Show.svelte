@@ -54,7 +54,7 @@
     year: number
     years: number[]
     weather_updating: boolean
-    weather_zone: { id: number; name: string } | null
+    weather_zone: { id: number; name: string; location: string } | null
     forecast: ForecastDay[]
     /** The season's plantings with their status today */
     plantings: PlantingSummary[]
@@ -227,23 +227,24 @@
         or the {noun}'s. Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and
         press Enter or start typing to edit one.
       </p>
-      <div class="max-h-[36rem] max-w-3xl overflow-auto rounded-lg border border-line bg-surface-raised">
+      <!-- The page's width: Date, Rain and Irrigation as wide as they need (w-px, no wrapping), Notes the rest -->
+      <div class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised">
         <table class="w-full text-sm">
           <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
             <tr class="text-right">
-              <th class="px-3 py-2 text-left font-medium">Date</th>
-              <th class="px-2 py-2 font-medium">Rain</th>
-              <th class="px-2 py-2 font-medium">Irrigation</th>
+              <th class="w-px px-3 py-2 text-left font-medium whitespace-nowrap">Date</th>
+              <th class="w-px px-2 py-2 font-medium whitespace-nowrap">Rain</th>
+              <th class="w-px px-2 py-2 font-medium whitespace-nowrap">Irrigation</th>
               <th class="px-2 py-2 text-left font-medium">Notes</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-line">
             {#each days as day, row (day.date)}
               <tr class="text-right">
-                <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap"
+                <th scope="row" class="w-px px-3 py-1 text-left font-normal whitespace-nowrap"
                   >{formatDate(day.date, { weekday: true })}</th
                 >
-                <td class="px-1 py-0.5">
+                <td class="w-px px-1 py-0.5 whitespace-nowrap">
                   <EditableCell
                     grid="field-days"
                     {row}
@@ -262,7 +263,7 @@
                     {/if}
                   </EditableCell>
                 </td>
-                <td class="px-1 py-0.5">
+                <td class="w-px px-1 py-0.5 whitespace-nowrap">
                   <EditableCell
                     grid="field-days"
                     {row}
@@ -281,7 +282,8 @@
                     {/if}
                   </EditableCell>
                 </td>
-                <td class="px-1 py-0.5 text-left">
+                <!-- max-w-0 lets a long note truncate to the column rather than widen it -->
+                <td class="max-w-0 px-1 py-0.5 text-left">
                   <EditableCell
                     grid="field-days"
                     {row}
@@ -291,7 +293,7 @@
                     label={cellLabel(day, 'Notes')}
                     onsave={(t) => saveCell(day, 'notes', t)}
                   >
-                    <span class="block max-w-64 truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
+                    <span class="block truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
                   </EditableCell>
                 </td>
               </tr>

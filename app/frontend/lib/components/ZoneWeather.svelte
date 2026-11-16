@@ -2,20 +2,22 @@
   import { Link } from '@inertiajs/svelte'
 
   import type { Units } from '../units'
+  import CollapsibleSection from './CollapsibleSection.svelte'
   import ForecastStrip from './ForecastStrip.svelte'
-  import { weatherZone } from '@/routes'
+  import { weatherZone } from '@/lib/weatherZones'
   import type { ForecastDay } from '@/types/serializers'
 
   // A page's weather (G.12): the week ahead in its weather zone, and a link to the zone's season of
-  // weather. query goes on the link (?year=, or ?planting= to count degree days from its emergence).
-  // Without a forecast (another year, time travel, an ended season) only the link.
+  // weather. query goes on the link (?year=). Without a forecast (another year, time travel) only the
+  // link. A compact strip with the link under it, in a section that opens and closes like the page's
+  // others (G.6).
   let {
     zone,
     forecast,
     units,
     query = {},
   }: {
-    zone: { id: number; name: string } | null
+    zone: { id: number; name: string; location: string } | null
     forecast: ForecastDay[]
     units: Units
     query?: Record<string, string | number>
@@ -23,13 +25,14 @@
 </script>
 
 {#if zone}
-  <section class="space-y-2" aria-labelledby="zone-weather-heading">
-    <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-      <h2 id="zone-weather-heading" class="text-lg font-medium">{forecast.length ? 'Weather this week' : 'Weather'}</h2>
-      <Link href={weatherZone(zone.id, { query })} class="text-sm text-brand-600 underline underline-offset-2"
-        >Season's weather: {zone.name} →</Link
-      >
+  <CollapsibleSection title={forecast.length ? 'Weather this week' : 'Weather'} storageKey="zone-weather">
+    <div class="space-y-2">
+      {#if forecast.length}<ForecastStrip days={forecast} {units} compact />{/if}
+      <p class="text-right">
+        <Link href={weatherZone(zone.location, { query })} class="text-sm text-brand-600 underline underline-offset-2"
+          >View detailed weather charts for this location →</Link
+        >
+      </p>
     </div>
-    {#if forecast.length}<ForecastStrip days={forecast} {units} />{/if}
-  </section>
+  </CollapsibleSection>
 {/if}
