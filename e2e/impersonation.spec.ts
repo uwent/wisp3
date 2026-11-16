@@ -1,6 +1,5 @@
-import { expect, test } from '@playwright/test'
-
 import { firstPlantingPath, GROWER_EMAIL, impersonateGrower } from './session'
+import { expect, test } from './test'
 
 // An admin signed in as a grower for support (PLAN.md Phase 8 B): the bar on every page, and back
 
@@ -15,6 +14,7 @@ test('an admin signs in as a grower, sees the bar on every page, and returns to 
 
   // The skip link is still the first stop, before the bar's button
   await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   await page.keyboard.press('Tab')
   await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeFocused()
 

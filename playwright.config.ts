@@ -16,7 +16,9 @@ export default defineConfig({
   },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
-    { name: 'phone', use: { ...devices['Pixel 7'], colorScheme: 'dark' } },
+    // Only the tests tagged @phone: dark mode's accessibility scans, and where touch or the small
+    // screen's layout matters
+    { name: 'phone', use: { ...devices['Pixel 7'], colorScheme: 'dark' }, grep: /@phone/ },
   ],
   webServer: {
     command: `bin/rails server -p ${port}`,

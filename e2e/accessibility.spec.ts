@@ -1,9 +1,10 @@
 import { writeFileSync } from 'node:fs'
 
 import AxeBuilder from '@axe-core/playwright'
-import { expect, type Page, test } from '@playwright/test'
+import { type Page } from '@playwright/test'
 
 import { firstPlantingPath, impersonateGrower, signedInPages, signIn, watchErrors } from './session'
+import { expect, test } from './test'
 
 // WCAG 2.1 A and AA checks (axe) on every page, in light (desktop) and dark (phone), which also fail
 // on script errors. Every page is scanned before the test fails, and A11Y_REPORT=path writes the
@@ -47,7 +48,7 @@ test.afterAll(() => {
     writeFileSync(report.replace('.json', `-${test.info().project.name}.json`), JSON.stringify(findings, null, 2))
 })
 
-test('signed-out pages', async ({ page }) => {
+test('signed-out pages', { tag: '@phone' }, async ({ page }) => {
   const errors = watchErrors(page)
   for (const path of [
     '/',
@@ -62,7 +63,7 @@ test('signed-out pages', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
-test('signed-in pages', async ({ page }) => {
+test('signed-in pages', { tag: '@phone' }, async ({ page }) => {
   test.setTimeout(120_000)
   await signIn(page)
   const paths = await signedInPages(page)
@@ -73,7 +74,7 @@ test('signed-in pages', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
-test('a field viewed on an earlier date (time travel)', async ({ page }) => {
+test('a field viewed on an earlier date (time travel)', { tag: '@phone' }, async ({ page }) => {
   await signIn(page)
   await page.goto(await firstPlantingPath(page))
   const rewind = page.getByRole('button', { name: 'View this field on an earlier date' })
@@ -87,14 +88,14 @@ test('a field viewed on an earlier date (time travel)', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
-test('the bar shown while signed in as someone else', async ({ page }) => {
+test('the bar shown while signed in as someone else', { tag: '@phone' }, async ({ page }) => {
   await impersonateGrower(page)
   const errors = watchErrors(page)
   await scan(page, '/')
   expect(errors).toEqual([])
 })
 
-test("Setup's field dialog, with its shape (G.14)", async ({ page }) => {
+test("Setup's field dialog, with its shape (G.14)", { tag: '@phone' }, async ({ page }) => {
   await signIn(page)
   const errors = watchErrors(page)
   await page.goto('/setup')

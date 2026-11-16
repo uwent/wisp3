@@ -22,6 +22,8 @@ Axe finds roughly a third of WCAG problems; the manual checks below cover the re
 
 Status colors as fills keep their values apart from the OK green; the chart palette (`--color-chart-*`) is separate and unchanged.
 
+Later (2026-11-16): the soil survey's "USDA Web Soil Survey" link (`SoilSurvey`, on the shape page and a system's edit page) was underlined only on hover (`link-in-text-block`). The scans had missed it because the survey only shows once the USDA service answers, and it was down; now underlined, and the scans answer the survey themselves (`e2e/test.ts`).
+
 ## Manual checks
 
 In this order (PLAN.md Phase 8 A). Each finding is recorded with the page, the WCAG criterion and the fix.

@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs'
 
-import { expect, type Page, test } from '@playwright/test'
+import { type Page } from '@playwright/test'
 
 import { firstPlantingPath, firstZonePath, researchFieldPath, signIn, watchErrors } from './session'
+import { expect, test } from './test'
 
 // Smoke tests over the demo account seeded by e2e/seed.rb: the main ways of entering data save, and
 // the map and charts work. accessibility.spec.ts visits every page, failing on script errors too.
@@ -11,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page)
 })
 
-test('the dashboard shows field cards with a status', async ({ page }) => {
+test('the dashboard shows field cards with a status', { tag: '@phone' }, async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   await expect(page.locator('main ul li').first()).toBeVisible()
@@ -89,7 +90,7 @@ test('the map lists the fields and selects a pivot from the list', async ({ page
   expect(errors).toEqual([])
 })
 
-test("the map's list is the operation as a tree, selected at any level (G.14)", async ({ page }) => {
+test("the map's list is the operation as a tree, selected at any level (G.14)", { tag: '@phone' }, async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/map')
   await expect(page.locator('.maplibregl-canvas')).toBeVisible()
@@ -185,7 +186,7 @@ test('the Drought Monitor layer gives the category at the selected pivot', async
   await expect(page.getByRole('region', { name: /^System: / })).toContainText('D1 Moderate drought')
 })
 
-test("tapping the map gives the rain layer's value there", async ({ page }) => {
+test("tapping the map gives the rain layer's value there", { tag: '@phone' }, async ({ page }) => {
   // A blank tile for the picture, and 18.9 mm from NOAA's MRMS at any point
   const blank = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -227,7 +228,7 @@ test('the radar layer gives the reflectivity under a tap', async ({ page }) => {
   await expect(page.getByRole('status').filter({ hasText: 'Radar now' })).toContainText('Light rain (20 dBZ)')
 })
 
-test('quick setup suggests the soil from the soil survey under the pivot', async ({ page }) => {
+test('quick setup suggests the soil from the soil survey under the pivot', { tag: '@phone' }, async ({ page }) => {
   // The survey's answer for a Central Sands pivot: mostly Plainfield sand, some Coloma loamy sand
   await page.route('**/Tabular/post.rest', (route) =>
     route.fulfill({
@@ -443,26 +444,30 @@ test('a grid cell saves on Enter, and Escape cancels without saving', async ({ p
   await expect(page.locator('[data-grid="days"][data-row="2"][data-col="4"]')).not.toContainText(note)
 })
 
-test('an open grid cell keeps its column width, and clicking another cell opens that one', async ({ page }) => {
-  await page.goto(await firstPlantingPath(page))
-  const cell = (row: number, col: number) => page.locator(`[data-grid="days"][data-row="${row}"][data-col="${col}"]`)
-  const widths = () =>
-    page
-      .locator('table:has([data-grid="days"]) thead th')
-      .evaluateAll((ths) => ths.map((th) => Math.round(th.getBoundingClientRect().width)))
-  // The table renders after the page's first paint; wait as long as a click would
-  await cell(2, 0).waitFor()
-  const before = await widths()
-  expect(before.length).toBeGreaterThan(0)
+test(
+  'an open grid cell keeps its column width, and clicking another cell opens that one',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.goto(await firstPlantingPath(page))
+    const cell = (row: number, col: number) => page.locator(`[data-grid="days"][data-row="${row}"][data-col="${col}"]`)
+    const widths = () =>
+      page
+        .locator('table:has([data-grid="days"]) thead th')
+        .evaluateAll((ths) => ths.map((th) => Math.round(th.getBoundingClientRect().width)))
+    // The table renders after the page's first paint; wait as long as a click would
+    await cell(2, 0).waitFor()
+    const before = await widths()
+    expect(before.length).toBeGreaterThan(0)
 
-  await cell(2, 0).click()
-  await expect(page.getByRole('textbox', { name: /^Rain, / })).toBeFocused()
-  expect(await widths()).toEqual(before)
+    await cell(2, 0).click()
+    await expect(page.getByRole('textbox', { name: /^Rain, / })).toBeFocused()
+    expect(await widths()).toEqual(before)
 
-  await cell(4, 1).click()
-  await expect(page.getByRole('textbox', { name: /^Irrigation, / })).toBeFocused()
-  await page.keyboard.press('Escape')
-})
+    await cell(4, 1).click()
+    await expect(page.getByRole('textbox', { name: /^Irrigation, / })).toBeFocused()
+    await page.keyboard.press('Escape')
+  },
+)
 
 test('planned irrigation updates the projection', async ({ page }) => {
   await page.goto(await firstPlantingPath(page))
@@ -726,7 +731,7 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
 // Mid-season, so the demo's fields are in season whatever today's date (in November they're collapsed)
 const midSeason = `/daily?date=${new Date().getFullYear()}-07-15`
 
-test('daily entry saves rain for a field', async ({ page }) => {
+test('daily entry saves rain for a field', { tag: '@phone' }, async ({ page }) => {
   await page.goto(midSeason)
   const rain = page.getByLabel(/^Rain on /).first()
   await rain.fill('0.3')
@@ -915,8 +920,7 @@ test('alerts previews today’s email and sends a test, then waits', async ({ pa
   const email = page.frameLocator('iframe[title="Daily email preview"]')
   await expect(email.getByRole('heading', { name: 'Your fields this morning' })).toBeVisible()
 
-  // Both projects sign in as one user, who can send one test per cooldown (reset by e2e/seed.rb)
-  if (test.info().project.name !== 'desktop') return
+  // One test send per cooldown (reset by e2e/seed.rb); desktop only, as is every test not tagged @phone
   await page.getByRole('button', { name: 'Send me a test email' }).click()
   await expect(page.getByText('Test email sent to')).toBeVisible()
   await expect(page.getByRole('button', { name: /Send a test email \(again in \d+ min\)/ })).toBeDisabled()
@@ -942,7 +946,7 @@ test('alerts previews today’s email and sends a test, then waits', async ({ pa
   expect(errors.filter((error) => !error.includes("Blocked script execution in 'about:srcdoc'"))).toEqual([])
 })
 
-test('glossary terms explain themselves on hover or tap', async ({ page }) => {
+test('glossary terms explain themselves on hover or tap', { tag: '@phone' }, async ({ page }) => {
   await page.goto(await firstPlantingPath(page))
   const term = page.getByRole('button', { name: 'allowable depletion', exact: true })
   if (test.info().project.name === 'phone') await term.tap()
@@ -1063,10 +1067,8 @@ test('a field shape is drawn corner by corner, or read from a file (G.10)', asyn
 
 test('a field shape away from its system can move the field to a new Location (G.14 part 7)', async ({ page }) => {
   const errors = watchErrors(page)
-  // Each size moves its own field (they share the database), each on a traveler a kilometer or
-  // more west of the KML's field
-  const [name, system] =
-    test.info().project.name === 'phone' ? ['West 20', 'West lane (traveler)'] : ['East 15', 'East lane (traveler)']
+  // A field on a traveler a kilometer or more west of the KML's field
+  const [name, system] = ['East 15', 'East lane (traveler)']
   await page.goto('/setup')
   await page.getByRole('button', { name: `Edit ${name}` }).click()
   await page
@@ -1174,12 +1176,10 @@ test('the map shades outlined fields and badges them at their center, and marks 
   // A click in a field's outline selects that field, not the system drawn over it (G.14). The map
   // flies the pivot to 170 px left of center beside the panel (wide screens), at zoom 13.5 or more,
   // where its 1,300 ft radius is over 80 px: North corn is its east half.
-  if (test.info().project.name === 'desktop') {
-    await page.waitForTimeout(1500) // the flight ends
-    const box = (await page.locator('.maplibregl-canvas').boundingBox())!
-    await page.mouse.click(box.x + box.width / 2 - 170 + 40, box.y + box.height / 2)
-    await expect(panel.locator('li[aria-current="true"]')).toContainText('North corn')
-  }
+  await page.waitForTimeout(1500) // the flight ends
+  const box = (await page.locator('.maplibregl-canvas').boundingBox())!
+  await page.mouse.click(box.x + box.width / 2 - 170 + 40, box.y + box.height / 2)
+  await expect(panel.locator('li[aria-current="true"]')).toContainText('North corn')
 
   // The systems' shapes are a layer that can be switched off, and stays off
   await page.getByRole('button', { name: /^Layers/ }).click()

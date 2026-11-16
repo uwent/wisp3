@@ -83,6 +83,7 @@ Frontend:
 - **The pivot picker's handles aren't MapLibre draggable markers**, which follow the pointer and flicker against a constrained position; `PivotMap`'s `followPointer` moves the shape and places each handle from it. Their custom cursors are SVG data URLs (`lib/map/cursors.ts`).
 - **MapLibre** sets `position: relative` on its container, so size the container (`h-full w-full`) rather than positioning it absolutely. Load it with `loadMapLibre()` (its worker URL breaks under Vite otherwise; `worker.format: 'es'` in `vite.config.ts`).
 - **Chromium fires `blur` on a focused input that's removed**; jsdom doesn't, so component tests of edit/cancel flows fire it themselves (`EditableCell.test.ts`).
+- **Browser tests import `test` and `expect` from `e2e/test.ts`**, not `@playwright/test`: it answers the soil survey and the USGS imagery tiles for every page (a test's own `page.route` takes precedence; `E2E_LIVE=1 bin/e2e` reaches the real services). The phone project (dark mode) runs only tests tagged `{ tag: '@phone' }`: the accessibility scans, and tests where touch or the small screen's layout matters; a new page's scan gets the tag with the rest.
 - **Playwright dismisses dialogs by default**, so a stray `confirm` (unsaved changes) cancels a navigation in a test; handle it with `page.once('dialog', …)`.
 - **lint-staged runs Prettier on committed JSON.** Large data files go in `.prettierignore` (`lib/map/us-outline.json`), or they're expanded to thousands of lines.
 

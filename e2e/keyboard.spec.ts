@@ -1,6 +1,5 @@
-import { expect, test } from '@playwright/test'
-
 import { firstPlantingPath, signIn } from './session'
+import { expect, test } from './test'
 
 // Keyboard use (WCAG 2.1.1, 2.4.1, 2.4.3): skipping the nav, grids as one tab stop, and focus moving
 // into the map's pivot panel, the layers panel, dialogs and menus and back out again
@@ -11,6 +10,8 @@ test.beforeEach(async ({ page }) => {
 
 test('the first Tab offers a skip link to the main content', async ({ page }) => {
   await page.goto('/setup')
+  // Once the page is drawn: a Tab during loading lands wherever focus is then
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await page.keyboard.press('Tab')
   const skip = page.getByRole('link', { name: 'Skip to main content' })
   await expect(skip).toBeFocused()

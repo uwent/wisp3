@@ -113,7 +113,7 @@
           href="https://websoilsurvey.nrcs.usda.gov/"
           target="_blank"
           rel="noopener"
-          class="text-brand-600 hover:underline">USDA Web Soil Survey</a
+          class="text-brand-600 underline">USDA Web Soil Survey</a
         >). Treat this as a starting point, and check it against what you know of the field.
       </p>
     {/if}
