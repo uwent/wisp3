@@ -10,6 +10,7 @@ export default ts.config(
       'app/frontend/types/serializers',
       'app/frontend/routes',
       'node_modules',
+      '.svelte-check',
       'public',
       'coverage',
       'playwright-report',
