@@ -52,6 +52,21 @@ class Field < ApplicationRecord
   # ran on, G.14 part 7), else, with nothing planted, the one it's on now
   def pivot_id_on(date) = planting_on(date)&.pivot_id || pivot_id
 
+  # Saves the field, moved to system if given (G.14 part 7): one of its operation's, or a new Location
+  # (unsaved), added in the same transaction. Its open plantings follow (update_open_plantings);
+  # ended ones keep the system they ran on. False with errors on the field when either can't be saved.
+  def save_moving_to(system)
+    saved = Field.transaction do
+      if system&.new_record? && !system.save
+        errors.add(:pivot_id, "couldn't be added as a Location: #{system.errors.full_messages.to_sentence}")
+        raise ActiveRecord::Rollback
+      end
+      self.pivot = system if system
+      save || raise(ActiveRecord::Rollback)
+    end
+    saved || false
+  end
+
   private
 
   def update_open_plantings

@@ -35,15 +35,9 @@ class FieldOutlinesController < AuthenticatedController
     field.assign_attributes(values.slice(:area_acres, :soil_type_id).compact_blank)
     field.boundary = values[:boundary] if values.key?(:boundary)
     system = system_for(field, values)
-    saved = Field.transaction do
-      if system&.new_record? && !system.save
-        field.errors.add(:pivot_id, "couldn't be added as a Location: #{system.errors.full_messages.to_sentence}")
-        raise ActiveRecord::Rollback
-      end
-      field.pivot = system if system
-      field.save || raise(ActiveRecord::Rollback)
+    unless field.save_moving_to(system)
+      return redirect_with_errors(field_outline_path(field, from: params[:from]), field.errors.to_hash)
     end
-    return redirect_with_errors(field_outline_path(field, from: params[:from]), field.errors.to_hash) unless saved
 
     destination = (params[:from] == "setup") ? setup_path : field_path(field)
     moved = " and moved it to #{field.pivot.label}" if system

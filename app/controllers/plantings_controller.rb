@@ -4,10 +4,10 @@ class PlantingsController < AuthenticatedController
   # to a day of the season before today (PLAN.md Phase 8 F): the page shows the season as it stood
   # then, read-only. A date outside the season, ahead or malformed redirects without it.
   def show
-    planting = Current.group.plantings.find(params[:id])
+    field_id = Current.group.plantings.where(id: params[:id]).pick(:field_id) or raise ActiveRecord::RecordNotFound
     field = Current.group.fields.includes(:soil_type, pivot: [:farm, :weather_cell],
-      plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell]).find(planting.field_id)
-    planting = field.plantings.find { |p| p.id == planting.id }
+      plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell]).find(field_id)
+    planting = field.plantings.find { |p| p.id == params[:id].to_i }
     past = requested_date&.then { |date| date if date < Date.current }
     as_of = past if planting.season_range.cover?(past)
     # An ?as_of= that can't be used leaves the URL, so it doesn't look like time travel
@@ -33,26 +33,18 @@ class PlantingsController < AuthenticatedController
     }
   end
 
-  # replace: end the whole-field planting this one overlaps the day before it starts ("Replace" on
-  # the form), in the same transaction
+  # replace: end the plantings this one overlaps the day before it starts ("Replace" on the form),
+  # in the same transaction
   def create
     field = Current.group.fields.find(planting_params[:field_id])
-    plant = Plant.find_by(id: planting_params[:plant_id])
     year = requested_year
-    given = planting_params.compact_blank.except(:field_id)
-    defaults = plant ? Planting.defaults_for(plant, year) : {}
-    # Without a harvest date, the crop's typical one after the emergence given (G.2)
-    emergence = iso_date(given[:emergence_date])
-    if plant && emergence && !given[:end_date]
-      defaults[:end_date] = Planting.typical_end(plant, emergence, given[:canopy_curve_key], given[:season_days])
-    end
-    planting = field.plantings.build(defaults.merge(given).merge(created_by: Current.user))
+    planting = Planting.build_for(field, planting_params.compact_blank.except(:field_id), year:, created_by: Current.user)
     saved = Planting.transaction do
-      replace_overlapping(planting) if params[:replace].present?
+      planting.replace_overlapping! if params[:replace].present?
       planting.save || raise(ActiveRecord::Rollback)
     end
     if saved
-      redirect_back_or_to setup_path(year:), notice: "Added #{plant.name} on #{field.name}"
+      redirect_back_or_to setup_path(year:), notice: "Added #{planting.plant.name} on #{field.name}"
     else
       redirect_with_errors(request.referer || setup_path(year:), planting)
     end
@@ -85,20 +77,6 @@ class PlantingsController < AuthenticatedController
 
   private
 
-  # Ends the plantings on the field that the new one can't overlap (any, for a whole-field planting;
-  # whole-field ones, for a plot) the day before it starts, when that's after their emergence; one
-  # that starts the same day or later can't be replaced this way, and the overlap error stays
-  def replace_overlapping(planting)
-    return unless planting.season_start && planting.end_date
-    clashing = planting.field.plantings.select { |other| other.overlaps?(planting) && !(planting.partial? && other.partial?) }
-    # Ended the day before this one starts, each keeps at least a day after its start and emergence
-    # (Planting#dates_in_order); lib/plantings.ts (canReplace) offers Replace only then
-    last_day = planting.season_start - 1
-    clashing.each do |other|
-      other.update!(end_date: last_day) if other.season_start < last_day && other.emergence_date < last_day
-    end
-  end
-
   # The days of the season before today, which ?as_of= can pick ({from:, to:}), or nil if none
   def travel_dates(planting)
     to = [planting.end_date, Date.current - 1].min
@@ -106,10 +84,8 @@ class PlantingsController < AuthenticatedController
   end
 
   # ?as_of= as a date, or nil when it's missing or malformed
-  def requested_date = iso_date(params[:as_of])
-
-  def iso_date(value)
-    Date.iso8601(value) if value.is_a?(String)
+  def requested_date
+    Date.iso8601(params[:as_of]) if params[:as_of].is_a?(String)
   rescue Date::Error
     nil
   end

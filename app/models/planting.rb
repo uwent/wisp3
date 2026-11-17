@@ -100,6 +100,23 @@ class Planting < ApplicationRecord
     }
   end
 
+  # A new planting on field from the form's values (given: attributes, blank ones left out), the
+  # crop's defaults for year filling the rest; without a harvest date, the crop's typical one after
+  # the emergence given (G.2)
+  def self.build_for(field, given, year:, created_by: nil)
+    plant = Plant.find_by(id: given[:plant_id])
+    defaults = plant ? defaults_for(plant, year) : {}
+    emergence = begin
+      Date.iso8601(given[:emergence_date].to_s) if given[:emergence_date].present?
+    rescue Date::Error
+      nil
+    end
+    if plant && emergence && given[:end_date].blank?
+      defaults[:end_date] = typical_end(plant, emergence, given[:canopy_curve_key], given[:season_days])
+    end
+    field.plantings.build(defaults.merge(given).merge(created_by:))
+  end
+
   # The suggested harvest date for plant emerging on emergence: its season's length later (the
   # planting's own, season_days, else the crop's typical CanopyCurve#season_days), but no later than
   # Nov 30; Nov 30 for a crop without one (PLAN.md Phase 8 G.2, G.7). lib/plantings.ts (typicalEnd)
@@ -175,6 +192,20 @@ class Planting < ApplicationRecord
   end
 
   def overlaps?(other) = season_start <= other.end_date && end_date >= other.season_start
+
+  # "Replace" on the form: ends the plantings on the field this one can't overlap (any, for a
+  # whole-field planting; whole-field ones, for a plot) the day before it starts, when that leaves
+  # each at least a day after its start and emergence (dates_in_order; lib/plantings.ts canReplace
+  # offers Replace only then). One that starts the same day or later stays, and the overlap error
+  # with it. Run it in the transaction that saves this one.
+  def replace_overlapping!
+    return unless season_start && end_date
+    last_day = season_start - 1
+    field.plantings.each do |other|
+      next if other == self || !other.overlaps?(self) || (partial? && other.partial?)
+      other.update!(end_date: last_day) if other.season_start < last_day && other.emergence_date < last_day
+    end
+  end
 
   # The order a field's plantings are listed and picked in: whole-field first, then by season start
   def order_key = [partial? ? 1 : 0, season_start, id]
