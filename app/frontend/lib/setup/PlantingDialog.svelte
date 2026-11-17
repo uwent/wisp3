@@ -66,7 +66,7 @@
   )
 </script>
 
-<Dialog bind:open={isOpen} {title} wide>
+<Dialog bind:open={isOpen} {title} wide guard>
   {#if field}
     {#key key}
       <PlantingForm

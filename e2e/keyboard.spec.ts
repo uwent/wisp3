@@ -95,6 +95,22 @@ test('setup dialogs and the account menu work from the keyboard', async ({ page 
   await expect(dialog).toBeHidden()
   await expect(edit).toBeFocused()
 
+  // With a change, Escape moves focus into the prompt (G.13); Keep editing returns it to the change
+  await page.keyboard.press('Enter')
+  const name = dialog.getByRole('textbox').first()
+  await name.focus()
+  await page.keyboard.type(' 2')
+  await page.keyboard.press('Escape')
+  await expect(dialog.getByRole('heading', { name: 'Save your changes?' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(dialog.getByRole('button', { name: 'Keep editing' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(name).toBeFocused()
+  await page.keyboard.press('Escape')
+  await dialog.getByRole('button', { name: 'Discard' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(dialog).toBeHidden()
+
   const account = page.getByRole('button', { name: /account menu$/ })
   await account.focus()
   await page.keyboard.press('Enter')

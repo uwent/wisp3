@@ -82,7 +82,10 @@
   // Ask before leaving with anything entered
   let edited = $state(false)
   let saved = $state(false)
-  confirmUnsavedChanges(() => !saved && (edited || shape.latitude !== null))
+  confirmUnsavedChanges(
+    () => !saved && (edited || shape.latitude !== null),
+    () => document.getElementById('quick-setup-form'),
+  )
 
   // What the server would reject, checked here so the save waits until it's all in (the server
   // still checks everything). Ranges mirror Pivot's, through lib/geo.ts.
@@ -142,6 +145,7 @@
 </div>
 
 <Form
+  id="quick-setup-form"
   action={quickSetups.create()}
   class="space-y-6"
   options={{ preserveScroll: 'errors' }}

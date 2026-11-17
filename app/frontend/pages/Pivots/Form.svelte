@@ -46,7 +46,10 @@
   let edited = $state(false)
   let saved = $state(false)
   const moved = $derived(JSON.stringify(draftShape(shape)) !== initial)
-  confirmUnsavedChanges(() => !saved && (edited || moved))
+  confirmUnsavedChanges(
+    () => !saved && (edited || moved),
+    () => document.getElementById('pivot-form'),
+  )
 
   // The kind as saved, for the title; the kind being chosen, for the words below it
   const title = $derived(
@@ -85,7 +88,12 @@
   </p>
 </div>
 
-<Form action={editing ? pivots.update(pivot.id!) : pivots.create()} class="space-y-6" onSuccess={() => (saved = true)}>
+<Form
+  id="pivot-form"
+  action={editing ? pivots.update(pivot.id!) : pivots.create()}
+  class="space-y-6"
+  onSuccess={() => (saved = true)}
+>
   {#snippet children({ errors, processing })}
     <div class="space-y-6" oninput={() => (edited = true)} onchange={() => (edited = true)}>
       <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">

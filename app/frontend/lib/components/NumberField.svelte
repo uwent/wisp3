@@ -81,6 +81,7 @@
       class="block w-full min-w-0 rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm
         {message ? 'border-status-irrigate' : ''}"
       value={text}
+      data-unit={suffix}
       oninput={(event) => update(event.currentTarget.value)}
       aria-invalid={message ? 'true' : undefined}
       aria-describedby={message ? `${id}-error` : hint ? `${id}-hint` : undefined}

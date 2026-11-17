@@ -131,6 +131,23 @@ test("the map's list is the operation as a tree, selected at any level (G.14)", 
   expect(errors).toEqual([])
 })
 
+test('roads and place names over the imagery switch off, and stay off', async ({ page }) => {
+  await page.goto('/map')
+  await page.getByRole('group', { name: 'Basemap' }).getByRole('button', { name: 'Satellite' }).click()
+  await page.getByRole('button', { name: /^Layers/ }).click()
+  const roads = page.getByRole('checkbox', { name: /Roads and place names/ })
+  await expect(roads).toBeChecked()
+  await roads.uncheck()
+  await page.reload()
+  await page.getByRole('button', { name: /^Layers/ }).click()
+  await expect(page.getByRole('checkbox', { name: /Roads and place names/ })).not.toBeChecked()
+  // The street map has its own: no checkbox there
+  await page.getByRole('group', { name: 'Basemap' }).getByRole('button', { name: 'Map', exact: true }).click()
+  await expect(page.getByRole('checkbox', { name: /Roads and place names/ })).toHaveCount(0)
+  await page.getByRole('group', { name: 'Basemap' }).getByRole('button', { name: 'Satellite' }).click()
+  await page.getByRole('checkbox', { name: /Roads and place names/ }).check()
+})
+
 test('a map layer that fails says so, and the rest of the map carries on', async ({ page }) => {
   const errors = watchErrors(page)
   await page.route('**/mesonet.agron.iastate.edu/**', (route) => route.abort())
@@ -799,14 +816,47 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
     .first()
     .fill('0.2')
 
-  page.once('dialog', (dialog) => dialog.dismiss())
+  // The confirm lists the change (G.13)
+  let message = ''
+  page.once('dialog', (dialog) => {
+    message = dialog.message()
+    return dialog.dismiss()
+  })
   await page.getByRole('button', { name: 'Previous day' }).click()
+  expect(message).toMatch(/^You have unsaved changes:\n\n• Rain on .+: 0\.2 in\n/)
   await expect(page.getByLabel('Date', { exact: true })).toHaveValue(date)
   await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('0.2')
 
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Previous day' }).click()
   await expect(page.getByLabel('Date', { exact: true })).not.toHaveValue(date)
+})
+
+test('a dialog asks before dropping changes, listing them (G.13)', async ({ page }) => {
+  await page.goto('/setup')
+  await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
+  const dialog = page.getByRole('dialog')
+  const area = dialog.getByLabel(/field area/i)
+  const before = await area.inputValue()
+
+  // Escape with a change: the change listed in place of the form, Keep editing returns to it
+  await area.fill('12.5')
+  await page.keyboard.press('Escape')
+  await expect(dialog.getByRole('heading', { name: 'Save your changes?' })).toBeFocused()
+  await expect(dialog.getByRole('listitem')).toHaveText([`Field area: ${before} ac → 12.5 ac`])
+  await dialog.getByRole('button', { name: 'Keep editing' }).click()
+  await expect(area).toHaveValue('12.5')
+  await expect(area).toBeFocused()
+
+  // ✕ asks too; Discard closes, and the field opens again unchanged
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await dialog.getByRole('button', { name: 'Discard' }).click()
+  await expect(dialog).toBeHidden()
+  await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
+  await expect(dialog.getByLabel(/field area/i)).toHaveValue(before)
+  // Nothing changed: Escape just closes
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
 })
 
 test('adding a pivot irrigation on a date that has one offers to edit it instead', async ({ page }) => {
@@ -968,14 +1018,14 @@ test('a field shape is read from a file, its area offered, and saved (G.10, G.6)
   await expect(page.getByRole('group', { name: 'Shape tools' })).toBeEnabled()
   await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')
   await expect(page.getByText('Current area').locator('xpath=following-sibling::p')).toHaveText('2.00 ac')
-  await expect(page.getByLabel('New field area')).toHaveValue(/^2(\.0+)?$/)
+  await expect(page.getByLabel('Field area')).toHaveValue(/^2(\.0+)?$/)
   await expect(
     page.getByText(/^Field as drawn: 111\.\d\d ac, 109\.\d\d ac more than the area above\. Check that/),
   ).toBeVisible()
   await page.getByRole('button', { name: /^Use 111\.\d\d ac$/ }).click()
-  await expect(page.getByLabel('New field area')).toHaveValue(/^111\.\d\d$/)
+  await expect(page.getByLabel('Field area')).toHaveValue(/^111\.\d\d$/)
   await expect(page.getByText(/^Field as drawn: 111\.\d\d ac\.\s*$/)).toBeVisible()
-  await page.getByLabel('New field area').fill('2')
+  await page.getByLabel('Field area').fill('2')
 
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Saved the shape of Arlington 525')).toBeVisible()

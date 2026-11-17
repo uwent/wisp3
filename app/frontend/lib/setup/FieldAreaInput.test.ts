@@ -13,7 +13,7 @@ describe('FieldAreaInput', () => {
   it('shows the area saved beside the box, and copies the shape’s in only when asked', async () => {
     const { container } = render(FieldAreaInput, { name: 'field[area_acres]', value: 20, saved: 20, drawn: 21.534 })
     expect(screen.getByText('Current area').nextElementSibling).toHaveTextContent('20.00 ac')
-    expect(screen.getByLabelText('New field area')).toBe(box())
+    expect(screen.getByLabelText('Field area')).toBe(box())
     expect(box().value).toBe('20')
     // Within half an acre: said, not warned
     expect(screen.getByRole('status')).toHaveTextContent('Field as drawn: 21.53 ac, 1.53 ac more than the area above.')

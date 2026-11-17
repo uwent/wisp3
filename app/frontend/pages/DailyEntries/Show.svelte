@@ -24,7 +24,7 @@
   import { addDays, formatDate } from '@/lib/dates'
   import { KIND_NAMES, KIND_NOUNS, systemName } from '@/lib/geo'
   import { cropName, plotSize } from '@/lib/plantings'
-  import { confirmUnsavedChanges, UNSAVED_MESSAGE } from '@/lib/unsaved.svelte'
+  import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { dailyEntries, fields as fieldRoutes, newQuickSetup, plantings as plantingRoutes } from '@/routes'
 
@@ -37,11 +37,14 @@
 
   // Typed values not yet saved: set by any input, cleared by a successful save
   let dirty = $state(false)
-  confirmUnsavedChanges(() => dirty)
+  const unsaved = confirmUnsavedChanges(
+    () => dirty,
+    () => document.getElementById('daily-entry-form'),
+  )
 
   /** Goes to another date, asking first if there are unsaved values; false if the user stayed */
   function go(to: string): boolean {
-    if (dirty && !confirm(UNSAVED_MESSAGE)) return false
+    if (dirty && !confirm(unsaved.message())) return false
     dirty = false
     router.get(dailyEntries.show().url, { date: to })
     return true
@@ -465,6 +468,7 @@
 {:else}
   {#key date}
     <Form
+      id="daily-entry-form"
       action={dailyEntries.update()}
       class="space-y-6"
       options={{ preserveScroll: true }}

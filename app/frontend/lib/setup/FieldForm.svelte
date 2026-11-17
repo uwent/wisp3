@@ -40,7 +40,11 @@
 
   // Leaving (for the outline page, say) loses what's typed here, so ask first
   let edited = $state(false)
-  confirmUnsavedChanges(() => edited)
+  let inputs = $state<HTMLElement>()
+  confirmUnsavedChanges(
+    () => edited,
+    () => inputs,
+  )
 
   // Form fields start from the props; the dialog mounts a new form each time it opens
   let soilTypeId = $state(
@@ -73,7 +77,7 @@
   onSuccess={ondone}
 >
   {#snippet children({ errors, processing })}
-    <div class="space-y-4" oninput={() => (edited = true)} onchange={() => (edited = true)}>
+    <div bind:this={inputs} class="space-y-4" oninput={() => (edited = true)} onchange={() => (edited = true)}>
       <TextField label="Name" name="field[name]" value={field?.name ?? ''} error={errors.name} required />
       <SelectField
         label="Irrigation system"

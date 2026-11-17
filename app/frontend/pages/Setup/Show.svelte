@@ -413,7 +413,7 @@
 
 <PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} genericCurves={generic_curves} />
 
-<Dialog bind:open={dialogOpen} title={dialogTitle}>
+<Dialog bind:open={dialogOpen} title={dialogTitle} guard>
   {#if dialog?.kind === 'farm'}
     <Form
       action={dialog.farm ? farmRoutes.update(dialog.farm.id) : farmRoutes.create()}

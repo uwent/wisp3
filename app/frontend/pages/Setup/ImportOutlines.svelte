@@ -65,7 +65,10 @@
   let selected = $state<number | null>(null)
   let useArea = $state(false)
   let saved = $state(false)
-  confirmUnsavedChanges(() => !saved && rows.some((row) => row.choice.kind !== 'skip'))
+  confirmUnsavedChanges(
+    () => !saved && rows.some((row) => row.choice.kind !== 'skip'),
+    () => document.getElementById('outline-import-form'),
+  )
 
   const systemLabel = (system: System) => `${system.farm} › ${systemName(system)}`
   const systemOptions = $derived([
@@ -270,7 +273,13 @@
     </p>
   </div>
 
-  <Form action={outlineImport()} class="space-y-4" options={{ preserveScroll: true }} onSuccess={() => (saved = true)}>
+  <Form
+    id="outline-import-form"
+    action={outlineImport()}
+    class="space-y-4"
+    options={{ preserveScroll: true }}
+    onSuccess={() => (saved = true)}
+  >
     {#snippet children({ errors, processing })}
       {#each included as { row }, position (row)}
         <input

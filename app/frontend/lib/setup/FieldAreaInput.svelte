@@ -54,7 +54,7 @@
           <p class="font-medium">Current area</p>
           <p class="py-2">{saved === null ? 'None' : format(saved)}</p>
         </div>
-        {@render box('New field area')}
+        {@render box('Field area')}
       </div>
     </div>
   {/if}
