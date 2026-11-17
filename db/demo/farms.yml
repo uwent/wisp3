@@ -1,0 +1,794 @@
+# The demo farms (DemoSeed, bin/rails demo:seed). Written by bin/rails demo:export from the demo
+# account; dates are month-day in the year seeded, outlines [longitude, latitude] rings.
+farms:
+- name: Arlington
+  systems:
+  - name: North linear
+    kind: linear
+    latitude: 43.306691
+    longitude: -89.340093
+    length_ft: 2600
+    travel_ft: 2560
+    travel_bearing_deg: 0
+    pump_capacity_gpm: 1100
+    equipment: Hose-fed linear, both halves
+    irrigation:
+    - {date: 06-26, inches: 1.0}
+    - {date: 07-10, inches: 1.0}
+    - {date: 07-24, inches: 1.1}
+    - {date: 08-07, inches: 1.0}
+    fields:
+    - name: North West
+      area_acres: 79
+      soil: silt_loam
+      boundary:
+      - [-89.34506, 43.303115]
+      - [-89.340093, 43.303115]
+      - [-89.340093, 43.310266]
+      - [-89.34506, 43.310266]
+      - [-89.34506, 43.303115]
+      plantings:
+      - crop: field_corn
+        season_start: 04-01
+        emergence: 05-10
+        end: 09-30
+        et_method: lai
+    - name: North East
+      area_acres: 79
+      soil: silt_loam
+      boundary:
+      - [-89.340093, 43.303115]
+      - [-89.335125, 43.303115]
+      - [-89.335125, 43.310266]
+      - [-89.340093, 43.310266]
+      - [-89.340093, 43.303115]
+      plantings:
+      - crop: soybean
+        season_start: 04-01
+        emergence: 05-22
+        end: 09-25
+        canopy:
+        - {date: 06-05, pct_cover: 10}
+        - {date: 06-19, pct_cover: 35}
+        - {date: 07-03, pct_cover: 70}
+        - {date: 07-17, pct_cover: 90}
+  - name: South West
+    kind: traveler
+    latitude: 43.298898
+    longitude: -89.343526
+    equipment: 'Hard hose reel #2'
+    irrigation:
+    - {date: 06-08, inches: 1.0}
+    - {date: 06-30, inches: 1.0}
+    - {date: 07-21, inches: 1.0}
+    - {date: 08-25, inches: 1.0}
+    fields:
+    - name: South West
+      area_acres: 10.49
+      soil: silt_loam
+      boundary:
+      - [-89.344738, 43.297883]
+      - [-89.3441, 43.297594]
+      - [-89.3435099, 43.2971177]
+      - [-89.3432095, 43.2979063]
+      - [-89.3422868, 43.2984998]
+      - [-89.3429627, 43.2999131]
+      - [-89.344738, 43.299913]
+      - [-89.344738, 43.297883]
+      plantings:
+      - crop: alfalfa
+        season_start: 04-01
+        emergence: 04-15
+        end: 10-15
+        canopy:
+        - {date: 06-20, pct_cover: 55}
+        cuttings: [06-01, 07-10, 08-18]
+  - name: South Center
+    kind: traveler
+    latitude: 43.29768
+    longitude: -89.339406
+    equipment: 'Hard hose reel #2'
+    irrigation:
+    - {date: 07-01, inches: 1.0}
+    - {date: 07-15, inches: 1.0}
+    - {date: 07-29, inches: 1.1}
+    - {date: 08-12, inches: 1.0}
+    fields:
+    - name: South Center
+      area_acres: 21.14
+      soil: silt_loam
+      boundary:
+      - [-89.3390304, 43.2958578]
+      - [-89.3379092, 43.295834]
+      - [-89.3377677, 43.2993438]
+      - [-89.3409666, 43.2993453]
+      - [-89.3408919, 43.29707]
+      - [-89.3399448, 43.2965708]
+      - [-89.3390304, 43.2958578]
+      plantings:
+      - crop: corn_silage
+        season_start: 04-01
+        emergence: 05-12
+        end: 09-10
+        canopy:
+        - {date: 05-26, pct_cover: 10}
+        - {date: 06-09, pct_cover: 35}
+        - {date: 06-23, pct_cover: 70}
+        - {date: 07-07, pct_cover: 90}
+  - name: Plot sprinklers
+    kind: solid_set
+    latitude: 43.305847
+    longitude: -89.332679
+    pump_capacity_gpm: 120
+    irrigation:
+    - {date: 06-24, inches: 0.7}
+    - {date: 07-09, inches: 0.8}
+    - {date: 07-23, inches: 0.8}
+    fields:
+    - name: Experimental plots
+      area_acres: 27.07
+      soil: silt_loam
+      boundary:
+      - [-89.3350881, 43.3049726]
+      - [-89.3268806, 43.3049648]
+      - [-89.3268806, 43.3064404]
+      - [-89.3350881, 43.3064638]
+      - [-89.3350881, 43.3049726]
+      plantings:
+      - crop: field_corn
+        season_start: 04-01
+        emergence: 05-12
+        end: 09-30
+        variety: Hybrid trial
+        et_method: lai
+        partial: true
+        plot_length_ft: 300
+        plot_width_ft: 60
+      - crop: corn_silage
+        season_start: 04-01
+        emergence: 05-14
+        end: 09-08
+        partial: true
+        plot_length_ft: 300
+        plot_width_ft: 60
+        canopy:
+        - {date: 05-28, pct_cover: 10}
+        - {date: 06-11, pct_cover: 35}
+        - {date: 06-25, pct_cover: 70}
+        - {date: 07-09, pct_cover: 90}
+      - crop: soybean
+        season_start: 04-01
+        emergence: 05-25
+        end: 09-25
+        partial: true
+        plot_length_ft: 300
+        plot_width_ft: 60
+        canopy:
+        - {date: 06-08, pct_cover: 10}
+        - {date: 06-22, pct_cover: 35}
+        - {date: 07-06, pct_cover: 70}
+        - {date: 07-20, pct_cover: 90}
+      - crop: soybean
+        season_start: 04-01
+        emergence: 05-25
+        end: 09-25
+        variety: Drip irrigated
+        partial: true
+        plot_length_ft: 300
+        plot_width_ft: 60
+        entries:
+        - {date: 06-20, irrigation_in: 0.4}
+        - {date: 06-27, irrigation_in: 0.4}
+        - {date: 07-04, irrigation_in: 0.4}
+        - {date: 07-08, soil_moisture_pct: 24, notes: 'TDR, 6 in'}
+        - {date: 07-11, irrigation_in: 0.4}
+        - {date: 07-18, irrigation_in: 0.4}
+        - {date: 07-22, soil_moisture_pct: 21}
+        - {date: 07-25, irrigation_in: 0.4}
+        - {date: 08-01, irrigation_in: 0.4}
+        - {date: 08-08, irrigation_in: 0.4}
+  - name: East 9
+    kind: point
+    latitude: 43.302123
+    longitude: -89.331606
+    fields:
+    - name: East 9
+      area_acres: 17.13
+      soil: silt_loam
+      boundary:
+      - [-89.3330919, 43.3013656]
+      - [-89.3327593, 43.3010767]
+      - [-89.3286824, 43.3009909]
+      - [-89.3286609, 43.3027945]
+      - [-89.3331349, 43.3028101]
+      - [-89.3330061, 43.3022401]
+      - [-89.3330919, 43.3013656]
+      entries:
+      - {date: 05-14, rain_in: 0.6}
+      - {date: 06-12, rain_in: 0.9}
+      - {date: 07-03, rain_in: 1.3}
+      - {date: 07-27, rain_in: 0.4}
+      - {date: 08-15, rain_in: 0.7}
+      plantings:
+      - crop: wheat
+        season_start: 04-01
+        emergence: 04-05
+        end: 07-15
+        variety: Winter wheat
+        canopy:
+        - {date: 04-19, pct_cover: 10}
+        - {date: 05-03, pct_cover: 35}
+        - {date: 05-17, pct_cover: 70}
+        - {date: 05-31, pct_cover: 90}
+      - crop: soybean
+        season_start: 07-16
+        emergence: 07-24
+        end: 10-10
+        variety: Double crop
+        canopy:
+        - {date: 08-07, pct_cover: 10}
+        - {date: 08-21, pct_cover: 35}
+        - {date: 09-04, pct_cover: 70}
+        - {date: 09-18, pct_cover: 90}
+  irrigation_groups:
+  - name: Farm center
+    systems: [North linear, South West, South Center, Plot sprinklers, East 9]
+- name: Coloma
+  systems:
+  - name: Powell pivot
+    kind: center
+    latitude: 44.026683
+    longitude: -89.592621
+    radius_ft: 1340
+    pump_capacity_gpm: 1000
+    equipment: Valley 8000, end gun
+    irrigation:
+    - {date: 06-18, inches: 0.8}
+    - {date: 06-29, inches: 0.75}
+    - {date: 07-08, inches: 0.9}
+    - {date: 07-14, run_hours: 20.0}
+    - {date: 07-21, inches: 0.85}
+    - {date: 08-03, inches: 0.8}
+    - {date: 08-12, inches: 0.6, fields: [Powell West]}
+    fields:
+    - name: Powell West
+      area_acres: 94.7
+      soil: sand
+      boundary:
+      - [-89.592649, 44.031033]
+      - [-89.592631, 44.022302]
+      - [-89.595996, 44.022302]
+      - [-89.596681, 44.022452]
+      - [-89.597308, 44.023122]
+      - [-89.597841, 44.023956]
+      - [-89.597727, 44.029671]
+      - [-89.597631, 44.029876]
+      - [-89.59727, 44.030313]
+      - [-89.596167, 44.031024]
+      - [-89.595426, 44.031065]
+      - [-89.592649, 44.031033]
+      entries:
+      - {date: 05-30, rain_in: 0.5}
+      - {date: 06-12, rain_in: 0.9}
+      - {date: 07-03, rain_in: 1.4}
+      - {date: 07-15, rain_in: 0, notes: Storm missed us}
+      - {date: 07-27, rain_in: 0.35}
+      - {date: 08-15, rain_in: 0.6}
+      plantings:
+      - crop: potato
+        season_start: 04-01
+        emergence: 05-20
+        end: 09-20
+        vine_kill: 09-01
+        variety: Russet Burbank
+        target_ad_pct: 40
+        canopy:
+        - {date: 06-03, pct_cover: 10}
+        - {date: 06-17, pct_cover: 35}
+        - {date: 07-01, pct_cover: 70}
+        - {date: 07-15, pct_cover: 90}
+    - name: Powell East
+      area_acres: 95.9
+      soil: sand
+      boundary:
+      - [-89.592631, 44.022302]
+      - [-89.592649, 44.031033]
+      - [-89.589569, 44.030997]
+      - [-89.589056, 44.030846]
+      - [-89.588391, 44.030518]
+      - [-89.587649, 44.030176]
+      - [-89.587459, 44.029712]
+      - [-89.587402, 44.023245]
+      - [-89.587953, 44.022848]
+      - [-89.58917, 44.022302]
+      - [-89.592631, 44.022302]
+      entries:
+      - {date: 05-30, rain_in: 0.5}
+      - {date: 06-12, rain_in: 0.9}
+      - {date: 07-03, rain_in: 1.4}
+      - {date: 07-15, rain_in: 0, notes: Storm missed us}
+      - {date: 07-27, rain_in: 0.35}
+      - {date: 08-15, rain_in: 0.6}
+      plantings:
+      - crop: field_corn
+        season_start: 04-01
+        emergence: 05-12
+        end: 09-30
+        et_method: lai
+  - name: Home pivot
+    kind: center
+    latitude: 44.018391
+    longitude: -89.592526
+    radius_ft: 1280
+    pump_capacity_gpm: 1000
+    irrigation:
+    - {date: 06-22, inches: 0.7}
+    - {date: 07-05, inches: 0.8}
+    - {date: 07-19, inches: 0.8}
+    - {date: 08-02, inches: 0.75}
+    fields:
+    - name: Home West
+      area_acres: 75.6
+      soil: sand
+      boundary:
+      - [-89.592646, 44.021972]
+      - [-89.592562, 44.014852]
+      - [-89.596871, 44.014932]
+      - [-89.597365, 44.015055]
+      - [-89.597784, 44.015547]
+      - [-89.597803, 44.01608]
+      - [-89.597784, 44.016463]
+      - [-89.59786, 44.016778]
+      - [-89.597879, 44.020223]
+      - [-89.597593, 44.020387]
+      - [-89.596814, 44.020784]
+      - [-89.596205, 44.021235]
+      - [-89.595578, 44.021618]
+      - [-89.595236, 44.022001]
+      - [-89.592646, 44.021972]
+      entries:
+      - {date: 05-30, rain_in: 0.5}
+      - {date: 06-12, rain_in: 0.9}
+      - {date: 07-03, rain_in: 1.4}
+      - {date: 07-15, rain_in: 0, notes: Storm missed us}
+      - {date: 07-27, rain_in: 0.35}
+      - {date: 08-15, rain_in: 0.6}
+      plantings:
+      - crop: sweet_corn
+        season_start: 04-01
+        emergence: 05-18
+        end: 08-25
+        canopy:
+        - {date: 06-01, pct_cover: 10}
+        - {date: 06-15, pct_cover: 35}
+        - {date: 06-29, pct_cover: 70}
+        - {date: 07-13, pct_cover: 90}
+    - name: Home East
+      area_acres: 81.4
+      soil: sand
+      boundary:
+      - [-89.592562, 44.014852]
+      - [-89.592646, 44.021972]
+      - [-89.58917, 44.021932]
+      - [-89.588638, 44.021809]
+      - [-89.587991, 44.021604]
+      - [-89.587535, 44.02129]
+      - [-89.587174, 44.020962]
+      - [-89.587259, 44.016024]
+      - [-89.587554, 44.015492]
+      - [-89.588733, 44.014781]
+      - [-89.592562, 44.014852]
+      entries:
+      - {date: 05-30, rain_in: 0.5}
+      - {date: 06-12, rain_in: 0.9}
+      - {date: 07-03, rain_in: 1.4}
+      - {date: 07-15, rain_in: 0, notes: Storm missed us}
+      - {date: 07-27, rain_in: 0.35}
+      - {date: 08-15, rain_in: 0.6}
+      plantings:
+      - crop: snap_bean
+        season_start: 04-01
+        emergence: 06-05
+        end: 08-20
+        target_ad_pct: 50
+        canopy:
+        - {date: 06-19, pct_cover: 10}
+        - {date: 07-03, pct_cover: 35}
+        - {date: 07-17, pct_cover: 70}
+        - {date: 07-31, pct_cover: 90}
+  - name: Jacobs North pivot
+    kind: center
+    latitude: 44.000371
+    longitude: -89.592753
+    radius_ft: 1280
+    pump_capacity_gpm: 950
+    irrigation:
+    - {date: 06-10, inches: 0.6}
+    - {date: 06-24, inches: 0.7}
+    - {date: 07-08, inches: 0.8}
+    - {date: 07-22, inches: 0.8}
+    - {date: 08-05, inches: 0.75}
+    - {date: 08-19, inches: 0.7}
+    fields:
+    - name: Jacobs North W Half
+      area_acres: 80.5
+      soil: sand
+      boundary:
+      - [-89.592575, 44.003937]
+      - [-89.592638, 43.996832]
+      - [-89.595116, 43.996868]
+      - [-89.595891, 43.996879]
+      - [-89.596761, 43.996879]
+      - [-89.597168, 43.997122]
+      - [-89.597487, 43.997374]
+      - [-89.597913, 43.997735]
+      - [-89.597952, 43.999993]
+      - [-89.597958, 44.000411]
+      - [-89.597977, 44.002845]
+      - [-89.596483, 44.003972]
+      - [-89.592575, 44.003937]
+      plantings:
+      - crop: shell_peas
+        season_start: 04-01
+        emergence: 04-25
+        end: 06-30
+        canopy:
+        - {date: 05-09, pct_cover: 10}
+        - {date: 05-23, pct_cover: 35}
+        - {date: 06-06, pct_cover: 70}
+        - {date: 06-20, pct_cover: 90}
+      - crop: snap_bean
+        season_start: 07-02
+        emergence: 07-12
+        end: 09-20
+        variety: Second crop
+        canopy:
+        - {date: 07-26, pct_cover: 10}
+        - {date: 08-09, pct_cover: 35}
+        - {date: 08-23, pct_cover: 70}
+        - {date: 09-06, pct_cover: 90}
+    - name: Jacobs North E Half
+      area_acres: 77.9
+      soil: sand
+      boundary:
+      - [-89.592638, 43.996832]
+      - [-89.592575, 44.003937]
+      - [-89.588954, 44.003906]
+      - [-89.588193, 44.003644]
+      - [-89.587529, 44.003075]
+      - [-89.587534, 44.000315]
+      - [-89.587529, 43.999034]
+      - [-89.587558, 43.997462]
+      - [-89.587782, 43.997111]
+      - [-89.588346, 43.99677]
+      - [-89.590089, 43.996795]
+      - [-89.592638, 43.996832]
+      plantings:
+      - crop: potato
+        season_start: 04-01
+        emergence: 05-12
+        end: 08-20
+        vine_kill: 08-08
+        variety: Superior
+        canopy:
+        - {date: 05-26, pct_cover: 10}
+        - {date: 06-09, pct_cover: 35}
+        - {date: 06-23, pct_cover: 70}
+        - {date: 07-07, pct_cover: 90}
+  - name: Kim pivot
+    kind: center
+    latitude: 44.013031
+    longitude: -89.595088
+    radius_ft: 610
+    pump_capacity_gpm: 350
+    fields:
+    - name: Kim
+      area_acres: 38.7
+      soil: sand
+      boundary:
+      - [-89.59689, 44.014726]
+      - [-89.596053, 44.014795]
+      - [-89.593905, 44.014781]
+      - [-89.593258, 44.014685]
+      - [-89.592916, 44.014357]
+      - [-89.592384, 44.013797]
+      - [-89.592317, 44.012034]
+      - [-89.593087, 44.011308]
+      - [-89.596776, 44.011267]
+      - [-89.597137, 44.011472]
+      - [-89.597441, 44.011882]
+      - [-89.597822, 44.01221]
+      - [-89.59786, 44.013838]
+      - [-89.597651, 44.014207]
+      - [-89.597441, 44.01448]
+      - [-89.59689, 44.014726]
+      entries:
+      - {date: 06-25, irrigation_in: 0.6}
+      - {date: 07-06, irrigation_in: 0.7}
+      - {date: 07-10, soil_moisture_pct: 9.5, notes: 'Probe reading, 12 in'}
+      - {date: 07-18, irrigation_in: 0.7}
+      - {date: 08-01, irrigation_in: 0.65}
+      plantings:
+      - crop: carrot
+        season_start: 04-01
+        emergence: 05-28
+        end: 09-25
+        canopy:
+        - {date: 06-11, pct_cover: 10}
+        - {date: 06-25, pct_cover: 35}
+        - {date: 07-09, pct_cover: 70}
+        - {date: 07-23, pct_cover: 90}
+  irrigation_groups:
+  - name: Home gauge
+    systems: [Powell pivot, Home pivot, Kim pivot]
+  - name: South gauge
+    systems: [Jacobs North pivot]
+- name: Hancock Station
+  systems:
+  - name: K linear
+    kind: linear
+    latitude: 44.117467
+    longitude: -89.552607
+    length_ft: 1290
+    travel_ft: 2520
+    travel_bearing_deg: 90
+    pump_capacity_gpm: 600
+    irrigation:
+    - {date: 06-15, inches: 0.6}
+    - {date: 06-26, inches: 0.7}
+    - {date: 07-06, inches: 0.75}
+    - {date: 07-16, inches: 0.75}
+    - {date: 07-27, inches: 0.7}
+    - {date: 08-07, inches: 0.7}
+    - {date: 08-18, inches: 0.6, fields: [K 09-12, K 01-04, K 21-24, K 13-16, K 05-08]}
+    fields:
+    - name: K 25-28
+      area_acres: 8.7
+      soil: loamy_sand
+      boundary:
+      - [-89.557455, 44.117453]
+      - [-89.555254, 44.117453]
+      - [-89.555254, 44.119254]
+      - [-89.557455, 44.119254]
+      - [-89.557455, 44.117453]
+      plantings:
+      - crop: potato
+        season_start: 04-01
+        emergence: 05-15
+        end: 09-10
+        vine_kill: 08-25
+        variety: Russet Burbank
+        canopy:
+        - {date: 05-29, pct_cover: 10}
+        - {date: 06-12, pct_cover: 35}
+        - {date: 06-26, pct_cover: 70}
+        - {date: 07-10, pct_cover: 90}
+    - name: K 17-20
+      area_acres: 9.9
+      soil: loamy_sand
+      boundary:
+      - [-89.555254, 44.117453]
+      - [-89.552753, 44.117453]
+      - [-89.552753, 44.119254]
+      - [-89.555254, 44.119254]
+      - [-89.555254, 44.117453]
+      plantings:
+      - crop: snap_bean
+        season_start: 04-01
+        emergence: 06-08
+        end: 08-25
+        canopy:
+        - {date: 06-22, pct_cover: 10}
+        - {date: 07-06, pct_cover: 35}
+        - {date: 07-20, pct_cover: 70}
+        - {date: 08-03, pct_cover: 90}
+    - name: K 09-12
+      area_acres: 9.7
+      soil: loamy_sand
+      boundary:
+      - [-89.552753, 44.117453]
+      - [-89.55031, 44.117453]
+      - [-89.55031, 44.119254]
+      - [-89.552753, 44.119254]
+      - [-89.552753, 44.117453]
+      plantings:
+      - crop: sweet_corn
+        season_start: 04-01
+        emergence: 05-20
+        end: 08-28
+        canopy:
+        - {date: 06-03, pct_cover: 10}
+        - {date: 06-17, pct_cover: 35}
+        - {date: 07-01, pct_cover: 70}
+        - {date: 07-15, pct_cover: 90}
+    - name: K 01-04
+      area_acres: 10.1
+      soil: loamy_sand
+      boundary:
+      - [-89.55031, 44.117453]
+      - [-89.54776, 44.117453]
+      - [-89.54776, 44.119254]
+      - [-89.55031, 44.119254]
+      - [-89.55031, 44.117453]
+      entries:
+      - {date: 07-16, soil_moisture_pct: 12, notes: 'Neutron probe, 0–12 in'}
+      plantings:
+      - crop: field_corn
+        season_start: 04-01
+        emergence: 05-12
+        end: 09-30
+        et_method: lai
+    - name: K 29-32
+      area_acres: 8.6
+      soil: loamy_sand
+      boundary:
+      - [-89.557455, 44.11568]
+      - [-89.555254, 44.11568]
+      - [-89.555254, 44.117453]
+      - [-89.557455, 44.117453]
+      - [-89.557455, 44.11568]
+      plantings:
+      - crop: potato
+        season_start: 04-01
+        emergence: 05-15
+        end: 08-15
+        vine_kill: 08-01
+        variety: Superior
+        canopy:
+        - {date: 05-29, pct_cover: 10}
+        - {date: 06-12, pct_cover: 35}
+        - {date: 06-26, pct_cover: 70}
+        - {date: 07-10, pct_cover: 90}
+    - name: K 21-24
+      area_acres: 9.7
+      soil: loamy_sand
+      boundary:
+      - [-89.555254, 44.11568]
+      - [-89.552753, 44.11568]
+      - [-89.552753, 44.117453]
+      - [-89.555254, 44.117453]
+      - [-89.555254, 44.11568]
+      plantings:
+      - crop: carrot
+        season_start: 04-01
+        emergence: 05-25
+        end: 09-20
+        canopy:
+        - {date: 06-08, pct_cover: 10}
+        - {date: 06-22, pct_cover: 35}
+        - {date: 07-06, pct_cover: 70}
+        - {date: 07-20, pct_cover: 90}
+    - name: K 13-16
+      area_acres: 9.5
+      soil: loamy_sand
+      boundary:
+      - [-89.552753, 44.11568]
+      - [-89.55031, 44.11568]
+      - [-89.55031, 44.117453]
+      - [-89.552753, 44.117453]
+      - [-89.552753, 44.11568]
+      plantings:
+      - crop: soybean
+        season_start: 04-01
+        emergence: 05-25
+        end: 09-25
+        canopy:
+        - {date: 06-08, pct_cover: 10}
+        - {date: 06-22, pct_cover: 35}
+        - {date: 07-06, pct_cover: 70}
+        - {date: 07-20, pct_cover: 90}
+    - name: K 05-08
+      area_acres: 9.9
+      soil: loamy_sand
+      boundary:
+      - [-89.55031, 44.11568]
+      - [-89.54776, 44.11568]
+      - [-89.54776, 44.117453]
+      - [-89.55031, 44.117453]
+      - [-89.55031, 44.11568]
+      plantings:
+      - crop: cucumber
+        season_start: 04-01
+        emergence: 06-05
+        end: 08-20
+        canopy:
+        - {date: 06-19, pct_cover: 10}
+        - {date: 07-03, pct_cover: 35}
+        - {date: 07-17, pct_cover: 70}
+        - {date: 07-31, pct_cover: 90}
+  - name: R pivot
+    kind: center
+    latitude: 44.113894
+    longitude: -89.550226
+    radius_ft: 610
+    pump_capacity_gpm: 250
+    irrigation:
+    - {date: 06-17, inches: 0.7}
+    - {date: 06-30, inches: 0.7}
+    - {date: 07-10, inches: 0.8}
+    - {date: 07-21, run_hours: 12.0}
+    - {date: 08-01, run_hours: 12.0}
+    - {date: 08-12, run_hours: 12.0}
+    fields:
+    - name: R 1
+      area_acres: 9.1
+      soil: loamy_sand
+      boundary:
+      - [-89.552652, 44.113894]
+      - [-89.5526353, 44.1151175]
+      - [-89.5519701, 44.1156182]
+      - [-89.550226, 44.115616]
+      - [-89.550226, 44.113894]
+      - [-89.552652, 44.113894]
+      plantings:
+      - crop: potato
+        season_start: 04-01
+        emergence: 05-18
+        end: 09-05
+        vine_kill: 08-22
+        variety: Russet Norkotah
+        canopy:
+        - {date: 06-01, pct_cover: 10}
+        - {date: 06-15, pct_cover: 35}
+        - {date: 06-29, pct_cover: 70}
+        - {date: 07-13, pct_cover: 90}
+    - name: R 2
+      area_acres: 9.2
+      soil: loamy_sand
+      boundary:
+      - [-89.550226, 44.113894]
+      - [-89.550226, 44.115616]
+      - [-89.5486334, 44.1156177]
+      - [-89.5477965, 44.1150092]
+      - [-89.547815, 44.113894]
+      - [-89.550226, 44.113894]
+      plantings:
+      - crop: field_corn
+        season_start: 04-01
+        emergence: 05-10
+        end: 09-28
+        et_method: lai
+    - name: R 3
+      area_acres: 8.4
+      soil: loamy_sand
+      boundary:
+      - [-89.552671, 44.112944]
+      - [-89.552652, 44.113894]
+      - [-89.550226, 44.113894]
+      - [-89.550226, 44.112173]
+      - [-89.551541, 44.112171]
+      - [-89.551924, 44.112365]
+      - [-89.552319, 44.112605]
+      - [-89.552671, 44.112944]
+      plantings:
+      - crop: snap_bean
+        season_start: 04-01
+        emergence: 06-10
+        end: 08-28
+        canopy:
+        - {date: 06-24, pct_cover: 10}
+        - {date: 07-08, pct_cover: 35}
+        - {date: 07-22, pct_cover: 70}
+        - {date: 08-05, pct_cover: 90}
+    - name: R 4
+      area_acres: 9
+      soil: loamy_sand
+      boundary:
+      - [-89.550226, 44.113894]
+      - [-89.547815, 44.113894]
+      - [-89.547849, 44.112177]
+      - [-89.550226, 44.112173]
+      - [-89.550226, 44.113894]
+      plantings:
+      - crop: sweet_corn
+        season_start: 04-01
+        emergence: 05-22
+        end: 08-30
+        canopy:
+        - {date: 06-05, pct_cover: 10}
+        - {date: 06-19, pct_cover: 35}
+        - {date: 07-03, pct_cover: 70}
+        - {date: 07-17, pct_cover: 90}
+  irrigation_groups:
+  - name: Station gauge
+    systems: [K linear, R pivot]

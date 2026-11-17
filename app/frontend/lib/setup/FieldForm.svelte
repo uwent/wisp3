@@ -2,7 +2,7 @@
   import { untrack } from 'svelte'
   import { systemName } from '@/lib/geo'
   import { boundaryAcres } from '@/lib/boundary'
-  import { Form, Link } from '@inertiajs/svelte'
+  import { Form, Link, page } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import FormFooter from '@/lib/components/FormFooter.svelte'
@@ -10,6 +10,7 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import type { PivotShape } from '@/lib/geo'
+  import { systemDistanceM, systemReach } from '@/lib/outlines/problems'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { fieldOutline, fields } from '@/routes'
   import type { Field, Pivot, SoilType } from '@/types/serializers'
@@ -64,6 +65,26 @@
       ? ({ kind: 'center', ...pivot } as PivotShape & { name: string })
       : null,
   )
+  // With a shape, each system says how far it is from the field (as on the shape page): the field's
+  // own first, then the nearest
+  const shaped = (p: (typeof pivots)[number]): p is (typeof pivots)[number] & PivotShape =>
+    p.latitude != null && p.longitude != null && p.kind != null
+  const systemOptions = $derived.by(() => {
+    const boundary = field?.boundary
+    const unitSystem = page.props.auth.user?.unit_system ?? 'imperial'
+    const options = pivots.map((p) => {
+      const meters = boundary && shaped(p) ? systemDistanceM(boundary, p) : null
+      const name = p.kind_name ? systemName({ name: p.name, kind_name: p.kind_name }) : p.name
+      return {
+        value: String(p.id),
+        label: meters === null ? name : `${name} – ${systemReach(p as PivotShape, meters, unitSystem)}`,
+        own: p.id === field?.pivot_id,
+        meters,
+      }
+    })
+    if (!boundary) return options
+    return options.toSorted((a, b) => Number(b.own) - Number(a.own) || (a.meters ?? Infinity) - (b.meters ?? Infinity))
+  })
   let area = $state(untrack(() => field?.area_acres ?? null))
   // Seasons that have ended keep their soil, area and irrigation system
   const endedYears = $derived(field?.ended_years ?? [])
@@ -85,10 +106,7 @@
         label="Irrigation system"
         name="field[pivot_id]"
         bind:value={pivotChoice}
-        options={pivots.map((p) => ({
-          value: String(p.id),
-          label: p.kind_name ? systemName({ name: p.name, kind_name: p.kind_name }) : p.name,
-        }))}
+        options={systemOptions.map(({ value, label }) => ({ value, label }))}
         info="field.pivot"
         error={errors.pivot_id}
         required

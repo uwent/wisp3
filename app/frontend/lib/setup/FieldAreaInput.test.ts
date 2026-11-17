@@ -10,19 +10,34 @@ describe('FieldAreaInput', () => {
   const box = () => screen.getByRole('textbox') as HTMLInputElement
   const stored = (container: HTMLElement) => (container.querySelector('input[type=hidden]') as HTMLInputElement).value
 
-  it("shows the area saved beside the box, and copies the shape's in only when asked", async () => {
-    const { container } = render(FieldAreaInput, { name: 'field[area_acres]', value: 20, saved: 20, drawn: 21.534 })
+  it('shows the area saved beside the box, and leaves it until the shape changes', async () => {
+    const { container, rerender } = render(FieldAreaInput, {
+      name: 'field[area_acres]',
+      value: 20,
+      saved: 20,
+      drawn: 21.534,
+    })
     expect(screen.getByText('Current area').nextElementSibling).toHaveTextContent('20.00 ac')
     expect(screen.getByLabelText('Field area')).toBe(box())
     expect(box().value).toBe('20')
     // Within half an acre: said, not warned
     expect(screen.getByRole('status')).toHaveTextContent('Field as drawn: 21.53 ac, 1.53 ac more than the area above.')
     expect(screen.getByRole('status')).not.toHaveTextContent('Check that')
-
-    await fireEvent.click(screen.getByRole('button', { name: 'Use 21.53 ac' }))
-    expect(stored(container)).toBe('21.53')
-    expect(screen.getByRole('status')).toHaveTextContent(/^Field as drawn: 21.53 ac\.$/)
     expect(screen.queryByRole('button', { name: /^Use/ })).not.toBeInTheDocument()
+
+    // A new shape's area is copied in, the saved area still shown beside it
+    await rerender({ drawn: 22.004 })
+    expect(stored(container)).toBe('22')
+    expect(screen.getByText('Current area').nextElementSibling).toHaveTextContent('20.00 ac')
+    expect(screen.getByRole('status')).toHaveTextContent(/^Field as drawn: 22.00 ac\.$/)
+  })
+
+  it('keeps an area typed after the shape changed, and says how far apart they are', async () => {
+    const { container } = render(FieldAreaInput, { name: 'field[area_acres]', value: 20, saved: 20, drawn: 21 })
+    await fireEvent.input(box(), { target: { value: '20.5' } })
+    await fireEvent.blur(box())
+    expect(stored(container)).toBe('20.5')
+    expect(screen.getByRole('status')).toHaveTextContent('Field as drawn: 21.00 ac, 0.50 ac more than the area above.')
   })
 
   it("warns when the area and the shape's are far apart", () => {
@@ -36,7 +51,6 @@ describe('FieldAreaInput', () => {
     render(FieldAreaInput, { name: 'outline[area_acres]', value: null, saved: null, drawn: 12.3 })
     expect(screen.getByText('Current area').nextElementSibling).toHaveTextContent('None')
     expect(box().value).toBe('')
-    expect(screen.getByRole('button', { name: 'Use 12.30 ac' })).toBeInTheDocument()
   })
 
   it('is just the box for a new field', () => {

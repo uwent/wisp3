@@ -1,18 +1,23 @@
-# A realistic demo account for development, staging and the beta (bin/rails demo:seed): several
-# farms in the Central Sands, single- and multi-field pivots (one with seven fields), both ET
-# methods, canopy readings, irrigation by field, by pivot (inches and run hours, all fields and a
-# subset), a soil moisture reading, an irrigation group sharing a rain gauge, a research field with
-# four plots side by side (one with its own drip irrigation and readings), a market garden field with
-# successions (PLAN.md Phase 8 G.11), a traveler serving two fields (one Traveler system at each, the
-# same machine) and a drip block (G.5), and outlines for some fields (G.10: a pivot split in halves,
-# the research field, the drip block's and the travelers' fields; generated
-# shapes, to be redrawn on the imagery when the demo is tidied). Rebuilds the demo
-# group from scratch each run. Weather comes from Phase 3's fetch.
+# A realistic demo account for development, staging, the beta and the example farm (bin/rails
+# demo:seed; PLAN.md Phase 8 G.8), built from db/demo/farms.yml: three farms on real fields seen on
+# the imagery (Arlington's silt loams, mostly rainfed; Coloma's pivot-scale potatoes and processing
+# vegetables on sand, outlines from a field map; Hancock Agricultural Research Station's K fields
+# under a linear and R fields under a pivot). Between them they show split pivots, a linear, a
+# traveler set up at two fields, a solid set over research plots (one plot with its own drip
+# irrigation and readings), a location-only rainfed field, double crops, alfalfa cuttings, both ET
+# methods, irrigation by pivot (inches and run hours, all fields and a subset) and by field, soil
+# moisture readings, rain gauges shared by irrigation groups, and outlines for every field.
+#
+# The file holds month-day dates, placed in the year seeded. To change the layout, edit the demo
+# account in the app (move systems, redraw outlines, rename) and write it back with bin/rails
+# demo:export (DemoExport), or edit the file. Rebuilds the demo group from scratch each run.
+# Weather comes from Phase 3's fetch.
 class DemoSeed
   GROUP_NAME = "Demo farms"
+  FILE = Rails.root.join("db/demo/farms.yml")
 
-  def initialize(email:, password: nil, year: Date.current.year)
-    @email, @password, @year = email, password, year
+  def initialize(email:, password: nil, year: Date.current.year, file: FILE)
+    @email, @password, @year, @file = email, password, year, file
   end
 
   def run
@@ -29,7 +34,7 @@ class DemoSeed
       user.groups.where(name: GROUP_NAME).destroy_all
       group = Group.create!(name: GROUP_NAME)
       user.memberships.create!(group:, owner: true)
-      build(group)
+      build(group, YAML.safe_load_file(@file))
     end
 
     {email: @email, password: generated, farms: group.farms.count, fields: group.fields.count,
@@ -38,186 +43,50 @@ class DemoSeed
 
   private
 
-  def date(month, day) = Date.new(@year, month, day)
-  def plant(key) = Plant.find_by!(key:)
-  def soil(key) = SoilType.find_by!(key:)
+  def date(month_day) = Date.strptime("#{@year}-#{month_day}", "%Y-%m-%d")
 
-  def build(group)
-    hancock = group.farms.create!(name: "Hancock Sands")
-    plover = group.farms.create!(name: "Plover River")
-    coloma = group.farms.create!(name: "Coloma Vegetables")
-    arlington = group.farms.create!(name: "Arlington Research")
-
-    # Two crops split under one pivot, irrigated together
-    north = hancock.pivots.create!(name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300,
-      pump_capacity_gpm: 900, equipment: "Valley 8000, end gun")
-    potato = field(north, "North potatoes", 70, "sand")
-    corn = field(north, "North corn", 55, "sand")
-    planting(potato, "potato", variety: "Russet Burbank", emergence: date(5, 20), end_date: date(9, 15), target: 40,
-      vine_kill: date(8, 28))
-    planting(corn, "field_corn", et_method: "lai", emergence: date(5, 12), end_date: date(9, 30))
-    pivot_irrigations(north, [[6, 18, 0.8], [6, 29, 0.75], [7, 8, 0.9], [7, 21, 0.85], [8, 3, 0.8]])
-    potato.update!(boundary: slice(north, 180, 360))
-    corn.update!(boundary: slice(north, 0, 180))
-    north.pivot_irrigations.create!(date: date(7, 14), run_hours: 20) # inches from pump capacity
-    north.pivot_irrigations.create!(date: date(8, 12), inches: 0.6, field_ids: [potato.id]) # potatoes only
-
-    # A single-field pivot with entered irrigation and a soil moisture reading
-    south = hancock.pivots.create!(name: "South 80", latitude: 44.1129, longitude: -89.5371, radius_ft: 950,
-      arc_start_deg: 30, arc_end_deg: 300, pump_capacity_gpm: 600)
-    beans = field(south, "South snap beans", 48, "sandy_loam")
-    # No canopy readings: the snap bean curve stands in for them (PLAN.md Phase 6.7)
-    planting(beans, "snap_bean", emergence: date(6, 5), end_date: date(8, 25), target: 50, readings: [])
-    [[6, 25, 0.6], [7, 6, 0.7], [7, 18, 0.7], [8, 1, 0.65]].each do |month, day, inches|
-      beans.field_entries.create!(date: date(month, day), irrigation_in: inches)
-    end
-    beans.field_entries.create!(date: date(7, 10), soil_moisture_pct: 11.5, notes: "Probe reading, 12 in")
-
-    # Seven fields on one pivot (the most in legacy production), a soybean double crop after peas
-    river = plover.pivots.create!(name: "River pivot", latitude: 44.4512, longitude: -89.5468, radius_ft: 1450,
-      pump_capacity_gpm: 1100)
-    sevens = %w[A B C D E F G].map.with_index do |letter, i|
-      field(river, "River #{letter}", 18 + i * 2, i.even? ? "sand" : "sandy_loam")
-    end
-    crops = %w[potato potato sweet_corn soybean field_corn carrot onion]
-    sevens.zip(crops).each_with_index do |(f, crop), i|
-      planting(f, crop, emergence: date(5, 10 + i * 3), end_date: date(9, 10 + i))
-    end
-    peas = field(river, "River H peas then soybeans", 22, "sandy_loam")
-    planting(peas, "shell_peas", season_start: date(4, 1), emergence: date(4, 25), end_date: date(6, 30))
-    planting(peas, "soybean", season_start: date(7, 1), emergence: date(7, 8), end_date: date(10, 5))
-    pivot_irrigations(river, [[6, 22, 0.7], [7, 5, 0.8], [7, 19, 0.8], [8, 2, 0.75]])
-
-    # Alfalfa from spring green-up, cut three times (G.3: the canopy restarts at each cutting)
-    hay = plover.pivots.create!(name: "Hay pivot", latitude: 44.4721, longitude: -89.5302, radius_ft: 1200,
-      pump_capacity_gpm: 800)
-    alfalfa = planting(field(hay, "Hay north", 40, "loamy_sand"), "alfalfa", emergence: date(4, 15), end_date: date(10, 15),
-      readings: [])
-    [[6, 1], [7, 10], [8, 18]].each { |month, day| alfalfa.canopy_cuttings.create!(date: date(month, day)) }
-    alfalfa.canopy_observations.create!(date: date(6, 20), pct_cover: 55)
-    alfalfa.field.update!(boundary: slice(hay, 270, 450))
-
-    # One rain gauge for both Plover River pivots (G.4: daily entry fills its rain into their fields)
-    plover.pivot_groups.create!(name: "River gauge").pivots << [river, hay]
-
-    # Vegetables with their own rain gauge: each reading entered on both fields
-    veg = coloma.pivots.create!(name: "Home pivot", latitude: 44.0337, longitude: -89.5208, radius_ft: 1100,
-      pump_capacity_gpm: 750)
-    cabbage = field(veg, "Cabbage", 30, "loam")
-    pepper = field(veg, "Peppers", 25, "loam")
-    planting(cabbage, "cabbage", emergence: date(5, 28), end_date: date(9, 5))
-    planting(pepper, "pepper", emergence: date(6, 2), end_date: date(9, 20))
-    [[6, 12, 0.9], [7, 3, 1.4], [7, 15, 0.0], [7, 27, 0.35], [8, 15, 0.6]].each do |month, day, rain|
-      [cabbage, pepper].each { |f| f.field_entries.create!(date: date(month, day), rain_in: rain) }
-    end
-    cabbage.field_entries.find_by!(date: date(7, 15)).update!(notes: "Storm missed us")
-
-    # A drip block, irrigated by run hours (60 gpm over 3 acres: about 0.18 in for 4 hours)
-    block = coloma.pivots.create!(name: "Tomato block", kind: "drip", latitude: 44.0302, longitude: -89.5141,
-      pump_capacity_gpm: 60, equipment: "15 mil tape, 12 in emitters")
-    tomatoes = field(block, "Tomatoes", 3, "loam")
-    tomatoes.update!(boundary: rectangle(block.latitude, block.longitude, 360, 363))
-    planting(tomatoes, "tomato", emergence: date(5, 30), end_date: date(9, 15))
-    [[6, 18], [6, 25], [7, 2], [7, 9], [7, 13], [7, 20], [7, 24], [7, 31], [8, 7], [8, 14]].each do |month, day|
-      block.pivot_irrigations.create!(date: date(month, day), run_hours: 4)
-    end
-
-    # A market garden field growing one crop after another
-    garden = field(veg, "Market garden", 4, "loam")
-    planting(garden, "leafy_greens", season_start: date(4, 10), emergence: date(4, 24), end_date: date(6, 10),
-      readings: [[14, 20], [28, 60]])
-    planting(garden, "summer_squash", season_start: date(6, 11), emergence: date(6, 18), end_date: date(8, 31))
-    planting(garden, "leafy_greens", season_start: date(9, 1), emergence: date(9, 10), end_date: date(10, 31),
-      readings: [[14, 20]])
-
-    # A research field with four plots side by side, 300 × 60 ft each; the snap beans are on drip, with
-    # their own irrigation and soil moisture readings
-    station = arlington.pivots.create!(name: "Station pivot", latitude: 43.3006, longitude: -89.3807, radius_ft: 600,
-      pump_capacity_gpm: 300)
-    research = field(station, "Arlington 525", 2, "silt_loam")
-    # 290 × 300 ft north of the pivot's center
-    middle = offset(station.latitude, station.longitude, 0, 250)
-    research.update!(boundary: rectangle(*middle, 290, 300))
-    plot = {partial: true, plot_length_ft: 300, plot_width_ft: 60}
-    planting(research, "soybean", emergence: date(5, 25), end_date: date(9, 25), **plot)
-    planting(research, "field_corn", et_method: "lai", emergence: date(5, 12), end_date: date(9, 30), **plot)
-    planting(research, "potato", variety: "Superior", emergence: date(5, 18), end_date: date(8, 30), **plot)
-    drip = planting(research, "snap_bean", emergence: date(6, 5), end_date: date(8, 25), readings: [], **plot)
-    [[6, 20], [6, 27], [7, 4], [7, 11], [7, 18], [7, 25], [8, 1], [8, 8]].each do |month, day|
-      drip.planting_entries.create!(date: date(month, day), irrigation_in: 0.4)
-    end
-    drip.planting_entries.create!(date: date(7, 8), soil_moisture_pct: 24, notes: "TDR, 6 in")
-    drip.planting_entries.create!(date: date(7, 22), soil_moisture_pct: 21)
-    pivot_irrigations(station, [[6, 24, 0.7], [7, 9, 0.8], [7, 23, 0.8]])
-
-    # One hard hose reel pulled between two fields: a Traveler system at each, named the same in
-    # Equipment, irrigated a day apart as the reel moves
-    reel = "Hard hose reel #2"
-    west_lane = arlington.pivots.create!(name: "West lane", kind: "traveler", latitude: 43.3051, longitude: -89.3912,
-      equipment: reel)
-    east_lane = arlington.pivots.create!(name: "East lane", kind: "traveler", latitude: 43.3046, longitude: -89.3741,
-      equipment: reel)
-    sweet_corn = field(west_lane, "West 20", 20, "silt_loam")
-    sweet_corn.update!(boundary: rectangle(west_lane.latitude, west_lane.longitude, 660, 1320))
-    planting(sweet_corn, "sweet_corn", emergence: date(5, 20), end_date: date(8, 25))
-    beans = field(east_lane, "East 15", 15, "silt_loam")
-    beans.update!(boundary: rectangle(east_lane.latitude, east_lane.longitude, 660, 990))
-    planting(beans, "snap_bean", emergence: date(6, 8), end_date: date(8, 28))
-    pivot_irrigations(west_lane, [[6, 30, 1.0], [7, 14, 1.0], [7, 28, 1.1], [8, 11, 1.0]])
-    pivot_irrigations(east_lane, [[7, 1, 1.0], [7, 15, 1.0], [7, 29, 1.1], [8, 12, 1.0]])
-  end
-
-  FEET_PER_DEGREE_LAT = 364_000.0
-
-  # [lat, lng] east_ft and north_ft from a point (flat earth, plenty across a field)
-  def offset(lat, lng, east_ft, north_ft)
-    [(lat + north_ft / FEET_PER_DEGREE_LAT).round(7),
-      (lng + east_ft / (FEET_PER_DEGREE_LAT * Math.cos(lat * Math::PI / 180))).round(7)]
-  end
-
-  # A width_ft (east–west) × height_ft (north–south) rectangle centered on a point, as GeoJSON
-  def rectangle(lat, lng, width_ft, height_ft)
-    corners = [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map do |east, north|
-      offset(lat, lng, east * width_ft / 2.0, north * height_ft / 2.0).reverse
-    end
-    {"type" => "Polygon", "coordinates" => [corners]}
-  end
-
-  # The part of a pivot's circle between two bearings (degrees clockwise from north), as GeoJSON
-  def slice(pivot, from_deg, to_deg)
-    arc = (from_deg..to_deg).step(5).map do |bearing|
-      radians = bearing * Math::PI / 180
-      offset(pivot.latitude, pivot.longitude, pivot.radius_ft * Math.sin(radians), pivot.radius_ft * Math.cos(radians)).reverse
-    end
-    center = [pivot.longitude, pivot.latitude]
-    {"type" => "Polygon", "coordinates" => [[center, *arc, center]]}
-  end
-
-  def field(pivot, name, acres, soil_key)
-    pivot.fields.create!(name:, area_acres: acres, soil_type: soil(soil_key))
-  end
-
-  COVER_READINGS = [[14, 10], [28, 35], [42, 70], [56, 90]].freeze
-
-  # Percent-cover plantings get readings (days after emergence, cover) that rise to full cover; LAI
-  # ones use the plant's curve
-  def planting(field, plant_key, emergence:, end_date:, season_start: date(4, 1), et_method: "pct_cover", variety: nil,
-    target: nil, readings: COVER_READINGS, vine_kill: nil, **plot)
-    crop = plant(plant_key)
-    planting = field.plantings.create!(Planting.defaults_for(crop, @year).merge(
-      plant: crop, season_start:, emergence_date: emergence, end_date:, et_method:, variety:, target_ad_pct: target,
-      vine_kill_date: vine_kill, **plot
-    ))
-    if et_method == "pct_cover"
-      readings.each do |days, cover|
-        reading = emergence + days
-        planting.canopy_observations.create!(date: reading, pct_cover: cover) if reading <= end_date
+  def build(group, data)
+    data.fetch("farms").each do |farm_data|
+      farm = group.farms.create!(name: farm_data.fetch("name"), notes: farm_data["notes"])
+      systems = farm_data.fetch("systems").to_h { |system_data| [system_data.fetch("name").to_s, system(farm, system_data)] }
+      Array(farm_data["irrigation_groups"]).each do |group_data|
+        farm.pivot_groups.create!(name: group_data.fetch("name")).pivots << systems.fetch_values(*group_data.fetch("systems").map(&:to_s))
       end
     end
+  end
+
+  def system(farm, data)
+    pivot = farm.pivots.create!(data.slice(*DemoExport::SYSTEM_ATTRIBUTES))
+    fields = data.fetch("fields").to_h { |field_data| [field_data.fetch("name").to_s, field(pivot, field_data)] }
+    Array(data["irrigation"]).each do |irrigation|
+      field_ids = irrigation["fields"] && fields.fetch_values(*irrigation["fields"].map(&:to_s)).map(&:id)
+      pivot.pivot_irrigations.create!(date: date(irrigation.fetch("date")), field_ids:,
+        **irrigation.slice("inches", "run_hours", "notes").symbolize_keys)
+    end
+    pivot
+  end
+
+  def field(pivot, data)
+    field = pivot.fields.create!(data.slice(*DemoExport::FIELD_ATTRIBUTES)
+      .merge(name: data.fetch("name").to_s, soil_type: SoilType.find_by!(key: data.fetch("soil")),
+        boundary: data["boundary"] && {"type" => "Polygon", "coordinates" => [data["boundary"]]}))
+    Array(data["entries"]).each { |entry| field.field_entries.create!(entry(entry)) }
+    Array(data["plantings"]).each { |planting_data| planting(field, planting_data) }
+    field
+  end
+
+  def planting(field, data)
+    crop = Plant.find_by!(key: data.fetch("crop"))
+    planting = field.plantings.create!(Planting.defaults_for(crop, @year).merge(
+      data.slice(*DemoExport::PLANTING_ATTRIBUTES), plant: crop, season_start: date(data.fetch("season_start")),
+      emergence_date: date(data.fetch("emergence")), end_date: date(data.fetch("end")),
+      vine_kill_date: data["vine_kill"] && date(data["vine_kill"])
+    ))
+    Array(data["canopy"]).each { |reading| planting.canopy_observations.create!(entry(reading)) }
+    Array(data["cuttings"]).each { |cutting| planting.canopy_cuttings.create!(date: date(cutting)) }
+    Array(data["entries"]).each { |entry| planting.planting_entries.create!(entry(entry)) }
     planting
   end
 
-  def pivot_irrigations(pivot, events)
-    events.each { |month, day, inches| pivot.pivot_irrigations.create!(date: date(month, day), inches:) }
-  end
+  def entry(data) = data.merge("date" => date(data.fetch("date")))
 end

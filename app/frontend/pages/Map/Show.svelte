@@ -11,6 +11,7 @@
   import OverlayTooltip from '@/lib/map/OverlayTooltip.svelte'
   import OverviewMap from '@/lib/map/OverviewMap.svelte'
   import PivotPanel from '@/lib/map/PivotPanel.svelte'
+  import ScopePanel from '@/lib/map/ScopePanel.svelte'
   import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
   import { groupFeatures, type MapPivot } from '@/lib/map/pivots'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
@@ -95,6 +96,22 @@
   const cards = $derived(mapPivots.flatMap((pivot) => pivot.fields))
   const tree = $derived(buildTree(shown, { order: prefs.sort, query, windowDays, growing: onlyGrowing }))
   const listedCount = $derived(treeFields(tree).length)
+  // "3 farms · 8 systems · 25 fields · 40 plantings": what the list shows
+  const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
+  const listedSummary = $derived(
+    [
+      plural(tree.length, 'farm'),
+      plural(tree.flatMap(treeSystems).length, 'system'),
+      plural(listedCount, 'field'),
+      plural(
+        treeFields(tree).reduce((sum, card) => sum + card.plantings.length, 0),
+        'planting',
+      ),
+    ].join(' · '),
+  )
+  // Sort and filter starts closed; it says how many of its filters are set
+  let filtersOpen = $state(false)
+  const filtersSet = $derived([!thisYear, farmId !== 'all', onlyGrowing, windowDays !== null].filter(Boolean).length)
   // What the list's filters leave out is muted on the map
   const filtering = $derived(windowDays !== null || query.trim() !== '')
   const highlighted = $derived(filtering ? new Set(tree.flatMap(treeSystems).map((node) => node.pivot.id)) : null)
@@ -109,6 +126,20 @@
   )
   const selectedFieldId = $derived(selection?.level === 'field' ? selection.id : null)
   const selectedPivot = $derived(mapPivots.find((pivot) => pivot.id === selectedPivotId) ?? null)
+  const selectedFarm = $derived(selectedPivot ? farmOf.get(selectedPivot.id) : undefined)
+  // A selected farm or group's card in the list, for its panel, and a group's farm
+  const scopeNode = $derived.by(() => {
+    if (selection?.level === 'farm') return tree.find((farm) => farm.id === selection!.id) ?? null
+    if (selection?.level !== 'group') return null
+    for (const farm of tree)
+      for (const child of farm.children) if (child.kind === 'group' && child.id === selection.id) return child
+    return null
+  })
+  const scopeFarm = $derived(
+    selection?.level === 'group'
+      ? farms.find((farm) => farm.pivot_groups.some((g) => g.id === selection!.id))
+      : undefined,
+  )
   const anyPivots = $derived(farms.some((farm) => farm.pivots.length))
   // The Drought Monitor's category at the selected pivot, when that layer is on
   const panelNotes = $derived.by(() => {
@@ -167,6 +198,7 @@
     selection = next
     if (next.level === 'farm' || next.level === 'group') {
       overview?.fit(selectionPivots(next))
+      focusPanel()
       return
     }
     // Another field of the same system (in its panel, say) leaves the map where it is
@@ -257,46 +289,6 @@
       <p class="text-sm text-ink-muted">{auth.group?.name} · {formatDate(today, { weekday: true, year: true })}</p>
       <StatusCounts {cards} />
     </div>
-    <div class="flex flex-wrap items-center gap-2 text-sm">
-      <label class="flex items-center gap-1.5">
-        <span class="text-ink-muted">Season</span>
-        <select
-          class="rounded-md py-1 text-sm"
-          value={year}
-          onchange={(event) =>
-            router.get(mapRoute.show({ query: { year: event.currentTarget.value } }).url, {}, { preserveState: true })}
-        >
-          {#each years as option (option)}<option value={option}>{option}</option>{/each}
-        </select>
-      </label>
-      {#if farms.length > 1}
-        <label class="flex items-center gap-1.5">
-          <span class="text-ink-muted">Farm</span>
-          <select
-            class="rounded-md py-1 text-sm"
-            value={farmId}
-            onchange={(event) => {
-              const value = event.currentTarget.value
-              chooseFarm(value === 'all' ? 'all' : Number(value))
-            }}
-          >
-            <option value="all">All farms</option>
-            {#each farms as farm (farm.id)}<option value={farm.id}>{farm.name}</option>{/each}
-          </select>
-        </label>
-      {/if}
-      {#if thisYear}
-        {@render pills('Plantings', [
-          { label: 'All', title: "All this season's plantings", pressed: !growing, onclick: () => (growing = false) },
-          {
-            label: 'Current',
-            title: 'Only plantings growing today',
-            pressed: growing,
-            onclick: () => (growing = true),
-          },
-        ])}
-      {/if}
-    </div>
   </div>
 
   <div class="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -305,17 +297,18 @@
         {prefs.listOpen ? 'max-h-[45%] border-t md:max-h-none md:w-80 md:border-t-0' : 'md:hidden'}"
       aria-label="Fields"
     >
-      <div class="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
-        <h2 class="mr-auto text-sm font-medium">
-          Fields <span class="font-normal text-ink-muted">({listedCount})</span>
-        </h2>
-        <label class="flex items-center gap-1.5 text-xs">
-          <span class="text-ink-muted">Sort</span>
-          <select class="rounded-md py-1 text-xs" bind:value={prefs.sort}>
-            <option value="urgent">Most urgent first</option>
-            <option value="north">North to south</option>
-          </select>
-        </label>
+      <div class="flex items-center gap-2 border-b border-line px-3 py-2">
+        <button
+          type="button"
+          class="mr-auto flex items-center gap-1.5 rounded-md text-sm font-medium hover:text-brand-600"
+          aria-expanded={filtersOpen}
+          aria-controls="map-sort-filter"
+          onclick={() => (filtersOpen = !filtersOpen)}
+        >
+          <span aria-hidden="true" class="inline-block w-3 text-ink-muted">{filtersOpen ? '▾' : '▸'}</span>
+          Sort and filter
+          {#if filtersSet}<span class="font-normal text-ink-muted">{` · ${filtersSet} set`}</span>{/if}
+        </button>
         <button
           type="button"
           class="rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-surface-raised hover:text-ink md:hidden"
@@ -324,15 +317,74 @@
         >
       </div>
       <div class="space-y-2 border-b border-line px-3 py-2">
-        {@render pills(
-          'Irrigate',
-          WINDOWS.map((option) => ({
-            label: option.label,
-            title: option.title,
-            pressed: windowDays === option.days,
-            onclick: () => chooseWindow(option.days),
-          })),
-        )}
+        <!-- What the map and list show (season, farm, plantings), then the list's filters and order -->
+        <div id="map-sort-filter" class="space-y-2" hidden={!filtersOpen}>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+            <label class="flex items-center gap-1.5">
+              <span class="text-ink-muted">Season</span>
+              <select
+                class="rounded-md py-1 text-xs"
+                value={year}
+                onchange={(event) =>
+                  router.get(
+                    mapRoute.show({ query: { year: event.currentTarget.value } }).url,
+                    {},
+                    { preserveState: true },
+                  )}
+              >
+                {#each years as option (option)}<option value={option}>{option}</option>{/each}
+              </select>
+            </label>
+            {#if farms.length > 1}
+              <label class="flex min-w-0 items-center gap-1.5">
+                <span class="text-ink-muted">Farm</span>
+                <select
+                  class="min-w-0 rounded-md py-1 text-xs"
+                  value={farmId}
+                  onchange={(event) => {
+                    const value = event.currentTarget.value
+                    chooseFarm(value === 'all' ? 'all' : Number(value))
+                  }}
+                >
+                  <option value="all">All farms</option>
+                  {#each farms as farm (farm.id)}<option value={farm.id}>{farm.name}</option>{/each}
+                </select>
+              </label>
+            {/if}
+          </div>
+          {#if thisYear}
+            {@render pills('Plantings', [
+              {
+                label: 'All',
+                title: "All this season's plantings",
+                pressed: !growing,
+                onclick: () => (growing = false),
+              },
+              {
+                label: 'Current',
+                title: 'Only plantings growing today',
+                pressed: growing,
+                onclick: () => (growing = true),
+              },
+            ])}
+          {/if}
+          {@render pills(
+            'Irrigate',
+            WINDOWS.map((option) => ({
+              label: option.label,
+              title: option.title,
+              pressed: windowDays === option.days,
+              onclick: () => chooseWindow(option.days),
+            })),
+          )}
+          <label class="flex items-center gap-1.5 text-xs">
+            <span class="text-ink-muted">Sort</span>
+            <select class="rounded-md py-1 text-xs" bind:value={prefs.sort}>
+              <option value="urgent">Most urgent first</option>
+              <option value="north">North to south</option>
+            </select>
+          </label>
+        </div>
         <input
           type="search"
           bind:value={query}
@@ -340,6 +392,7 @@
           aria-label="Filter fields"
           class="block w-full rounded-md py-1 text-sm"
         />
+        <h2 class="text-xs text-ink-muted">{listedSummary}</h2>
       </div>
       <div bind:this={list} class="min-h-0 flex-1 overflow-y-auto p-2">
         {#if tree.length}
@@ -425,21 +478,27 @@
             >
           </div>
         {/if}
-        {#if selectedPivot}
+        {#if scopeNode || selectedPivot}
           <div
             class="pointer-events-none absolute inset-x-2 bottom-8 z-10 flex max-h-[60%] flex-col sm:inset-x-auto sm:top-2
               sm:right-12 sm:bottom-auto sm:max-h-[calc(100%-3rem)] sm:w-80"
           >
-            <PivotPanel
-              pivot={selectedPivot}
-              farmName={farmOf.get(selectedPivot.id)?.name ?? ''}
-              {today}
-              {units}
-              fieldId={selectedFieldId}
-              onselectfield={(id) => select({ level: 'field', id })}
-              notes={panelNotes}
-              onclose={clearSelection}
-            />
+            {#if scopeNode}
+              <ScopePanel node={scopeNode} farm={scopeFarm} onselect={select} onclose={clearSelection} />
+            {:else if selectedPivot && selectedFarm}
+              <PivotPanel
+                pivot={selectedPivot}
+                farm={selectedFarm}
+                group={selectedFarm.pivot_groups.find((group) => group.id === selectedPivot.pivot_group_id) ?? null}
+                {today}
+                {units}
+                fieldId={selectedFieldId}
+                onselectfield={(id) => select({ level: 'field', id })}
+                onselect={select}
+                notes={panelNotes}
+                onclose={clearSelection}
+              />
+            {/if}
           </div>
         {/if}
       </OverviewMap>

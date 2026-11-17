@@ -14,6 +14,8 @@
   import PivotGroupForm from '@/lib/setup/PivotGroupForm.svelte'
   import NextSteps from '@/lib/setup/NextSteps.svelte'
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
+  import { takeSetupRequest } from '@/lib/setup/links'
+  import { farmChildren, orderFarms, orderFields, SETUP_ORDERS, type SetupOrder } from '@/lib/setup/order'
   import {
     farms as farmRoutes,
     fieldOutline,
@@ -82,8 +84,26 @@
   const inSeason = (field: Field) =>
     field.plantings.length === 0 ||
     field.plantings.some((planting) => planting.year === year || planting.year === year - 1)
-  const used = (pivot: Pivot) => pivot.fields.filter(inSeason)
-  const unused = (pivot: Pivot) => pivot.fields.filter((field) => !inSeason(field))
+  // The order the page lists things in (lib/setup/order.ts), remembered in this browser
+  const ORDER_KEY = 'wisp.setup.order'
+  const savedOrder = (): SetupOrder => {
+    try {
+      return localStorage.getItem(ORDER_KEY) === 'name' ? 'name' : 'north'
+    } catch {
+      return 'north'
+    }
+  }
+  let order = $state<SetupOrder>(savedOrder())
+  $effect(() => {
+    try {
+      localStorage.setItem(ORDER_KEY, order)
+    } catch {
+      // Storage blocked: the order lasts for this visit
+    }
+  })
+  const orderedFarms = $derived(orderFarms(farms, order))
+  const used = (pivot: Pivot) => orderFields(pivot, order).filter(inSeason)
+  const unused = (pivot: Pivot) => orderFields(pivot, order).filter((field) => !inSeason(field))
   const hasSeason = $derived(allPivots.some((p) => p.fields.some((f) => seasonPlantings(f).length)))
   const hasLastSeason = $derived(
     allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
@@ -94,10 +114,6 @@
     allPivots.flatMap((pivot) => outlineProblems(pivot, pivot.fields, page.props.auth.user?.unit_system ?? 'imperial')),
   )
 
-  // A farm's pivots in a group, and the ones in none (PLAN.md Phase 8 G.4)
-  const groupPivots = (farm: Farm, group: PivotGroup) => farm.pivots.filter((p) => p.pivot_group_id === group.id)
-  const ungrouped = (farm: Farm) => farm.pivots.filter((p) => p.pivot_group_id === null)
-
   type DialogState =
     | { kind: 'farm'; farm?: Farm }
     | { kind: 'field'; pivot: Pivot; field?: Field }
@@ -106,23 +122,48 @@
   let plantingDialog: PlantingDialog | undefined = $state()
   const today = todayDate()
 
-  // ?planting=ID (the planting page's "Edit in setup"): scroll to its field and open its form, once
+  // ?planting=, ?field=, ?farm= or ?pivot_group= (Edit links on the planting page and the map,
+  // lib/setup/links.ts): scroll to it and open its form, once
   $effect(() => {
     if (!plantingDialog) return
-    const url = new URL(location.href)
-    const id = Number(url.searchParams.get('planting'))
-    if (!id) return
-    url.searchParams.delete('planting')
-    history.replaceState(history.state, '', url)
-    for (const farm of farms)
-      for (const pivot of farm.pivots)
-        for (const field of pivot.fields) {
-          const found = field.plantings.find((planting) => planting.id === id)
-          if (!found) continue
-          document.getElementById(`setup-field-${field.id}`)?.scrollIntoView({ block: 'center' })
-          plantingDialog.open(field, found)
-          return
-        }
+    const request = takeSetupRequest()
+    if (!request) return
+    const { kind, id } = request
+    const show = (elementId: string) => {
+      const element = document.getElementById(elementId)
+      // A field not used this season is in a collapsed list
+      const details = element?.closest('details')
+      if (details) details.open = true
+      element?.scrollIntoView({ block: 'center' })
+    }
+    for (const farm of farms) {
+      if (kind === 'farm' && farm.id === id) {
+        show(`setup-farm-${farm.id}`)
+        open({ kind: 'farm', farm })
+        return
+      }
+      const pivotGroup = farm.pivot_groups.find((g) => g.id === id)
+      if (kind === 'planting' || kind === 'field') {
+        for (const pivot of farm.pivots)
+          for (const field of pivot.fields) {
+            const found = field.plantings.find((planting) => planting.id === id)
+            if (kind === 'planting' && found) {
+              show(`setup-field-${field.id}`)
+              plantingDialog.open(field, found)
+              return
+            }
+            if (kind === 'field' && field.id === id) {
+              show(`setup-field-${field.id}`)
+              open({ kind: 'field', pivot, field })
+              return
+            }
+          }
+      } else if (kind === 'group' && pivotGroup) {
+        show(`setup-group-${pivotGroup.id}`)
+        open({ kind: 'pivotGroup', farm, group: pivotGroup })
+        return
+      }
+    }
   })
   let dialog = $state<DialogState | null>(null)
   let dialogOpen = $state(false)
@@ -155,7 +196,7 @@
     <div class="min-w-40 flex-1">
       <p>
         <span class="text-ink-muted">Field:</span>
-        <Link href={fields.show(field.id)} class="font-medium hover:underline">{field.name}</Link>
+        <span class="font-medium">{field.name}</span>
       </p>
       <p class="text-xs text-ink-muted">
         {fieldArea(field)} · {field.soil_type_name}
@@ -166,6 +207,11 @@
       </p>
     </div>
     <div class="flex gap-1 text-xs">
+      <Link
+        href={fields.show(field.id)}
+        class="rounded-md px-2 py-1 font-medium text-brand-600 hover:bg-brand-50"
+        aria-label="View {field.name}">View</Link
+      >
       <Button
         variant="ghost"
         class="px-2 py-1 text-xs"
@@ -204,7 +250,7 @@
       <div>
         <h3 class="font-medium">
           <span class="font-normal text-ink-muted">Irrigation system:</span>
-          <Link href={pivots.show(pivot.id)} class="hover:underline">{systemName(pivot)}</Link>
+          {systemName(pivot)}
         </h3>
         <p class="text-xs text-ink-muted">
           {pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}
@@ -220,7 +266,7 @@
         <Link
           href={pivots.show(pivot.id)}
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
-          aria-label="Irrigation, {pivot.name}">Irrigation</Link
+          aria-label="View {pivot.name}">View</Link
         >
         <Button
           variant="ghost"
@@ -278,6 +324,10 @@
     >
       {#each [...new Set([...years, year + 1])] as y (y)}<option value={y}>{y}</option>{/each}
     </select>
+    <label for="setup-order" class="ml-2 text-sm text-ink-muted">Sort</label>
+    <select id="setup-order" class="rounded-md text-sm" bind:value={order}>
+      {#each SETUP_ORDERS as option (option.value)}<option value={option.value}>{option.label}</option>{/each}
+    </select>
   </div>
 </div>
 
@@ -329,8 +379,8 @@
   </Form>
 {/if}
 
-{#each farms as farm (farm.id)}
-  <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-4 sm:p-6">
+{#each orderedFarms as farm (farm.id)}
+  <section id="setup-farm-{farm.id}" class="space-y-4 rounded-lg border border-line bg-surface-raised p-4 sm:p-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div class="min-w-0">
         <h2 class="text-lg font-medium"><span class="font-normal text-ink-muted">Farm:</span> {farm.name}</h2>
@@ -363,36 +413,37 @@
       <p class="text-sm text-ink-muted">No irrigation systems on this farm yet.</p>
     {/if}
 
-    {#each farm.pivot_groups as pivotGroup (pivotGroup.id)}
-      <!-- An irrigation group: systems organized together, sharing a rain gauge in daily entry -->
-      <div class="space-y-3 rounded-md border border-dashed border-line p-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 class="font-medium">
-              <span class="font-normal text-ink-muted">Irrigation group:</span>
-              {pivotGroup.name}
-            </h3>
-            <p class="text-xs text-ink-muted">Rain entered for the group on Daily entry fills into all its fields</p>
+    {#each farmChildren(farm, order) as child (child.kind === 'group' ? `group-${child.group.id}` : `system-${child.pivot.id}`)}
+      {#if child.kind === 'group'}
+        {@const pivotGroup = child.group}
+        <!-- An irrigation group: systems organized together, sharing a rain gauge in daily entry -->
+        <div id="setup-group-{pivotGroup.id}" class="space-y-3 rounded-md border border-dashed border-line p-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 class="font-medium">
+                <span class="font-normal text-ink-muted">Irrigation group:</span>
+                {pivotGroup.name}
+              </h3>
+              <p class="text-xs text-ink-muted">Rain entered for the group on Daily entry fills into all its fields</p>
+            </div>
+            <div class="flex gap-1 text-sm">
+              <Button
+                variant="ghost"
+                class="px-3 py-1.5"
+                aria-label="Edit {pivotGroup.name}"
+                onclick={() => open({ kind: 'pivotGroup', farm, group: pivotGroup })}>Edit</Button
+              >
+            </div>
           </div>
-          <div class="flex gap-1 text-sm">
-            <Button
-              variant="ghost"
-              class="px-3 py-1.5"
-              aria-label="Edit {pivotGroup.name}"
-              onclick={() => open({ kind: 'pivotGroup', farm, group: pivotGroup })}>Edit</Button
-            >
-          </div>
+          {#each child.pivots as pivot (pivot.id)}
+            {@render pivotCard(pivot)}
+          {:else}
+            <p class="text-sm text-ink-muted">No irrigation systems in this group.</p>
+          {/each}
         </div>
-        {#each groupPivots(farm, pivotGroup) as pivot (pivot.id)}
-          {@render pivotCard(pivot)}
-        {:else}
-          <p class="text-sm text-ink-muted">No irrigation systems in this group.</p>
-        {/each}
-      </div>
-    {/each}
-
-    {#each ungrouped(farm) as pivot (pivot.id)}
-      {@render pivotCard(pivot)}
+      {:else}
+        {@render pivotCard(child.pivot)}
+      {/if}
     {/each}
   </section>
 {:else}

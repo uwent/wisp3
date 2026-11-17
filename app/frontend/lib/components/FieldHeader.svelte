@@ -4,7 +4,7 @@
   import type { Snippet } from 'svelte'
 
   import { currentYear, today as todayDate } from '@/lib/dates'
-  import { plantingWhen } from '@/lib/plantings'
+  import { cropName, plantingWhen } from '@/lib/plantings'
   import { formatNumber, type Units } from '@/lib/units'
   import { fieldOutline, fields, planting as plantingRoute, pivots } from '@/routes'
   import type { Field } from '@/types/serializers'
@@ -87,7 +87,7 @@
           class={tab(current === p.id)}
           aria-current={current === p.id ? 'page' : undefined}
         >
-          {p.plant_name}{#if more}<span class="text-xs font-normal text-ink-muted">{more}</span>{/if}
+          {cropName(p)}{#if more}<span class="text-xs font-normal text-ink-muted">{more}</span>{/if}
         </Link>
       {/each}
     </nav>

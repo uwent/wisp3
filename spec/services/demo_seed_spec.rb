@@ -1,39 +1,38 @@
 require "rails_helper"
 
+# The demo file (db/demo/farms.yml) changes as the demo is tidied, so these check that it builds and
+# round-trips, not what's in it
 RSpec.describe DemoSeed do
   before { ReferenceData.load! }
 
-  it "builds a demo account with both ET methods, pivot and field irrigation, an irrigation group, a traveler and drip" do
+  def demo_group = User.find_by!(email: "demo@example.com").groups.find_by!(name: DemoSeed::GROUP_NAME)
+
+  it "builds every farm, system, field and planting in the demo file" do
+    data = YAML.safe_load_file(DemoSeed::FILE)
     result = described_class.new(email: "demo@example.com", year: 2026).run
-    expect(result).to include(farms: 4, fields: 19, plantings: 25)
     expect(result[:password]).to be_present
 
-    group = User.find_by!(email: "demo@example.com").groups.find_by!(name: DemoSeed::GROUP_NAME)
-    expect(group.plantings.pluck(:et_method).uniq).to contain_exactly("pct_cover", "lai")
-    expect(group.pivots.map { |pivot| pivot.fields.size }.max).to eq(8)
-    expect(PivotIrrigation.where(pivot: group.pivots).where.not(run_hours: nil)).to exist
-    expect(group.fields.find_by!(name: "Cabbage").field_entries.where.not(rain_in: nil).count).to eq(5)
-    expect(group.plantings.where.not(vine_kill_date: nil).map { |planting| planting.plant.key }).to eq(["potato"])
-    research = group.fields.find_by!(name: "Arlington 525")
-    expect(research.plantings_on(Date.new(2026, 7, 1)).map(&:partial?)).to eq([true] * 4)
-    expect(research.plantings.sum(&:area_acres)).to be < research.area_acres
-    expect(PlantingEntry.joins(:planting).where(plantings: {field_id: research.id})).to exist
-    expect(group.fields.find_by!(name: "Market garden").plantings.size).to eq(3)
-    expect(group.plantings.joins(:plant).find_by!(plants: {key: "alfalfa"}).canopy_cuttings.size).to eq(3)
-    expect(group.pivot_groups.sole.pivots.map(&:name)).to eq(["Hay pivot", "River pivot"])
-    travelers = group.pivots.where(kind: "traveler")
-    expect(travelers.map { |pivot| [pivot.name, pivot.equipment, pivot.fields.size] })
-      .to contain_exactly(["West lane", "Hard hose reel #2", 1], ["East lane", "Hard hose reel #2", 1])
-    drip = group.pivots.find_by!(kind: "drip")
-    expect(drip.pivot_irrigations.first.applied_inches).to be_within(0.01).of(0.18)
+    systems = data["farms"].flat_map { |farm| farm["systems"] }
+    fields = systems.flat_map { |system| system["fields"] }
+    expect(result).to include(farms: data["farms"].size, fields: fields.size,
+      plantings: fields.sum { |field| Array(field["plantings"]).size })
+    group = demo_group
+    expect(group.pivots.count).to eq(systems.size)
+    group.fields.where.not(boundary: nil).each do |field|
+      expect(FieldBoundary.errors(field.boundary)).to be_empty, "#{field.name}: #{FieldBoundary.errors(field.boundary)}"
+    end
+  end
 
-    # Some fields have outlines near their acres, (G.10)
-    outlined = group.fields.where.not(boundary: nil)
-    expect(outlined.map(&:name)).to contain_exactly("North potatoes", "North corn", "Hay north", "Tomatoes",
-      "Arlington 525", "West 20", "East 15")
-    expect(group.fields.find_by!(name: "West 20").boundary_acres).to be_within(0.5).of(20)
-    expect(research.boundary_acres).to be_within(0.1).of(2)
-    expect(FieldBoundary.errors(research.boundary)).to be_empty
+  it "exports what it seeded, so the demo can be edited in the app and written back" do
+    described_class.new(email: "demo@example.com", year: 2026).run
+    exported = DemoExport.new(demo_group, year: 2026).to_yaml
+
+    file = Tempfile.create(["farms", ".yml"])
+    File.write(file.path, exported)
+    described_class.new(email: "demo@example.com", year: 2026, file: file.path).run
+    expect(DemoExport.new(demo_group, year: 2026).to_yaml).to eq(exported)
+  ensure
+    File.unlink(file.path) if file
   end
 
   it "rebuilds rather than duplicating, and keeps the user's password" do

@@ -1,3 +1,4 @@
+import { DEMO, literal } from './demo'
 import { firstPlantingPath, signIn } from './session'
 import { expect, test } from './test'
 
@@ -53,8 +54,8 @@ test('selecting a pivot from the keyboard moves to its panel, and Escape comes b
   const panel = page.locator('[data-pivot-panel]')
   await expect(panel).toBeFocused()
   await page.keyboard.press('Tab')
-  // First the pivot's name, which links to its page
-  await expect(panel.getByRole('heading').getByRole('link')).toBeFocused()
+  // First its farm, which selects the farm
+  await expect(panel.getByRole('button', { name: /^Show the farm / })).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(panel).toBeHidden()
   await expect(show).toBeFocused()
@@ -66,9 +67,11 @@ test("the map list's cards select from the keyboard, and Escape clears the selec
   await farm.focus()
   await page.keyboard.press('Enter')
   await expect(farm).toHaveAttribute('aria-pressed', 'true')
-  await expect(farm).toBeFocused() // no panel to move to
+  // Its panel takes focus, and Escape returns it
+  await expect(page.locator('[data-pivot-panel]')).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(farm).toHaveAttribute('aria-pressed', 'false')
+  await expect(farm).toBeFocused()
 })
 
 test('the map layers panel opens from the keyboard and Escape closes it', async ({ page }) => {
@@ -124,7 +127,10 @@ test('setup dialogs and the account menu work from the keyboard', async ({ page 
 
 test("a planting bar's menu works from the keyboard (G.13 part 3)", async ({ page }) => {
   await page.goto('/setup')
-  const bar = page.getByRole('list', { name: /^Plantings on Arlington 525/ }).getByRole('button', { name: /^Soybean/ })
+  const bar = page
+    .getByRole('list', { name: new RegExp(`^Plantings on ${literal(DEMO.researchField)}`) })
+    .getByRole('button', { name: /^Soybean/ })
+    .first()
   await bar.focus()
   await page.keyboard.press('Enter')
   const menu = page.getByRole('menu')
@@ -140,7 +146,9 @@ test("a planting bar's menu works from the keyboard (G.13 part 3)", async ({ pag
   await page.keyboard.press('End')
   await expect(page.getByRole('menuitem', { name: 'Edit planting' })).toBeFocused()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('dialog', { name: /^Edit Soybean on Arlington 525/ })).toBeVisible()
+  await expect(
+    page.getByRole('dialog', { name: new RegExp(`^Edit Soybean on ${literal(DEMO.researchField)}`) }),
+  ).toBeVisible()
 })
 
 test('a glossary term opens from the keyboard, and describes itself by its definition', async ({ page }) => {
@@ -158,7 +166,7 @@ test("a form's info tip opens from the keyboard, and Escape closes it before the
   page,
 }) => {
   await page.goto('/setup')
-  await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
+  await page.getByRole('button', { name: `Edit ${DEMO.researchField}` }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: 'Field area' }).fill('12.5')
   // The (i) follows the Name box in tab order, outside the select's label

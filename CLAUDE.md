@@ -17,6 +17,7 @@ pnpm check                      # svelte-check + tsc
 bin/e2e                          # Playwright browser tests on their own database, ~3 min (args go to playwright test: a file, -g, --project desktop)
 bin/rails typelizer:generate     # after changing serializers or routes; commit the output
 bin/rails demo:seed              # demo account with farms, fields and entries (EMAIL, PASSWORD, YEAR)
+bin/rails demo:export            # the demo account, as edited in the app, back to db/demo/farms.yml (its seed)
 bin/rails weather:refresh        # fetch weather for active cells now (needs network; OPEN_METEO_API_KEY in .env optional)
 bin/rails weather:compare        # AgWeather vs Open-Meteo report → docs/weather-comparison.md
 cap staging deploy               # staging (Capistrano)
@@ -86,6 +87,7 @@ Frontend:
 - **Chromium fires `blur` on a focused input that's removed**; jsdom doesn't, so component tests of edit/cancel flows fire it themselves (`EditableCell.test.ts`).
 - **Browser tests run on two workers** (files side by side, each file's tests in turn) against one database: a test that writes must not write what another file's tests (or the same file in the other project) read, so the phone project's writes go to their own rows or days. `signIn` adds the session the `setup` project saved (`e2e/auth.setup.ts`, signed in through the form once a run, the demo farms chosen); `bin/e2e` skips the Vite build when nothing it's built from changed.
 - **Browser tests import `test` and `expect` from `e2e/test.ts`**, not `@playwright/test`: it answers the soil survey, the USGS imagery tiles and OpenFreeMap's vector tiles (empty) for every page (a test's own `page.route` takes precedence; `E2E_LIVE=1 bin/e2e` reaches the real services). The phone project (dark mode) runs only tests tagged `{ tag: '@phone' }`: the accessibility scans, and tests where touch or the small screen's layout matters; a new page's scan gets the tag with the rest.
+- **Browser tests find the demo by the names in `e2e/demo.json`** (each for the part it plays, described in `e2e/demo.ts`); renaming things in the demo (`db/demo/farms.yml`) means changing them there.
 - **Playwright dismisses dialogs by default**, so a stray `confirm` (unsaved changes) cancels a navigation in a test; handle it with `page.once('dialog', …)`.
 - **lint-staged runs Prettier on committed JSON.** Large data files go in `.prettierignore` (`lib/map/us-outline.json`), or they're expanded to thousands of lines.
 

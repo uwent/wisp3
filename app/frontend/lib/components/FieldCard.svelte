@@ -10,12 +10,14 @@
   import type { FieldCard } from '@/lib/overview'
   import { cardWhen, cropName, seasonLine, endedSeasonStats } from '@/lib/plantings'
   import type { Units } from '@/lib/units'
+  import { editLink } from '@/lib/setup/links'
   import { fields, planting as plantingRoute } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
 
   // A field's status card: on the dashboard (the whole card links to its planting), and compact on
-  // the map, where onselect makes the card select it, with its own View link (G.14). weather: whether the pivot's weather is
-  // being fetched (the page reloads until it lands) or the page gave up waiting.
+  // the map, where onselect makes the card select it: in the map's panel with View and Edit links
+  // (links), in its list without. weather: whether the pivot's weather is being fetched (the page
+  // reloads until it lands) or the page gave up waiting.
   //
   // A field growing several plantings at once (plots, PLAN.md Phase 8 G.11) lists each, linking to
   // its page, with the field's name linking to the field: in full up to MANY of them, then as a
@@ -28,6 +30,7 @@
     compact = false,
     selected = false,
     onselect,
+    links = false,
   }: {
     card: FieldCard
     weather?: WeatherUpdate
@@ -36,6 +39,8 @@
     compact?: boolean
     selected?: boolean
     onselect?: () => void
+    /** With onselect, View and Edit links under the card */
+    links?: boolean
   } = $props()
 
   const MANY = 3
@@ -270,11 +275,15 @@
         {@render one()}
       {/if}
     </div>
-    <Link
-      {href}
-      class="relative mt-2 inline-block text-xs font-medium text-brand-600 hover:underline"
-      aria-label="View {card.name}">View</Link
-    >
+    {#if links}
+      <div class="relative mt-2 flex items-center gap-2 text-xs font-medium">
+        <Link {href} class="text-brand-600 hover:underline" aria-label="View {card.name}">View</Link>
+        <span class="text-ink-muted" aria-hidden="true">|</span>
+        <Link href={editLink('field', card.id)} class="text-brand-600 hover:underline" aria-label="Edit {card.name}"
+          >Edit</Link
+        >
+      </div>
+    {/if}
   </div>
 {:else if several}
   <!-- Links inside: the field's name opens the field, each planting its own page -->

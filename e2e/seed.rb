@@ -20,9 +20,10 @@ grower.groups.where.not(id: demo.id).destroy_all
 today = Date.current
 now = Time.current
 
-# Keep the Cabbage field's season (the planting the tests open, firstPlantingPath) running past
-# today, so it has a projection whenever the tests run between April and the fall
-Planting.joins(:plant).where(plants: {key: "cabbage"}).find_each do |planting|
+# Keep the first field's season (the planting the tests open, firstPlantingPath; e2e/demo.json)
+# running past today, so it has a projection whenever the tests run between April and the fall
+first_field = JSON.parse(File.read(File.join(__dir__, "demo.json"))).fetch("firstField")
+demo.fields.find_by!(name: first_field).plantings.each do |planting|
   planting.update!(end_date: [planting.end_date, today + 30].max)
 end
 WeatherCell.find_each do |cell|

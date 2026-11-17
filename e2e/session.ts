@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 
 import { expect, type Page } from '@playwright/test'
 
+import { DEMO } from './demo'
+
 // The demo account seeded by e2e/seed.rb, and getting around it
 
 export const EMAIL = 'e2e@example.com'
@@ -37,12 +39,12 @@ export async function signInWithForm(page: Page) {
 }
 
 /**
- * The Cabbage field's planting page (its dashboard card links to it), whose season the seed keeps
+ * The first field's planting page (its dashboard card links to it), whose season the seed keeps
  * running past today
  */
 export async function firstPlantingPath(page: Page): Promise<string> {
   await page.goto('/')
-  const card = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Cabbage' }) })
+  const card = page.locator('main li').filter({ has: page.getByRole('heading', { name: `Field: ${DEMO.firstField}` }) })
   const href = await card.getByRole('link').first().getAttribute('href')
   return new URL(href!, page.url()).pathname
 }
@@ -50,7 +52,9 @@ export async function firstPlantingPath(page: Page): Promise<string> {
 /** The demo's research field, with four plots side by side (PLAN.md Phase 8 G.11) */
 export async function researchFieldPath(page: Page): Promise<string> {
   await page.goto('/')
-  const card = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Arlington 525' }) })
+  const card = page
+    .locator('main li')
+    .filter({ has: page.getByRole('heading', { name: `Field: ${DEMO.researchField}` }) })
   return new URL((await card.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
 }
 
@@ -98,13 +102,15 @@ export async function signedInPages(page: Page): Promise<string[]> {
   const plot = await firstLinkPath(page, research, 'nav a[href*="/plantings/"]')
   // A perennial with cuttings (G.3)
   await page.goto('/')
-  const hayCard = page.locator('main li').filter({ has: page.getByRole('heading', { name: 'Field: Hay north' }) })
+  const hayCard = page
+    .locator('main li')
+    .filter({ has: page.getByRole('heading', { name: `Field: ${DEMO.hayField}` }) })
   const hay = new URL((await hayCard.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
   const user = await firstLinkPath(page, '/admin/users', 'a[href*="/admin/users/"]')
   // A traveler, a point with no shape (G.5)
   await page.goto('/setup')
-  const travelerHeading = page.getByRole('heading', { name: 'Irrigation system: West lane (traveler)' })
-  const traveler = new URL((await travelerHeading.getByRole('link').getAttribute('href'))!, page.url()).pathname
+  const travelerLink = page.locator(`a[href*="/pivots/"][aria-label="View ${DEMO.traveler}"]`)
+  const traveler = new URL((await travelerLink.getAttribute('href'))!, page.url()).pathname
   return [
     '/',
     '/map',

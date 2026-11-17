@@ -4,7 +4,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
-  import { isPoint, type PivotShape, systemName } from '@/lib/geo'
+  import { type PivotShape, systemName } from '@/lib/geo'
   import { type Boundary, boundaryAcres, boundaryCenter, boundaryErrors } from '@/lib/boundary'
   import OutlineMap, { type DrawMode } from '@/lib/outlines/OutlineMap.svelte'
   import {
@@ -15,7 +15,14 @@
     shapeName,
     shapeNotes,
   } from '@/lib/outlines/read'
-  import { formatReach, reachLine, systemDistanceM, systemsNear, touchesSystem } from '@/lib/outlines/problems'
+  import {
+    formatReach,
+    reachLine,
+    systemDistanceM,
+    systemReach,
+    systemsNear,
+    touchesSystem,
+  } from '@/lib/outlines/problems'
   import type { Reference } from '@/lib/outlines/references'
   import { formatArea } from '@/lib/plantings'
   import FieldAreaInput from '@/lib/setup/FieldAreaInput.svelte'
@@ -80,13 +87,7 @@
   const ownMeters = $derived(settled && away ? systemDistanceM(settled, pivot) : 0)
   let systemChoice = $state('keep')
   const moveTo = $derived(nearby.find(({ system }) => `pivot-${system.id}` === systemChoice)?.system)
-  // "0.5 mi away", or "overlaps this field" (a pivot or linear) or "in this field" (a point kind)
-  const howFar = (system: System, meters: number) =>
-    meters > 0
-      ? `${formatReach(meters, units.system)} away`
-      : isPoint(system.kind)
-        ? 'in this field'
-        : 'overlaps this field'
+  const howFar = (system: System, meters: number) => systemReach(system, meters, units.system)
   const toLocation = $derived(away && systemChoice === 'location')
   const location = $derived(settled && toLocation ? boundaryCenter(settled) : null)
   // Whether the move changes the weather its open seasons use: another cell's system, or a

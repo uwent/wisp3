@@ -1,15 +1,16 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import { page } from '@inertiajs/svelte'
 
-  import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import type { FieldInfoKey } from '@/lib/fieldInfo'
   import { units as unitsFor } from '@/lib/units'
 
-  // A field's area (PLAN.md Phase 8 G.14 part 7): the area saved beside the box, with a button to copy
-  // the shape's into it, and the shape's area under them, how far apart said (in the caution color when
-  // it's far). The same in the field dialog and on the shape page; nothing
-  // fills the box by itself.
+  // A field's area (PLAN.md Phase 8 G.14 part 7): the area saved beside the box, and the shape's area
+  // under them, how far apart said (in the caution color when it's far). The same in the field dialog
+  // and on the shape page. A change to the shape (drawn, edited, imported) copies its area into the
+  // box; the area a field already has is left as it is until then, and one typed in afterwards
+  // stays, with the difference said under it.
   let {
     name,
     value = $bindable(null),
@@ -27,7 +28,7 @@
     /** The shape's area in acres, or null without one */
     drawn?: number | null
     error?: string | string[]
-    /** Called when the button changes the box */
+    /** Called when a change to the shape changes the box */
     onchange?: () => void
     /** The box's info tip (lib/fieldInfo.ts) */
     info?: FieldInfoKey
@@ -36,6 +37,19 @@
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const format = (acres: number) => units.format('area', acres, { digits: 2 })
   const rounded = $derived(drawn === null ? null : Math.round(drawn * 100) / 100)
+
+  // The shape's area as the box last followed it: the one it opened with isn't copied in
+  let followed = untrack(() => rounded)
+  $effect(() => {
+    const next = rounded
+    if (next === followed) return
+    followed = next
+    if (next === null) return
+    untrack(() => {
+      value = next
+      onchange?.()
+    })
+  })
 
   // How far the area is from the shape's (to the hundredth shown), and whether that's worth a warning:
   // more than half an acre and more than a tenth apart
@@ -64,28 +78,8 @@
   {/if}
   {#snippet box(label: string)}
     <div class="max-w-sm">
-      <NumberField
-        {label}
-        {name}
-        {info}
-        quantity="area"
-        bind:value
-        {error}
-        optional
-        after={rounded !== null && value !== rounded ? useDrawn : undefined}
-      />
+      <NumberField {label} {name} {info} quantity="area" bind:value {error} optional />
     </div>
-  {/snippet}
-  {#snippet useDrawn()}
-    <Button
-      type="button"
-      variant="secondary"
-      class="shrink-0"
-      onclick={() => {
-        value = rounded
-        onchange?.()
-      }}>Use {format(rounded!)}</Button
-    >
   {/snippet}
   {#if rounded !== null}
     <p class={far ? 'text-status-caution-ink' : 'text-ink-muted'} role="status">

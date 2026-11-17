@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { type Page } from '@playwright/test'
 
+import { DEMO, literal } from './demo'
 import { firstPlantingPath, impersonateGrower, signedInPages, signIn, watchErrors } from './session'
 import { expect, test } from './test'
 
@@ -133,7 +134,7 @@ test("Setup's field dialog, with its shape (G.14)", { tag: '@phone' }, async ({ 
   await signIn(page)
   const errors = watchErrors(page)
   await page.goto('/setup')
-  await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
+  await page.getByRole('button', { name: `Edit ${DEMO.researchField}` }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByLabel('Field area', { exact: true })).toBeVisible()
   const { violations } = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(TAGS).analyze()
@@ -178,7 +179,7 @@ test(
       expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
     }
     // A new planting: only the crop (required, still empty) until one is chosen
-    await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
+    await page.getByRole('button', { name: `Add a planting to ${DEMO.firstField}` }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByText('Choose a crop')).toHaveCount(2) // the option and the hint
     await axe()
@@ -192,7 +193,7 @@ test(
     await expect(dialog).toBeHidden()
     // A bar's menu: view or edit
     await page
-      .getByRole('list', { name: /^Plantings on Arlington 525/ })
+      .getByRole('list', { name: new RegExp(`^Plantings on ${literal(DEMO.researchField)}`) })
       .getByRole('button')
       .first()
       .click()

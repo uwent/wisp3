@@ -137,6 +137,12 @@ export function formatReach(meters: number, system: UnitSystem): string {
   return miles >= 0.1 ? `${miles.toFixed(1)} mi` : `${Math.round(meters * FEET_PER_METER)} ft`
 }
 
+/** How far a system is from a field's shape: "0.5 mi away", "overlaps this field" (a pivot or linear) or "in this field" (a point kind) */
+export function systemReach(system: PivotShape, meters: number, unitSystem: UnitSystem): string {
+  if (meters > 0) return `${formatReach(meters, unitSystem)} away`
+  return isPoint(system.kind) ? 'in this field' : 'overlaps this field'
+}
+
 /** The fields whose outline doesn't sit with their irrigation system, worded for Setup */
 export function outlineProblems(system: System, fields: Outlined[], unitSystem: UnitSystem): OutlineProblem[] {
   const label = systemName({ name: system.name, kind_name: KIND_NAMES[system.kind] })

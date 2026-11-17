@@ -1,0 +1,23 @@
+{
+  "firstField": "Kim",
+  "firstCrop": "Carrot",
+  "farm": "Hancock Station",
+  "researchFarm": "Arlington",
+  "researchField": "Experimental plots",
+  "researchSystem": "Plot sprinklers",
+  "researchSystemLabel": "Plot sprinklers (solid set)",
+  "dripPlot": "Soybean (Drip irrigated)",
+  "hayField": "South West",
+  "traveler": "South West",
+  "travelerLabel": "South West (traveler)",
+  "gauge": "Farm center",
+  "gaugeField": "North West",
+  "splitPivot": "Powell pivot",
+  "splitWest": "Powell West",
+  "splitEast": "Powell East",
+  "otherPivot": "Home pivot",
+  "shapeField": "Home East",
+  "shapeFieldSystem": "Home pivot",
+  "awayField": "South Center",
+  "awaySystem": "South Center (traveler)"
+}
