@@ -20,6 +20,7 @@ The steps are in [docs/deployment.md](docs/deployment.md), Production. The deplo
 - [x] **Send a test email** (step 7) once the SES credentials are in `.env`.
 - [x] **After the next weather refresh** (5 am, 11 am, 5 pm Central), `/admin/weather` shows data; with mail working, sign up and sign in by link.
 - [ ] **Before launch:** restore an RDS snapshot to a scratch instance once (Eric may need to).
+- [ ] **The example farm on production** (G.8), once `example-farm` is merged and deployed: in `bin/production console`, `DemoSeed.example!(year: 2026)`, while it's still 2026 (the server backfills weather only for the current year, and the example shows July 20, 2026). Then open `/example` signed out. On staging, `bin/rails demo:example` (YEAR=2026) after its deploy.
 
 ## Staging deploy (blocks seeing WISP 3 on dev.wisp)
 
