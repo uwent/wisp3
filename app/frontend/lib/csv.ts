@@ -35,15 +35,6 @@ export function frontmatter(title: string, details: Record<string, string | null
   return [[title], ...lines, []]
 }
 
-/** A name for a file name, as Rails' parameterize: "North 40" → "north-40" */
-export const fileSlug = (name: string) =>
-  name
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-
 /** Saves text as a file from the browser, after a UTF-8 byte order mark (Excel reads it as Windows-1252 without) */
 export function downloadCsv(filename: string, text: string) {
   const url = URL.createObjectURL(new Blob(['\uFEFF', text], { type: 'text/csv;charset=utf-8' }))

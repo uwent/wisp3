@@ -19,3 +19,9 @@ export function weatherZone(location: string, options?: RouteOptions): RouteDefi
 export function weatherZoneExport(location: string, options?: RouteOptions): RouteDefinition<'get'> {
   return readable(exportWeatherZone(location, options))
 }
+
+/** A zone's location for a file name, as the server's (WeatherCell#file_location): '44.12,-89.54' → '44.12N-89.54W' */
+export function fileLocation(location: string): string {
+  const [lat, lng] = location.split(',').map(Number)
+  return `${Math.abs(lat).toFixed(2)}${lat >= 0 ? 'N' : 'S'}-${Math.abs(lng).toFixed(2)}${lng >= 0 ? 'E' : 'W'}`
+}

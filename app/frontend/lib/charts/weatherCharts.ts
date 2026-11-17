@@ -167,7 +167,24 @@ export function weatherPanels(
     return source === 'entered' || source === 'none'
   }
   const hollow = fieldRain ? { hollow: modelUnused } : {}
+  // Most looked at first (Ben, 2026-11-17), in pairs that sit side by side in two columns: air
+  // temperature and precipitation; the water balance's demand and the crop's development (ET, GDD);
+  // the soil (moisture, temperature); then what drives ET (sun and wind, humidity and VPD)
   return [
+    {
+      key: 'air_temperature',
+      title: 'Air temperature',
+      unit: (u) => u.label('temperature'),
+      info:
+        `The day's high and low air temperature, 2 m above the ground. Highs above about ${temp(86)} stress many ` +
+        `crops and raise water use; lows near ${temp(32)} risk frost.`,
+      series: [
+        { name: 'High', color: (p) => p.warm, value: (day) => converted(units, 'temperature', day.tmax_f) },
+        { name: 'Low', color: (p) => p.rain, value: (day) => converted(units, 'temperature', day.tmin_f) },
+      ],
+      // Freezing, for frost
+      lines: [{ name: temp(32), value: converted(units, 'temperature', 32)! }],
+    },
     {
       key: 'precipitation',
       title: 'Precipitation',
@@ -266,32 +283,6 @@ export function weatherPanels(
       ],
     },
     {
-      key: 'solar',
-      title: 'Solar radiation and cloud cover',
-      unit: () => 'MJ/m²',
-      info:
-        'The sunshine reaching the ground over the day, the main driver of ET: up to about 30 MJ/m² on a clear ' +
-        "Wisconsin day in June, under 5 on a dark, rainy one. Corrected for the model's tendency to read high, " +
-        'most of all under cloud (About › Weather). The lower panel is the share of the sky covered by cloud, ' +
-        'averaged over the day; cloudy days cut sunlight, which lowers ET and slows growth.',
-      bars: 'group',
-      corrected: 'openmeteo-shortwave',
-      series: [{ name: 'Solar radiation', color: (p) => p.sun, value: (day) => day.shortwave_mj }],
-      below: {
-        name: 'Cloud cover (%)',
-        max: 100,
-        series: [
-          {
-            name: 'Cloud cover',
-            color: (p) => p.inkMuted,
-            value: (day) => day.cloud_cover_pct,
-            unit: () => '%',
-            digits: 0,
-          },
-        ],
-      },
-    },
-    {
       key: 'gdd',
       title: 'Growing degree days',
       unit: (u) => u.label('degreeDays'),
@@ -341,62 +332,6 @@ export function weatherPanels(
       },
     },
     {
-      key: 'air_temperature',
-      title: 'Air temperature',
-      unit: (u) => u.label('temperature'),
-      info:
-        `The day's high and low air temperature, 2 m above the ground. Highs above about ${temp(86)} stress many ` +
-        `crops and raise water use; lows near ${temp(32)} risk frost.`,
-      series: [
-        { name: 'High', color: (p) => p.warm, value: (day) => converted(units, 'temperature', day.tmax_f) },
-        { name: 'Low', color: (p) => p.rain, value: (day) => converted(units, 'temperature', day.tmin_f) },
-      ],
-      // Freezing, for frost
-      lines: [{ name: temp(32), value: converted(units, 'temperature', 32)! }],
-    },
-    {
-      key: 'humidity',
-      title: 'Relative humidity',
-      unit: () => '%',
-      info:
-        'How close the air is to saturation, as the daily mean and the daily low (usually mid-afternoon). Dry ' +
-        'afternoons raise crop water use; long humid spells favor leaf diseases such as late blight and white mold. ' +
-        "Corrected for the model's tendency to run dry (About › Weather).",
-      corrected: 'openmeteo-rh',
-      series: [
-        { name: 'Daily mean', color: (p) => p.rain, value: (day) => day.rh_mean_pct },
-        { name: 'Daily low', color: (p) => p.canopy, value: (day) => day.rh_min_pct },
-      ],
-    },
-    {
-      key: 'vpd',
-      title: 'Vapor pressure deficit (daily high)',
-      unit: () => 'kPa',
-      info:
-        "How much more water vapor the air could hold: the air's drying power, and a driver of transpiration. About " +
-        '0.4–1.5 kPa suits most crops. Above 1.5 kPa plants close their stomata to save water, which slows growth; ' +
-        "below 0.4 kPa transpiration and nutrient uptake slow. This is the day's highest value, usually mid-afternoon, " +
-        'from the temperature and the corrected humidity.',
-      corrected: 'openmeteo-rh',
-      series: [{ name: 'Vapor pressure deficit', color: (p) => p.warm, value: (day) => day.vpd_max_kpa }],
-      lines: [
-        { name: '0.4 kPa', value: 0.4 },
-        { name: '1.5 kPa', value: 1.5 },
-      ],
-    },
-    {
-      key: 'wind',
-      title: 'Wind',
-      unit: (u) => u.label('speed'),
-      info:
-        `Mean wind speed over the day and the highest gust, 10 m above the ground. Wind raises ET, blows sprinkler ` +
-        `water off target, and makes application less even; many pesticide labels restrict spraying above ${units.format('speed', 10)}.`,
-      series: [
-        { name: 'Mean', color: (p) => p.rain, value: (day) => converted(units, 'speed', day.wind_speed_mph) },
-        { name: 'Highest gust', color: (p) => p.ad, value: (day) => converted(units, 'speed', day.wind_gust_max_mph) },
-      ],
-    },
-    {
       key: 'soil_moisture',
       title: 'Modeled soil moisture',
       unit: () => '% of soil volume',
@@ -432,6 +367,74 @@ export function weatherPanels(
         value: (day) =>
           converted(units, 'temperature', day[`soil_temp_${key}_f` as keyof WeatherPanelDay] as number | null),
       })),
+    },
+    {
+      key: 'solar',
+      title: 'Solar radiation and cloud cover',
+      unit: () => 'MJ/m²',
+      info:
+        'The sunshine reaching the ground over the day, the main driver of ET: up to about 30 MJ/m² on a clear ' +
+        "Wisconsin day in June, under 5 on a dark, rainy one. Corrected for the model's tendency to read high, " +
+        'most of all under cloud (About › Weather). The lower panel is the share of the sky covered by cloud, ' +
+        'averaged over the day; cloudy days cut sunlight, which lowers ET and slows growth.',
+      bars: 'group',
+      corrected: 'openmeteo-shortwave',
+      series: [{ name: 'Solar radiation', color: (p) => p.sun, value: (day) => day.shortwave_mj }],
+      below: {
+        name: 'Cloud cover (%)',
+        max: 100,
+        series: [
+          {
+            name: 'Cloud cover',
+            color: (p) => p.inkMuted,
+            value: (day) => day.cloud_cover_pct,
+            unit: () => '%',
+            digits: 0,
+          },
+        ],
+      },
+    },
+    {
+      key: 'wind',
+      title: 'Wind',
+      unit: (u) => u.label('speed'),
+      info:
+        `Mean wind speed over the day and the highest gust, 10 m above the ground. Wind raises ET, blows sprinkler ` +
+        `water off target, and makes application less even; many pesticide labels restrict spraying above ${units.format('speed', 10)}.`,
+      series: [
+        { name: 'Mean', color: (p) => p.rain, value: (day) => converted(units, 'speed', day.wind_speed_mph) },
+        { name: 'Highest gust', color: (p) => p.ad, value: (day) => converted(units, 'speed', day.wind_gust_max_mph) },
+      ],
+    },
+    {
+      key: 'humidity',
+      title: 'Relative humidity',
+      unit: () => '%',
+      info:
+        'How close the air is to saturation, as the daily mean and the daily low (usually mid-afternoon). Dry ' +
+        'afternoons raise crop water use; long humid spells favor leaf diseases such as late blight and white mold. ' +
+        "Corrected for the model's tendency to run dry (About › Weather).",
+      corrected: 'openmeteo-rh',
+      series: [
+        { name: 'Daily mean', color: (p) => p.rain, value: (day) => day.rh_mean_pct },
+        { name: 'Daily low', color: (p) => p.canopy, value: (day) => day.rh_min_pct },
+      ],
+    },
+    {
+      key: 'vpd',
+      title: 'Vapor pressure deficit (daily high)',
+      unit: () => 'kPa',
+      info:
+        "How much more water vapor the air could hold: the air's drying power, and a driver of transpiration. About " +
+        '0.4–1.5 kPa suits most crops. Above 1.5 kPa plants close their stomata to save water, which slows growth; ' +
+        "below 0.4 kPa transpiration and nutrient uptake slow. This is the day's highest value, usually mid-afternoon, " +
+        'from the temperature and the corrected humidity.',
+      corrected: 'openmeteo-rh',
+      series: [{ name: 'Vapor pressure deficit', color: (p) => p.warm, value: (day) => day.vpd_max_kpa }],
+      lines: [
+        { name: '0.4 kPa', value: 0.4 },
+        { name: '1.5 kPa', value: 1.5 },
+      ],
     },
   ]
 }
@@ -824,6 +827,39 @@ export function panelTable(panel: WeatherPanel, days: WeatherPanelDay[], units: 
  * as stored. Unlike the table, a zero stays a zero (no snow is 0, not missing), and values keep
  * three decimals.
  */
+/**
+ * Every panel's columns in one table (the weather page's "all of this zone's weather"), in the
+ * panels' order, a column two panels share (cloud cover) once
+ */
+export function combinedTable(panels: WeatherPanel[], days: WeatherPanelDay[], units: Units) {
+  const tables = panels.map((panel) => panelTable(panel, days, units))
+  const seen = new Set<string>()
+  const picks = tables.flatMap((table, t) =>
+    table.columns.flatMap((column, c) => (seen.has(column) ? [] : (seen.add(column), [[t, c] as const]))),
+  )
+  return {
+    columns: picks.map(([t, c]) => tables[t].columns[c]),
+    rows: (tables[0]?.rows ?? []).map((row, r) => ({
+      ...row,
+      values: picks.map(([t, c]) => tables[t].rows[r].values[c]),
+    })),
+  }
+}
+
+/** A table as tab-separated text for the clipboard (a spreadsheet pastes it into cells): ISO dates, as shown otherwise */
+export function tableTsv(table: {
+  columns: string[]
+  rows: { date: string; forecast: boolean; values: (string | null)[] }[]
+}) {
+  const clean = (text: string) => text.replace(/[\t\r\n]+/g, ' ')
+  return [
+    ['Date', 'Forecast', ...table.columns],
+    ...table.rows.map((row) => [row.date, row.forecast ? 'yes' : 'no', ...row.values.map((value) => value ?? '')]),
+  ]
+    .map((cells) => cells.map(clean).join('\t'))
+    .join('\n')
+}
+
 export function panelCsvRows(panel: WeatherPanel, days: WeatherPanelDay[], units: Units): CsvValue[][] {
   const series = listedSeries(panel, days)
   const rounded = (value: number | null) => (value === null ? null : Number(value.toFixed(3)))

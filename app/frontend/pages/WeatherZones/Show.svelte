@@ -7,12 +7,11 @@
   import ForecastStrip from '@/lib/components/ForecastStrip.svelte'
   import Spinner from '@/lib/components/Spinner.svelte'
   import Term from '@/lib/components/Term.svelte'
-  import { fileSlug } from '@/lib/csv'
   import { currentYear, formatDate } from '@/lib/dates'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { units as unitsFor, type Units } from '@/lib/units'
   import { fields as fieldRoutes, pivots as pivotRoutes, weatherZones } from '@/routes'
-  import { weatherZone, weatherZoneExport } from '@/lib/weatherZones'
+  import { fileLocation, weatherZone, weatherZoneExport } from '@/lib/weatherZones'
   import type { ForecastDay, WeatherPanelDay, WeatherZone } from '@/types/serializers'
 
   // A weather zone (G.12): its systems, the week ahead, and the season's weather panels (?year=).
@@ -155,8 +154,9 @@
     {units}
     controlled={plantings.length ? ['gdd'] : []}
     exports={{
-      place: zone.name,
-      file: `wisp-weather-${fileSlug(zone.name)}-${year}`,
+      place: zone.location.replace(',', ', '),
+      systems: zone.name,
+      file: `wisp-weather-${fileLocation(zone.location)}-${year}`,
       href: weatherZoneExport(zone.location, { query: { year } }).url,
     }}
   >

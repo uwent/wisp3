@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { exportedAt, fileSlug, frontmatter, toCsv } from './csv'
+import { exportedAt, frontmatter, toCsv } from './csv'
 
 describe('CSV files', () => {
   it('quotes commas and quotes, leaves missing values blank, and escapes formulas but not numbers', () => {
@@ -21,8 +21,7 @@ describe('CSV files', () => {
     ])
   })
 
-  it('names files and times as the server does', () => {
-    expect(fileSlug('North 40 (Café)')).toBe('north-40-cafe')
+  it('writes times as the server does', () => {
     expect(exportedAt(new Date(2026, 6, 10, 9, 5))).toBe('2026-07-10 09:05')
   })
 })

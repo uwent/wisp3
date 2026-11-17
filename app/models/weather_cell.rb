@@ -40,6 +40,11 @@ class WeatherCell < ApplicationRecord
   # about 9 km across, so it always falls back in the same cell (WeatherZone.at).
   def location = format("%.2f,%.2f", latitude, longitude)
 
+  # Its location for a file name: "44.12N-89.54W"
+  def file_location
+    format("%.2f%s-%.2f%s", latitude.abs, (latitude >= 0) ? "N" : "S", longitude.abs, (longitude >= 0) ? "E" : "W")
+  end
+
   # Cells with a pivot (inactive ones too), for a refresh asked for by hand
   def self.with_pivots = where(id: Pivot.select(:weather_cell_id))
 

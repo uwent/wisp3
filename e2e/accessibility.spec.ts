@@ -4,7 +4,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { type Page } from '@playwright/test'
 
 import { DEMO, literal } from './demo'
-import { firstPlantingPath, impersonateGrower, signedInPages, signIn, watchErrors } from './session'
+import { firstPlantingPath, firstZonePath, impersonateGrower, signedInPages, signIn, watchErrors } from './session'
 import { expect, test } from './test'
 
 // WCAG 2.1 A and AA checks (axe) on every page, in light (desktop) and dark (phone), which also fail
@@ -142,6 +142,21 @@ test('the bar shown while signed in as someone else', { tag: '@phone' }, async (
   await impersonateGrower(page)
   const errors = watchErrors(page)
   await scan(page, '/')
+  expect(errors).toEqual([])
+})
+
+test("a weather zone's table of all its weather, in a dialog", { tag: '@phone' }, async ({ page }) => {
+  await signIn(page)
+  const errors = watchErrors(page)
+  await page.goto(await firstZonePath(page))
+  await page.getByRole('button', { name: "all of this zone's weather" }).click()
+  const dialog = page.getByRole('dialog', { name: "All of this zone's weather" })
+  await expect(dialog.getByRole('table')).toBeVisible()
+  const { violations } = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(TAGS).analyze()
+  expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
+  // The table scrolls inside the dialog; the page doesn't scroll sideways at 320 px
+  await page.setViewportSize({ width: 320, height: 640 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
   expect(errors).toEqual([])
 })
 

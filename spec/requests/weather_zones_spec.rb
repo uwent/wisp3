@@ -93,7 +93,7 @@ RSpec.describe "Weather zones (G.12)", type: :request do
 
   it "downloads the zone's weather, and sends the pivot's old weather CSV link there" do
     get export_weather_zone_path(cell.location, year: 2026)
-    expect(response.headers["Content-Disposition"]).to include("wisp-weather-north-and-river-2026.csv")
+    expect(response.headers["Content-Disposition"]).to include("wisp-weather-#{cell.file_location}-2026.csv")
     rows = CSV.parse(response.body.delete_prefix(CsvExport::BOM))
     expect(rows.first).to eq(["WISP weather, North and River, 2026"])
     expect(rows).to include(["Irrigation systems: Hancock / #{north.label}; Hancock / #{river.label}"])

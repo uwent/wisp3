@@ -957,15 +957,15 @@ test('the weather charts follow the page width without overlapping', async ({ pa
     page
       .getByRole('button', { name: `About the ${name} chart` })
       .locator('xpath=ancestor::div[contains(@class, "rounded-lg")][1]')
-  await expect(card('Precipitation').locator('canvas').first()).toBeVisible()
+  await expect(card('Air temperature').locator('canvas').first()).toBeVisible()
 
   // Narrower (still two columns), then wide again: the left column's cards end before the right's begin
   for (const width of [900, 1400]) {
     await page.setViewportSize({ width, height: 900 })
     await expect(async () => {
-      const left = (await card('Precipitation').boundingBox())!
-      const right = (await card('Evapotranspiration').boundingBox())!
-      const canvas = (await card('Precipitation').locator('canvas').first().boundingBox())!
+      const left = (await card('Air temperature').boundingBox())!
+      const right = (await card('Precipitation').boundingBox())!
+      const canvas = (await card('Air temperature').locator('canvas').first().boundingBox())!
       expect(left.x + left.width).toBeLessThanOrEqual(right.x)
       expect(canvas.x + canvas.width).toBeLessThanOrEqual(left.x + left.width)
     }).toPass({ timeout: 3000 })
@@ -997,21 +997,39 @@ test('a weather chart explains itself, and zooms the rest with it', async ({ pag
 
   // Its summary and daily values, for reading the numbers (and its text alternative)
   await expect(card.getByRole('img', { name: /^Precipitation\. Last 7 days: Rain / })).toBeVisible()
-  await card.getByText('Summary and data').click()
-  await expect(card.getByText(/^Last 7 days: Rain /)).toBeVisible()
-  const table = card.getByRole('table', { name: /^Precipitation by day/ })
+  // in a dialog, so the grid stays as it is (Ben, 2026-11-17)
+  await card.getByRole('button', { name: 'Summary and data' }).click()
+  const data = page.getByRole('dialog', { name: 'Precipitation: summary and data' })
+  await expect(data.getByText(/^Last 7 days: Rain /)).toBeVisible()
+  const table = data.getByRole('table', { name: /^Precipitation by day/ })
   await expect(table.getByRole('columnheader', { name: 'Rain (in)', exact: true })).toBeVisible()
   await expect(table.getByRole('rowheader', { name: /\(forecast\)$/ }).first()).toBeVisible()
 
   // Its values download as a CSV, opening with frontmatter (built in the browser)
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    card.getByRole('button', { name: 'Download CSV of the Precipitation data' }).click(),
+    data.getByRole('button', { name: 'Download CSV of the Precipitation data' }).click(),
   ])
   expect(download.suggestedFilename()).toMatch(/^wisp-.+-precipitation\.csv$/)
   const csv = readFileSync(await download.path(), 'utf8')
   expect(csv).toMatch(/^\uFEFF"?WISP weather chart: Precipitation, /)
   expect(csv).toContain('\r\nDate,Forecast,Rain (in)')
+  // Named by the zone's location (Ben, 2026-11-17)
+  expect(download.suggestedFilename()).toMatch(/^wisp-weather-\d+\.\d\d[NS]-\d+\.\d\d[EW]-\d{4}-precipitation\.csv$/)
+  await expect(data.getByRole('button', { name: 'Copy to clipboard: the Precipitation data' })).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  // Every chart's values in one table, with the zone's whole CSV
+  await page.getByRole('button', { name: "all of this zone's weather" }).click()
+  const all = page.getByRole('dialog', { name: "All of this zone's weather" })
+  const columns = all.getByRole('table').getByRole('columnheader')
+  await expect(columns.first()).toHaveText('Date')
+  await expect(all.getByRole('columnheader', { name: 'Rain (in)', exact: true })).toBeVisible()
+  expect(await columns.count()).toBeGreaterThan(15)
+  await expect(all.getByRole('link', { name: "Download CSV of all of this zone's weather" })).toHaveAttribute(
+    'href',
+    /\/weather\/-?[\d.]+,-?[\d.]+\/export\?year=\d{4}$/,
+  )
   expect(errors).toEqual([])
 })
 

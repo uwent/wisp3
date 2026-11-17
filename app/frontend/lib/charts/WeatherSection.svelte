@@ -8,7 +8,9 @@
   import { units as unitsFor, type Units } from '../units'
   import Chart from './Chart.svelte'
   import ChartCard from './ChartCard.svelte'
+  import DataDialog from './DataDialog.svelte'
   import {
+    combinedTable,
     correctedOn,
     panelCsvRows,
     panelSummary,
@@ -23,7 +25,8 @@
 
   // A weather zone's panels (the weather page, G.12), a section under an h2. panels builds them in
   // some units: the user's for the charts, imperial (as stored) for each chart's CSV. exports: the
-  // zone's name and file name for those CSVs, and the link to the zone's whole weather CSV.
+  // zone's location ("44.12, -89.54", which names its CSVs) and systems, the CSVs' file name, and the
+  // link to the zone's whole weather CSV, which "all of this zone's weather" offers beside its table.
   // panelControls: shown in a panel's card, given its key (the GDD chart's planting); controlled: the
   // keys of the panels that have them, whose charts are shortened by CONTROLS so the cards stay even.
   let {
@@ -40,34 +43,21 @@
     panels: (units: Units) => WeatherPanel[]
     days: WeatherPanelDay[]
     units: Units
-    exports: { place: string; file: string; href: string }
+    exports: { place: string; systems: string; file: string; href: string }
     panelControls?: Snippet<[string]>
     controlled?: string[]
     children?: Snippet
   } = $props()
 
-  const WIDE = '(min-width: 768px)'
-  // The height of a panel's controls (one row of small text and a select, and its margin)
+  // Every card the same height (Ben, 2026-11-17), so the grid's rows line up: a chart with a
+  // second grid below (totals, or a related measure) and one without get the same height, less a
+  // panel's controls (one row of small text and a select, and its margin)
+  const HEIGHT = '17rem'
   const CONTROLS = '1.625rem'
-  const chartHeight = (panel: WeatherPanel) => {
-    const height = panel.totals || panel.below ? '17rem' : '12rem'
-    return controlled.includes(panel.key) ? `calc(${height} - ${CONTROLS})` : height
-  }
+  const chartHeight = (panel: WeatherPanel) =>
+    controlled.includes(panel.key) ? `calc(${HEIGHT} - ${CONTROLS})` : HEIGHT
   const panels = $derived(build(units))
-
-  // Wide, the charts sit in two columns, each its own stack (alternate panels, so pairs sit side
-  // by side), so opening one's "Summary and data" lengthens only its column instead of stretching
-  // the chart beside it. Narrow, one column in order.
-  let wide = $state(typeof matchMedia !== 'undefined' && matchMedia(WIDE).matches)
-  onMount(() => {
-    const query = matchMedia(WIDE)
-    const change = () => (wide = query.matches)
-    query.addEventListener('change', change)
-    return () => query.removeEventListener('change', change)
-  })
-  const columns = $derived(
-    wide ? [panels.filter((_, i) => i % 2 === 0), panels.filter((_, i) => i % 2 === 1)] : [panels],
-  )
+  let allOpen = $state(false)
   const stored = unitsFor('imperial')
 
   // The charts zoom together, following the season slider above them or any one of them
@@ -124,7 +114,8 @@
     const rows = [
       ...frontmatter(`WISP weather chart: ${panel.title}, ${exports.place}`, {
         Operation: page.props.auth.group?.name,
-        'Weather zone': exports.place,
+        Location: `the weather grid cell centered at ${exports.place}`,
+        'Irrigation systems': exports.systems,
         Days:
           `${days[0].date} to ${days.at(-1)!.date}, one row each` +
           (forecast ? `; ${forecast === 1 ? 'the last is' : `the last ${forecast} are`} from the latest forecast` : ''),
@@ -151,11 +142,10 @@
         class="text-brand-600 underline underline-offset-2">weather corrections</a
       >). Drag the bar above the charts, or scroll or pinch any chart, to choose the days they all show, and select the
       (i) on a chart to learn what it shows. {@render children?.()}
-      Each chart's data downloads from its "Summary and data", or
-      <a href={exports.href} class="text-brand-600 underline underline-offset-2" download
-        >download all of this zone's weather</a
-      >
-      (CSV, in inches and °F).
+      Each chart's "Summary and data" has its daily values to read, copy or download, and
+      <button type="button" class="text-brand-600 underline underline-offset-2" onclick={() => (allOpen = true)}
+        >all of this zone's weather</button
+      > is in one table.
     </p>
     <div
       bind:this={bar}
@@ -201,27 +191,33 @@
         build={(palette) => seasonSliderOption(days, palette, units)}
       />
     </div>
-    <div class="grid items-start gap-3 md:grid-cols-2">
-      {#each columns as column, c (c)}
-        <!-- One track that can shrink: an auto track keeps the canvases' old width and overlaps the next column -->
-        <div class="grid min-w-0 grid-cols-1 gap-3">
-          {#each column as panel (panel.key)}
-            <ChartCard
-              title={panel.title}
-              info={panel.info}
-              height={chartHeight(panel)}
-              build={(palette, view) => weatherChartOption(panel, days, units, palette, view)}
-              summary={panelSummary(panel, days, units)}
-              table={() => panelTable(panel, days, units)}
-              download={() => download(panel.key)}
-              {group}
-            >
-              {#snippet subtitle()}<span class="font-normal text-ink-muted">({panel.unit(units)})</span>{/snippet}
-              {#snippet controls()}{@render panelControls?.(panel.key)}{/snippet}
-            </ChartCard>
-          {/each}
-        </div>
+    <!-- Tracks that can shrink (minmax(0, 1fr)): an auto track keeps the canvases' old width and overlaps the next column -->
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-2">
+      {#each panels as panel (panel.key)}
+        <ChartCard
+          title={panel.title}
+          info={panel.info}
+          height={chartHeight(panel)}
+          build={(palette, view) => weatherChartOption(panel, days, units, palette, view)}
+          summary={panelSummary(panel, days, units)}
+          table={() => panelTable(panel, days, units)}
+          download={() => download(panel.key)}
+          {group}
+        >
+          {#snippet subtitle()}<span class="font-normal text-ink-muted">({panel.unit(units)})</span>{/snippet}
+          {#snippet controls()}{@render panelControls?.(panel.key)}{/snippet}
+        </ChartCard>
       {/each}
     </div>
   </section>
+  <DataDialog
+    bind:open={allOpen}
+    title="All of this zone's weather"
+    name="all of this zone's weather"
+    label="This zone's weather"
+    summary="Every chart's daily values, newest first, in your units. The CSV has every variable stored, in inches and °F."
+    table={() => combinedTable(panels, days, units)}
+    downloadHref={exports.href}
+    widest
+  />
 {/if}

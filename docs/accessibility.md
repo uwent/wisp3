@@ -59,7 +59,7 @@ WCAG 1.1.1 asks for a text alternative to each chart; a table of its values serv
 | About page: canopy curves                 | Each plot's name gives days to 50% and 80% cover; the card beside it has the parameters                                                                                                                                                                          | The card's figures                                                                                             |
 | Field cards: AD sparkline                 | Its name describes the trend; AD today is beside it as text                                                                                                                                                                                                      | –                                                                                                              |
 
-"Summary and data" is closed by default and is for everyone who wants exact numbers, not only screen reader users. A new weather panel gets both from its series with no extra code.
+"Summary and data" opens a dialog (since 2026-11-17; it was a disclosure in the card) and is for everyone who wants exact numbers, not only screen reader users. A new weather panel gets both from its series with no extra code.
 
 - [x] Charts: a table alternative and a text summary for each.
 
@@ -95,7 +95,7 @@ Needs a person with NVDA (Windows, free) and VoiceOver (iPhone: Settings › Acc
 2. **Dashboard:** headings list (NVDA: Insert+F7; VoiceOver rotor) shows Dashboard › farms › pivots › fields in order. Each card reads its field, status ("Irrigate"), AD and outlook.
 3. **Skip link:** first Tab says "Skip to main content"; Enter lands at the page heading.
 4. **Field page:** the summary card reads sensibly; a glossary term (dotted underline) reads its definition when opened with Enter. In the daily grid, arrow keys announce "Rain, Wed, Jul 21: 0.45"; Enter, type, Enter saves and the new value is read; a bad value ("abc") announces its error.
-5. **Weather charts:** each is read as its title and summary; "Summary and data" opens a table whose headers are read with each cell.
+5. **Weather charts:** each is read as its title and summary; "Summary and data" opens a dialog with a table whose headers are read with each cell.
 6. **Daily entry:** each pivot's Irrigation input is read with the pivot's name; saving announces the result.
 7. **Setup:** "Edit North 160", "Delete Cabbage" and so on; a dialog takes focus, and Escape returns to the button.
 8. **Map:** a field's "Show … on the map" moves to the pivot's panel and reads it; Escape returns. The layers panel's radio buttons read their names.

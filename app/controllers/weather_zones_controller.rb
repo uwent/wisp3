@@ -52,7 +52,7 @@ class WeatherZonesController < AuthenticatedController
     dates = year_dates(year)
     days = WeatherPanel.new(zone.cell, dates, emergence_date: dates.first).days
     send_data WeatherCsv.new(zone, Current.group, year, days, exported_by: current_user, about_url:).to_csv,
-      filename: "wisp-weather-#{zone.name.parameterize}-#{year}.csv", type: "text/csv; charset=utf-8"
+      filename: "wisp-weather-#{zone.cell.file_location}-#{year}.csv", type: "text/csv; charset=utf-8"
   end
 
   # The old addresses by cell id (/weather/1, /weather/1/export) move to the zone's location

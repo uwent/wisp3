@@ -8,6 +8,7 @@ import { DEFAULT_WINDOW_DAYS } from './fieldChart'
 import type { EChartsCoreOption } from './echarts'
 import type { Palette } from './palette'
 import {
+  combinedTable,
   correctedOn,
   defaultView,
   type FieldRain,
@@ -17,6 +18,7 @@ import {
   panelTable,
   runningTotal,
   seasonSliderOption,
+  tableTsv,
   weatherChartOption,
   PLANTING_START_LENGTH,
   plantingStarts,
@@ -498,6 +500,21 @@ describe('weather charts in words and tables', () => {
     expect(table.columns).toEqual(['High (°C)', 'Low (°C)'])
     expect(table.rows[0]).toEqual({ date: days[64].date, forecast: true, values: ['26.7', '15.6'] })
     expect(table.rows).toHaveLength(65)
+  })
+
+  it("puts every panel's columns in one table, a shared one once, and copies it as tab-separated text", () => {
+    const sunny = days.map((day) => ({ ...day, shortwave_mj: 20, cloud_cover_pct: 35 }))
+    const both = [panel('air_temperature'), panel('solar'), panel('solar')]
+    const table = combinedTable(both, sunny, units('imperial'))
+    expect(table.columns).toEqual(['High (°F)', 'Low (°F)', 'Solar radiation (MJ/m²)', 'Cloud cover (%)'])
+    expect(table.rows[0].values).toEqual(['80.0', '60.0', '20.00', '35'])
+    expect(table.rows).toHaveLength(65)
+    const lines = tableTsv(table).split('\n')
+    expect(lines[0]).toBe('Date\tForecast\tHigh (°F)\tLow (°F)\tSolar radiation (MJ/m²)\tCloud cover (%)')
+    expect(lines[1]).toBe(`${days[64].date}\tyes\t80.0\t60.0\t20.00\t35`)
+    expect(tableTsv({ columns: ['Notes'], rows: [{ date: '2026-07-01', forecast: false, values: [null] }] })).toBe(
+      'Date\tForecast\tNotes\n2026-07-01\tno\t',
+    )
   })
 
   it('gives the daily values for a CSV oldest first, as stored, with zeros kept', () => {

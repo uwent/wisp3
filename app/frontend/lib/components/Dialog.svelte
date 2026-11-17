@@ -12,6 +12,7 @@
     description,
     children,
     wide = false,
+    widest = false,
     guard = false,
   }: {
     open?: boolean
@@ -19,6 +20,8 @@
     description?: string
     children: Snippet
     wide?: boolean
+    /** As wide as the window allows, for a wide table */
+    widest?: boolean
     /**
      * For a dialog holding a form: Escape, a click outside or ✕ with changes made asks first, in the
      * dialog (Save changes, Discard, Keep editing; PLAN.md G.13). Closing it from code (after a save,
@@ -98,7 +101,11 @@
         if (!asking) requestClose()
       }}
       class="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain
-        rounded-lg border border-line bg-surface-raised p-6 shadow-xl {wide ? 'max-w-2xl' : 'max-w-lg'}"
+        rounded-lg border border-line bg-surface-raised p-6 shadow-xl {widest
+        ? 'max-w-6xl'
+        : wide
+          ? 'max-w-2xl'
+          : 'max-w-lg'}"
     >
       <div class="mb-4 flex items-start justify-between gap-4">
         <div>
