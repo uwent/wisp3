@@ -5,7 +5,7 @@ import { defineConfig } from 'vite'
 import RubyPlugin from 'vite-plugin-ruby'
 
 export default defineConfig({
-  plugins: [tailwindcss(), RubyPlugin(), inertia(), svelte()],
+  plugins: [tailwindcss(), RubyPlugin(), inertia(), svelte({ inspector: true })],
   // MapLibre's worker is an ES module (lib/map/maplibre.ts)
   worker: { format: 'es' },
   // Loaded on demand (charts on mount, the map when shown), so the dev server would otherwise only
