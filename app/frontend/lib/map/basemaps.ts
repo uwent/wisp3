@@ -1,7 +1,10 @@
-import type { LayerSpecification, Map as MapLibreMap, StyleSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification, LayerSpecification, Map as MapLibreMap, StyleSpecification } from 'maplibre-gl'
 
-// The two basemaps: USGS National Map imagery with roads, boundaries and place names (public
-// domain), or OpenFreeMap streets
+import { roads } from './roads.svelte'
+
+// The two basemaps: USGS National Map imagery (public domain) with OpenFreeMap's roads and place
+// names over it (USGS retired USGSImageryTopo, its imagery with them, in November 2026), or
+// OpenFreeMap streets
 
 export type Basemap = 'imagery' | 'streets'
 
@@ -10,27 +13,190 @@ export const BASEMAPS: { key: Basemap; name: string }[] = [
   { key: 'streets', name: 'Map' },
 ]
 
+/** The font our labels use; both basemaps serve it */
+export const LABEL_FONT = ['Noto Sans Regular']
+
+// Roads, place names and county lines over the imagery, from OpenFreeMap's tiles (the Map basemap's
+// source), drawn light for a dark background: the main roads pale yellow, the rest white and fainter
+// the smaller they are, names in white with a dark halo
+const NAME: ExpressionSpecification = ['coalesce', ['get', 'name:en'], ['get', 'name_en'], ['get', 'name']]
+const LINES: ExpressionSpecification = ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false]
+const roadClass = (...classes: string[]): ExpressionSpecification => ['match', ['get', 'class'], classes, true, false]
+const OVER_IMAGERY = { 'text-color': '#fff', 'text-halo-color': 'rgba(0, 0, 0, 0.75)', 'text-halo-width': 1.5 }
+
+/** The layers drawn over the imagery, their ids starting ROAD_LAYER_PREFIX (exported for the tests) */
+export const IMAGERY_ROADS: LayerSpecification[] = [
+  {
+    id: 'imagery-county-lines',
+    type: 'line',
+    source: 'openmaptiles',
+    'source-layer': 'boundary',
+    minzoom: 7,
+    filter: ['all', ['match', ['get', 'admin_level'], [4, 6], true, false], ['!=', ['get', 'maritime'], 1]],
+    paint: {
+      'line-color': 'rgba(255, 255, 255, 0.6)',
+      'line-dasharray': [3, 2],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 7, 0.75, 12, 1.5],
+    },
+  },
+  {
+    id: 'imagery-roads-minor',
+    type: 'line',
+    source: 'openmaptiles',
+    'source-layer': 'transportation',
+    minzoom: 12,
+    filter: ['all', LINES, roadClass('minor', 'service')],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': 'rgba(255, 255, 255, 0.5)',
+      'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 0.5, 16, 2.5, 20, 10],
+    },
+  },
+  {
+    id: 'imagery-roads-secondary',
+    type: 'line',
+    source: 'openmaptiles',
+    'source-layer': 'transportation',
+    minzoom: 8,
+    filter: ['all', LINES, roadClass('secondary', 'tertiary')],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': 'rgba(255, 255, 255, 0.75)',
+      'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 8, 0.5, 14, 2, 20, 14],
+    },
+  },
+  {
+    id: 'imagery-roads-major',
+    type: 'line',
+    source: 'openmaptiles',
+    'source-layer': 'transportation',
+    minzoom: 5,
+    filter: ['all', LINES, roadClass('motorway', 'trunk', 'primary')],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': 'rgba(255, 236, 160, 0.9)',
+      'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 5, 0.5, 10, 1.5, 14, 3, 20, 18],
+    },
+  },
+  {
+    // Route numbers (I 39, US 51, WI 73, County Road J's "J"): how rural roads are known
+    id: 'imagery-road-numbers',
+    type: 'symbol',
+    source: 'openmaptiles',
+    'source-layer': 'transportation_name',
+    minzoom: 9,
+    filter: ['all', ['has', 'ref'], roadClass('motorway', 'trunk', 'primary', 'secondary', 'tertiary')],
+    layout: {
+      'symbol-placement': 'line',
+      'symbol-spacing': 400,
+      'text-field': ['get', 'ref'],
+      'text-font': LABEL_FONT,
+      'text-size': 11,
+    },
+    paint: OVER_IMAGERY,
+  },
+  {
+    id: 'imagery-road-names',
+    type: 'symbol',
+    source: 'openmaptiles',
+    'source-layer': 'transportation_name',
+    minzoom: 13,
+    filter: roadClass('motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor'),
+    layout: {
+      'symbol-placement': 'line',
+      'text-field': NAME,
+      'text-font': LABEL_FONT,
+      'text-size': ['interpolate', ['linear'], ['zoom'], 13, 11, 16, 13],
+    },
+    paint: OVER_IMAGERY,
+  },
+  {
+    id: 'imagery-places',
+    type: 'symbol',
+    source: 'openmaptiles',
+    'source-layer': 'place',
+    minzoom: 6,
+    filter: roadClass('city', 'town', 'village'),
+    layout: {
+      'text-field': NAME,
+      'text-font': LABEL_FONT,
+      'text-size': ['match', ['get', 'class'], 'city', 16, 'town', 14, 12],
+      'text-max-width': 8,
+    },
+    paint: OVER_IMAGERY,
+  },
+  {
+    id: 'imagery-hamlets',
+    type: 'symbol',
+    source: 'openmaptiles',
+    'source-layer': 'place',
+    minzoom: 12,
+    filter: roadClass('hamlet'),
+    layout: { 'text-field': NAME, 'text-font': LABEL_FONT, 'text-size': 11, 'text-max-width': 8 },
+    paint: OVER_IMAGERY,
+  },
+]
+
 const IMAGERY: StyleSpecification = {
   version: 8,
   glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
   sources: {
     imagery: {
       type: 'raster',
-      tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}'],
+      tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
       maxzoom: 16,
       attribution: 'Imagery: <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS</a>',
     },
+    // Its TileJSON carries the OpenFreeMap and OpenStreetMap credit
+    openmaptiles: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
   },
-  layers: [{ id: 'imagery', type: 'raster', source: 'imagery' }],
+  layers: [{ id: 'imagery', type: 'raster', source: 'imagery' }, ...IMAGERY_ROADS],
 }
 const STREETS = 'https://tiles.openfreemap.org/styles/liberty'
 
-/** The font our labels use; both basemaps serve it */
-export const LABEL_FONT = ['Noto Sans Regular']
+/**
+ * A basemap's style; the imagery's road layers shown or not (roads.svelte.ts keeps the setting, and
+ * passes it here so a new map or a switch starts that way)
+ */
+export function basemapStyle(basemap: Basemap, showRoads = roads.on): StyleSpecification | string {
+  if (basemap === 'streets') return STREETS
+  if (showRoads) return IMAGERY
+  return {
+    ...IMAGERY,
+    layers: IMAGERY.layers.map((layer) =>
+      IMAGERY_ROADS.includes(layer)
+        ? ({ ...layer, layout: { ...layer.layout, visibility: 'none' } } as LayerSpecification)
+        : layer,
+    ),
+  }
+}
 
-export const basemapStyle = (basemap: Basemap): StyleSpecification | string =>
-  basemap === 'imagery' ? IMAGERY : STREETS
+/** Replaces each ['get', 'ref_length'] in an expression with a number when the road has none */
+function refLengthOrLong(value: unknown): unknown {
+  if (!Array.isArray(value)) return value
+  if (value[0] === 'get' && value[1] === 'ref_length' && value.length === 2) return ['coalesce', value, 1000]
+  return value.map(refLengthOrLong)
+}
+
+/**
+ * Fixes OpenFreeMap's street style before it's used: its route shield layers compare ref_length,
+ * which roads without a number lack, so MapLibre warned for every tile (the comparison then fails,
+ * as it now does without the warning)
+ */
+export function repairStyle(style: StyleSpecification): StyleSpecification {
+  return {
+    ...style,
+    layers: style.layers.map((layer) =>
+      'filter' in layer && layer.filter
+        ? ({ ...layer, filter: refLengthOrLong(layer.filter) } as LayerSpecification)
+        : layer,
+    ),
+  }
+}
+
+/** For a new map, beside its style: repairs a street style loaded by URL (setBasemap does it for a switch) */
+export const transformStyle = (_previous: StyleSpecification | undefined, next: StyleSpecification) => repairStyle(next)
 
 // Each map's switches run one at a time (a fast second click would otherwise start a style while the
 // last is loading, and the two resolve out of order): what each map was last asked for, what it shows,
@@ -60,7 +226,8 @@ export function setBasemap(
     // Rebuilt rather than diffed, so 'style.load' fires (a diff applies silently)
     map.setStyle(basemapStyle(basemap), {
       diff: false,
-      transformStyle: (previous, next) => {
+      transformStyle: (previous, unrepaired) => {
+        const next = repairStyle(unrepaired)
         if (!previous) return next
         const own = Object.keys(previous.sources).filter(isOwn)
         return {

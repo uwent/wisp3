@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 
 import { test as base } from '@playwright/test'
 
-// Playwright's test, with the outside services every page may call answered here, so a USDA or USGS
-// outage can't fail the suite. A test's own page.route() takes precedence over these (smoke.spec.ts
+// Playwright's test, with the outside services every page may call answered here, so a USDA, USGS or
+// OpenFreeMap outage (or a slow day) can't fail the suite. A test's own page.route() takes precedence over these (smoke.spec.ts
 // gives the soil survey its own answer). E2E_LIVE=1 bin/e2e reaches the real services instead.
 
 export { expect } from '@playwright/test'
@@ -35,6 +35,21 @@ export const test = base.extend({
             : SURVEY_SHARES
         return route.fulfill({ json: { Table: table }, headers: { 'Access-Control-Allow-Origin': '*' } })
       })
+      // OpenFreeMap's vector tiles (the roads over the imagery, the street map): empty, so maps load
+      // at once (the shape page's tools wait for its map). Its fonts and street style stay live.
+      await context.route('**/tiles.openfreemap.org/planet', (route) =>
+        route.fulfill({
+          json: { tilejson: '3.0.0', tiles: ['https://tiles.openfreemap.org/planet/e2e/{z}/{x}/{y}.pbf'], maxzoom: 14 },
+          headers: { 'Access-Control-Allow-Origin': '*' },
+        }),
+      )
+      await context.route('**/tiles.openfreemap.org/planet/**', (route) =>
+        route.fulfill({
+          body: Buffer.alloc(0),
+          contentType: 'application/x-protobuf',
+          headers: { 'Access-Control-Allow-Origin': '*' },
+        }),
+      )
       // The USGS imagery basemap's tiles (lib/map/basemaps.ts)
       await context.route('**/basemap.nationalmap.gov/**', (route) =>
         route.fulfill({ body: imageryTile, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' } }),

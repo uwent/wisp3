@@ -6,8 +6,10 @@
 
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
   import { type Boundary, boundaryBounds, boundaryCenter, type LngLat } from '@/lib/geo'
-  import { basemapStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
+  import { basemapStyle, transformStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
+  import MapLayersButton from '@/lib/map/MapLayersButton.svelte'
+  import { followRoads } from '@/lib/map/roads.svelte'
   import { loadMapLibre } from '@/lib/map/maplibre'
 
   import { addReferenceLayers, type Reference } from './references'
@@ -38,6 +40,7 @@
 
   let container: HTMLDivElement
   let map = $state<MapLibreMap>()
+  followRoads(() => map)
   let basemap = $state<Basemap>('imagery')
 
   const data = () => ({
@@ -117,6 +120,7 @@
       const m = new maplibre.Map({
         container,
         style: basemapStyle(basemap),
+        transformStyle,
         center: [-89.5, 44.25],
         zoom: 8,
         attributionControl: { compact: true, customAttribution: GEOCODER_ATTRIBUTION },
@@ -152,7 +156,8 @@
     role="img"
     aria-label="Map of the file's shapes, numbered as in the list below"
   ></div>
-  <div class="absolute top-2 left-2">
+  <div class="absolute top-2 left-2 flex gap-2">
     <BasemapToggle value={basemap} onchange={changeBasemap} />
+    <MapLayersButton id="import-map-layers" {basemap} />
   </div>
 </div>

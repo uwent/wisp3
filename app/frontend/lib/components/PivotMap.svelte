@@ -32,7 +32,7 @@
     type PivotShape,
     type ShapeDraft,
   } from '@/lib/geo'
-  import { basemapStyle, LABEL_FONT, setBasemap, type Basemap } from '@/lib/map/basemaps'
+  import { basemapStyle, transformStyle, LABEL_FONT, setBasemap, type Basemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { resizeCursor, ROTATE_CURSOR } from '@/lib/map/cursors'
   import { loadMapLibre } from '@/lib/map/maplibre'
@@ -40,7 +40,9 @@
   import { SOIL_SOURCE, SoilTypesLayer } from '@/lib/map/soilTypes.svelte'
   import SoilTypesHover from '@/lib/map/SoilTypesHover.svelte'
   import SoilTypesLegend from '@/lib/map/SoilTypesLegend.svelte'
-  import SoilTypesToggle from '@/lib/map/SoilTypesToggle.svelte'
+  import MapLayersButton from '@/lib/map/MapLayersButton.svelte'
+  import { followRoads } from '@/lib/map/roads.svelte'
+  import SoilTypesOption from '@/lib/map/SoilTypesOption.svelte'
   import type { Bounds } from '@/lib/soils'
 
   type Outline = PivotShape & { id: number; name: string }
@@ -97,12 +99,15 @@
 
   let container: HTMLDivElement
   let map: MapLibreMap | undefined = $state()
+  followRoads(() => map)
   let Marker: typeof MarkerClass | undefined
   let centerMarker: MarkerClass | undefined
   let handles: Partial<Record<Handle, MarkerClass>> = {}
   let handleSet = ''
   let basemap = $state<Basemap>('imagery')
   const soilLayer = new SoilTypesLayer(() => soilTypes, soilArea, 'others-line')
+  /** For the soil survey beside the map, to show its soils on the map */
+  export const soil = soilLayer
   let locating = $state(false)
   let locateError = $state<string | null>(null)
   let pointer = $state<{ x: number; y: number; angle: number } | null>(null)
@@ -476,7 +481,13 @@
       if (disposed) return
       const { Map, NavigationControl, LngLatBounds, AttributionControl } = maplibre
       Marker = maplibre.Marker
-      const m = new Map({ container, style: basemapStyle(basemap), ...DEFAULT_VIEW, attributionControl: false })
+      const m = new Map({
+        container,
+        style: basemapStyle(basemap),
+        transformStyle,
+        ...DEFAULT_VIEW,
+        attributionControl: false,
+      })
       m.addControl(new AttributionControl({ compact: true, customAttribution: GEOCODER_ATTRIBUTION }), 'bottom-right')
       m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
       if (center) {
@@ -535,7 +546,9 @@
     <div class="absolute top-2 left-2">
       <div class="flex gap-2">
         <BasemapToggle value={basemap} onchange={switchBase} />
-        <SoilTypesToggle layer={soilLayer} />
+        <MapLayersButton id="pivot-map-layers" {basemap} count={soilLayer.on ? 1 : 0}>
+          <SoilTypesOption layer={soilLayer} />
+        </MapLayersButton>
       </div>
     </div>
 

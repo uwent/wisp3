@@ -16,8 +16,10 @@
   import { onThemeChange } from '@/lib/theme'
   import type { UnitSystem } from '@/lib/units'
 
-  import { basemapStyle, type Basemap, LABEL_FONT, setBasemap } from './basemaps'
+  import { basemapStyle, transformStyle, type Basemap, LABEL_FONT, setBasemap } from './basemaps'
   import BasemapToggle from './BasemapToggle.svelte'
+  import MapLayersButton from './MapLayersButton.svelte'
+  import { followRoads } from './roads.svelte'
   import { ButtonControl, FIT_ICON } from './controls'
   import { loadMapLibre } from './maplibre'
   import PivotMarker from './PivotMarker.svelte'
@@ -27,6 +29,7 @@
     type FieldBadges,
     fieldBadges,
     fieldFeatures,
+    unoutlinedFields,
     type MapPivot,
     pivotBounds,
     pivotFeatures,
@@ -49,8 +52,8 @@
   // systems. Fields with an outline (G.10) are filled in their status, and its marker shows only the
   // fields without one; each outlined field has a badge per planting at its center (FieldMarker) and
   // its name along its top. Clicking a system selects it, and clicking a field or its badges selects
-  // its system with that field; the page shows its details in the panel (children) and the toolbar
-  // adds to the top-left. Beside the pointer, the hover label names what's under it, down the stack
+  // its system with that field; the page shows its details in the panel (children) and adds its own
+  // layers to the Layers panel (layers). Beside the pointer, the hover label names what's under it, down the stack
   // (group, system, field, then a marker's badge).
   let {
     pivots,
@@ -68,7 +71,8 @@
     onbasemap,
     onviewchange,
     onload,
-    toolbar,
+    layers,
+    layersCount = 0,
     children,
   }: {
     pivots: MapPivot[]
@@ -94,7 +98,9 @@
     onviewchange: (view: { center: LngLat; zoom: number }) => void
     /** Once the map and our layers are on it, and again after a basemap change */
     onload?: (map: MapLibreMap) => void
-    toolbar?: Snippet
+    /** The page's own layers, in the Layers panel after the base map, and how many are on */
+    layers?: Snippet
+    layersCount?: number
     children?: Snippet
   } = $props()
 
@@ -108,6 +114,7 @@
   let wrapper: HTMLDivElement
   let container: HTMLDivElement
   let map = $state<MapLibreMap>()
+  followRoads(() => map)
   let zoom = $state(DEFAULT_VIEW.zoom)
   let placeSearch = $state<PlaceSearch>()
   // What's under the pointer, named beside it
@@ -134,7 +141,8 @@
   const fieldMarkers = new Map<number, { marker: Marker; props: FieldProps; component: ReturnType<typeof mount> }>()
 
   // The hover label follows the pointer, worked out once a frame from the last pointer event: the
-  // map's features under it (hoverLines) and the marker badge it's on (data-hover)
+  // map's features under it (hoverLines) and every marker badge there (data-hover), the ones
+  // covered by another too: zoomed out, markers overlap where their systems don't
   let lastPointer: PointerEvent | null = null
   let frame = 0
   function onPointer(event: PointerEvent) {
@@ -148,14 +156,16 @@
     if (!m || !event || event.buttons) return (hover = null)
     const box = m.getCanvasContainer().getBoundingClientRect()
     const point: [number, number] = [event.clientX - box.left, event.clientY - box.top]
-    const target = event.target instanceof Element ? event.target : null
-    const badge = target?.closest<HTMLElement>('[data-hover]')?.dataset.hover?.split('\n') ?? []
-    const lines = [...new Set([...hoverLines(m, point), ...badge])]
+    const badges = document
+      .elementsFromPoint(event.clientX, event.clientY)
+      .filter((element): element is HTMLElement => element instanceof HTMLElement && !!element.dataset.hover)
+      .flatMap((element) => element.dataset.hover!.split('\n'))
+    const lines = [...new Set([...hoverLines(m, point), ...badges])]
     const frameBox = wrapper.getBoundingClientRect()
     const x = event.clientX - frameBox.left
     hover = lines.length ? { x, y: event.clientY - frameBox.top, lines, flip: x > frameBox.width - 340 } : null
     // A pointer where a click selects something
-    const selectable = badge.length > 0 || lines.some((line) => !line.startsWith('Group:'))
+    const selectable = badges.length > 0 || lines.some((line) => !line.startsWith('Group:'))
     m.getCanvas().style.cursor = selectable ? 'pointer' : ''
   }
 
@@ -270,7 +280,7 @@
     for (const pivot of pivots) {
       const state = {
         pivot,
-        fields: pivot.fields.filter((card) => !pivot.outlines.some((outline) => outline.field_id === card.id)),
+        fields: unoutlinedFields(pivot),
         selected: pivot.id === selectedId,
         dimmed: highlighted !== null && !highlighted.has(pivot.id),
       }
@@ -386,6 +396,7 @@
       const m = new maplibre.Map({
         container,
         style: basemapStyle(basemap),
+        transformStyle,
         ...(view ?? DEFAULT_VIEW),
         attributionControl: false,
       })
@@ -473,7 +484,9 @@
   <div class="pointer-events-none absolute top-2 left-2 flex w-[min(17rem,calc(100%-4rem))] flex-col gap-2">
     <div class="pointer-events-auto flex flex-wrap items-start gap-2">
       <BasemapToggle value={basemap} onchange={changeBasemap} />
-      {@render toolbar?.()}
+      <MapLayersButton id="map-layers" {basemap} count={layersCount}>
+        {@render layers?.()}
+      </MapLayersButton>
     </div>
     <div class="pointer-events-auto hidden sm:block">
       <PlaceSearch bind:this={placeSearch} {map} maxZoom={PIVOT_ZOOM - 1} />

@@ -16,7 +16,7 @@ import {
   pivotFeatures,
   systemOutline,
 } from './pivots'
-import { badgeFit, drawnAsGlyph, glyphProperties, truePixels } from './systemLayers'
+import { badgeFit, drawnAsGlyph, FAR_ZOOM, glyphProperties, MIN_POINT_PX } from './systemLayers'
 
 const field = (status: PlantingSummary['status'], phase: PlantingSummary['phase'] = 'active'): FieldCard => ({
   id: 1,
@@ -86,36 +86,30 @@ describe('pivotFeatures', () => {
     ])
   })
 
-  it('sizes each glyph to its system on the ground, switching pivots to it when they get small', () => {
-    // A 1,300 ft pivot at 44.1°N: 792 m across, 3.43 m a pixel at zoom 14
+  it('draws every system as its glyph below FAR_ZOOM, and only point kinds above it', () => {
     const props = pivotFeatures([pivot(1, 44.1)], null, null).features[0].properties
-    expect(truePixels(props.k, 14)).toBeCloseTo(231, 0)
-    expect(drawnAsGlyph(props, 14)).toBe(false)
-    expect(drawnAsGlyph(props, 11)).toBe(false) // 29 px
-    expect(truePixels(props.k, 10)).toBeCloseTo(14.4, 1)
-    expect(drawnAsGlyph(props, 10)).toBe(true)
-    // A traveler is always its glyph, 100 ft across: 71 px at zoom 17
+    expect(drawnAsGlyph(props, FAR_ZOOM)).toBe(false)
+    expect(drawnAsGlyph(props, FAR_ZOOM - 0.01)).toBe(true)
     const traveler = { ...pivot(2, 44.1), kind: 'traveler' as const, radius_ft: null }
     const glyph = glyphProperties(traveler)
     expect(glyph).toMatchObject({ glyph: 'diamond', point: true, rotate: 0 })
-    expect(truePixels(glyph.k, 17)).toBeCloseTo(71, 0)
     expect(drawnAsGlyph(glyph, 17)).toBe(true)
     expect(glyphProperties({ ...traveler, kind: 'point' }).glyph).toBe('triangle')
   })
 
-  it("encloses its marker's badges: a glyph at least that size, a pivot too small to hold them as its glyph", () => {
+  it("sizes glyphs in pixels: a point kind's to enclose its badges, any one zoomed out to ring its dot", () => {
     // One badge: a 24 px round backing; four: two rows of two, 46 px square
     expect(badgeFit('circle', [1])).toBe(31)
     expect(badgeFit('diamond', [2, 2])).toBeGreaterThan(badgeFit('diamond', [1]))
     expect(badgeFit('triangle', [1])).toBeGreaterThan(badgeFit('circle', [1]))
     expect(badgeFit('circle', [])).toBe(0)
-    // A 1,300 ft pivot is 29 px at zoom 11, too small for its four fields' badges (68 px)
-    const four = [field('ok'), field('ok'), field('ok'), field('ok')].map((card, i) => ({ ...card, id: i + 1 }))
-    const props = pivotFeatures([pivot(1, 44.1, four)], null, null).features[0].properties
-    expect(props.fit).toBe(badgeFit('circle', [2, 2]))
-    expect(props.fit_far).toBe(badgeFit('circle', [1]))
-    expect(drawnAsGlyph(props, 11)).toBe(true)
-    expect(drawnAsGlyph(props, 14)).toBe(false)
+    const fields = [field('ok'), field('ok'), field('ok'), field('ok')].map((card, i) => ({ ...card, id: i + 1 }))
+    const traveler = { ...pivot(1, 44.1, fields), kind: 'traveler' as const, radius_ft: null }
+    const props = pivotFeatures([traveler], null, null).features[0].properties
+    expect(props.near_px).toBe(badgeFit('diamond', [2, 2]))
+    expect(props.far_px).toBe(badgeFit('diamond', [1]))
+    // No fields: the smallest glyph
+    expect(glyphProperties(traveler).near_px).toBe(MIN_POINT_PX)
   })
 
   it('draws a point kind whose fields have outlines as the area around them, 50 ft out', () => {

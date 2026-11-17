@@ -39,7 +39,7 @@
           href="https://websoilsurvey.nrcs.usda.gov/"
           target="_blank"
           rel="noopener"
-          class="text-brand-600 hover:underline">USDA soil survey</a
+          class="text-brand-600 underline">USDA soil survey</a
         >.</span
       >
     {/if}

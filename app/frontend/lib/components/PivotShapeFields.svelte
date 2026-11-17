@@ -49,6 +49,8 @@
     locked?: boolean
   } = $props()
 
+  let pivotMap = $state<PivotMap>()
+
   // Sizes stay blank until the system is placed (then the map's shape fills them) or one is typed
   // (then placing it uses that size)
   const placed = $derived(shape.latitude !== null && shape.longitude !== null)
@@ -94,13 +96,15 @@
   </div>
   {#if isPoint(shape.kind)}
     <p class="text-sm text-ink-muted">
-      Its area comes from its fields. Weather and the soil suggestion come from where you place it.
+      Its area comes from its fields. {onsuggest
+        ? 'Weather and the soil suggestion come from where you place it.'
+        : 'Its weather comes from where you place it.'}
     </p>
   {/if}
   {#if error('kind')}<p class="text-sm text-status-irrigate-ink">{error('kind')}</p>{/if}
 </fieldset>
 
-<PivotMap bind:shape {others} {soilTypes} {locked} />
+<PivotMap bind:this={pivotMap} bind:shape {others} {soilTypes} {locked} />
 
 <div class="grid gap-4 sm:grid-cols-2 {children ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}">
   <NumberField label="Latitude" name="{prefix}[latitude]" bind:value={shape.latitude} error={error('latitude')} />
@@ -196,13 +200,27 @@
   </div>
 {/if}
 
-<section class="space-y-2" aria-labelledby="soil-survey">
-  <svelte:element this={surveyLevel} id="soil-survey" class="font-medium">Soil survey</svelte:element>
-  {#if surveyNote}<p class="text-sm text-ink-muted">{surveyNote}</p>{/if}
-  {#if !outline}
-    <p class="rounded-md border border-dashed border-line px-3 py-2 text-sm text-ink-muted">
-      Place the {KIND_NOUNS[shape.kind]} on the map to see the soils around it.
-    </p>
-  {/if}
-  <SoilSurvey shape={outline} {soilTypes} {onsuggest} />
-</section>
+<!-- Only where a soil is suggested (quick setup's fields): a system has no soil of its own -->
+{#if onsuggest}
+  <section class="space-y-2" aria-labelledby="soil-survey">
+    <div class="flex flex-wrap items-baseline justify-between gap-x-4">
+      <svelte:element this={surveyLevel} id="soil-survey" class="font-medium">Soil survey</svelte:element>
+      {#if pivotMap}
+        <button
+          type="button"
+          class="text-sm text-brand-600 hover:underline"
+          aria-pressed={pivotMap.soil.on}
+          onclick={() => pivotMap?.soil.toggle()}
+          >{pivotMap.soil.on ? 'Hide soil types on the map' : 'Show soil types on the map'}</button
+        >
+      {/if}
+    </div>
+    {#if surveyNote}<p class="text-sm text-ink-muted">{surveyNote}</p>{/if}
+    {#if !outline}
+      <p class="rounded-md border border-dashed border-line px-3 py-2 text-sm text-ink-muted">
+        Place the {KIND_NOUNS[shape.kind]} on the map to see the soils around it.
+      </p>
+    {/if}
+    <SoilSurvey shape={outline} {soilTypes} {onsuggest} />
+  </section>
+{/if}

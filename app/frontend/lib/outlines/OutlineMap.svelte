@@ -12,13 +12,15 @@
   import Button from '@/lib/components/Button.svelte'
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
   import { type Boundary, boundaryBounds, boundaryFrom, boundaryRing, type LngLat, pathCrossesItself } from '@/lib/geo'
-  import { basemapStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
+  import { basemapStyle, transformStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { loadMapLibre } from '@/lib/map/maplibre'
   import { SOIL_SOURCE, SoilTypesLayer, viewArea } from '@/lib/map/soilTypes.svelte'
   import SoilTypesHover from '@/lib/map/SoilTypesHover.svelte'
   import SoilTypesLegend from '@/lib/map/SoilTypesLegend.svelte'
-  import SoilTypesToggle from '@/lib/map/SoilTypesToggle.svelte'
+  import MapLayersButton from '@/lib/map/MapLayersButton.svelte'
+  import { followRoads } from '@/lib/map/roads.svelte'
+  import SoilTypesOption from '@/lib/map/SoilTypesOption.svelte'
 
   import {
     addReferenceLayers,
@@ -76,6 +78,7 @@
 
   let container: HTMLDivElement
   let map = $state<MapLibreMap>()
+  followRoads(() => map)
   let draw: TerraDrawClass | undefined
   let basemap = $state<Basemap>('imagery')
   // The outline as terra-draw last gave it, so the page's own changes (an import) can be told apart
@@ -403,6 +406,7 @@
       const m = new maplibre.Map({
         container,
         style: basemapStyle(basemap),
+        transformStyle,
         center: DEFAULT_VIEW.center,
         zoom: DEFAULT_VIEW.zoom,
         attributionControl: { compact: true, customAttribution: GEOCODER_ATTRIBUTION },
@@ -453,7 +457,9 @@
     ></div>
     <div class="absolute top-2 left-2 flex gap-2">
       <BasemapToggle value={basemap} onchange={changeBasemap} />
-      <SoilTypesToggle layer={soilLayer} />
+      <MapLayersButton id="outline-map-layers" {basemap} count={soilLayer.on ? 1 : 0}>
+        <SoilTypesOption layer={soilLayer} />
+      </MapLayersButton>
     </div>
     <SoilTypesHover layer={soilLayer} />
     {#if mode !== 'view'}

@@ -5,7 +5,7 @@
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
   import type { LngLat } from '@/lib/geo'
-  import LayersControl from '@/lib/map/LayersControl.svelte'
+  import OverviewLayers from '@/lib/map/OverviewLayers.svelte'
   import MapTree from '@/lib/map/MapTree.svelte'
   import { MapOverlays } from '@/lib/map/mapOverlays.svelte'
   import OverlayTooltip from '@/lib/map/OverlayTooltip.svelte'
@@ -40,7 +40,7 @@
   const units = $derived(unitsFor(auth.user?.unit_system))
   const groupId = page.props.auth.group?.id
 
-  const prefs = $state(loadPrefs(groupId))
+  let prefs = $state(loadPrefs(groupId))
   $effect(() => savePrefs(groupId, $state.snapshot(prefs)))
 
   let farmId = $state<number | 'all'>('all')
@@ -392,6 +392,7 @@
         {highlighted}
         {highlightedFields}
         showSystems={prefs.systems}
+        layersCount={(prefs.rain ? 1 : 0) + prefs.overlays.length}
         basemap={prefs.basemap}
         view={prefs.view}
         unitSystem={auth.user?.unit_system}
@@ -402,8 +403,8 @@
         }}
         onload={(map) => overlays.attach(map)}
       >
-        {#snippet toolbar()}
-          <LayersControl {prefs} {overlays} {units} />
+        {#snippet layers()}
+          <OverviewLayers bind:prefs {overlays} {units} />
         {/snippet}
         <button
           type="button"

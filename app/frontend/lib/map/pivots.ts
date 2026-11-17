@@ -89,18 +89,6 @@ export function systemOutline(pivot: MapPivot): LngLat[] | null {
   )
 }
 
-/** Meters across an outline, its larger side */
-function outlineMeters(ring: LngLat[]): number {
-  const lngs = ring.map(([lng]) => lng)
-  const lats = ring.map(([, lat]) => lat)
-  const lat = (Math.min(...lats) + Math.max(...lats)) / 2
-  const metersPerDegree = 111_320
-  return Math.max(
-    (Math.max(...lngs) - Math.min(...lngs)) * metersPerDegree * Math.cos((lat * Math.PI) / 180),
-    (Math.max(...lats) - Math.min(...lats)) * metersPerDegree,
-  )
-}
-
 /** A system's fields without an outline, which its marker badges */
 export const unoutlinedFields = (pivot: MapPivot) =>
   pivot.fields.filter((card) => !pivot.outlines.some((outline) => outline.field_id === card.id))
@@ -129,11 +117,7 @@ export function pivotFeatures(
         selected: pivot.id === selectedId,
         dimmed: highlighted !== null && !highlighted.has(pivot.id),
         outlined: pivot.outlines.length > 0,
-        ...glyphProperties(
-          pivot,
-          badgeRows(unoutlinedFields(pivot).length),
-          isPoint(pivot.kind) && pivot.outlines.length ? outlineMeters(systemOutline(pivot)!) : null,
-        ),
+        ...glyphProperties(pivot, badgeRows(unoutlinedFields(pivot).length), pivot.outlines.length > 0),
       }
       return geometries(pivot).map((geometry) => ({ type: 'Feature' as const, id: pivot.id, properties, geometry }))
     }),
