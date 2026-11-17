@@ -4,15 +4,8 @@
 
   import Button from '@/lib/components/Button.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
-  import {
-    type Boundary,
-    boundaryAcres,
-    boundaryCenter,
-    boundaryErrors,
-    isPoint,
-    type PivotShape,
-    systemName,
-  } from '@/lib/geo'
+  import { isPoint, type PivotShape, systemName } from '@/lib/geo'
+  import { type Boundary, boundaryAcres, boundaryCenter, boundaryErrors } from '@/lib/boundary'
   import OutlineMap, { type DrawMode } from '@/lib/outlines/OutlineMap.svelte'
   import {
     ACCEPT,

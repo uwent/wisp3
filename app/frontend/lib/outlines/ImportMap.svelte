@@ -5,7 +5,8 @@
   import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
-  import { type Boundary, boundaryBounds, boundaryCenter, type LngLat } from '@/lib/geo'
+  import { boundsOf } from '@/lib/geo'
+  import { type Boundary, boundaryBounds, boundaryCenter } from '@/lib/boundary'
   import { basemapStyle, transformStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import MapLayersButton from '@/lib/map/MapLayersButton.svelte'
@@ -63,13 +64,7 @@
   /** Fit the map to every shape */
   export function fit() {
     if (!map || !shapes.length) return
-    const corners = shapes.flatMap((shape) => boundaryBounds(shape.boundary))
-    const lngs = corners.map(([lng]) => lng)
-    const lats = corners.map(([, lat]) => lat)
-    const bounds: [LngLat, LngLat] = [
-      [Math.min(...lngs), Math.min(...lats)],
-      [Math.max(...lngs), Math.max(...lats)],
-    ]
+    const bounds = boundsOf(shapes.flatMap((shape) => boundaryBounds(shape.boundary)))!
     map.fitBounds(bounds, { padding: 48, maxZoom: 16, duration: 0 })
   }
 

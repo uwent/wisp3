@@ -2,7 +2,8 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { boundaryRing, type LngLat, vertexCount } from '@/lib/geo'
+import { type LngLat } from '@/lib/geo'
+import { boundaryRing, vertexCount } from '@/lib/boundary'
 
 import { nameKey, OutlineFileError, readOutlineFile, shapeName, shapeNotes, shapesFrom } from './read'
 

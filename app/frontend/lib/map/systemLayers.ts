@@ -9,7 +9,9 @@ import type {
 import type { Palette } from '@/lib/charts/palette'
 import { isPoint, linearOf, type PivotShape } from '@/lib/geo'
 
-import { type Glyph, GLYPH_CORNERS, GLYPH_INRADIUS, KIND_GLYPHS, segmentDistance } from './glyphs'
+import { segmentDistance } from '@/lib/planar'
+
+import { type Glyph, GLYPH_CORNERS, GLYPH_INRADIUS, KIND_GLYPHS } from './glyphs'
 
 // The irrigation systems on the overview map (PLAN.md Phase 8 G.14), in the system color (never a
 // status: that's the outlined fields' fill and the markers' badges). One threshold, FAR_ZOOM, where

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { type LngLat, pivotAcres, pivotRing } from './geo'
 import {
   type Boundary,
   boundaryAcres,
@@ -8,15 +9,12 @@ import {
   boundaryFrom,
   closeRing,
   inBoundary,
-  type LngLat,
   MAX_BOUNDARY_VERTICES,
   pathCrossesItself,
-  pivotAcres,
-  pivotRing,
   roundBoundary,
   simplifyBoundary,
   vertexCount,
-} from './geo'
+} from './boundary'
 import { areaWkt } from './soils'
 
 // A field's outline (PLAN.md Phase 8 G.10; one ring since G.14). The polygons and areas match

@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# A field's outline (PLAN.md Phase 8 G.10; one ring since G.14). The same polygons and areas are in lib/geo.test.ts.
+# A field's outline (PLAN.md Phase 8 G.10; one ring since G.14). The same polygons and areas are in lib/boundary.test.ts.
 RSpec.describe FieldBoundary do
   # 0.01° on a side at 43.3°N: 1,112 m north–south by 809 m east–west, about 222 acres
   let(:outer) { [[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.31], [-89.35, 43.3]] }

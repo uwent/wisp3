@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import type { Boundary, LngLat } from '@/lib/geo'
+import type { LngLat } from '@/lib/geo'
+import type { Boundary } from '@/lib/boundary'
 
 import { type ImportSystem, initialChoices, matchField, suggestSystem } from './matching'
 

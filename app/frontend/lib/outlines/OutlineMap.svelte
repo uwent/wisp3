@@ -11,7 +11,8 @@
 
   import Button from '@/lib/components/Button.svelte'
   import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
-  import { type Boundary, boundaryBounds, boundaryFrom, boundaryRing, type LngLat, pathCrossesItself } from '@/lib/geo'
+  import { type LngLat } from '@/lib/geo'
+  import { type Boundary, boundaryBounds, boundaryFrom, boundaryRing, pathCrossesItself } from '@/lib/boundary'
   import { basemapStyle, transformStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { loadMapLibre } from '@/lib/map/maplibre'
@@ -20,16 +21,10 @@
   import SoilTypesLegend from '@/lib/map/SoilTypesLegend.svelte'
   import MapLayersButton from '@/lib/map/MapLayersButton.svelte'
   import { followRoads } from '@/lib/map/roads.svelte'
+  import { hex, readPalette } from '@/lib/charts/palette'
   import SoilTypesOption from '@/lib/map/SoilTypesOption.svelte'
 
-  import {
-    addReferenceLayers,
-    FIRST_REFERENCE_LAYER,
-    type Reference,
-    referenceBounds,
-    SYSTEM,
-    SYSTEM_CASING,
-  } from './references'
+  import { addReferenceLayers, FIRST_REFERENCE_LAYER, type Reference, referenceBounds } from './references'
 
   // A field's outline on the map (PLAN.md Phase 8 G.10, G.14: one polygon), drawn in white as fields
   // are on the overview map, its system in the system color. terra-draw holds it: shown as it is
@@ -66,11 +61,13 @@
   } = $props()
 
   type Hex = `#${string}`
-  // A field on the map (--color-map-field), on a dark edge
-  const FIELD: Hex = '#ffffff'
-  const EDGE: Hex = '#000000'
-  // A shape whose edges cross (the caution status color)
-  const CROSSED: Hex = '#e49e22'
+  // A field on the map (--color-map-field), on a dark edge; a shape whose edges cross in the caution
+  // status color; the systems' casing (lib/outlines/references.ts)
+  const palette = readPalette()
+  const FIELD: Hex = hex(palette.field)
+  const EDGE: Hex = hex(palette.fieldCasing)
+  const CROSSED: Hex = hex(palette.status.caution)
+  const { system: SYSTEM, systemCasing: SYSTEM_CASING } = palette
   const OWN_SOURCES = ['reference', 'saved', 'shape-edge', 'shape-arrow', SOIL_SOURCE]
   const ARROWHEAD = 'shape-arrowhead'
   // Wisconsin's Central Sands, where most WISP fields are

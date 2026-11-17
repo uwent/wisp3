@@ -2,7 +2,8 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import type { FieldInfoKey } from '@/lib/fieldInfo'
-  import { type Boundary, isPoint, type PivotShape } from '@/lib/geo'
+  import { isPoint, type PivotShape } from '@/lib/geo'
+  import { type Boundary } from '@/lib/boundary'
   import { soilFit, soilOptionsByShare } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
 

@@ -1,18 +1,14 @@
 import {
-  type Boundary,
-  boundaryBounds,
-  boundaryCenter,
-  boundaryRing,
-  boundaryTop,
+  boundsOf,
   bufferedHull,
   FEET_PER_METER,
-  groupOutline,
   isPoint,
   type LngLat,
   pivotOutline,
   systemName,
   type PivotShape,
 } from '@/lib/geo'
+import { type Boundary, boundaryBounds, boundaryCenter, boundaryRing, boundaryTop, groupOutline } from '@/lib/boundary'
 import {
   type FarmGroup,
   type FieldCard,
@@ -253,17 +249,12 @@ export function groupFeatures(farms: FarmGroup<MapPivot>[], pivots: MapPivot[]):
 
 /** [[west, south], [east, north]] around the pivots' whole outlines (or points), or null without pivots */
 export function pivotBounds(pivots: MapPivot[]): [LngLat, LngLat] | null {
-  const points = pivots.flatMap((pivot) => [
-    ...(pivotOutline(pivot) ?? [[pivot.longitude, pivot.latitude] as LngLat]),
-    ...pivot.outlines.flatMap(({ boundary }) => boundaryBounds(boundary)),
-  ])
-  if (!points.length) return null
-  const lngs = points.map(([lng]) => lng)
-  const lats = points.map(([, lat]) => lat)
-  return [
-    [Math.min(...lngs), Math.min(...lats)],
-    [Math.max(...lngs), Math.max(...lats)],
-  ]
+  return boundsOf(
+    pivots.flatMap((pivot) => [
+      ...(pivotOutline(pivot) ?? [[pivot.longitude, pivot.latitude] as LngLat]),
+      ...pivot.outlines.flatMap(({ boundary }) => boundaryBounds(boundary)),
+    ]),
+  )
 }
 
 /**

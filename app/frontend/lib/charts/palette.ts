@@ -44,6 +44,16 @@ const TOKENS = {
   fieldCasing: '--color-map-field-casing',
 } as const
 
+/** A color from readPalette as #rrggbb, for libraries that take only hex (terra-draw) */
+export function hex(color: string): `#${string}` {
+  const rgb = color.match(/^rgb\((\d+), (\d+), (\d+)\)$/)
+  if (!rgb) return color as `#${string}`
+  return `#${rgb
+    .slice(1)
+    .map((n) => Number(n).toString(16).padStart(2, '0'))
+    .join('')}`
+}
+
 export function readPalette(element: Element = document.documentElement): Palette {
   const style = getComputedStyle(element)
   const canvas = document.createElement('canvas')

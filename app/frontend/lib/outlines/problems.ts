@@ -1,8 +1,5 @@
 import {
-  type Boundary,
-  boundaryRing,
   FEET_PER_METER,
-  inBoundary,
   isPoint,
   KIND_NAMES,
   type LngLat,
@@ -11,6 +8,8 @@ import {
   pointInPolygon,
   systemName,
 } from '@/lib/geo'
+import { type Boundary, boundaryRing, inBoundary } from '@/lib/boundary'
+import { nearestT, segmentsCross } from '@/lib/planar'
 import type { UnitSystem } from '@/lib/units'
 
 // Outlines to check (PLAN.md Phase 8 G.10): an irrigation system doesn't move with its field (that
@@ -39,8 +38,7 @@ export function nearestOnSegment(point: LngLat, a: LngLat, b: LngLat): Nearest {
   const xy = ([lng, lat]: LngLat) => [(lng - point[0]) * scale * 111_320, (lat - point[1]) * 111_320]
   const [ax, ay] = xy(a)
   const [bx, by] = xy(b)
-  const length2 = (bx - ax) ** 2 + (by - ay) ** 2
-  const t = length2 ? Math.max(0, Math.min(1, -(ax * (bx - ax) + ay * (by - ay)) / length2)) : 0
+  const t = nearestT([0, 0], [ax, ay], [bx, by])
   return {
     point: [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])],
     meters: Math.hypot(ax + t * (bx - ax), ay + t * (by - ay)),
@@ -71,14 +69,11 @@ function overlaps(boundary: Boundary, ring: LngLat[]): boolean {
   return crosses(outline, ring)
 }
 
+// Touching counts here: a shape touching its system's edge is with it
 function crosses(a: LngLat[], b: LngLat[]): boolean {
-  const side = (p: LngLat, q: LngLat, r: LngLat) =>
-    Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]))
   for (let i = 0; i + 1 < a.length; i++)
-    for (let j = 0; j + 1 < b.length; j++) {
-      const [p1, p2, q1, q2] = [a[i], a[i + 1], b[j], b[j + 1]]
-      if (side(p1, p2, q1) !== side(p1, p2, q2) && side(q1, q2, p1) !== side(q1, q2, p2)) return true
-    }
+    for (let j = 0; j + 1 < b.length; j++)
+      if (segmentsCross(a[i], a[i + 1], b[j], b[j + 1], { touching: true })) return true
   return false
 }
 

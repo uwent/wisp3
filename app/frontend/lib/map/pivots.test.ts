@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { bearing, type Boundary, distanceM, GROUP_MARGIN_M, type LngLat, pointInPolygon } from '@/lib/geo'
+import { bearing, distanceM, type LngLat, pointInPolygon } from '@/lib/geo'
+import { type Boundary, GROUP_MARGIN_M } from '@/lib/boundary'
 import type { FieldCard } from '@/lib/overview'
 import type { PlantingSummary } from '@/types/serializers'
 

@@ -7,18 +7,8 @@
   import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import {
-    isPoint,
-    KIND_NOUNS,
-    MAX_LATITUDE,
-    MAX_LINEAR_LENGTH_FT,
-    MAX_LINEAR_TRAVEL_FT,
-    MAX_LONGITUDE,
-    MAX_RADIUS_FT,
-    MIN_LATITUDE,
-    MIN_LONGITUDE,
-    shapeDraft,
-  } from '@/lib/geo'
+  import { isPoint, KIND_NOUNS, MAX_LINEAR_LENGTH_FT, MAX_LINEAR_TRAVEL_FT, MAX_RADIUS_FT, shapeDraft } from '@/lib/geo'
+  import { MAX_LATITUDE, MAX_LONGITUDE, MIN_LATITUDE, MIN_LONGITUDE } from '@/lib/boundary'
   import { soilFit, soilOptionsByShare } from '@/lib/soils'
   import { units as unitsFor } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'

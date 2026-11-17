@@ -1,6 +1,8 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 
-import { type Boundary, boundaryBounds, boundaryCenter, type LngLat, type PivotShape, pivotOutline } from '@/lib/geo'
+import { boundsOf, type LngLat, type PivotShape, pivotOutline } from '@/lib/geo'
+import { type Boundary, boundaryBounds, boundaryCenter } from '@/lib/boundary'
+import { readPalette } from '@/lib/charts/palette'
 import { LABEL_FONT } from '@/lib/map/basemaps'
 
 // What the outline pages draw for reference (PLAN.md Phase 8 G.10): irrigation systems (an outline,
@@ -20,7 +22,7 @@ export function referenceBounds(reference: Reference): [LngLat, LngLat] | null {
       [lng + 0.004, lat + 0.003],
     ]
   }
-  return boundaryBounds({ type: 'Polygon', coordinates: [ring] })
+  return boundsOf(ring)
 }
 
 /** The references as GeoJSON: outlines, dots and label points */
@@ -62,9 +64,6 @@ export function referenceData(references: Reference[]) {
   return { type: 'FeatureCollection' as const, features }
 }
 
-// The map's system color and its casing (--color-map-system, --color-map-system-casing)
-export const SYSTEM = '#2ec4f0'
-export const SYSTEM_CASING = '#0c2d48'
 const isSystem = ['==', ['get', 'kind'], 'system']
 
 /** The first of the reference layers, to draw others (soil types) under */
@@ -75,6 +74,8 @@ export const FIRST_REFERENCE_LAYER = 'reference-casing'
  * overview map), the field's own one wider; other fields' outlines faint white; and names
  */
 export function addReferenceLayers(map: MapLibreMap, references: Reference[]) {
+  // The map's system color and its casing (--color-map-system, --color-map-system-casing)
+  const { system: SYSTEM, systemCasing: SYSTEM_CASING } = readPalette()
   map.addSource('reference', { type: 'geojson', data: referenceData(references) as never })
   map.addLayer({
     id: 'reference-casing',

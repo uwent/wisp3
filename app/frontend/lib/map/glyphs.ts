@@ -1,4 +1,5 @@
 import type { PivotKind } from '@/lib/geo'
+import { segmentDistance } from '@/lib/planar'
 
 // Each kind of irrigation system's glyph (PLAN.md Phase 8 G.14): the shape it's drawn as on the map
 // when it's a point (a traveler, a block, a location) or too small to see at its true size (a pivot,
@@ -65,11 +66,3 @@ export const GLYPH_INRADIUS = Object.fromEntries(
     return [glyph, nearest / 24]
   }),
 ) as Record<Glyph, number>
-
-/** A point's distance from the segment a–b */
-export function segmentDistance([px, py]: Point, [ax, ay]: Point, [bx, by]: Point): number {
-  const dx = bx - ax
-  const dy = by - ay
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1)))
-  return Math.hypot(px - ax - t * dx, py - ay - t * dy)
-}

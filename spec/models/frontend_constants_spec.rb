@@ -14,13 +14,13 @@ RSpec.describe "Constants mirrored in the frontend" do
     end
   end
 
-  it "has FieldBoundary's limits and Pivot's latitudes and longitudes in lib/geo.ts" do
-    expect(frontend_constant("geo.ts", "MAX_BOUNDARY_VERTICES")).to eq(FieldBoundary::MAX_VERTICES)
-    expect(frontend_constant("geo.ts", "MAX_FIELD_ACRES")).to eq(FieldBoundary::MAX_ACRES)
-    expect(frontend_constant("geo.ts", "MIN_FIELD_ACRES")).to eq(FieldBoundary::MIN_ACRES)
-    expect([frontend_constant("geo.ts", "MIN_LATITUDE"), frontend_constant("geo.ts", "MAX_LATITUDE")])
+  it "has FieldBoundary's limits and Pivot's latitudes and longitudes in lib/boundary.ts" do
+    expect(frontend_constant("boundary.ts", "MAX_BOUNDARY_VERTICES")).to eq(FieldBoundary::MAX_VERTICES)
+    expect(frontend_constant("boundary.ts", "MAX_FIELD_ACRES")).to eq(FieldBoundary::MAX_ACRES)
+    expect(frontend_constant("boundary.ts", "MIN_FIELD_ACRES")).to eq(FieldBoundary::MIN_ACRES)
+    expect([frontend_constant("boundary.ts", "MIN_LATITUDE"), frontend_constant("boundary.ts", "MAX_LATITUDE")])
       .to eq([Pivot::LATITUDES.begin, Pivot::LATITUDES.end])
-    expect([frontend_constant("geo.ts", "MIN_LONGITUDE"), frontend_constant("geo.ts", "MAX_LONGITUDE")])
+    expect([frontend_constant("boundary.ts", "MIN_LONGITUDE"), frontend_constant("boundary.ts", "MAX_LONGITUDE")])
       .to eq([Pivot::LONGITUDES.begin, Pivot::LONGITUDES.end])
   end
 

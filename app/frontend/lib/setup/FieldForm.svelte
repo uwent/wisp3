@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { boundaryAcres, systemName } from '@/lib/geo'
+  import { systemName } from '@/lib/geo'
+  import { boundaryAcres } from '@/lib/boundary'
   import { Form, Link } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'

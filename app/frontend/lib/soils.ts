@@ -1,4 +1,5 @@
-import { type Boundary, boundaryRing, type LngLat } from './geo'
+import { type LngLat } from './geo'
+import { type Boundary, boundaryRing } from './boundary'
 
 // The soil survey under a pivot (PLAN.md Phase 7 F): USDA NRCS Soil Data Access (SSURGO), queried
 // from the browser. For each map unit under the pivot's circle or arc: its share of the area, and

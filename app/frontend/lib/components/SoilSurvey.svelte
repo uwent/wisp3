@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { type Boundary, isPoint, KIND_NOUNS, type PivotShape, surveyRing } from '@/lib/geo'
+  import { isPoint, KIND_NOUNS, type PivotShape, surveyRing } from '@/lib/geo'
+  import { type Boundary } from '@/lib/boundary'
   import { fetchSoilSurvey, type MapUnit, soilKeyFor, soilShares, type SoilSuggestion, suggestSoil } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
 

@@ -1,13 +1,5 @@
-import {
-  type Boundary,
-  boundaryCenter,
-  distanceM,
-  inBoundary,
-  isPoint,
-  type PivotShape,
-  pivotOutline,
-  pointInPolygon,
-} from '@/lib/geo'
+import { distanceM, isPoint, type PivotShape, pivotOutline, pointInPolygon } from '@/lib/geo'
+import { type Boundary, boundaryCenter, inBoundary } from '@/lib/boundary'
 
 // Matching imported outlines to the operation (PLAN.md Phase 8 G.10): each shape to the field of
 // the same name, or else a new field under the irrigation system it sits under

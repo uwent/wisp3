@@ -1,15 +1,15 @@
+import { type LngLat } from '@/lib/geo'
 import {
   type Boundary,
   boundaryAcres,
   boundaryErrors,
   boundaryFrom,
   closeRing,
-  type LngLat,
   ringAreaM2,
   roundBoundary,
   simplifyBoundary,
   vertexCount,
-} from '@/lib/geo'
+} from '@/lib/boundary'
 
 // Field outlines from a file (PLAN.md Phase 8 G.10), read in the browser so nothing is uploaded
 // but the result: a zipped shapefile (FSA Common Land Units, John Deere and Climate FieldView
