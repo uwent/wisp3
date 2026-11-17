@@ -63,11 +63,24 @@ RSpec.describe "Domain models" do
         .to raise_error(ActiveRecord::StatementInvalid, /plantings_vine_kill_order/)
     end
 
-    it "ends on or after the season start" do
+    it "ends after the season start and after emergence: at least a day long (G.13 part 3)" do
       planting = build(:planting, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 3, 1),
-        end_date: Date.new(2026, 3, 15))
+        end_date: Date.new(2026, 4, 1))
       expect(planting).not_to be_valid
-      expect(planting.errors.of_kind?(:end_date, "must be on or after the season start")).to be(true)
+      expect(planting.errors[:end_date]).to eq(["must be after the season start"])
+      planting.end_date = Date.new(2026, 4, 2)
+      expect(planting).to be_valid
+      # A transplant emerges on its first day, but a season can't end that day
+      planting = build(:planting, season_start: Date.new(2026, 5, 15), emergence_date: Date.new(2026, 5, 15),
+        end_date: Date.new(2026, 5, 15))
+      expect(planting.tap(&:validate).errors[:end_date]).to eq(["must be after emergence"])
+    end
+
+    it "keeps an older planting ending on its emergence day editable until its dates change" do
+      planting = create(:planting, emergence_date: Date.new(2026, 5, 15), end_date: Date.new(2026, 9, 30))
+      planting.update_columns(end_date: Date.new(2026, 5, 15))
+      expect(planting.reload.update(variety: "Russet")).to be(true)
+      expect(planting.update(end_date: Date.new(2026, 5, 15), season_start: Date.new(2026, 4, 2))).to be(false)
     end
 
     it "has a canopy curve by its method: percent cover for crops in canopy_curves.yml, LAI for field corn" do
@@ -220,7 +233,7 @@ RSpec.describe "Domain models" do
   describe ReferenceData do
     it "loads plants and soil types, and can run again" do
       2.times { described_class.load! }
-      expect(Plant.count).to eq(28)
+      expect(Plant.count).to eq(33)
       expect(SoilType.count).to eq(11)
       expect(Plant.find_by(key: "field_corn").canopy_model).to eq("field_corn")
       expect(SoilType.default.field_capacity).to eq(0.17)

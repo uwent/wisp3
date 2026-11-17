@@ -114,6 +114,7 @@
     bind:value={shape.latitude}
     info="pivot.latitude"
     error={error('latitude')}
+    required
   />
   <NumberField
     label="Longitude"
@@ -121,6 +122,7 @@
     bind:value={shape.longitude}
     info="pivot.longitude"
     error={error('longitude')}
+    required
   />
   {#if shape.kind === 'center'}
     <NumberField
@@ -130,6 +132,7 @@
       bind:value={() => (sized('radius') ? shape.radiusFt : null), (v) => ((typed.radius = true), (shape.radiusFt = v))}
       info="pivot.radius"
       error={error('radius_ft')}
+      optional
       hint={areaHint}
     />
   {/if}
@@ -145,6 +148,7 @@
       bind:value={() => (sized('length') ? shape.lengthFt : null), (v) => ((typed.length = true), (shape.lengthFt = v))}
       info="pivot.length"
       error={error('length_ft')}
+      required
     />
     <NumberField
       label="Travel distance"
@@ -153,6 +157,7 @@
       bind:value={() => (sized('travel') ? shape.travelFt : null), (v) => ((typed.travel = true), (shape.travelFt = v))}
       info="pivot.travel"
       error={error('travel_ft')}
+      required
       hint={areaHint}
     />
     <NumberField
@@ -161,6 +166,7 @@
       unitLabel="° from north"
       bind:value={shape.travelBearing}
       error={error('travel_bearing_deg')}
+      required
       hint="A whole number from 0 to 179: 0 means the machine travels north and south, 90 east and west."
     />
   </div>
@@ -201,6 +207,7 @@
           bind:value={shape.arcStart}
           info="pivot.arc_start"
           error={error('arc_start_deg')}
+          required
         />
         <NumberField
           label="Arc ends at"
@@ -209,6 +216,7 @@
           bind:value={shape.arcEnd}
           info="pivot.arc_end"
           error={error('arc_end_deg')}
+          required
         />
       </div>
     {:else}

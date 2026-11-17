@@ -30,8 +30,20 @@
   <Form action={settings.update()} class="max-w-xl space-y-4" options={{ preserveScroll: true }}>
     {#snippet children({ errors, processing })}
       <div class="grid gap-4 sm:grid-cols-2">
-        <TextField label="First name" name="user[first_name]" value={user.first_name ?? ''} error={errors.first_name} />
-        <TextField label="Last name" name="user[last_name]" value={user.last_name ?? ''} error={errors.last_name} />
+        <TextField
+          label="First name"
+          name="user[first_name]"
+          value={user.first_name ?? ''}
+          error={errors.first_name}
+          optional
+        />
+        <TextField
+          label="Last name"
+          name="user[last_name]"
+          value={user.last_name ?? ''}
+          error={errors.last_name}
+          optional
+        />
       </div>
       <fieldset class="space-y-2">
         <legend class="text-sm font-medium">Units</legend>
@@ -86,6 +98,7 @@
           autocomplete="email"
           value={user.email}
           error={errors.email}
+          required
         />
         <div class="grid gap-4 sm:grid-cols-2">
           <TextField
@@ -95,6 +108,7 @@
             autocomplete="new-password"
             hint="Leave blank to keep your current password"
             error={errors.password}
+            optional
           />
           <TextField
             label="Confirm new password"
@@ -102,6 +116,7 @@
             type="password"
             autocomplete="new-password"
             error={errors.password_confirmation}
+            optional
           />
         </div>
         <TextField

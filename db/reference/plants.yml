@@ -4,7 +4,10 @@
 # (http://www.fao.org/docrep/x0490e/x0490e0e.htm).
 # canopy_model: the LAI growth curve used when a planting uses the LAI method without entered
 # readings (CanopyModel). Only crops with one can use the LAI method (PLAN.md Phase 6.7); so far
-# that's field corn.
+# that's field corn (and corn silage, on the same curve).
+# Added in PLAN.md Phase 8 G.7: dry bean (2.5–3 ft) and sugar beet (3 ft) from University of Nebraska
+# EC3015's table of root zone depths (citing NRCS); sorghum as field corn, both 3–4 ft effective
+# rooting in UNL NebGuide G2245; corn silage as field corn; oats as barley and wheat.
 
 - key: potato
   name: Potato
@@ -91,3 +94,19 @@
 - key: garden_vegetables
   name: Garden vegetables (mixed)
   default_max_root_zone_depth: 18.0
+- key: dry_bean
+  name: Dry bean
+  default_max_root_zone_depth: 33.0
+- key: corn_silage
+  name: Corn silage
+  default_max_root_zone_depth: 33.0
+  canopy_model: field_corn
+- key: oats
+  name: Oats
+  default_max_root_zone_depth: 33.0
+- key: sugar_beet
+  name: Sugar beet
+  default_max_root_zone_depth: 36.0
+- key: sorghum
+  name: Sorghum
+  default_max_root_zone_depth: 33.0

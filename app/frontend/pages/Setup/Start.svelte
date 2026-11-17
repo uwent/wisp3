@@ -182,6 +182,7 @@
             bind:value={farmName}
             placeholder="e.g. Hancock Sands"
             error={error(e, 'farm.name')}
+            required
           />
         {/if}
       </section>
@@ -219,6 +220,7 @@
             bind:value={systemName}
             placeholder={shape.kind === 'center' ? 'e.g. North 160' : 'e.g. Home garden'}
             error={error(e, 'pivot.name')}
+            required
           />
           <PivotShapeFields
             bind:shape
@@ -233,8 +235,8 @@
               name="setup[pivot][pump_capacity_gpm]"
               quantity="flow"
               value={null}
-              hint="Optional"
               info="pivot.pump_capacity"
+              optional
               error={error(e, 'pivot.pump_capacity_gpm')}
             />
           </PivotShapeFields>
@@ -281,6 +283,7 @@
                     bind:value={row.name}
                     placeholder={rows.length > 1 ? `e.g. ${i ? 'South' : 'North'} half` : 'e.g. North 160'}
                     error={error(e, `fields.${i}.name`)}
+                    required={row.area !== null}
                   />
                 </div>
                 <NumberField
@@ -290,6 +293,7 @@
                   bind:value={row.area}
                   info="quick_setup.area"
                   error={error(e, `fields.${i}.area_acres`)}
+                  optional
                 />
                 <SelectField
                   label="Soil"

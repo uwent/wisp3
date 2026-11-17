@@ -14,6 +14,7 @@
     hint,
     note,
     info,
+    optional = false,
     id = `field-${(name ?? label).replace(/[^a-z0-9]+/gi, '-')}`,
     ...rest
   }: HTMLSelectAttributes & {
@@ -25,19 +26,24 @@
     note?: Snippet
     /** An info tip by the label (lib/fieldInfo.ts) */
     info?: FieldInfoKey
+    /** Says "Optional" by the label */
+    optional?: boolean
   } = $props()
+
+  // Required and nothing chosen: marked until it has a value (G.13 part 3)
+  const missing = $derived(Boolean(rest.required) && (value === undefined || value === null || value === ''))
 
   const message = $derived(Array.isArray(error) ? error[0] : error)
 </script>
 
 <div class="space-y-1">
-  <FieldLabel {label} {info} for={id} />
+  <FieldLabel {label} {info} {missing} {optional} for={id} />
   <select
     {id}
     {name}
     bind:value
     class="block w-full rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-surface disabled:text-ink-muted sm:text-sm
-      {message ? 'border-status-irrigate' : ''}"
+      {message ? 'border-status-irrigate' : missing ? 'border-l-4 border-l-brand-500' : ''}"
     aria-invalid={message ? 'true' : undefined}
     aria-describedby={message || hint || note ? `${id}-note` : undefined}
     {...rest}

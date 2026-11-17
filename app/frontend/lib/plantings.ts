@@ -158,12 +158,50 @@ export function nextSeason(previous: { end_date: string }): {
 }
 
 /**
- * The suggested harvest date for a crop emerging on emergence: its typical season's length later
- * (PlantSerializer's season_days), no later than Nov 30; Nov 30 without one (Planting.typical_end)
+ * The suggested harvest date for a crop emerging on emergence: its season's length later (the
+ * planting's own, else PlantSerializer's season_days), no later than Nov 30; Nov 30 without one
+ * (Planting.typical_end)
  */
 export function typicalEnd(seasonDays: number | null | undefined, emergence: string): string {
   const latest = `${emergence.slice(0, 4)}-11-30`
   if (!seasonDays) return latest
   const end = addDays(emergence, seasonDays)
   return end < latest ? end : latest
+}
+
+/**
+ * Whether "Replace" can end other the day before a planting starting on start: that day must still
+ * be after its season start and emergence (a season is at least a day long). PlantingsController's
+ * replace_overlapping checks the same.
+ */
+export function canReplace(other: { season_start: string; emergence_date: string }, start: string): boolean {
+  const lastDay = addDays(start, -1)
+  return other.season_start < lastDay && other.emergence_date < lastDay
+}
+
+export type SeasonDates = { seasonStart: string; emergence: string; end: string; vineKill?: string | null }
+
+/**
+ * What's out of order in a planting's dates, by the date to fix, checked as they're typed (G.13
+ * part 3): harvest after the season start and after emergence (a season is at least a day long),
+ * and vine kill from emergence to harvest. Emergence may be on or before the season start (a
+ * transplant; a perennial, or a crop already up when tracking starts). Planting#dates_in_order
+ * checks the same on save. Blank dates aren't checked (the inputs are required).
+ */
+export function dateProblems(
+  { seasonStart, emergence, end, vineKill }: SeasonDates,
+  endLabel = 'Harvest',
+): { end?: string; vineKill?: string } {
+  const problems: { end?: string; vineKill?: string } = {}
+  if (end && emergence && end <= emergence) {
+    problems.end = `${endLabel} must be after emergence (${formatDate(emergence)}).`
+  } else if (end && seasonStart && end <= seasonStart) {
+    problems.end = `${endLabel} must be after the season start (${formatDate(seasonStart)}).`
+  }
+  if (vineKill && emergence && vineKill < emergence) {
+    problems.vineKill = `Vine kill can't be before emergence (${formatDate(emergence)}).`
+  } else if (vineKill && end && vineKill > end) {
+    problems.vineKill = `Vine kill can't be after ${endLabel.toLowerCase()} (${formatDate(end)}).`
+  }
+  return problems
 }

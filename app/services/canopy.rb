@@ -6,7 +6,8 @@
 #
 # With readings, by the planting's setting:
 # - following the curve (the default where there is one): first the curve is fitted to the readings
-#   (CanopyFit: a shift, stretch and height, held toward the typical curve, so a reading or two barely
+#   (CanopyFit: a shift, stretch and height, held toward the typical curve (stretched to the planting's
+#   own season length, if it has one: Planting#time_stretch), so a reading or two barely
 #   move it and many fit it closely). Then the fitted curve times a ratio, reading ÷ fitted curve at
 #   each reading and 1 at emergence, linear between readings and easing back to 1 over FADE_DAYS
 #   after the last. It passes through every reading and keeps the curve's shape between them
@@ -80,15 +81,17 @@ class Canopy
       [obs.date, obs[attribute]] if obs[attribute] && (through.nil? || obs.date <= through)
     end
     emergence = planting.emergence_date
+    # The planting's own season length stretches the curve's timeline (G.7); readings are fitted around it
+    base = planting.time_stretch
     if lai
       key = planting.plant.canopy_model
-      fit_curve = ->(**fit) { CanopyModel.from(key, emergence, **fit) } if key
-      fit_key = ["lai", key, CanopyModel::VERSION, emergence]
+      fit_curve = ->(stretch: 1.0, **fit) { CanopyModel.from(key, emergence, stretch: stretch * base, **fit) } if key
+      fit_key = ["lai", key, CanopyModel::VERSION, emergence, base]
     else
       # The crop's own curve, or the generic one it follows (G.3)
       crop_curve = planting.cover_curve
-      fit_curve = ->(**fit) { crop_curve.from(emergence, **fit) } if crop_curve
-      fit_key = ["cover", crop_curve&.key, crop_curve&.digest, emergence]
+      fit_curve = ->(stretch: 1.0, **fit) { crop_curve.from(emergence, stretch: stretch * base, **fit) } if crop_curve
+      fit_key = ["cover", crop_curve&.key, crop_curve&.digest, emergence, base]
     end
     new(emergence_date: emergence, end_date: planting.end_date, observations:, curve: fit_curve&.call, fit_curve:, fit_key:,
       follow_curve: planting.canopy_interpolation != "linear", floor: lai ? 0.05 : 1.0,

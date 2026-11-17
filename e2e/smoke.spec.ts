@@ -656,7 +656,8 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   const station = page.getByRole('heading', { name: 'Irrigation system: Station pivot' })
   await expect(station.getByRole('link', { name: 'Station pivot' })).toBeVisible()
   const bars = page.getByRole('list', { name: /^Plantings on Arlington 525/ })
-  await bars.getByRole('button', { name: /^Edit Soybean/ }).click()
+  await bars.getByRole('button', { name: /^Soybean/ }).click()
+  await page.getByRole('menuitem', { name: 'Edit planting' }).click()
   const dialog = page.getByRole('dialog', { name: /^Edit Soybean on Arlington 525/ })
   await expect(dialog.getByRole('radio', { name: 'Part of the field' })).toBeChecked()
   await expect(dialog.getByLabel('Length', { exact: true })).toHaveValue('300')
@@ -671,10 +672,12 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   // "Add the next planting" starts a new one the day after this one ends, the same size
   await dialog.getByRole('button', { name: 'Add the next planting' }).click()
   const next = page.getByRole('dialog', { name: 'Add the next planting on Arlington 525' })
+  // Its season and size show once a crop is chosen (G.13 part 3)
+  await next.getByLabel('Crop', { exact: true }).selectOption({ label: 'Wheat' })
   await expect(next.getByLabel('Length', { exact: true })).toHaveValue('300')
 })
 
-test("a new planting's harvest follows the crop and emergence until one is typed", async ({ page }) => {
+test("a new planting's harvest follows the crop, emergence and season length until one is typed", async ({ page }) => {
   const year = new Date().getFullYear()
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
@@ -682,8 +685,15 @@ test("a new planting's harvest follows the crop and emergence until one is typed
   const harvest = dialog.getByLabel('Harvest or kill', { exact: true })
   await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
   await expect(harvest).toHaveValue(`${year}-08-30`) // May 1 + 121 days
-  await expect(dialog.getByText('A soybean season typically runs about 121 days')).toBeVisible()
+  // The crop's typical season shows in the blank season length (G.7)
+  const season = dialog.getByLabel('Season length', { exact: true })
+  await expect(season).toHaveAttribute('placeholder', '121')
   await dialog.getByLabel('Emergence', { exact: true }).fill(`${year}-05-20`)
+  await expect(harvest).toHaveValue(`${year}-09-18`)
+  // Its own season length moves the suggestion, and blank goes back to the typical one
+  await season.fill('100')
+  await expect(harvest).toHaveValue(`${year}-08-28`)
+  await season.fill('')
   await expect(harvest).toHaveValue(`${year}-09-18`)
   await harvest.fill(`${year}-10-01`)
   await dialog.getByLabel('Emergence', { exact: true }).fill(`${year}-05-25`)
@@ -696,12 +706,17 @@ test('a crop without its own canopy curve follows a generic one, or readings onl
   await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
   const dialog = page.getByRole('dialog', { name: /^Add a \d{4} planting to Cabbage/ })
   await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Onion' })
+  // The canopy choices are under Settings, collapsed to a line saying what's in effect (G.13 part 3)
+  const settings = dialog.locator('summary')
+  await expect(settings).toContainText('percent cover, following the slow, partial cover curve')
+  await settings.click()
   const curves = dialog.getByRole('group', { name: 'Canopy curve' })
   await expect(curves.getByRole('radio', { name: /^Slow, partial cover \(suggested\)/ })).toBeChecked()
   await expect(curves.getByText('An approximation for onion')).toBeVisible()
   await expect(dialog.getByLabel('Harvest or kill', { exact: true })).toHaveValue(`${year}-08-29`) // May 1 + 120 days
   await curves.getByRole('radio', { name: 'No curve: readings only' }).check()
   await expect(curves.getByText('Irrigation scheduling works only if you enter percent cover regularly')).toBeVisible()
+  await expect(settings).toContainText('percent cover, readings only')
   // A crop with its own curve has no choice
   await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
   await expect(curves).toBeHidden()
@@ -733,6 +748,7 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   expect(
     await page.evaluate(() => [getComputedStyle(document.body).overflow, document.body.style.paddingRight]),
   ).toEqual(['visible', ''])
+  await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
   await expect(dialog.getByRole('radio', { name: /^Whole field/ })).toBeChecked()
   await expect(dialog.getByText('This overlaps: Cabbage')).toBeVisible()
   await dialog.getByLabel('Season start', { exact: true }).fill(`${new Date().getFullYear()}-08-01`)
@@ -1241,4 +1257,30 @@ test('the map shades outlined fields and badges them at their center, and marks 
   await expect(page.getByRole('checkbox', { name: 'Irrigation systems' })).not.toBeChecked()
   await page.getByRole('checkbox', { name: 'Irrigation systems' }).check()
   expect(errors).toEqual([])
+})
+
+test("a planting's bar in Setup opens its page or its form, and the page's Edit in setup comes back to the form", async ({
+  page,
+}) => {
+  await page.goto('/setup')
+  const bars = page.getByRole('list', { name: /^Plantings on Arlington 525/ })
+  // The menu opens under the bar where it's clicked, centred on the pointer
+  const bar = bars.getByRole('button', { name: /^Soybean/ })
+  const box = (await bar.boundingBox())!
+  await bar.click({ position: { x: box.width * 0.6, y: box.height / 2 } })
+  const menu = (await page.getByRole('menu').boundingBox())!
+  expect(Math.abs(menu.x + menu.width / 2 - (box.x + box.width * 0.6))).toBeLessThan(4)
+  // Below the bar, or above it near the bottom of the window
+  expect(menu.y >= box.y + box.height - 1 || menu.y + menu.height <= box.y + 1).toBe(true)
+  await page.getByRole('menuitem', { name: 'View this planting' }).click()
+  await expect(page).toHaveURL(/\/plantings\/\d+/)
+
+  await page.getByRole('link', { name: 'Edit in setup' }).click()
+  const dialog = page.getByRole('dialog', { name: /^Edit Soybean on Arlington 525/ })
+  await expect(dialog).toBeVisible()
+  await expect(page).not.toHaveURL(/planting=/)
+
+  // From the form, its page again
+  await dialog.getByRole('link', { name: 'View this planting' }).click()
+  await expect(page).toHaveURL(/\/plantings\/\d+/)
 })

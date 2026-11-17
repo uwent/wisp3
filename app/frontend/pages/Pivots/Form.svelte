@@ -4,6 +4,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import FormFooter from '@/lib/components/FormFooter.svelte'
+  import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
@@ -106,6 +107,7 @@
             options={farms.map((farm) => ({ value: String(farm.id), label: farm.name }))}
             info="pivot.farm"
             error={errors.farm}
+            required
           />
         </div>
         <PivotShapeFields
@@ -127,6 +129,7 @@
           value={pivot.pump_capacity_gpm ?? null}
           info="pivot.pump_capacity"
           error={errors.pump_capacity_gpm}
+          optional
         />
         <TextField
           label="Equipment"
@@ -134,10 +137,11 @@
           value={pivot.equipment ?? ''}
           placeholder={EQUIPMENT_EXAMPLES[shape.kind]}
           info="pivot.equipment"
+          optional
           hint={shape.kind === 'traveler' ? 'The machine, named the same at each field it waters' : undefined}
         />
         <div class="space-y-1 sm:col-span-2">
-          <label for="pivot-notes" class="block text-sm font-medium">Notes</label>
+          <FieldLabel label="Notes" for="pivot-notes" optional />
           <textarea id="pivot-notes" name="pivot[notes]" rows="2" class="block w-full rounded-md text-sm"
             >{pivot.notes ?? ''}</textarea
           >

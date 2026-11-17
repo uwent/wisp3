@@ -17,6 +17,8 @@ class Planting < ApplicationRecord
   ET_METHODS = %w[pct_cover lai].freeze
   CANOPY_INTERPOLATIONS = %w[linear curve].freeze
   DEFAULT_MAD_FRAC = 0.5
+  # A planting's own season length, days from emergence to harvest (G.7; check constraint too)
+  SEASON_DAYS = (20..250)
 
   belongs_to :field
   belongs_to :plant
@@ -37,6 +39,8 @@ class Planting < ApplicationRecord
   validate :canopy_curve_key_allowed, if: :will_save_change_to_canopy_curve_key?
   validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}, allow_nil: true
   validates :area_acres, numericality: {greater_than: 0}, allow_nil: true
+  validates :season_days, numericality: {only_integer: true, in: SEASON_DAYS, message: "must be between #{SEASON_DAYS.min} and #{SEASON_DAYS.max} days"},
+    allow_nil: true
   validates :area_acres, presence: {message: "is needed for part of a field (or its length and width)"}, if: :partial?
   validates :plot_length_ft, :plot_width_ft, numericality: {greater_than: 0}, allow_nil: true
   validates :target_ad_pct, :initial_moisture_pct, numericality: {in: 0..100, message: "must be between 0 and 100"},
@@ -53,6 +57,9 @@ class Planting < ApplicationRecord
 
   # Only crops that are vine killed keep a vine kill date, so changing the crop leaves none behind
   before_validation { self.vine_kill_date = nil unless vine_kill_crop? }
+  # Only a crop on a curve with a typical season takes its own length, so changing the crop (or picking
+  # readings only) leaves none behind
+  before_validation { self.season_days = nil unless typical_season_days }
   # A whole-field planting has no plot, and covers the field's area; a plot's area is its
   # length × width
   before_validation :fit_area
@@ -91,12 +98,14 @@ class Planting < ApplicationRecord
     }
   end
 
-  # The suggested harvest date for plant emerging on emergence: its typical season's length later
-  # (CanopyCurve#season_days), but no later than Nov 30; Nov 30 for a crop without one (PLAN.md Phase
-  # 8 G.2). lib/plantings.ts (typicalEnd) mirrors it.
-  def self.typical_end(plant, emergence, canopy_curve_key = nil)
+  # The suggested harvest date for plant emerging on emergence: its season's length later (the
+  # planting's own, season_days, else the crop's typical CanopyCurve#season_days), but no later than
+  # Nov 30; Nov 30 for a crop without one (PLAN.md Phase 8 G.2, G.7). lib/plantings.ts (typicalEnd)
+  # mirrors it.
+  def self.typical_end(plant, emergence, canopy_curve_key = nil, season_days = nil)
     latest = Date.new(emergence.year, *LATEST_END)
-    days = CanopyCurve.effective(plant.key, canopy_curve_key)&.season_days
+    typical = CanopyCurve.effective(plant.key, canopy_curve_key)&.season_days
+    days = typical && (season_days.presence&.to_i || typical)
     days ? [emergence + days, latest].min : latest
   end
 
@@ -108,7 +117,15 @@ class Planting < ApplicationRecord
   def generic_curve_crop? = plant.present? && CanopyCurve.for(plant.key).nil?
 
   # The crop's typical days from emergence to harvest (its curve's), or nil
-  def season_days = cover_curve&.season_days
+  def typical_season_days = cover_curve&.season_days
+
+  # The season's length: the planting's own (season_days), else its crop's typical one; nil without one
+  def effective_season_days = typical_season_days && (season_days || typical_season_days)
+
+  # How much slower than typical its crop's canopy curve runs, from the planting's own season length
+  # (G.7): 1 without one. Canopy stretches the curve's whole timeline by it (growth, decline), and
+  # CanopyFit fits readings around it.
+  def time_stretch = (season_days && typical_season_days) ? season_days.to_f / typical_season_days : 1.0
 
   # Whether the crop takes a vine kill date (potato; canopy_curves.yml)
   def vine_kill_crop? = plant.present? && CanopyCurve.for(plant.key)&.vine_kill? || false
@@ -230,8 +247,26 @@ class Planting < ApplicationRecord
 
   def dates_in_order
     return unless season_start && emergence_date && end_date
-    errors.add(:end_date, "must be on or after the season start") if end_date < season_start
-    errors.add(:end_date, "must be on or after emergence") if end_date < emergence_date
+    # A season is at least a day long, and so is the crop's time in it: harvest comes after the season
+    # start and after emergence. Emergence may be the season's first day (a transplant), or before it
+    # (a perennial, or a crop already up when its tracking starts). lib/plantings.ts (dateProblems)
+    # checks the same as the dates are typed. Checked when a date changes (G.13 part 3), so a planting
+    # saved under the looser rules before stays editable.
+    unless new_record? || will_save_change_to_season_start? || will_save_change_to_emergence_date? ||
+        will_save_change_to_end_date?
+      errors.add(:end_date, "must be on or after the season start") if end_date < season_start
+      errors.add(:end_date, "must be on or after emergence") if end_date < emergence_date
+      return check_vine_kill
+    end
+    if end_date <= emergence_date
+      errors.add(:end_date, "must be after emergence")
+    elsif end_date <= season_start
+      errors.add(:end_date, "must be after the season start")
+    end
+    check_vine_kill
+  end
+
+  def check_vine_kill
     return unless vine_kill_date
     errors.add(:vine_kill_date, "must be on or after emergence") if vine_kill_date < emergence_date
     errors.add(:vine_kill_date, "must be on or before the harvest date") if vine_kill_date > end_date

@@ -1,14 +1,19 @@
 import { router } from '@inertiajs/svelte'
 
-import { ChangeTracker, describeChanges } from '@/lib/formChanges'
+import { type Change, ChangeTracker, describeChanges } from '@/lib/formChanges'
 
 export const UNSAVED_MESSAGE = 'You have unsaved changes. Leave this page without saving them?'
 
 /** The confirm's text: the changes listed (G.13) when the form's are known, else the plain question */
 export function unsavedMessage(tracker?: ChangeTracker): string {
-  const lines = tracker ? describeChanges(tracker.changes()) : []
-  if (!lines.length) return UNSAVED_MESSAGE
-  return `You have unsaved changes:\n\n${lines.map((line) => `• ${line}`).join('\n')}\n\nLeave this page without saving them?`
+  return changesMessage(tracker ? tracker.changes() : []) ?? UNSAVED_MESSAGE
+}
+
+/** A confirm listing changes before leaving them (a page, or a dialog's form), or null without any */
+export function changesMessage(changes: Change[], leaving = 'this page'): string | null {
+  const lines = describeChanges(changes)
+  if (!lines.length) return null
+  return `You have unsaved changes:\n\n${lines.map((line) => `• ${line}`).join('\n')}\n\nLeave ${leaving} without saving them?`
 }
 
 /**

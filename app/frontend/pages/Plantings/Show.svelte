@@ -137,8 +137,8 @@
     !readOnly &&
       summary.phase === 'active' &&
       summary.date !== null &&
-      planting.season_days !== null &&
-      summary.date > addDays(planting.emergence_date, planting.season_days),
+      planting.effective_season_days !== null &&
+      summary.date > addDays(planting.emergence_date, planting.effective_season_days),
   )
   function endSeason() {
     const today = summary.date!
@@ -256,8 +256,8 @@
     {/if}
     {#if !readOnly}
       <Link
-        href={setup.show({ query: { year: planting.year } })}
-        title="Change this field, its irrigation system or its plantings on the setup page"
+        href={setup.show({ query: { year: planting.year, planting: planting.id } })}
+        title="Edit this planting on the setup page"
         class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
       >
         Edit in setup
@@ -399,7 +399,8 @@
     {#if overdue}
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line px-3 py-2 text-sm">
         <p class="text-ink-muted">
-          Past a typical {planting.plant_name.toLowerCase()} season ({planting.season_days} days from emergence). Harvested?
+          Past {planting.season_days === null ? 'a typical' : 'its'}
+          {planting.plant_name.toLowerCase()} season ({planting.effective_season_days} days from emergence). Harvested?
         </p>
         <button type="button" class="font-medium text-brand-600 underline underline-offset-2" onclick={endSeason}
           >End the season today</button

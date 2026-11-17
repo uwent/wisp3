@@ -71,6 +71,7 @@
         quantity="area"
         bind:value
         {error}
+        optional
         after={rounded !== null && value !== rounded ? useDrawn : undefined}
       />
     </div>

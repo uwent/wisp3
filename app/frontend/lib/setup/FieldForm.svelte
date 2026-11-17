@@ -69,7 +69,6 @@
   const endedText = $derived(
     endedYears.length === 1 ? `The ${endedYears[0]} season` : `Earlier seasons (${endedYears.join(', ')})`,
   )
-  const pct = (fraction: number | undefined) => (fraction === undefined ? '' : `${Math.round(fraction * 1000) / 10}%`)
 </script>
 
 <Form
@@ -91,6 +90,7 @@
         }))}
         info="field.pivot"
         error={errors.pivot_id}
+        required
       />
       <fieldset class="space-y-2">
         <legend class="text-sm font-medium">Area and shape</legend>
@@ -154,7 +154,8 @@
             scale={100}
             unitLabel="%"
             value={field?.field_capacity ?? null}
-            hint="Leave blank to use {soil?.name ?? 'the soil'} ({pct(soil?.field_capacity)})"
+            blankValue={soil?.field_capacity ?? null}
+            hint="Blank: {soil?.name ?? 'the soil'}'s"
             info="field.field_capacity"
             error={errors.field_capacity}
           />
@@ -164,14 +165,15 @@
             scale={100}
             unitLabel="%"
             value={field?.perm_wilting_pt ?? null}
-            hint="Leave blank to use {soil?.name ?? 'the soil'} ({pct(soil?.perm_wilting_pt)})"
+            blankValue={soil?.perm_wilting_pt ?? null}
+            hint="Blank: {soil?.name ?? 'the soil'}'s"
             info="field.wilting_point"
             error={errors.perm_wilting_pt}
           />
         </div>
       </details>
       <div class="space-y-1">
-        <label for="field-notes" class="block text-sm font-medium">Notes</label>
+        <FieldLabel label="Notes" for="field-notes" optional />
         <textarea id="field-notes" name="field[notes]" rows="2" class="block w-full rounded-md text-sm"
           >{field?.notes ?? ''}</textarea
         >

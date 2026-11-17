@@ -79,7 +79,7 @@
   {#if owner}
     <Form action={groups.update()} class="max-w-xl space-y-4" options={{ preserveScroll: true }}>
       {#snippet children({ errors, processing })}
-        <TextField label="Operation name" name="group[name]" value={group.name} error={errors.name} />
+        <TextField label="Operation name" name="group[name]" value={group.name} error={errors.name} required />
         <fieldset class="space-y-2" aria-labelledby="operation-rainfall">
           <FieldLabel as="legend" label="Rainfall" labelId="operation-rainfall" info="operation.rainfall" />
           <label class="flex items-start gap-3 text-sm">
@@ -180,6 +180,7 @@
             type="email"
             autocomplete="off"
             error={errors.email}
+            required
             hint="The email they sign in to WISP with. They need an account first."
           />
           <SelectField
@@ -224,7 +225,13 @@
   <Form action={groups.create()} class="space-y-3" resetOnSuccess>
     {#snippet children({ errors, processing })}
       <div class="grid items-start gap-3 sm:grid-cols-[1fr_auto]">
-        <TextField label="Start a new operation" name="group[name]" placeholder="Operation name" error={errors.name} />
+        <TextField
+          label="Start a new operation"
+          name="group[name]"
+          placeholder="Operation name"
+          error={errors.name}
+          required
+        />
         <Button type="submit" variant="secondary" class="sm:mt-6" disabled={processing}>Create</Button>
       </div>
     {/snippet}

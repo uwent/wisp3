@@ -106,6 +106,12 @@ export const FIELD_INFO = {
   'planting.end': {
     text: "The last day of this planting's water balance, suggested from the crop's typical season until you type a date. After it, WISP stops asking for its readings and leaves it out of the morning email.",
   },
+  'planting.season_length': {
+    text: "Days from emergence to harvest, if your variety or region runs longer or shorter than the crop's typical season. WISP stretches or shortens the crop's canopy curve, its growth and late-season decline, to fit, and suggests the harvest date from it.",
+  },
+  'planting.vine_kill': {
+    text: 'The day the vines are killed before harvest. From it the canopy ramps down to nothing over two weeks, while WISP keeps the water balance going until harvest so you can keep the soil moist through skin set.',
+  },
   'planting.size': {
     text: "Whole field for one crop on all of it; part of the field for a plot or bed, so several plantings can grow side by side. A part has its own irrigation and soil moisture readings, and shares the field's rain.",
   },
@@ -120,7 +126,7 @@ export const FIELD_INFO = {
     term: 'mad',
   },
   'planting.et_method': {
-    text: "What you'll measure to keep WISP's picture of the canopy, and so the crop's water use, on track. Percent cover suits every crop; leaf area index is for field corn, if you measure it.",
+    text: "What you'll measure to keep WISP's picture of the canopy, and so the crop's water use, on track. Percent cover suits every crop; leaf area index is for field corn and corn silage, if you measure it.",
   },
   'planting.canopy_curve': {
     text: "The shape WISP assumes for the canopy's growth until your readings correct it. Pick the one closest to how this crop fills in, or readings only if none fits.",

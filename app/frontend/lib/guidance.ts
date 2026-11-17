@@ -52,7 +52,7 @@ type GuidedPlanting = Pick<
   | 'vine_kill_crop'
   | 'vine_kill_date'
 > &
-  Partial<Pick<Planting, 'generic_curve_name'>>
+  Partial<Pick<Planting, 'generic_curve_name' | 'season_days' | 'typical_season_days'>>
 
 /** Days from vine kill until the canopy is gone (Canopy::VINE_KILL_DAYS) */
 export const VINE_KILL_DAYS = 14
@@ -103,6 +103,18 @@ function vineKillText(planting: GuidedPlanting): string {
     return `Enter the vine kill date in this ${crop}'s settings in Setup. From it the canopy ramps down to nothing over ${VINE_KILL_DAYS} days, and WISP keeps the water balance going until harvest (the end date), so you can keep the soil moist through skin set.`
   }
   return `Vine kill is ${formatDate(planting.vine_kill_date)}: the canopy ramps down to nothing by ${formatDate(addDays(planting.vine_kill_date, VINE_KILL_DAYS))}, and WISP keeps the water balance going until harvest on ${formatDate(planting.end_date)}. A canopy reading after vine kill is used as entered.`
+}
+
+/** The planting's own season length (G.7), stretching its curve: a sentence, or '' without one */
+function seasonText(planting: GuidedPlanting): string {
+  const own = planting.season_days
+  const typical = planting.typical_season_days
+  if (!own || !typical || own === typical || !planting.canopy_curve) return ''
+  const pct = Math.round(Math.abs(own / typical - 1) * 100)
+  const pace = pct
+    ? `, so the curve runs ${pct}% ${own > typical ? 'slower' : 'faster'}, its growth and decline alike`
+    : ''
+  return `This planting's season is set to ${own} days from emergence to harvest instead of the typical ${typical}${pace}. `
 }
 
 /** How readings combine with the crop's curve, in a sentence or two */
@@ -158,11 +170,11 @@ function methodText(planting: GuidedPlanting, fit: CanopyFit = null): string {
       : planting.canopy_curve
         ? `Without readings, WISP follows a ${crop.toLowerCase()} canopy curve from the emergence date (its source is on the About page). `
         : `This planting follows no canopy curve (readings only), so until you enter your first reading, the model treats the field as bare soil and counts only evaporation from the soil, and can't say when to irrigate. `
-    return `${crop} water use is modeled from percent canopy cover, the share of the ground shaded by the crop: the day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${interpolationText(planting, fit)} Enter percent cover about weekly from emergence until the canopy covers about ${FULL_COVER_PCT}% of the ground. For row crops, divide the average canopy width by the row spacing: 18 in wide on 36 in rows is 50%.`
+    return `${crop} water use is modeled from percent canopy cover, the share of the ground shaded by the crop: the day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${seasonText(planting)}${interpolationText(planting, fit)} Enter percent cover about weekly from emergence until the canopy covers about ${FULL_COVER_PCT}% of the ground. For row crops, divide the average canopy width by the row spacing: 18 in wide on 36 in rows is 50%.`
   }
   const lai = `${crop} water use is modeled from leaf area index (LAI), the leaf area of the crop per unit of ground beneath it: the day's reference ET is adjusted for how much of the light the leaves intercept.`
   // LAI is offered only for crops with a growth curve (Planting#lai_needs_curve), so far field corn's
-  return `${lai} Without readings, WISP estimates LAI from the emergence date using a field corn growth curve, which peaks at about 4 around 80 days after emergence. LAI readings you enter (from a ceptometer, for example) adjust the curve. ${interpolationText(planting, fit)}`
+  return `${lai} Without readings, WISP estimates LAI from the emergence date using a field corn growth curve, which peaks at about 4 around 80 days after emergence. ${seasonText(planting)}LAI readings you enter (from a ceptometer, for example) adjust the curve. ${interpolationText(planting, fit)}`
 }
 
 function reading(task: Task, today: string | null): Reading {

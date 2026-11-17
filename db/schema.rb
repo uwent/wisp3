@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_13_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -204,6 +204,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_120000) do
     t.boolean "own_soil", default: false, null: false
     t.string "canopy_curve_key"
     t.bigint "pivot_id", null: false
+    t.integer "season_days"
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["pivot_id"], name: "index_plantings_on_pivot_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
@@ -219,6 +220,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_120000) do
     t.check_constraint "max_root_zone_depth > 0::double precision", name: "plantings_mrzd_positive"
     t.check_constraint "partial OR NOT own_soil", name: "plantings_own_soil_partial"
     t.check_constraint "plot_length_ft IS NULL OR partial AND plot_length_ft > 0::double precision AND plot_width_ft > 0::double precision", name: "plantings_plot_partial"
+    t.check_constraint "season_days IS NULL OR season_days >= 20 AND season_days <= 250", name: "plantings_season_days_range"
     t.check_constraint "season_start <= end_date AND emergence_date <= end_date", name: "plantings_date_order"
     t.check_constraint "target_ad_pct IS NULL OR target_ad_pct >= 0::double precision AND target_ad_pct <= 100::double precision", name: "plantings_target_range"
     t.check_constraint "vine_kill_date IS NULL OR emergence_date <= vine_kill_date AND vine_kill_date <= end_date", name: "plantings_vine_kill_order"

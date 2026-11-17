@@ -4,7 +4,9 @@ import { units } from '@/lib/units'
 
 import {
   cardWhen,
+  canReplace,
   clashes,
+  dateProblems,
   nextSeason,
   plantingLabel,
   plantingWhen,
@@ -121,5 +123,44 @@ describe('an ended season on its card (G.6)', () => {
     expect(seasonStats({ ...quiet, irrigation_days: 1, irrigation: 1 }, imperial)[0].value).toBe('once, 1.00 in')
     expect(seasonStats(quiet, imperial).map((stat) => stat.value)).toEqual(['Never', 'No data', 'None', 'Never'])
     expect(seasonLine(quiet, imperial)).toBe('No irrigation · never below the irrigation point')
+  })
+})
+
+describe('dateProblems (G.13 part 3)', () => {
+  const dates = { seasonStart: '2026-04-01', emergence: '2026-05-01', end: '2026-09-30' }
+
+  it('accepts a season in order, a transplant emerging on its first day, and a crop up before it', () => {
+    expect(dateProblems(dates)).toEqual({})
+    expect(dateProblems({ ...dates, emergence: '2026-04-01' })).toEqual({})
+    expect(dateProblems({ ...dates, emergence: '2026-03-15' })).toEqual({})
+  })
+
+  it('needs harvest after emergence and the season start: at least a day', () => {
+    expect(dateProblems({ ...dates, end: '2026-05-01' }, 'Harvest or kill').end).toBe(
+      'Harvest or kill must be after emergence (May 1).',
+    )
+    expect(dateProblems({ seasonStart: '2026-04-01', emergence: '2026-03-01', end: '2026-04-01' }).end).toBe(
+      'Harvest must be after the season start (Apr 1).',
+    )
+  })
+
+  it('keeps vine kill between emergence and harvest', () => {
+    expect(dateProblems({ ...dates, vineKill: '2026-04-20' }).vineKill).toBe(
+      "Vine kill can't be before emergence (May 1).",
+    )
+    expect(dateProblems({ ...dates, vineKill: '2026-10-02' }).vineKill).toBe(
+      "Vine kill can't be after harvest (Sep 30).",
+    )
+    expect(dateProblems({ ...dates, vineKill: '2026-09-01' })).toEqual({})
+  })
+})
+
+describe('canReplace', () => {
+  it('ends another planting the day before only if that leaves it at least a day', () => {
+    const other = { season_start: '2026-04-01', emergence_date: '2026-04-15' }
+    expect(canReplace(other, '2026-07-01')).toBe(true)
+    expect(canReplace({ ...other, emergence_date: '2026-06-30' }, '2026-07-01')).toBe(false)
+    expect(canReplace({ ...other, emergence_date: '2026-06-29' }, '2026-07-01')).toBe(true)
+    expect(canReplace({ season_start: '2026-06-30', emergence_date: '2026-06-01' }, '2026-07-01')).toBe(false)
   })
 })

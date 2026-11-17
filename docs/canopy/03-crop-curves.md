@@ -111,3 +111,22 @@ cover is the method to recommend for every crop but field corn.
 
 Step A.4: backtest how readings scale these curves (scale factor, the band for breaking to
 straight lines, whether to fit a time shift too), on the Wisconsin 2026 series.
+
+## Onion, again (2026-11-16, PLAN.md Phase 8 G.7)
+
+G.7 tried FAO-56's stage lengths with Wisconsin dates: onions seeded mid-April and harvested late
+August (early types, 90–100 days) to mid or late September (110–120 days; Michigan State E1307,
+muck onions). Scaling the Mediterranean row (15/25/70/40 days from planting) to a 130–150 day
+season still ends the development stage 20–25 days after emergence, because FAO-56 ends it where
+the crop coefficient peaks, not at full ground cover; onion's upright leaves never close the row.
+No published onion CCx or CGC turned up (AquaCrop has no onion file; calibrations from Ethiopia,
+Kenya and Colombia report a maximum cover of about 45–60% under drip, without the parameters).
+So onion keeps the generic slow, partial cover curve (CCx 65%, 55% by day 70, 120 days), which
+already has that shape, and a planting's season length can stretch it.
+
+## Crops added in G.7
+
+Dry bean (AquaCrop DryBean to maturity), corn silage (field corn's curve, harvested at about 102
+days), oats (FAO-56 small grains shortened to Wisconsin's ~100-day season), sugar beet and grain
+sorghum (AquaCrop's calendar files). None has legacy readings to check against. Their values are in
+`db/reference/canopy_curves.yml`.

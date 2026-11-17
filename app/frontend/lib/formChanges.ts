@@ -75,10 +75,11 @@ function valueOf(control: Control): string {
   }
   if (control instanceof HTMLTextAreaElement) return control.value.trim() || NONE
   if (control.type === 'checkbox') return control.checked ? 'Yes' : 'No'
-  const value = control.value.trim()
+  const unit = control.dataset.unit
+  // A blank box standing for a default (NumberField's blankValue) reads as that default
+  const value = control.value.trim() || control.dataset.blank || ''
   if (!value) return NONE
   if (control.type === 'date') return formatDate(value, { year: true })
-  const unit = control.dataset.unit
   return unit ? `${value} ${unit}` : value
 }
 

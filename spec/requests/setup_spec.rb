@@ -171,6 +171,17 @@ RSpec.describe "Setup", type: :request do
       expect(Planting.defaults_for(potato, 2026)[:end_date]).to eq(Date.new(2026, 8, 14)) # May 1 + 105
     end
 
+    it "takes a planting's own season length, suggesting the harvest from it (G.7)" do
+      post plantings_path(year: 2027), params: {planting: {field_id: field.id, plant_id: potato.id, emergence_date: "2027-05-20",
+                                                           season_days: 90}}
+      expect(field.plantings.sole).to have_attributes(season_days: 90, end_date: Date.new(2027, 8, 18))
+      planting = field.plantings.sole
+      patch planting_path(planting), params: {planting: {season_days: ""}}
+      expect(planting.reload.season_days).to be_nil
+      patch planting_path(planting), params: {planting: {season_days: 400}}
+      expect(planting.reload.season_days).to be_nil
+    end
+
     it "refuses overlapping plantings on a field" do
       create(:planting, field:, plant: potato)
       post plantings_path(year: 2026), params: {planting: {field_id: field.id, plant_id: potato.id}}

@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { router } from '@inertiajs/svelte'
+  import { Link, router } from '@inertiajs/svelte'
 
   import Dialog from '@/lib/components/Dialog.svelte'
   import { nextSeason } from '@/lib/plantings'
   import PlantingForm from '@/lib/setup/PlantingForm.svelte'
-  import { plantings } from '@/routes'
+  import { changesMessage } from '@/lib/unsaved.svelte'
+  import { planting as plantingRoute, plantings } from '@/routes'
   import type { Field, GenericCurve, Plant, Planting, SoilType } from '@/types/serializers'
 
   // Adding or editing a planting on a field (Setup, the field page): the form, and for an existing
@@ -48,6 +49,13 @@
 
   const close = () => (isOpen = false)
 
+  // Leaving for the planting's page drops what's typed: ask first, listing it (G.13)
+  let dialog: Dialog | undefined = $state()
+  function leave() {
+    const message = changesMessage(dialog?.changes() ?? [], 'this form')
+    return message === null || confirm(message)
+  }
+
   function destroy() {
     if (!planting) return
     if (!confirm(`Delete this ${planting.plant_name} planting and its canopy readings? This can't be undone.`)) return
@@ -66,8 +74,18 @@
   )
 </script>
 
-<Dialog bind:open={isOpen} {title} wide guard>
+<Dialog bind:this={dialog} bind:open={isOpen} {title} wide guard>
   {#if field}
+    {#if planting}
+      <p class="-mt-2 mb-4 text-sm">
+        <Link
+          href={plantingRoute(planting.id)}
+          class="text-brand-600 underline underline-offset-2"
+          onBefore={leave}
+          onSuccess={close}>View this planting</Link
+        >
+      </p>
+    {/if}
     {#key key}
       <PlantingForm
         {planting}

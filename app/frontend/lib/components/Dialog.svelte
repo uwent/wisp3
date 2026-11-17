@@ -43,6 +43,11 @@
     }
   })
 
+  /** The changes made in a guarded dialog's form (for a link out of it to ask about) */
+  export function changes(): Change[] {
+    return guard && open ? tracker.changes() : []
+  }
+
   /** Escape, a click outside or ✕: closes, unless there are changes to ask about */
   function requestClose() {
     if (asking) return keepEditing()

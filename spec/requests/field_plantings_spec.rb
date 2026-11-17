@@ -140,6 +140,15 @@ RSpec.describe "Fields with several plantings", type: :request do
       expect(early.reload.end_date).to eq(Date.new(2026, 6, 30))
     end
 
+    it "doesn't end a planting on the day it emerged, which would leave it no season" do
+      early = create(:planting, field:, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 6, 30),
+        end_date: Date.new(2026, 9, 30))
+      post plantings_path, params: {planting: {field_id: field.id, plant_id: plant.id, season_start: "2026-07-01",
+                                               emergence_date: "2026-07-08", end_date: "2026-09-30"}, replace: "1"}
+      expect(early.reload.end_date).to eq(Date.new(2026, 9, 30))
+      expect(field.plantings.count).to eq(1) # still overlapping, so not saved
+    end
+
     it "leaves the other planting as it was when the new one can't be saved" do
       early = create(:planting, field:, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 4, 15),
         end_date: Date.new(2026, 9, 30))

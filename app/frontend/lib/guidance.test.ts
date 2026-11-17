@@ -161,4 +161,13 @@ describe('guidance', () => {
     expect(result.warning).toBe('Your canopy readings run about 9 days ahead of the potato curve.')
     expect(result.readings).toEqual([])
   })
+
+  it("says when a planting's own season length stretches its curve (G.7)", () => {
+    const text = (extra: object) => guidance({ ...potato, ...extra }, units('imperial'), [], today).paragraphs[0]
+    expect(text({ season_days: 126, typical_season_days: 105 })).toContain(
+      "This planting's season is set to 126 days from emergence to harvest instead of the typical 105, so the curve runs 20% slower, its growth and decline alike.",
+    )
+    expect(text({ season_days: 84, typical_season_days: 105 })).toContain('runs 20% faster')
+    expect(text({ season_days: null, typical_season_days: 105 })).not.toContain('season is set')
+  })
 })

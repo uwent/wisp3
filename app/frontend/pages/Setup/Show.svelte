@@ -3,6 +3,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
+  import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import FormFooter from '@/lib/components/FormFooter.svelte'
   import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import TextField from '@/lib/components/TextField.svelte'
@@ -22,6 +23,7 @@
     newQuickSetup,
     pivotGroups,
     pivots,
+    planting as plantingRoute,
     seasonCopies,
     seasonReport,
     setup,
@@ -103,6 +105,25 @@
   // Plantings have their own dialog (also on the field page)
   let plantingDialog: PlantingDialog | undefined = $state()
   const today = isoDate(new Date())
+
+  // ?planting=ID (the planting page's "Edit in setup"): scroll to its field and open its form, once
+  $effect(() => {
+    if (!plantingDialog) return
+    const url = new URL(location.href)
+    const id = Number(url.searchParams.get('planting'))
+    if (!id) return
+    url.searchParams.delete('planting')
+    history.replaceState(history.state, '', url)
+    for (const farm of farms)
+      for (const pivot of farm.pivots)
+        for (const field of pivot.fields) {
+          const found = field.plantings.find((planting) => planting.id === id)
+          if (!found) continue
+          document.getElementById(`setup-field-${field.id}`)?.scrollIntoView({ block: 'center' })
+          plantingDialog.open(field, found)
+          return
+        }
+  })
   let dialog = $state<DialogState | null>(null)
   let dialogOpen = $state(false)
   const open = (state: DialogState) => {
@@ -130,7 +151,7 @@
 <svelte:head><title>Setup · WISP</title></svelte:head>
 
 {#snippet fieldRow(pivot: Pivot, field: Field)}
-  <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
+  <li id="setup-field-{field.id}" class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
     <div class="min-w-40 flex-1">
       <p>
         <span class="text-ink-muted">Field:</span>
@@ -167,6 +188,7 @@
           {today}
           {units}
           label="Plantings on {field.name}, {year}"
+          href={(planting) => plantingRoute(planting.id).url}
           onselect={(planting) => plantingDialog?.open(field, planting)}
         />
       {:else}
@@ -431,7 +453,7 @@
           required
         />
         <div class="space-y-1">
-          <label for="farm-notes" class="block text-sm font-medium">Notes</label>
+          <FieldLabel label="Notes" for="farm-notes" optional />
           <textarea id="farm-notes" name="farm[notes]" rows="2" class="block w-full rounded-md text-sm"
             >{dialog?.kind === 'farm' ? (dialog.farm?.notes ?? '') : ''}</textarea
           >

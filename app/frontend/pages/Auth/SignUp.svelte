@@ -25,8 +25,20 @@
 >
   {#snippet children({ errors, processing })}
     <div class="grid gap-4 sm:grid-cols-2">
-      <TextField label="First name" name="user[first_name]" autocomplete="given-name" error={errors.first_name} />
-      <TextField label="Last name" name="user[last_name]" autocomplete="family-name" error={errors.last_name} />
+      <TextField
+        label="First name"
+        name="user[first_name]"
+        autocomplete="given-name"
+        error={errors.first_name}
+        optional
+      />
+      <TextField
+        label="Last name"
+        name="user[last_name]"
+        autocomplete="family-name"
+        error={errors.last_name}
+        optional
+      />
     </div>
     <TextField label="Email" name="user[email]" type="email" autocomplete="email" required error={errors.email} />
     <TextField

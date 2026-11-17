@@ -454,11 +454,29 @@
 
     <h2 id="crops">Crops</h2>
     <p>
-      Every crop can use percent cover. LAI is available only for crops that have an LAI growth curve, so far just field
-      corn; more will be added as validated curves become available. Typical root zone depths are from Table 3.4 of the
-      NRCS National Engineering Handbook, part 652 (mint from FAO-56), and suggested sensor depths are 25% and 75% of
-      the root zone depth. Every crop starts with a MAD of
-      {defaults.mad_pct}% and a season from April 1 to November 30; you can change any of these for your planting.
+      Every crop can use percent cover. LAI is available only for crops that have an LAI growth curve, so far field corn
+      and corn silage (the same curve); more will be added as validated curves become available. Typical root zone
+      depths are from Table 3.4 of the NRCS National Engineering Handbook, part 652 (mint from FAO-56; dry bean, sugar
+      beet and sorghum from University of Nebraska Extension tables), and suggested sensor depths are 25% and 75% of the
+      root zone depth. Every crop starts with a MAD of
+      {defaults.mad_pct}% and a season from April 1 to its typical harvest (November 30 for crops without one); you can
+      change any of these for your planting.
+    </p>
+    <p>
+      <strong>Season length.</strong> Each crop with a curve has a typical season, from emergence to harvest (on its card
+      below). If your variety or region runs longer or shorter, such as oats farther south or an earlier corn hybrid, set
+      the planting's season length: WISP stretches or shortens the crop's whole curve to fit, its growth and its decline alike,
+      and suggests the harvest date from it. Your canopy readings then adjust the stretched curve as they would the typical
+      one.
+    </p>
+    <p>
+      <strong>Winter crops.</strong> A planting can run across the new year, but WISP models the irrigated season: enter winter
+      wheat or rye from spring green-up, using that date as its emergence.
+    </p>
+    <p>
+      <strong>Crops WISP doesn't model.</strong> Cranberries are managed by flooding, frost protection and the water table
+      rather than by a root zone's water balance, and ginseng grows under shade, which changes its water use in ways WISP's
+      reference ET doesn't account for. Neither is in the crop list.
     </p>
     <div class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised">
       <table class="w-full text-sm">
@@ -564,10 +582,10 @@ t: days since emergence; t′: days since the decline starts</code
       <StatusBadge status="needs_canopy" size="sm" /> until then.
     </p>
     <p>
-      <strong>LAI</strong> is offered only for crops with an LAI curve, so far field corn, whose curve comes from the Wisconsin
-      Irrigation Scheduler (WIS v6.3.11) spreadsheet and peaks at about 4 around 80 days after emergence. Estimating LAI from
-      percent cover would put crop water use 20 to 40% below the percent cover method while the canopy develops, so WISP doesn't
-      offer it.
+      <strong>LAI</strong> is offered only for crops with an LAI curve, so far field corn (and corn silage), whose curve comes
+      from the Wisconsin Irrigation Scheduler (WIS v6.3.11) spreadsheet and peaks at about 4 around 80 days after emergence.
+      Estimating LAI from percent cover would put crop water use 20 to 40% below the percent cover method while the canopy
+      develops, so WISP doesn't offer it.
     </p>
     <p class="text-sm text-ink-muted">
       Each curve is drawn for a crop that emerges on May 15, over {curves[0]?.covers.length - 1} days.

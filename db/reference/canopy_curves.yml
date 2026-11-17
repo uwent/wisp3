@@ -36,7 +36,9 @@
 # adjusted to them), fitted_wi (fitted to them), published (not checked in Wisconsin), fao56
 # (derived from FAO-56 stage lengths, not checked in Wisconsin), generic (a generic shape for crops
 # without their own).
-# Crops not listed (onion, alfalfa, mint, asparagus, other) have no curve: readings only.
+# Crops not listed (onion, alfalfa, mint, asparagus, other, garden vegetables) have no curve of their own:
+# they follow a generic one (below). Onion has none of its own because no published canopy values
+# were found and FAO-56's stage lengths put 80% cover three weeks after emergence (docs/canopy/03).
 
 sources:
   aquacrop:
@@ -51,6 +53,9 @@ sources:
   fao56:
     citation: "Allen, R. G., Pereira, L. S., Raes, D. & Smith, M. (1998). Crop evapotranspiration: Guidelines for computing crop water requirements. FAO Irrigation and Drainage Paper 56, Table 11 (lengths of crop development stages)."
     url: https://www.fao.org/4/x0490e/x0490e0b.htm
+  uw_oat_trials:
+    citation: "University of Wisconsin–Madison Cereal Variety Trials (2023 and 2025). Oats and Barley Wisconsin Performance Tests: planting and harvest dates by location."
+    url: https://cerealvarietytrials.labs.wisc.edu/
   wisp_2026:
     citation: "Percent cover readings entered by Wisconsin growers in legacy WISP, 2026 season (anonymised; 37 screened series of potato, field corn, soybean, snap bean, shell peas and sweet corn). Analysis in docs/canopy/ in the WISP source code."
     url: https://github.com/uwent/wisp3/tree/main/docs/canopy
@@ -75,8 +80,8 @@ crops:
       irrigation that keeps the soil moist through skin set.
   field_corn:
     season: {days: 126, basis: "AquaCrop crop file: maturity 126 days after emergence (maize)"}
-    growth: {cc0: 0.0049, ccx: 0.96, cgc: 0.16312}
-    decline: {type: aquacrop, start_day: 101, cdc: 0.11691}
+    growth: &maize_growth {cc0: 0.0049, ccx: 0.96, cgc: 0.16312}
+    decline: &maize_decline {type: aquacrop, start_day: 101, cdc: 0.11691}
     basis: AquaCrop maize crop file (calendar days)
     confidence: matches_wi
     sources: [aquacrop, aquacrop_crop_files, wisp_2026]
@@ -143,7 +148,7 @@ crops:
     notes: Maximum cover is 80%.
   wheat:
     season: {days: 125, basis: "FAO-56 Table 11 (barley, oats and wheat, 35–45° latitude, 135 days from planting) less about 10 days to emergence"}
-    growth: {cc0: 0.0338, ccx: 0.95, cgc: 0.1084}
+    growth: &small_grains {cc0: 0.0338, ccx: 0.95, cgc: 0.1084}
     decline: {type: aquacrop, start_day: 95, cdc: 0.07697}
     basis: "FAO-56 spring small grains (35–45° latitude, March/April planting); decline at AquaCrop barley's rate"
     confidence: fao56
@@ -237,6 +242,61 @@ crops:
     confidence: fao56
     sources: [fao56, aquacrop]
     notes: Use the transplanting date as the emergence date.
+
+  corn_silage:
+    season: {days: 102, basis: "AquaCrop maize crop file: flowering 60 days after emergence, then about six weeks to half milk line, when corn is usually cut for silage"}
+    growth: *maize_growth
+    decline: *maize_decline
+    basis: AquaCrop maize crop file (calendar days), as field corn
+    confidence: matches_wi
+    sources: [aquacrop, aquacrop_crop_files, wisp_2026]
+    notes: >-
+      The same curve as field corn's, harvested earlier: the season ends near half milk line instead
+      of at grain maturity, so the late-season decline has barely begun. For a hybrid of a different
+      maturity, set the planting's season length. Like field corn, it can be tracked by LAI.
+  dry_bean:
+    season: {days: 109, basis: "AquaCrop crop file: maturity 109 days after emergence (dry bean)"}
+    growth: {cc0: 0.0132, ccx: 0.99, cgc: 0.11804}
+    decline: {type: aquacrop, start_day: 69, cdc: 0.08612}
+    basis: AquaCrop dry bean crop file (calendar days)
+    confidence: published
+    sources: [aquacrop, aquacrop_crop_files, wisp_2026]
+    notes: >-
+      For kidney, black, navy and other beans harvested dry. Its growth is snap bean's curve, which
+      matched Wisconsin snap bean readings in 2026 (50% cover about 31 days after emergence, 80% about
+      39); dry beans then ripen, and the canopy declines from day 69 to maturity.
+  oats:
+    season: {days: 100, basis: "UW oat and barley performance trials (planted mid-April to mid-May, harvested in early to late August): about 100 days from emergence"}
+    growth: *small_grains
+    decline: {type: aquacrop, start_day: 78, cdc: 0.07697}
+    basis: "FAO-56 spring small grains (barley, oats and wheat, 35–45° latitude), stage lengths shortened to Wisconsin oat seasons; decline at AquaCrop barley's rate"
+    confidence: fao56
+    sources: [fao56, aquacrop, uw_oat_trials]
+    notes: >-
+      Growth is the same as spring wheat's. FAO-56's 135-day season (from planting) is shortened to
+      the 110 days or so Wisconsin oats take, so the canopy starts to decline 78 days after emergence.
+      Farther south, or for a different variety, set the planting's season length.
+  sugar_beet:
+    season: {days: 138, basis: "AquaCrop crop file: maturity 138 days after emergence (sugar beet)"}
+    growth: {cc0: 0.001, ccx: 0.98, cgc: 0.13572}
+    decline: {type: aquacrop, start_day: 111, cdc: 0.07143}
+    basis: AquaCrop sugar beet crop file (calendar days)
+    confidence: published
+    sources: [aquacrop, aquacrop_crop_files]
+    notes: >-
+      Reaches 50% cover about 46 days after emergence. Rarely irrigated in Wisconsin; grown in
+      Minnesota, North Dakota and Michigan.
+  sorghum:
+    season: {days: 89, basis: "AquaCrop crop file: maturity 89 days after emergence (grain sorghum)"}
+    growth: {cc0: 0.00222, ccx: 0.90, cgc: 0.1815}
+    decline: {type: aquacrop, start_day: 78, cdc: 0.117}
+    basis: AquaCrop grain sorghum crop file (calendar days)
+    confidence: published
+    sources: [aquacrop, aquacrop_crop_files]
+    notes: >-
+      Grain sorghum; maximum cover is 90%. AquaCrop's season is a warm-climate one, short for the
+      Upper Midwest: set the planting's season length for your hybrid. Forage sorghum and
+      sorghum-sudangrass, which are cut and regrow, aren't modeled by this curve.
 
 generic:
   leafy_fast:

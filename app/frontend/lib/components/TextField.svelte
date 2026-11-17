@@ -10,6 +10,7 @@
     hint,
     info,
     value = $bindable(),
+    optional = false,
     class: className = '',
     id = `field-${name.replace(/[^a-z0-9]+/gi, '-')}`,
     ...rest
@@ -20,7 +21,12 @@
     hint?: string
     /** An info tip by the label (lib/fieldInfo.ts) */
     info?: FieldInfoKey
+    /** Says "Optional" by the label */
+    optional?: boolean
   } = $props()
+
+  // Required and still empty: marked until it has a value (G.13 part 3)
+  const missing = $derived(Boolean(rest.required) && !String(value ?? '').trim())
 
   const message = $derived(Array.isArray(error) ? error[0] : error)
   // Only one of the error or the hint is rendered, so only reference that one
@@ -28,12 +34,12 @@
 </script>
 
 <div class="space-y-1">
-  <FieldLabel {label} {info} for={id} />
+  <FieldLabel {label} {info} {missing} {optional} for={id} />
   <input
     {id}
     {name}
     class="block w-full rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm
-      {message ? 'border-status-irrigate' : ''} {className}"
+      {message ? 'border-status-irrigate' : missing ? 'border-l-4 border-l-brand-500' : ''} {className}"
     aria-invalid={message ? 'true' : undefined}
     aria-describedby={describedBy}
     bind:value

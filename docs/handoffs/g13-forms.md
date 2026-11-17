@@ -1,6 +1,6 @@
 # Handoff: G.13, forms that explain themselves and don't lose edits
 
-Written 2026-11-16 at the end of G.6, and updated at the end of the session that built part 1. Read PLAN.md's **G.13** first: its **Plan** paragraph is agreed with Ben (2026-11-16). Both parts are done (2026-11-16; PLAN.md G.13, *As built*); this handoff is kept for the record. Ben reviews the wording in the app as it lands, before `bin/ci`.
+Written 2026-11-16 at the end of G.6, and updated at the end of the session that built part 1. Read PLAN.md's **G.13** first: its **Plan** paragraph is agreed with Ben (2026-11-16). Parts 1 and 2 are done (2026-11-16; PLAN.md G.13, *As built*), and part 3 below (2026-11-16, with G.7); this handoff is kept for the record. Ben reviews the wording in the app as it lands, before `bin/ci`.
 
 ## Where things stand
 
@@ -30,3 +30,14 @@ What was built is in PLAN.md (G.13, *As built*). For part 2:
 - **Vitests:** `fieldInfo` (each tip two sentences at most; every key used).
 - **Axe** (`e2e/accessibility.spec.ts`): an open tip, in light and dark (tag `@phone`).
 - **Keyboard** (`e2e/keyboard.spec.ts`): Tab reaches an (i), Enter opens it, Escape closes it. A tip inside a guarded dialog: Escape must close the tip, not ask about the dialog's changes (bits-ui's nested layers should handle it; check).
+
+## 3. A first pass that isn't intimidating (done, with G.7)
+
+Built 2026-11-16 after Ben reviewed the planting form with G.7's season length; PLAN.md G.13 *Part 3* has the list. For whoever builds on it:
+
+- **Required and optional:** give a required control `required` and an optional one `optional`; `TextField`, `SelectField` and `NumberField` mark them (`FieldLabel`'s `missing` dot while empty, its "Optional"). Hand-written labels use `FieldLabel` with `missing`/`optional` directly. Both marks sit outside the `<label>` text, so tests still find inputs with `getByLabel(label, { exact: true })` and change lists read the plain label. Don't write "Optional." at the start of a hint any more.
+- **Defaults as placeholders:** `NumberField`'s `blankValue` (stored units) shows a default in a blank box and in change lists (`data-blank`); add `submitBlankValue` when the column needs a value (root zone, MAD), leave it off when blank means NULL and follow the default (season length, field capacity).
+- **The planting form** (`lib/setup/PlantingForm.svelte`) shows its sections only once a crop is chosen (`{#if !plant}`), so a test of a new planting picks the crop first; the canopy and water settings are inside a `<details>` ("Settings"), so a test opens it (`dialog.locator('summary').click()`) before using them. Inputs in the closed `<details>` are still submitted and tracked.
+- **Dates:** `dateProblems` and `canReplace` (`lib/plantings.ts`) mirror `Planting#dates_in_order` and `PlantingsController#replace_overlapping`: harvest after the season start and emergence (emergence may be on or before the start). Change them together.
+- **Setup's timeline bars** open a bits-ui menu (View this planting, Edit planting) anchored where the bar was clicked (`customAnchor` in `SeasonTimeline`); menus share their classes through `lib/components/menu.ts`. `/setup?planting=ID` opens that planting's form; the dialog's link out asks first through `Dialog#changes` and `changesMessage` (`lib/unsaved.svelte.ts`).
+- **Left for later:** Ben may want the same sections on other long forms (the field dialog, the system page); nothing else is open.

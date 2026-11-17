@@ -11,8 +11,10 @@
 </script>
 
 <script lang="ts" generics="T extends TimelinePlanting">
-  import { Link } from '@inertiajs/svelte'
+  import { Link, router } from '@inertiajs/svelte'
+  import { DropdownMenu } from 'bits-ui'
 
+  import { menuContent, menuItem } from '@/lib/components/menu'
   import { cropName, plantingWhen, plotSize, seasonDates } from '@/lib/plantings'
   import { timeline } from '@/lib/timeline'
   import type { Units } from '@/lib/units'
@@ -21,8 +23,9 @@
   // A field's plantings for one season as bars across it (PLAN.md Phase 8 G.11), like a Gantt chart,
   // each named by its crop and when it is (G.14):
   // plots in season together in rows of their own, successions along one row. Each bar opens its
-  // planting: onselect (Setup's form) or href (its page). status colors a bar's dot by its planting's
-  // status today; current marks the planting whose page this is.
+  // planting: href (its page), onselect (its form), or with both a small menu offering each (Setup's
+  // bars: the page or the form). status colors a bar's dot by its planting's status today; current
+  // marks the planting whose page this is.
   let {
     plantings,
     year,
@@ -60,6 +63,24 @@
     irrigate: 'bg-status-irrigate',
   }
   const ended = (p: T) => p.end_date < today
+  // A bar's menu opens under the bar where it was clicked (a bar can span the whole season), centred
+  // on the pointer; opened from the keyboard, under the bar's start. The anchor is a point on the
+  // bar's bottom edge, measured from the bar each time, so it follows the page as it scrolls.
+  let pointer = $state<{ id: number; bar: HTMLElement; offset: number } | null>(null)
+  function pointAt(id: number, event: PointerEvent) {
+    const bar = event.currentTarget as HTMLElement
+    pointer = { id, bar, offset: event.clientX - bar.getBoundingClientRect().left }
+  }
+  function anchorFor(id: number) {
+    if (pointer?.id !== id) return null
+    const { bar, offset } = pointer
+    return {
+      getBoundingClientRect: () => {
+        const rect = bar.getBoundingClientRect()
+        return new DOMRect(rect.left + offset, rect.top, 0, rect.height)
+      },
+    }
+  }
 </script>
 
 <div class="text-xs">
@@ -96,7 +117,31 @@
           <span class="truncate text-xs text-ink-muted">{plantingWhen(p, today)}</span>
           <span class="sr-only">{`, ${more(p)}`}</span>
         {/snippet}
-        {#if href}
+        {#if href && onselect}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger
+              class={classes}
+              style="left: {bar.left}%; width: {bar.width}%; top: {bar.row * 2 + 0.25}rem"
+              title={describe(p)}
+              onpointerdown={(event: PointerEvent) => pointAt(p.id, event)}
+              onkeydown={() => (pointer = null)}>{@render inside()}</DropdownMenu.Trigger
+            >
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                class={menuContent}
+                sideOffset={4}
+                customAnchor={anchorFor(p.id)}
+                align={pointer?.id === p.id ? 'center' : 'start'}
+                preventScroll={false}
+              >
+                <DropdownMenu.Item class={menuItem} onSelect={() => router.visit(href(p))}>
+                  View this planting
+                </DropdownMenu.Item>
+                <DropdownMenu.Item class={menuItem} onSelect={() => onselect(p)}>Edit planting</DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        {:else if href}
           <Link
             href={href(p)}
             class={classes}

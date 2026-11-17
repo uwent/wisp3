@@ -21,6 +21,9 @@
     unitLabel,
     scale = 1,
     hideLabel = false,
+    optional = false,
+    blankValue = null,
+    submitBlankValue = false,
     after,
     id = `field-${(name ?? label).replace(/[^a-z0-9]+/gi, '-')}`,
   }: {
@@ -45,6 +48,12 @@
     hideLabel?: boolean
     /** Beside the box, after its unit (a button that fills it) */
     after?: Snippet
+    /** Says "Optional" by the label */
+    optional?: boolean
+    /** The stored value a blank box stands for (a default), shown as its placeholder and in change lists */
+    blankValue?: number | null
+    /** Submit blankValue when the box is blank (a column that needs a value), not '' (NULL: the default) */
+    submitBlankValue?: boolean
     id?: string
   } = $props()
 
@@ -72,31 +81,37 @@
     if (parsed.ok) value = own = parsed.value === null || quantity ? parsed.value : parsed.value / scale
   }
 
+  // A default shown in the blank box: its placeholder, and what lib/formChanges.ts reads for blank
+  const blankText = $derived(blankValue === null ? undefined : show(blankValue))
+  const submitted = $derived(value ?? (submitBlankValue ? blankValue : null) ?? '')
   const message = $derived(localError ?? (Array.isArray(error) ? error[0] : error))
+  // Required and still empty: marked until it has a value (G.13 part 3)
+  const missing = $derived(required && !text.trim())
   const suffix = $derived(quantity ? units.label(quantity) : unitLabel)
 </script>
 
 <div class={hideLabel ? '' : 'space-y-1'}>
-  <FieldLabel {label} {info} for={id} hidden={hideLabel} />
+  <FieldLabel {label} {info} {missing} {optional} for={id} hidden={hideLabel} />
   <div class="flex items-center gap-2">
     <input
       {id}
       type="text"
       inputmode="decimal"
       class="block w-full min-w-0 rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm
-        {message ? 'border-status-irrigate' : ''}"
+        {message ? 'border-status-irrigate' : missing ? 'border-l-4 border-l-brand-500' : ''}"
       value={text}
       data-unit={suffix}
       oninput={(event) => update(event.currentTarget.value)}
       aria-invalid={message ? 'true' : undefined}
       aria-describedby={message ? `${id}-error` : hint ? `${id}-hint` : undefined}
+      data-blank={blankText}
       {required}
-      {placeholder}
+      placeholder={placeholder ?? blankText}
     />
     {#if suffix && !hideLabel}<span class="shrink-0 text-sm text-ink-muted">{suffix}</span>{/if}
     {@render after?.()}
   </div>
-  {#if name}<input type="hidden" {name} value={value ?? ''} />{/if}
+  {#if name}<input type="hidden" {name} value={submitted} />{/if}
   {#if message}
     <p id="{id}-error" class="text-xs text-status-irrigate-ink sm:text-sm">{message}</p>
   {:else if hint}

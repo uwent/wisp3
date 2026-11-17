@@ -122,6 +122,27 @@ test('setup dialogs and the account menu work from the keyboard', async ({ page 
   await expect(account).toBeFocused()
 })
 
+test("a planting bar's menu works from the keyboard (G.13 part 3)", async ({ page }) => {
+  await page.goto('/setup')
+  const bar = page.getByRole('list', { name: /^Plantings on Arlington 525/ }).getByRole('button', { name: /^Soybean/ })
+  await bar.focus()
+  await page.keyboard.press('Enter')
+  const menu = page.getByRole('menu')
+  await expect(menu).toBeVisible()
+  // From the keyboard it opens under the bar's start
+  const [barBox, menuBox] = [(await bar.boundingBox())!, (await menu.boundingBox())!]
+  expect(Math.abs(menuBox.x - barBox.x)).toBeLessThan(4)
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(bar).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(menu).toBeVisible()
+  await page.keyboard.press('End')
+  await expect(page.getByRole('menuitem', { name: 'Edit planting' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog', { name: /^Edit Soybean on Arlington 525/ })).toBeVisible()
+})
+
 test('a glossary term opens from the keyboard, and describes itself by its definition', async ({ page }) => {
   await page.goto(await firstPlantingPath(page))
   const term = page.getByRole('button', { name: 'allowable depletion' }).first()

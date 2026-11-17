@@ -5,6 +5,7 @@
   import { MediaQuery } from 'svelte/reactivity'
 
   import BrandBar from '@/lib/components/BrandBar.svelte'
+  import { menuContent, menuItem } from '@/lib/components/menu'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
   import { stickyHeight } from '@/lib/stickyBars'
@@ -116,11 +117,6 @@
     const { url, method } = currentGroups.update()
     router.visit(url, { method, data: { group_id: groupId } })
   }
-
-  const menuContent =
-    'z-50 min-w-48 rounded-md border border-line bg-surface-raised p-1 text-sm shadow-lg focus:outline-none'
-  const menuItem =
-    'flex cursor-pointer select-none items-center rounded px-3 py-2 data-highlighted:bg-brand-50 focus:outline-none'
 </script>
 
 <div class="flex flex-col {wide ? 'h-dvh' : 'min-h-dvh'}">

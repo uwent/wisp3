@@ -151,3 +151,42 @@ test('every page reflows at 320 px wide and at 200% text', async ({ page }) => {
     expect.soft(await overflow(), `${path} scrolls sideways with 200% text`).toBeLessThanOrEqual(0)
   }
 })
+
+test(
+  "Setup's planting dialog in sections, and a planting bar's menu (G.13 part 3)",
+  { tag: '@phone' },
+  async ({ page }) => {
+    await signIn(page)
+    const errors = watchErrors(page)
+    await page.goto('/setup')
+    const axe = async () => {
+      const { violations } = await new AxeBuilder({ page })
+        .include('[role="dialog"], [role="menu"]')
+        .withTags(TAGS)
+        .analyze()
+      expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
+    }
+    // A new planting: only the crop (required, still empty) until one is chosen
+    await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByText('Choose a crop')).toHaveCount(2) // the option and the hint
+    await axe()
+    // Its sections, with Settings open
+    await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Onion' })
+    await dialog.locator('summary').click()
+    await expect(dialog.getByRole('group', { name: 'Canopy curve' })).toBeVisible()
+    await axe()
+    await page.keyboard.press('Escape')
+    await dialog.getByRole('button', { name: 'Discard' }).click()
+    await expect(dialog).toBeHidden()
+    // A bar's menu: view or edit
+    await page
+      .getByRole('list', { name: /^Plantings on Arlington 525/ })
+      .getByRole('button')
+      .first()
+      .click()
+    await expect(page.getByRole('menu')).toBeVisible()
+    await axe()
+    expect(errors).toEqual([])
+  },
+)
