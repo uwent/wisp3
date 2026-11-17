@@ -4,14 +4,13 @@
   import { onMount, untrack } from 'svelte'
   import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 
-  import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
   import { boundsOf } from '@/lib/geo'
   import { type Boundary, boundaryBounds, boundaryCenter } from '@/lib/boundary'
-  import { basemapStyle, transformStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
+  import { type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
+  import { createMap } from '@/lib/map/createMap'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import MapLayersButton from '@/lib/map/MapLayersButton.svelte'
   import { followRoads } from '@/lib/map/roads.svelte'
-  import { loadMapLibre } from '@/lib/map/maplibre'
 
   import { addReferenceLayers, type Reference } from './references'
 
@@ -108,30 +107,15 @@
     await setBasemap(map, next, (id) => id === 'reference' || id === 'shapes')
   }
 
-  onMount(() => {
-    let removed = false
-    loadMapLibre().then((maplibre) => {
-      if (removed) return
-      const m = new maplibre.Map({
-        container,
-        style: basemapStyle(basemap),
-        transformStyle,
-        center: [-89.5, 44.25],
-        zoom: 8,
-        attributionControl: { compact: true, customAttribution: GEOCODER_ATTRIBUTION },
-      })
-      m.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right')
+  onMount(() =>
+    createMap(container, basemap, (m) =>
       m.on('load', () => {
         map = m
         addLayers(m)
         fit()
-      })
-    })
-    return () => {
-      removed = true
-      map?.remove()
-    }
-  })
+      }),
+    ),
+  )
 
   // A changed choice or selection recolors the shapes; a new file (fileKey) also fits the map to them
   $effect(() => {

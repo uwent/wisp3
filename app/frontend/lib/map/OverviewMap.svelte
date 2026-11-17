@@ -12,11 +12,11 @@
   import { readPalette } from '@/lib/charts/palette'
   import type { LngLat } from '@/lib/geo'
   import type { FieldCard } from '@/lib/overview'
-  import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
   import { onThemeChange } from '@/lib/theme'
   import type { UnitSystem } from '@/lib/units'
 
-  import { basemapStyle, transformStyle, type Basemap, LABEL_FONT, setBasemap } from './basemaps'
+  import { type Basemap, LABEL_FONT, setBasemap } from './basemaps'
+  import { createMap, DEFAULT_VIEW } from './createMap'
   import BasemapToggle from './BasemapToggle.svelte'
   import MapLayersButton from './MapLayersButton.svelte'
   import { followRoads } from './roads.svelte'
@@ -109,7 +109,6 @@
   const NAME_ZOOM = 13
   const PIVOT_ZOOM = 14
   // Wisconsin's Central Sands, where most WISP pivots are
-  const DEFAULT_VIEW = { center: [-89.5, 44.25] as LngLat, zoom: 8 }
 
   let wrapper: HTMLDivElement
   let container: HTMLDivElement
@@ -391,82 +390,78 @@
   }
 
   onMount(() => {
-    let disposed = false
     const cleanups: (() => void)[] = []
 
-    loadMapLibre().then((maplibre) => {
-      if (disposed) return
-      const m = new maplibre.Map({
-        container,
-        style: basemapStyle(basemap),
-        transformStyle,
-        ...(view ?? DEFAULT_VIEW),
-        attributionControl: false,
-      })
-      map = m
-      m.addControl(new maplibre.AttributionControl({ compact: true, customAttribution: GEOCODER_ATTRIBUTION }))
-      m.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right')
-      m.addControl(new ButtonControl('Fit all irrigation systems', FIT_ICON, () => fit()), 'top-right')
-      m.addControl(
-        new maplibre.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false }),
-        'top-right',
-      )
-      m.addControl(new maplibre.FullscreenControl({ container: wrapper }), 'top-right')
-      m.addControl(new maplibre.ScaleControl({ unit: unitSystem === 'metric' ? 'metric' : 'imperial' }), 'bottom-left')
-      if (!view) fit(pivots, false)
+    const remove = createMap(
+      container,
+      basemap,
+      (m, maplibre) => {
+        map = m
+        m.addControl(new ButtonControl('Fit all irrigation systems', FIT_ICON, () => fit()), 'top-right')
+        m.addControl(
+          new maplibre.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false }),
+          'top-right',
+        )
+        m.addControl(new maplibre.FullscreenControl({ container: wrapper }), 'top-right')
+        m.addControl(
+          new maplibre.ScaleControl({ unit: unitSystem === 'metric' ? 'metric' : 'imperial' }),
+          'bottom-left',
+        )
+        if (!view) fit(pivots, false)
 
-      m.on('load', () => {
-        addPivotLayers(m)
-        syncMarkers()
-        onload?.(m)
-      })
-      m.on('click', onClick)
-      // A style image dropped with the old style (a basemap change) comes back
-      m.on('styleimagemissing', () => addGlyphImages(m))
-      // Over a system, field, plot or group: say what it is beside the pointer, and point at what
-      // a click would select
-      // The hover label: over the map and its markers, cleared on leaving, recomputed as the map moves
-      // under a still pointer
-      const canvasContainer = m.getCanvasContainer()
-      canvasContainer.addEventListener('pointermove', onPointer)
-      canvasContainer.addEventListener('pointerleave', () => {
-        lastPointer = null
-        hover = null
-      })
-      m.on('moveend', () => lastPointer && onPointer(lastPointer))
-      m.on('zoom', () => (zoom = m.getZoom()))
-      m.on('moveend', () => {
-        const { lng, lat } = m.getCenter()
-        onviewchange({ center: [lng, lat], zoom: Math.round(m.getZoom() * 100) / 100 })
-      })
-      zoom = m.getZoom()
+        m.on('load', () => {
+          addPivotLayers(m)
+          syncMarkers()
+          onload?.(m)
+        })
+        m.on('click', onClick)
+        // A style image dropped with the old style (a basemap change) comes back
+        m.on('styleimagemissing', () => addGlyphImages(m))
+        // Over a system, field, plot or group: say what it is beside the pointer, and point at what
+        // a click would select
+        // The hover label: over the map and its markers, cleared on leaving, recomputed as the map moves
+        // under a still pointer
+        const canvasContainer = m.getCanvasContainer()
+        canvasContainer.addEventListener('pointermove', onPointer)
+        canvasContainer.addEventListener('pointerleave', () => {
+          lastPointer = null
+          hover = null
+        })
+        m.on('moveend', () => lastPointer && onPointer(lastPointer))
+        m.on('zoom', () => (zoom = m.getZoom()))
+        m.on('moveend', () => {
+          const { lng, lat } = m.getCenter()
+          onviewchange({ center: [lng, lat], zoom: Math.round(m.getZoom() * 100) / 100 })
+        })
+        zoom = m.getZoom()
 
-      // The side list opening and closing resizes the map without resizing the window
-      const resize = new ResizeObserver(() => m.resize())
-      resize.observe(container)
-      cleanups.push(() => resize.disconnect())
+        // The side list opening and closing resizes the map without resizing the window
+        const resize = new ResizeObserver(() => m.resize())
+        resize.observe(container)
+        cleanups.push(() => resize.disconnect())
 
-      // Status colors follow the light or dark theme
-      cleanups.push(
-        onThemeChange(() => {
-          const palette = readPalette()
-          setSystemColors(m, palette)
-          if (!m.getLayer(FIELD_LAYER)) return
-          m.setPaintProperty(FIELD_LAYER, 'fill-color', palette.field)
-          m.setPaintProperty('fields-casing', 'line-color', palette.fieldCasing)
-          m.setPaintProperty('fields-line', 'line-color', palette.field)
-        }),
-      )
-    })
+        // Status colors follow the light or dark theme
+        cleanups.push(
+          onThemeChange(() => {
+            const palette = readPalette()
+            setSystemColors(m, palette)
+            if (!m.getLayer(FIELD_LAYER)) return
+            m.setPaintProperty(FIELD_LAYER, 'fill-color', palette.field)
+            m.setPaintProperty('fields-casing', 'line-color', palette.fieldCasing)
+            m.setPaintProperty('fields-line', 'line-color', palette.field)
+          }),
+        )
+      },
+      view ?? {},
+    )
 
     return () => {
-      disposed = true
       cancelAnimationFrame(frame)
       cleanups.forEach((cleanup) => cleanup())
       for (const { component } of [...markers.values(), ...fieldMarkers.values()]) unmount(component)
       markers.clear()
       fieldMarkers.clear()
-      map?.remove()
+      remove()
       map = undefined
     }
   })

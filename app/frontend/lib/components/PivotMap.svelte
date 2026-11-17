@@ -5,7 +5,6 @@
   import type { GeoJSONSource, Map as MapLibreMap, Marker as MarkerClass } from 'maplibre-gl'
 
   import Button from '@/lib/components/Button.svelte'
-  import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
   import {
     bearing,
     DEFAULT_RADIUS_FT,
@@ -32,10 +31,10 @@
     type PivotShape,
     type ShapeDraft,
   } from '@/lib/geo'
-  import { basemapStyle, transformStyle, LABEL_FONT, setBasemap, type Basemap } from '@/lib/map/basemaps'
+  import { LABEL_FONT, setBasemap, type Basemap } from '@/lib/map/basemaps'
+  import { createMap } from '@/lib/map/createMap'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { resizeCursor, ROTATE_CURSOR } from '@/lib/map/cursors'
-  import { loadMapLibre } from '@/lib/map/maplibre'
   import PlaceSearch from '@/lib/map/PlaceSearch.svelte'
   import { SOIL_SOURCE, SoilTypesLayer } from '@/lib/map/soilTypes.svelte'
   import SoilTypesHover from '@/lib/map/SoilTypesHover.svelte'
@@ -74,7 +73,6 @@
   } = $props()
 
   // Wisconsin's Central Sands, where most WISP pivots are
-  const DEFAULT_VIEW = { center: [-89.5, 44.25] as LngLat, zoom: 8 }
   const PIVOT_ZOOM = 14
   // The least an arc can sweep with its handles
   const MIN_SWEEP_DEG = 5
@@ -475,21 +473,10 @@
     )
   }
 
-  onMount(() => {
-    let disposed = false
-    loadMapLibre().then((maplibre) => {
-      if (disposed) return
-      const { Map, NavigationControl, LngLatBounds, AttributionControl } = maplibre
+  onMount(() =>
+    createMap(container, basemap, (m, maplibre) => {
+      const { LngLatBounds } = maplibre
       Marker = maplibre.Marker
-      const m = new Map({
-        container,
-        style: basemapStyle(basemap),
-        transformStyle,
-        ...DEFAULT_VIEW,
-        attributionControl: false,
-      })
-      m.addControl(new AttributionControl({ compact: true, customAttribution: GEOCODER_ATTRIBUTION }), 'bottom-right')
-      m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
       if (center) {
         m.jumpTo({ center, zoom: PIVOT_ZOOM })
       } else if (others.length) {
@@ -524,12 +511,8 @@
         }
       })
       map = m
-    })
-    return () => {
-      disposed = true
-      map?.remove()
-    }
-  })
+    }),
+  )
 </script>
 
 <div class="space-y-2">

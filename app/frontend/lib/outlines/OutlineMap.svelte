@@ -10,12 +10,11 @@
   import type { GeoJSONStoreFeatures, TerraDraw as TerraDrawClass } from 'terra-draw'
 
   import Button from '@/lib/components/Button.svelte'
-  import { GEOCODER_ATTRIBUTION } from '@/lib/geocode'
   import { type LngLat } from '@/lib/geo'
   import { type Boundary, boundaryBounds, boundaryFrom, boundaryRing, pathCrossesItself } from '@/lib/boundary'
-  import { basemapStyle, transformStyle, type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
+  import { type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
+  import { createMap } from '@/lib/map/createMap'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
-  import { loadMapLibre } from '@/lib/map/maplibre'
   import { SOIL_SOURCE, SoilTypesLayer, viewArea } from '@/lib/map/soilTypes.svelte'
   import SoilTypesHover from '@/lib/map/SoilTypesHover.svelte'
   import SoilTypesLegend from '@/lib/map/SoilTypesLegend.svelte'
@@ -70,8 +69,6 @@
   const { system: SYSTEM, systemCasing: SYSTEM_CASING } = palette
   const OWN_SOURCES = ['reference', 'saved', 'shape-edge', 'shape-arrow', SOIL_SOURCE]
   const ARROWHEAD = 'shape-arrowhead'
-  // Wisconsin's Central Sands, where most WISP fields are
-  const DEFAULT_VIEW = { center: [-89.5, 44.25] as LngLat, zoom: 8 }
 
   let container: HTMLDivElement
   let map = $state<MapLibreMap>()
@@ -400,39 +397,31 @@
 
   onMount(() => {
     let removed = false
-    // Removed on leaving even before it loads (map is set on load)
-    let created: MapLibreMap | undefined
-    loadMapLibre().then((maplibre) => {
-      if (removed) return
-      const m = (created = new maplibre.Map({
-        container,
-        style: basemapStyle(basemap),
-        transformStyle,
-        center: DEFAULT_VIEW.center,
-        zoom: DEFAULT_VIEW.zoom,
-        attributionControl: { compact: true, customAttribution: GEOCODER_ATTRIBUTION },
-        // Double-clicks finish drawing rather than zoom
-        doubleClickZoom: false,
-      }))
-      m.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right')
-      // A basemap switch drops the arrowhead's image with the style
-      m.on('styleimagemissing', (event) => {
-        if (event.id === ARROWHEAD) addArrowhead(m)
-      })
-      m.on('load', () => {
-        map = m
-        addReferenceLayers(m, references)
-        addShapeLayers(m)
-        addArrowLayers(m)
-        soilLayer.attach(m)
-        fit()
-        startDraw(m, () => !removed)
-      })
-    })
+    const remove = createMap(
+      container,
+      basemap,
+      (m) => {
+        // A basemap switch drops the arrowhead's image with the style
+        m.on('styleimagemissing', (event) => {
+          if (event.id === ARROWHEAD) addArrowhead(m)
+        })
+        m.on('load', () => {
+          map = m
+          addReferenceLayers(m, references)
+          addShapeLayers(m)
+          addArrowLayers(m)
+          soilLayer.attach(m)
+          fit()
+          startDraw(m, () => !removed)
+        })
+      },
+      // Double-clicks finish drawing rather than zoom
+      { doubleClickZoom: false },
+    )
     return () => {
       removed = true
       draw?.stop()
-      created?.remove()
+      remove()
     }
   })
 
