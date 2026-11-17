@@ -3,16 +3,15 @@
 
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
-  import FieldLabel from '@/lib/components/FieldLabel.svelte'
-  import FormFooter from '@/lib/components/FormFooter.svelte'
   import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
-  import TextField from '@/lib/components/TextField.svelte'
   import { today as todayDate } from '@/lib/dates'
   import { isPoint, KIND_NOUNS, shapeAcres, systemName } from '@/lib/geo'
   import { mayDelete } from '@/lib/permissions'
   import { units as unitsFor } from '@/lib/units'
   import { outlineProblems } from '@/lib/outlines/problems'
+  import FarmForm from '@/lib/setup/FarmForm.svelte'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
+  import PivotGroupForm from '@/lib/setup/PivotGroupForm.svelte'
   import NextSteps from '@/lib/setup/NextSteps.svelte'
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import {
@@ -438,90 +437,25 @@
 
 <Dialog bind:open={dialogOpen} title={dialogTitle} guard>
   {#if dialog?.kind === 'farm'}
-    <Form
-      action={dialog.farm ? farmRoutes.update(dialog.farm.id) : farmRoutes.create()}
-      class="space-y-4"
-      options={{ preserveScroll: true, preserveState: true }}
-      onSuccess={close}
-    >
-      {#snippet children({ errors, processing })}
-        <TextField
-          label="Farm name"
-          name="farm[name]"
-          value={dialog?.kind === 'farm' ? (dialog.farm?.name ?? '') : ''}
-          info="farm.name"
-          error={errors.name}
-          required
-        />
-        <div class="space-y-1">
-          <FieldLabel label="Notes" for="farm-notes" optional />
-          <textarea id="farm-notes" name="farm[notes]" rows="2" class="block w-full rounded-md text-sm"
-            >{dialog?.kind === 'farm' ? (dialog.farm?.notes ?? '') : ''}</textarea
-          >
-        </div>
-        {@const farm = dialog?.kind === 'farm' ? dialog.farm : undefined}
-        <FormFooter
-          ondelete={farm && owner
-            ? () => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its irrigation systems and fields`)
-            : undefined}
-          deleteLabel="Delete this farm"
-        >
-          <Button type="submit" disabled={processing}>Save</Button>
-        </FormFooter>
-      {/snippet}
-    </Form>
+    {@const farm = dialog.farm}
+    <FarmForm
+      {farm}
+      ondone={close}
+      ondelete={farm && owner
+        ? () => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its irrigation systems and fields`)
+        : undefined}
+    />
   {:else if dialog?.kind === 'pivotGroup'}
-    {@const { farm, group: pivotGroup } = dialog}
-    <Form
-      action={pivotGroup ? pivotGroups.update(pivotGroup.id) : pivotGroups.create()}
-      class="space-y-4"
-      options={{ preserveScroll: true, preserveState: true }}
-      onSuccess={close}
-    >
-      {#snippet children({ errors, processing })}
-        {#if !pivotGroup}<input type="hidden" name="pivot_group[farm_id]" value={farm.id} />{/if}
-        <TextField
-          label="Group name"
-          name="pivot_group[name]"
-          value={pivotGroup?.name ?? ''}
-          placeholder="e.g. East half"
-          info="pivot_group.name"
-          error={errors.name}
-          required
-        />
-        <fieldset class="space-y-1">
-          <legend class="text-sm font-medium">Irrigation systems in this group</legend>
-          <input type="hidden" name="pivot_group[pivot_ids][]" value="" />
-          {#each farm.pivots as pivot (pivot.id)}
-            {@const other = farm.pivot_groups.find((g) => g.id === pivot.pivot_group_id && g.id !== pivotGroup?.id)}
-            <label class="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                class="rounded"
-                name="pivot_group[pivot_ids][]"
-                value={pivot.id}
-                checked={pivotGroup !== undefined && pivot.pivot_group_id === pivotGroup.id}
-              />
-              {systemName(pivot)}
-              {#if other}<span class="text-xs text-ink-muted">{`(now in ${other.name})`}</span>{/if}
-            </label>
-          {/each}
-          <p class="text-xs text-ink-muted">A system is in one group at most; checking it here moves it.</p>
-        </fieldset>
-        <FormFooter
-          ondelete={pivotGroup && mayDelete(pivotGroup, page.props.auth)
-            ? () =>
-                destroy(
-                  pivotGroups.destroy(pivotGroup.id),
-                  `the group ${pivotGroup.name} (its irrigation systems stay, ungrouped)`,
-                )
-            : undefined}
-          deleteLabel="Delete this group"
-        >
-          <Button type="submit" disabled={processing}>Save</Button>
-        </FormFooter>
-      {/snippet}
-    </Form>
+    {@const { farm, group } = dialog}
+    <PivotGroupForm
+      {farm}
+      {group}
+      ondone={close}
+      ondelete={group && mayDelete(group, page.props.auth)
+        ? () =>
+            destroy(pivotGroups.destroy(group.id), `the group ${group.name} (its irrigation systems stay, ungrouped)`)
+        : undefined}
+    />
   {:else if dialog?.kind === 'field'}
     <FieldForm
       field={dialog.field}

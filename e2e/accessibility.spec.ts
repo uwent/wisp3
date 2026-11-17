@@ -42,7 +42,10 @@ async function scan(page: Page, path: string) {
   }
   expect
     .soft(
-      violations.map((violation) => `${violation.id} (${violation.nodes.length}): ${violation.help}`),
+      violations.map(
+        (violation) =>
+          `${violation.id} (${violation.nodes.length}): ${violation.help} at ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}${violation.nodes[0]?.failureSummary ? ` (${violation.nodes[0].failureSummary.replace(/\s+/g, ' ')})` : ''}`,
+      ),
       `${path} has accessibility violations`,
     )
     .toEqual([])

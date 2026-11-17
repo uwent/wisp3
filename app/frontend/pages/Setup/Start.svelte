@@ -10,6 +10,7 @@
   import { isPoint, KIND_NOUNS, MAX_LINEAR_LENGTH_FT, MAX_LINEAR_TRAVEL_FT, MAX_RADIUS_FT, shapeDraft } from '@/lib/geo'
   import { MAX_LATITUDE, MAX_LONGITUDE, MIN_LATITUDE, MIN_LONGITUDE } from '@/lib/boundary'
   import { soilFit, soilOptionsByShare } from '@/lib/soils'
+  import SoilFitNote from '@/lib/setup/SoilFitNote.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { quickSetups } from '@/routes'
@@ -296,14 +297,10 @@
                   note={fit(row.soilTypeId) ? soilNote : undefined}
                 />
                 {#snippet soilNote()}
-                  {@const { note, main, absent } = fit(row.soilTypeId)!}
-                  <p class={absent ? 'text-status-caution-ink' : 'text-ink-muted'}>{note}</p>
-                  {#if main}<button
-                      type="button"
-                      class="mt-0.5 block text-brand-600 underline underline-offset-2"
-                      onclick={() => ((row.soilTypeId = String(main.id)), (row.soilChosen = true))}
-                      >Use {main.name}</button
-                    >{/if}
+                  <SoilFitNote
+                    fit={fit(row.soilTypeId)!}
+                    onuse={(id) => ((row.soilTypeId = String(id)), (row.soilChosen = true))}
+                  />
                 {/snippet}
                 {#if rows.length > 1}
                   <div class="sm:col-span-4">

@@ -780,7 +780,12 @@ test('daily entry saves rain for a field', { tag: '@phone' }, async ({ page }) =
     .getByLabel(/^Rain on /)
     .first()
     .fill('')
-  await page.getByRole('button', { name: /^Save / }).click()
+  // Cleared once the save is done (the box is empty before it is), so the next test starts from the seed
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() !== 'GET' && response.url().includes('/daily')),
+    page.getByRole('button', { name: /^Save / }).click(),
+  ])
+  await page.reload()
   await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('')
 })
 

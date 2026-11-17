@@ -1,6 +1,7 @@
 <script lang="ts">
   import SelectField from '@/lib/components/SelectField.svelte'
   import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
+  import SoilFitNote from './SoilFitNote.svelte'
   import type { FieldInfoKey } from '@/lib/fieldInfo'
   import { isPoint, type PivotShape } from '@/lib/geo'
   import { type Boundary } from '@/lib/boundary'
@@ -106,14 +107,7 @@
       note={fit ? soilNote : undefined}
     />
   {/snippet}
-  {#snippet soilNote()}
-    <p class={fit!.absent ? 'text-status-caution-ink' : 'text-ink-muted'}>{fit!.note}</p>
-    {#if fit!.main}<button
-        type="button"
-        class="mt-0.5 block text-brand-600 underline underline-offset-2"
-        onclick={() => pick(String(fit!.main!.id))}>Use {fit!.main.name}</button
-      >{/if}
-  {/snippet}
+  {#snippet soilNote()}<SoilFitNote fit={fit!} onuse={(id) => pick(String(id))} />{/snippet}
   {#if boundary}
     <SoilSurvey {boundary} {soilTypes} onsuggest={survey} />
   {:else if system}
