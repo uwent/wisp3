@@ -36,8 +36,6 @@ export const STATUSES: Status[] = ['irrigate', 'caution', 'needs_canopy', 'ok', 
 export const updatingIds = (farms: FarmGroup[]) =>
   farms.flatMap((farm) => farm.pivots.filter((pivot) => pivot.weather_updating).map((pivot) => pivot.id))
 
-export const anyUpdating = (farms: FarmGroup[]) => updatingIds(farms).length > 0
-
 /** In season, with a status (not upcoming, ended, or waiting for weather) */
 export const summaryActive = (summary: PlantingSummary | null) =>
   summary?.phase === 'active' && !summary.weather_pending && summary.status !== null

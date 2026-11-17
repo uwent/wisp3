@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { Link, page, router } from '@inertiajs/svelte'
+  import { Link, page } from '@inertiajs/svelte'
   import { systemName } from '@/lib/geo'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import GettingStarted from '@/lib/components/GettingStarted.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
-  import { anyUpdating, updatingIds, type FarmGroup, type FieldCard as Card } from '@/lib/overview'
-  import { poll, weatherUpdate } from '@/lib/poll'
+  import { updatingIds, type FarmGroup, type FieldCard as Card } from '@/lib/overview'
+  import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { dailyEntries, pivots, setup } from '@/routes'
 
@@ -26,18 +26,8 @@
   let farmId = $state<number | 'all'>('all')
 
   // While a pivot's weather is on its way, reload the cards until it lands
-  const updating = $derived(anyUpdating(farms))
-  let timedOut = $state(false)
-  $effect(() => {
-    if (!updating) return
-    timedOut = false
-    return poll(
-      () => updatingIds(farms),
-      (done) => router.reload({ only: ['farms'], onFinish: done }),
-      { ongiveup: () => (timedOut = true) },
-    )
-  })
-  const weatherFor = (pivot: { weather_updating: boolean }) => weatherUpdate(pivot.weather_updating, timedOut)
+  const weatherWait = pollWeather(() => updatingIds(farms), ['farms'])
+  const weatherFor = (pivot: { weather_updating: boolean }) => weatherWait.state(pivot.weather_updating)
 
   // Fields whose season has ended go after the rest, and so do pivots and farms with only ended fields
   // (the sort is stable, so names stay in order otherwise)

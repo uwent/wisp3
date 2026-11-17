@@ -19,12 +19,20 @@
   import { guidance as guidanceFor } from '@/lib/guidance'
   import { outlook as outlookFor } from '@/lib/outlook'
   import { plotSize } from '@/lib/plantings'
-  import { poll, weatherUpdate } from '@/lib/poll'
+  import {
+    cellLabel,
+    cellText,
+    cellValue,
+    depthUnitName as depthUnit,
+    irrigationFrom,
+    type DayColumn,
+  } from '@/lib/fieldDays'
+  import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
   import { seasonStats } from '@/lib/seasonStats'
   import { stickyHeight } from '@/lib/stickyBars'
-  import { formatNumber, parseNumber, units as unitsFor } from '@/lib/units'
+  import { formatNumber, units as unitsFor } from '@/lib/units'
   import {
     dailyEntries,
     exportPlanting,
@@ -110,17 +118,8 @@
   }
 
   // While the pivot's weather is being fetched, reload the season until it lands
-  let timedOut = $state(false)
-  $effect(() => {
-    if (!weather_updating) return
-    timedOut = false
-    return poll(
-      () => (weather_updating ? [pivot.id] : []),
-      (done) => router.reload({ onFinish: done }),
-      { ongiveup: () => (timedOut = true) },
-    )
-  })
-  const weatherState = $derived(weatherUpdate(weather_updating, timedOut))
+  const weatherWait = pollWeather(() => (weather_updating ? [pivot.id] : []))
+  const weatherState = $derived(weatherWait.state(weather_updating))
   const lai = $derived(planting?.et_method === 'lai')
   const rows = $derived([...days].reverse())
   const outlook = $derived(summary && outlookFor(summary, units))
@@ -177,7 +176,7 @@
     }
   }
   const thresholdName = $derived(summary?.target_in === null ? 'of reaching 0 AD' : 'of falling below target')
-  const depthUnitName = $derived(units.label('depth') === 'mm' ? 'millimeters' : 'inches')
+  const depthUnitName = $derived(depthUnit(units))
   let chartMode = $state<FieldChartMode>('ad')
   // The season summary: open, like every section, until closed; links in the summary open it
   let summaryOpen = $state(true)
@@ -197,41 +196,19 @@
   const dayCount = (n: number) => (n === 1 ? '1 day' : `${n} days`)
   const counted = (n: number) => (summary?.phase === 'ended' ? ` (${dayCount(n)})` : '')
 
-  type Column = 'rain_in' | 'irrigation_in' | 'soil_moisture_pct' | 'canopy' | 'notes'
+  const inputText = (day: FieldDay, column: DayColumn) => cellText(day, column, units)
 
-  function inputText(day: FieldDay, column: Column): string {
-    switch (column) {
-      case 'rain_in':
-        return day.rain_source === 'entered' ? units.input('depth', day.rain) : ''
-      case 'irrigation_in':
-        return day.irrigation_source === 'entered' ? units.input('depth', day.irrigation) : ''
-      case 'soil_moisture_pct':
-        return day.moisture_source === 'entered' ? String(day.soil_moisture_pct) : ''
-      case 'canopy':
-        return day.canopy_entered === null ? '' : String(day.canopy_entered)
-      case 'notes':
-        return day.notes ?? ''
-    }
-  }
-
-  async function saveCell(day: FieldDay, column: Column, text: string): Promise<string | null> {
-    let value: number | string | null
-    if (column === 'notes') {
-      value = text.trim() || null
-    } else {
-      const parsed = column === 'rain_in' || column === 'irrigation_in' ? units.parse('depth', text) : parseNumber(text)
-      if (!parsed.ok) return parsed.error
-      value = parsed.value
-    }
+  async function saveCell(day: FieldDay, column: DayColumn, text: string): Promise<string | null> {
+    const parsed = cellValue(column, text, units)
+    if (!parsed.ok) return parsed.error
     // Only the balance changes; the weather and the rest of the page stay as they are
     return save(
       fieldDays.update({ fieldId: field.id, date: day.date }),
-      { day: { [column]: value }, planting_id: planting!.id },
+      { day: { [column]: parsed.value }, planting_id: planting!.id },
       { only: ['summary', 'days', 'forecast_days', 'errors'] },
     )
   }
 
-  const cellLabel = (day: FieldDay, what: string) => `${what}, ${formatDate(day.date, { weekday: true })}`
   const depth = (value: number | null) => units.format('depth', value, { unit: false })
   // "3 days ago" during the season; a plain date once it's over
   const when = (date: string) =>
@@ -786,9 +763,7 @@
                       {:else}
                         <span class="font-medium">{depth(day.irrigation)}</span>
                         {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600"
-                            >{day.irrigation_source === 'pivot'
-                              ? `from ${noun}`
-                              : `from ${day.irrigation_source}`}</span
+                            >{irrigationFrom(day.irrigation_source, noun)}</span
                           >{/if}
                       {/if}
                     </EditableCell>
@@ -908,9 +883,8 @@
                       <span class="text-ink-muted">–</span>
                     {:else}
                       <span class="font-medium">{depth(day.irrigation)}</span>
-                      {#if day.irrigation_source === 'pivot'}<span class="ml-1 text-xs text-brand-600">from {noun}</span
-                        >{/if}
-                      {#if day.irrigation_source === 'field'}<span class="ml-1 text-xs text-brand-600">from field</span
+                      {#if irrigationFrom(day.irrigation_source, noun)}<span class="ml-1 text-xs text-brand-600"
+                          >{irrigationFrom(day.irrigation_source, noun)}</span
                         >{/if}
                       {#if day.irrigation_source === 'entered' && day.field_inches !== null}
                         <span class="block text-xs text-ink-muted">field {depth(day.field_inches)}</span>

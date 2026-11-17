@@ -14,16 +14,8 @@
   import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
   import { groupFeatures, type MapPivot } from '@/lib/map/pivots'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
-  import {
-    anyUpdating,
-    buildTree,
-    type FarmGroup,
-    treeSystems,
-    type Selection,
-    treeFields,
-    updatingIds,
-  } from '@/lib/overview'
-  import { poll, weatherUpdate } from '@/lib/poll'
+  import { buildTree, type FarmGroup, treeSystems, type Selection, treeFields, updatingIds } from '@/lib/overview'
+  import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { units as unitsFor } from '@/lib/units'
   import { map as mapRoute, newQuickSetup } from '@/routes'
 
@@ -70,18 +62,8 @@
   let list = $state<HTMLElement>()
 
   // While a pivot's weather is on its way, reload the pivots and cards until it lands
-  const updating = $derived(anyUpdating(farms))
-  let timedOut = $state(false)
-  $effect(() => {
-    if (!updating) return
-    timedOut = false
-    return poll(
-      () => updatingIds(farms),
-      (done) => router.reload({ only: ['farms'], onFinish: done }),
-      { ongiveup: () => (timedOut = true) },
-    )
-  })
-  const weatherFor = (pivot: { weather_updating: boolean }) => weatherUpdate(pivot.weather_updating, timedOut)
+  const weatherWait = pollWeather(() => updatingIds(farms), ['farms'])
+  const weatherFor = (pivot: { weather_updating: boolean }) => weatherWait.state(pivot.weather_updating)
 
   // The farms shown, with only the plantings growing today when asked (fields without one go, their
   // outlines too)

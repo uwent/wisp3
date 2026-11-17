@@ -9,7 +9,7 @@
   import Term from '@/lib/components/Term.svelte'
   import { fileSlug } from '@/lib/csv'
   import { currentYear, formatDate } from '@/lib/dates'
-  import { poll, weatherUpdate } from '@/lib/poll'
+  import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { units as unitsFor, type Units } from '@/lib/units'
   import { fields as fieldRoutes, pivots as pivotRoutes, weatherZones } from '@/routes'
   import { weatherZone, weatherZoneExport } from '@/lib/weatherZones'
@@ -71,17 +71,8 @@
   }
 
   // While the zone's weather is being fetched, reload until it lands
-  let timedOut = $state(false)
-  $effect(() => {
-    if (!updating_pivot_ids.length) return
-    timedOut = false
-    return poll(
-      () => updating_pivot_ids,
-      (done) => router.reload({ onFinish: done }),
-      { ongiveup: () => (timedOut = true) },
-    )
-  })
-  const weatherState = $derived(weatherUpdate(updating_pivot_ids.length > 0, timedOut))
+  const weatherWait = pollWeather(() => updating_pivot_ids)
+  const weatherState = $derived(weatherWait.state(updating_pivot_ids.length > 0))
 </script>
 
 <svelte:head><title>Weather: {zone.coordinates} · WISP</title></svelte:head>

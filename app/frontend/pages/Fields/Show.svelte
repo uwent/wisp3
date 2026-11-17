@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Form, Link, page, router } from '@inertiajs/svelte'
+  import { Form, Link, page } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import CollapsibleSection from '@/lib/components/CollapsibleSection.svelte'
@@ -13,7 +13,8 @@
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
   import { outlook } from '@/lib/outlook'
   import { cardWhen, cropName, plotSize, seasonDates, seasonLine } from '@/lib/plantings'
-  import { poll, weatherUpdate } from '@/lib/poll'
+  import { cellLabel, cellText, cellValue, depthUnitName as depthUnit, irrigationFrom } from '@/lib/fieldDays'
+  import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
@@ -79,43 +80,21 @@
   let plantingDialog: PlantingDialog | undefined = $state()
 
   // While the pivot's weather is being fetched, reload until it lands
-  let timedOut = $state(false)
-  $effect(() => {
-    if (!weather_updating) return
-    timedOut = false
-    return poll(
-      () => (weather_updating ? [pivot.id] : []),
-      (done) => router.reload({ onFinish: done }),
-      { ongiveup: () => (timedOut = true) },
-    )
-  })
-  const weatherState = $derived(weatherUpdate(weather_updating, timedOut))
+  const weatherWait = pollWeather(() => (weather_updating ? [pivot.id] : []))
+  const weatherState = $derived(weatherWait.state(weather_updating))
 
   type Column = 'rain_in' | 'irrigation_in' | 'notes'
   const depth = (value: number | null) => units.format('depth', value, { unit: false })
-  const depthUnitName = $derived(units.label('depth') === 'mm' ? 'millimeters' : 'inches')
-  const cellLabel = (day: FieldDayRow, what: string) => `${what}, ${formatDate(day.date, { weekday: true })}`
-
-  function inputText(day: FieldDayRow, column: Column): string {
-    if (column === 'rain_in') return day.rain_source === 'entered' ? units.input('depth', day.rain) : ''
-    if (column === 'irrigation_in')
-      return day.irrigation_source === 'entered' ? units.input('depth', day.irrigation) : ''
-    return day.notes ?? ''
-  }
+  const depthUnitName = $derived(depthUnit(units))
+  const inputText = (day: FieldDayRow, column: Column) => cellText(day, column, units)
 
   // Saved to the field's own entry (no planting_id); the plantings' statuses follow
   async function saveCell(day: FieldDayRow, column: Column, text: string): Promise<string | null> {
-    let value: number | string | null
-    if (column === 'notes') {
-      value = text.trim() || null
-    } else {
-      const parsed = units.parse('depth', text)
-      if (!parsed.ok) return parsed.error
-      value = parsed.value
-    }
+    const parsed = cellValue(column, text, units)
+    if (!parsed.ok) return parsed.error
     return save(
       fieldDays.update({ fieldId: field.id, date: day.date }),
-      { day: { [column]: value } },
+      { day: { [column]: parsed.value } },
       { only: ['plantings', 'days', 'errors'] },
     )
   }
@@ -277,7 +256,7 @@
                     {:else}
                       <span class="font-medium">{depth(day.irrigation)}</span>
                       {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600"
-                          >from {noun}</span
+                          >{irrigationFrom(day.irrigation_source, noun)}</span
                         >{/if}
                     {/if}
                   </EditableCell>
