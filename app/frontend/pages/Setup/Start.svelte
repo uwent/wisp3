@@ -19,15 +19,20 @@
   // The guided first-run setup (PLAN.md G.6): a farm, an irrigation system and the fields it waters.
   // The system and the fields can each be left for later; plantings come next, in Setup.
   let {
+    seasons = null,
     farms,
     soil_types,
     default_soil_type_id,
   }: {
+    /** This season and next, from November on (G.8): which one the plantings that follow are for */
+    seasons?: [number, number] | null
     farms: { id: number; name: string }[]
     soil_types: SoilType[]
     default_soil_type_id: number | null
   } = $props()
 
+  // Next season by default once it's asked
+  let season = $state(untrack(() => seasons?.[1] ?? null))
   let farmId = $state<string>(untrack(() => (farms[0] ? String(farms[0].id) : '')))
   let shape = $state(shapeDraft())
   // "pivot", "drip block"
@@ -131,7 +136,8 @@
   <h1 class="text-2xl font-semibold">{farms.length ? 'Set up an irrigation system' : 'Set up your farm'}</h1>
   <p class="max-w-3xl text-sm text-ink-muted">
     A farm, the irrigation system that waters it, and that system's fields. After saving, you'll add what's planted on
-    each field this season, and WISP starts tracking its soil water. You can change any of this later in Setup.
+    each field {seasons ? `in the season you choose` : 'this season'}, and WISP starts tracking its soil water. You can
+    change any of this later in Setup.
   </p>
 </div>
 
@@ -147,6 +153,21 @@
   {#snippet children({ errors, processing })}
     {@const e = errors as Record<string, string | string[]>}
     <div class="space-y-6" oninput={() => (edited = true)} onchange={() => (edited = true)}>
+      {#if seasons}
+        <fieldset class="space-y-2 rounded-lg border border-line bg-surface-raised p-6">
+          <legend class="sr-only">Season</legend>
+          <p class="text-lg font-medium" aria-hidden="true">Season</p>
+          <p class="text-sm text-ink-muted">Which season are you setting up? You'll add its plantings after saving.</p>
+          <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {#each [...seasons].reverse() as option (option)}
+              <label class="flex items-center gap-2">
+                <input type="radio" name="season" value={option} bind:group={season} />
+                {option === seasons[1] ? `${option}, next season` : `${option}, this season`}
+              </label>
+            {/each}
+          </div>
+        </fieldset>
+      {/if}
       <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
         <div>
           <h2 class="text-lg font-medium">1. Farm</h2>

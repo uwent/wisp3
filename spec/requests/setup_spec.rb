@@ -297,6 +297,21 @@ RSpec.describe "Setup", type: :request do
       expect(inertia.props[:started]).to eq("farm_id" => pivot.farm_id, "pivot_id" => pivot.id)
     end
 
+    it "asks which season from November, next year's by default, and opens Setup on it (G.8)" do
+      travel_to Date.new(2026, 10, 31)
+      get new_quick_setup_path
+      expect(inertia.props[:seasons]).to be_nil
+
+      travel_to Date.new(2026, 11, 1)
+      get new_quick_setup_path
+      expect(inertia.props[:seasons]).to eq([2026, 2027])
+      post quick_setup_path, params: {season: "2027", setup: {farm: {name: "Hancock"}}}
+      expect(response).to redirect_to(setup_path(started_farm: group.farms.sole.id, year: 2027))
+      # Only this season or next
+      post quick_setup_path, params: {season: "2031", setup: {farm: {name: "Plover"}}}
+      expect(response).to redirect_to(setup_path(started_farm: group.farms.find_by!(name: "Plover").id))
+    end
+
     it "saves a new farm alone when the irrigation system is left for later" do
       post quick_setup_path, params: {setup: {farm: {name: "Hancock"}}}
       farm = group.farms.sole
