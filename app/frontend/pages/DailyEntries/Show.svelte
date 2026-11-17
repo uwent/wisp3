@@ -53,8 +53,8 @@
   const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
   const allFields = $derived(allPivots.flatMap((pivot) => pivot.fields))
 
-  // The values that other rows show or fill, from what's saved; reset when the page's data changes
-  // (another date, or after a save)
+  // The values that other rows show or fill, from what's saved; reset for another date and after a
+  // save, not whenever the page's data changes (a reload for another reason keeps what's typed)
   function saved(pivots: DayPivot[]) {
     const fields = pivots.flatMap((pivot) => pivot.fields)
     const hours = Object.fromEntries(pivots.map((p) => [p.id, p.irrigation !== null && p.irrigation.inches === null]))
@@ -74,10 +74,11 @@
   let pivotAmount = $state<Record<number, number | null>>(initial.pivotAmount)
   let applied = $state<Record<number, number[]>>(initial.applied)
   let byHours = $state<Record<number, boolean>>(initial.byHours)
+  let saves = $state(0)
   $effect(() => {
-    const values = saved(allPivots)
+    void [date, saves]
     untrack(() => {
-      ;({ rain, fieldIrrigation, pivotAmount, applied, byHours } = values)
+      ;({ rain, fieldIrrigation, pivotAmount, applied, byHours } = saved(allPivots))
     })
   })
 
@@ -474,7 +475,10 @@
       options={{ preserveScroll: true }}
       oninput={() => (dirty = true)}
       onchange={() => (dirty = true)}
-      onSuccess={() => (dirty = false)}
+      onSuccess={() => {
+        dirty = false
+        saves++
+      }}
     >
       {#snippet children({ errors, processing, isDirty })}
         {@const errs = errors as Record<string, string | string[]>}

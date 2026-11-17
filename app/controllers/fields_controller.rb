@@ -13,7 +13,7 @@ class FieldsController < AuthenticatedController
     end
 
     today = Date.current
-    year = params.fetch(:year, today.year).to_i
+    year = requested_year
     plantings = field.plantings.select { |p| p.season_year == year }
     WeatherCell.keep_current([field.pivot.weather_cell_id])
     weather_updating = WeatherCell.updating_ids([field.pivot.weather_cell_id]).any?

@@ -20,7 +20,7 @@ class WeatherZonesController < AuthenticatedController
 
   def show
     zone = @zone
-    year = params.fetch(:year, Date.current.year).to_i
+    year = requested_year
     plantings = zone_plantings(zone)
     season = plantings.select { |planting| planting.season_year == year }
     dates = year_dates(year)
@@ -47,7 +47,7 @@ class WeatherZonesController < AuthenticatedController
 
   def export
     zone = @zone
-    year = params.fetch(:year, Date.current.year).to_i
+    year = requested_year
     dates = year_dates(year)
     days = WeatherPanel.new(zone.cell, dates, emergence_date: dates.first).days
     send_data WeatherCsv.new(zone, Current.group, year, days, exported_by: current_user, about_url:).to_csv,

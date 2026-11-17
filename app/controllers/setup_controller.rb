@@ -2,7 +2,7 @@
 # group's own settings (name, rainfall) are on its page (GroupsController).
 class SetupController < AuthenticatedController
   def show
-    year = params.fetch(:year, Date.current.year).to_i
+    year = requested_year
     farms = Current.group.farms.order(:name).includes(:pivot_groups, pivots: {fields: [:soil_type, {plantings: [:plant, :canopy_cuttings]}]})
     years = Current.group.plantings.distinct.pluck(Arel.sql("extract(year from season_start)::int"))
 

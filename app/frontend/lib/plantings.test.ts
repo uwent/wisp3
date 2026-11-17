@@ -13,7 +13,7 @@ import {
   plotAcres,
   plotSize,
   seasonLine,
-  seasonStats,
+  endedSeasonStats,
   typicalEnd,
 } from './plantings'
 
@@ -101,7 +101,7 @@ describe('an ended season on its card (G.6)', () => {
   })
 
   it('counts irrigation, rain, drainage and stress', () => {
-    expect(seasonStats(totals, imperial)).toEqual([
+    expect(endedSeasonStats(totals, imperial)).toEqual([
       { label: 'Irrigated', value: '9 times, 7.20 in' },
       { label: 'Rain', value: '24 days, 11.80 in' },
       { label: 'Deep drainage', value: '4 days, 1.90 in' },
@@ -120,8 +120,8 @@ describe('an ended season on its card (G.6)', () => {
       drainage_days: 0,
       stress_days: 0,
     }
-    expect(seasonStats({ ...quiet, irrigation_days: 1, irrigation: 1 }, imperial)[0].value).toBe('once, 1.00 in')
-    expect(seasonStats(quiet, imperial).map((stat) => stat.value)).toEqual(['Never', 'No data', 'None', 'Never'])
+    expect(endedSeasonStats({ ...quiet, irrigation_days: 1, irrigation: 1 }, imperial)[0].value).toBe('once, 1.00 in')
+    expect(endedSeasonStats(quiet, imperial).map((stat) => stat.value)).toEqual(['Never', 'No data', 'None', 'Never'])
     expect(seasonLine(quiet, imperial)).toBe('No irrigation · never below the irrigation point')
   })
 })

@@ -47,6 +47,14 @@ RSpec.describe PlantingTasks do
     expect(tasks.find { |task| task.kind == :canopy }).to have_attributes(due: true, last_date: Date.new(2026, 7, 10))
   end
 
+  it "counts no cuttings for a crop that isn't cut, as its balance doesn't (Canopy.for)" do
+    planting.update!(plant: create(:plant, key: "alfalfa", name: "Alfalfa"))
+    create(:canopy_observation, planting:, date: Date.new(2026, 7, 6), pct_cover: 85)
+    planting.canopy_cuttings.create!(date: Date.new(2026, 7, 10))
+    planting.update!(plant: create(:plant, key: "potato", name: "Potato"))
+    expect(tasks.find { |task| task.kind == :canopy }).to have_attributes(note: "canopy closed")
+  end
+
   it "answers for any date, without a balance" do
     create(:canopy_observation, planting:, date: Date.new(2026, 7, 8), pct_cover: 40)
     expect(described_class.canopy(planting, Date.new(2026, 6, 30))).to be_nil

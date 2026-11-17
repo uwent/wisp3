@@ -38,7 +38,7 @@ class PlantingsController < AuthenticatedController
   def create
     field = Current.group.fields.find(planting_params[:field_id])
     plant = Plant.find_by(id: planting_params[:plant_id])
-    year = params.fetch(:year, Date.current.year).to_i
+    year = requested_year
     given = planting_params.compact_blank.except(:field_id)
     defaults = plant ? Planting.defaults_for(plant, year) : {}
     # Without a harvest date, the crop's typical one after the emergence given (G.2)

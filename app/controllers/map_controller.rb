@@ -4,7 +4,7 @@
 class MapController < AuthenticatedController
   def show
     today = Date.current
-    year = params[:year].to_i.between?(2000, today.year + 1) ? params[:year].to_i : today.year
+    year = requested_year
     overview = OperationOverview.new(Current.group, today:, year:)
     weather = WeatherSummary.by_cell(overview.pivots.map(&:weather_cell_id).uniq, today: overview.today)
 

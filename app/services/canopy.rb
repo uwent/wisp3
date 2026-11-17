@@ -70,10 +70,8 @@ class Canopy
   # leaves out readings after that date (time travel on the field page, PLAN.md Phase 8 F).
   def self.for(planting, through: nil)
     # A perennial cut during the season regrows from each cutting (G.3)
-    cuttings = planting.canopy_cuttings.map(&:date).select { |date| through.nil? || date <= through }
-    if cuttings.any? && planting.cover_curve&.key == CanopyCutting::CURVE && planting.et_method == "pct_cover"
-      return CutCanopy.for(planting, cuttings, through:)
-    end
+    cuttings = planting.cutting_dates.select { |date| through.nil? || date <= through }
+    return CutCanopy.for(planting, cuttings, through:) if cuttings.any?
 
     lai = planting.et_method == "lai"
     attribute = lai ? :lai : :pct_cover

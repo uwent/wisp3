@@ -23,6 +23,13 @@ RSpec.describe "Setup", type: :request do
       expect(inertia.props[:plants].map { |plant| plant[:name] }).to include("Potato")
       expect(inertia.props[:year]).to eq(2026)
     end
+
+    it "shows a season from 2000 to next year, and this one for anything else" do
+      {"2027" => 2027, "2001" => 2001, "1900" => 2026, "99999" => 2026, "soon" => 2026}.each do |asked, shown|
+        get setup_path(year: asked)
+        expect(inertia.props[:year]).to eq(shown), "?year=#{asked}"
+      end
+    end
   end
 
   describe "farms" do

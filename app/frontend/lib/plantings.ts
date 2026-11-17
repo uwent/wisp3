@@ -71,7 +71,7 @@ const dayCount = (n: number) => (n === 1 ? '1 day' : `${n} days`)
  * An ended season in four stats, for its card (G.6): irrigation, rain, deep drainage, and the days
  * spent below the irrigation point
  */
-export function seasonStats(totals: SeasonTotals, units: Units): { label: string; value: string }[] {
+export function endedSeasonStats(totals: SeasonTotals, units: Units): { label: string; value: string }[] {
   const depth = (inches: number) => units.format('depth', inches)
   return [
     {

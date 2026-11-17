@@ -8,8 +8,8 @@ import type { PlantingSummary } from '@/types/serializers'
  * PLAN.md Phase 8 G.11); empty without a planting this year
  */
 export type FieldCard = { id: number; name: string; plantings: PlantingSummary[] }
-/** weather_updating: a weather update for the pivot's cell is queued or running */
-export type PivotGroup = {
+/** An irrigation system with its field cards. weather_updating: a weather update for its cell is queued or running */
+export type OverviewSystem = {
   id: number
   name: string
   /** "Pivot", "Traveler" (Pivot::KIND_NAMES) */
@@ -19,7 +19,7 @@ export type PivotGroup = {
   weather_updating: boolean
   fields: FieldCard[]
 }
-export type FarmGroup<P extends PivotGroup = PivotGroup> = {
+export type FarmGroup<P extends OverviewSystem = OverviewSystem> = {
   id: number
   name: string
   /** Its irrigation groups */
@@ -55,7 +55,7 @@ export function summaryUrgency(summary: PlantingSummary | null): number {
 }
 
 /** Days until the planting needs water (0 when it does now), or null if not within the forecast */
-export function summaryDaysToIrrigate(summary: PlantingSummary | null): number | null {
+function summaryDaysToIrrigate(summary: PlantingSummary | null): number | null {
   if (!summaryActive(summary)) return null
   if (summary!.status === 'irrigate') return 0
   return summary!.crossing?.days ?? null
@@ -66,8 +66,6 @@ export function primary(card: FieldCard): PlantingSummary | null {
   const soonest = (summary: PlantingSummary) => summaryDaysToIrrigate(summary) ?? Infinity
   return card.plantings.toSorted((a, b) => summaryUrgency(a) - summaryUrgency(b) || soonest(a) - soonest(b))[0] ?? null
 }
-
-export const isActive = (card: FieldCard) => summaryActive(primary(card))
 
 /** Where a field stands: its most urgent planting's urgency (summaryUrgency) */
 export const urgency = (card: FieldCard): number => summaryUrgency(primary(card))
@@ -149,7 +147,7 @@ function sortByKey<T>(items: T[], key: (item: T) => SortKey, order: SortOrder): 
  * within it, and a parent left with none of them goes. Without either, systems without fields are
  * listed too, to select them.
  */
-export function buildTree<P extends PivotGroup & { latitude: number }>(
+export function buildTree<P extends OverviewSystem & { latitude: number }>(
   farms: FarmGroup<P>[],
   { order, query = '', windowDays = null, growing = false }: TreeOptions,
 ): FarmNode<P>[] {

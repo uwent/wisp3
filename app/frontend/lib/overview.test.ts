@@ -10,7 +10,7 @@ import {
   type FieldCard,
   type GroupNode,
   needsWaterWithin,
-  type PivotGroup,
+  type OverviewSystem,
   pivotStatus,
   type SystemNode,
   treeFields,
@@ -82,7 +82,7 @@ describe('pivotStatus', () => {
 })
 
 describe('buildTree', () => {
-  type P = PivotGroup & { latitude: number }
+  type P = OverviewSystem & { latitude: number }
   let nextId = 100
   const pivot = (name: string, latitude: number, fields: FieldCard[], group: number | null = null): P => ({
     id: nextId++,

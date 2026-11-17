@@ -5,7 +5,7 @@ class PivotsController < AuthenticatedController
 
   def show
     pivot = Current.group.pivots.includes(:farm, :weather_cell, fields: [:soil_type, {plantings: :plant}]).find(params[:id])
-    year = params.fetch(:year, Date.current.year).to_i
+    year = requested_year
     WeatherCell.keep_current([pivot.weather_cell_id])
     irrigations = pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(date: :desc)
 

@@ -115,6 +115,13 @@ class Planting < ApplicationRecord
   # crop without one the generic curve chosen (canopy_curve_key) or its default; nil for readings only
   def cover_curve = plant && CanopyCurve.effective(plant.key, canopy_curve_key)
 
+  # On the perennial regrowth curve by percent cover, so it can be cut (G.3); a planting whose crop
+  # changed keeps its cuttings, which count again only if it goes back
+  def takes_cuttings? = cover_curve&.key == CanopyCutting::CURVE && et_method == "pct_cover"
+
+  # The cuttings that count (none unless it takes them), as dates
+  def cutting_dates = takes_cuttings? ? canopy_cuttings.map(&:date) : []
+
   # Whether its crop has no curve of its own, so it may pick a generic one or none
   def generic_curve_crop? = plant.present? && CanopyCurve.for(plant.key).nil?
 

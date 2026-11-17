@@ -100,10 +100,6 @@ export function glyphProperties(shape: PivotShape, badgeRows: number[] = [], out
   }
 }
 
-/** Whether a system is drawn as its glyph at a zoom */
-export const drawnAsGlyph = (properties: Pick<GlyphProperties, 'point'>, zoom: number) =>
-  zoom < FAR_ZOOM || properties.point
-
 const POLYGONS: ExpressionSpecification = ['==', ['geometry-type'], 'Polygon']
 const POINTS: ExpressionSpecification = ['==', ['geometry-type'], 'Point']
 const SELECTED: ExpressionSpecification = ['get', 'selected']

@@ -155,7 +155,7 @@ export function linearCorners(center: LngLat, { lengthFt, travelFt, bearingDeg }
 }
 
 /** A linear's irrigated area as a closed ring */
-export function linearRing(center: LngLat, linear: Linear): LngLat[] {
+function linearRing(center: LngLat, linear: Linear): LngLat[] {
   const corners = linearCorners(center, linear)
   return [...corners, corners[0]]
 }

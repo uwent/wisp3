@@ -40,13 +40,14 @@ class PivotIrrigation < ApplicationRecord
   # doesn't thin the water out. A field growing only part-field plantings that day (G.11) counts
   # whole: the pivot waters the field, not just its plots. A day with no planting counts the
   # system's fields' areas. nil when an area is missing. Kept per date and fields, as the balance
-  # asks once per field under the pivot.
+  # asks once per field under the pivot. Reads the pivot's plantings and fields as loaded when they
+  # are (DailyInputs.preload), else queries them.
   def irrigated_acres
     key = [date, field_ids]
     @irrigated_acres ||= {}
     return @irrigated_acres[key] if @irrigated_acres.key?(key)
     @irrigated_acres[key] = begin
-      plantings = date ? pivot.plantings.on(date).includes(:field).select { |planting| covers?(planting.field_id) } : []
+      plantings = date ? plantings_on(date).select { |planting| covers?(planting.field_id) } : []
       areas = if plantings.empty?
         pivot.fields.select { |field| covers?(field.id) }.map(&:area_acres)
       else
@@ -59,6 +60,11 @@ class PivotIrrigation < ApplicationRecord
   end
 
   private
+
+  def plantings_on(date)
+    return pivot.plantings.on(date).includes(:field) unless pivot.plantings.loaded?
+    pivot.plantings.select { |planting| planting.season_range.cover?(date) }
+  end
 
   def amount_given
     errors.add(:inches, "or run hours is needed") if inches.nil? && run_hours.nil?

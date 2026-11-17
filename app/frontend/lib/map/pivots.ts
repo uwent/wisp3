@@ -17,7 +17,7 @@ import {
   type FarmGroup,
   type FieldCard,
   primary,
-  type PivotGroup,
+  type OverviewSystem,
   pivotStatus,
   type Status,
   summaryActive,
@@ -40,7 +40,7 @@ export type PivotWeather = { past: WeatherTotals | null; ahead: WeatherTotals | 
 /** A field's outline (G.10) */
 export type MapOutline = { field_id: number; boundary: Boundary }
 
-export type MapPivot = PivotGroup & PivotShape & { weather: PivotWeather | null; outlines: MapOutline[] }
+export type MapPivot = OverviewSystem & PivotShape & { weather: PivotWeather | null; outlines: MapOutline[] }
 
 export type PivotProperties = GlyphProperties & {
   id: number
@@ -178,25 +178,11 @@ export const STATUS_LABELS: Record<Status, string> = {
   full: 'Full',
 }
 
-/** Why a planting (a field's primary one, or none) has no status, for its gray dot */
-export function idleText(summary: PlantingSummary | null): string {
-  if (!summary) return 'no crop this season'
-  if (summary.phase === 'upcoming') return 'season not started'
-  if (summary.phase === 'ended') return 'season ended'
-  return 'waiting for weather'
-}
-
 /** A badge: a status, or a gray dot when there's none, and what it is, a line each, for the hover label */
 export type Badge = { key: number; status: Status | null; lines: string[] }
 
-const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
-
-/** A status, or why there's none, in words: "Irrigate", "Season ended" */
-export const statusText = (summary: PlantingSummary | null) =>
-  summaryActive(summary) ? STATUS_LABELS[summary!.status!] : capitalized(idleText(summary))
-
 /** A planting in the hover label (G.14): "Planting: Potato (Russet Burbank, May 15, 65 days)" */
-export const plantingLine = (summary: PlantingSummary, today: string) => `Planting: ${plantingLabel(summary, today)}`
+const plantingLine = (summary: PlantingSummary, today: string) => `Planting: ${plantingLabel(summary, today)}`
 
 /** A field's badge on its system's marker: its most urgent planting, named with the field */
 export function fieldBadge(card: FieldCard, today: string): Badge {
@@ -234,10 +220,6 @@ export function fieldBadges(pivots: MapPivot[], today: string): FieldBadges[] {
     }),
   )
 }
-
-/** Whether every one of the system's fields has an outline (its marker then has nothing to show) */
-export const allOutlined = (pivot: MapPivot) =>
-  pivot.fields.length > 0 && pivot.fields.every((card) => pivot.outlines.some((o) => o.field_id === card.id))
 
 /** The irrigation groups among these pivots, each outlined around its systems shown and their fields */
 export function groupFeatures(farms: FarmGroup<MapPivot>[], pivots: MapPivot[]): FeatureCollection<{ name: string }> {

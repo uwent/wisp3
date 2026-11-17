@@ -42,7 +42,7 @@ class PlantingTasks
 
     lai = planting.et_method == "lai"
     attribute = lai ? :lai : :pct_cover
-    cut = planting.canopy_cuttings.map(&:date).select { |day| day > planting.emergence_date && day <= date }.max
+    cut = planting.cutting_dates.select { |day| day > planting.emergence_date && day <= date }.max
     last = planting.canopy_observations
       .select { |obs| obs.date <= date && (cut.nil? || obs.date >= cut) && obs[attribute] }.max_by(&:date)
     return if lai && !last

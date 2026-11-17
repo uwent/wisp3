@@ -103,5 +103,29 @@ RSpec.describe DailyInputs do
       end
       expect(records[other_field.id].pivot_irrigations.size).to eq(1)
     end
+
+    it "converts run hours without a query per irrigation" do
+      [field, other_field].each do |each_field|
+        create(:planting, field: each_field, season_start: date - 30, emergence_date: date - 20, end_date: date + 60)
+      end
+      weather = (date..date + 9).to_h { |day| [day, {et0: 0.2, precip: 0.0}] }
+      queries = lambda do |days|
+        dates = (date..date + days - 1).to_a
+        count = 0
+        counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
+        result = ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+          records = described_class.preload([field.reload], dates.first..dates.last)
+          described_class.new(field, dates, weather:, records: records[field.id]).days
+        end
+        [count, result]
+      end
+
+      (date..date + 9).each { |day| create(:pivot_irrigation, pivot:, date: day, run_hours: 10, inches: nil) }
+      few, = queries.call(2)
+      many, days = queries.call(10)
+      expect(many).to eq(few)
+      # 900 gpm for 10 hours over the two fields' 100 acres
+      expect(days.first.irrigation).to be_within(1e-9).of(900.0 * 10 * 60 / (PivotIrrigation::GALLONS_PER_ACRE_INCH * 100))
+    end
   end
 end

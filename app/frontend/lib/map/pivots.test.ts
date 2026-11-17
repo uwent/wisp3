@@ -5,7 +5,6 @@ import type { FieldCard } from '@/lib/overview'
 import type { PlantingSummary } from '@/types/serializers'
 
 import {
-  allOutlined,
   badgeRows,
   fieldFeatures,
   fieldBadges,
@@ -16,7 +15,7 @@ import {
   pivotFeatures,
   systemOutline,
 } from './pivots'
-import { badgeFit, drawnAsGlyph, FAR_ZOOM, glyphProperties, MIN_POINT_PX } from './systemLayers'
+import { badgeFit, glyphProperties, MIN_POINT_PX } from './systemLayers'
 
 const field = (status: PlantingSummary['status'], phase: PlantingSummary['phase'] = 'active'): FieldCard => ({
   id: 1,
@@ -86,14 +85,10 @@ describe('pivotFeatures', () => {
     ])
   })
 
-  it('draws every system as its glyph below FAR_ZOOM, and only point kinds above it', () => {
-    const props = pivotFeatures([pivot(1, 44.1)], null, null).features[0].properties
-    expect(drawnAsGlyph(props, FAR_ZOOM)).toBe(false)
-    expect(drawnAsGlyph(props, FAR_ZOOM - 0.01)).toBe(true)
+  it('gives each kind its glyph, point kinds marked as points', () => {
+    expect(glyphProperties(pivot(1, 44.1))).toMatchObject({ glyph: 'circle', point: false })
     const traveler = { ...pivot(2, 44.1), kind: 'traveler' as const, radius_ft: null }
-    const glyph = glyphProperties(traveler)
-    expect(glyph).toMatchObject({ glyph: 'diamond', point: true, rotate: 0 })
-    expect(drawnAsGlyph(glyph, 17)).toBe(true)
+    expect(glyphProperties(traveler)).toMatchObject({ glyph: 'diamond', point: true, rotate: 0 })
     expect(glyphProperties({ ...traveler, kind: 'point' }).glyph).toBe('triangle')
   })
 
@@ -281,11 +276,8 @@ describe('fields with outlines and pinned plots (G.10)', () => {
     expect(empty[0].badges).toEqual([{ key: 0, status: null, lines: ['No crop this season'] }])
   })
 
-  it('draws a system with outlined fields as a line, and keeps its marker until every field has one', () => {
+  it('draws a system with outlined fields as a line', () => {
     expect(pivotFeatures([outlined], null, null).features[0].properties.outlined).toBe(true)
-    expect(allOutlined(outlined)).toBe(false)
-    expect(allOutlined({ ...outlined, fields: [north] })).toBe(true)
-    expect(allOutlined({ ...outlined, fields: [] })).toBe(false)
   })
 
   it('fits the map around outlines that reach past the system', () => {

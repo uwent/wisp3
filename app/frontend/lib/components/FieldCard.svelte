@@ -8,7 +8,7 @@
   import { formatDate, relativeDay } from '@/lib/dates'
   import { outlook } from '@/lib/outlook'
   import type { FieldCard } from '@/lib/overview'
-  import { cardWhen, cropName, seasonLine, seasonStats } from '@/lib/plantings'
+  import { cardWhen, cropName, seasonLine, endedSeasonStats } from '@/lib/plantings'
   import type { Units } from '@/lib/units'
   import { fields, planting as plantingRoute } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
@@ -99,7 +99,7 @@
       <p class="text-xs text-ink-muted">{seasonLine(summary.totals, units)}</p>
     {:else}
       <dl class="grid grid-cols-2 gap-2 text-xs">
-        {#each seasonStats(summary.totals, units) as stat (stat.label)}
+        {#each endedSeasonStats(summary.totals, units) as stat (stat.label)}
           <div>
             <dt class="text-ink-muted">{stat.label}</dt>
             <dd>{stat.value}</dd>

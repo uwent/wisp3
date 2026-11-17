@@ -18,6 +18,13 @@ class AuthenticatedController < InertiaController
     session[:group_id] = Current.group.id
   end
 
+  # ?year=, a season from 2000 to next year; anything else (missing, malformed, out of range) the
+  # current one
+  def requested_year
+    year = params[:year].to_s.to_i
+    year.between?(2000, Date.current.year + 1) ? year : Date.current.year
+  end
+
   # For actions only the group's owners may take (Q8)
   def require_owner
     return if Current.owner?
