@@ -1400,12 +1400,12 @@ After the merge of `beta-readiness` (2026-11-17 review, Ben). Refactors and qual
 - [ ] **Services out of controllers:** `OutlineImport` (from `OutlineImportsController#create`), the field move with a new Location (`FieldOutlinesController#update`), planting defaults and replace (`Planting.build_for`); `PlantingsController#show` loads the field once.
 - [ ] **Small ones:** `PivotIrrigation#irrigated_acres` from preloaded plantings rather than a query per run-hours record; `year` params range-checked as on the map; dead exports (`isActive`, `statusText`; un-export internal helpers); `overview.ts`'s `PivotGroup` renamed (it isn't an irrigation group); the two `seasonStats` functions named apart; clear a planting's cuttings when its crop stops being perennial; daily entry's state reset keyed on the date and saves, not any `farms` change.
 
-**Browser tests faster**
-
-- [ ] Sign in once (a setup project saving `storageState`, group already chosen) instead of through the form in every test: about 1.5–2 minutes.
-- [ ] The reflow checks (320 px, 200% text) inside the accessibility scan's loop, with the signed-in page list built once.
-- [ ] Two workers: the tests that change shared seed rows in a serial project, the rest in parallel; `bin/e2e` skips `vite build` when nothing changed.
-- [ ] Trim overlap between the file-import and drawing tests, and the weather tab's assertions that request specs already make.
+**Browser tests faster** (done 2026-11-17: `bin/e2e` about 3 minutes, was 7; the tests 3.0 minutes, were 5.9)
+- [x] Sign in once (the `setup` project, `e2e/auth.setup.ts`, saving the session with the demo farms chosen; `signIn` adds its cookie) instead of through the form in every test.
+- [x] The reflow checks (320 px, 200% text) inside the accessibility scan, on each page as scanned, with its sections open (signed-out pages too now); the signed-in page list built once.
+- [x] Two workers, files side by side: the phone project's daily entry writes its own day. `bin/e2e` skips `vite build` when nothing it's built from changed.
+- [x] Found on the way: the time travel tests skipped themselves at random (they looked for the button before the page was drawn); a shape page was scanned before its map was ready (its tools' fieldset disabled, which axe doesn't exempt); buttons kept their hover color while disabled (`enabled:hover:` in `Button`).
+- [x] Trim overlap between the file-import and drawing tests (the drawing test no longer reads the KML the import test does). The weather tab's assertions stay: they cost nothing beside the page loads, and "Today" is the browser's to get right.
 
 **Quality of life** (ideas from the review; check with the beta before building most of them)
 

@@ -525,6 +525,8 @@ test('planned irrigation updates the projection', async ({ page }) => {
 test('time travel shows a field on an earlier day, read-only, and returns to today', async ({ page }) => {
   await page.goto(await firstPlantingPath(page))
   const rewind = page.getByRole('button', { name: 'View this field on an earlier date' })
+  // Once the page is drawn, or the button's absence means nothing
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   test.skip(!(await rewind.isVisible()), "the field's season has no earlier days on this date")
 
   // The date picker flies out to the clock's left, leaving the clock where it was
@@ -765,7 +767,9 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
 const midSeason = `/daily?date=${new Date().getFullYear()}-07-15`
 
 test('daily entry saves rain for a field', { tag: '@phone' }, async ({ page }) => {
-  await page.goto(midSeason)
+  // The phone project runs beside the desktop one (two workers): its own day, so the desktop tests
+  // on July 15 never see its rain
+  await page.goto(test.info().project.name === 'phone' ? midSeason.replace('-07-15', '-07-10') : midSeason)
   const rain = page.getByLabel(/^Rain on /).first()
   await rain.fill('0.3')
   await page.getByRole('button', { name: /^Save / }).click()
@@ -1040,7 +1044,7 @@ test('a field shape is read from a file, its area offered, and saved (G.10, G.6)
   expect(errors).toEqual([])
 })
 
-test('a field shape is drawn corner by corner, or read from a file (G.10)', async ({ page }) => {
+test('a field shape is drawn corner by corner, or picked from a file of several (G.10)', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Edit Market garden' }).click()
@@ -1095,11 +1099,7 @@ test('a field shape is drawn corner by corner, or read from a file (G.10)', asyn
   await expect(shapeBar).toBeHidden()
   await expect(drawn).toHaveText(second!)
 
-  // A KML file replaces it: one shape, 0.01° by 0.005° at 43.3°N
-  await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')
-  await expect(page.getByText(/^Field as drawn: 111\.17 ac/)).toBeVisible()
-
-  // A shapefile with two fields asks which one
+  // A shapefile with two fields asks which one (a file of one is read in the test above)
   await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
   await expect(page.getByText('This file has 2 shapes. Which is Market garden?')).toBeVisible()
   await page.getByRole('button', { name: 'Home South' }).click()

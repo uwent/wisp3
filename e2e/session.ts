@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { expect, type Page } from '@playwright/test'
 
 // The demo account seeded by e2e/seed.rb, and getting around it
@@ -7,7 +9,17 @@ export const PASSWORD = 'e2e-password-1'
 // A grower in the demo farms, not an admin, for signing in as someone else
 export const GROWER_EMAIL = 'jane@example.com'
 
+// The session auth.setup.ts saves, signed in with the demo farms chosen
+export const AUTH_STATE = 'test-results/.auth/state.json'
+
+/** Signed in as the demo account, with the demo farms chosen: the session the setup project saved */
 export async function signIn(page: Page) {
+  const { cookies } = JSON.parse(readFileSync(AUTH_STATE, 'utf8'))
+  await page.context().addCookies(cookies)
+}
+
+/** Signs in through the form and chooses the demo farms (auth.setup.ts, once a run) */
+export async function signInWithForm(page: Page) {
   await page.goto('/account/sign_in')
   await page.getByLabel('Email').fill(EMAIL)
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)

@@ -7,5 +7,9 @@ cd "$(dirname "$0")/.."
 export RAILS_ENV=test E2E=1
 bin/rails db:prepare
 bin/rails runner e2e/seed.rb
-bin/vite build --mode test > /dev/null
+# The test build, unless it's newer than everything it's built from
+manifest=public/vite-test/.vite/manifest.json
+if [[ ! -f $manifest ]] || [[ -n $(find app/frontend vite.config.ts package.json pnpm-lock.yaml tsconfig.json -newer "$manifest" -print -quit) ]]; then
+  bin/vite build --mode test > /dev/null
+fi
 pnpm exec playwright test "$@"

@@ -12,12 +12,13 @@
     ...rest
   }: HTMLButtonAttributes & { variant?: Variant; children: Snippet } = $props()
 
+  // Hover only while enabled: a disabled button (its own, or its fieldset's) stays as it is
   const variants: Record<Variant, string> = {
-    primary: 'bg-brand-600 text-white hover:bg-brand-700 dark:text-surface',
-    secondary: 'border border-line bg-surface-raised text-ink hover:bg-surface',
-    danger: 'bg-status-irrigate text-white hover:opacity-90',
-    ghost: 'text-brand-600 hover:bg-brand-50',
-    'danger-ghost': 'text-status-irrigate-ink hover:bg-status-irrigate/10',
+    primary: 'bg-brand-600 text-white enabled:hover:bg-brand-700 dark:text-surface',
+    secondary: 'border border-line bg-surface-raised text-ink enabled:hover:bg-surface',
+    danger: 'bg-status-irrigate text-white enabled:hover:opacity-90',
+    ghost: 'text-brand-600 enabled:hover:bg-brand-50',
+    'danger-ghost': 'text-status-irrigate-ink enabled:hover:bg-status-irrigate/10',
   }
 </script>
 

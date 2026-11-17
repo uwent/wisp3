@@ -7,8 +7,8 @@ import { firstPlantingPath, impersonateGrower, signedInPages, signIn, watchError
 import { expect, test } from './test'
 
 // WCAG 2.1 A and AA checks (axe) on every page, in light (desktop) and dark (phone), which also fail
-// on script errors. Every page is scanned before the test fails, and A11Y_REPORT=path writes the
-// violations found as JSON.
+// on script errors, and on desktop each page's reflow (320 px wide, 200% text). Every page is
+// scanned before the test fails, and A11Y_REPORT=path writes the violations found as JSON.
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 
@@ -22,6 +22,12 @@ async function scan(page: Page, path: string) {
   // Open the collapsed sections (CollapsibleSection) so what's in them is checked too
   const closed = page.locator('[data-section-toggle][aria-expanded="false"]')
   while ((await closed.count()) > 0) await closed.first().click()
+  // A shape page's tools once its map is ready: until then their fieldset is disabled, which axe
+  // doesn't count as disabled for contrast, though WCAG exempts it
+  const tools = page.getByRole('group', { name: 'Shape tools' })
+  if (await tools.count()) await expect(tools).toBeEnabled()
+  // Nothing hovered where the last click left the pointer
+  await page.mouse.move(0, 0)
   // Charts draw after ECharts loads
   for (const chart of await page.locator('[data-chart]').all()) await expect(chart.locator('canvas')).toBeAttached()
   const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze()
@@ -40,6 +46,23 @@ async function scan(page: Page, path: string) {
       `${path} has accessibility violations`,
     )
     .toEqual([])
+
+  if (test.info().project.name === 'desktop') await reflows(page, path)
+}
+
+// WCAG 1.4.10: 320 CSS px wide with no sideways page scroll (grids and tables scroll inside
+// themselves); WCAG 1.4.4: text at 200%. Checked on the page as scanned, its sections open.
+async function reflows(page: Page, path: string) {
+  const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  const size = page.viewportSize()!
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.waitForFunction(() => window.innerWidth === 320)
+  expect.soft(await overflow(), `${path} scrolls sideways at 320 px`).toBeLessThanOrEqual(0)
+  await page.setViewportSize(size)
+  await page.waitForFunction((width) => window.innerWidth === width, size.width)
+  const larger = await page.addStyleTag({ content: 'html { font-size: 200% !important }' })
+  expect.soft(await overflow(), `${path} scrolls sideways with 200% text`).toBeLessThanOrEqual(0)
+  await larger.evaluate((element) => (element as HTMLElement).remove())
 }
 
 test.afterAll(() => {
@@ -84,6 +107,8 @@ test('a field viewed on an earlier date (time travel)', { tag: '@phone' }, async
   await signIn(page)
   await page.goto(await firstPlantingPath(page))
   const rewind = page.getByRole('button', { name: 'View this field on an earlier date' })
+  // Once the page is drawn, or the button's absence means nothing
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   test.skip(!(await rewind.isVisible()), "the field's season has no earlier days on this date")
   await rewind.click()
   await page.getByRole('button', { name: 'View', exact: true }).click()
@@ -133,29 +158,6 @@ test("Setup's field dialog, with its shape (G.14)", { tag: '@phone' }, async ({ 
   expect(await dialog.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
   expect(errors).toEqual([])
-})
-
-test('every page reflows at 320 px wide and at 200% text', async ({ page }) => {
-  test.skip(test.info().project.name !== 'desktop', 'one run covers both sizes')
-  test.setTimeout(120_000)
-  await signIn(page)
-  const paths = await signedInPages(page)
-  const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
-
-  // WCAG 1.4.10: 320 CSS px wide with no sideways page scroll (grids and tables scroll inside themselves)
-  await page.setViewportSize({ width: 320, height: 640 })
-  for (const path of paths) {
-    await page.goto(path)
-    await expect(page.locator('main h1').first()).toBeVisible()
-    expect.soft(await overflow(), `${path} scrolls sideways at 320 px`).toBeLessThanOrEqual(0)
-  }
-  // WCAG 1.4.4: text at 200%
-  await page.setViewportSize({ width: 1280, height: 800 })
-  for (const path of paths) {
-    await page.goto(path)
-    await page.addStyleTag({ content: 'html { font-size: 200% !important }' })
-    expect.soft(await overflow(), `${path} scrolls sideways with 200% text`).toBeLessThanOrEqual(0)
-  }
 })
 
 test(
