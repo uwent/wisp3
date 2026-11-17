@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_212709) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -94,6 +94,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "use_model_precip", default: true, null: false
+    t.date "example_as_of"
+    t.index ["example_as_of"], name: "index_groups_one_example", unique: true, where: "(example_as_of IS NOT NULL)"
   end
 
   create_table "memberships", force: :cascade do |t|

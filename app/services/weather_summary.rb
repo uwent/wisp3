@@ -9,15 +9,24 @@ class WeatherSummary
 
   # {cell_id => {past: Span, ahead: Span}} for several cells in two queries; either is nil
   # without weather for those days
-  def self.by_cell(cell_ids, today:)
+  # observed: the stored days after today in place of the forecast (the example farm, PLAN.md G.8)
+  def self.by_cell(cell_ids, today:, observed: Current.as_of.present?)
     columns = %i[precip_in et0_in tmax_f tmin_f]
-    past = WeatherDay.where(weather_cell_id: cell_ids, date: (today - DAYS)...today)
-      .pluck(:weather_cell_id, *columns).group_by(&:first).transform_values { |rows| rows.map { |row| row.drop(1) } }
-    forecasts = WeatherForecast.deterministic.latest_by_cell(cell_ids)
+    stored = ->(dates) {
+      WeatherDay.where(weather_cell_id: cell_ids, date: dates)
+        .pluck(:weather_cell_id, *columns).group_by(&:first).transform_values { |rows| rows.map { |row| row.drop(1) } }
+    }
+    past = stored.call((today - DAYS)...today)
+    following = observed ? stored.call(today...(today + DAYS)) : {}
+    forecasts = observed ? {} : WeatherForecast.deterministic.latest_by_cell(cell_ids)
 
     cell_ids.to_h do |cell_id|
-      ahead = (forecasts[cell_id]&.days || {}).select { |date, _| date >= today && date < today + DAYS }
-        .values.map { |values| values.values_at(*columns.map(&:to_s)) }
+      ahead = if observed
+        following[cell_id]
+      else
+        (forecasts[cell_id]&.days || {}).select { |date, _| date >= today && date < today + DAYS }
+          .values.map { |values| values.values_at(*columns.map(&:to_s)) }
+      end
       [cell_id, {past: span(past[cell_id]), ahead: span(ahead)}]
     end
   end

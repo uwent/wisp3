@@ -26,9 +26,15 @@ first_field = JSON.parse(File.read(File.join(__dir__, "demo.json"))).fetch("firs
 demo.fields.find_by!(name: first_field).plantings.each do |planting|
   planting.update!(end_date: [planting.end_date, today + 30].max)
 end
+# The public example farm (PLAN.md G.8), as of July 20 of a season the weather below covers: this
+# year's once it's past, else last year's
+example_year = (today >= Date.new(today.year, 7, 20) + PlantingStatus::HORIZON) ? today.year : today.year - 1
+DemoSeed.example!(year: example_year)
+
 WeatherCell.find_each do |cell|
-  # From January 1, so the weather pages have days whenever the tests run
-  rows = (Date.new(today.year, 1, 1)..today).map do |date|
+  # From January 1 (of the example's season, if that's last year), so the weather pages have days
+  # whenever the tests run
+  rows = (Date.new(example_year, 1, 1)..today).map do |date|
     wave = Math.sin(date.yday / 9.0)
     {weather_cell_id: cell.id, date:, et0_in: (0.12 + 0.06 * wave).round(3), precip_in: (date.yday % 6).zero? ? 0.45 : 0.0, rain_in: (date.yday % 6).zero? ? 0.45 : 0.0,
      tmax_f: (78 + 8 * wave).round(1), tmin_f: (56 + 6 * wave).round(1), rh_mean_pct: 70, wind_speed_mph: 7,

@@ -6,7 +6,7 @@
 class PlantingBalance
   Day = Data.define(:inputs, :canopy, :result)
 
-  def initialize(planting, weather: nil, records: nil, today: Date.current, canopy_through: nil)
+  def initialize(planting, weather: nil, records: nil, today: Current.today, canopy_through: nil)
     @planting, @weather, @records, @today, @canopy_through = planting, weather, records, today, canopy_through
   end
 

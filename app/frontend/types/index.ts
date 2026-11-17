@@ -18,4 +18,7 @@ export type SharedProps = {
     // The admin signed in as this user for support (PLAN.md Phase 8 B), or null
     impersonator: { name: string; email: string } | null
   }
+  // Viewing the example farm (PLAN.md G.8): its day, which is today on every page; null otherwise.
+  // Pages are read-only then (isExample in lib/permissions.ts).
+  example: { as_of: string } | null
 }

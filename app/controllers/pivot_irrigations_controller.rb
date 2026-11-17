@@ -1,5 +1,6 @@
 # Irrigation entered once for a pivot (D9). Creating one for a date that already has one replaces it.
 class PivotIrrigationsController < AuthenticatedController
+  allow_example :index
   before_action :set_pivot
 
   # The year's irrigation (?year=) as CSV

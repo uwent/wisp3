@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Link } from '@inertiajs/svelte'
 
-  import { newQuickSetup, setup } from '@/routes'
+  import { example, newQuickSetup, setup } from '@/routes'
 
   // The dashboard's checklist until the operation has any planting (PLAN.md G.6): what's set up so far
   // and a link to the next step, so a step left for later in quick setup isn't lost.
@@ -43,7 +43,10 @@
 <section class="rounded-lg border border-line bg-surface-raised p-6" aria-labelledby="getting-started">
   <h2 id="getting-started" class="text-lg font-medium">Get started with WISP</h2>
   <p class="mt-1 max-w-2xl text-sm text-ink-muted">
-    A few steps, each of which can wait: WISP starts scheduling once a field has a planting.
+    A few steps, each of which can wait: WISP starts scheduling once a field has a planting. To see it with a season
+    under way first, look around the <Link href={example()} class="text-brand-600 underline underline-offset-2"
+      >example farm</Link
+    >.
   </p>
   <ol class="mt-4 space-y-3">
     {#each steps as step, i (step.label)}

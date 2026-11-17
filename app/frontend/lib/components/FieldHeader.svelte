@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { Link, router } from '@inertiajs/svelte'
+  import { Link, page, router } from '@inertiajs/svelte'
   import { systemName } from '@/lib/geo'
+  import { isExample } from '@/lib/permissions'
   import type { Snippet } from 'svelte'
 
   import { currentYear, today as todayDate } from '@/lib/dates'
@@ -60,10 +61,12 @@
         {units.format('area', field.area_acres)} · {field.soil_type_name} (field capacity {formatNumber(
           field.effective_field_capacity * 100,
           1,
-        )}%, wilting point {formatNumber(field.effective_perm_wilting_pt * 100, 1)}%){' · '}<Link
-          href={fieldOutline(field.id)}
-          class="underline underline-offset-2">{field.boundary ? 'Edit field shape' : 'Draw/import field shape'}</Link
-        >
+        )}%, wilting point {formatNumber(
+          field.effective_perm_wilting_pt * 100,
+          1,
+        )}%){#if !isExample(page.props)}{' · '}<Link href={fieldOutline(field.id)} class="underline underline-offset-2"
+            >{field.boundary ? 'Edit field shape' : 'Draw/import field shape'}</Link
+          >{/if}
       </p>
     </div>
     {#if actions}

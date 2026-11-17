@@ -96,6 +96,21 @@ test('signed-out pages', { tag: '@phone' }, async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test('the example farm, signed out (G.8)', { tag: '@phone' }, async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/example')
+  await expect(page.getByRole('status').filter({ hasText: "You're viewing an example farm" })).toBeVisible()
+  const link = (selector: string) => page.locator(`main ${selector}`).first().getAttribute('href')
+  const planting = (await link('a[href*="/plantings/"]'))!
+  await page.goto(planting)
+  const field = (await link('a[href*="/fields/"]'))!
+  const pivot = (await link('a[href*="/pivots/"]'))!
+  for (const path of ['/', '/map', planting, field, pivot, '/weather']) {
+    await scan(page, path)
+  }
+  expect(errors).toEqual([])
+})
+
 test('signed-in pages', { tag: '@phone' }, async ({ page }) => {
   test.setTimeout(120_000)
   await signIn(page)

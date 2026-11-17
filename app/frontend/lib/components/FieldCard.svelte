@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import { Link, page } from '@inertiajs/svelte'
 
   import Spinner from '@/lib/components/Spinner.svelte'
   import type { WeatherUpdate } from '@/lib/poll'
@@ -10,6 +10,7 @@
   import type { FieldCard } from '@/lib/overview'
   import { cardWhen, cropName, seasonLine, endedSeasonStats } from '@/lib/plantings'
   import type { Units } from '@/lib/units'
+  import { isExample } from '@/lib/permissions'
   import { editLink } from '@/lib/setup/links'
   import { fields, planting as plantingRoute } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
@@ -278,10 +279,12 @@
     {#if links}
       <div class="relative mt-2 flex items-center gap-2 text-xs font-medium">
         <Link {href} class="text-brand-600 hover:underline" aria-label="View {card.name}">View</Link>
-        <span class="text-ink-muted" aria-hidden="true">·</span>
-        <Link href={editLink('field', card.id)} class="text-brand-600 hover:underline" aria-label="Edit {card.name}"
-          >Edit</Link
-        >
+        {#if !isExample(page.props)}
+          <span class="text-ink-muted" aria-hidden="true">·</span>
+          <Link href={editLink('field', card.id)} class="text-brand-600 hover:underline" aria-label="Edit {card.name}"
+            >Edit</Link
+          >
+        {/if}
       </div>
     {/if}
   </div>

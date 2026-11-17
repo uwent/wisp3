@@ -61,7 +61,7 @@ class DailyInputs
   # today: days after it are the projection, which takes the forecast's rain even on a field that
   # uses only entered rain (nobody can enter rain ahead; Q7)
   # planting: the planting whose balance this is; a part-field one takes its own entries first
-  def initialize(field, dates, weather: {}, records: nil, today: Date.current, planting: nil)
+  def initialize(field, dates, weather: {}, records: nil, today: Current.today, planting: nil)
     @field, @dates, @weather, @today, @planting = field, dates, weather, today, planting
     @part = planting if planting&.partial?
     @records = records || Records.new(

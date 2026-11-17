@@ -1,7 +1,15 @@
 class ApplicationController < ActionController::Base
+  include ExampleMode
+
   helper_method :impersonator
 
   private
+
+  # Signing in leaves the example farm, for the user's own (Devise and sign-in links both come here)
+  def after_sign_in_path_for(resource)
+    leave_example
+    super
+  end
 
   # The admin signed in as current_user for support (PLAN.md Phase 8 B), or nil. The session keys
   # count only while they name the signed-in user and an admin, so a stale pair (the impersonated

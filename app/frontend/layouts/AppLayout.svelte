@@ -8,6 +8,7 @@
   import { menuContent, menuItem } from '@/lib/components/menu'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
+  import { formatDate } from '@/lib/dates'
   import { stickyHeight } from '@/lib/stickyBars'
   import {
     about,
@@ -16,6 +17,7 @@
     currentGroups,
     dailyEntries,
     dashboard,
+    examples,
     groups,
     impersonations,
     map,
@@ -30,30 +32,43 @@
   let { children }: { children: Snippet } = $props()
 
   const auth = $derived(page.props.auth)
+  // Viewing the example farm (PLAN.md G.8): its pages only, with a bar saying so
+  const example = $derived(page.props.example)
   // Wider screens have the operation switcher beside the account menu; narrower ones put it in
   // the menu. Left out rather than hidden, as the menu's arrow keys would stop on hidden items.
   const wideNav = new MediaQuery('min-width: 640px')
 
-  // Signed out (the landing and About pages), the nav is just About
+  // Signed out (the landing and About pages), the nav is the example farm and About; viewing the
+  // example, its pages
   const nav = $derived(
-    auth.user
+    example
       ? [
-          // A pivot's, a field's and a planting's pages are reached from the dashboard; creating and editing them is setup
           { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields|plantings)\/\d+(\?|$)/] },
           { label: 'Map', route: map.show() },
-          { label: 'Daily entry', route: dailyEntries.show() },
           { label: 'Weather', route: weatherZones.index(), also: ['/weather/'] },
-          { label: 'Alerts', route: alerts.show() },
-          {
-            label: 'Setup',
-            route: setup.show(),
-            also: [/^\/pivots\/(new|\d+\/edit)/, '/setup'],
-          },
           { label: 'About', route: about() },
-          // Users and Weather data, switched between by AdminTabs
-          ...(auth.user.admin ? [{ label: 'Admin', route: adminUsers.index(), also: ['/admin/'] }] : []),
         ]
-      : [{ label: 'About', route: about() }],
+      : auth.user
+        ? [
+            // A pivot's, a field's and a planting's pages are reached from the dashboard; creating and editing them is setup
+            { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields|plantings)\/\d+(\?|$)/] },
+            { label: 'Map', route: map.show() },
+            { label: 'Daily entry', route: dailyEntries.show() },
+            { label: 'Weather', route: weatherZones.index(), also: ['/weather/'] },
+            { label: 'Alerts', route: alerts.show() },
+            {
+              label: 'Setup',
+              route: setup.show(),
+              also: [/^\/pivots\/(new|\d+\/edit)/, '/setup'],
+            },
+            { label: 'About', route: about() },
+            // Users and Weather data, switched between by AdminTabs
+            ...(auth.user.admin ? [{ label: 'Admin', route: adminUsers.index(), also: ['/admin/'] }] : []),
+          ]
+        : [
+            { label: 'Example farm', route: examples.show() },
+            { label: 'About', route: about() },
+          ],
   )
 
   // On phones the nav scrolls sideways: fade the edge that has more tabs past it, and bring the
@@ -152,6 +167,28 @@
       </div>
     </div>
   {/if}
+  {#if example}
+    <!-- Viewing the example farm: stays at the top as the page scrolls (PLAN.md G.8) -->
+    <div role="status" class="sticky top-0 z-50 bg-example text-on-example" {@attach stickyHeight('--app-bar-h')}>
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 text-sm">
+        <p>
+          You're viewing an example farm as of <strong>{formatDate(example.as_of, { year: true })}</strong>{auth.user
+            ? '. It can be viewed but not changed.'
+            : '. Create an account to set up your own.'}
+        </p>
+        <Form action={examples.destroy()}>
+          {#snippet children({ processing })}
+            <button
+              type="submit"
+              disabled={processing}
+              class="rounded-md border border-on-example px-3 py-1 font-medium hover:bg-on-example/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-example disabled:opacity-70"
+              >Leave the example</button
+            >
+          {/snippet}
+        </Form>
+      </div>
+    </div>
+  {/if}
   <BrandBar />
   <header class="border-b border-line bg-surface-raised">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
@@ -178,7 +215,9 @@
       </nav>
 
       <div class="order-2 ml-auto flex items-center gap-2 sm:order-3">
-        {#if auth.groups.length > 1}
+        {#if example}
+          <span class="hidden text-sm text-ink-muted sm:inline">{auth.group?.name}</span>
+        {:else if auth.groups.length > 1}
           <div class="hidden sm:block">
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
@@ -226,7 +265,7 @@
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content class={menuContent} sideOffset={6} align="end" preventScroll={false}>
-                {#if auth.groups.length > 1 && !wideNav.current}
+                {#if auth.groups.length > 1 && !wideNav.current && !example}
                   <DropdownMenu.Group aria-label="Operation">
                     <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted"
                       >Operation</DropdownMenu.GroupHeading

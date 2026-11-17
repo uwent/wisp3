@@ -11,6 +11,13 @@ namespace :demo do
       "#{result[:farms]} farms, #{result[:fields]} fields, #{result[:plantings]} plantings"
   end
 
+  desc "Rebuild the public example farm (/example) from db/demo/farms.yml, as of July 20: bin/rails demo:example [YEAR=…]"
+  task example: :environment do
+    ReferenceData.load!
+    group = DemoSeed.example!(year: Integer(ENV.fetch("YEAR", Date.current.year)))
+    puts "Example farm as of #{group.example_as_of}: #{group.farms.count} farms, #{group.fields.count} fields"
+  end
+
   desc "Write the demo account's farms, as edited in the app, back to db/demo/farms.yml: bin/rails demo:export [EMAIL=… YEAR=…]"
   task export: :environment do
     email = ENV.fetch("EMAIL", "demo@example.com")

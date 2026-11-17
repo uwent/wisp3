@@ -16,6 +16,21 @@ class DemoSeed
   GROUP_NAME = "Demo farms"
   FILE = Rails.root.join("db/demo/farms.yml")
 
+  # The public example farm (PLAN.md G.8): the same farms in a group of their own, with no members,
+  # shown as of July 20 of the season seeded
+  EXAMPLE_NAME = "Example farm"
+  EXAMPLE_DAY = [7, 20].freeze
+
+  # Rebuilds the example farm (bin/rails demo:example), replacing any other
+  def self.example!(year: Date.current.year, file: FILE)
+    ActiveRecord::Base.transaction do
+      Group.examples.destroy_all
+      group = Group.create!(name: EXAMPLE_NAME, example_as_of: Date.new(year, *EXAMPLE_DAY))
+      new(email: nil, year:, file:).build(group, YAML.safe_load_file(file))
+      group
+    end
+  end
+
   def initialize(email:, password: nil, year: Date.current.year, file: FILE)
     @email, @password, @year, @file = email, password, year, file
   end
@@ -41,10 +56,6 @@ class DemoSeed
      plantings: group.plantings.count}
   end
 
-  private
-
-  def date(month_day) = Date.strptime("#{@year}-#{month_day}", "%Y-%m-%d")
-
   def build(group, data)
     data.fetch("farms").each do |farm_data|
       farm = group.farms.create!(name: farm_data.fetch("name"), notes: farm_data["notes"])
@@ -54,6 +65,10 @@ class DemoSeed
       end
     end
   end
+
+  private
+
+  def date(month_day) = Date.strptime("#{@year}-#{month_day}", "%Y-%m-%d")
 
   def system(farm, data)
     pivot = farm.pivots.create!(data.slice(*DemoExport::SYSTEM_ATTRIBUTES))

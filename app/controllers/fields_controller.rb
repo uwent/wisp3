@@ -1,5 +1,6 @@
 class FieldsController < AuthenticatedController
   before_action :require_owner, only: :destroy
+  allow_example :show
 
   # The field page (PLAN.md Phase 8 G.11): the land rather than one crop on it. Its season's
   # plantings on a timeline, a status card for each, and the field's own rain and irrigation, which
@@ -12,7 +13,7 @@ class FieldsController < AuthenticatedController
       return redirect_to planting_path(planting, request.query_parameters.slice("as_of"))
     end
 
-    today = Date.current
+    today = Current.today
     year = requested_year
     plantings = field.plantings.select { |p| p.season_year == year }
     WeatherCell.keep_current([field.pivot.weather_cell_id])
@@ -73,7 +74,8 @@ class FieldsController < AuthenticatedController
     records = DailyInputs.preload([field], dates).fetch(field.id)
     weather = WeatherDay.balance_inputs_by_cell(plantings.map(&:weather_cell_id).uniq, dates)
     plantings.map do |planting|
-      status = PlantingStatus.new(planting, today:, records:, weather: weather.fetch(planting.weather_cell_id, {}))
+      status = FieldStatuses.status(planting, today:, as_of: Current.as_of, records:,
+        weather: weather.fetch(planting.weather_cell_id, {}))
       PlantingSummarySerializer.new(status).to_h
     end
   end

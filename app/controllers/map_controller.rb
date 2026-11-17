@@ -2,8 +2,10 @@
 # location and its weather zone's rain and ET over the last 7 days and the next 7, and its fields'
 # outlines (G.10), for a season (?year=, G.14; this year by default).
 class MapController < AuthenticatedController
+  allow_example :show
+
   def show
-    today = Date.current
+    today = Current.today
     year = requested_year
     overview = OperationOverview.new(Current.group, today:, year:)
     weather = WeatherSummary.by_cell(overview.pivots.map(&:weather_cell_id).uniq, today: overview.today)

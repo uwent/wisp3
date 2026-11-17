@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Link, page } from '@inertiajs/svelte'
   import { systemName } from '@/lib/geo'
+  import { isExample } from '@/lib/permissions'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import GettingStarted from '@/lib/components/GettingStarted.svelte'
@@ -116,9 +117,11 @@
                 class="text-brand-600 hover:underline"
                 aria-label="Irrigation on {pivot.name}">Irrigation</Link
               >
-              <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
-                >Edit</Link
-              >
+              {#if !isExample(page.props)}
+                <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
+                  >Edit</Link
+                >
+              {/if}
             </div>
           </div>
           {#if pivot.fields.length === 0}

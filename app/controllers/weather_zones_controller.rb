@@ -4,6 +4,7 @@
 # outside them goes back to the list. Cells are reached only through the group's pivots and plantings.
 class WeatherZonesController < AuthenticatedController
   before_action :find_zone, only: [:show, :export]
+  allow_example :index, :show, :export, :legacy
 
   def index
     zones = WeatherZone.for_group(Current.group)
@@ -24,7 +25,7 @@ class WeatherZonesController < AuthenticatedController
     plantings = zone_plantings(zone)
     season = plantings.select { |planting| planting.season_year == year }
     dates = year_dates(year)
-    current = year == Date.current.year
+    current = year == Current.today.year
     WeatherCell.keep_current([zone.id]) if current
     zones = WeatherZone.for_group(Current.group)
     zones = (zones + [zone]).sort_by(&:sort_key) unless zones.any? { |other| other.id == zone.id }
@@ -33,7 +34,7 @@ class WeatherZonesController < AuthenticatedController
       zone: WeatherZoneSerializer.new(zone).to_h,
       zones: zones.map { |other| {id: other.id, name: other.name, coordinates: other.coordinates, location: other.location} },
       year:,
-      years: (plantings.map(&:season_year) + [Date.current.year]).uniq.sort.reverse,
+      years: (plantings.map(&:season_year) + [Current.today.year]).uniq.sort.reverse,
       weather_from: dates.first,
       weather: WeatherPanelDaySerializer.new(WeatherPanel.new(zone.cell, dates, emergence_date: dates.first).days).to_h,
       # The year's plantings in the zone, which growing degree days can also count from (by planting date)
@@ -88,7 +89,8 @@ class WeatherZonesController < AuthenticatedController
   # December 31
   def year_dates(year)
     from = Date.new(year, 1, 1)
-    (year == Date.current.year) ? from..(Date.current + Weather::Fetcher::FORECAST_DAYS) : from..Date.new(year, 12, 31)
+    today = Current.today
+    (year == today.year) ? from..(today + Weather::Fetcher::FORECAST_DAYS) : from..Date.new(year, 12, 31)
   end
 
   # The zones' pivots whose cell has a weather update showing (lib/poll.ts reloads when they land)

@@ -1,6 +1,8 @@
 # Every field's water status today (PLAN.md §11), by farm and pivot: one card per field with this
 # season's planting.
 class DashboardController < AuthenticatedController
+  allow_example :show
+
   def show
     overview = OperationOverview.new(Current.group)
     render inertia: "Dashboard/Show", props: {
@@ -14,6 +16,8 @@ class DashboardController < AuthenticatedController
   def getting_started(overview)
     fields = overview.pivots.flat_map(&:fields)
     return if fields.any? { |field| field.plantings.any? }
+
+    return if Current.as_of
 
     {farms: overview.farms.size, systems: overview.pivots.size, fields: fields.size}
   end

@@ -8,8 +8,9 @@ class FieldStatuses
 
   # {field_id => [PlantingStatus, …]}, whole-field planting first, then by season start; empty for a
   # field with no planting this year. Another year (the map's season, G.14) gives every planting
-  # that started in it, as they ended (or stand, or will start).
-  def self.for(fields, today: Date.current, year: today.year)
+  # that started in it, as they ended (or stand, or will start). as_of: the example farm's day
+  # (Current.as_of, PLAN.md G.8), today for every planting (status).
+  def self.for(fields, today: Current.today, year: today.year, as_of: Current.as_of)
     plantings = fields.to_h { |field| [field.id, plantings_for(field, today, year)] }
 
     current = plantings.values.flatten
@@ -19,14 +20,25 @@ class FieldStatuses
     # Each planting's weather cell: its pivot's, or where the pivot was in an ended season (G.9)
     cell_ids = current.map(&:weather_cell_id).uniq
     weather = WeatherDay.balance_inputs_by_cell(cell_ids, dates)
-    ensembles = WeatherForecast.ensemble.latest_by_cell(cell_ids).transform_values(&:members)
+    ensembles = as_of ? {} : WeatherForecast.ensemble.latest_by_cell(cell_ids).transform_values(&:members)
 
     fields.to_h do |field|
       [field.id, plantings[field.id].map do |planting|
         cell_id = planting.weather_cell_id
-        PlantingStatus.new(planting, today:, records: records[field.id], weather: weather.fetch(cell_id, {}),
+        status(planting, today:, as_of:, records: records[field.id], weather: weather.fetch(cell_id, {}),
           ensemble: ensembles.fetch(cell_id, []))
       end]
+    end
+  end
+
+  # A planting's status today; as of the example farm's day (as_of) through time travel's view of it
+  # (PlantingStatus as_of: what followed in place of a forecast) when its season covers the day, as
+  # it then stood (upcoming or ended) otherwise
+  def self.status(planting, today:, as_of: nil, records: nil, weather: nil, ensemble: :load)
+    if as_of && planting.season_range.cover?(as_of)
+      PlantingStatus.new(planting, as_of:, weather:)
+    else
+      PlantingStatus.new(planting, today:, records:, weather:, ensemble: as_of ? [] : ensemble)
     end
   end
 

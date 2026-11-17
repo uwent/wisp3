@@ -6,8 +6,9 @@
 class OperationOverview
   attr_reader :today, :year, :farms
 
-  # year: the season shown (the map's, G.14); this year by default
-  def initialize(group, today: Date.current, year: today.year)
+  # year: the season shown (the map's, G.14); this year by default. Today is the example farm's day
+  # there (Current.today, PLAN.md G.8), whose weather stays as stored.
+  def initialize(group, today: Current.today, year: today.year)
     @today = today
     @year = year
     @farms = group.farms.order(:name).includes(:pivot_groups, pivots: [:weather_cell,

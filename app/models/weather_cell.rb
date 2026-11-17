@@ -48,6 +48,9 @@ class WeatherCell < ApplicationRecord
   # before they have a planting. Only an incomplete cell's update is shown on the pages ("Updating
   # weather…", reloading until it lands); a complete one's is quiet, and the next visit gets it.
   def self.keep_current(ids)
+    # The example farm's pages (Current.as_of, PLAN.md G.8) show weather as stored
+    return if Current.as_of
+
     due = ids.compact.uniq.select do |id|
       Rails.cache.write("weather-update:#{id}", true, unless_exist: true, expires_in: UPDATE_THROTTLE)
     end

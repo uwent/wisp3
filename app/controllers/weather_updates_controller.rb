@@ -2,6 +2,8 @@
 # JSON, for pages showing "Updating weather…" to ask every few seconds (lib/poll.ts). It reads only
 # the cache, so a page reloads its data once an update lands rather than on every check.
 class WeatherUpdatesController < AuthenticatedController
+  allow_example :show
+
   def show
     cells = Current.group.pivots.pluck(:id, :weather_cell_id)
     updating = WeatherCell.updating_ids(cells.map(&:last)).to_set

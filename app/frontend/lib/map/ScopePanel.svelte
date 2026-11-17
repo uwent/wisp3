@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import { Link, page } from '@inertiajs/svelte'
 
   import KindIcon from '@/lib/components/KindIcon.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { systemName } from '@/lib/geo'
   import { type FarmNode, type GroupNode, pivotStatus, type Selection, type SystemNode } from '@/lib/overview'
+  import { isExample } from '@/lib/permissions'
   import { editLink } from '@/lib/setup/links'
 
   import type { MapPivot } from './pivots'
@@ -73,11 +74,13 @@
         <span class="font-normal text-ink-muted">{noun}:</span>
         {node.name}
       </h2>
-      <div class="flex gap-3 text-xs">
-        <Link href={editLink(level, node.id)} class="text-brand-600 hover:underline" aria-label="Edit {node.name}"
-          >Edit</Link
-        >
-      </div>
+      {#if !isExample(page.props)}
+        <div class="flex gap-3 text-xs">
+          <Link href={editLink(level, node.id)} class="text-brand-600 hover:underline" aria-label="Edit {node.name}"
+            >Edit</Link
+          >
+        </div>
+      {/if}
     </div>
     <button
       type="button"

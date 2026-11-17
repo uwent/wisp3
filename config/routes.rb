@@ -99,8 +99,14 @@ Rails.application.routes.draw do
   resources :groups, only: :create, path: "operations"
   resources :memberships, only: [:create, :update, :destroy], path: "operation/members"
 
-  # Signed in, / is the dashboard; signed out, the landing page. The About page is public.
-  authenticated :user do
+  # The public example farm, read-only on the app's own pages (ExampleMode, PLAN.md G.8)
+  resource :example, only: [:show, :destroy]
+
+  # Signed in, or viewing the example farm, / is the dashboard; signed out, the landing page. The
+  # About page is public.
+  constraints(->(request) {
+    request.env["warden"].authenticate?(scope: :user) || request.session[ExampleMode::SESSION_KEY]
+  }) do
     root "dashboard#show", as: :dashboard_root
   end
   root "pages#home"

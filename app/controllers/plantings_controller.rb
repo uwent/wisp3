@@ -1,15 +1,19 @@
 class PlantingsController < AuthenticatedController
+  allow_example :show, :export
+
   # A planting's page (PLAN.md §11; its own URL since G.11): its season with the summary, daily grid,
   # chart and the week ahead (its zone's panels are on the weather page, G.12). ?as_of= travels back
   # to a day of the season before today (PLAN.md Phase 8 F): the page shows the season as it stood
-  # then, read-only. A date outside the season, ahead or malformed redirects without it.
+  # then, read-only. A date outside the season, ahead or malformed redirects without it. The example
+  # farm (PLAN.md G.8) shows its day that way when the season covers it, with no other day to pick.
   def show
     field_id = Current.group.plantings.where(id: params[:id]).pick(:field_id) or raise ActiveRecord::RecordNotFound
     field = Current.group.fields.includes(:soil_type, pivot: [:farm, :weather_cell],
       plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell]).find(field_id)
     planting = field.plantings.find { |p| p.id == params[:id].to_i }
-    past = requested_date&.then { |date| date if date < Date.current }
-    as_of = past if planting.season_range.cover?(past)
+    past = requested_date&.then { |date| date if date < Current.today } unless Current.as_of
+    as_of = Current.as_of || past
+    as_of = nil unless planting.season_range.cover?(as_of)
     # An ?as_of= that can't be used leaves the URL, so it doesn't look like time travel
     return redirect_to planting_path(planting, request.query_parameters.except("as_of")) if params.key?(:as_of) && !as_of
 
@@ -23,12 +27,12 @@ class PlantingsController < AuthenticatedController
       **FieldHeaderProps.for(field),
       weather_updating:,
       as_of:,
-      travel_dates: travel_dates(planting),
+      travel_dates: Current.as_of ? nil : travel_dates(planting),
       planting: PlantingSerializer.new(planting).to_h,
       # The zone the season ran on (G.9), and its week ahead for this year's plantings, ended ones
       # too, as on the field page (G.6), but not while time travelling
       **WeatherZone.page_props(Current.group, planting.weather_cell,
-        forecast: !as_of && planting.season_year == Date.current.year),
+        forecast: (Current.as_of.present? || !as_of) && planting.season_year == Current.today.year),
       **season_props(field, planting, as_of)
     }
   end
@@ -93,7 +97,7 @@ class PlantingsController < AuthenticatedController
   # as_of: time travelling, the days run to the end of the days that followed it, and canopy readings
   # stop at it
   def season_props(field, planting, as_of)
-    status = PlantingStatus.new(planting, as_of:)
+    status = FieldStatuses.status(planting, today: Current.today, as_of:, ensemble: Current.as_of ? [] : :load)
     dates = as_of ? planting.season_start..[as_of + PlantingStatus::HORIZON, planting.end_date].min : planting.season_range
     attribute = (planting.et_method == "lai") ? :lai : :pct_cover
     # The irrigation of the system the season ran on (G.14 part 7)

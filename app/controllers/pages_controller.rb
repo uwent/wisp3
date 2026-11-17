@@ -6,7 +6,9 @@ class PagesController < AuthenticatedController
   CURVE_DAYS = 150
 
   skip_before_action :authenticate_user!
-  skip_before_action :set_current_group, unless: :user_signed_in?
+  skip_before_action :set_current_group, unless: -> { user_signed_in? || example_group }
+  # In example mode, About shows the example's nav and bar (the landing page isn't reached: / is its dashboard)
+  allow_example :home, :about
 
   def home
     render inertia: "Pages/Home"

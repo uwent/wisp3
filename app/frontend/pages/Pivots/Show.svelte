@@ -6,6 +6,7 @@
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { currentYear, formatDate, today as todayDate } from '@/lib/dates'
   import { isPoint, KIND_NOUNS, systemName } from '@/lib/geo'
+  import { isExample } from '@/lib/permissions'
   import { type FieldSeasons, fieldsOn } from '@/lib/irrigation'
   import { units as unitsFor } from '@/lib/units'
   import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots } from '@/routes'
@@ -69,6 +70,9 @@
       router.delete(pivotIrrigations.destroy({ pivotId: pivot.id, id: irrigation.id }).url, { preserveScroll: true })
     }
   }
+
+  // The example farm (PLAN.md G.8) is only viewed
+  const readOnly = $derived(isExample(page.props))
 </script>
 
 <svelte:head><title>{systemName(pivot)} · WISP</title></svelte:head>
@@ -86,7 +90,9 @@
           href={fieldRoutes.show(field.id)}
           class="text-brand-600 underline underline-offset-2">{field.name}</Link
         >{:else}no fields yet{/each}
-      · <Link href={pivots.edit(pivot.id)} class="text-brand-600 underline underline-offset-2">Edit {noun}</Link>
+      {#if !readOnly}
+        · <Link href={pivots.edit(pivot.id)} class="text-brand-600 underline underline-offset-2">Edit {noun}</Link>
+      {/if}
     </p>
   </div>
   <select
@@ -100,7 +106,7 @@
 </div>
 
 {#key formKey}
-  <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
+  <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6" hidden={readOnly}>
     <div>
       <h2 class="text-lg font-medium">{editing ? `Edit ${formatDate(editing.date)}` : 'Add an irrigation'}</h2>
       <p class="text-sm text-ink-muted">
@@ -233,7 +239,7 @@
           <th class="px-4 py-2 text-right font-medium">Amount</th>
           <th class="px-4 py-2 font-medium">Applied to</th>
           <th class="px-4 py-2 font-medium">Notes</th>
-          <th class="px-4 py-2"><span class="sr-only">Actions</span></th>
+          {#if !readOnly}<th class="px-4 py-2"><span class="sr-only">Actions</span></th>{/if}
         </tr>
       </thead>
       <tbody class="divide-y divide-line">
@@ -248,11 +254,14 @@
             </td>
             <td class="px-4 py-2">{fieldNames(irrigation.field_ids)}</td>
             <td class="px-4 py-2 text-ink-muted">{irrigation.notes ?? ''}</td>
-            <td class="px-4 py-2 text-right whitespace-nowrap">
-              <Button variant="ghost" class="px-2 py-1 text-xs" onclick={() => edit(irrigation)}>Edit</Button>
-              <Button variant="danger-ghost" class="px-2 py-1 text-xs" onclick={() => remove(irrigation)}>Delete</Button
-              >
-            </td>
+            {#if !readOnly}
+              <td class="px-4 py-2 text-right whitespace-nowrap">
+                <Button variant="ghost" class="px-2 py-1 text-xs" onclick={() => edit(irrigation)}>Edit</Button>
+                <Button variant="danger-ghost" class="px-2 py-1 text-xs" onclick={() => remove(irrigation)}
+                  >Delete</Button
+                >
+              </td>
+            {/if}
           </tr>
         {/each}
       </tbody>

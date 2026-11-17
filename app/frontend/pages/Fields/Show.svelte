@@ -11,6 +11,7 @@
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { currentYear, formatDate, today as todayDate } from '@/lib/dates'
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
+  import { isExample } from '@/lib/permissions'
   import { outlook } from '@/lib/outlook'
   import { cardWhen, cropName, plotSize, seasonDates, seasonLine } from '@/lib/plantings'
   import { cellLabel, cellText, cellValue, depthUnitName as depthUnit, irrigationFrom } from '@/lib/fieldDays'
@@ -112,13 +113,19 @@
       'Best if you read your gauge every day it rains. Days without an entry count as dry. The projection still uses the forecast rain, and also shows what happens if none falls.',
     ],
   ] as const)
+
+  // The example farm (PLAN.md G.8) is only viewed
+  const readOnly = $derived(isExample(page.props))
 </script>
 
 <svelte:head><title>{field.name} · WISP</title></svelte:head>
 
 <FieldHeader {field} {pivot} {farm} {units} {year} current="field">
   {#snippet actions()}
-    <Button variant="secondary" class="px-3 py-1.5" onclick={() => plantingDialog?.open(field)}>Add a planting</Button>
+    {#if !readOnly}
+      <Button variant="secondary" class="px-3 py-1.5" onclick={() => plantingDialog?.open(field)}>Add a planting</Button
+      >
+    {/if}
   {/snippet}
 </FieldHeader>
 
@@ -181,12 +188,12 @@
     </ul>
   {:else}
     <p class="text-sm text-ink-muted">
-      Nothing planted on this field in {year}.
-      <button
-        type="button"
-        class="text-brand-600 underline underline-offset-2"
-        onclick={() => plantingDialog?.open(field)}>Add a planting</button
-      > to start its water balance.
+      Nothing planted on this field in {year}{readOnly ? '.' : ''}
+      {#if !readOnly}<button
+          type="button"
+          class="text-brand-600 underline underline-offset-2"
+          onclick={() => plantingDialog?.open(field)}>Add a planting</button
+        > to start its water balance.{/if}
     </p>
   {/if}
 </section>
@@ -202,12 +209,21 @@
           A planting on part of the field can also have its own irrigation, entered on its page, which it uses instead
           of the field's that day.
         {/if}
-        Click a cell to enter a value, and press Enter to save and move down. Clear a cell to go back to the modeled value
-        or the {noun}'s. Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and
-        press Enter or start typing to edit one.
+        {#if !readOnly}Click a cell to enter a value, and press Enter to save and move down. Clear a cell to go back to
+          the modeled value or the {noun}'s.{/if}
+        Depths are in {depthUnitName}.{readOnly
+          ? ''
+          : ' From the keyboard, use the arrow keys to move between cells, and press Enter or start typing to edit one.'}
       </p>
       <!-- The page's width: Date, Rain and Irrigation as wide as they need (w-px, no wrapping), Notes the rest -->
-      <div class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised">
+      <!-- Read-only, the grid has no cells to tab to, so the scrolling box takes focus -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div
+        class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised"
+        tabindex={readOnly ? 0 : undefined}
+        role={readOnly ? 'region' : undefined}
+        aria-label={readOnly ? 'Rain and irrigation by day' : undefined}
+      >
         <table class="w-full text-sm">
           <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
             <tr class="text-right">
@@ -230,6 +246,7 @@
                     col={0}
                     text={inputText(day, 'rain_in')}
                     label={cellLabel(day, 'Rain')}
+                    {readOnly}
                     onsave={(t) => saveCell(day, 'rain_in', t)}
                   >
                     {#if day.rain_source === 'entered'}
@@ -249,6 +266,7 @@
                     col={1}
                     text={inputText(day, 'irrigation_in')}
                     label={cellLabel(day, 'Irrigation')}
+                    {readOnly}
                     onsave={(t) => saveCell(day, 'irrigation_in', t)}
                   >
                     {#if day.irrigation_source === 'none'}
@@ -270,6 +288,7 @@
                     align="left"
                     text={inputText(day, 'notes')}
                     label={cellLabel(day, 'Notes')}
+                    {readOnly}
                     onsave={(t) => saveCell(day, 'notes', t)}
                   >
                     <span class="block truncate text-ink-muted">{day.notes ?? ''}&nbsp;</span>
@@ -291,30 +310,37 @@
   </CollapsibleSection>
 {/if}
 
-<CollapsibleSection title="Rainfall preferences" id="rainfall" storageKey="rainfall">
-  <Form
-    action={fields.update(field.id)}
-    class="max-w-xl space-y-3 rounded-lg border border-line bg-surface-raised p-4"
-    options={{ preserveScroll: true }}
-  >
-    {#snippet children({ processing })}
-      <fieldset class="space-y-2">
-        <legend class="text-sm font-medium">Which rain this field's plantings use</legend>
-        {#each rainOptions as [value, label, hint] (value)}
-          <label class="flex items-start gap-3 text-sm">
-            <input type="radio" name="field[use_model_precip]" {value} checked={rainSetting === value} class="mt-0.5" />
-            <span
-              >{label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}</span
-            >
-          </label>
-        {/each}
-      </fieldset>
-      <p class="text-xs text-ink-muted">
-        This only changes which rain the balance uses. Nothing is copied or deleted, so you can switch back at any time.
-      </p>
-      <Button type="submit" disabled={processing}>Save</Button>
-    {/snippet}
-  </Form>
-</CollapsibleSection>
+{#if !readOnly}<CollapsibleSection title="Rainfall preferences" id="rainfall" storageKey="rainfall">
+    <Form
+      action={fields.update(field.id)}
+      class="max-w-xl space-y-3 rounded-lg border border-line bg-surface-raised p-4"
+      options={{ preserveScroll: true }}
+    >
+      {#snippet children({ processing })}
+        <fieldset class="space-y-2">
+          <legend class="text-sm font-medium">Which rain this field's plantings use</legend>
+          {#each rainOptions as [value, label, hint] (value)}
+            <label class="flex items-start gap-3 text-sm">
+              <input
+                type="radio"
+                name="field[use_model_precip]"
+                {value}
+                checked={rainSetting === value}
+                class="mt-0.5"
+              />
+              <span
+                >{label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}</span
+              >
+            </label>
+          {/each}
+        </fieldset>
+        <p class="text-xs text-ink-muted">
+          This only changes which rain the balance uses. Nothing is copied or deleted, so you can switch back at any
+          time.
+        </p>
+        <Button type="submit" disabled={processing}>Save</Button>
+      {/snippet}
+    </Form>
+  </CollapsibleSection>{/if}
 
 <PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} genericCurves={generic_curves} />

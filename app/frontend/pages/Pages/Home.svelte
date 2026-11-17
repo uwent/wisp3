@@ -2,7 +2,7 @@
   import { Link } from '@inertiajs/svelte'
 
   import Introduction from '@/lib/docs/Introduction.svelte'
-  import { about, newUserRegistration, newUserSession } from '@/routes'
+  import { about, example, newUserRegistration, newUserSession } from '@/routes'
 
   // The landing page for signed-out visitors (PLAN.md Phase 6.5); signed in, / is the dashboard
 
@@ -52,6 +52,12 @@
         class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
       >
         Sign in
+      </Link>
+      <Link
+        href={example()}
+        class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
+      >
+        See an example farm
       </Link>
       <Link href={about()} class="px-2 py-2 text-sm font-medium text-brand-600 hover:underline">How WISP works →</Link>
     </div>

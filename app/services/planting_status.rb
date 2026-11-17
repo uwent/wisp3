@@ -29,7 +29,7 @@ class PlantingStatus
   # weather: and records: are passed to PlantingBalance (pages showing many plantings preload them).
   # ensemble: the cell's ensemble members (WeatherForecast#members); loaded if not given. as_of:
   # time travel (above); it sets today and builds its own records, cut at the date.
-  def initialize(planting, today: Date.current, weather: nil, records: nil, ensemble: :load, as_of: nil)
+  def initialize(planting, today: Current.today, weather: nil, records: nil, ensemble: :load, as_of: nil)
     if as_of
       today, ensemble = as_of, nil
       through = [as_of + HORIZON, planting.end_date].min

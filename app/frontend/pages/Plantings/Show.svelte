@@ -17,6 +17,7 @@
   import ForecastTable from '@/lib/planting/ForecastTable.svelte'
   import { addDays, currentYear, formatDate, relativeDay } from '@/lib/dates'
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
+  import { isExample } from '@/lib/permissions'
   import { guidance as guidanceFor } from '@/lib/guidance'
   import { outlook as outlookFor } from '@/lib/outlook'
   import { plotSize } from '@/lib/plantings'
@@ -72,7 +73,11 @@
   // "pivot", "drip block"
   const noun = $derived(KIND_NOUNS[pivot.kind])
   // Time travelling, nothing on the page edits, and the projection is the weather that followed
-  const readOnly = $derived(as_of !== null)
+  // Time travel, or the example farm (PLAN.md G.8), whose day is as_of when the season covers it
+  // and which has no other day to travel to
+  const example = $derived(isExample(page.props))
+  const travelling = $derived(as_of !== null && !example)
+  const readOnly = $derived(as_of !== null || example)
   const replay = $derived(summary?.projection_source === 'observed')
 
   // Whether the time travel card has scrolled up out of view, when the bar across the top takes over
@@ -199,7 +204,8 @@
 </script>
 
 <svelte:head
-  ><title>{as_of ? `As of ${formatDate(as_of)} · ` : ''}{planting.plant_name} · {field.name} · WISP</title></svelte:head
+  ><title>{travelling ? `As of ${formatDate(as_of)} · ` : ''}{planting.plant_name} · {field.name} · WISP</title
+  ></svelte:head
 >
 
 <FieldHeader {field} {pivot} {farm} {units} year={planting.year} current={planting.id}>
@@ -291,7 +297,7 @@
   {/snippet}
 </FieldHeader>
 
-{#if as_of}
+{#if travelling}
   <!-- Time travel (PLAN.md Phase 8 F): this card explains it, and once it scrolls away a slim bar
        across the top of the window keeps the date and the way back in view -->
   <div role="status" class="rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm" {@attach watchCard}>

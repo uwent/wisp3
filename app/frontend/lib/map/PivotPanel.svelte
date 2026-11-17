@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import { Link, page } from '@inertiajs/svelte'
 
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import { KIND_NOUNS, systemName } from '@/lib/geo'
+  import { isExample } from '@/lib/permissions'
   import type { Selection } from '@/lib/overview'
   import type { Units } from '@/lib/units'
   import { pivots } from '@/routes'
@@ -90,10 +91,12 @@
         <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline" aria-label="View {pivot.name}"
           >View</Link
         >
-        <span class="text-ink-muted" aria-hidden="true">·</span>
-        <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
-          >Edit</Link
-        >
+        {#if !isExample(page.props)}
+          <span class="text-ink-muted" aria-hidden="true">·</span>
+          <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
+            >Edit</Link
+          >
+        {/if}
       </div>
     </div>
     <button

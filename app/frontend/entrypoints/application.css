@@ -53,6 +53,10 @@
   --color-impersonation: oklch(45% 0.2 300);
   --color-on-impersonation: oklch(100% 0 0);
 
+  /* The bar shown while viewing the example farm (PLAN.md G.8), in a teal no status uses */
+  --color-example: oklch(42% 0.08 195);
+  --color-on-example: oklch(100% 0 0);
+
   /* Surfaces and text, switched for dark mode below */
   --color-surface: oklch(98.5% 0.003 240);
   --color-surface-raised: oklch(100% 0 0);
@@ -109,6 +113,8 @@
     --color-status-caution-ink: oklch(80% 0.15 75);
     --color-impersonation: oklch(78% 0.12 300);
     --color-on-impersonation: oklch(18% 0.015 250);
+    --color-example: oklch(80% 0.08 195);
+    --color-on-example: oklch(18% 0.015 250);
     --color-brand-50: oklch(28% 0.05 235);
     --color-brand-100: oklch(33% 0.06 235);
     --color-brand-500: oklch(70% 0.12 232);
@@ -139,6 +145,8 @@
   --color-status-caution-ink: oklch(80% 0.15 75);
   --color-impersonation: oklch(78% 0.12 300);
   --color-on-impersonation: oklch(18% 0.015 250);
+  --color-example: oklch(80% 0.08 195);
+  --color-on-example: oklch(18% 0.015 250);
   --color-brand-50: oklch(28% 0.05 235);
   --color-brand-100: oklch(33% 0.06 235);
   --color-brand-500: oklch(70% 0.12 232);

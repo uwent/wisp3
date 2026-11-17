@@ -2,6 +2,7 @@
 # with its weather zone's week ahead and a link to the zone (G.12).
 class PivotsController < AuthenticatedController
   before_action :require_owner, only: :destroy
+  allow_example :show, :weather
 
   def show
     pivot = Current.group.pivots.includes(:farm, :weather_cell, fields: [:soil_type, {plantings: :plant}]).find(params[:id])
@@ -16,7 +17,7 @@ class PivotsController < AuthenticatedController
       irrigations: PivotIrrigationSerializer.new(irrigations).to_h,
       # The fields an irrigation on a date can apply to (G.14 part 7: a field moved here or away)
       field_seasons: pivot.field_seasons,
-      **WeatherZone.page_props(Current.group, pivot.weather_cell, forecast: year == Date.current.year)
+      **WeatherZone.page_props(Current.group, pivot.weather_cell, forecast: year == Current.today.year)
     }
   end
 

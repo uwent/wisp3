@@ -13,4 +13,12 @@ class Group < ApplicationRecord
   def plantings = Planting.joins(field: {pivot: :farm}).where(farms: {group_id: id})
 
   validates :name, presence: true, length: {maximum: 100}
+
+  # The public example farm (PLAN.md G.8): at most one group, with no members, shown read-only to
+  # anyone (example mode, ExampleMode) as of its example_as_of; rebuilt by bin/rails demo:example
+  scope :examples, -> { where.not(example_as_of: nil) }
+
+  def self.example = examples.first
+
+  def example? = example_as_of.present?
 end
