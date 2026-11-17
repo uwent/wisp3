@@ -71,7 +71,7 @@ describe('rain fill-down', () => {
     expect(rainFields([pivot(1, [growing, field(2, [])])])).toEqual([growing])
   })
 
-  it('shows the fields’ value when all agree, and varies when not', () => {
+  it("shows the fields' value when all agree, and varies when not", () => {
     expect(common([0.4, 0.4])).toEqual({ value: 0.4, varies: false })
     expect(common([null, null])).toEqual({ value: null, varies: false })
     expect(common([0.4, null])).toEqual({ value: null, varies: true })
@@ -80,7 +80,7 @@ describe('rain fill-down', () => {
 })
 
 describe('appliedLabel', () => {
-  it('says how many fields a pivot’s irrigation reaches', () => {
+  it("says how many fields a pivot's irrigation reaches", () => {
     expect(appliedLabel(null, 6)).toBe('All 6 fields')
     expect(appliedLabel([1, 2, 3, 4, 5], 6)).toBe('5 of 6 fields')
     expect(appliedLabel(null, 1)).toBe('Its field')
@@ -88,7 +88,7 @@ describe('appliedLabel', () => {
 })
 
 describe('fieldHasEntry', () => {
-  it('counts a plot’s entry or reading', () => {
+  it("counts a plot's entry or reading", () => {
     expect(fieldHasEntry(field(1))).toBe(false)
     const plot = planting(2, { partial: true, entry: { irrigation_in: 0.5, soil_moisture_pct: null } })
     expect(fieldHasEntry(field(1, [plot]))).toBe(true)

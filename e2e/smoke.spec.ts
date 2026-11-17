@@ -260,9 +260,9 @@ test('quick setup suggests the soil from the soil survey under the pivot', { tag
   )
   await page.goto('/setup/start')
   await expect(page.getByText('Place the pivot on the map to see the soils around it')).toBeVisible()
-  await expect(page.getByLabel('Radius')).toHaveValue('')
+  await expect(page.getByRole('textbox', { name: 'Radius' })).toHaveValue('')
   await page.getByRole('application', { name: /click to place the pivot/ }).click()
-  await expect(page.getByLabel('Radius')).not.toHaveValue('')
+  await expect(page.getByRole('textbox', { name: 'Radius' })).not.toHaveValue('')
   await expect(page.getByText(/Soil survey:\s*mostly Sand/)).toBeVisible()
   // The menu gives each soil's share, the survey's main one chosen
   const soil = page.getByLabel('Soil', { exact: true })
@@ -289,7 +289,7 @@ test("quick setup makes fields without crops, then Setup's next steps add each p
   await expect(page.getByText('Still needed: its location (click the map).')).toBeVisible()
   await placePivot(page)
   await expect(save).toBeEnabled()
-  await expect(page.getByLabel('Crop')).toHaveCount(0)
+  await expect(page.getByLabel('Crop', { exact: true })).toHaveCount(0)
   await page.getByLabel('Field name').fill('Zz North')
   await page.getByRole('button', { name: 'Save and continue' }).click()
 
@@ -297,7 +297,7 @@ test("quick setup makes fields without crops, then Setup's next steps add each p
   await expect(steps).toContainText('Zz North')
   await steps.getByRole('button', { name: 'Add a planting to Zz North' }).click()
   const dialog = page.getByRole('dialog', { name: /^Add a \d{4} planting to Zz North/ })
-  await dialog.getByLabel('Crop').selectOption({ label: 'Soybean' })
+  await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
   await dialog.getByRole('button', { name: 'Add planting' }).click()
   await expect(page.getByRole('region', { name: 'Set up' })).toContainText('Zz Pivot and its fields are set up')
 
@@ -359,7 +359,7 @@ test('a linear is sized by dragging a corner and turned by its handle', async ({
   await page.getByLabel('Name', { exact: true }).fill(name)
   await page.getByRole('radio', { name: /Linear/ }).check()
   await placePivot(page)
-  const travel = page.getByLabel('Travel distance')
+  const travel = page.getByRole('textbox', { name: 'Travel distance' })
   const before = await travel.inputValue()
   await dragHandle(page, 'Drag to resize the linear', 0, 20)
   await expect(travel).not.toHaveValue(before)
@@ -396,8 +396,8 @@ test('a traveler is placed with a click and keeps no shape', async ({ page }) =>
   await page.goto('/pivots/new')
   await page.getByLabel('Name', { exact: true }).fill(name)
   await page.getByRole('radio', { name: /^Traveler/ }).check()
-  await expect(page.getByLabel('Radius')).toHaveCount(0)
-  await expect(page.getByLabel('Flow')).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Radius' })).toHaveCount(0)
+  await expect(page.getByRole('textbox', { name: 'Flow' })).toBeVisible()
   const map = page.getByRole('application', { name: /click to place the traveler/ })
   await expect(map.locator('canvas')).toBeVisible()
   await map.click()
@@ -421,7 +421,7 @@ test("a partial circle's arc is set by dragging its ends", async ({ page }) => {
   await placePivot(page)
   await page.getByText('Partial circle', { exact: true }).click()
   await expect(page.getByRole('radio', { name: 'Partial circle' })).toBeChecked()
-  const arcEnd = page.getByLabel('Arc ends at')
+  const arcEnd = page.getByRole('textbox', { name: 'Arc ends at' })
   await expect(arcEnd).toHaveValue('270')
   await dragHandle(page, 'Drag to set where the arc ends', 0, -80)
   await expect(arcEnd).not.toHaveValue('270')
@@ -679,14 +679,14 @@ test("a new planting's harvest follows the crop and emergence until one is typed
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
   const dialog = page.getByRole('dialog', { name: /^Add a \d{4} planting to Cabbage/ })
-  const harvest = dialog.getByLabel('Harvest or kill')
-  await dialog.getByLabel('Crop').selectOption({ label: 'Soybean' })
+  const harvest = dialog.getByLabel('Harvest or kill', { exact: true })
+  await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
   await expect(harvest).toHaveValue(`${year}-08-30`) // May 1 + 121 days
   await expect(dialog.getByText('A soybean season typically runs about 121 days')).toBeVisible()
-  await dialog.getByLabel('Emergence').fill(`${year}-05-20`)
+  await dialog.getByLabel('Emergence', { exact: true }).fill(`${year}-05-20`)
   await expect(harvest).toHaveValue(`${year}-09-18`)
   await harvest.fill(`${year}-10-01`)
-  await dialog.getByLabel('Emergence').fill(`${year}-05-25`)
+  await dialog.getByLabel('Emergence', { exact: true }).fill(`${year}-05-25`)
   await expect(harvest).toHaveValue(`${year}-10-01`)
 })
 
@@ -695,15 +695,15 @@ test('a crop without its own canopy curve follows a generic one, or readings onl
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Add a planting to Cabbage' }).click()
   const dialog = page.getByRole('dialog', { name: /^Add a \d{4} planting to Cabbage/ })
-  await dialog.getByLabel('Crop').selectOption({ label: 'Onion' })
+  await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Onion' })
   const curves = dialog.getByRole('group', { name: 'Canopy curve' })
   await expect(curves.getByRole('radio', { name: /^Slow, partial cover \(suggested\)/ })).toBeChecked()
   await expect(curves.getByText('An approximation for onion')).toBeVisible()
-  await expect(dialog.getByLabel('Harvest or kill')).toHaveValue(`${year}-08-29`) // May 1 + 120 days
+  await expect(dialog.getByLabel('Harvest or kill', { exact: true })).toHaveValue(`${year}-08-29`) // May 1 + 120 days
   await curves.getByRole('radio', { name: 'No curve: readings only' }).check()
   await expect(curves.getByText('Irrigation scheduling works only if you enter percent cover regularly')).toBeVisible()
   // A crop with its own curve has no choice
-  await dialog.getByLabel('Crop').selectOption({ label: 'Soybean' })
+  await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
   await expect(curves).toBeHidden()
 })
 
@@ -735,7 +735,7 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   ).toEqual(['visible', ''])
   await expect(dialog.getByRole('radio', { name: /^Whole field/ })).toBeChecked()
   await expect(dialog.getByText('This overlaps: Cabbage')).toBeVisible()
-  await dialog.getByLabel('Season start').fill(`${new Date().getFullYear()}-08-01`)
+  await dialog.getByLabel('Season start', { exact: true }).fill(`${new Date().getFullYear()}-08-01`)
   await expect(dialog.getByRole('checkbox', { name: /^Replace: end Cabbage on Jul 31/ })).toBeVisible()
   // Part of the field leaves the cabbage alone, but can't overlap a planting covering the whole field
   await dialog
@@ -764,7 +764,7 @@ test('daily entry saves rain for a field', { tag: '@phone' }, async ({ page }) =
   await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('')
 })
 
-test('daily entry fills an irrigation group’s rain into its fields, and saves a plot’s irrigation and a cover reading', async ({
+test("daily entry fills an irrigation group's rain into its fields, and saves a plot's irrigation and a cover reading", async ({
   page,
 }) => {
   await page.goto(midSeason)
@@ -836,7 +836,7 @@ test('a dialog asks before dropping changes, listing them (G.13)', async ({ page
   await page.goto('/setup')
   await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
   const dialog = page.getByRole('dialog')
-  const area = dialog.getByLabel(/field area/i)
+  const area = dialog.getByRole('textbox', { name: 'Field area' })
   const before = await area.inputValue()
 
   // Escape with a change: the change listed in place of the form, Keep editing returns to it
@@ -853,7 +853,7 @@ test('a dialog asks before dropping changes, listing them (G.13)', async ({ page
   await dialog.getByRole('button', { name: 'Discard' }).click()
   await expect(dialog).toBeHidden()
   await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
-  await expect(dialog.getByLabel(/field area/i)).toHaveValue(before)
+  await expect(dialog.getByRole('textbox', { name: 'Field area' })).toHaveValue(before)
   // Nothing changed: Escape just closes
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()
@@ -961,12 +961,12 @@ test('setup downloads the season report, and a weather zone its weather', async 
   expect(readFileSync(await all.path(), 'utf8')).toMatch(/^\uFEFF"?WISP weather, /)
 })
 
-test('alerts previews today’s email and sends a test, then waits', async ({ page }) => {
+test("alerts previews today's email and sends a test, then waits", async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/alerts')
   await expect(page.getByLabel('Email frequency')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Preview today’s email' }).click()
+  await page.getByRole('button', { name: "Preview today's email" }).click()
   const email = page.frameLocator('iframe[title="Daily email preview"]')
   await expect(email.getByRole('heading', { name: 'Your fields this morning' })).toBeVisible()
 
@@ -1018,14 +1018,14 @@ test('a field shape is read from a file, its area offered, and saved (G.10, G.6)
   await expect(page.getByRole('group', { name: 'Shape tools' })).toBeEnabled()
   await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')
   await expect(page.getByText('Current area').locator('xpath=following-sibling::p')).toHaveText('2.00 ac')
-  await expect(page.getByLabel('Field area')).toHaveValue(/^2(\.0+)?$/)
+  await expect(page.getByLabel('Field area', { exact: true })).toHaveValue(/^2(\.0+)?$/)
   await expect(
     page.getByText(/^Field as drawn: 111\.\d\d ac, 109\.\d\d ac more than the area above\. Check that/),
   ).toBeVisible()
   await page.getByRole('button', { name: /^Use 111\.\d\d ac$/ }).click()
-  await expect(page.getByLabel('Field area')).toHaveValue(/^111\.\d\d$/)
+  await expect(page.getByLabel('Field area', { exact: true })).toHaveValue(/^111\.\d\d$/)
   await expect(page.getByText(/^Field as drawn: 111\.\d\d ac\.\s*$/)).toBeVisible()
-  await page.getByLabel('Field area').fill('2')
+  await page.getByLabel('Field area', { exact: true }).fill('2')
 
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Saved the shape of Arlington 525')).toBeVisible()

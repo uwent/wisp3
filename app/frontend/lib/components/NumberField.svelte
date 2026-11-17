@@ -2,6 +2,8 @@
   import { type Snippet, untrack } from 'svelte'
   import { page } from '@inertiajs/svelte'
 
+  import FieldLabel from '@/lib/components/FieldLabel.svelte'
+  import type { FieldInfoKey } from '@/lib/fieldInfo'
   import { parseNumber, type Quantity, units as unitsFor } from '@/lib/units'
 
   // A number input in the user's units (Q3). What's typed is shown as-is; a hidden input carries
@@ -13,6 +15,7 @@
     value = $bindable(null),
     error,
     hint,
+    info,
     required = false,
     placeholder,
     unitLabel,
@@ -30,6 +33,8 @@
     value?: number | null
     error?: string | string[]
     hint?: string
+    /** An info tip by the label (lib/fieldInfo.ts) */
+    info?: FieldInfoKey
     required?: boolean
     placeholder?: string
     /** Shown after the box when there's no quantity, e.g. "%" */
@@ -72,7 +77,7 @@
 </script>
 
 <div class={hideLabel ? '' : 'space-y-1'}>
-  <label for={id} class={hideLabel ? 'sr-only' : 'block text-sm font-medium'}>{label}</label>
+  <FieldLabel {label} {info} for={id} hidden={hideLabel} />
   <div class="flex items-center gap-2">
     <input
       {id}

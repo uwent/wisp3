@@ -1,6 +1,6 @@
 # Handoff: G.13, forms that explain themselves and don't lose edits
 
-Written 2026-11-16 at the end of G.6, and updated at the end of the session that built part 1. Read PLAN.md's **G.13** first: its **Plan** paragraph is agreed with Ben (2026-11-16). Part 1 (the change prompt) is done; what's left is part 2, the info tips, one commit on `beta-readiness`. Ben reviews the wording in the app as it lands, before `bin/ci`.
+Written 2026-11-16 at the end of G.6, and updated at the end of the session that built part 1. Read PLAN.md's **G.13** first: its **Plan** paragraph is agreed with Ben (2026-11-16). Both parts are done (2026-11-16; PLAN.md G.13, *As built*); this handoff is kept for the record. Ben reviews the wording in the app as it lands, before `bin/ci`.
 
 ## Where things stand
 

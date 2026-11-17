@@ -132,3 +132,30 @@ test('a glossary term opens from the keyboard, and describes itself by its defin
   await expect(page.getByRole('tooltip')).toBeHidden()
   await expect(term).toBeFocused()
 })
+
+test("a form's info tip opens from the keyboard, and Escape closes it before the dialog's prompt (G.13)", async ({
+  page,
+}) => {
+  await page.goto('/setup')
+  await page.getByRole('button', { name: 'Edit Arlington 525' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox', { name: 'Field area' }).fill('12.5')
+  // The (i) follows the Name box in tab order, outside the select's label
+  await dialog.getByRole('textbox', { name: 'Name' }).focus()
+  await page.keyboard.press('Tab')
+  const info = dialog.getByRole('button', { name: 'About Irrigation system' })
+  await expect(info).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('tooltip')).toBeVisible()
+  await expect(info).toHaveAccessibleDescription(/waters this field/)
+  // Escape closes the tip only: the dialog stays, without asking about the change
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('tooltip')).toBeHidden()
+  await expect(info).toBeFocused()
+  await expect(dialog.getByRole('heading', { name: 'Save your changes?' })).toBeHidden()
+  // The next Escape is the dialog's
+  await page.keyboard.press('Escape')
+  await expect(dialog.getByRole('heading', { name: 'Save your changes?' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Discard' }).click()
+  await expect(dialog).toBeHidden()
+})

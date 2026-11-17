@@ -38,7 +38,7 @@ describe('reading outline files', () => {
     }
   })
 
-  it('reads GeoJSON, keeping a multipolygon’s largest part and guessing the name from its attributes', async () => {
+  it("reads GeoJSON, keeping a multipolygon's largest part and guessing the name from its attributes", async () => {
     const result = await readOutlineFile(fixture('fields.geojson'))
     expect(result.shapes).toHaveLength(1)
     expect(result.skipped).toBe(1)

@@ -18,26 +18,21 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Allowable depletion (AD)',
     matches: ['allowable depletion', 'AD'],
     definition:
-      'The water left in the root zone that the crop can use without stress. It’s at its highest when the soil ' +
-      'is at field capacity and 0 at the irrigation point. Below 0 the crop is increasingly stressed, down to ' +
-      'the wilting point.',
+      "The water left in the root zone that the crop can use without stress. It's at its highest when the soil is at field capacity and 0 at the irrigation point. Below 0 the crop is increasingly stressed, down to the wilting point.",
   },
   {
     id: 'mad',
     term: 'MAD (allowable depletion fraction)',
     matches: ['MAD'],
     definition:
-      'The share of the root zone’s available water (between field capacity and the wilting point) that the crop ' +
-      'can use before stress begins. 50% suits most crops; use a lower value for crops that are very sensitive ' +
-      'to water stress.',
+      "The share of the root zone's available water (between field capacity and the wilting point) that the crop can use before stress begins. 50% suits most crops; use a lower value for crops that are very sensitive to water stress.",
   },
   {
     id: 'field_capacity',
     term: 'Field capacity',
     matches: ['field capacity'],
     definition:
-      'The water a soil holds once it has drained after being soaked, about a day after heavy rain or ' +
-      'irrigation. Water above that level drains below the root zone.',
+      'The water a soil holds once it has drained after being soaked, about a day after heavy rain or irrigation. Water above that level drains below the root zone.',
   },
   {
     id: 'wilting_point',
@@ -50,25 +45,21 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Root zone',
     matches: ['root zone'],
     definition:
-      'The depth of soil the crop draws water from, which WISP balances as one layer. It is best measured in ' +
-      'the field at full canopy.',
+      'The depth of soil the crop draws water from, which WISP balances as one layer. It is best measured in the field at full canopy.',
   },
   {
     id: 'reference_et',
     term: 'Reference ET',
     matches: ['reference ET', 'ET0'],
     definition:
-      'The water a well-watered reference grass would use in a day, calculated from the weather (FAO-56 ' +
-      'Penman-Monteith). WISP works it out each hour from corrected solar radiation and humidity. Crop ET is this ' +
-      'amount adjusted for the crop’s canopy.',
+      "The water a well-watered reference grass would use in a day, calculated from the weather (FAO-56 Penman-Monteith). WISP works it out each hour from corrected solar radiation and humidity. Crop ET is this amount adjusted for the crop's canopy.",
   },
   {
     id: 'solar_radiation',
     term: 'Solar radiation',
     matches: ['solar radiation', 'shortwave radiation'],
     definition:
-      'The sunshine reaching the ground, measured as energy per area (MJ/m² over a day). It drives most of a ' +
-      'day’s reference ET. Weather models tend to overestimate it, so WISP corrects it against weather stations.',
+      "The sunshine reaching the ground, measured as energy per area (MJ/m² over a day). It drives most of a day's reference ET. Weather models tend to overestimate it, so WISP corrects it against weather stations.",
   },
   {
     id: 'crop_et',
@@ -80,92 +71,77 @@ export const GLOSSARY: GlossaryEntry[] = [
     id: 'et',
     term: 'Evapotranspiration (ET)',
     matches: ['evapotranspiration', 'ET'],
-    definition: 'Water leaving the field by evaporation from the soil and transpiration through the crop’s leaves.',
+    definition: "Water leaving the field by evaporation from the soil and transpiration through the crop's leaves.",
   },
   {
     id: 'kc',
     term: 'Crop coefficient (Kc)',
     matches: ['crop coefficient', 'Kc'],
     definition:
-      'The fraction of reference ET the crop uses, from 0 for bare soil to about 1.1 at full canopy. WISP ' +
-      'calculates it from percent cover or LAI.',
+      'The fraction of reference ET the crop uses, from 0 for bare soil to about 1.1 at full canopy. WISP calculates it from percent cover or LAI.',
   },
   {
     id: 'percent_cover',
     term: 'Percent cover',
     matches: ['percent canopy cover', 'percent cover'],
     definition:
-      'The share of the ground shaded by the crop’s canopy. For row crops, divide the average canopy width by ' +
-      'the row spacing: 18 in wide on 36 in rows is 50%.',
+      "The share of the ground shaded by the crop's canopy. For row crops, divide the average canopy width by the row spacing: 18 in wide on 36 in rows is 50%.",
   },
   {
     id: 'lai',
     term: 'Leaf area index (LAI)',
     matches: ['leaf area index', 'LAI'],
     definition:
-      'The leaf area of a crop per unit of ground beneath it: an LAI of 3 means three square feet of leaves ' +
-      'over each square foot of soil. It can be measured with a ceptometer.',
+      'The leaf area of a crop per unit of ground beneath it: an LAI of 3 means three square feet of leaves over each square foot of soil. It can be measured with a ceptometer.',
   },
   {
     id: 'canopy_curve',
     term: 'Canopy curve',
     matches: ['canopy curve', 'crop curve'],
     definition:
-      'A crop’s typical percent cover (or LAI) by day since emergence. WISP follows it until you enter ' +
-      'readings, then adjusts it to pass through them. Each crop’s curve and its source are on the About page.',
+      "A crop's typical percent cover (or LAI) by day since emergence. WISP follows it until you enter readings, then adjusts it to pass through them. Each crop's curve and its source are on the About page.",
   },
   {
     id: 'deep_drainage',
     term: 'Deep drainage',
     matches: ['deep drainage'],
     definition:
-      'Water that drains below the root zone when rain or irrigation fills it past field capacity. It carries ' +
-      'nutrients toward groundwater, so keeping it low saves water and fertilizer.',
+      'Water that drains below the root zone when rain or irrigation fills it past field capacity. It carries nutrients toward groundwater, so keeping it low saves water and fertilizer.',
   },
   {
     id: 'entered_rain_only',
     term: 'Entered rain only',
     matches: ['only the rain you enter', 'only the rain we enter'],
     definition:
-      'A rainfall setting for an operation or a single field. Instead of the modeled rain, the balance counts ' +
-      'only the rain you enter and treats days with no entry as dry. The days ahead still use the forecast’s ' +
-      'rain, and the outlook also says when the field would need water if no rain fell. Use it if you read a ' +
-      'gauge every day it rains. Nothing is deleted, so you can switch back at any time.',
+      "A rainfall setting for an operation or a single field. Instead of the modeled rain, the balance counts only the rain you enter and treats days with no entry as dry. The days ahead still use the forecast's rain, and the outlook also says when the field would need water if no rain fell. Use it if you read a gauge every day it rains. Nothing is deleted, so you can switch back at any time.",
   },
   {
     id: 'planting',
     term: 'Planting',
     matches: ['planting', 'plantings'],
     definition:
-      'A crop growing on a field for one season, from season start to harvest, with its own water balance. A ' +
-      'planting covers the whole field or part of it (a plot, sized by length and width or by area), so a field ' +
-      'can grow one crop after another, or several side by side. Rain is the field’s; a plot can have its own ' +
-      'irrigation and soil moisture readings.',
+      "A crop growing on a field for one season, from season start to harvest, with its own water balance. A planting covers the whole field or part of it (a plot, sized by length and width or by area), so a field can grow one crop after another, or several side by side. Rain is the field's; a plot can have its own irrigation and soil moisture readings.",
   },
   {
     id: 'irrigation_system',
     term: 'Irrigation system',
     matches: ['irrigation system', 'irrigation systems'],
     definition:
-      'A place watered one way: a center pivot, a linear, a traveler, a solid set or drip block, or just a ' +
-      'location. Its location sets the weather for its fields, and irrigation entered for it applies to them. A ' +
-      'traveler moved between fields is set up at each field it waters.',
+      'A place watered one way: a center pivot, a linear, a traveler, a solid set or drip block, or just a location. Its location sets the weather for its fields, and irrigation entered for it applies to them. A traveler moved between fields is set up at each field it waters.',
   },
   {
     id: 'irrigation_group',
     term: 'Irrigation group',
     matches: ['irrigation group', 'irrigation groups'],
     definition:
-      'Irrigation systems on one farm kept together, such as those near one rain gauge. Rain typed for the group ' +
-      'on Daily entry fills in every field of its systems.',
+      'Irrigation systems on one farm kept together, such as those near one rain gauge. Rain typed for the group on Daily entry fills in every field of its systems.',
   },
   {
     id: 'weather_zone',
     term: 'Weather zone',
     matches: ['weather zone', 'weather zones'],
     definition:
-      'One cell of the weather model’s grid, about 6 miles (9 km) across. Irrigation systems in the same cell share ' +
-      'its weather; the Weather tab has each zone’s forecast and season.',
+      "One cell of the weather model's grid, about 6 miles (9 km) across. Irrigation systems in the same cell share its weather; the Weather tab has each zone's forecast and season.",
   },
 ]
 

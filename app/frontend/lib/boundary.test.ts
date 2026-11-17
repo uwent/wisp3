@@ -38,12 +38,12 @@ function ring(corners: number, center: LngLat = [-89.4, 43.3], radius = 0.001): 
   return [...points, points[0]]
 }
 
-describe('an outline’s area', () => {
+describe("an outline's area", () => {
   it('measures a polygon on a spherical earth, as the server does', () => {
     expect(boundaryAcres(square)).toBeCloseTo(222.338, 2)
   })
 
-  it('agrees with a pivot’s acres for its circle', () => {
+  it("agrees with a pivot's acres for its circle", () => {
     const circle: Boundary = { type: 'Polygon', coordinates: [pivotRing([-89.5, 44.1], 1300, null, null, 360)] }
     expect(boundaryAcres(circle)).toBeCloseTo(pivotAcres(1300), 0)
   })

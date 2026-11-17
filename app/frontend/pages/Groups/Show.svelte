@@ -3,6 +3,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
+  import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { formatDate } from '@/lib/dates'
@@ -79,8 +80,8 @@
     <Form action={groups.update()} class="max-w-xl space-y-4" options={{ preserveScroll: true }}>
       {#snippet children({ errors, processing })}
         <TextField label="Operation name" name="group[name]" value={group.name} error={errors.name} />
-        <fieldset class="space-y-2">
-          <legend class="text-sm font-medium">Rainfall</legend>
+        <fieldset class="space-y-2" aria-labelledby="operation-rainfall">
+          <FieldLabel as="legend" label="Rainfall" labelId="operation-rainfall" info="operation.rainfall" />
           <label class="flex items-start gap-3 text-sm">
             <input
               type="radio"
@@ -189,6 +190,7 @@
               { value: 'false', label: 'Member' },
               { value: 'true', label: 'Owner' },
             ]}
+            info="membership.role"
           />
           <Button type="submit" class="sm:mt-6" disabled={processing}>Add</Button>
         </div>

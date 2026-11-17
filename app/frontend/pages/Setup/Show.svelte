@@ -426,7 +426,7 @@
           label="Farm name"
           name="farm[name]"
           value={dialog?.kind === 'farm' ? (dialog.farm?.name ?? '') : ''}
-          hint="A farm groups irrigation systems you want to view and manage together"
+          info="farm.name"
           error={errors.name}
           required
         />
@@ -462,7 +462,7 @@
           name="pivot_group[name]"
           value={pivotGroup?.name ?? ''}
           placeholder="e.g. East half"
-          hint="Group irrigation systems to organize them and enter their rain once: on Daily entry, rain entered for the group fills into all their fields."
+          info="pivot_group.name"
           error={errors.name}
           required
         />

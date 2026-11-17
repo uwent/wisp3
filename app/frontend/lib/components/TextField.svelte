@@ -1,4 +1,6 @@
 <script lang="ts">
+  import FieldLabel from '@/lib/components/FieldLabel.svelte'
+  import type { FieldInfoKey } from '@/lib/fieldInfo'
   import type { HTMLInputAttributes } from 'svelte/elements'
 
   let {
@@ -6,6 +8,7 @@
     name,
     error,
     hint,
+    info,
     value = $bindable(),
     class: className = '',
     id = `field-${name.replace(/[^a-z0-9]+/gi, '-')}`,
@@ -15,6 +18,8 @@
     name: string
     error?: string | string[]
     hint?: string
+    /** An info tip by the label (lib/fieldInfo.ts) */
+    info?: FieldInfoKey
   } = $props()
 
   const message = $derived(Array.isArray(error) ? error[0] : error)
@@ -23,7 +28,7 @@
 </script>
 
 <div class="space-y-1">
-  <label for={id} class="block text-sm font-medium">{label}</label>
+  <FieldLabel {label} {info} for={id} />
   <input
     {id}
     {name}

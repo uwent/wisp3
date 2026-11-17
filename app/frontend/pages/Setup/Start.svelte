@@ -233,7 +233,8 @@
               name="setup[pivot][pump_capacity_gpm]"
               quantity="flow"
               value={null}
-              hint="Optional. With it, you can enter irrigation as hours the {noun} ran."
+              hint="Optional"
+              info="pivot.pump_capacity"
               error={error(e, 'pivot.pump_capacity_gpm')}
             />
           </PivotShapeFields>
@@ -287,6 +288,7 @@
                   name="setup[fields][{i}][area_acres]"
                   quantity="area"
                   bind:value={row.area}
+                  info="quick_setup.area"
                   error={error(e, `fields.${i}.area_acres`)}
                 />
                 <SelectField
@@ -295,6 +297,7 @@
                   bind:value={row.soilTypeId}
                   onchange={() => (row.soilChosen = true)}
                   options={soilOptions}
+                  info="field.soil"
                   hint={!row.soilChosen && suggestedSoilId !== null ? 'From the soil survey' : undefined}
                   note={fit(row.soilTypeId) ? soilNote : undefined}
                 />

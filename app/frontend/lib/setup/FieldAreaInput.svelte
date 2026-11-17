@@ -3,6 +3,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
+  import type { FieldInfoKey } from '@/lib/fieldInfo'
   import { units as unitsFor } from '@/lib/units'
 
   // A field's area (PLAN.md Phase 8 G.14 part 7): the area saved beside the box, with a button to copy
@@ -16,6 +17,7 @@
     drawn = null,
     error,
     onchange,
+    info,
   }: {
     name: string
     /** The area in the box, in acres */
@@ -27,6 +29,8 @@
     error?: string | string[]
     /** Called when the button changes the box */
     onchange?: () => void
+    /** The box's info tip (lib/fieldInfo.ts) */
+    info?: FieldInfoKey
   } = $props()
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
@@ -63,6 +67,7 @@
       <NumberField
         {label}
         {name}
+        {info}
         quantity="area"
         bind:value
         {error}

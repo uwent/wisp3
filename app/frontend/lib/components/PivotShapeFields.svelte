@@ -2,6 +2,7 @@
   import { page } from '@inertiajs/svelte'
   import type { Snippet } from 'svelte'
 
+  import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import PivotMap from '@/lib/components/PivotMap.svelte'
   import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
@@ -80,8 +81,8 @@
   ]
 </script>
 
-<fieldset class="space-y-2">
-  <legend class="text-sm font-medium">Irrigation system</legend>
+<fieldset class="space-y-2" aria-labelledby="pivot-kind">
+  <FieldLabel as="legend" label="Irrigation system" labelId="pivot-kind" info="pivot.kind" />
   <input type="hidden" name="{prefix}[kind]" value={shape.kind} />
   <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
     {#each KINDS as kind (kind.value)}
@@ -107,14 +108,27 @@
 <PivotMap bind:this={pivotMap} bind:shape {others} {soilTypes} {locked} />
 
 <div class="grid gap-4 sm:grid-cols-2 {children ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}">
-  <NumberField label="Latitude" name="{prefix}[latitude]" bind:value={shape.latitude} error={error('latitude')} />
-  <NumberField label="Longitude" name="{prefix}[longitude]" bind:value={shape.longitude} error={error('longitude')} />
+  <NumberField
+    label="Latitude"
+    name="{prefix}[latitude]"
+    bind:value={shape.latitude}
+    info="pivot.latitude"
+    error={error('latitude')}
+  />
+  <NumberField
+    label="Longitude"
+    name="{prefix}[longitude]"
+    bind:value={shape.longitude}
+    info="pivot.longitude"
+    error={error('longitude')}
+  />
   {#if shape.kind === 'center'}
     <NumberField
       label="Radius"
       name="{prefix}[radius_ft]"
       quantity="distance"
       bind:value={() => (sized('radius') ? shape.radiusFt : null), (v) => ((typed.radius = true), (shape.radiusFt = v))}
+      info="pivot.radius"
       error={error('radius_ft')}
       hint={areaHint}
     />
@@ -129,6 +143,7 @@
       name="{prefix}[length_ft]"
       quantity="distance"
       bind:value={() => (sized('length') ? shape.lengthFt : null), (v) => ((typed.length = true), (shape.lengthFt = v))}
+      info="pivot.length"
       error={error('length_ft')}
     />
     <NumberField
@@ -136,6 +151,7 @@
       name="{prefix}[travel_ft]"
       quantity="distance"
       bind:value={() => (sized('travel') ? shape.travelFt : null), (v) => ((typed.travel = true), (shape.travelFt = v))}
+      info="pivot.travel"
       error={error('travel_ft')}
       hint={areaHint}
     />
@@ -153,7 +169,7 @@
 {#if shape.kind === 'center'}
   <div class="flex flex-wrap items-start gap-x-6 gap-y-4">
     <div class="space-y-1">
-      <span id="pivot-sweep" class="block text-sm font-medium">Pivot sweep</span>
+      <FieldLabel as="span" label="Pivot sweep" labelId="pivot-sweep" info="pivot.sweep" />
       <div
         class="flex overflow-hidden rounded-md border border-line text-sm sm:w-fit"
         role="radiogroup"
@@ -183,6 +199,7 @@
           name="{prefix}[arc_start_deg]"
           unitLabel="° from north"
           bind:value={shape.arcStart}
+          info="pivot.arc_start"
           error={error('arc_start_deg')}
         />
         <NumberField
@@ -190,6 +207,7 @@
           name="{prefix}[arc_end_deg]"
           unitLabel="° (clockwise)"
           bind:value={shape.arcEnd}
+          info="pivot.arc_end"
           error={error('arc_end_deg')}
         />
       </div>

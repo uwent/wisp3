@@ -3,11 +3,13 @@
   import { Form } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
+  import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import FormFooter from '@/lib/components/FormFooter.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { addDays, formatDate } from '@/lib/dates'
+  import type { FieldInfoKey } from '@/lib/fieldInfo'
   import { clashes, cropName, formatArea, plotAcres, seasonDates, typicalEnd } from '@/lib/plantings'
   import { fetchSoilSurvey, soilOptionsByShare, soilShares } from '@/lib/soils'
   import { units as unitsFor } from '@/lib/units'
@@ -159,9 +161,10 @@
           ...plants.map((p) => ({ value: String(p.id), label: p.name })),
         ]}
         error={errors.plant}
+        info="planting.crop"
         required
       />
-      <TextField label="Variety" name="planting[variety]" value={planting?.variety ?? ''} />
+      <TextField label="Variety" name="planting[variety]" value={planting?.variety ?? ''} info="planting.variety" />
     </div>
     <div class="grid gap-4 sm:grid-cols-3">
       {#snippet dateInput(
@@ -170,9 +173,10 @@
         error: string | string[] | undefined,
         value: string,
         set: (v: string) => void,
+        info: FieldInfoKey,
       )}
         <div class="space-y-1">
-          <label class="block text-sm font-medium" for="planting-{name}">{label}</label>
+          <FieldLabel {label} {info} for="planting-{name}" />
           <input
             id="planting-{name}"
             type="date"
@@ -185,15 +189,36 @@
           {#if error}<p class="text-sm text-status-irrigate-ink">{Array.isArray(error) ? error[0] : error}</p>{/if}
         </div>
       {/snippet}
-      {@render dateInput('season_start', 'Season start', errors.season_start, seasonStart, (v) => (seasonStart = v))}
-      {@render dateInput('emergence_date', 'Emergence', errors.emergence_date, emergence, (v) => {
-        emergence = v
-        suggestEnd()
-      })}
-      {@render dateInput('end_date', endLabel, errors.end_date, endDate, (v) => {
-        endDate = v
-        endChosen = true
-      })}
+      {@render dateInput(
+        'season_start',
+        'Season start',
+        errors.season_start,
+        seasonStart,
+        (v) => (seasonStart = v),
+        'planting.season_start',
+      )}
+      {@render dateInput(
+        'emergence_date',
+        'Emergence',
+        errors.emergence_date,
+        emergence,
+        (v) => {
+          emergence = v
+          suggestEnd()
+        },
+        'planting.emergence',
+      )}
+      {@render dateInput(
+        'end_date',
+        endLabel,
+        errors.end_date,
+        endDate,
+        (v) => {
+          endDate = v
+          endChosen = true
+        },
+        'planting.end',
+      )}
     </div>
     {#if plant && seasonDays}
       <p class="-mt-2 text-sm text-ink-muted">
@@ -203,8 +228,8 @@
       </p>
     {/if}
 
-    <fieldset class="space-y-3">
-      <legend class="text-sm font-medium">Planting size</legend>
+    <fieldset class="space-y-3" aria-labelledby="planting-size">
+      <FieldLabel as="legend" label="Planting size" labelId="planting-size" info="planting.size" />
       <input type="hidden" name="planting[partial]" value={String(partial)} />
       <div
         class="flex flex-col overflow-hidden rounded-md border border-line text-sm sm:w-fit sm:flex-row"
@@ -308,6 +333,7 @@
                   unitLabel="%"
                   value={planting?.own_soil ? planting.field_capacity : null}
                   hint="Blank: {pct(plotSoil?.field_capacity)}"
+                  info="planting.field_capacity"
                   error={errors.field_capacity}
                 />
                 <NumberField
@@ -317,6 +343,7 @@
                   unitLabel="%"
                   value={planting?.own_soil ? planting.perm_wilting_pt : null}
                   hint="Blank: {pct(plotSoil?.perm_wilting_pt)}"
+                  info="planting.wilting_point"
                   error={errors.perm_wilting_pt}
                 />
               </div>
@@ -374,6 +401,7 @@
           name="planting[max_root_zone_depth]"
           quantity="rootDepth"
           bind:value={rootDepth}
+          info="planting.root_zone"
           error={errors.max_root_zone_depth}
         />
       </div>
@@ -383,12 +411,12 @@
         scale={100}
         unitLabel="%"
         bind:value={madFrac}
-        hint="How much of the available water the crop can use before you irrigate. 50% suits most crops."
+        info="planting.mad"
         error={errors.mad_frac}
       />
     </div>
-    <fieldset class="space-y-2">
-      <legend class="text-sm font-medium">Canopy method</legend>
+    <fieldset class="space-y-2" aria-labelledby="planting-et-method">
+      <FieldLabel as="legend" label="Canopy method" labelId="planting-et-method" info="planting.et_method" />
       <label class="flex items-start gap-3 text-sm">
         <input type="radio" name="planting[et_method]" value="pct_cover" bind:group={etMethod} class="mt-0.5" />
         <span
@@ -412,8 +440,8 @@
     <!-- Blank leaves the crop's own curve or its default; a crop with its own never sends one -->
     <input type="hidden" name="planting[canopy_curve_key]" value={generic ? curveChoice : ''} />
     {#if generic}
-      <fieldset class="space-y-2">
-        <legend class="text-sm font-medium">Canopy curve</legend>
+      <fieldset class="space-y-2" aria-labelledby="planting-canopy-curve">
+        <FieldLabel as="legend" label="Canopy curve" labelId="planting-canopy-curve" info="planting.canopy_curve" />
         <p class="text-sm text-ink-muted">WISP has no canopy curve of its own for {plant!.name.toLowerCase()}.</p>
         {#each genericCurves as curve (curve.key)}
           <label class="flex items-start gap-3 text-sm">
@@ -459,8 +487,13 @@
       </fieldset>
     {/if}
     {#if hasCurve}
-      <fieldset class="space-y-2">
-        <legend class="text-sm font-medium">Between canopy readings</legend>
+      <fieldset class="space-y-2" aria-labelledby="planting-interpolation">
+        <FieldLabel
+          as="legend"
+          label="Between canopy readings"
+          labelId="planting-interpolation"
+          info="planting.interpolation"
+        />
         <label class="flex items-start gap-3 text-sm">
           <input
             type="radio"
@@ -495,6 +528,7 @@
         unitLabel="%"
         value={planting?.target_ad_pct ?? null}
         hint="Optional. Irrigate before allowable depletion falls below this share of its maximum."
+        info="planting.target_ad"
         error={errors.target_ad_pct}
       />
       <NumberField
@@ -503,6 +537,7 @@
         unitLabel="%"
         value={planting?.initial_moisture_pct ?? null}
         hint="Leave blank to start the season at field capacity"
+        info="planting.initial_moisture"
         error={errors.initial_moisture_pct}
       />
     </div>
@@ -536,6 +571,7 @@
               unitLabel="%"
               value={planting.field_capacity}
               hint="Leave blank to use {seasonSoil?.name ?? 'the soil'} ({pct(seasonSoil?.field_capacity)})"
+              info="planting.field_capacity"
               error={errors.field_capacity}
             />
             <NumberField
@@ -545,6 +581,7 @@
               unitLabel="%"
               value={planting.perm_wilting_pt}
               hint="Leave blank to use {seasonSoil?.name ?? 'the soil'} ({pct(seasonSoil?.perm_wilting_pt)})"
+              info="planting.wilting_point"
               error={errors.perm_wilting_pt}
             />
           </div>

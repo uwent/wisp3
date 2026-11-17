@@ -84,7 +84,7 @@
   <p class="text-sm text-ink-muted">
     Weather comes from its location. {editing
       ? `If you move the ${noun}, WISP gets weather for its new location.`
-      : 'You can move it or change any of this after it’s created.'}
+      : "You can move it or change any of this after it's created."}
   </p>
 </div>
 
@@ -104,7 +104,7 @@
             name="pivot[farm_id]"
             value={String(pivot.farm_id ?? farms[0]?.id ?? '')}
             options={farms.map((farm) => ({ value: String(farm.id), label: farm.name }))}
-            hint="A farm groups irrigation systems you want to view and manage together"
+            info="pivot.farm"
             error={errors.farm}
           />
         </div>
@@ -125,7 +125,7 @@
           name="pivot[pump_capacity_gpm]"
           quantity="flow"
           value={pivot.pump_capacity_gpm ?? null}
-          hint="With it, you can enter irrigation as hours the {noun} ran."
+          info="pivot.pump_capacity"
           error={errors.pump_capacity_gpm}
         />
         <TextField
@@ -133,6 +133,7 @@
           name="pivot[equipment]"
           value={pivot.equipment ?? ''}
           placeholder={EQUIPMENT_EXAMPLES[shape.kind]}
+          info="pivot.equipment"
           hint={shape.kind === 'traveler' ? 'The machine, named the same at each field it waters' : undefined}
         />
         <div class="space-y-1 sm:col-span-2">

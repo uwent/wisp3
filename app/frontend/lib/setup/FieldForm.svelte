@@ -13,6 +13,8 @@
   import { fieldOutline, fields } from '@/routes'
   import type { Field, Pivot, SoilType } from '@/types/serializers'
 
+  import FieldLabel from '@/lib/components/FieldLabel.svelte'
+
   import FieldAreaInput from './FieldAreaInput.svelte'
   import FieldSoilInput from './FieldSoilInput.svelte'
   import ShapeThumbnail from './ShapeThumbnail.svelte'
@@ -87,10 +89,11 @@
           value: String(p.id),
           label: p.kind_name ? systemName({ name: p.name, kind_name: p.kind_name }) : p.name,
         }))}
+        info="field.pivot"
         error={errors.pivot_id}
       />
       <fieldset class="space-y-2">
-        <legend class="text-sm font-medium">Field area</legend>
+        <legend class="text-sm font-medium">Area and shape</legend>
         <div class="grid gap-4 sm:grid-cols-2">
           <FieldAreaInput
             name="field[area_acres]"
@@ -98,10 +101,11 @@
             saved={field ? field.area_acres : undefined}
             drawn={field?.boundary ? boundaryAcres(field.boundary) : null}
             error={errors.area_acres}
+            info="field.area"
             onchange={() => (edited = true)}
           />
           <div class="space-y-1">
-            <p class="text-sm font-medium" id="field-shape">Shape</p>
+            <FieldLabel as="span" label="Shape" labelId="field-shape" info="field.shape" />
             <div class="flex items-center gap-3 text-sm">
               {#if field?.boundary}
                 <ShapeThumbnail boundary={field.boundary} label="The shape of {field.name}" />
@@ -130,6 +134,7 @@
         {system}
         suggest={!field}
         error={errors.soil_type}
+        info="field.soil"
         onchange={() => (edited = true)}
       />
       {#if endedYears.length}
@@ -150,6 +155,7 @@
             unitLabel="%"
             value={field?.field_capacity ?? null}
             hint="Leave blank to use {soil?.name ?? 'the soil'} ({pct(soil?.field_capacity)})"
+            info="field.field_capacity"
             error={errors.field_capacity}
           />
           <NumberField
@@ -159,6 +165,7 @@
             unitLabel="%"
             value={field?.perm_wilting_pt ?? null}
             hint="Leave blank to use {soil?.name ?? 'the soil'} ({pct(soil?.perm_wilting_pt)})"
+            info="field.wilting_point"
             error={errors.perm_wilting_pt}
           />
         </div>

@@ -9,7 +9,7 @@
   const steps = [
     {
       title: 'Set up your farm',
-      text: 'Place each irrigation system (a pivot, linear, traveler, drip block or just a location) on the map and add the fields it waters, with their soil. Then add what’s planted on each field this season, and when it emerged.',
+      text: "Place each irrigation system (a pivot, linear, traveler, drip block or just a location) on the map and add the fields it waters, with their soil. Then add what's planted on each field this season, and when it emerged.",
       anchor: 'getting-started',
     },
     {
@@ -19,7 +19,7 @@
     },
     {
       title: 'Enter what you measure',
-      text: 'Your rain gauge readings, the irrigation you apply, and soil moisture and canopy readings keep each crop’s water balance accurate.',
+      text: "Your rain gauge readings, the irrigation you apply, and soil moisture and canopy readings keep each crop's water balance accurate.",
       anchor: 'ground-truthing',
     },
     {

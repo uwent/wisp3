@@ -2,6 +2,9 @@
   import type { Snippet } from 'svelte'
   import type { HTMLSelectAttributes } from 'svelte/elements'
 
+  import FieldLabel from '@/lib/components/FieldLabel.svelte'
+  import type { FieldInfoKey } from '@/lib/fieldInfo'
+
   let {
     label,
     name,
@@ -10,6 +13,7 @@
     error,
     hint,
     note,
+    info,
     id = `field-${(name ?? label).replace(/[^a-z0-9]+/gi, '-')}`,
     ...rest
   }: HTMLSelectAttributes & {
@@ -19,13 +23,15 @@
     hint?: string
     /** In place of the hint, for one that needs markup (a warning with a button) */
     note?: Snippet
+    /** An info tip by the label (lib/fieldInfo.ts) */
+    info?: FieldInfoKey
   } = $props()
 
   const message = $derived(Array.isArray(error) ? error[0] : error)
 </script>
 
 <div class="space-y-1">
-  <label for={id} class="block text-sm font-medium">{label}</label>
+  <FieldLabel {label} {info} for={id} />
   <select
     {id}
     {name}

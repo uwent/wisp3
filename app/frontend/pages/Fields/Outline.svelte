@@ -349,6 +349,7 @@
           bind:value={area}
           saved={field.area_acres}
           drawn={acres}
+          info="field.area"
           error={errors.area_acres}
         />
         {#if field.ended_years.length && area !== field.area_acres}
@@ -364,6 +365,7 @@
           soilTypes={soil_types}
           saved={field.soil_type_id}
           boundary={settled && !settledProblems.length ? settled : null}
+          info="field.soil"
           error={errors.soil_type}
         />
         {#if field.ended_years.length && soilTypeId !== String(field.soil_type_id)}

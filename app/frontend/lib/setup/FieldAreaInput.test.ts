@@ -10,7 +10,7 @@ describe('FieldAreaInput', () => {
   const box = () => screen.getByRole('textbox') as HTMLInputElement
   const stored = (container: HTMLElement) => (container.querySelector('input[type=hidden]') as HTMLInputElement).value
 
-  it('shows the area saved beside the box, and copies the shape’s in only when asked', async () => {
+  it("shows the area saved beside the box, and copies the shape's in only when asked", async () => {
     const { container } = render(FieldAreaInput, { name: 'field[area_acres]', value: 20, saved: 20, drawn: 21.534 })
     expect(screen.getByText('Current area').nextElementSibling).toHaveTextContent('20.00 ac')
     expect(screen.getByLabelText('Field area')).toBe(box())
@@ -25,7 +25,7 @@ describe('FieldAreaInput', () => {
     expect(screen.queryByRole('button', { name: /^Use/ })).not.toBeInTheDocument()
   })
 
-  it('warns when the area and the shape’s are far apart', () => {
+  it("warns when the area and the shape's are far apart", () => {
     render(FieldAreaInput, { name: 'outline[area_acres]', value: 2, saved: 2, drawn: 26.1 })
     expect(screen.getByRole('status')).toHaveTextContent(
       'Field as drawn: 26.10 ac, 24.10 ac more than the area above. Check that the shape covers the whole field',

@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { type Boundary, isPoint, type PivotShape } from '@/lib/geo'
   import SelectField from '@/lib/components/SelectField.svelte'
   import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
+  import type { FieldInfoKey } from '@/lib/fieldInfo'
+  import { type Boundary, isPoint, type PivotShape } from '@/lib/geo'
   import { soilFit, soilOptionsByShare } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
 
@@ -18,6 +19,7 @@
     suggest = false,
     error,
     onchange,
+    info,
   }: {
     name: string
     /** The soil type's id in the menu */
@@ -34,6 +36,8 @@
     error?: string | string[]
     /** Called when the user changes the soil (not the survey's suggestion) */
     onchange?: () => void
+    /** The menu's info tip (lib/fieldInfo.ts) */
+    info?: FieldInfoKey
   } = $props()
 
   let chosen = $state(false)
@@ -88,6 +92,7 @@
     <SelectField
       {label}
       {name}
+      {info}
       bind:value
       onchange={() => {
         chosen = true

@@ -35,7 +35,7 @@
   } = $props()
 
   const frequencies: { value: Frequency; label: string; hint: string }[] = [
-    { value: 'never', label: 'Never', hint: 'WISP won’t send you the daily email.' },
+    { value: 'never', label: 'Never', hint: "WISP won't send you the daily email." },
     {
       value: 'daily',
       label: 'Daily during season',
@@ -57,7 +57,7 @@
     {
       value: 'all',
       label: 'All the fields it covers',
-      hint: 'Every field below, in season or not, with its irrigation system’s weather.',
+      hint: "Every field below, in season or not, with its irrigation system's weather.",
     },
     {
       value: 'in_season',
@@ -132,7 +132,7 @@
         onError: (errors) => {
           saveState = 'failed'
           saveError =
-            [Object.values(errors)[0]].flat()[0] ?? 'Couldn’t save your settings. Check your connection and try again.'
+            [Object.values(errors)[0]].flat()[0] ?? "Couldn't save your settings. Check your connection and try again."
         },
       },
     )
@@ -291,7 +291,7 @@
   </div>
   <div class="flex flex-wrap gap-2">
     <Button variant="secondary" onclick={loadPreview} disabled={previewLoading || !saved}>
-      {previewOpen && preview ? 'Refresh preview' : 'Preview today’s email'}
+      {previewOpen && preview ? 'Refresh preview' : "Preview today's email"}
     </Button>
     <Form action={alerts.testEmail()} options={testOptions}>
       {#snippet children({ processing })}

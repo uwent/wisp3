@@ -83,9 +83,7 @@ export function guidance(
 
   const depth = planting.max_root_zone_depth
   paragraphs.push(
-    'A soil moisture reading resets the balance to the measured value from that day on, which corrects any ' +
-      `drift in the model. Enter a reading about once a week, from sensors at about 25% and 75% of the root zone depth ` +
-      `(${units.format('rootDepth', depth * 0.25)} and ${units.format('rootDepth', depth * 0.75)} deep).`,
+    `A soil moisture reading resets the balance to the measured value from that day on, which corrects any drift in the model. Enter a reading about once a week, from sensors at about 25% and 75% of the root zone depth (${units.format('rootDepth', depth * 0.25)} and ${units.format('rootDepth', depth * 0.75)} deep).`,
   )
 
   return {
@@ -102,17 +100,9 @@ export function guidance(
 function vineKillText(planting: GuidedPlanting): string {
   const crop = planting.plant_name.toLowerCase()
   if (!planting.vine_kill_date) {
-    return (
-      `Enter the vine kill date in this ${crop}'s settings in Setup. From it the canopy ramps down to nothing over ` +
-      `${VINE_KILL_DAYS} days, and WISP keeps the water balance going until harvest (the end date), so you can keep ` +
-      'the soil moist through skin set.'
-    )
+    return `Enter the vine kill date in this ${crop}'s settings in Setup. From it the canopy ramps down to nothing over ${VINE_KILL_DAYS} days, and WISP keeps the water balance going until harvest (the end date), so you can keep the soil moist through skin set.`
   }
-  return (
-    `Vine kill is ${formatDate(planting.vine_kill_date)}: the canopy ramps down to nothing by ` +
-    `${formatDate(addDays(planting.vine_kill_date, VINE_KILL_DAYS))}, and WISP keeps the water balance going until ` +
-    `harvest on ${formatDate(planting.end_date)}. A canopy reading after vine kill is used as entered.`
-  )
+  return `Vine kill is ${formatDate(planting.vine_kill_date)}: the canopy ramps down to nothing by ${formatDate(addDays(planting.vine_kill_date, VINE_KILL_DAYS))}, and WISP keeps the water balance going until harvest on ${formatDate(planting.end_date)}. A canopy reading after vine kill is used as entered.`
 }
 
 /** How readings combine with the crop's curve, in a sentence or two */
@@ -121,18 +111,9 @@ function interpolationText(planting: GuidedPlanting, fit: CanopyFit): string {
     return 'Between readings WISP draws a straight line, and after the last one it holds that value.'
   }
   if (planting.effective_canopy_interpolation === 'curve') {
-    return (
-      'Your readings adjust the curve in two ways. WISP fits the curve to them (earlier or later, faster or ' +
-      'slower, fuller or thinner) only as far as they agree, so one or two readings barely move it and more ' +
-      "readings fit it more closely. The canopy then passes through each reading, keeps the curve's shape between " +
-      `them, and over the ${FADE_DAYS} days after your latest one eases back to the fitted curve, including its ` +
-      `decline late in the season.${fitText(planting, fit)}`
-    )
+    return `Your readings adjust the curve in two ways. WISP fits the curve to them (earlier or later, faster or slower, fuller or thinner) only as far as they agree, so one or two readings barely move it and more readings fit it more closely. The canopy then passes through each reading, keeps the curve's shape between them, and over the ${FADE_DAYS} days after your latest one eases back to the fitted curve, including its decline late in the season.${fitText(planting, fit)}`
   }
-  return (
-    'This planting draws straight lines between your readings instead, and holds the last one, as you chose in ' +
-    'Setup.'
-  )
+  return 'This planting draws straight lines between your readings instead, and holds the last one, as you chose in Setup.'
 }
 
 /** What the fit has done so far: " So far, fitted to your readings, the potato curve runs about 4 days ahead…" */
@@ -161,50 +142,27 @@ function fitText(planting: GuidedPlanting, fit: CanopyFit): string {
 function summaryText(planting: GuidedPlanting): string {
   const crop = planting.plant_name.toLowerCase()
   if (planting.et_method !== 'pct_cover') {
-    return (
-      `WISP estimates ${crop} water use from its leaf area index (LAI), following a field corn growth curve from ` +
-      'emergence until your readings correct it. Enter a soil moisture reading about once a week to correct any ' +
-      'drift, and LAI readings if you take them.'
-    )
+    return `WISP estimates ${crop} water use from its leaf area index (LAI), following a field corn growth curve from emergence until your readings correct it. Enter a soil moisture reading about once a week to correct any drift, and LAI readings if you take them.`
   }
   const follows = planting.canopy_curve
     ? 'following a typical curve from emergence until your readings correct it'
     : 'from your readings only: until the first one, it counts the field as bare soil'
-  return (
-    `WISP estimates ${crop} water use from how much of the ground its canopy covers, ${follows}. Enter percent ` +
-    'cover about weekly until the canopy closes, and a soil moisture reading about once a week to correct any drift.'
-  )
+  return `WISP estimates ${crop} water use from how much of the ground its canopy covers, ${follows}. Enter percent cover about weekly until the canopy closes, and a soil moisture reading about once a week to correct any drift.`
 }
 
 function methodText(planting: GuidedPlanting, fit: CanopyFit = null): string {
   const crop = planting.plant_name
   if (planting.et_method === 'pct_cover') {
     const curve = planting.generic_curve_name
-      ? `WISP has no canopy curve of its own for ${crop.toLowerCase()}, so without readings it follows a generic ` +
-        `one (${planting.generic_curve_name.toLowerCase()}) from the emergence date: a rough shape, described on the ` +
-        'About page, that your readings correct. '
+      ? `WISP has no canopy curve of its own for ${crop.toLowerCase()}, so without readings it follows a generic one (${planting.generic_curve_name.toLowerCase()}) from the emergence date: a rough shape, described on the About page, that your readings correct. `
       : planting.canopy_curve
-        ? `Without readings, WISP follows a ${crop.toLowerCase()} canopy curve from the emergence date (its source is ` +
-          'on the About page). '
-        : `This planting follows no canopy curve (readings only), so until you enter your first reading, the model ` +
-          "treats the field as bare soil and counts only evaporation from the soil, and can't say when to irrigate. "
-    return (
-      `${crop} water use is modeled from percent canopy cover, the share of the ground shaded by the crop: the ` +
-      `day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${interpolationText(planting, fit)} Enter percent cover about ` +
-      `weekly from emergence until the canopy covers about ${FULL_COVER_PCT}% of the ground. For row crops, divide ` +
-      'the average canopy width by the row spacing: 18 in wide on 36 in rows is 50%.'
-    )
+        ? `Without readings, WISP follows a ${crop.toLowerCase()} canopy curve from the emergence date (its source is on the About page). `
+        : `This planting follows no canopy curve (readings only), so until you enter your first reading, the model treats the field as bare soil and counts only evaporation from the soil, and can't say when to irrigate. `
+    return `${crop} water use is modeled from percent canopy cover, the share of the ground shaded by the crop: the day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${interpolationText(planting, fit)} Enter percent cover about weekly from emergence until the canopy covers about ${FULL_COVER_PCT}% of the ground. For row crops, divide the average canopy width by the row spacing: 18 in wide on 36 in rows is 50%.`
   }
-  const lai =
-    `${crop} water use is modeled from leaf area index (LAI), the leaf area of the crop per unit of ground ` +
-    "beneath it: the day's reference ET is adjusted for how much of the light the leaves intercept."
+  const lai = `${crop} water use is modeled from leaf area index (LAI), the leaf area of the crop per unit of ground beneath it: the day's reference ET is adjusted for how much of the light the leaves intercept.`
   // LAI is offered only for crops with a growth curve (Planting#lai_needs_curve), so far field corn's
-  return (
-    `${lai} Without readings, WISP estimates LAI from the emergence date using a field corn growth curve, ` +
-    'which peaks at about 4 around 80 days after emergence. LAI readings you enter (from a ceptometer, for ' +
-    'example) adjust the curve. ' +
-    interpolationText(planting, fit)
-  )
+  return `${lai} Without readings, WISP estimates LAI from the emergence date using a field corn growth curve, which peaks at about 4 around 80 days after emergence. LAI readings you enter (from a ceptometer, for example) adjust the curve. ${interpolationText(planting, fit)}`
 }
 
 function reading(task: Task, today: string | null): Reading {
