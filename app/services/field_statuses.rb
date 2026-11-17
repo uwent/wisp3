@@ -34,13 +34,15 @@ class FieldStatuses
   # days with (so a field of plots shows them all out of season, and a succession just the one); in
   # another year, all of that year's
   def self.plantings_for(field, today, year = today.year)
-    on = (year == today.year) ? field.plantings_on(today) : field.plantings.select { |p| p.season_year == year }
+    return field.plantings.select { |p| p.season_year == year }.sort_by(&:order_key) unless year == today.year
+
+    on = field.plantings_on(today)
     if on.empty?
-      year = field.plantings.select { |p| p.season_year == today.year }
-      nearest = year.min_by { |p| (p.season_start - today).abs }
-      on = nearest ? year.select { |p| p.overlaps?(nearest) } : []
+      this_year = field.plantings.select { |p| p.season_year == today.year }
+      nearest = this_year.min_by { |p| (p.season_start - today).abs }
+      on = nearest ? this_year.select { |p| p.overlaps?(nearest) } : []
     end
-    on.sort_by { |planting| [planting.partial? ? 1 : 0, planting.season_start, planting.id] }
+    on.sort_by(&:order_key)
   end
 
   # How urgent a planting's status is, most urgent lowest: in season by status (irrigate, caution,

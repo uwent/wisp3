@@ -24,4 +24,14 @@ class AuthenticatedController < InertiaController
 
     redirect_back_or_to root_path, alert: "Only an owner of #{Current.group.name} can do that.", status: :see_other
   end
+
+  # Deleting a planting or an irrigation group: its group's owners, or the member who created it
+  # (G.15). False after redirecting, so the action returns.
+  def owner_or_creator?(record)
+    return true if Current.owner? || (record.created_by_id && record.created_by_id == Current.user.id)
+
+    redirect_back_or_to root_path, alert: "Only an owner of #{Current.group.name} or the person who added it can delete it.",
+      status: :see_other
+    false
+  end
 end

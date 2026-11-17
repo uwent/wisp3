@@ -2,8 +2,9 @@
 # this year, the same crops and settings with every date a year later. Canopy readings and daily
 # entries belong to the old season and aren't copied.
 class SeasonCopy
-  def initialize(group, year)
-    @group, @year = group, year
+  # by: the user copying, who is each copy's creator
+  def initialize(group, year, by: nil)
+    @group, @year, @by = group, year, by
   end
 
   # copied: the plantings created; failed: the copies that didn't save (check their errors)
@@ -33,6 +34,6 @@ class SeasonCopy
       attributes.merge!(planting.attributes.slice(*%w[own_soil soil_type_id field_capacity perm_wilting_pt]))
     end
     dates = %w[season_start emergence_date end_date vine_kill_date].to_h { |column| [column, planting[column]&.next_year] }
-    Planting.new(attributes.merge(dates)).tap(&:save)
+    Planting.new(attributes.merge(dates, "created_by_id" => @by&.id)).tap(&:save)
   end
 end

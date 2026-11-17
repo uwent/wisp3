@@ -4,7 +4,7 @@
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
-  import { formatDate } from '@/lib/dates'
+  import { currentYear, formatDate, today as todayDate } from '@/lib/dates'
   import { isPoint, KIND_NOUNS, systemName } from '@/lib/geo'
   import { type FieldSeasons, fieldsOn } from '@/lib/irrigation'
   import { units as unitsFor } from '@/lib/units'
@@ -32,7 +32,7 @@
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   // "pivot", "drip block"
   const noun = $derived(KIND_NOUNS[pivot.kind])
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayDate()
   const canUseHours = $derived(
     pivot.pump_capacity_gpm !== null && pivot.fields.every((field) => field.area_acres !== null),
   )
@@ -260,4 +260,4 @@
   {/if}
 </section>
 
-<ZoneWeather zone={weather_zone} {forecast} {units} query={year === new Date().getFullYear() ? {} : { year }} />
+<ZoneWeather zone={weather_zone} {forecast} {units} query={year === currentYear() ? {} : { year }} />

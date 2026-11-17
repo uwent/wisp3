@@ -40,7 +40,7 @@ class Field < ApplicationRecord
   # The planting whose season includes date, if any: the whole-field one, else the first part-field
   # one (a field can have several of those at once, G.11; plantings_on gives them all)
   def planting_on(date)
-    plantings_on(date).min_by { |planting| [planting.partial? ? 1 : 0, planting.season_start, planting.id] }
+    plantings_on(date).min_by(&:order_key)
   end
 
   # Every planting whose season includes date

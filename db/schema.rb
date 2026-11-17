@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -112,6 +112,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.string "name", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "created_by_id"
+    t.index ["created_by_id"], name: "index_pivot_groups_on_created_by_id"
     t.index ["farm_id"], name: "index_pivot_groups_on_farm_id"
     t.index ["id", "farm_id"], name: "index_pivot_groups_on_id_and_farm_id", unique: true
   end
@@ -205,6 +207,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.string "canopy_curve_key"
     t.bigint "pivot_id", null: false
     t.integer "season_days"
+    t.bigint "created_by_id"
+    t.index ["created_by_id"], name: "index_plantings_on_created_by_id"
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["pivot_id"], name: "index_plantings_on_pivot_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
@@ -370,6 +374,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   add_foreign_key "memberships", "groups", on_delete: :cascade
   add_foreign_key "memberships", "users", on_delete: :cascade
   add_foreign_key "pivot_groups", "farms", on_delete: :cascade
+  add_foreign_key "pivot_groups", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "pivot_irrigations", "pivots"
   add_foreign_key "pivots", "farms"
   add_foreign_key "pivots", "pivot_groups", column: ["pivot_group_id", "farm_id"], primary_key: ["id", "farm_id"], name: "pivots_pivot_group_same_farm"
@@ -379,6 +384,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   add_foreign_key "plantings", "pivots"
   add_foreign_key "plantings", "plants"
   add_foreign_key "plantings", "soil_types"
+  add_foreign_key "plantings", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "plantings", "weather_cells", on_delete: :nullify
   add_foreign_key "weather_days", "weather_cells"
   add_foreign_key "weather_forecasts", "weather_cells"

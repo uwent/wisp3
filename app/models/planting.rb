@@ -26,6 +26,8 @@ class Planting < ApplicationRecord
   # The irrigation system the season ran on: its field's, kept when an ended season's field moves
   belongs_to :pivot
   belongs_to :weather_cell, optional: true
+  # Who added it, who may delete it as well as the owners (G.15); NULL for those made before
+  belongs_to :created_by, class_name: "User", optional: true
   has_many :canopy_observations, -> { order(:date) }, dependent: :destroy
   has_many :planting_entries, dependent: :delete_all
   # A perennial's cuttings, each restarting its canopy (G.3)
@@ -146,8 +148,12 @@ class Planting < ApplicationRecord
   # (a warning, not an error: the field's area may be out of date)
   def exceeds_field_area?
     return false unless partial? && area_acres && field&.area_acres
-    others = Planting.where(field_id:, partial: true).where.not(id:)
-      .where("season_start <= ? AND end_date >= ?", end_date, season_start).to_a
+    others = if field.plantings.loaded?
+      field.plantings.select { |other| other.partial? && other.id != id && other.overlaps?(self) }
+    else
+      Planting.where(field_id:, partial: true).where.not(id:)
+        .where("season_start <= ? AND end_date >= ?", end_date, season_start).to_a
+    end
     together = others + [self]
     # The total only rises when a planting starts, so checking each start within this season is enough
     starts = together.map(&:season_start).select { |date| season_range.cover?(date) }
@@ -162,6 +168,9 @@ class Planting < ApplicationRecord
   end
 
   def overlaps?(other) = season_start <= other.end_date && end_date >= other.season_start
+
+  # The order a field's plantings are listed and picked in: whole-field first, then by season start
+  def order_key = [partial? ? 1 : 0, season_start, id]
 
   def season_range = season_start..end_date
   def season_year = season_start.year

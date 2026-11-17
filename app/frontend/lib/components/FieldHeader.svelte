@@ -3,7 +3,7 @@
   import { systemName } from '@/lib/geo'
   import type { Snippet } from 'svelte'
 
-  import { isoDate } from '@/lib/dates'
+  import { currentYear, today as todayDate } from '@/lib/dates'
   import { plantingWhen } from '@/lib/plantings'
   import { formatNumber, type Units } from '@/lib/units'
   import { fieldOutline, fields, planting as plantingRoute, pivots } from '@/routes'
@@ -38,7 +38,7 @@
   )
   const years = $derived([...new Set([...field.plantings.map((p) => p.year), year])].sort((a, b) => b - a))
   // A tab's second line: when the planting is, as plantings are named (G.14)
-  const today = isoDate(new Date())
+  const today = todayDate()
   const detail = (p: Field['plantings'][number]) => plantingWhen(p, today)
   const tab = (active: boolean) =>
     `flex shrink-0 flex-col rounded-t-md border-b-2 px-3 py-1.5 text-sm leading-tight ${
@@ -74,7 +74,7 @@
   <div class="flex items-end gap-2 border-b border-line">
     <nav aria-label="Field and plantings" class="-mb-px flex min-w-0 flex-1 overflow-x-auto">
       <Link
-        href={fields.show(field.id, { query: year === new Date().getFullYear() ? {} : { year } })}
+        href={fields.show(field.id, { query: year === currentYear() ? {} : { year } })}
         class={tab(current === 'field')}
         aria-current={current === 'field' ? 'page' : undefined}
       >

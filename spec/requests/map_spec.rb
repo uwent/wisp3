@@ -50,10 +50,17 @@ RSpec.describe "Map", type: :request do
     get map_path
     expect(inertia.props).to include(year: 2026, years: [2026, 2025])
 
+    new_field = create(:field, pivot:, name: "New this year")
+    create(:planting, field: new_field, season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 10),
+      end_date: Date.new(2026, 10, 15))
+
     get map_path(year: 2025)
     expect(inertia.props[:year]).to eq(2025)
-    plantings = inertia.props[:farms].sole[:pivots].sole[:fields].sole[:plantings]
+    cards = inertia.props[:farms].sole[:pivots].sole[:fields].index_by { |card| card[:name] }
+    plantings = cards.fetch("North potatoes")[:plantings]
     expect(plantings.map { |summary| [summary[:season_start], summary[:phase]] }).to eq([["2025-05-01", "ended"]])
+    # A field planted only this year has nothing in 2025, not this year's planting
+    expect(cards.fetch("New this year")[:plantings]).to eq([])
 
     get map_path(year: 1900)
     expect(inertia.props[:year]).to eq(2026)

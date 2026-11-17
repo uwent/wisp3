@@ -38,14 +38,14 @@ describe('reading outline files', () => {
     }
   })
 
-  it("reads GeoJSON, keeping a multipolygon's largest part and guessing the name from its attributes", async () => {
+  // Which part of a multipolygon is kept is tested on shapesFrom below
+  it('reads GeoJSON, guessing the name from its attributes', async () => {
     const result = await readOutlineFile(fixture('fields.geojson'))
     expect(result.shapes).toHaveLength(1)
     expect(result.skipped).toBe(1)
     expect(result.nameKey).toBe('Field Name')
     expect(result.shapes[0].boundary.type).toBe('Polygon')
     expect(boundaryRing(result.shapes[0].boundary)[0]).toEqual([-89.37, 43.3])
-    expect(shapeNotes(result.shapes[0])).toBe('Kept the largest of 2 parts')
     await expect(readOutlineFile(new File(['{oops'], 'bad.geojson'))).rejects.toThrow("isn't valid GeoJSON")
   })
 })

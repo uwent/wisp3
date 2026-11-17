@@ -92,7 +92,7 @@ class Pivot < ApplicationRecord
   def field_seasons
     Field.where(pivot_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
       .map do |field|
-        seasons = field.plantings.sort_by { |planting| [planting.partial? ? 1 : 0, planting.season_start, planting.id] }
+        seasons = field.plantings.sort_by(&:order_key)
         {id: field.id, name: field.name, here: field.pivot_id == id,
          seasons: seasons.map { |planting| {from: planting.season_start, to: planting.end_date, here: planting.pivot_id == id} }}
       end

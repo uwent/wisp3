@@ -45,7 +45,7 @@ class SeasonReportCsv
     csv << ["Fields"]
     csv << ["Farm", "Irrigation system", "Kind", "Equipment", "Field", "Area (acres)", "Part of the field", "Crop", "Variety", "Soil type", "Season start",
       "Emergence", "Vine kill", "Harvest or kill", "Days counted", "Rainfall (in)", "Modeled rain (in)", "Irrigation (in)",
-      "Days irrigated", "Adjusted ET (in)", "Deep drainage (in)", "Days at or below AD 0", "AD at end (in)",
+      "Days irrigated", "Adjusted ET (in)", "Deep drainage (in)", "Days below AD 0", "AD at end (in)",
       "Percent moisture at end", "Notes"]
     statuses.each do |status|
       planting, totals, last = status.planting, status.totals, status.current&.result
@@ -53,8 +53,8 @@ class SeasonReportCsv
       csv << [text(field.pivot.farm.name), text(field.pivot.name), field.pivot.kind_name, text(field.pivot.equipment),
         text(field.name), planting.area_acres, planting.size_label, planting.plant.name, text(planting.variety), planting.soil_type.name, planting.season_start,
         planting.emergence_date, planting.vine_kill_date, planting.end_date, status.days.size, num(totals.rain), num(totals.rain_model),
-        num(totals.irrigation), irrigated_dates(status).size, num(totals.adj_et), num(totals.deep_drainage),
-        status.days.count { |day| day.result.ad <= 0 }, num(last&.ad), num(last&.pct_moisture), text(planting.notes)]
+        num(totals.irrigation), totals.irrigation_days, num(totals.adj_et), num(totals.deep_drainage),
+        totals.stress_days, num(last&.ad), num(last&.pct_moisture), text(planting.notes)]
     end
   end
 
@@ -100,7 +100,7 @@ class SeasonReportCsv
   def statuses
     @statuses ||= begin
       plantings = @group.plantings.where(season_start: Date.new(@year).all_year)
-        .includes(:plant, :canopy_observations, :soil_type, :weather_cell, field: {pivot: {farm: :group}})
+        .includes(:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell, field: {pivot: {farm: :group}})
         .sort_by { |p| [p.field.pivot.farm.name, p.field.pivot.name, p.field.name, p.season_start] }
       if plantings.empty?
         []
@@ -126,11 +126,14 @@ class SeasonReportCsv
     end
   end
 
-  # Each field's area that year, as its plantings kept it (PLAN.md Phase 8 G.9; the larger, for a
-  # double crop), or nil
+  # Each field's area that year, as its whole-field plantings kept it (PLAN.md Phase 8 G.9; the
+  # larger, for a double crop), or for a field of plots only, the field's (as PivotIrrigation#irrigated_acres
+  # counts it); nil without one
   def field_areas
-    @field_areas ||= statuses.group_by { |status| status.planting.field }
-      .transform_values { |field_statuses| field_statuses.filter_map { |status| status.planting.area_acres }.max }
+    @field_areas ||= statuses.group_by { |status| status.planting.field }.to_h do |field, field_statuses|
+      whole = field_statuses.map(&:planting).reject(&:partial?)
+      [field, whole.any? ? whole.filter_map(&:area_acres).max : field.area_acres]
+    end
   end
 
   # The last day counted: today, or the last season's end

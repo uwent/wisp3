@@ -159,4 +159,4 @@
   })
 </script>
 
-<div bind:this={element} style:height role="img" aria-label={label} class="w-full"></div>
+<div bind:this={element} style:height role="img" aria-label={label} class="w-full" data-chart></div>

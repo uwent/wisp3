@@ -55,7 +55,7 @@ RSpec.describe "Pivot groups", type: :request do
     north.update!(pivot_group: group)
     get setup_path
     farm_props = inertia.props[:farms].sole
-    expect(farm_props[:pivot_groups]).to eq([{"id" => group.id, "name" => "Home gauge"}])
+    expect(farm_props[:pivot_groups]).to eq([{"id" => group.id, "name" => "Home gauge", "created_by_id" => nil}])
     expect(farm_props[:pivots].find { |pivot| pivot[:id] == north.id }[:pivot_group_id]).to eq(group.id)
   end
 

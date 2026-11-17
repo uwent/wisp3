@@ -1368,3 +1368,49 @@ Ben, 2026-11-12, after trying G.10. Handoff: [docs/handoffs/g14-setup-and-map.md
 - [x] **Selection subtler:** the selected glyph keeps its size on a white copy 1.25 times larger, each with a thin dark edge; a selected shape's line sits on a 5 px white band in a 7 px casing (was 7.5 in 11).
 - [x] **The hover label lists everything under the pointer** (every feature, `hoverLines`, and every marker, `elementsFromPoint`), not the first of each.
 - [x] **Console warnings:** OpenFreeMap's street style compares a missing `ref_length` in its shield filters, so it's patched on load (`repairStyle`, `transformStyle` on every map); the Map page's `prefs` are bound to its layers. Grouping overlapping icons zoomed out was considered and not needed.
+
+##### G.15 Review before merging `beta-readiness` (2026-11-17)
+
+A code review of the branch (backend, controllers and tenancy, the map and outlines, forms and pages, the test suite). Tenancy held: every lookup goes through `Current.group` and every new controller has its cross-tenant spec; the migrations are safe on existing data. Fixed before the merge (Ben, 2026-11-17); the rest is [Phase 9](#phase-9-polish).
+
+- [x] **Deleting a planting or an irrigation group:** an owner, or the member who created it (Ben, 2026-11-17; farms, systems and fields stay owners only, as their deletes reach everyone's records). `plantings.created_by_id` and `pivot_groups.created_by_id` (NULL for those made before, and when the user is deleted: owners only), set on create and by "Copy last season"; `owner_or_creator?` in `AuthenticatedController`; the Delete button only then (`mayDelete`, `lib/permissions.ts`). `spec/requests/deleting_spec.rb`.
+- [x] **The map's other years:** `FieldStatuses.plantings_for` fell back to the current year's plantings for a field with none in the year asked for.
+- [x] **One "today" in the browser:** pages computed it as the UTC date (`isoDate(new Date())`, tomorrow from about 6 pm in Wisconsin) or the browser's local date; it's now the server's (`today` in the shared props, `today()` in `lib/dates.ts`).
+- [x] **Planting form:** dates saved under the looser rules (G.13 part 3) block Save only when a date changes, as on the server (`dateProblems(…, { loose })`); a plot's size can't block Save for a whole-field planting; changing crop resets the generic curve choice (the server already drops a vine kill date for a crop without one).
+- [x] **Wording:** irrigation "from pivot" became the system's kind (`from {noun}`) on the field page and the planting page's forecast table.
+- [x] **Weather zone:** the GDD "since planting" date counts only while it's one of the page's planting dates, so it doesn't follow a visit to another zone or year.
+- [x] **Daily entry's save** refuses rain and soil moisture on a future date and cover readings outside the season or ahead, as the field grid does: one check for both, in the models' `:entry` validation context (`DailyEntry.record`, `CanopyObservation.record`), so seeds can still write a season ahead.
+- [x] **Queries:** Setup and the season report preload canopy cuttings; `exceeds_field_area?` reads the loaded plantings (Setup: 18 queries for 1 planting or 6). `Planting#order_key` for the planting order used in four places.
+- [x] **Season report:** a plots-only field's area is the field's (as in `irrigated_acres`); stress and irrigation days come from `Totals` (the column is now "Days below AD 0", as the planting page counts them).
+- [x] **Map risks:** "Plantings: Current" hides the outlines of the fields it hides; Escape clears the selection only when nothing else used it; a failed street style doesn't stall the basemap toggle; a map left while loading doesn't start drawing or markers on the removed map.
+- [x] **Forms:** `NumberField` doesn't submit while it shows a parse error (`setCustomValidity`); the system form's guard comes back if a delete is refused.
+- [x] **Tests:** specs for each of the above and members refused on owner-only deletes (outline import's duplicate row and rollback were already covered); redundant overlap and multipolygon tests merged, the browser test of the server CSV downloads dropped (request specs cover them); the browser tests' fixed sleeps replaced with waits (terra-draw's 150 ms between clicks stays: faster clicks are a double-click), weather seeded from January 1, the pages reached from emails' links scanned by axe.
+- [x] CLAUDE.md: 100 corners, and fields move between systems freely.
+
+### Phase 9: Polish
+
+After the merge of `beta-readiness` (2026-11-17 review, Ben). Refactors and quality-of-life improvements that don't change what the beta tests; take them as they fit around G.8 and the beta.
+
+**Refactors**
+
+- [ ] **One map setup:** `OverviewMap`, `OutlineMap`, `ImportMap` and `PivotMap` each repeat `loadMapLibre`, the removed flag, `transformStyle`, `followRoads`, the basemap pill and Layers button, `setBasemap` with their own sources and the default view. A `createMap` helper (or a `BaseMap` component) with one teardown.
+- [ ] **Planar math in one place:** three point-to-segment distances (`geo.ts`, `outlines/problems.ts`, `map/glyphs.ts`), two crossing checks and three bounds functions. Split `geo.ts`'s field boundary half into `lib/boundary.ts` (matching `boundary.test.ts`). Outline colors from the palette tokens (`references.ts`, `OutlineMap`), not hex.
+- [ ] **Large pages:** split `Plantings/Show.svelte` (about 1,000 lines: cuttings, time travel controls, forecast table, daily table, summary) and `PlantingForm.svelte` (season, size, canopy settings); `Setup/Show`'s farm and irrigation group dialogs as `FarmForm` and `PivotGroupForm`; Start's per-row soil note through `FieldSoilInput`.
+- [ ] **Shared helpers:** weather polling (six copies of the same `$effect`) as one in `lib/poll.ts`; the field and planting pages' cell helpers (`cellLabel`, `depth`, `saveCell`) in one module; the irrigation source wording in one helper.
+- [ ] **Services out of controllers:** `OutlineImport` (from `OutlineImportsController#create`), the field move with a new Location (`FieldOutlinesController#update`), planting defaults and replace (`Planting.build_for`); `PlantingsController#show` loads the field once.
+- [ ] **Small ones:** `PivotIrrigation#irrigated_acres` from preloaded plantings rather than a query per run-hours record; `year` params range-checked as on the map; dead exports (`isActive`, `statusText`; un-export internal helpers); `overview.ts`'s `PivotGroup` renamed (it isn't an irrigation group); the two `seasonStats` functions named apart; clear a planting's cuttings when its crop stops being perennial; daily entry's state reset keyed on the date and saves, not any `farms` change.
+
+**Browser tests faster**
+
+- [ ] Sign in once (a setup project saving `storageState`, group already chosen) instead of through the form in every test: about 1.5–2 minutes.
+- [ ] The reflow checks (320 px, 200% text) inside the accessibility scan's loop, with the signed-in page list built once.
+- [ ] Two workers: the tests that change shared seed rows in a serial project, the rest in parallel; `bin/e2e` skips `vite build` when nothing changed.
+- [ ] Trim overlap between the file-import and drawing tests, and the weather tab's assertions that request specs already make.
+
+**Quality of life** (ideas from the review; check with the beta before building most of them)
+
+- [ ] **Keep an outline file's shapes while setting up:** the field shape page reads a file and uses one shape, so outlining twelve fields one at a time means reading the same file twelve times. Keep the last file's shapes in the browser (IndexedDB, per operation, until the tab's session ends or a day passes) and offer them on the next field's shape page ("Shapes from Fields.zip: pick one"), the one that holds the field's system or matches its name first (`lib/outlines/matching.ts`), with those already used marked. Link to Setup's import for doing them all at once.
+- [ ] **The same crop on several fields:** after saving a planting, "Plant this on other fields too" with a checklist of the system's fields without one that season (same crop, dates and settings), for first-time setup and next season.
+- [ ] **Duplicate an irrigation system** in Setup (a farm of similar pivots).
+- [ ] **Daily entry:** offer yesterday's amounts for systems that ran yesterday, as a placeholder to accept, not a value.
+- [ ] **Remember the last choices** in setup forms for the session (soil, crop, emergence date), as suggestions.

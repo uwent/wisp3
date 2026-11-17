@@ -3,6 +3,8 @@
 class InertiaController < ApplicationController
   inertia_share do
     {
+      # The date the balance runs to, so the browser's "today" agrees with it (G.15)
+      today: Date.current.iso8601,
       auth: {
         user: current_user && UserSerializer.new(current_user).to_h,
         group: Current.group && GroupSerializer.new(Current.group).to_h,

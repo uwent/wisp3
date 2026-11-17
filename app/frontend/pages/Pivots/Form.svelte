@@ -64,8 +64,9 @@
   function destroy() {
     const name = systemName({ name: pivot.name ?? '', kind_name: KIND_NAMES[pivot.kind ?? 'center'] })
     if (!confirm(`Delete ${name} and its fields? This can't be undone.`)) return
+    // Leaving without asking; if the delete is refused and this page stays, the guard comes back
     saved = true
-    router.delete(pivots.destroy(pivot.id!).url)
+    router.delete(pivots.destroy(pivot.id!).url, { onFinish: () => (saved = false) })
   }
   const EQUIPMENT_EXAMPLES: Record<PivotKind, string> = {
     center: 'e.g. Valley 8000, end gun',

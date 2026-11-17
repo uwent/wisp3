@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { Link, router } from '@inertiajs/svelte'
+  import { Link, page, router } from '@inertiajs/svelte'
 
   import Dialog from '@/lib/components/Dialog.svelte'
+  import { mayDelete } from '@/lib/permissions'
   import { nextSeason } from '@/lib/plantings'
   import PlantingForm from '@/lib/setup/PlantingForm.svelte'
   import { changesMessage } from '@/lib/unsaved.svelte'
@@ -96,7 +97,7 @@
         {genericCurves}
         {template}
         ondone={close}
-        ondelete={planting ? destroy : undefined}
+        ondelete={planting && mayDelete(planting, page.props.auth) ? destroy : undefined}
       />
     {/key}
     {#if planting}

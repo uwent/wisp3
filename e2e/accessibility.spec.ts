@@ -22,8 +22,8 @@ async function scan(page: Page, path: string) {
   // Open the collapsed sections (CollapsibleSection) so what's in them is checked too
   const closed = page.locator('[data-section-toggle][aria-expanded="false"]')
   while ((await closed.count()) > 0) await closed.first().click()
-  // Charts draw after the first frame
-  await page.waitForTimeout(300)
+  // Charts draw after ECharts loads
+  for (const chart of await page.locator('[data-chart]').all()) await expect(chart.locator('canvas')).toBeAttached()
   const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze()
   for (const violation of violations) {
     findings.push({
@@ -57,6 +57,12 @@ test('signed-out pages', { tag: '@phone' }, async ({ page }) => {
     '/account/sign_up',
     '/account/password/new',
     '/account/confirmation/new',
+    // Pages reached from an email's link, here with a token that doesn't work (their other states
+    // share the layout)
+    '/account/sign_in_link/open?token=e2e',
+    '/account/password/edit?reset_password_token=e2e',
+    '/account/confirmation?confirmation_token=e2e',
+    '/digest/unsubscribe?token=e2e',
   ]) {
     await scan(page, path)
   }

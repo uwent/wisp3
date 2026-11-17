@@ -21,7 +21,7 @@
     type DayPivot,
     type DayPlanting,
   } from '@/lib/dailyEntry'
-  import { addDays, formatDate } from '@/lib/dates'
+  import { addDays, formatDate, today as todayDate } from '@/lib/dates'
   import { KIND_NAMES, KIND_NOUNS, systemName } from '@/lib/geo'
   import { cropName, plotSize } from '@/lib/plantings'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
@@ -33,7 +33,7 @@
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   /** A system in a placeholder: "pivot", "traveler", "drip" */
   const short = (pivot: DayPivot) => KIND_NAMES[pivot.kind].toLowerCase()
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayDate()
 
   // Typed values not yet saved: set by any input, cleared by a successful save
   let dirty = $state(false)

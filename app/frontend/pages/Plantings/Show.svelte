@@ -14,7 +14,7 @@
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import Term from '@/lib/components/Term.svelte'
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
-  import { addDays, formatDate, relativeDay } from '@/lib/dates'
+  import { addDays, currentYear, formatDate, relativeDay } from '@/lib/dates'
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
   import { guidance as guidanceFor } from '@/lib/guidance'
   import { outlook as outlookFor } from '@/lib/outlook'
@@ -652,7 +652,7 @@
   zone={weather_zone}
   {forecast}
   {units}
-  query={planting.year === new Date().getFullYear() ? {} : { year: planting.year }}
+  query={planting.year === currentYear() ? {} : { year: planting.year }}
 />
 
 {#if days.length}
@@ -729,8 +729,8 @@
           </p>
         {:else}
           <p class="text-xs text-ink-muted">
-            This is the forecast for this pivot, run through the water balance. To plan irrigation, enter an amount on a
-            future day. WISP counts it as applied when that day arrives, so change or clear it if your plans change.
+            This is the forecast for this {noun}, run through the water balance. To plan irrigation, enter an amount on
+            a future day. WISP counts it as applied when that day arrives, so change or clear it if your plans change.
             Depths are in {depthUnitName}. From the keyboard, use the arrow keys to move between cells, and press Enter
             or start typing to edit one.
           </p>
@@ -786,7 +786,9 @@
                       {:else}
                         <span class="font-medium">{depth(day.irrigation)}</span>
                         {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600"
-                            >{day.irrigation_source}</span
+                            >{day.irrigation_source === 'pivot'
+                              ? `from ${noun}`
+                              : `from ${day.irrigation_source}`}</span
                           >{/if}
                       {/if}
                     </EditableCell>

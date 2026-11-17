@@ -74,6 +74,11 @@
     }
   })
 
+  // While what's typed can't be read, the form won't submit (the hidden input still holds the last
+  // number read, which would otherwise be saved without a word)
+  let box = $state<HTMLInputElement>()
+  $effect(() => box?.setCustomValidity(localError ?? ''))
+
   function update(input: string) {
     text = input
     const parsed = quantity ? units.parse(quantity, input) : parseNumber(input)
@@ -94,6 +99,7 @@
   <FieldLabel {label} {info} {missing} {optional} for={id} hidden={hideLabel} />
   <div class="flex items-center gap-2">
     <input
+      bind:this={box}
       {id}
       type="text"
       inputmode="decimal"

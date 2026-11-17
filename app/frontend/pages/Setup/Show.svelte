@@ -7,8 +7,9 @@
   import FormFooter from '@/lib/components/FormFooter.svelte'
   import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import { isoDate } from '@/lib/dates'
+  import { today as todayDate } from '@/lib/dates'
   import { isPoint, KIND_NOUNS, shapeAcres, systemName } from '@/lib/geo'
+  import { mayDelete } from '@/lib/permissions'
   import { units as unitsFor } from '@/lib/units'
   import { outlineProblems } from '@/lib/outlines/problems'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
@@ -51,7 +52,7 @@
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const group = $derived(page.props.auth.group!)
-  // Only owners delete farms, pivots and fields (Q8)
+  // Only owners delete farms, pivots and fields (Q8); plantings and groups also their creator (G.15)
   const owner = $derived(page.props.auth.owner)
   const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
   // A system's shape in its row: "Radius 600 ft · Arc 0–270° · Area 80 ac"
@@ -104,7 +105,7 @@
     | { kind: 'pivotGroup'; farm: Farm; group?: PivotGroup }
   // Plantings have their own dialog (also on the field page)
   let plantingDialog: PlantingDialog | undefined = $state()
-  const today = isoDate(new Date())
+  const today = todayDate()
 
   // ?planting=ID (the planting page's "Edit in setup"): scroll to its field and open its form, once
   $effect(() => {
@@ -508,7 +509,7 @@
           <p class="text-xs text-ink-muted">A system is in one group at most; checking it here moves it.</p>
         </fieldset>
         <FormFooter
-          ondelete={pivotGroup
+          ondelete={pivotGroup && mayDelete(pivotGroup, page.props.auth)
             ? () =>
                 destroy(
                   pivotGroups.destroy(pivotGroup.id),

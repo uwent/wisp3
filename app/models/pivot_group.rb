@@ -2,6 +2,8 @@
 # day: daily entry fills a group's rain into its pivots' fields, which keep their own entries.
 class PivotGroup < ApplicationRecord
   belongs_to :farm
+  # Who added it, who may delete it as well as the owners (G.15); NULL for those made before
+  belongs_to :created_by, class_name: "User", optional: true
   has_many :pivots, -> { order(:name) }, dependent: :nullify, inverse_of: :pivot_group
 
   validates :name, presence: true, length: {maximum: 100}

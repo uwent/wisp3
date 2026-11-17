@@ -46,7 +46,7 @@ class PlantingsController < AuthenticatedController
     if plant && emergence && !given[:end_date]
       defaults[:end_date] = Planting.typical_end(plant, emergence, given[:canopy_curve_key], given[:season_days])
     end
-    planting = field.plantings.build(defaults.merge(given))
+    planting = field.plantings.build(defaults.merge(given).merge(created_by: Current.user))
     saved = Planting.transaction do
       replace_overlapping(planting) if params[:replace].present?
       planting.save || raise(ActiveRecord::Rollback)
@@ -69,6 +69,8 @@ class PlantingsController < AuthenticatedController
 
   def destroy
     planting = Current.group.plantings.find(params[:id])
+    return unless owner_or_creator?(planting)
+
     planting.destroy!
     redirect_back_or_to setup_path(year: planting.season_year), notice: "Deleted #{planting.plant.name} on #{planting.field.name}"
   end

@@ -4,7 +4,7 @@
 class PivotGroupsController < AuthenticatedController
   def create
     farm = Current.group.farms.find(params.expect(pivot_group: [:farm_id])[:farm_id])
-    save(farm.pivot_groups.build, "Added")
+    save(farm.pivot_groups.build(created_by: Current.user), "Added")
   end
 
   def update
@@ -13,6 +13,8 @@ class PivotGroupsController < AuthenticatedController
 
   def destroy
     pivot_group = Current.group.pivot_groups.find(params[:id])
+    return unless owner_or_creator?(pivot_group)
+
     pivot_group.destroy!
     redirect_to setup_path, notice: "Deleted #{pivot_group.name}; its irrigation systems are no longer grouped"
   end

@@ -120,5 +120,26 @@ RSpec.describe "Daily entry", type: :request do
       follow_redirect!
       expect(inertia.props[:errors]).to include("canopy.#{whole.id}" => ["Percent cover must be between 0 and 100"])
     end
+
+    it "takes planned irrigation ahead, but not rain, soil moisture or readings, as the field grid does", :inertia do
+      ahead = Date.new(2026, 7, 25)
+      patch daily_entry_path, params: {date: ahead.iso8601, fields: {field.id => {rain_in: "0.4", soil_moisture_pct: "20"}},
+                                       canopy: {whole.id => "50"}}
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("fields.#{field.id}.rain_in", "fields.#{field.id}.soil_moisture_pct",
+        "canopy.#{whole.id}")
+      expect(FieldEntry.count + CanopyObservation.count).to eq(0)
+
+      patch daily_entry_path, params: {date: ahead.iso8601, fields: {field.id => {irrigation_in: "1.0"}}}
+      expect(field.field_entries.sole).to have_attributes(date: ahead, irrigation_in: 1.0)
+    end
+
+    it "refuses a reading outside the planting's season", :inertia do
+      before_season = Date.new(2026, 4, 10)
+      patch daily_entry_path, params: {date: before_season.iso8601, canopy: {whole.id => "5"}}
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("canopy.#{whole.id}" => ["is outside this planting's season"])
+      expect(whole.canopy_observations).to be_empty
+    end
   end
 end

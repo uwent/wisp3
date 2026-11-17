@@ -280,9 +280,11 @@
     })
   }
 
-  async function startDraw(m: MapLibreMap) {
+  // alive: false once the page has gone, while terra-draw was loading
+  async function startDraw(m: MapLibreMap, alive: () => boolean) {
     const { TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode } = await import('terra-draw')
     const { TerraDrawMapLibreGLAdapter } = await import('terra-draw-maplibre-gl-adapter')
+    if (!alive()) return
     const style = {
       fillColor: colored(FIELD),
       fillOpacity: 0.15,
@@ -401,9 +403,11 @@
 
   onMount(() => {
     let removed = false
+    // Removed on leaving even before it loads (map is set on load)
+    let created: MapLibreMap | undefined
     loadMapLibre().then((maplibre) => {
       if (removed) return
-      const m = new maplibre.Map({
+      const m = (created = new maplibre.Map({
         container,
         style: basemapStyle(basemap),
         transformStyle,
@@ -412,7 +416,7 @@
         attributionControl: { compact: true, customAttribution: GEOCODER_ATTRIBUTION },
         // Double-clicks finish drawing rather than zoom
         doubleClickZoom: false,
-      })
+      }))
       m.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right')
       // A basemap switch drops the arrowhead's image with the style
       m.on('styleimagemissing', (event) => {
@@ -425,13 +429,13 @@
         addArrowLayers(m)
         soilLayer.attach(m)
         fit()
-        startDraw(m)
+        startDraw(m, () => !removed)
       })
     })
     return () => {
       removed = true
       draw?.stop()
-      map?.remove()
+      created?.remove()
     }
   })
 

@@ -8,6 +8,8 @@ export type FlashData = {
 
 // Props shared with every page (InertiaController.inertia_share)
 export type SharedProps = {
+  // Today's date on the server (Central time), ISO; read it through today() in lib/dates.ts
+  today: string
   auth: {
     user: User | null
     group: Group | null

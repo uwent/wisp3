@@ -83,7 +83,8 @@
   })
   const weatherFor = (pivot: { weather_updating: boolean }) => weatherUpdate(pivot.weather_updating, timedOut)
 
-  // The farms shown, with only the plantings growing today when asked (fields without one go)
+  // The farms shown, with only the plantings growing today when asked (fields without one go, their
+  // outlines too)
   const shown = $derived(
     farms
       .filter((farm) => farmId === 'all' || farm.id === farmId)
@@ -91,13 +92,14 @@
         onlyGrowing
           ? {
               ...farm,
-              pivots: farm.pivots.map((pivot) => ({
-                ...pivot,
-                fields: pivot.fields.flatMap((card) => {
+              pivots: farm.pivots.map((pivot) => {
+                const fields = pivot.fields.flatMap((card) => {
                   const plantings = card.plantings.filter((summary) => summary.phase === 'active')
                   return plantings.length ? [{ ...card, plantings }] : []
-                }),
-              })),
+                })
+                const kept = new Set(fields.map((card) => card.id))
+                return { ...pivot, fields, outlines: pivot.outlines.filter((outline) => kept.has(outline.field_id)) }
+              }),
             }
           : farm,
       ),
@@ -237,7 +239,15 @@
 <svelte:window
   onkeydown={(event) => {
     keyboard = true
-    if (event.key === 'Escape') clearSelection()
+    // Escape clears the selection unless something else used it (a menu, the place search, a dialog)
+    // or it was typed in a box
+    const target = event.target as HTMLElement | null
+    if (
+      event.key === 'Escape' &&
+      !event.defaultPrevented &&
+      !target?.closest('input, textarea, select, [role="dialog"], [role="menu"]')
+    )
+      clearSelection()
   }}
   onpointerdown={() => (keyboard = false)}
 />

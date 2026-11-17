@@ -63,6 +63,14 @@ RSpec.describe SeasonReportCsv do
     expect(section("Irrigation by irrigation system").sole).to include("Area (acres)" => nil, "Irrigation (in)" => "0.8000")
   end
 
+  it "counts a field of plots at the field's area, not its largest plot's" do
+    west.plantings.sole.update!(partial: true, area_acres: 5)
+    create(:planting, field: west, partial: true, area_acres: 8, season_start: Date.new(2026, 7, 1),
+      emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30))
+    expect(rows).to include(["Fields: 2 fields on 1 pivot across 1 farm, 120.0 acres"])
+    expect(section("Irrigation by irrigation system").sole).to include("Area (acres)" => "120.0")
+  end
+
   it "leaves a field whose season hasn't started blank, not zero" do
     later = create(:field, pivot:, name: "Later", area_acres: 10)
     create(:planting, field: later, season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 1),

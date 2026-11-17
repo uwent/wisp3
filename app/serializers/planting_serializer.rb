@@ -10,7 +10,9 @@ class PlantingSerializer < ApplicationSerializer
     # A crop without its own curve: the generic one picked, or none (readings only); null its default (G.3)
     :canopy_curve_key,
     # Its own season length in days (G.7), or null for the crop's typical one
-    :season_days
+    :season_days,
+    # Who added it: they may delete it as well as the owners (G.15)
+    :created_by_id
 
   attribute :plant_name do |planting|
     planting.plant.name

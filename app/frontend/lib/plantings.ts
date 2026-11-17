@@ -186,17 +186,22 @@ export type SeasonDates = { seasonStart: string; emergence: string; end: string;
  * part 3): harvest after the season start and after emergence (a season is at least a day long),
  * and vine kill from emergence to harvest. Emergence may be on or before the season start (a
  * transplant; a perennial, or a crop already up when tracking starts). Planting#dates_in_order
- * checks the same on save. Blank dates aren't checked (the inputs are required).
+ * checks the same on save. Blank dates aren't checked (the inputs are required). loose: a saved
+ * planting whose dates aren't changing, held to the rules before G.13 (harvest on or after the
+ * season start and emergence), as the server holds it, so it stays editable.
  */
 export function dateProblems(
   { seasonStart, emergence, end, vineKill }: SeasonDates,
   endLabel = 'Harvest',
+  { loose = false } = {},
 ): { end?: string; vineKill?: string } {
   const problems: { end?: string; vineKill?: string } = {}
-  if (end && emergence && end <= emergence) {
-    problems.end = `${endLabel} must be after emergence (${formatDate(emergence)}).`
-  } else if (end && seasonStart && end <= seasonStart) {
-    problems.end = `${endLabel} must be after the season start (${formatDate(seasonStart)}).`
+  const after = loose ? 'on or after' : 'after'
+  const early = (other: string) => (loose ? end < other : end <= other)
+  if (end && emergence && early(emergence)) {
+    problems.end = `${endLabel} must be ${after} emergence (${formatDate(emergence)}).`
+  } else if (end && seasonStart && early(seasonStart)) {
+    problems.end = `${endLabel} must be ${after} the season start (${formatDate(seasonStart)}).`
   }
   if (vineKill && emergence && vineKill < emergence) {
     problems.vineKill = `Vine kill can't be before emergence (${formatDate(emergence)}).`

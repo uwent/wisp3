@@ -44,7 +44,7 @@ class DailyEntryPage
      # Only as a hint where the balance would use it (Q7: not on a field using entered rain, through today)
      rain_model: (field.effective_use_model_precip || @date > Date.current) ? rain[pivot.weather_cell_id] : nil,
      entry: field_entries[field.id]&.slice(:rain_in, :irrigation_in, :soil_moisture_pct),
-     plantings: field.plantings_on(@date).sort_by { |planting| [planting.partial? ? 1 : 0, planting.season_start, planting.id] }
+     plantings: field.plantings_on(@date).sort_by(&:order_key)
        .map { |planting| planting_props(planting) }}
   end
 

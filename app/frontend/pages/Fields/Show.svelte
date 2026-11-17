@@ -9,7 +9,7 @@
   import Spinner from '@/lib/components/Spinner.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
-  import { formatDate, isoDate } from '@/lib/dates'
+  import { currentYear, formatDate, today as todayDate } from '@/lib/dates'
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
   import { outlook } from '@/lib/outlook'
   import { cardWhen, cropName, plotSize, seasonDates, seasonLine } from '@/lib/plantings'
@@ -68,7 +68,7 @@
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   // "pivot", "drip block"
   const noun = $derived(KIND_NOUNS[pivot.kind])
-  const today = isoDate(new Date())
+  const today = todayDate()
   const seasonPlantings = $derived(field.plantings.filter((p) => p.year === year))
   const statusById = $derived(Object.fromEntries(plantings.map((s) => [s.planting_id, s.status])))
   // Only plantings in season today have a status worth a dot
@@ -212,7 +212,7 @@
   {/if}
 </section>
 
-<ZoneWeather zone={weather_zone} {forecast} {units} query={year === new Date().getFullYear() ? {} : { year }} />
+<ZoneWeather zone={weather_zone} {forecast} {units} query={year === currentYear() ? {} : { year }} />
 
 {#if days.length}
   <CollapsibleSection title="Rain and irrigation on the field" storageKey="field-days">
@@ -277,7 +277,7 @@
                     {:else}
                       <span class="font-medium">{depth(day.irrigation)}</span>
                       {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600"
-                          >from {day.irrigation_source}</span
+                          >from {noun}</span
                         >{/if}
                     {/if}
                   </EditableCell>

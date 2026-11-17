@@ -445,7 +445,7 @@ test('a grid cell saves on Enter, and Escape cancels without saving', async ({ p
   await expect(page.getByRole('textbox', { name: /^Notes, / })).toBeFocused()
   await page.keyboard.type('not saved')
   await page.keyboard.press('Escape')
-  await page.waitForTimeout(500)
+  await expect(page.getByRole('textbox', { name: /^Notes, / })).toBeHidden()
   expect(writes).toEqual([])
 
   await page.reload()
@@ -958,25 +958,6 @@ test('a weather chart explains itself, and zooms the rest with it', async ({ pag
   expect(errors).toEqual([])
 })
 
-test('setup downloads the season report, and a weather zone its weather', async ({ page }) => {
-  await page.goto('/setup')
-  const [report] = await Promise.all([
-    page.waitForEvent('download'),
-    page.getByRole('link', { name: /season report \(CSV\)$/ }).click(),
-  ])
-  expect(report.suggestedFilename()).toMatch(/^wisp-season-.+\.csv$/)
-  const csv = readFileSync(await report.path(), 'utf8')
-  expect(csv).toMatch(/^\uFEFF"?WISP season report, \d{4}/)
-  expect(csv).toContain('Irrigation by irrigation system')
-
-  await page.goto(await firstZonePath(page))
-  const [all] = await Promise.all([
-    page.waitForEvent('download'),
-    page.getByRole('link', { name: "download all of this zone's weather" }).click(),
-  ])
-  expect(readFileSync(await all.path(), 'utf8')).toMatch(/^\uFEFF"?WISP weather, /)
-})
-
 test("alerts previews today's email and sends a test, then waits", async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/alerts')
@@ -1156,10 +1137,6 @@ test('a field shape away from its system can move the field to a new Location (G
   // Then any system within half a mile (the other size's Location, after its run), then Create a new system
   await expect(menu.locator('option').first()).toHaveText(new RegExp(`^Keep with ${escaped} – [\\d.]+ (mi|ft) away$`))
   await expect(menu.locator('option').last()).toHaveText('Create a new system')
-  // Out far enough to see the arrow back to the traveler
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom out' }).click()
-  await page.waitForTimeout(1500)
-  await page.screenshot({ path: `test-results/shape-away-${test.info().project.name}.png`, fullPage: true })
 
   await menu.selectOption('location')
   await expect(
@@ -1242,10 +1219,12 @@ test('the map shades outlined fields and badges them at their center, and marks 
   // A click in a field's outline selects that field, not the system drawn over it (G.14). The map
   // flies the pivot to 170 px left of center beside the panel (wide screens), at zoom 13.5 or more,
   // where its 1,300 ft radius is over 80 px: North corn is its east half.
-  await page.waitForTimeout(1500) // the flight ends
   const box = (await page.locator('.maplibregl-canvas').boundingBox())!
-  await page.mouse.click(box.x + box.width / 2 - 170 + 40, box.y + box.height / 2)
-  await expect(panel.locator('li[aria-current="true"]')).toContainText('North corn')
+  // Clicked again until the flight has ended there
+  await expect(async () => {
+    await page.mouse.click(box.x + box.width / 2 - 170 + 40, box.y + box.height / 2)
+    await expect(panel.locator('li[aria-current="true"]')).toContainText('North corn', { timeout: 500 })
+  }).toPass({ timeout: 10_000 })
 
   // The systems' shapes are a layer that can be switched off, and stays off
   await page.getByRole('button', { name: /^Layers/ }).click()

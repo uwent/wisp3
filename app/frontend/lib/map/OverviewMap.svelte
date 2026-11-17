@@ -269,6 +269,8 @@
     const m = map
     if (!m) return
     const { Marker } = await loadMapLibre()
+    // The page went (or the map was replaced) meanwhile
+    if (map !== m) return
     // A system's marker shows its fields without an outline; zoomed out, it's one dot for all of them
     const ids = new Set(pivots.map((pivot) => pivot.id))
     for (const [id, entry] of markers) {
@@ -368,7 +370,8 @@
   async function changeBasemap(to: Basemap) {
     if (!map) return
     onbasemap(to)
-    await setBasemap(map, to, isOwnSource)
+    // A switch a later click replaced, or a style that didn't load, leaves the map to that one
+    if (!(await setBasemap(map, to, isOwnSource)) || !map) return
     // The new style has none of our icons
     addGlyphImages(map)
     // The style's pivot layers have the palette of the old theme only if it changed meanwhile
@@ -464,6 +467,7 @@
       markers.clear()
       fieldMarkers.clear()
       map?.remove()
+      map = undefined
     }
   })
 </script>

@@ -1,7 +1,7 @@
 class SeasonCopiesController < AuthenticatedController
   def create
     year = params.expect(:year).to_i
-    result = SeasonCopy.new(Current.group, year).run
+    result = SeasonCopy.new(Current.group, year, by: Current.user).run
     notice = if result.copied.any?
       "Copied #{helpers.pluralize(result.copied.size, "crop")} from #{year - 1} to #{year}."
     elsif result.failed.empty?

@@ -1,3 +1,3 @@
 class PivotGroupSerializer < ApplicationSerializer
-  attributes :id, :name
+  attributes :id, :name, :created_by_id
 end

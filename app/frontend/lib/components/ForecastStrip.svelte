@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatDate } from '../dates'
+  import { formatDate, today as todayDate } from '../dates'
   import { dayName, skyFor } from '../forecast'
   import type { Units } from '../units'
   import WeatherIcon from './WeatherIcon.svelte'
@@ -13,7 +13,7 @@
     days,
     units,
     label = 'Forecast for the week ahead',
-    today = new Date().toLocaleDateString('en-CA'),
+    today = todayDate(),
     compact = false,
   }: { days: ForecastDay[]; units: Units; label?: string; today?: string; compact?: boolean } = $props()
 

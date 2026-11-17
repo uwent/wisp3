@@ -76,7 +76,9 @@
   let widthFt = $state<number | null>(untrack(() => start?.plot_width_ft ?? null))
   let acres = $state<number | null>(untrack(() => (start?.partial ? (start.area_acres ?? null) : null)))
   const plotArea = $derived(sizeBy === 'plot' ? (lengthFt && widthFt ? plotAcres(lengthFt, widthFt) : null) : acres)
-  const tooBig = $derived(plotArea !== null && field.area_acres !== null && plotArea > field.area_acres + 1e-6)
+  const tooBig = $derived(
+    partial && plotArea !== null && field.area_acres !== null && plotArea > field.area_acres + 1e-6,
+  )
 
   // The plantings on this field this one would clash with, and the ones "Replace" would end
   const others = $derived(field.plantings.filter((other) => other.id !== planting?.id))
@@ -155,8 +157,9 @@
     const chosen = plants.find((p) => String(p.id) === id)
     // LAI is offered only for crops with an LAI growth curve
     if (!chosen?.has_lai_curve) etMethod = 'pct_cover'
-    // A season length is for one crop's curve
+    // A season length and a generic curve are for one crop's curve
     ownDays = null
+    curveChoice = ''
     suggestEnd()
   }
 
@@ -167,14 +170,24 @@
     if (!endChosen && plant && emergence) endDate = typicalEnd(seasonDays, emergence)
   }
 
-  // Out of order dates, as they're typed (the server checks the same)
+  // Out of order dates, as they're typed (the server checks the same). A saved planting's dates
+  // are held to the looser rules they were saved under until one of them changes (G.13 part 3)
+  const loose = $derived(
+    planting !== undefined &&
+      seasonStart === planting.season_start &&
+      emergence === planting.emergence_date &&
+      endDate === planting.end_date,
+  )
   const problems = $derived(
-    dateProblems({ seasonStart, emergence, end: endDate, vineKill: plant?.has_vine_kill ? vineKill : null }, endLabel),
+    dateProblems({ seasonStart, emergence, end: endDate, vineKill: plant?.has_vine_kill ? vineKill : null }, endLabel, {
+      loose,
+    }),
   )
   // The earliest harvest the picker offers: the day after the later of the season start and emergence
+  // (the day itself under the looser rules)
   const endMin = $derived.by(() => {
     const later = [seasonStart, emergence].filter(Boolean).sort().at(-1)
-    return later ? addDays(later, 1) : undefined
+    return later ? (loose ? later : addDays(later, 1)) : undefined
   })
   const datesWrong = $derived(Boolean(problems.end || problems.vineKill))
 

@@ -153,6 +153,15 @@ describe('dateProblems (G.13 part 3)', () => {
     )
     expect(dateProblems({ ...dates, vineKill: '2026-09-01' })).toEqual({})
   })
+
+  it('holds a saved planting whose dates are unchanged to the rules it was saved under', () => {
+    // Harvest on emergence day was allowed before G.13: still editable, as on the server
+    const old = { ...dates, end: '2026-05-01' }
+    expect(dateProblems(old, 'Harvest', { loose: true })).toEqual({})
+    expect(dateProblems({ ...old, end: '2026-04-30' }, 'Harvest', { loose: true }).end).toBe(
+      'Harvest must be on or after emergence (May 1).',
+    )
+  })
 })
 
 describe('canReplace', () => {

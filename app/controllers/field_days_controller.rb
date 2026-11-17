@@ -2,23 +2,13 @@
 # with planting_id, that planting's canopy reading (percent cover or LAI, by its ET method). For a
 # planting on part of the field (PLAN.md Phase 8 G.11), its irrigation, soil moisture and notes go
 # to its own entry (PlantingEntry) and rain to the field's. Only the values sent change; a blank
-# value clears it. A future day takes only planned irrigation and notes: rain and readings haven't
-# happened yet.
+# value clears it. A future day takes only planned irrigation and notes (DailyEntry and
+# CanopyObservation check: rain and readings haven't happened yet).
 class FieldDaysController < AuthenticatedController
-  FUTURE_VALUES = %i[irrigation_in notes].freeze
-
   def update
     field = Current.group.fields.find(params[:field_id])
     date = Date.iso8601(params[:date])
     values = params.expect(day: [*DailyEntry::VALUES, :canopy])
-
-    if date > Date.current
-      future = values.to_h.symbolize_keys.except(*FUTURE_VALUES).select { |_, value| value.present? }
-      if future.any?
-        return redirect_with_errors(request.referer || field_path(field),
-          future.keys.to_h { |key| [key, ["can't be entered for a future date; only planned irrigation and notes can"]] })
-      end
-    end
 
     part = field.plantings.find(params[:planting_id]) if params[:planting_id].present?
     part = nil unless part&.partial?
@@ -50,8 +40,6 @@ class FieldDaysController < AuthenticatedController
   # {} or {canopy: [messages]}
   def record_canopy(field, date, value)
     planting = field.plantings.find(params.expect(:planting_id))
-    return {canopy: ["is outside this planting's season"]} unless planting.season_range.cover?(date)
-
     observation = CanopyObservation.record(planting, date, value)
     observation.errors.any? ? {canopy: observation.errors.full_messages} : {}
   end

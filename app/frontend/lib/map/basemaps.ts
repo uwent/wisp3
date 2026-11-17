@@ -204,13 +204,16 @@ export const transformStyle = (_previous: StyleSpecification | undefined, next: 
 const wanted = new WeakMap<MapLibreMap, Basemap>()
 const shown = new WeakMap<MapLibreMap, Basemap>()
 const running = new WeakMap<MapLibreMap, Promise<unknown>>()
+// A style that hasn't loaded by then (its service is down) gives up, so later switches aren't stuck
+// behind it
+const STYLE_TIMEOUT_MS = 20_000
 
 /**
  * Changes the basemap. A new style replaces every source and layer, so ours (the sources isOwn
  * picks, and the layers drawing them, in their order) are copied into it. `before` and `after` run
  * around the switch itself (terra-draw stops and starts there). Switches on one map run in turn, and
  * one a later call has replaced is skipped (resolving false). Resolves true once the new style is
- * in place, before its tiles load.
+ * in place, before its tiles load, or false if it doesn't load in time (another click retries).
  */
 export function setBasemap(
   map: MapLibreMap,
@@ -222,7 +225,13 @@ export function setBasemap(
   const run = (running.get(map) ?? Promise.resolve()).then(async () => {
     if (wanted.get(map) !== basemap || shown.get(map) === basemap) return false
     before?.()
-    const loaded = new Promise<void>((resolve) => map.once('style.load', () => resolve()))
+    const loaded = new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(false), STYLE_TIMEOUT_MS)
+      map.once('style.load', () => {
+        clearTimeout(timer)
+        resolve(true)
+      })
+    })
     // Rebuilt rather than diffed, so 'style.load' fires (a diff applies silently)
     map.setStyle(basemapStyle(basemap), {
       diff: false,
@@ -242,10 +251,10 @@ export function setBasemap(
         }
       },
     })
-    await loaded
-    shown.set(map, basemap)
+    const ok = await loaded
+    if (ok) shown.set(map, basemap)
     after?.()
-    return true
+    return ok
   })
   running.set(map, run)
   return run

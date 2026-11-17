@@ -8,7 +8,7 @@
   import Spinner from '@/lib/components/Spinner.svelte'
   import Term from '@/lib/components/Term.svelte'
   import { fileSlug } from '@/lib/csv'
-  import { formatDate } from '@/lib/dates'
+  import { currentYear, formatDate } from '@/lib/dates'
   import { poll, weatherUpdate } from '@/lib/poll'
   import { units as unitsFor, type Units } from '@/lib/units'
   import { fields as fieldRoutes, pivots as pivotRoutes, weatherZones } from '@/routes'
@@ -51,7 +51,10 @@
   // Growing degree days add up since January 1 and since the first day in view, and (picked under
   // the chart) since a planting date, the year's plantings that day named together (G.6)
   const starts = $derived(plantingStarts(plantings))
-  let gddStart = $state('')
+  // The date picked, while it's one of this page's: Inertia keeps the component across a visit to
+  // another zone or year, and the picked date stays behind
+  let picked = $state('')
+  const gddStart = $derived(starts.some((start) => start.date === picked) ? picked : '')
   const plantingTotals = $derived(gddStart ? gddFrom(weather, gddStart) : undefined)
   const panels = $derived((u: Units) =>
     weatherPanels(u, {
@@ -64,7 +67,7 @@
   )
 
   function visit(location: string, y: number) {
-    router.get(weatherZone(location).url, y === new Date().getFullYear() ? {} : { year: y })
+    router.get(weatherZone(location).url, y === currentYear() ? {} : { year: y })
   }
 
   // While the zone's weather is being fetched, reload until it lands
@@ -146,7 +149,7 @@
   <p role="status" class="text-sm text-status-irrigate-ink">Weather update failed. Refresh the page to try again.</p>
 {/if}
 
-{#if year === new Date().getFullYear()}
+{#if year === currentYear()}
   <section class="space-y-2" aria-labelledby="week-heading">
     <h2 id="week-heading" class="text-lg font-medium">The week ahead</h2>
     <ForecastStrip days={forecast} {units} />
@@ -170,7 +173,10 @@
       {#if key === 'gdd' && plantings.length}
         <label class="mt-1 flex min-w-0 items-center gap-2 text-xs text-ink-muted">
           <span class="shrink-0">Add the total since</span>
-          <select class="w-0 min-w-0 flex-1 rounded-md py-0.5 text-xs" bind:value={gddStart}>
+          <select
+            class="w-0 min-w-0 flex-1 rounded-md py-0.5 text-xs"
+            bind:value={() => gddStart, (value) => (picked = value)}
+          >
             <option value="">no planting</option>
             {#each starts as start (start.date)}<option value={start.date}>{start.label}</option>{/each}
           </select>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { addDays, daysBetween, formatDate, relativeDay } from './dates'
+import { addDays, daysBetween, formatDate, localDate, relativeDay } from './dates'
 
 describe('dates', () => {
   it('adds days across months and leap days, as calendar dates', () => {
@@ -30,5 +30,13 @@ describe('dates', () => {
     expect(relativeDay('2026-07-07', '2026-07-10')).toBe('3 days ago')
     expect(relativeDay('2026-07-11', '2026-07-10')).toBe('tomorrow')
     expect(relativeDay('2026-07-13', '2026-07-10')).toBe('in 3 days')
+  })
+})
+
+describe('localDate', () => {
+  it("gives the browser's calendar date, not UTC's", () => {
+    // 9 pm local on Jul 10 is Jul 11 in UTC west of Greenwich; the date shown is the local one
+    expect(localDate(new Date(2026, 6, 10, 21, 30))).toBe('2026-07-10')
+    expect(localDate(new Date(2026, 0, 5))).toBe('2026-01-05')
   })
 })
