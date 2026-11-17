@@ -90,7 +90,7 @@
         <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline" aria-label="View {pivot.name}"
           >View</Link
         >
-        <span class="text-ink-muted" aria-hidden="true">|</span>
+        <span class="text-ink-muted" aria-hidden="true">·</span>
         <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
           >Edit</Link
         >

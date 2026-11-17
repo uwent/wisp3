@@ -278,7 +278,7 @@
     {#if links}
       <div class="relative mt-2 flex items-center gap-2 text-xs font-medium">
         <Link {href} class="text-brand-600 hover:underline" aria-label="View {card.name}">View</Link>
-        <span class="text-ink-muted" aria-hidden="true">|</span>
+        <span class="text-ink-muted" aria-hidden="true">·</span>
         <Link href={editLink('field', card.id)} class="text-brand-600 hover:underline" aria-label="Edit {card.name}"
           >Edit</Link
         >
