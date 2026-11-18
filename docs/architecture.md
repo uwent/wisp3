@@ -12,6 +12,7 @@ Where each part of WISP 3 lives and how it fits together, area by area. [CLAUDE.
 - [Words: guidance, glossary and info tips](#words-guidance-glossary-and-info-tips)
 - [Email, the digest and the health check](#email-the-digest-and-the-health-check)
 - [CSV exports](#csv-exports)
+- [Analytics](#analytics)
 - [Outside services](#outside-services)
 
 ## Pages
@@ -138,6 +139,14 @@ Every export (Phase 8 D) opens with PRISM-style frontmatter (a title, then "Labe
 - Server ones include `CsvExport`: `PlantingCsv` (a planting's season), `SeasonReportCsv` (the operation's season, on Setup), `WeatherCsv` (a weather zone, named by location: `WeatherCell#file_location`), `PivotIrrigationCsv`.
 - Each weather chart's "Summary and data" builds its CSV in the browser (`lib/csv.ts`, `panelCsvRows` on panels built in imperial units).
 - Escape grower-typed text with `text` (formula injection), not numbers.
+
+## Analytics
+
+Two halves (PLAN.md H): Google Analytics for who comes and how they found WISP, on the public pages only; an admin Usage page for how growers use it, from WISP's own data.
+
+- **Google Analytics** (`lib/analytics.ts`, started from `entrypoints/inertia.ts`): only when `GA_MEASUREMENT_ID` is set (production's `.env`), which puts a `ga-measurement-id` meta tag in the layout and Google's script host in the CSP (at boot). gtag.js loads the first time a tracked page is shown: signed out, one of `TRACKED_PAGES` or any page in example mode. Elsewhere GA's opt-out flag (`ga-disable-<id>`) is set, so nothing is sent; pages reached with a token are never listed. Page views are sent by WISP on Inertia's `navigate` (`send_page_view: false`; enhanced measurement is off in GA), with every query parameter but `utm_*` stripped from the page and referrer (`cleanUrl`). Events: `sign_up` (the sign-up form's success) and `example_open` (once a browser session).
+- **Activity days** (`ActivityDay`, `RecordsActivity` in `AuthenticatedController`): one row per account per day with the areas used (`ActivityDay::AREAS`, by controller) and whether any request came from a phone. The session remembers what's been written today, so it's an upsert at most once per area per day. Not recorded for admins, while impersonating, or in example mode; uses `Date.current`. A new controller under `AuthenticatedController` isn't recorded until it's added to `AREAS` (and `AREA_NAMES`, and the page's labels).
+- **Usage page** (`Admin::UsageController`, `UsageReport`, `Admin/Usage.svelte`, charts in `lib/charts/usageCharts.ts`): tiles, the onboarding funnel (each step counting only accounts past the one before), weekly active accounts (last season lined up 52 weeks back), entries per week by kind (by `created_at`), the parts used, and setup counts. Leaves out admins, `@example.com` accounts (the demo) and the groups only they belong to. `bin/rails usage:sample` (development only; `CLEAR=1` removes them) adds 40 sample accounts on the demo farms with a season of activity, to see the page with data.
 
 ## Outside services
 

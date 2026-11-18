@@ -18,6 +18,7 @@ class User < ApplicationRecord
   has_many :memberships, dependent: :destroy
   has_many :groups, through: :memberships
   has_many :digest_exclusions, dependent: :delete_all
+  has_many :activity_days, dependent: :delete_all
 
   validates :unit_system, inclusion: {in: UNIT_SYSTEMS}
   validates :digest_frequency, inclusion: {in: DIGEST_FREQUENCIES}

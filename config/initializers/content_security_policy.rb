@@ -4,11 +4,14 @@
 # loaded by the browser (lib/map/overlays.ts, basemaps.ts, lib/soils.ts), so images and connections
 # allow any https source rather than a list that a new layer would quietly break. Svelte, MapLibre
 # and ECharts set inline styles, hence 'unsafe-inline' for styles only. The smoke tests fail on any
-# console error, a violation included.
+# console error, a violation included. With GA_MEASUREMENT_ID set (production), Google Analytics'
+# script host is allowed too (PLAN.md H.1); its hits go to https hosts, which connections allow.
 Rails.application.configure do
+  google_analytics = ENV["GA_MEASUREMENT_ID"].present? ? ["https://www.googletagmanager.com"] : []
+
   config.content_security_policy do |policy|
     policy.default_src :self
-    policy.script_src :self
+    policy.script_src :self, *google_analytics
     policy.style_src :self, :unsafe_inline
     policy.img_src :self, :data, :blob, :https
     policy.font_src :self, :data

@@ -2,7 +2,7 @@
 
 The Wisconsin Irrigation Scheduling Program (WISP) helps growers decide when to irrigate and how much. For each crop in each field it keeps a daily water balance of the root zone (the "checkbook" method): rain and irrigation in, the crop's water use and drainage out. Run forward with the weather forecast, it shows which fields will need water in the next few days, and how much would refill them.
 
-WISP was developed by the Departments of Soil Science and Biological Systems Engineering at the University of Wisconsin–Madison, building on the Wisconsin Irrigation Scheduler (WIS) and UW Extension publication A3600, and is maintained by the [Vegetable Entomology Lab](https://vegento.russell.wisc.edu/) in the UW–Madison Department of Entomology. It is built for Wisconsin and the upper Midwest, and is free to use.
+WISP grew out of UW Extension publication A3600's checkbook method of irrigation scheduling and was developed as a web app (WISP 2012) by the Departments of Soil Science and Biological Systems Engineering at the University of Wisconsin–Madison. It is maintained by the [Vegetable Entomology Lab](https://vegento.russell.wisc.edu/) in the UW–Madison Department of Entomology. It is built for Wisconsin and the upper Midwest, and is free to use.
 
 WISP 3 is a rewrite of the [original WISP](https://github.com/uwent/wisp), for the 2027 season. Growers set up their operations fresh; the legacy app stays readable for a season after launch.
 

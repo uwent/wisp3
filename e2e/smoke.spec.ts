@@ -52,12 +52,17 @@ test('the Weather tab has the week ahead and a season of weather per zone (G.12)
   expect(errors).toEqual([])
 })
 
-test('the Admin tab switches between Users and Weather data', async ({ page }) => {
+test('the Admin tab switches between Users, Weather data and Usage', async ({ page }) => {
+  const errors = watchErrors(page)
   await page.goto('/admin/users')
   const pills = page.getByRole('navigation', { name: 'Admin' })
   await expect(pills.getByRole('link', { name: 'Users' })).toHaveAttribute('aria-current', 'page')
   await pills.getByRole('link', { name: 'Weather data' }).click()
   await expect(page.getByRole('heading', { name: 'Weather data', level: 1 })).toBeVisible()
+  await pills.getByRole('link', { name: 'Usage' }).click()
+  await expect(page.getByRole('heading', { name: 'Usage', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Getting started' })).toBeVisible()
+  expect(errors).toEqual([])
   await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Admin' })).toHaveAttribute(
     'aria-current',
     'page',

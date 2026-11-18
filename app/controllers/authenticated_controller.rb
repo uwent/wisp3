@@ -3,6 +3,8 @@
 # example mode (ExampleMode, PLAN.md G.8) it's the example farm instead, for anyone, signed in or
 # not, and only on the actions a controller allows with allow_example, which only read.
 class AuthenticatedController < InertiaController
+  include RecordsActivity
+
   before_action :authenticate_user!, unless: :example_group
   before_action :set_current_group
 

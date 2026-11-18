@@ -118,7 +118,9 @@
     { id: 'weather', title: 'Weather' },
     { id: 'glossary', title: 'Glossary' },
     { id: 'accessibility', title: 'Accessibility' },
-    { id: 'changes', title: "What's changed" },
+    { id: 'privacy', title: 'Privacy' },
+    { id: 'wisp-3', title: "What's new in WISP 3" },
+    { id: 'history', title: 'History' },
     { id: 'contact', title: 'Credits and contact' },
   ]
 </script>
@@ -390,7 +392,10 @@
       <li>
         <strong>Soil moisture:</strong> a measured root zone moisture resets the balance, correcting any drift. Enter
         one about every {READING_EVERY} days, from sensors at about 25% and 75% of the root zone depth (see the
-        <a href="#crops">crop table</a>).
+        <a href="#crops">crop table</a>). UW Extension's
+        <a href="/publications/a3600-02-methods-to-monitor-soil-moisture.pdf" target="_blank" rel="noopener"
+          >Methods to Monitor Soil Moisture</a
+        > (A3600-02, PDF) compares the kinds of sensor and where to put them.
       </li>
       <li>
         <strong>Canopy:</strong> with percent cover, enter it about weekly from emergence until the canopy covers about
@@ -471,8 +476,10 @@
       more for potato, soybean or sweet corn, 20% for field corn, less for summer squash and asparagus. WISP takes each
       crop's coefficient at full cover from FAO-56 (Table 12, the table below), and adjusts it each day for the wind and
       humidity, as FAO-56 does: a dry, windy day raises a tall crop's water use more than a short one's. Below full
-      cover the coefficient rises with the canopy, from bare soil's evaporation (UW Extension A3600's percent cover
-      table) to the full-cover value at {FULL_COVER_PCT}% cover. Field corn on LAI reaches it as its leaf area grows.
+      cover the coefficient rises with the canopy, from bare soil's evaporation (the percent cover table in UW Extension
+      <a href="/publications/a3600-01-irrigation-management-in-wisconsin.pdf" target="_blank" rel="noopener">A3600-01</a
+      >, Appendix Table B) to the full-cover value at {FULL_COVER_PCT}% cover. Field corn on LAI reaches it as its leaf
+      area grows.
     </p>
     <p>
       <strong>Season length.</strong> Each crop with a curve has a typical season, from emergence to harvest (on its card
@@ -724,69 +731,92 @@ t: days since emergence; t′: days since the decline starts</code
       fix it, or help you get the same information another way.
     </p>
 
-    <h2 id="changes">What's changed</h2>
-    <dl>
-      <dt>November 2026: crop coefficients</dt>
-      <dd>
-        A crop's water use at full cover now uses its crop coefficient from FAO-56, adjusted for each day's wind and
-        humidity (see <a href="#crops">Crops</a>): 5–20% more than reference ET for most crops. With the weather
-        corrections below, which made reference ET itself accurate, a typical potato field needs about as many
-        irrigations a season as WISP showed in 2026. Earlier seasons are recalculated the same way.
-      </dd>
-      <dt>November 2026: getting started</dt>
-      <dd>
-        Setting up a new operation now takes a farm, its irrigation systems and their fields first, each of which can
-        wait, then a planting on each field, with a checklist on the dashboard until the first one is in (see
-        <a href="#getting-started">Getting started</a>).
-      </dd>
-      <dt>November 2026: the map</dt>
-      <dd>
-        The map shows one season at a time, draws each irrigation system in its own color with its kind's symbol, and
-        lists the operation farm by farm beside it (see <a href="#day-to-day">Day to day</a>).
-      </dd>
-      <dt>November 2026: field shapes</dt>
-      <dd>
-        A field can have a shape, drawn, copied from its pivot or linear, or imported with others from a shapefile,
-        GeoJSON or KML file. Fields with a shape are drawn on the map, with a badge per planting at the center (see <a
-          href="#getting-started">Getting started</a
-        >).
-      </dd>
-      <dt>November 2026: a Weather tab</dt>
-      <dd>
-        Weather has its own tab, by weather zone, with the week ahead and the season's charts (see
-        <a href="#day-to-day">Day to day</a>). Field, planting and irrigation system pages show the week ahead in brief,
-        and a planting's chart now has its crop ET under the rain and irrigation.
-      </dd>
-      <dt>November 2026: plantings side by side</dt>
-      <dd>
-        A field can grow several plantings at once, each on part of the field, with its own water balance (see
-        <a href="#getting-started">Getting started</a>). Each planting now has its own page; a field's page shows its
-        plantings and the rain and irrigation entered for the whole field.
-      </dd>
-      <dt>November 2026: earlier days on a planting's page</dt>
-      <dd>
-        A planting's page can show an earlier day of its season, with the weather that followed in place of the forecast
-        (see <a href="#day-to-day">Day to day</a>), so a season can be looked back on, or shown, after it ends.
-      </dd>
-      <dt>November 2026: weather corrections</dt>
-      <dd>
-        Solar radiation and humidity are now corrected and reference ET is worked out by WISP (see
-        <a href="#weather-corrections">Weather corrections</a>). Reference ET is about 11% lower than WISP showed in
-        2026, most of that in midsummer. On its own that had fields using water more slowly than they do; the crop
-        coefficients above make up for it at full cover. Every season's weather has been recalculated the same way, so
-        earlier seasons' numbers change too.
-      </dd>
-    </dl>
+    <h2 id="privacy">Privacy</h2>
+    <p>
+      WISP's public pages (this one, the home page, signing in and signing up, and the example farm) use Google
+      Analytics to count visits and see how people find WISP. Google Analytics isn't used once you're signed in, and
+      never sees your farms or their data.
+    </p>
+    <p>
+      Inside your account, WISP notes the days you use it and which parts (the dashboard, the map, daily entry and so
+      on), so we can see what's useful and what to improve. It doesn't record what you look at or when. Your farm data
+      stays in WISP: it isn't shared or sold, and deleting your account deletes the farms only you can reach.
+    </p>
+
+    <h2 id="wisp-3">What's new in WISP 3</h2>
+    <p>
+      WISP 3 is a rebuild of WISP 2012 for the 2027 season. The water balance is the same checkbook; what's new is
+      mostly around it:
+    </p>
+    <ul>
+      <li>
+        <strong>Weather for each irrigation system,</strong> from Open-Meteo, corrected against Wisconsin weather
+        stations (see <a href="#weather">Weather</a>), in place of AgWeather.
+      </li>
+      <li>
+        <strong>An outlook:</strong> the balance runs on through the 16-day forecast and its range of scenarios, so each planting
+        shows when it will need water, how much, and how sure the forecast is.
+      </li>
+      <li>
+        <strong>Crop water use</strong> from each crop's FAO-56 crop coefficient and a typical canopy curve, which your
+        cover readings correct (see <a href="#crops">Crops</a>).
+      </li>
+      <li>
+        <strong>Plantings on part of a field,</strong> side by side, each with its own balance and page, and a page that can
+        show any earlier day of the season.
+      </li>
+      <li>
+        <strong>A map</strong> of the operation with field outlines, and every kind of irrigation system: pivots, linears,
+        travelers, solid set and drip.
+      </li>
+      <li>
+        <strong>Less to enter:</strong> one page for the whole operation's daily readings, irrigation entered once for a system,
+        and a morning email of what needs water.
+      </li>
+      <li>
+        <strong>Seasons kept</strong> from year to year, with last season's setup copied forward; operations shared with other
+        members; CSV downloads; and pages that work on a phone and with assistive technology.
+      </li>
+    </ul>
+
+    <h2 id="history">History</h2>
+    <p>
+      WISP began on paper. UW Extension publication A3600, <cite
+        >Irrigation Management in Wisconsin: The Wisconsin Irrigation Scheduling Program (WISP)</cite
+      >, by David Curwen (Horticulture) and Leonard Massie (Biological Systems Engineering), taught growers to schedule
+      irrigation like balancing a checkbook: rain and irrigation as deposits, the crop's water use as withdrawals, kept
+      day by day on an accounting form. Its table for adjusting ET to the crop's percent cover is still part of WISP.
+      Spreadsheets and desktop programs carried the method onto computers.
+    </p>
+    <p>
+      In the 1990s, scientists in UW–Madison's Department of Soil Science and its Cooperative Institute for
+      Meteorological Satellite Studies began estimating each day's sunshine and ET across Wisconsin from satellite data,
+      the start of the AgWeather service that supplied WISP's weather until WISP 3.
+    </p>
+    <p>
+      WISP moved to the web as WISP 2012, developed in the Departments of Soil Science and Biological Systems
+      Engineering. John Panuska and Scott Sanford revised A3600 alongside it (now
+      <a href="/publications/a3600-01-irrigation-management-in-wisconsin.pdf" target="_blank" rel="noopener">A3600-01</a
+      >), with a companion on monitoring soil moisture (<a
+        href="/publications/a3600-02-methods-to-monitor-soil-moisture.pdf"
+        target="_blank"
+        rel="noopener">A3600-02</a
+      >). Since 2021 WISP has been maintained in the Department of Entomology, and WISP 3 was rewritten there for the
+      2027 season.
+    </p>
 
     <h2 id="contact">Credits and contact</h2>
     <p>
-      WISP was developed by the Departments of Soil Science and Biological Systems Engineering at the University of
-      Wisconsin–Madison, building on the Wisconsin Irrigation Scheduler (WIS) and UW Extension publication A3600. It is
-      maintained by the <a href="https://vegento.russell.wisc.edu/" target="_blank" rel="noopener"
-        >Vegetable Entomology Lab</a
-      >
-      in the UW–Madison Department of Entomology. Questions, comments and bug reports are welcome at
-      <a href="mailto:agweather@cals.wisc.edu">agweather@cals.wisc.edu</a>.
+      WISP 3 is developed and maintained by Ben Bradford in the
+      <a href="https://vegento.russell.wisc.edu/" target="_blank" rel="noopener">Vegetable Entomology Lab</a>,
+      UW–Madison Department of Entomology. WISP 2012 was built by Rick Wayne, Paul Kaarakka, Mark McEahern, Allen
+      Ballman and Ben Bradford, with academic leadership from Bill Bland (Soil Science) and John Panuska and Scott
+      Sanford (Biological Systems Engineering).
+    </p>
+    <p>
+      Questions, comments and bug reports are welcome at
+      <a href="mailto:agweather@cals.wisc.edu">agweather@cals.wisc.edu</a>. WISP's source code is on
+      <a href="https://github.com/uwent/wisp3" target="_blank" rel="noopener">GitHub</a>.
     </p>
   </article>
 </div>

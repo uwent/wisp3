@@ -90,6 +90,8 @@ Rails.application.routes.draw do
     end
     # Re-running the morning health check (shown on the weather page)
     resource :health_check, only: :create
+    # How growers use WISP in a season (?year=)
+    resource :usage, only: :show, controller: "usage"
   end
   # Returning to admin from signing in as someone else (Admin::ImpersonationsController#create)
   resource :impersonation, only: :destroy

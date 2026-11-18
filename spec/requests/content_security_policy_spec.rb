@@ -9,4 +9,17 @@ RSpec.describe "Content Security Policy", type: :request do
     expect(policy).not_to match(/script-src[^;]*unsafe-(inline|eval)/)
     expect(response.body).to include(%(<script nonce="#{nonce}">))
   end
+
+  # Google Analytics (PLAN.md H.1): the measurement ID's meta tag, which lib/analytics.ts starts from,
+  # only when GA_MEASUREMENT_ID is set (production); the script host is allowed then too, at boot
+  it "names the Google Analytics measurement ID only when it's configured" do
+    get root_path
+    expect(response.body).not_to include("ga-measurement-id")
+    expect(response.headers["Content-Security-Policy"]).not_to include("googletagmanager")
+
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("GA_MEASUREMENT_ID").and_return("G-TEST123")
+    get root_path
+    expect(response.body).to include(%(<meta name="ga-measurement-id" content="G-TEST123">))
+  end
 end

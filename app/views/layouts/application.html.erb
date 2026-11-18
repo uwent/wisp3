@@ -6,6 +6,10 @@
     <meta name="description" content="Wisconsin Irrigation Scheduling Program: daily soil water balance and forecast-driven irrigation scheduling.">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <%# Google Analytics on the public pages (app/frontend/lib/analytics.ts), when configured %>
+    <% if (ga_id = ENV["GA_MEASUREMENT_ID"].presence) %>
+      <meta name="ga-measurement-id" content="<%= ga_id %>">
+    <% end %>
 
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
 

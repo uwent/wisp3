@@ -140,6 +140,7 @@ export async function signedInPages(page: Page): Promise<string[]> {
     '/operation',
     '/about',
     '/admin/weather',
+    '/admin/usage',
     '/admin/users',
     user,
   ]

@@ -2,6 +2,10 @@ import { createInertiaApp } from '@inertiajs/svelte'
 
 import AppLayout from '@/layouts/AppLayout.svelte'
 import AuthLayout from '@/layouts/AuthLayout.svelte'
+import { startAnalytics } from '@/lib/analytics'
+
+// Google Analytics on the public pages, when configured (before the app, to see its first page)
+startAnalytics()
 
 createInertiaApp({
   pages: '../pages',

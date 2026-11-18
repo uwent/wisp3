@@ -16,6 +16,8 @@ Read this first; rewrite it at the end of each session. (The per-feature handoff
 - **C21, crop coefficients (Q11):** each crop's FAO-56 Table 12 Kc mid and height in `plants.yml` (new `plants` columns), adjusted daily for wind and minimum RH (eq. 62) from the stored and forecast weather; the percent cover table scaled from 1 on bare soil to Kc mid at 80% cover, LAI topping out at Kc mid. The standard potato field gains 3.2 irrigations a season, back to about WISP 2026's count (`docs/weather-comparison.md`, re-run). About page (How it works, Crops with a Kc column, What's changed) and the glossary updated; Ben to review the wording. Deploying it changes every planting's balance, earlier seasons included.
 - The developer docs reviewed: README expanded; DEVELOPMENT.md brought up to date (production builds on the server, the split CI, the demo and example tasks); TODO.md cut to what's open; CLAUDE.md trimmed to conventions, with the area-by-area notes moved to `docs/architecture.md` and the deploy notes to `docs/deployment.md` ("Changing the deploy"); this plan's **After launch** and **§15 Open questions**, deleted by mistake in `79cd6d2` (2026-11-13), restored; open items before Phase 9 reviewed (done ones checked, the rest kept, deferred to After launch or folded into one wording review); the `docs/handoffs/` notes folded into G.10, G.13 and G.14; Q11 resolved by C21 (below).
 
+**Analytics (Phase 8 H), on branch `analytics`:** built and approved by Ben (Usage page and privacy wording); CI, merge and deploy next. On the same branch, the About page's "What's changed" (a changelog no grower had seen) became "What's new in WISP 3", with a History section (A3600 by Curwen and Massie, the satellite ET work behind AgWeather, WISP 2012, A3600-01/-02) and rewritten credits; both publications (2019 revisions) are served from `public/publications/` and linked from History, the crop coefficients and the soil moisture advice.
+
 **Next:**
 1. **Ben** (TODO.md, Before the beta): the RDS restore test; the wording review and screen reader walkthrough; recruit the beta.
 2. **Code before the beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); the intermittent contrast finding on the shape page (Phase 9) when CI names it.
@@ -1430,6 +1432,54 @@ A code review of the branch (backend, controllers and tenancy, the map and outli
 - [x] **Forms:** `NumberField` doesn't submit while it shows a parse error (`setCustomValidity`); the system form's guard comes back if a delete is refused.
 - [x] **Tests:** specs for each of the above and members refused on owner-only deletes (outline import's duplicate row and rollback were already covered); redundant overlap and multipolygon tests merged, the browser test of the server CSV downloads dropped (request specs cover them); the browser tests' fixed sleeps replaced with waits (terra-draw's 150 ms between clicks stays: faster clicks are a double-click), weather seeded from January 1, the pages reached from emails' links scanned by axe.
 - [x] CLAUDE.md: 100 corners, and fields move between systems freely.
+
+#### H. Analytics (branch `analytics`; approved 2026-11-17, built the same day, waiting on Ben's look at the Usage page)
+
+**Design.** A hybrid with a sharp line between the two halves. **Google Analytics answers who comes and how they found WISP:** the public pages and the example farm, never inside a grower's account. **An admin Usage page answers whether growers use WISP to schedule irrigation:** built from what's already stored, plus one small table recording which days each account used WISP and which parts of it. Nothing is sent to Google from a signed-in page, and nothing about a grower's farm leaves WISP.
+
+**1. Google Analytics (public pages only)**
+- **Off unless configured:** everything below happens only when `GA_MEASUREMENT_ID` is set, which is in production's `/opt/wisp/.env` only. Development, staging, CI and the browser tests never load it.
+- **CSP:** add `https://www.googletagmanager.com` to `script_src` when the ID is set. Hits go to `*.google-analytics.com`, which `connect_src :https` already allows.
+- **Loading:** the layout renders `<meta name="ga-measurement-id">` only when the ID is set and nobody is signed in. `lib/analytics.ts`, started from `entrypoints/inertia.ts`, loads `gtag.js` the first time a page it tracks is shown. A grower who arrives signed in (most visits during the season) never loads it, so no request goes to Google.
+- **Which pages:** an allowlist of components (`Pages/Home`, `Pages/About`, `Auth/SignIn`, `Auth/SignUp`, the confirmation-sent page) plus every page in example mode (the example's data is public). Pages reached with a token (sign-in link, sign-in code, password reset, confirmation, digest unsubscribe) are never tracked. Once someone signs in, nothing more is sent, even if `gtag.js` is already loaded.
+- **Page views sent by WISP:** `config` with `send_page_view: false`, then a `page_view` on the first load and on each Inertia `navigate`. `page_location` and `page_referrer` are stripped of every query parameter except `utm_*`, so a token can't reach Google even by mistake (unit-tested).
+- **Two events:** `sign_up` (registration submitted) and `example_open` (`/example` entered). These are GA's conversions: landing → example → sign-up.
+- **The announcement email** (Phase 8 D) and other outside links carry `utm_source`/`utm_medium`/`utm_campaign`, so GA can attribute the launch.
+- **Recommended GA settings** (Ben, TODO.md): a new GA4 property and web data stream for `wisp.cals.wisc.edu`; **Enhanced measurement off** (below); Google signals off; ads personalization and data sharing off; event data retention 14 months; WISP's own visits filtered as internal traffic if wanted.
+- **Enhanced measurement: off.** Its page views follow browser history changes. On an Inertia app that sends the full URL, query string included, on every navigation, so it would duplicate WISP's own page views and could leak a token from an emailed link. Of its other options: WISP has no site search or video; file downloads (CSVs) are all signed-in, where GA doesn't run; form interactions are noisy and report form ids; scrolls tell us little on short pages. Outbound clicks are harmless but of little use. Turning off the whole toggle is simplest, and the two events above are the ones that matter.
+- **Privacy note:** a short paragraph on the About page (wording for Ben): Google Analytics on the public pages; inside an account, WISP records which days you used it and which parts, to improve it; nothing is shared or sold. Check UW–Madison's web privacy requirements for Google Analytics on a university site.
+
+**2. Activity days (new table)**
+- **Why:** sign-in counts miss most use, because growers stay signed in (remember me) all season, and entry timestamps miss growers who only look at the status and forecast. One row per account per day closes both gaps.
+- **`activity_days`:** `user_id` (FK, deleted with the user), `date`, `areas text[]`, `phone boolean`, unique on (`user_id`, `date`). There are no times, IP addresses, URLs or records viewed.
+- **Areas:** a fixed list mapped from the controller: dashboard, daily entry, field, planting, irrigation system, map, weather, setup (including quick setup, season copy, outline import), alerts, reports (CSV exports), operation, settings.
+- **Recording:** a `before_action` in `AuthenticatedController` (`ActivityDay.record`), for page loads and saves. The session remembers what's been recorded today, so it writes at most once per area per day: an upsert that adds the area to the array. `phone` is set when a request comes from a phone (user agent contains `Mobi`). Skipped for admins, while impersonating, and in example mode (no account). It uses `Date.current`, not `Current.today`, since time travel is an admin tool.
+
+**3. Admin → Usage page** (`/admin/usage?year=`, `Admin::UsageController#show`, a third `AdminTabs` tab, `Admin/Usage.svelte`)
+- **`UsageReport`** (plain Ruby, `app/services`) builds the props in a handful of grouped queries. It leaves out admins and the example farm's group. A season is a calendar year; weekly charts run March through November.
+- **Headline tiles:** accounts (confirmed); active in the last 7 and 30 days; operations that entered data this season.
+- **Onboarding funnel** (accounts that signed up in the year): signed up → confirmed → in an operation with a farm → with a planting this season → made an entry this season → active on 10+ days. Each step shows its count and its share of the step before, which shows where new growers stop.
+- **Weekly active accounts** (bars, from `activity_days`), with last season as a line on the same axis once it exists.
+- **Entries per week,** stacked by kind: rain, irrigation (system, field and planting entries), soil moisture, canopy readings. This uses the rows' `created_at`, so it counts the first time a day was entered, not later edits.
+- **Parts of WISP used:** the share of active accounts that used each area in the last 30 days and in the season, and the share of active days on a phone. This answers "does anyone use the map?" and "is daily entry done in the field?"
+- **How operations are set up:** irrigation system kinds, crops (plantings this season), plots, field outlines drawn, multi-member operations, unit system, digest frequency.
+- **Return rate** (from 2028): accounts active in one season that were active in the next.
+- The charts use ECharts option builders in `lib/charts/` (unit-tested), from the chart tokens, with no dual axis.
+
+**Tests:** a request spec (admins only; 404 for everyone else), a spec for `UsageReport` with seeded accounts, and specs for `ActivityDay.record` (once per area per day; skipped for admins, impersonation and example mode). Vitest covers the analytics URL stripping and allowlist, and the chart builders. A layout spec checks that the meta tag and CSP host appear only with the ID set. `e2e`: the Usage page in the smoke tests and the accessibility scan (`@phone` with the rest).
+
+- [x] 1. Google Analytics on the public pages and the example (`lib/analytics.ts`; the GA property and `GA_MEASUREMENT_ID` on production done by Ben)
+- [x] 2. `activity_days` and its recording (`ActivityDay`, `RecordsActivity`)
+- [x] 3. `UsageReport` and the Usage page; `bin/rails usage:sample` for sample data in development
+- [x] 4. About page Privacy section (drafted, for Ben's wording review); `docs/architecture.md` (Analytics); `docs/deployment.md` (`GA_MEASUREMENT_ID`); TODO.md (GA settings, privacy wording, the launch email's UTM tags)
+- [ ] 5. Ben's look at the Usage page; then `bin/ci`, all of `bin/e2e`, merge to `main`, delete the branch, deploy (the migration runs on deploy)
+
+**As built (2026-11-17).**
+- **Operations** on the Usage page are those with a farm: every account starts with an empty one of its own. Accounts left out also take out the groups only they belong to (the demo's), not just the example.
+- **The funnel is cumulative:** each step counts only accounts that made the steps before it, so an account active on 10 days without a planting doesn't show as a regular.
+- **Last season's weekly line** lines up 52 weeks back (364 days), so Mondays match.
+- **Entries chart colors:** rain, irrigation, canopy, then soil moisture in the AD indigo; soil moisture in a blue was too close to rain in dark mode (checked with the dataviz palette validator), so it's kept apart from rain in the stack.
+- **GA's opt-out flag** (`ga-disable-<id>`) is set on every untracked page, which stops gtag's own automatic hits too, not just WISP's page views.
 
 ### Phase 9: Polish
 

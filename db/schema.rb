@@ -10,10 +10,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "activity_days", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.date "date", null: false
+    t.string "areas", default: [], null: false, array: true
+    t.boolean "phone", default: false, null: false
+    t.index ["date"], name: "index_activity_days_on_date"
+    t.index ["user_id", "date"], name: "index_activity_days_on_user_id_and_date", unique: true
+  end
 
   create_table "canopy_cuttings", force: :cascade do |t|
     t.bigint "planting_id", null: false
@@ -368,6 +377,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_120000) do
     t.check_constraint "kind::text = ANY (ARRAY['deterministic'::character varying::text, 'ensemble'::character varying::text])", name: "weather_forecasts_kind"
   end
 
+  add_foreign_key "activity_days", "users", on_delete: :cascade
   add_foreign_key "canopy_cuttings", "plantings", on_delete: :cascade
   add_foreign_key "canopy_observations", "plantings"
   add_foreign_key "digest_exclusions", "users", on_delete: :cascade

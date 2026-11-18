@@ -1,13 +1,15 @@
 <script lang="ts">
   import { Link, page } from '@inertiajs/svelte'
 
-  import { adminUsers, adminWeather } from '@/routes'
+  import { adminUsage, adminUsers, adminWeather } from '@/routes'
 
-  // The admin pages' pills under the nav's one Admin tab: Users (with each user's pages) and
-  // Weather data (fetches, health check and corrections; the growers' Weather tab is their zones)
+  // The admin pages' pills under the nav's one Admin tab: Users (with each user's pages), Weather
+  // data (fetches, health check and corrections; the growers' Weather tab is their zones) and Usage
+  // (how growers use WISP, PLAN.md H.3)
   const tabs = [
     { label: 'Users', href: adminUsers.index().url, prefix: '/admin/users' },
     { label: 'Weather data', href: adminWeather.show().url, prefix: '/admin/weather' },
+    { label: 'Usage', href: adminUsage.show().url, prefix: '/admin/usage' },
   ]
 </script>
 

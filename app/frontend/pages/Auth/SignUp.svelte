@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Form, Link } from '@inertiajs/svelte'
 
+  import { track } from '@/lib/analytics'
   import Button from '@/lib/components/Button.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { usersRegistrations, usersSessions } from '@/routes'
@@ -22,6 +23,7 @@
   action={usersRegistrations.create()}
   class="space-y-4"
   resetOnError={['user[password]', 'user[password_confirmation]']}
+  onSuccess={() => track('sign_up')}
 >
   {#snippet children({ errors, processing })}
     <div class="grid gap-4 sm:grid-cols-2">
