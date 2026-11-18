@@ -2,31 +2,25 @@
 
 A full rewrite of the Wisconsin Irrigation Scheduling Program (WISP), replacing the legacy app at `../wisp`. Target: running in production before **April 1, 2027** (start of the 2027 season), with the October–March off-season used for build, validation, and beta.
 
-## Handoff (2026-11-17)
+## Handoff (2026-11-18)
 
 Read this first; rewrite it at the end of each session. (The per-feature handoffs that were in `docs/handoffs/` are folded into their sections: G.10, G.13 and G.14.)
 
-**Where things stand.** Phases 0–7 are done. Phase 8 is done except the beta and launch themselves: accessibility (A) but the screen reader walkthrough, admin (B), performance (C), weather corrections (E, backfilled on staging and production), time travel (F) and beta readiness (G, merged to `main` 2026-11-17 after the G.15 review). Production runs at `v3.wisp.cals.wisc.edu` (EC2 and RDS, mail through SES), staging at `dev.wisp.cals.wisc.edu`. Work is on `main`; the merged feature branches are deleted. The example farm is seeded on both servers.
+**Where things stand.** Phases 0–7 are done. Phase 8 is done except the beta and launch themselves: accessibility (A) but the screen reader walkthrough, admin (B), performance (C), weather corrections (E, backfilled on staging and production), time travel (F), beta readiness (G) and analytics (H, merged to `main` 2026-11-17). Production runs at `v3.wisp.cals.wisc.edu` (EC2 and RDS, mail through SES), staging at `dev.wisp.cals.wisc.edu`. Work is on `main`, with no feature branches open. The example farm is seeded on both servers.
 
-**The last session (2026-11-17):**
-- G.15's review fixes and the merge of `beta-readiness`.
-- Phase 9 refactors: `createMap`, `lib/planar.ts` and `lib/boundary.ts`, the planting page's components (`lib/planting/`), `FarmForm`/`PivotGroupForm`/`SoilFitNote`, `pollWeather`, `lib/fieldDays.ts`, services out of controllers (`OutlineImport`, `Field#save_moving_to`, `Planting.build_for`). Browser tests down from 7 minutes to 3.
-- G.8: the demo rebuilt on real fields from `db/demo/farms.yml` (`demo:export` writes it back); quick setup asks which season from November 1; the public example farm (`/example`, example mode, as of July 20); "All operations at once" skipped.
-- Weather charts tidied: pairs in a grid of one height, "Summary and data" in a dialog with Copy, all of a zone's weather in one table, CSVs named by location.
-- **C21, crop coefficients (Q11):** each crop's FAO-56 Table 12 Kc mid and height in `plants.yml` (new `plants` columns), adjusted daily for wind and minimum RH (eq. 62) from the stored and forecast weather; the percent cover table scaled from 1 on bare soil to Kc mid at 80% cover, LAI topping out at Kc mid. The standard potato field gains 3.2 irrigations a season, back to about WISP 2026's count (`docs/weather-comparison.md`, re-run). About page (How it works, Crops with a Kc column, What's changed) and the glossary updated; Ben to review the wording. Deploying it changes every planting's balance, earlier seasons included.
-- The developer docs reviewed: README expanded; DEVELOPMENT.md brought up to date (production builds on the server, the split CI, the demo and example tasks); TODO.md cut to what's open; CLAUDE.md trimmed to conventions, with the area-by-area notes moved to `docs/architecture.md` and the deploy notes to `docs/deployment.md` ("Changing the deploy"); this plan's **After launch** and **§15 Open questions**, deleted by mistake in `79cd6d2` (2026-11-13), restored; open items before Phase 9 reviewed (done ones checked, the rest kept, deferred to After launch or folded into one wording review); the `docs/handoffs/` notes folded into G.10, G.13 and G.14; Q11 resolved by C21 (below).
-
-**Anti-abuse (2026-11-18, on `main`):** blocked email domains widened from `.ru` to a few spam top-level domains and the disposable-address list (`EmailDomainBlocklist`), a honeypot and time check on sign-up (`SignUpGuard`), per-address limits on confirmation resends and password resets, confirmation links expiring after 3 days, and a daily purge of accounts unconfirmed after 30 days (`docs/architecture.md`, Accounts and abuse).
-
-**Form sections (2026-11-18, on `main`):** the system page in sections with its kind collapsed when saved, one Coordinates box reading pasted locations, and the field dialog's Soil water summary (Phase 9, Quality of life).
-
-**Analytics (Phase 8 H), on branch `analytics`:** built and approved by Ben (Usage page and privacy wording); CI, merge and deploy next. On the same branch, the About page's "What's changed" (a changelog no grower had seen) became "What's new in WISP 3", with a History section (A3600 by Curwen and Massie, the satellite ET work behind AgWeather, WISP 2012, A3600-01/-02) and rewritten credits; both publications (2019 revisions) are served from `public/publications/` and linked from History, the crop coefficients and the soil moisture advice.
+**The last sessions (2026-11-17 and 18):**
+- **C21, crop coefficients (Q11):** each crop's FAO-56 Kc mid and height in `plants.yml`, adjusted daily for wind and minimum RH; the standard potato field gains 3.2 irrigations a season, back to about WISP 2026's count (`docs/weather-comparison.md`). Deploying it changes every planting's balance, earlier seasons included. Ben to review the About page and glossary wording.
+- **Analytics (H):** Google Analytics on the public pages only, activity days and an admin Usage page; the About page's "What's new in WISP 3" with History and credits, the two publications served from `public/publications/`. The `activity_days` migration runs on deploy; GA's settings and the privacy wording are Ben's (TODO.md).
+- **Anti-abuse:** more blocked email domains (`EmailDomainBlocklist`), a honeypot and time check on sign-up (`SignUpGuard`), per-address limits on resends and resets, confirmation links expiring after 3 days, unconfirmed accounts purged after 30 (`docs/architecture.md`, Accounts and abuse).
+- **Form sections** (Phase 9, Quality of life): the system page in sections (Kind of system, collapsed to one line on a saved system; Location and size; Equipment and notes), latitude and longitude as one Coordinates box that reads pasted locations (`lib/coordinates.ts`), and the field dialog's field capacity and wilting point collapsed to a Soil water summary.
+- Before these: G.15's review and the merge of `beta-readiness`, Phase 9 refactors (browser tests down to 3 minutes), the demo and the public example farm (G.8), the weather charts tidied, and the developer docs reviewed (CLAUDE.md conventions only, area notes in `docs/architecture.md`).
 
 **Next:**
-1. **Ben** (TODO.md, Before the beta): the RDS restore test; the wording review and screen reader walkthrough; recruit the beta.
-2. **Code before the beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); the intermittent contrast finding on the shape page (Phase 9) when CI names it.
-3. **Phase 9 quality of life**, checked with the beta before building most of it.
-4. **Launch** by about March 20, 2027 (§13; Phase 8 D): legacy read-only, DNS, the announcement email.
+1. **Deploy `main`** to staging, then production, if not done since 2026-11-17: C21, analytics (its migration), anti-abuse and the form sections. Nothing here records a deploy after the merge.
+2. **Ben** (TODO.md, Before the beta): GA's settings and the privacy wording; the RDS restore test; the wording review (C21's included) and screen reader walkthrough; recruit the beta.
+3. **Code before the beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); the intermittent contrast finding on the shape page (Phase 9) when CI names it.
+4. **Phase 9 quality of life**, checked with the beta before building most of it.
+5. **Launch** by about March 20, 2027 (§13; Phase 8 D): legacy read-only, DNS, the announcement email.
 
 ---
 
@@ -1437,7 +1431,7 @@ A code review of the branch (backend, controllers and tenancy, the map and outli
 - [x] **Tests:** specs for each of the above and members refused on owner-only deletes (outline import's duplicate row and rollback were already covered); redundant overlap and multipolygon tests merged, the browser test of the server CSV downloads dropped (request specs cover them); the browser tests' fixed sleeps replaced with waits (terra-draw's 150 ms between clicks stays: faster clicks are a double-click), weather seeded from January 1, the pages reached from emails' links scanned by axe.
 - [x] CLAUDE.md: 100 corners, and fields move between systems freely.
 
-#### H. Analytics (branch `analytics`; approved 2026-11-17, built the same day, waiting on Ben's look at the Usage page)
+#### H. Analytics (approved and built 2026-11-17, merged to `main` the same day)
 
 **Design.** A hybrid with a sharp line between the two halves. **Google Analytics answers who comes and how they found WISP:** the public pages and the example farm, never inside a grower's account. **An admin Usage page answers whether growers use WISP to schedule irrigation:** built from what's already stored, plus one small table recording which days each account used WISP and which parts of it. Nothing is sent to Google from a signed-in page, and nothing about a grower's farm leaves WISP.
 
@@ -1476,7 +1470,8 @@ A code review of the branch (backend, controllers and tenancy, the map and outli
 - [x] 2. `activity_days` and its recording (`ActivityDay`, `RecordsActivity`)
 - [x] 3. `UsageReport` and the Usage page; `bin/rails usage:sample` for sample data in development
 - [x] 4. About page Privacy section (drafted, for Ben's wording review); `docs/architecture.md` (Analytics); `docs/deployment.md` (`GA_MEASUREMENT_ID`); TODO.md (GA settings, privacy wording, the launch email's UTM tags)
-- [ ] 5. Ben's look at the Usage page; then `bin/ci`, all of `bin/e2e`, merge to `main`, delete the branch, deploy (the migration runs on deploy)
+- [x] 5. Ben's look at the Usage page; then `bin/ci`, all of `bin/e2e`, merge to `main`, delete the branch
+- [ ] 6. Deploy (the migration runs on deploy)
 
 **As built (2026-11-17).**
 - **Operations** on the Usage page are those with a farm: every account starts with an empty one of its own. Accounts left out also take out the groups only they belong to (the demo's), not just the example.
