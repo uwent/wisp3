@@ -2,6 +2,26 @@
 
 A full rewrite of the Wisconsin Irrigation Scheduling Program (WISP), replacing the legacy app at `../wisp`. Target: running in production before **April 1, 2027** (start of the 2027 season), with the October–March off-season used for build, validation, and beta.
 
+## Handoff (2026-11-17)
+
+Read this first; rewrite it at the end of each session. (The per-feature handoffs that were in `docs/handoffs/` are folded into their sections: G.10, G.13 and G.14.)
+
+**Where things stand.** Phases 0–7 are done. Phase 8 is done except the beta and launch themselves: accessibility (A) but the screen reader walkthrough, admin (B), performance (C), weather corrections (E, backfilled on staging and production), time travel (F) and beta readiness (G, merged to `main` 2026-11-17 after the G.15 review). Production runs at `v3.wisp.cals.wisc.edu` (EC2 and RDS, mail through SES), staging at `dev.wisp.cals.wisc.edu`. Work is on `main`; the merged feature branches are deleted. The example farm is seeded on both servers.
+
+**The last session (2026-11-17):**
+- G.15's review fixes and the merge of `beta-readiness`.
+- Phase 9 refactors: `createMap`, `lib/planar.ts` and `lib/boundary.ts`, the planting page's components (`lib/planting/`), `FarmForm`/`PivotGroupForm`/`SoilFitNote`, `pollWeather`, `lib/fieldDays.ts`, services out of controllers (`OutlineImport`, `Field#save_moving_to`, `Planting.build_for`). Browser tests down from 7 minutes to 3.
+- G.8: the demo rebuilt on real fields from `db/demo/farms.yml` (`demo:export` writes it back); quick setup asks which season from November 1; the public example farm (`/example`, example mode, as of July 20); "All operations at once" skipped.
+- Weather charts tidied: pairs in a grid of one height, "Summary and data" in a dialog with Copy, all of a zone's weather in one table, CSVs named by location.
+- **C21, crop coefficients (Q11):** each crop's FAO-56 Table 12 Kc mid and height in `plants.yml` (new `plants` columns), adjusted daily for wind and minimum RH (eq. 62) from the stored and forecast weather; the percent cover table scaled from 1 on bare soil to Kc mid at 80% cover, LAI topping out at Kc mid. The standard potato field gains 3.2 irrigations a season, back to about WISP 2026's count (`docs/weather-comparison.md`, re-run). About page (How it works, Crops with a Kc column, What's changed) and the glossary updated; Ben to review the wording. Deploying it changes every planting's balance, earlier seasons included.
+- The developer docs reviewed: README expanded; DEVELOPMENT.md brought up to date (production builds on the server, the split CI, the demo and example tasks); TODO.md cut to what's open; CLAUDE.md trimmed to conventions, with the area-by-area notes moved to `docs/architecture.md` and the deploy notes to `docs/deployment.md` ("Changing the deploy"); this plan's **After launch** and **§15 Open questions**, deleted by mistake in `79cd6d2` (2026-11-13), restored; open items before Phase 9 reviewed (done ones checked, the rest kept, deferred to After launch or folded into one wording review); the `docs/handoffs/` notes folded into G.10, G.13 and G.14; Q11 resolved by C21 (below).
+
+**Next:**
+1. **Ben** (TODO.md, Before the beta): the RDS restore test; the wording review and screen reader walkthrough; recruit the beta.
+2. **Code before the beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); the intermittent contrast finding on the shape page (Phase 9) when CI names it.
+3. **Phase 9 quality of life**, checked with the beta before building most of it.
+4. **Launch** by about March 20, 2027 (§13; Phase 8 D): legacy read-only, DNS, the announcement email.
+
 ---
 
 ## 1. Goals
@@ -224,6 +244,8 @@ Port `adj_et_pct_cover` with these fixes:
 
 Gap fill is **never used for future days**; that's the projection's job (§6).
 
+**C21 (2026-11-17, Q11):** the table's crop ET is scaled by each crop's FAO-56 Kc mid, rising with cover (1 on bare soil, Kc mid at 80% and above) and adjusted for the day's wind and minimum RH (FAO-56 eq. 62); LAI tops out at Kc mid. See §9 C21 and `CropEt`.
+
 ### 5.5 Status
 
 | Status | Condition (today's AD) |
@@ -390,6 +412,7 @@ Every ported method is checked against this list. Items marked **Hotfix** should
 | C17 | Server-local `Date.today` / `Time.now` | throughout | `config.time_zone = "Central Time (US & Canada)"`, `Date.current` |
 | C19 | On a soil moisture reading day, adjusted ET isn't recomputed: the value stored by an earlier run (often from older canopy or weather) is kept and fed into the gap-fill buffer. Found by the golden tests (2 of 12 active fixture fields) | `old_update_balances` | ET computed fresh every day |
 | C20 | **No canopy without readings.** A percent cover planting with no readings had 0% cover all season (bare-soil ET only), and between readings cover followed straight lines | `field.rb` canopy interpolation | WISP 3: a default canopy curve per crop, followed with no readings and through readings (Phase 6.7, `CanopyCurve`, `Canopy`); a planting can choose straight lines. A canopy-series change, so `LegacyEngine::CANOPY_FIXES` lists it and `legacy_engine_spec` is unaffected |
+| C21 | **The percent cover table against FAO-56 ET0.** A3600 Table C's "full cover = reference ET" was fitted to AgWeather's ET, about 1.11 × station FAO-56 grass ET0 over the season and 1.2 in midsummer, so it meant a crop coefficient near FAO-56's mid-season values. On WISP's corrected FAO-56 ET0 (D12) it gave a Kc near 1.0, and the standard potato field 4.5 fewer irrigations a season than AgWeather (Q11) | `et_calculator.rb#adj_et_pct_cover` | Each crop's Kc mid and height from FAO-56 Table 12 (`plants.yml`), adjusted daily for wind and minimum RH (eq. 62, `CropEt.kc_mid`); the table scaled by 1 + (Kc mid − 1) × cover/80% (1 on bare soil, Kc mid at 80% and above), and LAI's maximum Kc is Kc mid (was 1.1). Built 2026-11-17: +3.2 irrigations a season on the standard potato field, −1.3 vs AgWeather (WISP 2026: −1.2; `docs/weather-comparison.md`). `LegacyEngine` C21 |
 
 ### Architecture and performance
 
@@ -483,20 +506,20 @@ Users start fresh in WISP 3. That removes the riskiest part of the project (the 
 
 ## 14. Phased execution
 
-Calendar assumes one primary developer, Oct 2026 → Mar 2027. Each phase ends deployed to staging.
+Calendar assumes one primary developer, Oct 2026 → Mar 2027. Each phase ends deployed to staging. Checklists: `[x]` done, `[ ]` open, `[~]` deferred or folded into another item (its note says where).
 
 ### Phase 0: Legacy housekeeping
 
-Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs passing). Push, deploy and the backfill remain.
+Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs passing); deployed and the backfill run (October 2026). Only the archive `pg_dump` remains.
 
 - [x] Hotfix S1: every lookup driven by params or session goes through `current_group` (`ApplicationController#group_scope`); `spec/requests/tenant_isolation_spec.rb` (29 cross-tenant cases; 20 failed before the fix).
 - [x] Hotfix C1: `Field#get_precip` condition corrected, with model specs.
 - [x] `rake precip:backfill` (`DRY_RUN=1` to preview): refills AgWeather rainfall for current-season fields in Auto groups, keeps user entries, and lists Manual groups that received unwanted AgWeather rainfall while the bug was live.
 - [x] Feb 15 `yearly:reset` cron disabled in `config/schedule.rb` (the task can still be run by hand).
-- [ ] Push, merge to `main`, `cap staging deploy`, smoke test, `cap production deploy`. Whenever's Capistrano hook rewrites the crontab, which removes the reset job.
-- [ ] Production: `DRY_RUN=1 bundle exec rake precip:backfill`, review, then run it for real (1 of 183 groups is set to Manual).
+- [x] Push, merge to `main`, `cap staging deploy`, smoke test, `cap production deploy`. Whenever's Capistrano hook rewrites the crontab, which removes the reset job. *(Done, October 2026.)*
+- [x] Production: `DRY_RUN=1 bundle exec rake precip:backfill`, review, then run it for real (1 of 183 groups is set to Manual). *(Done, October 2026.)*
 - [x] Usage query run on production (results in Q2). Only 1 sweet corn + LAI field and the season is over, so no C18 legacy hotfix.
-- [ ] After Nov 30: archive `pg_dump` of legacy production; export golden-test fixtures (§10) and AgWeather ET/precip for 2025–2026 at the ~228 real pivot locations (§8.4).
+- [ ] After Nov 30 (and before Feb 15): archive `pg_dump` of legacy production. *(The golden-test fixtures were exported 2026-10-03 (Phase 2), and the AgWeather comparison re-run at the real pivot locations (§8.4); only the archive remains, in TODO.md.)*
 
 ### Phase 1: Foundation
 
@@ -552,7 +575,7 @@ Code committed on branch `phase0-hotfixes` in `../wisp` (`1abdb8f`, 268 specs pa
 
 From a review of Phases 1–4 (2026-10-03): bugs, plan items that slipped, and rough edges to finish before the projection work builds on these pages.
 
-Done 2026-10-03, except the staging deploy (Ben pushes and deploys) and the member-roles decision (Q8). Also fixed: GitHub CI failed because `db:prepare` seeds reference data into a freshly created test database; `spec/rails_helper.rb` now clears it before the suite.
+Done 2026-10-03; the staging deploy followed, and the member roles were decided (Q8, 2026-10-04). Also fixed: GitHub CI failed because `db:prepare` seeds reference data into a freshly created test database; `spec/rails_helper.rb` now clears it before the suite.
 
 Bugs:
 - [x] **Escape in a grid cell saves the draft.** Chromium fires `blur` when the focused input is removed, and `EditableCell`'s `onblur` calls `commit()` without checking that editing was cancelled. Reproduced in Playwright on the field grid (typing a note, then Escape, sent the PATCH). The jsdom test passes because jsdom doesn't blur on removal. Guard `commit` (a cancelled flag or `if (!editing) return`) and cover it in the Playwright smoke tests. *(Fixed; a Vitest case simulates the blur, and the e2e test fails without the fix.)*
@@ -561,7 +584,7 @@ Bugs:
 Slipped from the plan:
 - [x] **Field-group percent cover** (§4 precedence: "group pct-cover entries become CanopyObservations on each member planting"). The field group grid has rain, irrigation, moisture and notes, but no cover column. *(A Cover column when a member has a percent-cover crop; saving writes `CanopyObservation.record` on each member's percent-cover planting that day; the grid shows their shared reading or "varies".)*
 - [x] Playwright smoke tests in CI (carried over from Phase 4): sign in, the demo group, every page, one grid edit, one daily entry save, Escape-cancels. *(`bin/e2e`: own database `wisp3_e2e`, demo account with synthetic weather from `e2e/seed.rb`, desktop and phone/dark; a step in `bin/ci` and GitHub Actions, which uploads the report on failure.)*
-- [ ] Deploy Phases 4 and 4.5 to staging and smoke test there (each phase ends deployed to staging). *(Ben: push, then `bundle exec cap staging deploy`; TODO.md.)*
+- [x] Deploy Phases 4 and 4.5 to staging and smoke test there (each phase ends deployed to staging). *(Ben: push, then `bundle exec cap staging deploy`; TODO.md.)* *(Done.)*
 - [x] Give unassigned §11/§12 items a phase, or cut them: admin users list, CSV, announcements and impersonation; the public landing and about pages; the admin email when a job fails or a cell's weather is more than 24 h stale. Suggest Phase 8 for all of them. *(Added to Phase 8.)*
 - [x] Plan housekeeping: Phase 7's "moving a pivot triggers a backfill" already shipped in Phase 3 (`Pivot#backfill_weather`; the balance is recalculated on read). The Phase 1 and Phase 3 exit notes still say staging sign-up and email delivery and the commercial key are "still to check", but TODO.md marks them done. Reconcile both. *(Done.)*
 
@@ -597,7 +620,7 @@ Decided 2026-10-04 (Ben): a **daily digest** instead of event-based alerts. Simp
 - [x] **What the digest lists** (Ben, 2026-10-15): `users.digest_scope`: all the fields it covers (in season or not, "Off season" with when the season starts or ended), those with a crop in season (the default), those needing irrigation or a reading, or only those needing irrigation. With nothing to list it says "No action needed" and why, with the in-season pivots' weather. A new frequency, `daily_all_year`, sends every morning even with nothing in season (weather for every included pivot). "Fields it covers" gains a pivot level (a pivot with none of its fields picked is left out whole, `DigestExclusion` on a Pivot). The footer counts what's listed of what's covered. `WeatherCell.active` takes in the cells such digests show out of season.
 - [x] Preview today's email and send a test from the Alerts page, for every user (a test goes whatever the frequency, at most one per 5 minutes). *(The preview is an optional Inertia prop, built only when asked for.)*
 - [x] Sent each morning after the 5 am refresh, to users with the digest on and at least one active field; unsubscribe link and `List-Unsubscribe` header. *(`DailyDigestJob` at 6 am Central; one-click `List-Unsubscribe-Post`; the link's GET only shows a button.)*
-- [ ] SPF/DKIM check (Q6): Ben, on staging.
+- [x] SPF/DKIM check (Q6): Ben, on staging. *(Done: SPF and DKIM pass on staging; production sends through SES with DKIM, Q6.)*
 - [x] Admin preview: "what would be sent today" for any user. *(Admin user page → "Preview today's daily email".)*
 - **Exit:** staging sends correct digests for test fields across simulated scenarios (rain refill, sudden heat, planned irrigation pushing back "Irrigate by").
 
@@ -616,7 +639,7 @@ Decided 2026-10-05 (Ben): replace the legacy PDF user guide with documentation i
   - Glossary: every entry in `lib/glossary.ts`, each with an anchor the tooltips can link to.
   - Credits and contact: UW-Madison Vegetable Entomology Lab, agweather@cals.wisc.edu.
   *(`Pages/About`; the crop table from `plants`, reading advice from `lib/guidance.ts`, glossary from `lib/glossary.ts`, so they follow the app.)*
-- [ ] Wording reviewed by Ben (agronomy, contact details).
+- [~] Wording reviewed by Ben (agronomy, contact details). *(Folded into one wording review before the beta: Phase 8 D. Claude's review after G.6 and G.11 is done, 2026-11-12.)*
 - **Later (Phase 8):** screenshots, a printable version, the methods detail (equations from §5) for agronomists, and a "More in the guide" link from each glossary tooltip.
 
 ### Phase 6.6: Field rain setting and season details
@@ -691,7 +714,7 @@ Each step produces a dated note in `docs/canopy/` (sources, data, scripts and re
 - [x] **About page:** a "Canopy curves" section (how readings combine, the warnings, how the curves were made with the equations, crops without a curve, why LAI is field corn only) and a card per crop from `canopy_curves.yml`: the curve for a May 15 emergence (`CanopyCurvePlot`), days to 50% and 80%, the decline, basis, parameters, notes, confidence and sources (with DOIs), linking to `docs/canopy/`. The crop table says which crops have curves. Glossary: canopy curve.
 - [x] Demo seed: the snap beans have no readings, so they follow their curve.
 - [x] **Tasks per field** (Ben, 2026-10-15): `PlantingTasks` lists what's due while the season is on: a soil moisture reading about weekly, a percent cover reading about weekly from emergence until about 80% (LAI once the grower has started), and the canopy check. Its wording is server-side, so the field page (readings and warning), the dashboard cards ("To do") and the daily email (a "To do:" line per field) all show the same. `summary.tasks` replaces `canopy_check`; the field page no longer works out due readings in the browser.
-- [ ] Wording reviewed by Ben. *(The agronomist review of the curves is dropped for now, 2026-11-10: see A.6. If someone takes it up later, `docs/canopy/03-crop-curves.md`, "For the agronomist", is the starting point.)*
+- [~] Wording reviewed by Ben. *(The agronomist review of the curves is dropped for now, 2026-11-10: see A.6. If someone takes it up later, `docs/canopy/03-crop-curves.md`, "For the agronomist", is the starting point.)* *(Folded into the wording review in Phase 8 D.)*
 - **Exit:** every crop in `plants.yml` either has a sourced curve or is documented as having none. A demo planting with no readings has a plausible cover and ET season, and adding readings moves it as the chosen method says. The About page's crop cards match `canopy_curves.yml`, and `legacy_engine_spec` passes.
 
 **Decided 2026-10-15 (Ben):**
@@ -774,7 +797,7 @@ USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free a
 - [x] Failure is quiet: no suggestion and a short "Soil survey unavailable" note; setup never waits on it. Outside the survey's coverage (Canada) there's no suggestion.
 - [x] **About page:** a Soils section: what the soil type sets, the setup suggestion, and a table of every type's field capacity, wilting point, available water and where its values come from (`basis` in `soil_types.yml`). The Day to day section describes the Map tab.
 - [x] **Thin organic surface layers skipped** (Ben, 2026-10-19): Friendship loamy sand was suggested as Muck, because its top horizon in the survey is 2 cm of leaf litter ("moderately decomposed plant material"). The surface texture is now the top horizon only for organic soils (Histosols: Markey, Seelyeville), and otherwise the first mineral horizon (`SURFACE_TEXTURE` in `lib/soils.ts`). Checked against Soil Data Access in Portage and Waushara counties: Friendship, Plainfield, Roscommon and Newson come out as their mineral textures, and the Histosols stay Muck. Minocqua muck (3 cm of muck over silt loam) now suggests Silt Loam.
-- [ ] *Maybe:* show the survey's available water capacity next to the soil type's default field capacity and wilting point, as a check. Not used in the balance.
+- [~] *Maybe:* show the survey's available water capacity next to the soil type's default field capacity and wilting point, as a check. Not used in the balance. *(Moved to After launch.)*
 
 #### H. Revisions after trying it (Ben, 2026-10-17)
 - [x] **No soil layer on the Map tab.** The survey's map unit codes meant little and loaded slowly. The pivot picker's layer shows **WISP's soil types** instead: the survey's polygons around the pivot (or the view, zoomed in), colored coarse to fine and labeled by the type each unit's surface texture suggests, with the unit's name on hover and a legend of the types present (`lib/soils.ts` `fetchSoilAreas`, about 5–7 s for the area around a pivot).
@@ -801,13 +824,14 @@ USDA NRCS Soil Data Access (SSURGO) has both a map layer and a query API, free a
 
 **Order (Ben, 2026-10-22):** accessibility first (A), then the admin additions (B), then a performance check and code audit (C), before the beta. Long-lead items run alongside from now: the server request to the sysadmin ([Phase 1](#phase-1-foundation)) and recruiting beta testers.
 
-**Next (2026-11-10; production is live at `v3.wisp.cals.wisc.edu` with SES out of the sandbox):**
-1. **Weather corrections (E)**, before any beta tester sees a number: it moves every field's ET by about 11%, and the backfill keeps one method per season.
-2. **Weather update polling (C, follow-up)**: small, and it shows on every dashboard visit.
+**Next (updated 2026-11-17; the handoff at the top of this file has the details):**
+1. ~~**Weather corrections (E)**~~ (built 2026-11-10; staging and production backfilled).
+2. ~~**Weather update polling (C, follow-up)**~~ (done 2026-11-10).
 3. **RDS restore test (D)**: once, before real growers' data is on the server.
-4. ~~**Time travel (F)**~~ (built 2026-11-10): the beta runs over the winter, when every season has ended, so testers and demos can only see an in-season page this way.
-5. **Beta readiness (G)** (added 2026-11-11, from a UX review; all before launch): seasons that keep their history, fields with several plantings, field boundaries and import, season end dates, crops without a curve, daily entry, irrigation systems other than pivots, wording, new crops, all operations at once and a public example farm. On the `beta-readiness` branch; G.1–G.4 and G.9 before any tester sets up a field.
-6. **Closed beta (D)**, then launch by ~Mar 20, 2027. The screen reader walkthrough (A) and wording reviews happen alongside.
+4. ~~**Time travel (F)**~~ (built 2026-11-10).
+5. ~~**Beta readiness (G)**~~ (merged to `main` 2026-11-17 after the G.15 review), except G.2's Wisconsin timings; the example farm seeded on both servers.
+6. ~~**Q11** (§15)~~: done 2026-11-17 (C21, crop coefficients).
+7. **Open beta (D)**, on production, then launch by ~Mar 20, 2027. The screen reader walkthrough (A) and the wording review happen alongside, and Phase 9 fits around them.
 
 Canopy and LAI research continues without outside reviewers (Phase 6.7, Q2): our own analysis, published literature, and readings collected in the 2027 season (After launch).
 
@@ -856,7 +880,7 @@ UW–Madison is a public entity, so the DOJ's ADA Title II rule (2024) applies: 
 - **On the admin user page:** a "Sign in as this user" button (with a confirm: "You'll see WISP as Jane until you return to admin"), absent for yourself and other admins.
 - **Specs:** request specs for start (admin only; 404 otherwise; refused for self and admins; trackable untouched), the shared prop on a later page, each blocked action refused, stop restoring the admin and their operation, sign-out ending both, a stale key not showing the bar. Playwright: an admin signs in as the demo grower, sees the bar on the dashboard, a field page and the map, and returns to the admin page. Add the impersonation bar to the axe scan (one page while impersonating).
 
-- [ ] CSV export of users, and announcements (shown in the app, replacing the legacy blog): after the beta, if still wanted.
+- [~] CSV export of users, and announcements (shown in the app, replacing the legacy blog): after the beta, if still wanted. *(Moved to After launch.)*
 - **Exit:** a failed job or a stale cell on staging sends the email the next morning; an admin can sign in as a beta tester, sees the header on every page, and returns to the admin pages.
 
 #### C. Performance check and code audit
@@ -882,12 +906,14 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
 
 #### D. Beta and launch
 
-- [ ] Empty states and an onboarding tour (once the beta shows where people get stuck).
+- [~] Empty states and an onboarding tour (once the beta shows where people get stuck). *(Empty states: done with G.6's Getting started checklist and Setup's next steps. A tour only if the beta asks: After launch.)*
 - [x] **Data downloads where they fit** (Ben, 2026-10-22): a CSV link in each weather chart's "Summary and data" (that panel's table), and one for all weather variables for the pivot's cell in a single CSV; look for other tables that would benefit (the field page already has Export CSV). In inches and °F as stored, like the field export. (Done 2026-10-26. Every export opens with PRISM-style frontmatter (Ben): the title, what it covers, units, who exported it and when, the source and the About link, then the data. **Season report** on Setup (legacy's end-of-season report, for the whole operation, one CSV, depths in inches only (Ben)): a summary in the frontmatter, then Fields (each planting's crop, dates and season totals, days irrigated, days at or below AD 0, AD and moisture at the end, notes), Irrigation by pivot (its fields' irrigation averaged by area) and Weather by zone (precipitation, reference ET, GDD and temperatures over its crops' seasons). **Weather:** each chart's data from its "Summary and data" (built in the browser, as stored), and all of a pivot's weather variables for the season from the weather section on the pivot and field pages (`/pivots/:id/weather?year=`). **Pivot irrigation** list as CSV on the pivot page. The field export gained the frontmatter. Left out: the daily entry and field group grids (entry tools; the field export has their values).)
-- [ ] Methods detail for the About page (Phase 6.5 "Later").
+- [~] Methods detail for the About page (Phase 6.5 "Later"). *(Largely there: How it works, the canopy curves' equations and the weather corrections. The water balance's equations (§5) for agronomists: After launch, if asked.)*
 - [x] **Review the demo farms' locations and setup** (Ben, 2026-11-11): every farm, irrigation system and field in `DemoSeed` should sit on a real pivot, field or block seen on the imagery (a pivot's circle over a real circle, a linear over a linear's strip, the travelers and the drip block at plausible fields), with sizes, crops, soils and equipment that fit the place. The demo is what the beta, the example farm (G.8) and the screenshots show, so it has to look right on the map. Once G.10 lands, give the fields outlines that match the imagery too. *(Done 2026-11-17: three farms on real fields: Arlington (a linear over the quarter north of the station, a hard hose reel at two fields, a solid set over the research plots, a rainfed location-only field), Coloma (pivots over the field map's halves, outlines from it) and Hancock (the K fields under a linear, the R fields under a pivot). The demo is a data file, `db/demo/farms.yml`, written back from the app with `bin/rails demo:export` (`DemoExport`).)*
+- [ ] **Wording review** (Ben, in the app, before the beta; folds in Phase 6.5's and 6.7's): the About page, including cuttings and the glossary's canopy curve entry (G.3); the crop cards and curve notes; "How … is modeled"; contact details.
 - [ ] **Outlook wording review** with the beta growers (moved from G.6): the headline, and moisture before AD.
-- [ ] Closed beta with a handful of growers or extension agents on staging, each setting up their own operation from scratch (this validates onboarding as well as the app).
+- [ ] **Screen reader walkthrough** (A, above).
+- [ ] **Open beta on production** (Ben, 2026-11-17: nothing stops anyone signing up, so it's effectively an open beta and migration period): every existing WISP user invited, plus growers who didn't use the old WISP, each setting up their own operation from scratch (this validates onboarding as well as the app).
 - [ ] New production server provisioned (§12), deploy rehearsed, backups and restore tested.
   - [x] AWS resources ready (CALS IT, 2026-10-27): EC2, RDS, ECR, SSM. The `wisp3` role and databases created.
   - [x] The Docker deploy (2026-10-28): `Dockerfile`, `config/deploy/compose.production.yaml`, `bin/production` (push, deploy, status, logs, console), production credentials (`secret_key_base` only), RDS TLS in `database.yml`, SMTP from the environment; the image checked against a local Postgres 18 (migrations, reference data, `/up`, assets, the jobs scheduler, YJIT). The Capistrano production stage removed.
@@ -934,9 +960,9 @@ Checklist:
 - [x] `weather:compare` and the irrigation-count comparison re-run; the shift documented (8). *(2026-11-10, `docs/weather-comparison.md`, 12 Wisconsin points, April–September 2025 and 2026; the report now has WISP 2026 (NBM then best_match, Open-Meteo's ET0) and WISP corrected as sources, and ET by month.)* Results:
   - **ET0:** corrected is 0.89 × WISP 2026's (11% lower, as v2 predicted) and 0.91 × AgWeather's (v2 predicted about 0.93). By month against AgWeather: April–May 1.04 (WISP 2026: 1.15–1.17), June 0.92, July–September 0.82–0.87 (WISP 2026: 0.93–0.99). The old API ran high against the stations in midsummer and low in spring (§8.5), and the corrected ET0 follows the stations, so the gap to AgWeather is largest at full cover.
   - **The standard potato field:** 3.3 fewer irrigations a season than WISP 2026 (range 2 to 5) and 4.5 fewer than AgWeather (range 2 to 10), about 2.5–3.4 in less water. The first irrigation moves from 10 days before AgWeather's to 4 days before, so most of the early-irrigation puzzle (§8.4, TODO.md) was the spring shortwave bias.
-  - **What it means:** the percent-cover table (§5.4) at full cover was fitted to the old API's midsummer ET, about 1.2 × station ET0; with corrected ET0 it gives a full-cover Kc near 1.0 against FAO-56's 1.15–1.20 for these crops, so WISP 3 likely under-counts midsummer crop water use by 10–20% until the table is refit (After launch). Q9 chose corrected ET0 as is; this measures its cost. **Needs Ben's decision before the beta (Q11).**
+  - **What it means:** the percent-cover table (§5.4) at full cover was fitted to the old API's midsummer ET, about 1.2 × station ET0; with corrected ET0 it gives a full-cover Kc near 1.0 against FAO-56's 1.15–1.20 for these crops, so WISP 3 likely under-counts midsummer crop water use by 10–20% until the table is refit (After launch). Q9 chose corrected ET0 as is; this measures its cost. **Q11: fixed by C21** (2026-11-17): each crop's FAO-56 Kc mid, adjusted for wind and humidity, takes the standard potato field from 4.5 to 1.3 fewer irrigations than AgWeather, where WISP 2026 was (1.2).
 - [x] The corrections table on the About page and the admin weather page; CSV frontmatter and chart tooltips name them (9). *(About › Weather, with a "What's changed" section for the changelog; `WeatherCorrectionsTable` from `corrections.yml`; the weather panels gain a solar radiation chart; a corrected panel's tooltip says "Corrected" only on days whose `corrections` list it, as stored days before the backfill aren't; the weather CSV adds the uncorrected values and each day's corrections; glossary: solar radiation.)*
-- [ ] Backfill: every stored day refetched and corrected, so every season uses one method; staging, then production (10). *(Built: `bin/rails weather:recorrect` counts the cells, days and calls, and with `CONFIRM=yes` queues a `WeatherRecorrectJob` per cell with a pivot; `Fetcher#recorrect` refetches days before the refresh window whose corrections aren't current, final ones too, so a rerun resumes. Rehearsed on the dev database 2026-11-10: 3 cells, 610 days, about 184 calls; April–September 2026 ET0 went to 0.89 of before at each cell, Open-Meteo's own ET0 unchanged by the hourly merge, no day left uncorrected. Staging and production remain, after the merge and deploy.)*
+- [x] Backfill: every stored day refetched and corrected, so every season uses one method; staging, then production (10). *(Built: `bin/rails weather:recorrect` counts the cells, days and calls, and with `CONFIRM=yes` queues a `WeatherRecorrectJob` per cell with a pivot; `Fetcher#recorrect` refetches days before the refresh window whose corrections aren't current, final ones too, so a rerun resumes. Rehearsed on the dev database 2026-11-10: 3 cells, 610 days, about 184 calls; April–September 2026 ET0 went to 0.89 of before at each cell, Open-Meteo's own ET0 unchanged by the hourly merge, no day left uncorrected. Staging and production remain, after the merge and deploy.)* *(Run on staging and production, confirmed 2026-11-17.)*
 - [x] **Keep a daily forecast archive** (Ben, 2026-11-10; built: `ForecastPruneJob` keeps each cell's first *corrected* issue of each kind per local day, so the archive starts by itself once corrected forecasts are stored), for forecast accuracy tracking (After launch) and time travel's replay (F): `ForecastPruneJob` keeps, besides the latest 14, each cell's first deterministic and ensemble issue of each day (from the 5 am refresh) for good. A few kB to tens of kB a cell a day; at 100 active cells, well under 1 GB a year. Start before the 2027 season, after the corrections, so the archive is all on one method (members scaled by the deterministic ratio, Q10, each issue recording its corrections).
 - **Exit:** WISP's ET0 matches v2's for the same hours; every stored day says which corrections it went through; the About page lists them; the shift is documented; staging and production are backfilled.
 
@@ -967,7 +993,7 @@ Checklist:
 - [x] Page: the rewind-clock button is the last of the header's actions, right-aligned so it never moves; its date input, View and (time travelling) a Today button fly out to its left, open from the start on a time-travelled page; the banner (a card that scrolls away, then a slim full-width bar pinned to the top; pinned bars publish their heights, `lib/stickyBars.ts`, and the weather range bar sticks below them with `top-sticky`, under the impersonation bar too), "Return to today" (keeps the season), read-only `EditableCell` (`readOnly`), no Export CSV, setup link or rainfall preferences; the title starts "As of Jul 15 · ". While read-only, the grid's scroll boxes take focus (axe).
 - [x] Words: the outlook (`lib/outlook.ts` only; the digest never time travels), the chart's "What happened next" and the date in place of "Today", the section "The N days that followed", About (Day to day and What's changed).
 - [x] Tests: request specs, outlook and `EditableCell` vitests, the page in `e2e/accessibility.spec.ts`, a smoke test.
-- [ ] The archive replay (step 3's later part), once the archive has a season.
+- [~] The archive replay (step 3's later part), once the archive has a season. *(After launch: the archive starts with the 2027 season.)*
 
 **Build plan** (as written before building):
 1. **Controller** (`FieldsController#show`): read `params[:as_of]`, parse it as a date, and use it only if it's within the chosen planting's season and before `Date.current` (otherwise ignore it and show today; no error). Pass `today: as_of` to `PlantingStatus`, the season's records and the weather range. Skip `keep_current` and give `weather_updating: false` while time travelling. Add `as_of` (the date or null) to the props. The planting choice (`default_planting`) uses the as_of date when given, and `?planting_id=` still wins.
@@ -1008,7 +1034,7 @@ Every planting defaults to an end date of Nov 30 (`Planting.defaults_for`, as in
 - [x] **"End the season today"** on the planting page, once a planting in season is past its crop's typical length ("Past a typical potato season (105 days from emergence). Harvested?"), after a confirm; anyone in the operation (an ordinary planting update).
 - [x] Existing plantings keep their dates. The About page's planting entry says how the harvest date is set, and each crop card gives its typical season with its basis.
 - [x] Tests: request specs (defaults, the emergence given, quick setup's harvest given or suggested), `typicalEnd` vitest, a smoke test of the form's suggestion.
-- [ ] **Wisconsin timings for the warm-climate rows** (cabbage 155, broccoli 125, tomato 145, carrot 140, celery 115, sweet potato 140 days come from California and Mediterranean rows and likely run long here): replace them with Upper Midwest extension timings, with sources, alongside the canopy curves' own follow-up in `docs/canopy/02-published-curves.md`.
+- [ ] **Wisconsin timings for the warm-climate rows** (cabbage 155, broccoli 125, tomato 145, carrot 140, celery 115, sweet potato 140 days come from California and Mediterranean rows and likely run long here): replace them with Upper Midwest extension timings, with sources, alongside the canopy curves' own follow-up in `docs/canopy/02-published-curves.md`. *(Still wanted before launch, but low stakes: it sets only the suggested harvest date, which growers can change.)*
 - Winter crops (Ben, 2026-11-11): a planting may cross the new year, but WISP models the irrigated season; winter wheat or rye is entered from spring green-up (emergence on that date). Say so with G.7's crops. *(Done in G.7: the About page's crops section.)*
 
 ##### G.3 Crops without a canopy curve
@@ -1034,7 +1060,7 @@ Onion, alfalfa, mint, asparagus and Other have no curve (`canopy_curves.yml`), s
 - Built (2026-11-11), as above, with: the key validated only when it changes (a crop that later gets its own curve keeps its plantings editable; its own curve wins), the default left blank (so a crop follows a changed default); quick setup only says a crop is on a generic curve (no choice there); `needs_canopy` ranks after caution, an outlined "? No canopy data" badge, the map in the caution color; the About page's crop table, a list of the generic curves and the crops on each, and the status; "How … is modeled" names the generic curve. Tests: `spec/services/generic_curves_spec.rb`, request and model specs for the choice, an outlook case, vitests, a smoke test of the form.
 - [x] Onion gets its own curve in G.7 if one can be justified; the generic stays its default until then. *(G.7, 2026-11-16: not justified, so onion stays on the slow, partial cover curve; docs/canopy/03-crop-curves.md.)*
 - [x] About: the generic curves (a list, with the crops on each, and in the crop table), and readings-only with its status. *Cuttings built 2026-11-11: `CutCanopy` (pieces from emergence and each cutting, each on the regrowth curve from 5% stubble and fitted to its own readings; no canopy check across cuttings), `CanopyCuttingsController` (create and destroy, through `Current.group.plantings`), a Cuttings panel on the planting page (read-only while time travelling), "Cut" lines on the chart's canopy panel, and the demo's "Hay north" alfalfa with three cuttings. Tests: `cut_canopy_spec.rb`, `canopy_cuttings_spec.rb`, cross-tenant, a chart vitest, a smoke test, the page in axe.*
-- [ ] The About page's own words on cuttings, and the glossary's canopy curve entry (with G.6's wording pass).
+- [~] The About page's own words on cuttings, and the glossary's canopy curve entry (with G.6's wording pass). *(Folded into the wording review in Phase 8 D.)*
 
 ##### G.4 Daily entry as the morning page
 
@@ -1137,7 +1163,7 @@ Ben, 2026-11-11, from clicking through Setup.
 - [x] **An info tip on form labels:** a small ⓘ at the far end of a label's line, opening a short explanation on hover, focus or tap, like `Term` (its popover and keyboard handling): what the setting does and when to change it ("Root zone depth: how deep the roots draw water; the crop's typical depth unless you know better"). `TextField`, `NumberField`, `SelectField` and the date and radio groups take `info`; the wording lives in one module (`lib/fieldInfo.ts`), from the About page and the legacy user guide, next to `lib/guidance.ts`. Start with Setup's forms (farm, pivot, field, planting), then quick setup, settings and alerts. Keep the hints that are there (under the box) for what must be read before typing; tips for the rest. In axe and the keyboard tests.
   - *As built (2026-11-16):* `InfoTip` is on bits-ui's Popover with a portal (as `Term`; `ChartCard`'s tips too), and a form's tip can add a glossary term's definition below its own text (the term in bold). Tips are keyed by form and input (`planting.root_zone`: what the input is for there, in plain words; Ben: specific to the form, not the concept), typed keys in `lib/fieldInfo.ts`, a second form naming the first's entry where it asks the same thing for the same reason. `TextField`, `NumberField`, `SelectField`, `FieldAreaInput` and `FieldSoilInput` take `info="key"`; `FieldLabel` is the label row (a label, legend or span with the ⓘ at the far end, outside the label text, a legend's fieldset named by `aria-labelledby`). Tips on Setup's farm and group dialogs, the irrigation system form (and quick setup through `PivotShapeFields`), the field dialog and shape page, the planting dialog, quick setup's fields, and the operation's rainfall and member role. Settings and Alerts have none: their explanations already sit by the inputs and follow the choice. Explanatory hints became tips (farm, group, pump capacity, MAD); hints read before typing stay. The field dialog's fieldset is "Area and shape". Where text lives is in CLAUDE.md; prose is one long string with straight apostrophes (glossary, guidance and every `’` in the frontend converted). Tests: `fieldInfo.test.ts` (two sentences, every key used, glossary terms exist), an open tip in the field dialog's axe scan (light and dark), the keyboard spec (Tab to the ⓘ, Enter opens, Escape closes the tip before the dialog's prompt), e2e selectors made exact where an "About …" button also matched.
 
-**Plan** (agreed with Ben, 2026-11-16; on `beta-readiness`, two commits, the change prompt first; handoff: [docs/handoffs/g13-forms.md](docs/handoffs/g13-forms.md)):
+**Plan** (agreed with Ben, 2026-11-16; on `beta-readiness`, two commits, the change prompt first):
 1. *Changes:* `lib/formChanges.ts` (vitest) snapshots a form's visible labelled controls when it opens and lists what differs: the label (`<label>`, a radio group's legend, or `aria-label`) and the shown value (a select's option text, Yes/No for a checkbox, dates through `lib/dates.ts`, blank as "None", notes as "Notes: changed"); `NumberField` marks its visible input with its unit (`data-unit`) so changes read in the user's units; hidden inputs are ignored; long lists (daily entry, quick setup's rows) are cut to about 6 lines with "and 4 more". `Dialog` gets an opt-in `guard`: Escape, a click outside or ✕ checks it, and with changes the form is hidden (kept mounted, so its values survive) and the prompt shows in its place with the list and **Save changes** (submits; a refusal brings the form back with its errors) / **Discard** / **Keep editing** (focus back to the first changed control). A close after a save never asks; `PlantingDialog` snapshots again when "Add the next planting" rebuilds its form. Used by Setup's farm, field and group dialogs and `PlantingDialog`; the delete dialogs have no inputs. Pages keep `window.confirm` (`confirmUnsavedChanges`), now with the same list in its text (Ben: an in-app prompt there would need save-then-follow-the-link); closing or reloading the tab keeps the browser's prompt.
 2. *Info tips:* the existing `InfoTip` moves onto bits-ui's Popover with a portal, as `Term` (positioned in its parent, it would be clipped in a scrolling dialog; `ChartCard` uses it too). `TextField`, `NumberField` and `SelectField` take `info`, a shared label row putting the ⓘ at its far end, outside the `<label>`, named "About {label}"; `PlantingForm`'s and `FieldForm`'s date and radio groups use the row too. Wording in `lib/fieldInfo.ts` (functions where it needs units), from the About page and the legacy user guide (`../wisp`); a vitest keeps each to two sentences and every key used. Setup (farm, pivot form, group, field, planting), then quick setup, then Settings and Alerts; Ben reviews the wording in the app as it lands.
 3. *Tests:* `formChanges` vitests, a `Dialog` component test, the smoke test above (and Keep editing), the prompt and an open tip in axe, the keyboard spec (Tab to the ⓘ, Enter opens, Escape closes; focus into the prompt and back).
@@ -1150,6 +1176,13 @@ Ben, 2026-11-11, from clicking through Setup.
 - [x] Part of the field defaults to Area (acres), Length × width second.
 - [x] **A planting's page from Setup** (Ben, 2026-11-16): a bar on Setup's timeline opens a small menu, "View this planting" or "Edit planting", opening under the bar where it was clicked (`customAnchor`; under its start from the keyboard) (`SeasonTimeline` with both `href` and `onselect`; bars are too narrow for two targets); the edit dialog links to the planting's page (asking first, listing the changes, through `Dialog#changes`); and the planting page's "Edit in setup" opens that planting's form (`/setup?year=&planting=`, scrolled to its field). Smoke test for the round trip.
 - [x] Tests (Ben approved the design 2026-11-16): `dateProblems` and `canReplace` vitests; smoke tests through the crop gate and the collapsed Settings, and the Setup round trip (the menu where the bar is clicked); the planting dialog's states and a bar's menu in axe; a bar's menu in the keyboard spec; a request spec that Replace never leaves a planting with no season (a latent bug found in review: ending one on its emergence day raised).
+
+**Notes for whoever builds on G.13** (from its handoff, 2026-11-16):
+- `formChanges` reads a control's label from `labels[0]` without its `.text-ink-muted` text, buttons and `[data-change-ignore]`; a radio group is named by its `role="radiogroup"`'s `aria-label`, else its fieldset's legend. The ⓘ sits outside the `<label>`, so it never enters the wording.
+- A `fieldInfo` vitest keeps each tip to two sentences and every key used. In a guarded dialog, Escape closes an open tip first, not the dialog (bits-ui's nested layers).
+- The planting form shows its sections only once a crop is chosen, and its canopy and water settings are in a closed `<details>` ("Settings"): a test picks the crop and opens the summary first. Inputs in the closed `<details>` are still submitted and tracked.
+- `dateProblems` and `canReplace` (`lib/plantings.ts`) mirror `Planting#dates_in_order` and `Planting#replace_overlapping!`; change them together.
+- Menus share their classes through `lib/components/menu.ts`. `/setup?planting=ID` opens that planting's form; a dialog's link out asks first (`Dialog#changes`, `changesMessage` in `lib/unsaved.svelte.ts`).
 
 ##### G.7 Crops to add
 
@@ -1203,8 +1236,6 @@ Growers rotate crops and often farm different acreage from year to year, so this
 
 ##### G.10 Field boundaries (optional)
 
-Handoff for the session that builds it: [docs/handoffs/g10-field-boundaries.md](docs/handoffs/g10-field-boundaries.md).
-
 A field can have an outline: drawn on the map, imported from a file, or none (as now). It is for the map and the suggested acreage only; the balance and weather don't use it.
 
 **Plan agreed (Ben, 2026-11-12):** the existing `fields.boundary` column (nullable, no default, unused until now), checked by `FieldBoundary`: Polygon or MultiPolygon, closed rings, **at most 1,000 vertices** (100 since G.14 part 7), inside `Pivot::LATITUDES`/`LONGITUDES`, 0.01 to **1,500 acres** (over two sections); mirrored in `lib/geo.ts`, with a spherical polygon area in both (no Turf). The outline's acres are offered for the field's area ("Use 38.2 ac from the outline"), saved through `Field#update` so only open seasons follow. Pages: a full-page **field outline page** (`/fields/:id/outline`: "Same as the irrigation system" for a pivot or linear, drawing with terra-draw, one file's import, acres, the survey's dominant soil, Remove, and **plot pins**: pick a plot, click the map), and **Import field outlines** from Setup (shapefile zip, GeoJSON, KML/KMZ parsed in the browser; a row per shape: its name from a chosen attribute, acres, an existing field (matched by name), New field or Skip, and its system, suggested as the one whose outline holds the shape's center or else the nearest point kind within half a mile; new fields get the outline's acres and dominant soil; one transactional save). Map: a click in a field selects its system and highlights the field (no field panel); a system's marker keeps the badges of its fields without outlines and drops when all have one; outlined fields are named inside at closer zooms. Problems list on Setup only (a quarter mile for point kinds). Splitting a pivot's circle along a line comes later. Demo: a few generated outlines now; Ben tidies the demo farm later and its outlines are copied into the seed then. Libraries: terra-draw 1.39 + terra-draw-maplibre-gl-adapter 1.5 (MIT), shpjs 6.2 (MIT, with proj4), @tmcw/togeojson 7.1 (BSD-2-Clause), all loaded on demand.
@@ -1225,6 +1256,12 @@ A field can have an outline: drawn on the map, imported from a file, or none (as
 - **Problems** (`lib/outlines/problems.ts`): overlap is a corner inside or an edge crossing; distances to the nearest edge, in mi/ft or km/m.
 - **Demo:** generated outlines for North potatoes and North corn (North 160's halves), Hay north, Tomatoes, Arlington 525 (its plots pinned) and both traveler fields; the rest have none, so the map shows both.
 - Also: shpjs has no types (`types/vendor.d.ts`); with terra-draw's adapter the `geojson` types resolve, so the drought layer's data is cast where MapLibre takes it; form lists use indexed names (`indexed_list`).
+
+**Considerations carried from the handoff** (2026-11-11):
+- **Content Security Policy:** terra-draw, shpjs and togeojson are npm packages bundled by Vite and loaded on demand (`import()`, like MapLibre), never from a CDN. Files are parsed in the browser; only the resulting shape goes to the server.
+- **Seasons keep their values:** an outline's acres are offered for the field's area, never copied, and an outline change goes through the field's update like any other, moving open plantings only.
+- **A system never moves with its field** (that would change the weather cell); a field far from its system is flagged, to fix by hand. "Same as the irrigation system" exists only for a pivot or linear, which have a shape.
+- **Accessibility:** drawing needs a pointer, so the alternatives are importing a file or copying the system's shape.
 
 ##### G.11 Fields with several plantings
 
@@ -1288,11 +1325,11 @@ A field can have an outline: drawn on the map, imported from a file, or none (as
 - **Admin:** one Admin tab; `AdminTabs` pills switch between Users and Weather data (the admin weather page, renamed from "Weather status").
 - Tests: `weather_zones_spec` (list, redirect, zone, CSV and the old link, a moved pivot's ended season), `forecast_days_spec`, `weather_zone_spec`, `weather_code` in `daily_spec`, cross-tenant zone pages and CSV; vitests for `lib/forecast.ts`, `gddFrom` and the chart's ET grid; smoke tests for the Weather tab and the admin pills; `/weather` and a zone in axe and the reflow check.
 - **Revised after trying it (Ben, 2026-11-12):** the header is two columns (the pickers stay right of a long list of systems); the panels are a plain "Weather charts" section, not collapsible; every zone shows January 1 through the forecast (a past year: the whole year), so `WeatherCell#backfill_start` is January 1 (or an earlier season start; the "Updating weather…" check still asks only for the season and the last 30 days, so the earlier days fill in quietly, one historical-forecast backfill per cell per year); solar radiation is gold (`--color-chart-sun`, validated light and dark) and GDD green, so the ET, sunshine and GDD cards side by side differ; elevation is in feet (`WeatherCell#elevation_ft`, `units` for metric). GDD's lower grid has three totals: since January 1, since the first day in view (`Series.inView`, left out of tables and CSVs), and, picked under the chart ("Add the total since"), since one of the year's plantings in the zone was planted (`gddFrom`; `?planting=` preselects it).
-- [ ] Later: the digest's zones could use the same names ("Weather zone 1 (44.12°N, …)" now); a dashboard line per zone.
+- [~] Later: the digest's zones could use the same names ("Weather zone 1 (44.12°N, …)" now); a dashboard line per zone. *(After launch.)*
 
 ##### G.14 Setup and the map, tidied after G.10
 
-Ben, 2026-11-12, after trying G.10. Handoff: [docs/handoffs/g14-setup-and-map.md](docs/handoffs/g14-setup-and-map.md). Four parts, one commit each, in this order (the first simplifies what the others touch). On `beta-readiness`.
+Ben, 2026-11-12, after trying G.10. Four parts, one commit each, in this order (the first simplifies what the others touch). On `beta-readiness`.
 
 **1. A field's outline is one polygon.**
 - [x] `FieldBoundary` accepts only a GeoJSON `Polygon` with one ring (no holes, no `MultiPolygon`); `Boundary` in `lib/geo.ts` likewise (`boundaryPolygons`, `boundaryOf` and the multi-part branches go; area, center, bounds and `areaWkt` take the one ring).
@@ -1353,7 +1390,7 @@ Ben, 2026-11-12, after trying G.10. Handoff: [docs/handoffs/g14-setup-and-map.md
 - [x] **Basemap switches** (every map): `setBasemap` rebuilds the style (`diff: false`) and resolves on `style.load`, before the tiles, rather than on `idle` (the shape's white line, terra-draw's, waited for every tile); a map's switches run in turn, one a later click replaced skipped, with `before`/`after` around the switch itself (terra-draw stops and starts there).
 - [x] Tests: `pathCrossesItself` and `boundaryErrors` vitests (an L, a lopsided bowtie, edges that only touch, a spiral being drawn), `field_boundary_spec` (crossing, 100 corners), an outline saved under older limits kept on other edits (`field_outlines_spec`), `FieldAreaInput.test.ts`, the shape smoke tests (a KML read with "Use … ac" in place of "Same as"; Done editing; a crossed shape refused and canceled), axe on both pages as before.
 
-*(b) A field away from its system* (handoff: [docs/handoffs/g14-part7b-field-away-from-system.md](docs/handoffs/g14-part7b-field-away-from-system.md)):
+*(b) A field away from its system.* Settled with Ben (2026-11-12): fields stay the land (not season-scoped, not copied forward each year); nothing limits how far a shape may move, the warning is the guard; `fields.pivot_id` is required, so "unlinking" a field is moving it to another system or a new Location; saving is allowed with a field kept on a system it doesn't touch. An old irrigation's "Applied to" still accepts the fields that had a planting on the system that day.
 - [x] **Plantings hold their system** (G.9's last lock): `plantings.pivot_id`, copied from the field on create (with `weather_cell_id`), the open plantings following a field's move; a system's irrigation applies to the plantings in season on its date whose `pivot_id` is the system's (`PivotIrrigation#applies_to?`, `irrigated_fields`, `irrigated_acres`; still within its "Applied to" fields), so an ended season keeps its system's irrigation. Then `Field#pivot_kept_with_history` and the form's "The 2026 season stays with North 160" go: any field can move to any system at any time. A fix ID in §9 if `legacy_engine_spec` needs one; preloads updated. Fields stay the land, not season-scoped (no copying forward), and there's no limit on how far a shape moves: the warning below is the guard.
   - *As built:* `plantings.pivot_id` (not null; filled from each planting's field), copied in `copy_from_field`, moved with `weather_cell_id` for open plantings in `Field#update_open_plantings`. `Field#pivot_id_on(date)` (the planting's system that day, else the field's) is the one definition: `DailyInputs` matches irrigation by the planting's `pivot_id` (or, for the field as a whole, `pivot_id_on`), and `PivotIrrigation#covers?` checks "Applied to"; `DailyInputs.preload` loads every system a field's plantings over the dates ran on (one more small query). `Pivot#fields_on(date)` gives the fields on a system that day, for `irrigated_acres` (plantings on the system that day, wherever their field is now), the "must be fields on this system that day" validation (a field it already named stays allowed) and `normalize_field_ids` (now given the date). Daily entry lists each field under its system that day (`DailyEntryPage#fields_by_pivot`); the pivot page's "Applied to" boxes follow the form's date (`field_seasons` prop, `fieldsOn` in `lib/irrigation.ts`). Deleting a system hands seasons that ran on it, on fields since moved, to their field's system. No balance changed (`legacy_engine_spec` unchanged). Tests: `season_values_spec` (a moved field's seasons, irrigation on an ended season, preloaded too, `fields_on`, run hours, the validation, deleting), setup, daily entry and pivot page request specs, `irrigation.test.ts`.
 - [x] **Doesn't touch its system:** on the shape page, from `outlineProblems` (`lib/outlines/problems.ts`, as on Setup): "This field doesn't touch its irrigation system, Lane 3. All fields must have an irrigation system." with a menu: Keep with Lane 3 (the default; saving is still allowed, a traveler's location is often rough), each other system the shape touches, by its name and kind, and Create a new system (a new `point` system at the shape's center named after the field: "This will create a new location-only system named {field} at the center of this field when you save your changes. You will need to configure this system later in Setup."; Ben, 2026-11-13, in place of "Location only"). Reworded (Ben, 2026-11-13): "This field is 1.6 mi away from its assigned irrigation system, Lane 3. All fields must have an assigned irrigation system, and a field's weather and irrigation inputs come from its system. You can keep the existing system for now, switch to another nearby system, or create a new system from the menu below."; the menu lists every other system within half a mile (`systemsNear`, `NEARBY_M`), nearest first, with distances ("Keep with Lane 3 – 1.6 mi away", "Switch to North 160 (pivot) – overlaps this field", "Create a new system"), and the arrow points to the system chosen while the shape doesn't touch it. Saved with the shape in one transaction (`FieldOutlinesController#update`); a move to another weather cell says so ("Its 2027 season will use this location's weather"). Cross-tenant spec for the system ids.
@@ -1368,6 +1405,13 @@ Ben, 2026-11-12, after trying G.10. Handoff: [docs/handoffs/g14-setup-and-map.md
 - [x] **Selection subtler:** the selected glyph keeps its size on a white copy 1.25 times larger, each with a thin dark edge; a selected shape's line sits on a 5 px white band in a 7 px casing (was 7.5 in 11).
 - [x] **The hover label lists everything under the pointer** (every feature, `hoverLines`, and every marker, `elementsFromPoint`), not the first of each.
 - [x] **Console warnings:** OpenFreeMap's street style compares a missing `ref_length` in its shield filters, so it's patched on load (`repairStyle`, `transformStyle` on every map); the Map page's `prefs` are bound to its layers. Grouping overlapping icons zoomed out was considered and not needed.
+
+**Lessons from G.10 and G.14** (from their handoffs):
+- MapLibre's `queryRenderedFeatures` returns the top-most feature whatever order its `layers` option lists, and a fill at opacity 0 is still hit; query layers in priority order (`systemHit`).
+- A zoom-dependent symbol size is computed per tile and jumps as tiles load: fixed pixel sizes, switched by `minzoom`/`maxzoom`. Images added with `addImage` don't survive a basemap switch, so re-add them (`hasImage` first).
+- A color the map or a chart reads from JavaScript goes in the `@theme static` block, read through `readPalette()`, and is validated for color blindness in light and dark, as the chart tokens were.
+- Playwright matches role names by substring ("Move its pin" also matched "Remove its pin"): use `exact: true` where one name contains another.
+- Don't run Prettier on this file: it reformats every table (lint-staged leaves Markdown alone).
 
 ##### G.15 Review before merging `beta-readiness` (2026-11-17)
 
@@ -1417,3 +1461,187 @@ After the merge of `beta-readiness` (2026-11-17 review, Ben). Refactors and qual
 - [ ] **Duplicate an irrigation system** in Setup (a farm of similar pivots).
 - [ ] **Daily entry:** offer yesterday's amounts for systems that ran yesterday, as a placeholder to accept, not a value.
 - [ ] **Remember the last choices** in setup forms for the session (soil, crop, emergence date), as suggestions.
+- [ ] **Sections on other long forms** (the field dialog, the system page), as the planting form has (G.13 part 3), if they need it.
+
+### After launch
+
+- Forecast accuracy tracking (stored forecasts vs finalized weather), from the daily archive started in Phase 8 E: by lead time, for ET0 and rain, and whether the ensemble's spread covers what happened. Part of the evaluation pages below.
+- **Model evaluation and usage insights (admin pages; Ben, 2026-11-10; ideas, not designed).** After a season of data, an admin section that shows how WISP's models compare with what happened and with what growers entered, as anonymised statistics and charts, and how WISP is used:
+  - **Forecasts:** the archived forecasts (Phase 8 E) against the finalized weather, by lead time, for ET0 and rain; the ensemble band's coverage (how often the outcome fell inside P10–P90), which decides Q10's revisit (ratio scaling vs per member).
+  - **Canopy:** each crop's default curve and fitted curves (`CanopyCurve`, `CanopyFit`) against the percent cover and LAI readings growers entered, by crop and days since emergence; what `Canopy#check` flagged; feeds the curve refits under "Canopy and LAI readings in the 2027 season".
+  - **Water balance:** modeled AD against entered soil moisture readings where fields have them (the drawdown check of the percent-cover refit below).
+  - **Corrections from the evidence:** tools to apply what the comparisons show, either one-time (a refit, recorded as a new table version with its evidence, like the weather corrections) or ongoing (a correction recomputed as data accumulates), each versioned and listed on the About page.
+  - **Usage metrics, collected natively** (no third-party analytics): page views and active users by day, which pages and features are used (entries, setup, map layers, exports, time travel), sign-in methods, digest opens or clicks if measurable without tracking pixels, devices by screen size; stored in our database, aggregated, with no personal data beyond what the account already holds, and a retention limit. Decide what to count and the privacy wording (About page) before building.
+  - Anonymised: no grower, farm or field names; groups below a minimum count left out; growers' consent as in Phase 6.7 A.2 where readings leave the account.
+- PWA / offline-friendly daily entry.
+- Validated LAI or canopy curves for more crops; sensor integrations; a future AgWeather 2 provider.
+- **Canopy and LAI readings in the 2027 season** (2026-11-10: the researchers contacted haven't replied, so the curves get checked against our own data). Before the season, pick a few cooperating fields (potato first, then field corn, sweet corn, soybean, snap bean) and a protocol: percent cover about weekly from emergence to vine kill or harvest, by photo (the Canopeo app, which measures green cover from a phone picture), and LAI where a ceptometer can be borrowed, with emergence and vine kill dates recorded. Growers' own WISP 3 readings add to it, with their consent and anonymised as in Phase 6.7 A.2. After the season, rerun the backtest (`docs/canopy/scripts/backtest.py`) and refit the curves, with a note in `docs/canopy/` and a changelog line on the About page. A potato LAI curve, if the data supports one, is the most valuable result (Q2).
+- **Refit the percent-cover table (§5.4) against today's ET0** (Q9 and Q11: full-cover crop ET likely 10–20% low on corrected ET0, Phase 8 E step 8; step 1 done before the beta as C21, with FAO-56's Kc mid in place of Allen and Pereira's density coefficient; steps 2–3 stay here, now checking C21; Ben, 2026-10-31: no academic is available to refit it, so it has to be done computationally). Its slopes are crop ET over the old API's ET by cover (1.0 at 80% and above), and the old API's ET runs about 1.11 × station FAO-56 grass ET0 (April–October), so at full cover the table meant a Kc of about 1.1, near FAO-56's mid-season values (Table 12: potato 1.15, field corn 1.20, soybean 1.15). With corrected ET0 (1.03 × the stations') it gives about 1.03, 10–14% below those values (it was 3–8% below), so WISP may now under-count full-cover water use. Steps:
+  1. Re-express the table against FAO-56 grass ET0 and compare it, band by band, with Allen and Pereira (2009)'s crop coefficient from fraction of ground cover and height (*Irrigation Science* 28: 17–34, doi:10.1007/s00271-009-0182-z: a density coefficient on FAO-56's basal Kcb per crop, plus FAO-56's dual-coefficient soil evaporation in place of the bare-soil steps). Published, per crop, and needs only cover (which WISP has) and crop height (a default per crop).
+  2. Check both against measured ET: Wisconsin eddy-covariance records over irrigated crops (Central Sands potato and corn; ask the Kucharik lab and AmeriFlux), and WISP 3's own soil moisture readings once seasons accumulate (the drawdown between two readings with no rain or irrigation between them is crop ET; needs growers' consent and the anonymised extract of Phase 6.7).
+  3. Pick a method per crop, with its error against the measurements, and replace `CropEt::PCT_COVER_COEFFICIENTS` or keep it with a scale, recorded as a D# with the evidence; a changelog line on the About page.
+
+- **Deferred from earlier phases (2026-11-17 review of open items):**
+  - The time travel archive replay (Phase 8 F), once the archive has a season.
+  - All operations at once on the dashboard and map (G.8), if consultants ask.
+  - The digest's weather zones named as on the Weather tab, and a dashboard line per zone (G.12).
+  - The soil survey's available water capacity beside a soil type's defaults, as a check (Phase 7 F).
+  - CSV export of users, and announcements in the app (Phase 8 B), if still wanted.
+  - An onboarding tour, and the water balance's equations on the About page (Phase 8 D), if the beta asks.
+  - Importing irrigation from FieldNET or Valley 365 exports (G), if the beta's large growers ask.
+
+---
+
+## 15. Open questions
+
+| # | Question | Status | Needed by |
+|---|---|---|---|
+| Q1 | Alert threshold and lead-time defaults | **Resolved**: recommendation adopted | – |
+| Q2 | How LAI should work, and for which crops | **A adopted for 2027** (B dropped in Phase 6.7); curves per crop (option C) built in Phase 6.7. No outside review coming (2026-11-10): literature, our own work and 2027 readings instead | After launch |
+| Q3 | Display units | **Resolved**: inches by default, per-user inch/mm toggle in Settings | – |
+| Q4 | Pivot-level irrigation | **Resolved** → D9, §4 `pivot_irrigations` | – |
+| Q5 | Can the deploy user run `systemd --user` services? | **Resolved**: yes on staging; new production server provisioned with it (D11, §12) | – |
+| Q6 | Alert email sender and DKIM | **Resolved**: Amazon SES over SMTP with DKIM, out of the sandbox (2026-11) | – |
+| Q7 | Per-field rainfall correction | **Resolved**: per-day overrides shown next to modeled values; no multiplier; per-field entered-only setting (2026-10-07) | – |
+| Q8 | Group member roles | **Resolved** (2026-10-04): owner and member; deleting a planting or irrigation group also open to its creator (G.15) | – |
+| Q9 | The percent-cover regressions (§5.4) were fitted to the old API's ET; with Open-Meteo's shortwave corrected (D12), ET0 is about 7% below it (1.032 vs 1.114 against station FAO-56, April–October, Wisconsin). Use corrected ET0 as is, or scale crop ET to the old API's level? | **Resolved** (Ben, 2026-10-31): corrected ET0 as is. The regressions' provenance is unknown and likely over a decade old, so the best available is the most accurate weather; a computational refit is under After launch | – |
+| Q10 | The ensemble projection's ET0 (§8.5): compute it per member from corrected shortwave, or scale the members by the deterministic run's correction? | **Resolved** (Ben, 2026-11-10): **scale by ratio**, evaluated after a season. The ensemble API has every input for all 31 members, but each member counts as a variable, so per member takes a cell's ensemble from about 7 calls a refresh to about 21 (each refresh from about 14 to 28). The members are one model's perturbed runs, interchangeable by design, so storing more per member wouldn't show which forecasts are better; the archive's daily ET0 and rain per member serve accuracy tracking either way. `Weather::Ensemble.corrected` scales each member by the deterministic forecast's corrected/raw ratio for the day (the mean ratio where that day's raw ET0 is under 0.01 in), keeps the ratios (`et0_ratio`) and records `et0-ensemble-ratio v1`. Revisit with the evaluation page (After launch): if the band's coverage is poor, compute per member with the ensemble refreshed once a day, which costs about what three ratio refreshes do | – |
+| Q11 | With corrected ET0 the standard potato field gets 3.3 fewer irrigations a season than WISP 2026 and 4.5 fewer than AgWeather, mostly at full cover in midsummer, where the percent-cover table's Kc (about 1.0 on corrected ET0) is below FAO-56's 1.15–1.20 (Phase 8 E step 8). Ship as is (Q9) and refit after launch, scale full-cover crop ET up for 2027 as a stopgap, or bring the refit (After launch, Allen and Pereira 2009) forward before the beta? | **Resolved** (Ben, 2026-11-17: under-counting water use is the wrong side to err on): C21, each crop's FAO-56 Kc mid scaled in with cover and adjusted for wind and humidity; the standard potato field is back to 1.3 irrigations a season below AgWeather (WISP 2026: 1.2). Validation against measured ET stays under After launch (the refit) | – |
+
+### Q1. Alert defaults: resolved (recommendation adopted)
+
+*Update 2026-10-04:* Phase 6 is now a daily digest of every included field rather than alerts for crossings, so the probability and dedupe settings below don't apply. The threshold (target, else AD = 0) and the 3-day lead time live on as the projection's "Irrigate by" and caution status (§6 "As built").
+
+**What it decides:** when a user gets an email saying a field is heading for irrigation.
+
+**Recommendation:**
+- **Threshold:** the field's target (`target_ad_pct`) if set; otherwise AD = 0, the MAD trigger point, which matches legacy "AD < 0" problem reporting.
+- **Lead time:** 3 days.
+- **Ensemble probability:** alert when ≥ 50% of members cross the threshold within the lead time.
+- **Delivery:** one digest per user per day at 6 am CT, listing every flagged field; nothing is sent if nothing is flagged.
+- All of these can be changed per user, and the beta (Phase 8) is the time to tune them.
+
+### Q2. LAI (leaf area index) method: A adopted; curves per crop built (Phase 6.7); no outside review
+
+**Background.** WISP estimates crop water use as reference ET × a crop coefficient (Kc), and Kc grows with the canopy. There are two ways to describe the canopy:
+- **Percent cover** (used by almost everyone): the grower enters canopy cover on a few dates, and Kc comes from the A3600 Table C regressions.
+- **LAI**: leaf area per unit of ground, turned into Kc with a Beer's-law curve: Kc = 1.1 × (1 − e^(−1.5·LAI)). LAI normally comes from a growth curve, so the grower doesn't have to enter canopy data.
+
+**How much it's used (legacy production, 2025–2026 fields):** 29 of 525 fields (5.5%) use LAI, by crop:
+
+| Crop | LAI fields | What legacy actually computed |
+|---|---|---|
+| Potato | 14 | Field corn canopy curve |
+| Soybean | 8 | Field corn canopy curve |
+| Field corn | 6 | Field corn canopy curve (the only correct case) |
+| Sweet corn | 1 | Negative ET (C18) |
+
+So 23 of the 29 LAI fields were modeled with a *corn* canopy. Potato is the main case to get right: it is the largest LAI group and a major irrigated crop in the Central Sands.
+
+**What the legacy app actually does:**
+- **Field corn and every other crop except sweet corn:** the corn curve from the WIS v6.3.11 spreadsheet, based on calendar days since emergence. It gives LAI ≈ 0.25 at day 30, 1.95 at day 50, 4.07 at day 80 (peak), 3.25 at day 100 and 0.86 at day 140. Kc reaches about 1.0 by day 50. So soybeans, potatoes, onions and the rest under LAI all use a *corn* canopy.
+- **Sweet corn:** the placeholder curve, which is broken (C18): negative ET, or none.
+- **No way to enter LAI.** There is a column for it, but no screen writes observations to it.
+
+**Questions for an agronomist** (for example the A3600 authors or UW BSE / Soil Science extension):
+1. Is the WIS corn curve still a reasonable default for Wisconsin field corn? Should it be driven by **growing degree-days** instead of calendar days, so planting date and a cool or warm year shift the canopy? (WISP 3 can compute GDD from Open-Meteo temperatures; AgWeather isn't needed.)
+2. The extinction coefficient of 1.5 and maximum Kc of 1.1: what is their source, and do they suit crops other than corn? Published canopy extinction coefficients are usually lower (about 0.4–0.8), so confirm which formulation the spreadsheet intended.
+3. For sweet corn: use the field corn curve shortened to the earlier harvest, a GDD-based curve, or percent cover only?
+4. Are there trustworthy curves for potato, snap bean or soybean, the other big Wisconsin irrigated crops? If not, those crops should only be offered percent cover, or LAI with entered observations.
+5. Is it useful to let growers **enter LAI readings** (from a ceptometer or app) that override the curve, as they can with percent cover?
+
+**Options:**
+
+| Option | What growers get | Risk |
+|---|---|---|
+| A. Corn curve for field corn only; everything else uses percent cover | Simple and honest | Loses LAI for other crops; little value lost if nobody uses it |
+| B. A + entered LAI observations allowed for any crop | Flexible for advanced users | Needs a good help page on how to measure LAI |
+| C. GDD-based curves per crop | Most realistic | Needs validated curves, which we don't have yet |
+
+**Decision:** ship **A + B** for 2027 (already reflected in §5.3). *Revised 2026-10-15 (Phase 6.7): B is dropped; LAI only for crops with an LAI curve.* An agronomist has been contacted with the questions above. **C (curves per crop, by GDD or calendar days) is brought forward to Phase 6.7 (2026-10-15).**
+
+Groundwork in the meantime: Phase 3 stores daily tmax/tmin and calculates daily and cumulative GDD (base 50 °F, 86 °F cap, the standard corn method). GDD-based curves then need no new data plumbing, and GDD can be shown in the UI.
+
+**Production usage query** (run on the legacy production server; it only reads):
+```bash
+cd ~/wisp/current && RAILS_ENV=production bundle exec rails runner '
+  recent = Field.joins(:pivot).where(pivots: {cropping_year: 2025..})
+  puts "Fields by ET method: #{recent.group(:et_method).count.inspect}  (1 = pct cover, 2 = LAI)"
+  lai = recent.where(et_method: 2).includes(crops: :plant).map { |f| f.crops.max_by(&:emergence_date)&.plant&.name }.tally
+  puts "LAI fields by crop: #{lai.inspect}"
+  puts "Groups set to Manual rainfall: #{Group.where(precip_use_agwx: false).count} of #{Group.count}"
+  puts "irrigation_events rows: #{IrrigationEvent.count}"
+  puts "Fields per pivot (fields => pivots): #{Pivot.joins(:fields).where(cropping_year: 2025..).group(:id).count.values.tally.sort.inspect}"
+  puts "Pivots still at default 43,-89: #{Pivot.where(latitude: 43, longitude: -89).count} of #{Pivot.count}"
+'
+```
+**Given the numbers:**
+- Option A alone would move 23 fields (mostly potato) to percent cover, which is arguably *more* correct than the corn curve they had.
+- A + B lets those growers keep LAI if they enter readings.
+- A potato canopy curve would be the single most valuable result of the agronomy review (question 4).
+
+Ask for the review in Phase 2 so its answer can land in the engine before the Phase 4 UI.
+
+### Q3. Display units: resolved
+
+- **Storage stays in inches** everywhere. Units are a display and input concern only.
+- **Per-user setting** `users.unit_system` (`imperial` default | `metric`) in a Settings menu, applying to:
+  - water depths (in ↔ mm)
+  - temperatures (°F ↔ °C)
+  - area (ac ↔ ha)
+  - pump capacity (gpm ↔ L/s)
+- Percent values (soil moisture, cover, MAD) don't change.
+- **Implementation:**
+  - A small `units.ts` module of formatters and parsers, used by every display and input.
+  - Conversion happens only at that edge.
+  - Serializers always send inches.
+  - The editable grid parses user input in the chosen unit and converts back to inches before submitting.
+  - Phase 4.
+
+### Q4. Pivot-level irrigation: resolved
+
+Use case (from you): a pivot covers 1–2 fields (a split for two crops or two varieties), and usually all of them get the same water. The design is in §4 (`pivot_irrigations`) and D9:
+- Entered once on the pivot, as inches or run hours.
+- Applies to every field under the pivot, or a chosen subset.
+- Applied when read, so editing the pivot entry updates every field.
+- A per-field value overrides it.
+
+The legacy `irrigation_events` table had no routes, so nothing should be in it; the usage query above confirms.
+
+### Q5. `systemd --user` on the servers: resolved
+
+- **Staging:** `Linger=yes`, and user services work. WISP 3 staging runs `wisp-jobs.service` (and optionally `wisp-web.service`) as `deploy`.
+- **Old production:** both checks failed; out of scope, since WISP 3 production goes on a new server (D11). Its requirements in §12 include `loginctl enable-linger deploy`.
+- **Before handing the new server over,** re-run the check from the staging test (start a throwaway user service, log out, log back in, confirm it's still active).
+
+### Q6. Alert email sender and DKIM
+
+*Resolved (2026-11):* production sends through Amazon SES's SMTP interface with the sender verified and DKIM passing, out of the sandbox (Phase 8 D, `docs/deployment.md` step 7). Staging still uses the host's sendmail. The questions below were for the old campus setup.
+
+The app currently sends as `agweather@cals.wisc.edu` through local `sendmail`. Ask campus IT:
+1. Is mail from these hosts relayed through a campus server that signs DKIM for `cals.wisc.edu`?
+2. Does the SPF record cover these hosts?
+3. Is a daily digest to a few hundred recipients acceptable volume?
+
+If any answer is no, use an authenticated SMTP relay (campus relay or a transactional email provider) in the production Action Mailer config. Sending a test to a Gmail address and reading "Show original" will show SPF/DKIM pass or fail.
+
+### Q7. Rainfall corrections: resolved
+
+- **Per-day overrides only**, plus the group-level modeled/manual switch. No multiplier: rainfall is highly localized, so a fixed ratio wouldn't hold from storm to storm.
+- **Modeled values always stay visible next to entered corrections**:
+  - **Daily grid:** an overridden rain cell shows the entered value with the modeled value beside it in muted text (e.g. `0.80  (model 0.35)`); hovering or tapping shows both and their difference.
+  - **Chart:** an entered rain bar is drawn solid, with the modeled amount as an outlined "ghost" bar behind it.
+  - **Field summary:** season totals of entered vs modeled rain over the days with entries, so growers can see how their gauge compares with the model.
+- The resolver (§4) already keeps both values; it returns `rain_model_in` alongside the resolved `rain_in` and its provenance.
+- Revisit a correction factor after a season of gauge-vs-model data.
+
+**Added (2026-10-07, Ben):** the modeled/manual switch can also be **set per field** (Phase 6.6). It is a setting read when the balance runs; it never copies or deletes entries, so switching back restores the modeled rain exactly.
+- **Entered-only applies through today; the projection still uses forecast rain.** Nobody can enter future rain, and the forecast is expected to be roughly right; growers choosing entered-only mostly want exact amounts, or know storms often miss their field. This changes the existing group-level switch too (it zeroed forecast rain).
+- **Entered-only fields also show a "no rain" projection**: the same balance with no forecast rain (planned irrigation kept), so the grower sees both the forecast case and the dry case. Status, "Irrigate by" and the digest follow the forecast case.
+- Field rain entries and field-group rain entries both count as entered.
+
+### Q8. Group member roles
+
+Today every member of a group can do everything: rename it, switch its rainfall setting, and delete farms, pivots and fields. That's fine while each group has one person, but invitations (Phase 8 stretch) need a decision. Suggestion: **owner** (everything, including managing members and deleting) and **member** (data entry and setup, but not deleting farms or the group, or managing members). `memberships.admin` already exists and could become the owner flag.
+
+**Decided (2026-10-04):** owner and member as suggested. `memberships.admin` is renamed `owner`. Owners only: the group's name and rainfall setting, adding and removing members and changing roles, and deleting farms, pivots, fields or the group (`AuthenticatedController#require_owner`). Members can do everything else, including deleting plantings, irrigation and field groups. Members are added by the email of an existing, confirmed account; there are no invitations for people without one. A group always has an owner: the last owner can't step down or leave, and deleting the account of a group's only owner hands it to its longest-standing member.

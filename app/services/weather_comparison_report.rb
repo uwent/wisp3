@@ -2,7 +2,8 @@
 class WeatherComparisonReport
   LABELS = {"agweather" => "AgWeather", "best_match" => "Open-Meteo best_match", "ncep_nbm_conus" => "NBM",
             "wisp_2026" => "WISP 2026 (NBM, best_match; Open-Meteo ET0)",
-            "wisp" => "WISP corrected (FAO-56 ET0, corrected shortwave)"}.freeze
+            "wisp" => "WISP corrected (FAO-56 ET0, corrected shortwave)",
+            "wisp_kc" => "WISP corrected, potato Kc (C21)"}.freeze
 
   def initialize(comparison) = @comparison = comparison
 
@@ -93,6 +94,8 @@ class WeatherComparisonReport
     end
     shift = balances.values.map { |b| b["wisp"][:count] - b["wisp_2026"][:count] } if sources.include?("wisp")
     correction = shift && "\n\nThe correction itself (WISP corrected minus WISP 2026): #{format("%+.1f", shift.sum.fdiv(shift.size))} irrigations per season on average (range #{shift.min} to #{shift.max})."
-    "Average difference from AgWeather:\n\n#{lines.join("\n")}#{correction}"
+    kc = balances.values.map { |b| b["wisp_kc"][:count] - b["wisp"][:count] } if sources.include?("wisp_kc")
+    kc_line = kc && "\n\nThe crop's Kc (C21: WISP corrected with potato's Kc minus without): #{format("%+.1f", kc.sum.fdiv(kc.size))} irrigations per season on average (range #{kc.min} to #{kc.max})."
+    "Average difference from AgWeather:\n\n#{lines.join("\n")}#{correction}#{kc_line}"
   end
 end

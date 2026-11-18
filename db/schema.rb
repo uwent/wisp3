@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_212709) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -240,6 +240,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_212709) do
     t.string "canopy_model"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.float "kc_mid"
+    t.float "crop_height_m"
     t.index ["key"], name: "index_plants_on_key", unique: true
   end
 

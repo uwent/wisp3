@@ -3,12 +3,18 @@ FactoryBot.define do
     sequence(:key) { |n| "crop_#{n}" }
     name { "Potato" }
     default_max_root_zone_depth { 16.0 }
+    # Kc 1.0: crop ET is the percent cover table's, so specs' hand-worked numbers hold (C21's own
+    # specs set a crop's Kc)
+    kc_mid { 1.0 }
+    crop_height_m { 0.6 }
 
     trait :field_corn do
       key { "field_corn" }
       name { "Field Corn" }
       default_max_root_zone_depth { 33.0 }
       canopy_model { "field_corn" }
+      kc_mid { 1.2 }
+      crop_height_m { 2.0 }
     end
   end
 

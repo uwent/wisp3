@@ -2,11 +2,12 @@ require "rails_helper"
 
 RSpec.describe "Public pages", type: :request do
   it "shows the About page to anyone, with every crop" do
-    create(:plant, key: "field_corn", name: "Field Corn", default_max_root_zone_depth: 33, canopy_model: "field_corn")
+    create(:plant, key: "field_corn", name: "Field Corn", default_max_root_zone_depth: 33, canopy_model: "field_corn",
+      kc_mid: 1.2)
     get about_path
     expect_inertia.to render_component("Pages/About")
-    expect(inertia.props[:plants]).to include({key: "field_corn", name: "Field Corn", root_zone_in: 33.0, lai_curve: true,
-      cover_curve: true, generic_curve: nil})
+    expect(inertia.props[:plants]).to include({key: "field_corn", name: "Field Corn", root_zone_in: 33.0, kc_mid: 1.2,
+      lai_curve: true, cover_curve: true, generic_curve: nil})
     expect(inertia.props[:defaults]).to eq("mad_pct" => 50, "lead_days" => 3, "forecast_days" => 16,
       "shift_warning_days" => 7, "drop_warning" => 5, "fade_days" => 14, "fit_shift_days" => 5, "fit_noise_pct" => 10)
   end

@@ -9,6 +9,7 @@
 # moves, G.14 part 7); for the field as a whole, its system that day (Field#pivot_id_on).
 #   et0        = weather (nil → WaterBalance gap-fills)
 #   moisture   = field entry
+#   wind, rh_min = weather (they adjust the crop coefficient, CropEt.kc_mid; nil → FAO-56's standard)
 #
 # For a planting on part of a field (planting:, PLAN.md Phase 8 G.11), its own entries come first
 # and the field's are the field's, so:
@@ -28,7 +29,9 @@
 # queried here.
 class DailyInputs
   Day = Data.define(:date, :rain, :rain_source, :rain_model, :irrigation, :irrigation_source,
-    :et0, :et0_source, :soil_moisture_pct, :moisture_source)
+    :et0, :et0_source, :soil_moisture_pct, :moisture_source, :wind_mph, :rh_min_pct) do
+    def initialize(wind_mph: nil, rh_min_pct: nil, **) = super
+  end
 
   # One field's records over some dates. planting_entries: its part-field plantings' own entries.
   Records = Data.define(:entries, :pivot_irrigations, :planting_entries) do
@@ -86,7 +89,7 @@ class DailyInputs
 
       Day.new(date:, rain:, rain_source:, rain_model: weather[:precip], irrigation:, irrigation_source:,
         et0: weather[:et0], et0_source: weather[:et0] ? model_source(weather) : :missing,
-        soil_moisture_pct: moisture, moisture_source:)
+        soil_moisture_pct: moisture, moisture_source:, wind_mph: weather[:wind], rh_min_pct: weather[:rh_min])
     end
   end
 

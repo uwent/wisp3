@@ -20,6 +20,8 @@
     key: string
     name: string
     root_zone_in: number
+    /** FAO-56 Table 12's crop coefficient at full cover (C21) */
+    kc_mid: number
     lai_curve: boolean
     cover_curve: boolean
     /** The generic curve a crop without its own follows by default (G.3) */
@@ -157,7 +159,9 @@
       <li>
         <strong>The crop's water use</strong> (<Term id="crop_et">crop ET</Term>) takes from it. It is the day's
         <Term id="reference_et">reference ET</Term>, worked out from the weather, adjusted for how much of the ground
-        the crop covers (<Term id="percent_cover">percent cover</Term> or <Term id="lai">LAI</Term>).
+        the crop covers (<Term id="percent_cover">percent cover</Term> or <Term id="lai">LAI</Term>) and, as the canopy
+        fills in, for the crop itself (its <Term id="kc">crop coefficient</Term> at full cover; see
+        <a href="#crops">Crops</a>).
       </li>
       <li>
         Water beyond field capacity drains below the roots and is counted as <Term id="deep_drainage"
@@ -463,6 +467,14 @@
       change any of these for your planting.
     </p>
     <p>
+      <strong>Crop coefficients.</strong> A crop with a full canopy uses more water than the reference grass: about 15%
+      more for potato, soybean or sweet corn, 20% for field corn, less for summer squash and asparagus. WISP takes each
+      crop's coefficient at full cover from FAO-56 (Table 12, the table below), and adjusts it each day for the wind and
+      humidity, as FAO-56 does: a dry, windy day raises a tall crop's water use more than a short one's. Below full
+      cover the coefficient rises with the canopy, from bare soil's evaporation (UW Extension A3600's percent cover
+      table) to the full-cover value at {FULL_COVER_PCT}% cover. Field corn on LAI reaches it as its leaf area grows.
+    </p>
+    <p>
       <strong>Season length.</strong> Each crop with a curve has a typical season, from emergence to harvest (on its card
       below). If your variety or region runs longer or shorter, such as oats farther south or an earlier corn hybrid, set
       the planting's season length: WISP stretches or shortens the crop's whole curve to fit, its growth and its decline alike,
@@ -478,13 +490,21 @@
       rather than by a root zone's water balance, and ginseng grows under shade, which changes its water use in ways WISP's
       reference ET doesn't account for. Neither is in the crop list.
     </p>
-    <div class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised">
+    <!-- Wider than a phone with its Kc column: a scrolling region must be reachable by keyboard (axe) -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div
+      class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised"
+      role="region"
+      aria-label="Crops"
+      tabindex="0"
+    >
       <table class="w-full text-sm">
         <thead class="border-b border-line text-left text-xs text-ink-muted">
           <tr>
             <th class="px-3 py-2 font-medium">Crop</th>
             <th class="px-3 py-2 text-right font-medium">Root zone</th>
             <th class="px-3 py-2 text-right font-medium">Sensor depths</th>
+            <th class="px-3 py-2 text-right font-medium"><abbr title="Crop coefficient at full cover">Kc</abbr></th>
             <th class="px-3 py-2 font-medium">Canopy methods</th>
           </tr>
         </thead>
@@ -496,6 +516,7 @@
               <td class="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">
                 {depth(plant.root_zone_in * 0.25)} and {depth(plant.root_zone_in * 0.75)}
               </td>
+              <td class="px-3 py-1.5 text-right tabular-nums">{plant.kc_mid.toFixed(2)}</td>
               <td class="px-3 py-1.5"
                 >{plant.cover_curve
                   ? 'Percent cover, with a curve'
@@ -705,6 +726,13 @@ t: days since emergence; t′: days since the decline starts</code
 
     <h2 id="changes">What's changed</h2>
     <dl>
+      <dt>November 2026: crop coefficients</dt>
+      <dd>
+        A crop's water use at full cover now uses its crop coefficient from FAO-56, adjusted for each day's wind and
+        humidity (see <a href="#crops">Crops</a>): 5–20% more than reference ET for most crops. With the weather
+        corrections below, which made reference ET itself accurate, a typical potato field needs about as many
+        irrigations a season as WISP showed in 2026. Earlier seasons are recalculated the same way.
+      </dd>
       <dt>November 2026: getting started</dt>
       <dd>
         Setting up a new operation now takes a farm, its irrigation systems and their fields first, each of which can
@@ -744,8 +772,9 @@ t: days since emergence; t′: days since the decline starts</code
       <dd>
         Solar radiation and humidity are now corrected and reference ET is worked out by WISP (see
         <a href="#weather-corrections">Weather corrections</a>). Reference ET is about 11% lower than WISP showed in
-        2026, most of that in midsummer, so fields use water more slowly than before and need irrigating less often.
-        Every season's weather has been recalculated the same way, so earlier seasons' numbers change too.
+        2026, most of that in midsummer. On its own that had fields using water more slowly than they do; the crop
+        coefficients above make up for it at full cover. Every season's weather has been recalculated the same way, so
+        earlier seasons' numbers change too.
       </dd>
     </dl>
 

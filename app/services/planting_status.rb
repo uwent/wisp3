@@ -105,7 +105,8 @@ class PlantingStatus
       dry_days = forecast_days.map do |day|
         rain = %i[forecast model].include?(day.inputs.rain_source) ? 0.0 : day.inputs.rain
         WaterBalance::Day.new(date: day.inputs.date, et0: day.inputs.et0, rain:, irrigation: day.inputs.irrigation,
-          soil_moisture_pct: day.inputs.soil_moisture_pct, canopy: day.canopy)
+          soil_moisture_pct: day.inputs.soil_moisture_pct, canopy: day.canopy,
+          wind_mph: day.inputs.wind_mph, rh_min_pct: day.inputs.rh_min_pct)
       end
       WaterBalance.run(params, dry_days, initial_ad: current.result.ad, et_history:)
     else

@@ -9,6 +9,7 @@ Both run the same two processes: the web server (Puma) and the Solid Queue worke
 
 - [Staging](#staging-capistrano)
 - [Production](#production-docker-on-ec2)
+- [Changing the deploy](#changing-the-deploy)
 
 ---
 
@@ -39,6 +40,19 @@ ssh agwx-dev journalctl --user -u wisp3-web -f     # logs (also wisp3-jobs)
 ```
 
 Each deploy installs pnpm packages, builds the Vite assets, runs `db:prepare` (migrations), loads the reference data and restarts both services.
+
+Rails commands on staging run in the current release, as `deploy`:
+
+```bash
+ssh agwx-dev
+cd ~/wisp3/current
+RAILS_ENV=staging bin/rails runner 'User.find_by!(email: "you@example.com").update!(admin: true)'   # make an admin
+RAILS_ENV=staging bin/rails demo:seed EMAIL=you@example.com PASSWORD=…                            # a demo account
+RAILS_ENV=staging bin/rails demo:example YEAR=2026                                               # the public example farm (/example)
+RAILS_ENV=staging bin/rails weather:refresh                                                      # weather now, not at the next refresh
+```
+
+`systemctl --user` over SSH needs `XDG_RUNTIME_DIR` ("Failed to connect to bus" without it). Capistrano's tasks (`lib/capistrano/tasks/systemd.rake`) set it; by hand, `XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user status wisp3-web`.
 
 ### First-time setup
 
@@ -97,6 +111,19 @@ Add a `wisp3` site in `/etc/nginx/sites-available` (enabled in `sites-enabled`) 
 - `curl https://dev.wisp.cals.wisc.edu/up` returns 200 with JSON: `status` is `ok`, or `degraded` once the morning health check (7 am) finds problems or is overdue; `database` is `ok`; `version` is the deployed commit. An uptime monitor can alert on a non-200 response or on `"status":"degraded"`
 - Sign up, receive the confirmation email (sent with the host's `sendmail`), and sign in with both a password and an emailed link
 - `cap staging systemd:status` shows both services active
+
+#### Mail on the staging host
+
+The host's Postfix relays through Amazon SES (`email-smtp.us-west-2.amazonaws.com`), shared with ag-weather. Keep **click and open tracking off** in the SES configuration set that mail uses (remove the Click and Open event types from its event destination; keep Bounce, Complaint and Delivery): tracking rewrites every link through `awstrack.me`, which ad blockers flag and which uses up single-use sign-in links.
+
+#### The Open-Meteo key
+
+Optional (without it staging uses the free API). `bin/rails credentials:edit --environment staging`, then add:
+
+```yaml
+open_meteo:
+  api_key: <the key>
+```
 
 ---
 
@@ -340,3 +367,19 @@ Then check the app's own mail: sign up with a second address and receive the con
 - After the 5 am, 11 am or 5 pm (Central) weather refresh, `/admin/weather` shows weather for every active cell.
 - After 7 am, `/up` reads `ok`, and the admin weather page shows the health check's result. An uptime monitor can alert on a non-200 response or on `"status":"degraded"`.
 - Before launch, restore an RDS snapshot to a scratch instance once and check the app against it (IT may need to do this).
+
+---
+
+## Changing the deploy
+
+Things to know before editing the deploy configuration:
+
+- **Two paths, two sets of files.** Staging: `config/deploy.rb`, `config/deploy/staging.rb`, `lib/capistrano/tasks/`. Production: `Dockerfile`, `config/deploy/compose.production.yaml`, `bin/production`. A change to one usually needs thinking about in the other.
+- **Capistrano loads `deploy.rb` before the stage file**, so per-stage `linked_files` go in `config/deploy/<stage>.rb`.
+- **Vite builds to `public/vite`** (`set :assets_prefix, "vite"` in `config/deploy.rb`).
+- **`APP_HOST`:** `config/environments/production.rb` defaults it to `localhost` so local commands boot; staging gets it from Capistrano and the systemd units, production from its `.env`.
+- **`database.yml`:** staging inherits the production block, so a production-only setting there needs an `ENV` default that suits staging. Production's RDS TLS comes from `DB_SSLMODE`/`DB_SSLROOTCERT`, set by the compose file, against `config/rds-global-bundle.pem`.
+- **New settings:** a setting the app reads from `ENV` goes in production's `/opt/wisp/.env` (and the list in Production step 4), not in credentials; production's credentials hold only `secret_key_base`.
+- **The compose file used is the deployed commit's**, copied to `/opt/wisp/compose.yaml` by each deploy, not your working copy's.
+- **Mail:** production sends through SES's SMTP interface (`SMTP_*`; the container has no sendmail and EC2 blocks port 25); staging uses the host's sendmail.
+- **Builds share the server's 4 GB** with the running site; exit code 137 is out of memory (Production step 1, swap).

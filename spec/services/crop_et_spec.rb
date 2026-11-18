@@ -69,6 +69,56 @@ RSpec.describe CropEt do
     end
   end
 
+  describe "with the crop's Kc mid (C21)" do
+    it "scales the table from 1 on bare soil to Kc mid at 80% cover and above" do
+      expect(described_class.from_pct_cover(0.3, 0, kc: 1.15)).to eq(described_class.from_pct_cover(0.3, 0))
+      expect(described_class.from_pct_cover(0.25, 80, kc: 1.15)).to be_within(1e-12).of(0.25 * 1.15)
+      expect(described_class.from_pct_cover(0.25, 100, kc: 1.15)).to be_within(1e-12).of(0.25 * 1.15)
+      expect(described_class.from_pct_cover(0.2, 40, kc: 1.15))
+        .to be_within(1e-12).of(described_class.from_pct_cover(0.2, 40) * 1.075)
+    end
+
+    it "lowers crop ET at full cover for a Kc mid below 1" do
+      expect(described_class.from_pct_cover(0.2, 90, kc: 0.95)).to be_within(1e-12).of(0.19)
+    end
+
+    it "still increases with cover" do
+      values = (0..100).map { |cover| described_class.from_pct_cover(0.22, cover, kc: 1.2) }
+      expect(values.each_cons(2)).to all(satisfy { |a, b| b >= a })
+    end
+
+    it "tops LAI's Kc out at Kc mid" do
+      expect(described_class.from_lai(0.2, 20, kc: 1.2)).to be_within(1e-9).of(0.24)
+      expect(described_class.adjusted("lai", 0.2, 2.0, kc: 1.2)).to be_within(1e-12).of(0.2 * 1.2 * (1 - Math.exp(-3.0)))
+    end
+  end
+
+  describe ".kc_mid (FAO-56 eq. 62)" do
+    # u2 in m/s at 2 m → stored wind, mph at 10 m
+    def mph(u2) = u2 / (4.87 / Math.log(67.8 * 10 - 5.42)) / CropEt::MPH_TO_MS
+
+    it "matches FAO-56 Example 27 (maize, Kc mid 1.20, 2 m)" do
+      expect(described_class.kc_mid(1.2, 2.0, wind_mph: mph(1.3), rh_min_pct: 75)).to be_within(0.005).of(1.07)
+      expect(described_class.kc_mid(1.2, 2.0, wind_mph: mph(4.6), rh_min_pct: 44)).to be_within(0.005).of(1.30)
+    end
+
+    it "is the table value in the standard climate, or with no weather" do
+      expect(described_class.kc_mid(1.15, 0.6, wind_mph: mph(2.0), rh_min_pct: 45)).to be_within(1e-9).of(1.15)
+      expect(described_class.kc_mid(1.15, 0.6)).to eq(1.15)
+    end
+
+    it "clamps wind to 1–6 m/s and minimum humidity to 20–80%" do
+      expect(described_class.kc_mid(1.15, 0.6, wind_mph: mph(12), rh_min_pct: 5))
+        .to be_within(1e-9).of(described_class.kc_mid(1.15, 0.6, wind_mph: mph(6), rh_min_pct: 20))
+      expect(described_class.kc_mid(1.15, 0.6, wind_mph: 0.0, rh_min_pct: 100))
+        .to be_within(1e-9).of(described_class.kc_mid(1.15, 0.6, wind_mph: mph(1), rh_min_pct: 80))
+    end
+
+    it "isn't applied below 0.1 m" do
+      expect(described_class.kc_mid(1.05, 0.05, wind_mph: 20, rh_min_pct: 20)).to eq(1.05)
+    end
+  end
+
   it "rejects an unknown method" do
     expect { described_class.adjusted("kc", 0.2, 1) }.to raise_error(ArgumentError)
   end

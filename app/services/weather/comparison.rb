@@ -7,7 +7,9 @@ module Weather
   # the report. Uses the historical-forecast API, as the backfill does. Sources:
   # - each model alone, with Open-Meteo's own ET0;
   # - "wisp_2026": NBM then best_match hour by hour, Open-Meteo's ET0 (what WISP used in 2026);
-  # - "wisp": the same hours corrected, with WISP's FAO-56 ET0 (D12; what WISP uses now).
+  # - "wisp": the same hours corrected, with WISP's FAO-56 ET0 (D12), crop ET by the percent cover table;
+  # - "wisp_kc" (balances only): "wisp" with potato's Kc mid adjusted for each day's wind and humidity
+  #   (C21; what WISP uses now).
   class Comparison
     AGWEATHER = "https://agweather.cals.wisc.edu/api"
     MODELS = %w[best_match ncep_nbm_conus].freeze
@@ -27,7 +29,13 @@ module Weather
     FIELD = {field_capacity: 0.15, perm_wilting_pt: 0.05, max_root_zone_depth: 16.0, mad_frac: 0.5}.freeze
     IRRIGATION_IN = 0.75
 
-    Series = Data.define(:et0, :precip) # {date => inches}
+    # {date => inches}; wind (mph at 10 m) and rh_min (%) only for WISP's corrected days, for C21
+    Series = Data.define(:et0, :precip, :wind, :rh_min) do
+      def initialize(et0:, precip:, wind: {}, rh_min: {}) = super
+    end
+
+    # The standard field's crop for "wisp_kc": potato in db/reference/plants.yml (FAO-56 Table 12)
+    POTATO = WaterBalance::Crop.new(kc_mid: 1.15, height_m: 0.6)
 
     def initialize(points: DEFAULT_POINTS, years: [2025, 2026], client: OpenMeteo.new, log: ->(_) {})
       @points, @years, @client, @log = points, years, client, log
@@ -66,11 +74,13 @@ module Weather
 
     # Per point/year and source: irrigations, inches applied, first irrigation date
     def balances
-      data.transform_values { |by_source| by_source.transform_values { |series| simulate(series) } }
+      data.transform_values do |by_source|
+        by_source.transform_values { |series| simulate(series) }.merge("wisp_kc" => simulate(by_source["wisp"], crop: POTATO))
+      end
     end
 
-    def simulate(series)
-      params = WaterBalance::Params.new(**FIELD)
+    def simulate(series, crop: nil)
+      params = WaterBalance::Params.new(**FIELD, crop:)
       ad = params.initial_ad
       history = []
       irrigations = []
@@ -80,7 +90,8 @@ module Weather
         cover = ((date - emergence).to_f / (Date.new(date.year, 7, 1) - emergence) * 100).clamp(0, 100)
         irrigation = pending ? IRRIGATION_IN : 0.0
         irrigations << date if pending
-        day = WaterBalance::Day.new(date:, et0: series.et0[date], rain: series.precip[date], irrigation:, canopy: cover)
+        day = WaterBalance::Day.new(date:, et0: series.et0[date], rain: series.precip[date], irrigation:, canopy: cover,
+          wind_mph: series.wind[date], rh_min_pct: series.rh_min[date])
         result = WaterBalance.run(params, [day], initial_ad: ad, et_history: history).first
         history << [date, result.adj_et] if result.et_source == :computed
         ad = result.ad
@@ -155,7 +166,9 @@ module Weather
       series = ->(days, et0) { Series.new(et0: days.transform_values { |d| d[et0] }, precip: days.transform_values { |d| d["precip_in"] }) }
       merged = daily.call(*MODELS.reverse.map { |model| responses[model][i] }) # NBM first
       MODELS.to_h { |model| [model, series.call(daily.call(responses[model][i]), "et0_openmeteo_in")] }.merge(
-        "wisp_2026" => series.call(merged, "et0_openmeteo_in"), "wisp" => series.call(merged, "et0_in")
+        "wisp_2026" => series.call(merged, "et0_openmeteo_in"),
+        "wisp" => series.call(merged, "et0_in").with(wind: merged.transform_values { |d| d["wind_speed_mph"] },
+          rh_min: merged.transform_values { |d| d["rh_min_pct"] })
       )
     end
   end

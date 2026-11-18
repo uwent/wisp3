@@ -24,7 +24,8 @@ class PlantingBalance
 
     balance_days = inputs.zip(canopies).map do |day, canopy_value|
       WaterBalance::Day.new(date: day.date, et0: day.et0, rain: day.rain, irrigation: day.irrigation,
-        soil_moisture_pct: day.soil_moisture_pct, canopy: canopy_value)
+        soil_moisture_pct: day.soil_moisture_pct, canopy: canopy_value,
+        wind_mph: day.wind_mph, rh_min_pct: day.rh_min_pct)
     end
     results = WaterBalance.run(params, balance_days)
     inputs.zip(canopies, results).map { |input, canopy_value, result| Day.new(input, canopy_value, result) }

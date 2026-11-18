@@ -1,0 +1,147 @@
+# Architecture notes
+
+Where each part of WISP 3 lives and how it fits together, area by area. [CLAUDE.md](../CLAUDE.md) holds the conventions that apply to every change (tenancy, units, the engine, forms, gotchas); [PLAN.md](../PLAN.md) holds the reasons and the history (decisions D1–D13, the phases and their "as built" notes). Read the section for the area you're changing first, and keep it current when the code moves.
+
+- [Pages](#pages)
+- [Irrigation systems, fields and plantings](#irrigation-systems-fields-and-plantings)
+- [Canopy and soils](#canopy-and-soils)
+- [Weather](#weather)
+- [Daily entry and tasks](#daily-entry-and-tasks)
+- [Maps](#maps)
+- [Charts](#charts)
+- [Words: guidance, glossary and info tips](#words-guidance-glossary-and-info-tips)
+- [Email, the digest and the health check](#email-the-digest-and-the-health-check)
+- [CSV exports](#csv-exports)
+- [Outside services](#outside-services)
+
+## Pages
+
+- **Public pages** (Phase 6.5): signed out, `/` is the landing page (`PagesController#home`), signed in the dashboard (Devise `authenticated` route); `/about` is the documentation, public. Both use `AppLayout`, whose nav is just About when signed out. The landing page and About share `lib/docs/Introduction.svelte`.
+- **First-run setup** (Phase 8 G.6): `/setup/start` (`QuickSetup`) makes a farm, an irrigation system and its fields (name, area, soil; no plantings), the system and fields each optional. From November 1 it asks which season, next year's by default (`QuickSetupsController::NEXT_SEASON_FROM_MONTH`). Its save goes to `/setup?started_pivot=` (or `started_farm=`), where `NextSteps` asks for what's missing (a system, fields, then a planting per field). The dashboard shows `GettingStarted` (`getting_started` prop) until the operation has any planting.
+- **Planting pages and time travel** (Phase 8 F): `/plantings/:id?as_of=DATE` shows a planting's page on an earlier day of its season, read-only (`readOnly` on `EditableCell`; no forms, exports or weather polling). `PlantingStatus.new(planting, as_of:)` ends the season at the date and projects what happened next: the stored weather and the entries for the following days (`projection_source: observed`, no ensemble), with canopy readings cut at the date; `lib/outlook.ts` and the field chart word that case. Bars pinned to the window's top publish their heights (`stickyHeight` in `lib/stickyBars.ts`); give other sticky elements `top-sticky` so they stop below them. Only the planting page; anything that writes doesn't know about it.
+- **Example farm** (G.8): `/example` (`ExamplesController`) puts the session in example mode (`ExampleMode`, `example_group`): anyone, signed in or not, sees `Group.example` (the one group with `example_as_of`, no members, built by `DemoSeed.example!` from `db/demo/farms.yml`) on the app's own pages, read-only, as of its day (July 20 of its year).
+  - `AuthenticatedController` lets it reach only the GET actions a controller lists with `allow_example`, never through a membership; anything else goes back to its dashboard, and signing in or Leave (`DELETE /example`) ends it.
+  - `Current.as_of` is the day and `Current.today` the page's today (the real one otherwise). Statuses go through `FieldStatuses.status` (time travel's view when a season covers the day), the week ahead is the stored days that followed (`ForecastDays`, `WeatherSummary`), and weather isn't refreshed (`WeatherCell.keep_current`).
+  - Pages read `example` (shared prop; `isExample` in `lib/permissions.ts`) to leave out editing, and `AppLayout` shows the teal bar.
+- **Impersonation** (Phase 8 B): an admin signs in as a non-admin from their admin page (`Admin::ImpersonationsController`, session keys `impersonator_id`/`impersonated_id`, trackable skipped) and returns with `DELETE /impersonation`. `impersonator` (`ApplicationController`) is the admin only while the keys match the signed-in user; pages get `auth.impersonator`, and `AppLayout` shows the violet bar and prefixes the tab title. Actions that mustn't be taken on someone's behalf use `before_action :forbid_while_impersonating`.
+- **Admin:** one Admin tab, its pages (Users, Weather data) switched by `AdminTabs`.
+- **Sign-in:** Devise controllers live in `app/controllers/users/` and render Inertia pages through `InertiaDeviseResponses`. Passwordless sign-in (`MagicLinksController`) emails a one-time link (`User.generates_token_for(:magic_login)`) and a six-digit code (`User#generate_sign_in_code!`).
+
+## Irrigation systems, fields and plantings
+
+- **Irrigation systems** (Phase 8 G.5): **a pivot in code is any irrigation system; growers see its kind's name** (`Pivot::KIND_NAMES`, serialized as `kind_name`, mirrored by `KIND_NAMES` in `lib/geo.ts`; `Pivot#label` is "Traveler: Lane 3"; `KIND_NOUNS` words it in sentences). The collective word is "irrigation system" ("system" where space is short).
+  - A center pivot (`radius_ft`, optionally an arc) or a linear (`kind: linear`: a machine `length_ft` long traveling `travel_ft` along `travel_bearing_deg`, whole degrees 0–179; a rectangle centered on its location) has a shape.
+  - `traveler`, `solid_set`, `drip` and `point` ("Location") are a point with no dimensions (`Pivot::POINT_KINDS`, `isPoint`; check constraint `pivots_point_shape`), their area their fields'.
+  - Draw and measure with `pivotOutline` and `shapeAcres` (null for a point kind; `surveyRing` gives the soil survey a small circle instead) (`lib/geo.ts`); forms edit a `ShapeDraft` through `PivotShapeFields`.
+  - Size limits are in `Pivot` (validations and check constraints) and mirrored in `lib/geo.ts`; change both together.
+  - A traveler moved between fields is one Traveler system at each field, the machine named in `equipment`.
+- **Irrigation groups** (`PivotGroup`): systems on one farm kept together and sharing a rain gauge; a system is in 0 or 1, managed in Setup, outlined on the map by `groupFeatures`.
+- **Fields and plantings** (Phase 8 G.11): a field is the land, a planting what grows on it, on the whole field (`partial` false; nothing overlaps it) or part of it (a plot: `plot_length_ft` × `plot_width_ft` or `area_acres`, with no place in the field; plots may overlap each other; the `plantings_no_overlap` exclusion constraint enforces both).
+  - A plot's own irrigation, soil moisture and notes are `PlantingEntry` rows (no rain), first in its balance, then the field's irrigation (source `field`); whole-field plantings never have them. A plot follows its field's soil unless `own_soil`.
+  - `Field#planting_on` picks one planting (whole-field first); `Field#plantings_on` gives all of a day's.
+  - Pages: `/fields/:id` (`Fields/Show`) is the land (the season's `SeasonTimeline`, a summary per planting, the field's own rain and irrigation grid with no balance, the rainfall setting; `?year=`, and `?planting_id=` redirects); `/plantings/:id` (`Plantings/Show`) is one planting's balance; both share `FieldHeader` (breadcrumbs, tabs for the field and the year's plantings) via `FieldHeaderProps`.
+  - `FieldStatuses.for` gives each field a list of statuses (every planting in season, or the nearest this year with those overlapping it); dashboard and map cards are `{id, name, plantings: [summary]}`, placed by their most urgent (`primary` in `lib/overview.ts`, `FieldStatuses.urgency`).
+  - `PlantingDialog` (Setup and the field page) holds the form ("Planting size: Whole field | Part of the field", Replace via `replace`, "Add the next planting"); sizes and labels are in `lib/plantings.ts`, the timeline's layout in `lib/timeline.ts`.
+  - Deleting a planting or an irrigation group is open to its creator as well as owners (`created_by_id`, `owner_or_creator?`; `mayDelete` in `lib/permissions.ts`).
+- **Seasons keep their values** (Phase 8 G.9): a planting holds its season's soil (`soil_type_id` and the field capacity and wilting point overrides, NULL following the soil type), area and weather cell, copied from its field and pivot on create; the balance reads the planting's (`Planting#effective_field_capacity`, `planting.weather_cell`), never the field's or pivot's. Editing a field or moving a pivot updates `Planting.open` (not ended) only; a planting keeps the system it ran on (`plantings.pivot_id`), so any field can move to another system. Run hours convert over the areas of the plantings in season that day (`PivotIrrigation#irrigated_acres`).
+- **Rainfall setting** (Phase 6.6, Q7): `fields.use_model_precip` overrides the group's (NULL follows it; `Field#effective_use_model_precip`). Entered-only applies through today; `DailyInputs` still takes forecast rain after `today:`, and `PlantingStatus#dry_projection` adds the no-rain case. The setting is on the field page; a planting page's season details are computed in the browser (`lib/seasonStats.ts`).
+- **Field outlines** (Phase 8 G.10): `fields.boundary` is a GeoJSON Polygon with one ring (no holes or parts; NULL: none), checked by `FieldBoundary` (closed, at most 100 corners, in the US or Canada, 0.01–1,500 ac; mirrored in `lib/boundary.ts` with `boundaryAcres` and the other outline helpers; plane geometry shared by both is in `lib/planar.ts`).
+  - It's for the map and suggestions only: its acres (`Field#boundary_acres`) and the survey's main soil are offered, never copied, and the balance never reads it.
+  - `/fields/:id/outline` (`FieldOutlinesController`, `Fields/Outline`, `lib/outlines/OutlineMap.svelte` with terra-draw) draws, copies a pivot's or linear's shape, and reads one file (plantings have no place in the field); `/setup/outlines/import` (`OutlineImportsController`, `OutlineImport`, `Setup/ImportOutlines`) matches a file's shapes to fields or new ones (`lib/outlines/matching.ts`).
+  - Files are parsed in the browser (`lib/outlines/read.ts`: shpjs, togeojson, but-unzip, loaded on demand); a shape keeps its largest part without holes, and says so (`notes`). Setup lists outlines away from their system (`lib/outlines/problems.ts`).
+  - Lists in a form are sent with indexed names (`rows[0][name]`: Inertia's JSON loses `rows[][name]`) and read with `indexed_list`.
+
+## Canopy and soils
+
+- **Canopy curves** (Phase 6.7): each crop's default percent cover curve is in `db/reference/canopy_curves.yml` (`CanopyCurve`; LAI curves in `CanopyModel`, field corn only, and only crops with one can use LAI).
+  - `Canopy` follows the curve with no readings; with readings (`plantings.canopy_interpolation`: `curve`, or `linear` for straight lines) it fits the curve to them (`CanopyFit`, held toward the typical curve, cached by readings) and passes through each one, the last one's effect fading over `Canopy::FADE_DAYS`. `Canopy#check` warns when readings disagree.
+  - Crops without their own curve follow a generic one (`generic:` in the YAML, with each crop's `default_for`; `plantings.canopy_curve_key` picks another, or `none` for readings only, which until a reading is the `needs_canopy` status). Ask `Planting#cover_curve` (or `CanopyCurve.effective`), not `CanopyCurve.for(plant.key)`, for the curve a planting follows.
+  - A perennial's cuttings (`canopy_cuttings`, on the `perennial_regrowth` curve) split its season into pieces that each regrow from stubble (`CutCanopy`, which `Canopy.for` returns when there are any; `Planting#takes_cuttings?`).
+  - Each curve's `season` sets the suggested harvest (`Planting.typical_end`, mirrored by `typicalEnd` in `lib/plantings.ts`, never after Nov 30); a planting's own `season_days` (G.7) replaces it and stretches the whole curve in time (`Planting#time_stretch`, applied in `Canopy.for`, percent cover and LAI, with the fit around it).
+  - Potato's `vine_kill_date` ramps the canopy to 0 over `Canopy::VINE_KILL_DAYS`, and the balance runs on to harvest.
+  - The backtest behind these choices is `docs/canopy/scripts/backtest.py` (notes 04 and 06); change the method there too. The About page's crop cards are built from the YAML, so change a curve there with its sources and notes; the research is in `docs/canopy/`.
+- **Crop coefficients** (C21, PLAN.md §9, Q11): each crop's FAO-56 Table 12 Kc mid and height are in `db/reference/plants.yml` (`plants.kc_mid`, `crop_height_m`; the YAML's header says which rows and choices). `WaterBalance::Crop.for(plant)` puts them in `Params`; `CropEt.kc_mid` adjusts Kc mid for each day's wind and minimum RH (FAO-56 eq. 62; `wind_mph` and `rh_min_pct` on `DailyInputs::Day` and `WaterBalance::Day`, from `WeatherDay.balance_inputs`, stored days and the forecast; the ensemble's members take the deterministic day's). The percent cover table is scaled from 1 on bare soil to Kc mid at 80% cover; LAI tops out at Kc mid. `Params` without a crop keeps the table as legacy used it (`LegacyEngine`'s C21 switch, the factory's Kc 1.0 for specs' hand-worked numbers). `bin/rails weather:compare`'s "WISP corrected, potato Kc" column measures it.
+- **Soil types:** `db/reference/soil_types.yml` (field capacity and wilting point; comments give each value's sources, and `basis` feeds the About page's soil table). Change a value there with its source; it moves every field on that soil that doesn't set its own. `lib/soils.ts` maps soil survey textures to these types for the setup suggestion and the picker's Soil types layer (`lib/map/soilTypes.svelte.ts`).
+
+## Weather
+
+- **Storage:** Open-Meteo only, fetched by jobs (never in a request) into `weather_days` per O1280 grid cell (`Weather::Grid`); values stored in inches/°F/mph, soil moisture as m³/m³. Forecasts are `weather_forecasts` (deterministic and ensemble); `ForecastPruneJob` keeps the latest 14 issues per cell and kind, plus each day's first corrected issue for good (the forecast archive).
+- **Corrections** (Phase 8 E, D12, PLAN.md §8.5): Open-Meteo's hours are merged across models hour by hour, then shortwave and dew point are corrected and RH, VPD and ET0 derived (`Weather::Hours`; `Weather::Corrections` with the tables in `db/reference/weather_corrections/`, copied from AgWeather v2; `Weather::Fao56`) before `Weather::Daily` makes days.
+  - `et0_in` is WISP's FAO-56 ET0; Open-Meteo's values stay in the `*_raw_*` columns and `et0_openmeteo_in`, and each day's `corrections` lists the labels it went through.
+  - The ensemble's members are scaled by the deterministic forecast's ratio (`Weather::Ensemble.corrected`, Q10).
+  - `spec/services/weather/v2_match_spec.rb` checks the port against v2's own output (`docs/weather-corrections/v2_expected.py`); a new table version from v2 needs both rerun. `corrections.yml` feeds the About page's table.
+  - `bin/rails weather:recorrect` refetches stored days whose corrections aren't current (`WeatherRecorrectJob` per cell; counts first, runs with `CONFIRM=yes`).
+- **The weather page** (Phase 8 G.12): weather is by zone (one grid cell; `WeatherZone`, named from its systems, reached only through the group's pivots' and plantings' cells).
+  - `/weather` (`WeatherZonesController`) lists the zones with the week ahead (always, even one).
+  - A zone's address is its cell's center, `/weather/44.12,-89.54` (`WeatherCell#location`, `WeatherZone#to_param`; links through `lib/weatherZones.ts`, which keeps the comma unencoded); any point in one of the group's cells finds it (`WeatherZone.at`, never creating a cell) and any other goes back to the list; old `/weather/:id` addresses redirect.
+  - A zone has the panels (`WeatherSection`, January 1 on, `?year=`; GDD totals since January 1, in view, and since a planting date picked under the chart, the plantings that day named together, `plantingStarts`) and `export` its CSV.
+  - Field, planting and pivot pages show only the week ahead (a compact strip) and a link (`WeatherZone.page_props` → `ZoneWeather`/`ForecastStrip`); the week is `ForecastDays` (the stored forecast, the ensemble's chance of rain), its sky from `weather_code` (`lib/forecast.ts`). A planting's crop ET is the balance chart's fifth grid.
+- **Weather updates in the page:** pages showing pivots queue a `WeatherUpdateJob` per cell (`WeatherCell.keep_current`, at most every 15 minutes). Only an incomplete cell's (`WeatherCell#incomplete?`: no forecast within a day, or days missing since the season start) marks the cell in the cache (`WeatherCell.updating_ids`); a complete one's is `quiet:`. The dashboard, map, field and planting pages get `weather_updating`, show "Updating weather…" with a `Spinner`, and `pollWeather` (`lib/weatherPolling.svelte.ts`, on `lib/poll.ts`) asks `GET /weather_updates` (the group's updating pivot ids, from the cache only) every 5 s, reloading the page's data once one of its pivots lands. After 3 minutes they give up and say the update failed.
+
+## Daily entry and tasks
+
+- **Daily entry** (Phase 8 G.4): one table per farm, its levels as indented rows: irrigation group → pivot → field → plot. Props come from `DailyEntryPage`; rows and the shared value from `lib/dailyEntry.ts`.
+  - Rain typed in a group's or pivot's row fills its fields in season in the browser (stored per field; nothing per group). Irrigation is inherited and shown as a muted placeholder.
+  - Cover readings show from emergence until the canopy closes (`PlantingTasks.canopy(planting, date)`, which needs no balance).
+  - The save (`DailyEntriesController#update`) takes `pivots`, `fields`, `plantings` (part-field only) and `canopy`, checked in the models' `:entry` validation context (no rain or soil moisture ahead of today, no cover reading outside the season). A hidden or collapsed row still submits its inputs (the pivot's "Applied to" checkboxes must always be sent).
+- **Grids:** `EditableCell` saves one value through `lib/save.ts` (an Inertia visit that keeps scroll and state, resolving with an error message or null); the field and planting grids' cell text and labels are in `lib/fieldDays.ts`. Daily entries are written with `FieldEntry.record` / `PlantingEntry.record` (blank clears a value; an empty entry is deleted); canopy readings with `CanopyObservation.record`.
+- **Tasks** (Phase 6.7): `PlantingTasks` (via `PlantingStatus#tasks`, `summary.tasks`) lists the readings due and the canopy check for a planting in season, worded once for the planting page, dashboard cards and digest; `lib/guidance.ts` explains the advice in prose.
+
+## Maps
+
+- **MapLibre** through `lib/map/`: `createMap` (`lib/map/createMap.ts`) loads it (`loadMapLibre`, which sets its Vite-bundled worker), makes the map on its basemap with `transformStyle`, the controls and attribution, and returns one cleanup. `basemaps.ts` (`setBasemap`), `BasemapToggle`, `PlaceSearch`.
+- **Layers button:** every map has `MapLayersButton` beside the Satellite | Map pill: roads and place names over the imagery (`IMAGERY_ROADS`, OpenFreeMap tiles; the setting in `roads.svelte.ts`), then the map's own layers (Soil types; the Map tab's `OverviewLayers`). OpenFreeMap's street style is patched on load (`repairStyle`, `transformStyle`).
+- **Public layers** are listed in `lib/map/overlays.ts`, each with `valueAt` for the tooltip, and applied by `MapOverlays` (loaded in the browser; a failing provider marks its layer unavailable and the map carries on). Radar values are read from the IEM tile's colors (`lib/map/radar.ts`); MRMS values are millimeters.
+- **The pivot picker** (`PivotMap.svelte`, setup) has a Soil types layer from the soil survey. Its handles aren't MapLibre draggable markers, which follow the pointer and flicker against a constrained position; `followPointer` moves the shape and places each handle from it. Their custom cursors are SVG data URLs (`lib/map/cursors.ts`).
+- **The Map tab** (Phase 7, `MapController`) shares the dashboard's data through `OperationOverview`.
+  - Its list is the operation as nested cards (`buildTree` in `lib/overview.ts`, `MapTree`), and one `Selection` (`{level, id}`: a farm or group zooms the map to its systems, a system or field opens its panel) is shared by the list, the map and the panel.
+  - `OverviewMap` draws the pivots (`lib/map/pivots.ts`) and their badges (`BadgeRows`, packed by `badgeRows`); its hover label follows the pointer and reads down the stack, the features under it (`hoverLines`) and then the marker badge it's on (its `data-hover` lines).
+  - The map shows one season (`?year=`, `FieldStatuses.for(…, year:)`); plantings are named by crop and when (`plantingWhen`, `plantingLabel` in `lib/plantings.ts`), and `lib/overview.ts` orders and picks fields.
+  - Systems are drawn in the system color, never a status (`lib/map/systemLayers.ts`), with one threshold, `FAR_ZOOM` (where markers become dots, `data-far`): closer in, pivots and linears to scale (badges may overhang a small one) and point kinds as their kind's glyph (`lib/map/glyphs.ts`: polygons, made into exact-distance SDF icons; `KindIcon` on pages) sized to enclose their badges (`badgeFit`), or the area 50 ft around their outlined fields (`systemOutline`); farther out, every system as its glyph ringing its dot.
+  - Glyph sizes are fixed pixels and layers switch by `minzoom`/`maxzoom`: a zoom-dependent symbol size is computed per tile in MapLibre and jumps as tiles load.
+  - A click asks `systemHit` (field, then glyph or shape), never `queryRenderedFeatures`' first hit; the hover label lists every feature and marker under the pointer (`elementsFromPoint`).
+  - Outlined fields are drawn in white (`--color-map-field`, not a status) under the systems, each named above its top edge (`boundaryTop`) with a badge per planting at its center (`fieldBadges`, `FieldMarker`); a system's marker badges only its fields without one, and zoomed out is one dot for all (`fieldFeatures`, `lib/map/pivots.ts`); an irrigation group's outline encloses its fields' outlines too (`groupOutline`).
+- **Gotchas:**
+  - MapLibre sets `position: relative` on its container, so size the container (`h-full w-full`) rather than positioning it absolutely. Its worker URL breaks under Vite unless loaded through `loadMapLibre()` (`worker.format: 'es'` in `vite.config.ts`).
+  - ECharts and MapLibre can't parse `oklch()`: get colors through `readPalette()` (`lib/charts/palette.ts`).
+  - terra-draw takes a MapLibre map's pointer events (`lib/outlines/OutlineMap.svelte`): the map's own `click` doesn't fire, so listen on the canvas container in the capture phase; and its `change` events fire for features loaded from code (`clear`, `addFeatures`), so ignore them while loading.
+  - Our layers survive a basemap switch through `setBasemap`, terra-draw's don't: stop it and start it again with its snapshot in `setBasemap`'s `before` and `after` (which run only for a switch that happens: a map's switches are queued, and one a later click replaced is skipped).
+
+## Charts
+
+- ECharts through `lib/charts/Chart.svelte`, given a `build(palette)` function; option builders are pure (`fieldChart.ts`, `weatherCharts.ts`) and unit tested. Colors come from the `--color-chart-*` tokens (validated for color blindness, light and dark), read through `readPalette()`.
+- No dual-axis charts: stack grids or use small multiples (a weather panel's second grid is `totals`, recounted for the days in view, or `below`, a related measure's daily values in its own unit).
+- The weather panels zoom together with the season slider above them (`group` on `Chart`, `lib/charts/link.ts`; only the zoom is shared, not tooltips) in a grid of cards all one height (rows line up). Each card's "Summary and data" opens a dialog (`ChartCard`, `DataDialog`: the summary, Download CSV, Copy, the table), so the grid never stretches; "all of this zone's weather" is `combinedTable`.
+- Page sections under an h2 use `CollapsibleSection` (open state remembered per section; a link to its id opens it).
+- Tables: `DataTable.svelte` sorts and searches rows in the browser from column definitions (`lib/table.ts`).
+
+## Words: guidance, glossary and info tips
+
+- **Guidance** (how a crop is modeled, which readings to enter and how often) is in `lib/guidance.ts`, worded from the legacy user guide; it describes `Canopy`/`CanopyModel`, so change it with them. Crop-specific notes go in its `CROP_NOTES`.
+- **Glossary:** terms and definitions in `lib/glossary.ts`. Mark a term by hand with `<Term id="lai">LAI</Term>`; for paragraphs of prose, `<GlossaryText paragraphs={…}>` marks each term's first appearance in the block. Keep it to running text, not every label.
+- **Info tips on form inputs** (G.13): wording in `lib/fieldInfo.ts`, keyed by form and input (`pivot.radius`: what the input is for there, in plain words, at most two sentences), optionally adding a glossary term's definition below (`term`); `TextField`, `NumberField` and `SelectField` take `info="key"`, and hand-written labels, legends and radio groups use `FieldLabel`. Required and optional marks: give a control `required` or `optional` (`FieldLabel`'s `missing` dot, "Optional"); defaults show as placeholders (`NumberField`'s `blankValue`, `submitBlankValue` when the column needs a value).
+- **Where text lives:** labels and short hints that must be read before typing stay in the component; a term's meaning goes in the glossary, a setting's purpose in `fieldInfo`, how a crop is modeled in `guidance.ts`.
+- **Unsaved changes** (G.13): a `Dialog` holding a form takes `guard` (Escape, outside or ✕ asks in the dialog: Save changes, Discard, Keep editing), and a page calls `confirmUnsavedChanges(isDirty, form)`; both list what changed through `lib/formChanges.ts`, which reads controls' labels and shown values (`NumberField`'s `data-unit`).
+
+## Email, the digest and the health check
+
+- **Daily digest** (Phase 6): `DailyDigestJob` (6 am) → `DailyDigest` (a user's included fields in season, by operation, farm, weather zone (grid cell), pivot and field, with `WeatherSummary` per zone and each field's due tasks; `users.digest_scope` picks which included fields are listed; `users.digest_frequency` decides whether it's sent) → `DigestMailer`. Settings, preview and test send are on the Alerts page (`AlertsController`).
+- **Outlook wording** (`Outlook`) mirrors `lib/outlook.ts`; change both together, with the cases both run (`spec/fixtures/files/outlook_cases.json`).
+- **Emails:** every mailer (Devise's too) uses `layouts/mailer` (UW bar, WISP header with `public/icon-email.png`, a footer with the CALS credit; an email adds its own footer lines with `content_for :footer`) on a white page, built from tables with inline styles for Outlook. Colors and styles come from `EmailHelper` (`COLORS`, mirroring the `application.css` tokens in hex; `email_style(:card)`, `email_button`, `email_link_to`), not raw hex in templates.
+- **Links in emails:** wrap them with `email_link_to` (adds `ses:no-track`); links to a group's record add `operation: group.id`, which switches to that group if the user belongs to it.
+- **Health check** (Phase 8 B): `HealthCheck` reports failed Solid Queue jobs since the previous check and missing weather for active cells (the state of the data, which clears itself); `HealthCheckJob` (7 am) stores the result (`HealthCheck.run`/`.last`, in `Rails.cache`) and emails the confirmed admins when there are problems (`AdminMailer.health`). The admin weather page shows the stored result with a re-run; `/up` (`HealthController`) gives public JSON (status, version, database, the last check's counts). `DailyDigestJob` fails at the end if any user's digest failed, so it shows as a failed job. Failed jobs are read only under the `:solid_queue` adapter (its tables are only on the servers); specs stub `SolidQueue::FailedExecution`.
+
+## CSV exports
+
+Every export (Phase 8 D) opens with PRISM-style frontmatter (a title, then "Label: value" lines: what it covers, units, who exported it and when, the source, the About link), then the data, in units as stored (inches whatever the user's units), in UTF-8 with a byte order mark (Excel garbles ° and – without it).
+
+- Server ones include `CsvExport`: `PlantingCsv` (a planting's season), `SeasonReportCsv` (the operation's season, on Setup), `WeatherCsv` (a weather zone, named by location: `WeatherCell#file_location`), `PivotIrrigationCsv`.
+- Each weather chart's "Summary and data" builds its CSV in the browser (`lib/csv.ts`, `panelCsvRows` on panels built in imperial units).
+- Escape grower-typed text with `text` (formula injection), not numbers.
+
+## Outside services
+
+- **Open-Meteo:** the forecast API reaches only ~92 days back (older days need the historical-forecast API or the archive). best_match, GFS and NBM have no soil variables over North America; ECMWF IFS does. Multi-model requests suffix each variable with the model name; multi-location requests return a list (one location, an object). Coastal points snap to a land cell, so the API's coordinates can differ from `Weather::Grid` there. Specs use recorded responses (`spec/fixtures/files/open_meteo`, `spec/support/fake_open_meteo.rb`).
+- **Nominatim** (place search) forbids search-as-you-type: `PlaceSearch` searches only on Enter or Go. Proxy it or switch providers if use grows.
+- **Map layers** (`lib/map/overlays.ts`): NOAA's MRMS image service labels its values inches but returns millimeters; NOAA's radar image service stores rendered colors (and defaults to its oldest raster), so radar values come from IEM's tiles (`lib/map/radar.ts`).
+- **USDA soil survey** (Soil Data Access) answers the setup suggestion and the Soil types layer, from the browser; it has outages (502s, shown as CORS errors), so the browser tests stub it (`e2e/test.ts`).

@@ -19,7 +19,8 @@ module EnsembleProjection
         weather = member[day.inputs.date] || {}
         rain = (day.inputs.rain_source == :forecast) ? (weather[:precip] || day.inputs.rain) : day.inputs.rain
         WaterBalance::Day.new(date: day.inputs.date, et0: weather[:et0], rain:, irrigation: day.inputs.irrigation,
-          soil_moisture_pct: day.inputs.soil_moisture_pct, canopy: day.canopy)
+          soil_moisture_pct: day.inputs.soil_moisture_pct, canopy: day.canopy,
+          wind_mph: day.inputs.wind_mph, rh_min_pct: day.inputs.rh_min_pct)
       end
       WaterBalance.run(params, balance_days, initial_ad: start_ad, et_history:).map(&:ad)
     end

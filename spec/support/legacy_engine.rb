@@ -12,7 +12,10 @@ module LegacyEngine
     c2: "moisture reading capped at AD_max (not TAW) and floored at the wilting point",
     c7: "gap fill from computed days only, within the previous 7 days",
     c8: "percent-cover ET: half-open bare-soil steps, cover clamped to 0–100, never negative",
-    c19: "ET recomputed on soil moisture reading days (legacy kept a stale stored value, which fed gap fill)"
+    c19: "ET recomputed on soil moisture reading days (legacy kept a stale stored value, which fed gap fill)",
+    c21: "crop ET by the crop's FAO-56 Kc mid (adjusted for wind and humidity) against FAO-56 ET0: the percent " \
+      "cover table scaled from 1 on bare soil to Kc mid at 80% cover, and LAI's maximum Kc (legacy: the table as " \
+      "is, against AgWeather's ET, and 1.1)"
   }.freeze
 
   # Fixes that change the canopy series rather than the balance
@@ -27,8 +30,9 @@ module LegacyEngine
 
   # days: [{date:, et0:, rain:, irrigation:, moisture:, canopy:, stored_adj_et:}]; returns AD per
   # day. stored_adj_et is the adj_et legacy had saved for the day, which it kept on reading days.
+  # With C21, kc_mid and crop_height_m (FAO-56 Table 12) and each day's :wind_mph and :rh_min_pct.
   def run(field_capacity:, perm_wilting_pt:, max_root_zone_depth:, mad_frac:, days:, et_method: "pct_cover", fixes: [],
-    initial_ad: nil)
+    initial_ad: nil, kc_mid: nil, crop_height_m: nil)
     mrzd = max_root_zone_depth
     taw = (field_capacity - perm_wilting_pt) * mrzd
     ad_max = mad_frac * taw
@@ -40,7 +44,12 @@ module LegacyEngine
 
     days.map do |day|
       ref_et = day[:et0] || 0.0
-      adj_et = (et_method == "lai") ? lai_et(ref_et, day[:canopy]) : pct_cover_et(ref_et, day[:canopy], fixes.include?(:c8))
+      kc = kc_mid && fixes.include?(:c21) && fao56_kc_mid(kc_mid, crop_height_m, day[:wind_mph], day[:rh_min_pct])
+      adj_et = if et_method == "lai"
+        lai_et(ref_et, day[:canopy], kc || 1.1)
+      else
+        pct_cover_et(ref_et, day[:canopy], fixes.include?(:c8)) * (kc ? 1 + (kc - 1) * [day[:canopy].to_f.clamp(0, 100), 80].min / 80 : 1)
+      end
       filled = ref_et < 0.00001
       if day[:moisture] && day.key?(:stored_adj_et) && !fixes.include?(:c19)
         adj_et = day[:stored_adj_et] || 0.0
@@ -103,7 +112,14 @@ module LegacyEngine
     fixed ? [adj_et, 0.0].max : adj_et
   end
 
-  def lai_et(ref_et, lai)
-    ref_et * 1.1 * (1 - Math.exp(-1.5 * (lai || 0.0)))
+  def lai_et(ref_et, lai, kc_max = 1.1)
+    ref_et * kc_max * (1 - Math.exp(-1.5 * (lai || 0.0)))
+  end
+
+  # FAO-56 eq. 62, written out independently of CropEt.kc_mid
+  def fao56_kc_mid(kc, height, wind_mph, rh_min)
+    u2 = wind_mph ? (wind_mph * 0.44704 * 4.87 / Math.log(672.58)).clamp(1.0, 6.0) : 2.0
+    rh = rh_min ? rh_min.clamp(20.0, 80.0) : 45.0
+    kc + (0.04 * (u2 - 2) - 0.004 * (rh - 45)) * (height / 3.0)**0.3
   end
 end

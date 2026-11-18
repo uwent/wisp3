@@ -1,6 +1,13 @@
 # Development
 
-How to set up a machine to work on WISP 3, the day-to-day commands, and how deployment fits in. The conventions for writing code here (tenancy, units, the engine, gotchas) are in [CLAUDE.md](CLAUDE.md); the design and roadmap are in [PLAN.md](PLAN.md).
+How to set up a machine to work on WISP 3, the day-to-day commands, and how deployment fits in.
+
+Other documents:
+- [CLAUDE.md](CLAUDE.md): the conventions for writing code here (tenancy, units, the engine, forms, gotchas), for people and for Claude Code alike.
+- [docs/architecture.md](docs/architecture.md): how each area of the app works and where its code is.
+- [PLAN.md](PLAN.md): the design, decisions and roadmap; its handoff at the top says where work stands.
+- [docs/deployment.md](docs/deployment.md): staging and production, first-time setup and routine deploys.
+- [docs/accessibility.md](docs/accessibility.md), [docs/canopy/](docs/canopy/), [docs/weather-corrections/](docs/weather-corrections/), [docs/weather-comparison.md](docs/weather-comparison.md): the accessibility audit, and the research behind the canopy curves and weather corrections.
 
 ## 1. Prerequisites
 
@@ -77,7 +84,8 @@ bin/dev                                                # http://localhost:3000
 
 ### Data to work with
 
-- **A demo account:** `bin/rails demo:seed` builds farms, pivots, fields and a season of entries, and prints the sign-in. It takes `EMAIL=`, `PASSWORD=` and `YEAR=`.
+- **A demo account:** `bin/rails demo:seed` builds the demo operation from `db/demo/farms.yml` (farms on real fields, every kind of irrigation system, plantings and a season of entries) and prints the sign-in. It takes `EMAIL=`, `PASSWORD=` and `YEAR=`, and rerunning it rebuilds the account (keeping the password). After editing the demo in the app, `bin/rails demo:export` writes it back to `db/demo/farms.yml`; the browser tests find the demo by the names in `e2e/demo.json`, so a rename goes there too.
+- **The example farm:** `bin/rails demo:example` builds the public, read-only example (`/example`, shown as of July 20 of `YEAR`) from the same file.
 - **Weather:** in development, jobs run inside the web server (Active Job's async adapter). Creating a pivot queues its weather backfill from Open-Meteo, which needs network access. `bin/rails weather:refresh` fetches weather for every active cell now.
 - **Email:** mail opens in the browser at http://localhost:3000/letter_opener, so you can sign up and use sign-in links without a mail server.
 - **An admin:** `bin/rails runner 'User.find_by!(email: "you@example.com").update!(admin: true)'` opens the admin pages (users, weather status, health check).
@@ -90,21 +98,26 @@ bin/ci                                    # everything CI runs (below)
 bundle exec rspec spec/path_spec.rb       # one Rails spec file
 pnpm test                                 # Vitest (frontend logic and components)
 pnpm check                                # svelte-check and TypeScript
-bin/e2e                                   # Playwright, on its own database (wisp3_e2e); args go to playwright test
-bin/e2e keyboard.spec.ts --project desktop
+bin/e2e                                   # Playwright, on its own database (wisp3_e2e), about 3 minutes; args go to playwright test
+bin/e2e e2e/keyboard.spec.ts --project desktop
+bin/e2e e2e/smoke.spec.ts -g 'daily entry'
 bundle exec standardrb --fix              # Ruby style
 bin/rails typelizer:generate              # after changing serializers or routes; commit the output
 ```
 
-`bin/ci` runs, in order: Ruby style (Standard), frontend style and lint (Prettier, ESLint), type checks, whether the generated TypeScript types and route helpers are current, Vitest, RSpec, then the Playwright suite. The browser tests include an accessibility scan of every page (axe), keyboard tests, and checks that pages reflow at 320 px wide and with 200% text. GitHub Actions runs the same script on every push to `main` and on pull requests (`.github/workflows/ci.yml`).
+`bin/ci` runs, in order: Ruby style (Standard), frontend style and lint (Prettier, ESLint), type checks, whether the generated TypeScript types and route helpers are current, Vitest, then RSpec (a few minutes). The browser tests are separate: `bin/e2e` builds the Vite assets when they've changed, seeds its own database and runs Playwright on two workers, desktop and phone (dark mode, tests tagged `@phone`). They include an accessibility scan of every page (axe, light and dark, with the reflow checks at 320 px wide and 200% text), keyboard tests and smoke tests. Outside map and soil services are stubbed (`e2e/test.ts`; `E2E_LIVE=1` reaches the real ones). GitHub Actions runs both, as separate jobs, on every push to `main` and on pull requests (`.github/workflows/ci.yml`). Run all of `bin/e2e` before merging to `main`.
 
 The specs never use the network: Open-Meteo responses are recorded in `spec/fixtures/files/open_meteo`, and WebMock blocks the rest.
 
 ### Other tasks
 
 ```bash
+bin/rails weather:refresh      # fetch weather for every active cell now
 bin/rails weather:compare      # AgWeather vs Open-Meteo report → docs/weather-comparison.md
+bin/rails weather:recorrect    # count stored days whose weather corrections aren't current; CONFIRM=yes refetches them
 bin/rails demo:seed            # rebuild the demo account
+bin/rails demo:export          # the demo account, as edited in the app, back to db/demo/farms.yml
+bin/rails demo:example         # rebuild the public example farm
 ```
 
 ## 4. Secrets and credentials
@@ -124,18 +137,18 @@ Settings read from the environment (`WISP3_DATABASE_PASSWORD`, `OPEN_METEO_API_K
 | Stage | How | Command |
 |---|---|---|
 | staging (`dev.wisp.cals.wisc.edu`) | Capistrano: Puma and the Solid Queue worker as systemd user services owned by `deploy` | `cap staging deploy` |
-| production (AWS: EC2 and RDS) | Docker Compose: an image per commit in ECR, run as `web` (Thruster and Puma) and `jobs` | `bin/production push`, then `bin/production deploy` |
+| production (AWS: EC2 and RDS; `v3.wisp.cals.wisc.edu` until launch) | Docker Compose: the commit's image built on the server from GitHub, run as `web` (Thruster and Puma) and `jobs` | `bin/production deploy` |
 
 ```bash
-cap staging deploy                 # installs packages, builds assets, migrates, restarts
+cap staging deploy                 # main (BRANCH=… for another): packages, assets, migrations, restart
 cap staging systemd:status
 
-bin/production push                # build HEAD's image and push it to ECR (needs AWS_PROFILE)
-bin/production deploy [TAG]        # deploy it; an earlier TAG rolls back
-bin/production status | logs | console | rails … | ssh
+git push                           # production builds the pushed commit, not your working copy
+bin/production deploy [COMMIT]     # build and deploy HEAD; an earlier commit rolls back
+bin/production status | images | reload | logs | console | rails … | ssh
 ```
 
-- **Routine deploys, first-time setup of either server, and verifying a deploy:** [docs/deployment.md](docs/deployment.md).
+- **Routine deploys, first-time setup of either server, verifying a deploy, and changing the deploy configuration:** [docs/deployment.md](docs/deployment.md).
 - **Building the production image locally:** `docker build --platform linux/amd64 -t wisp3:test .`. To run it, it needs a Postgres, `RAILS_MASTER_KEY`, `WISP3_DATABASE_PASSWORD`, `DB_HOST` and `APP_HOST`.
 - **After a deploy,** `https://<host>/up` returns JSON with `status` (`ok`, `degraded` or `down`), the deployed `version` and the morning health check's result. An uptime monitor can watch it.
 
@@ -147,5 +160,6 @@ bin/production status | logs | console | rails … | ssh
 - **Stopping a dev server:** stop it by port or PID (`lsof -i :3000`). `pkill -f` with a pattern that also matches your own command line kills the shell running it.
 - **`systemctl --user` over SSH says "Failed to connect to bus":** set `XDG_RUNTIME_DIR=/run/user/$(id -u)` first. Capistrano's tasks do this.
 - **`bin/production` times out connecting to the server:** SSH is open only to known IP addresses; send IT your current public IP.
-- **`bin/production push` says "no basic auth credentials" or "expired token":** sign in again (`aws sso login` or `aws login`) with `AWS_PROFILE` set.
+- **`bin/production deploy` says the commit "isn't on GitHub":** push it first. Other deploy failures are in docs/deployment.md, Production, Troubleshooting.
+- **Browser tests fail on a map or soil layer:** a test is reaching an outside service; import `test` from `e2e/test.ts`, which stubs them.
 - **CI says generated types or routes are out of date:** run `bin/rails typelizer:generate` and commit the changes.

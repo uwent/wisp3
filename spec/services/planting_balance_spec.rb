@@ -23,6 +23,27 @@ RSpec.describe PlantingBalance do
     }).last.ad)
   end
 
+  it "takes crop ET from the crop's Kc mid at full cover, adjusted for the day's wind and humidity (C21)" do
+    planting.plant.update!(kc_mid: 1.15, crop_height_m: 0.6)
+    create(:canopy_observation, planting:, date: Date.new(2026, 6, 2), pct_cover: 100)
+    calm = weather.transform_values { |values| values.merge(wind: nil, rh_min: nil) }
+    dry = weather.transform_values { |values| values.merge(wind: 15.0, rh_min: 25.0) }
+
+    expect(described_class.new(planting, weather: calm).days[4].result.adj_et).to be_within(1e-4).of(0.2 * 1.15)
+    windy = described_class.new(planting, weather: dry).days[4]
+    expect(windy.inputs).to have_attributes(wind_mph: 15.0, rh_min_pct: 25.0)
+    expect(windy.result.adj_et).to be_within(1e-4).of(0.2 * CropEt.kc_mid(1.15, 0.6, wind_mph: 15.0, rh_min_pct: 25.0))
+    expect(windy.result.adj_et).to be > 0.2 * 1.15
+  end
+
+  it "reads wind and minimum humidity from stored days and the forecast" do
+    cell = field.pivot.reload.weather_cell
+    cell.weather_days.create!(date: Date.new(2026, 6, 1), et0_in: 0.2, precip_in: 0.0, wind_speed_mph: 9.0, rh_min_pct: 40.0,
+      model: "best_match", hours: 24, fetched_at: Time.current)
+    inputs = WeatherDay.balance_inputs(cell, [Date.new(2026, 6, 1)])
+    expect(inputs[Date.new(2026, 6, 1)]).to include(wind: 9.0, rh_min: 40.0)
+  end
+
   it "uses the field's own water fractions over the soil type's" do
     field.update!(field_capacity: 0.2)
     expect(described_class.new(planting).params.field_capacity).to eq(0.2)

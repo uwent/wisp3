@@ -10,16 +10,23 @@
 # - C6/C7: missing et0 is gap-filled from computed days only (legacy fed filled values back).
 # - No truncation of small drainage (legacy zeroed drainage under 0.01 and ignored excess
 #   under 0.00001); outputs are rounded to 4 places instead.
+# - C21: crop ET by the crop's coefficient against FAO-56 ET0 (CropEt), when Params has kc_mid.
 module WaterBalance
   GAP_FILL_DAYS = 7 # gap fill: mean of the top GAP_FILL_TOP adjusted ETs in the previous 7 days
   GAP_FILL_TOP = 3
   PRECISION = 4
 
-  # FC and PWP are fractions; MRZD inches; MAD a fraction; percents are 0–100
+  # FAO-56 Table 12 values for a planting's crop (plants.yml): Kc mid and height in meters
+  Crop = Data.define(:kc_mid, :height_m) do
+    def self.for(plant) = plant&.kc_mid && new(kc_mid: plant.kc_mid, height_m: plant.crop_height_m)
+  end
+
+  # FC and PWP are fractions; MRZD inches; MAD a fraction; percents are 0–100. crop: a Crop, or nil
+  # for the percent cover table as legacy used it (CropEt, C21)
   Params = Data.define(:field_capacity, :perm_wilting_pt, :max_root_zone_depth, :mad_frac, :et_method,
-    :target_ad_pct, :initial_moisture_pct) do
+    :target_ad_pct, :initial_moisture_pct, :crop) do
     def initialize(field_capacity:, perm_wilting_pt:, max_root_zone_depth:, mad_frac:, et_method: "pct_cover",
-      target_ad_pct: nil, initial_moisture_pct: nil)
+      target_ad_pct: nil, initial_moisture_pct: nil, crop: nil)
       unless perm_wilting_pt.positive? && perm_wilting_pt < field_capacity && field_capacity < 1
         raise ArgumentError, "need 0 < wilting point < field capacity < 1"
       end
@@ -33,7 +40,7 @@ module WaterBalance
       new(field_capacity: planting.effective_field_capacity, perm_wilting_pt: planting.effective_perm_wilting_pt,
         max_root_zone_depth: planting.max_root_zone_depth, mad_frac: planting.mad_frac,
         et_method: planting.et_method, target_ad_pct: planting.target_ad_pct,
-        initial_moisture_pct: planting.initial_moisture_pct)
+        initial_moisture_pct: planting.initial_moisture_pct, crop: Crop.for(planting.plant))
     end
 
     # Total available water, field capacity to wilting point
@@ -55,9 +62,11 @@ module WaterBalance
   end
 
   # One day's resolved inputs. et0 nil = missing (gap-filled); rain and irrigation nil = none.
-  # canopy is percent cover or LAI, matching Params#et_method.
-  Day = Data.define(:date, :et0, :rain, :irrigation, :soil_moisture_pct, :canopy) do
-    def initialize(date:, et0: nil, rain: nil, irrigation: nil, soil_moisture_pct: nil, canopy: 0.0)
+  # canopy is percent cover or LAI, matching Params#et_method. wind_mph (mean at 10 m) and
+  # rh_min_pct adjust the crop's Kc mid (CropEt.kc_mid); nil counts as FAO-56's standard climate.
+  Day = Data.define(:date, :et0, :rain, :irrigation, :soil_moisture_pct, :canopy, :wind_mph, :rh_min_pct) do
+    def initialize(date:, et0: nil, rain: nil, irrigation: nil, soil_moisture_pct: nil, canopy: 0.0, wind_mph: nil,
+      rh_min_pct: nil)
       super
     end
   end
@@ -96,12 +105,18 @@ module WaterBalance
   end
 
   def crop_et(params, day, history)
-    return [CropEt.adjusted(params.et_method, day.et0, day.canopy), :computed] if day.et0
+    return [CropEt.adjusted(params.et_method, day.et0, day.canopy, kc: kc(params, day)), :computed] if day.et0
 
     recent = history.filter_map { |date, et| et if date >= day.date - GAP_FILL_DAYS }
     return [nil, :missing] if recent.empty?
     top = recent.max(GAP_FILL_TOP)
     [top.sum / top.size, :gap_fill]
+  end
+
+  # The day's crop coefficient at full cover (C21), nil without a crop
+  def kc(params, day)
+    crop = params.crop
+    crop && CropEt.kc_mid(crop.kc_mid, crop.height_m, wind_mph: day.wind_mph, rh_min_pct: day.rh_min_pct)
   end
 
   # Today's status from AD (PLAN.md §5.5); projections add "caution" for a coming crossing

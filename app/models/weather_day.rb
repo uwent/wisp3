@@ -19,7 +19,8 @@ class WeatherDay < ApplicationRecord
 
   validates :date, :model, :hours, :fetched_at, presence: true
 
-  # {date => {et0:, precip:}} for the water balance (DailyInputs) over a range of dates. Days not
+  # {date => {et0:, precip:, wind:, rh_min:}} for the water balance (DailyInputs) over a range of dates
+  # (wind: mean at 10 m, mph; rh_min: %; both adjust the crop coefficient, CropEt.kc_mid). Days not
   # stored yet (today, and the days ahead) come from the cell's latest forecast, marked
   # forecast: true; dates with neither are absent.
   def self.balance_inputs(cell, dates)
@@ -27,15 +28,17 @@ class WeatherDay < ApplicationRecord
     balance_inputs_by_cell([cell.id], dates.min..dates.max).fetch(cell.id, {})
   end
 
-  # {cell_id => {date => {et0:, precip:}}} for several cells over a range of dates, in two queries
+  # {cell_id => {date => {et0:, precip:, wind:, rh_min:}}} for several cells over a range of dates, in two queries
   def self.balance_inputs_by_cell(cell_ids, dates)
-    stored = where(weather_cell_id: cell_ids, date: dates).pluck(:weather_cell_id, :date, :et0_in, :precip_in)
-      .group_by(&:first).transform_values { |rows| rows.to_h { |_, date, et0, precip| [date, {et0:, precip:}] } }
+    stored = where(weather_cell_id: cell_ids, date: dates)
+      .pluck(:weather_cell_id, :date, :et0_in, :precip_in, :wind_speed_mph, :rh_min_pct).group_by(&:first)
+      .transform_values { |rows| rows.to_h { |_, date, et0, precip, wind, rh_min| [date, {et0:, precip:, wind:, rh_min:}] } }
     WeatherForecast.deterministic.latest_by_cell(cell_ids).each do |cell_id, forecast|
       days = stored[cell_id] ||= {}
       forecast.days.each do |date, values|
         next if days.key?(date) || !dates.cover?(date)
-        days[date] = {et0: values["et0_in"], precip: values["precip_in"], forecast: true}
+        days[date] = {et0: values["et0_in"], precip: values["precip_in"], wind: values["wind_speed_mph"],
+          rh_min: values["rh_min_pct"], forecast: true}
       end
     end
     stored

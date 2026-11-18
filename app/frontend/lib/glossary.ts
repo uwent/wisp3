@@ -78,7 +78,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Crop coefficient (Kc)',
     matches: ['crop coefficient', 'Kc'],
     definition:
-      'The fraction of reference ET the crop uses, from 0 for bare soil to about 1.1 at full canopy. WISP calculates it from percent cover or LAI.',
+      "The fraction of reference ET the crop uses: near 0 for bare soil, rising with the canopy to the crop's full-cover value from FAO-56 (1.15 for potato, 1.20 for field corn), adjusted for the day's wind and humidity. WISP calculates it from percent cover or LAI.",
   },
   {
     id: 'percent_cover',
