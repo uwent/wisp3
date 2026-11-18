@@ -86,6 +86,21 @@
     return options.toSorted((a, b) => Number(b.own) - Number(a.own) || (a.meters ?? Infinity) - (b.meters ?? Infinity))
   })
   let area = $state(untrack(() => field?.area_acres ?? null))
+
+  // Field capacity and wilting point: the soil's unless measured, collapsed to a line saying what's in
+  // effect (as the planting form's Settings, G.13 part 3) and opened by an error in either
+  let fieldCapacity = $state(untrack(() => field?.field_capacity ?? null))
+  let wiltingPoint = $state(untrack(() => field?.perm_wilting_pt ?? null))
+  let soilWaterOpen = $state(false)
+  const percent = (fraction: number | null | undefined) =>
+    fraction === null || fraction === undefined ? '–' : `${Number((fraction * 100).toFixed(1))}%`
+  const soilWaterSummary = $derived.by(() => {
+    const own = (value: number | null) => (value === null ? '' : ' (yours)')
+    const values = `Field capacity ${percent(fieldCapacity ?? soil?.field_capacity)}${own(fieldCapacity)} · wilting point ${percent(wiltingPoint ?? soil?.perm_wilting_pt)}${own(wiltingPoint)}`
+    return fieldCapacity === null && wiltingPoint === null && soil
+      ? `${values}, from ${soil.name.toLowerCase()}`
+      : values
+  })
   // Seasons that have ended keep their soil, area and irrigation system
   const endedYears = $derived(field?.ended_years ?? [])
   const endedText = $derived(
@@ -98,6 +113,9 @@
   class="space-y-4"
   options={{ preserveScroll: true, preserveState: true }}
   onSuccess={ondone}
+  onError={(errors) => {
+    if (errors.field_capacity || errors.perm_wilting_pt) soilWaterOpen = true
+  }}
 >
   {#snippet children({ errors, processing })}
     <div bind:this={inputs} class="space-y-4" oninput={() => (edited = true)} onchange={() => (edited = true)}>
@@ -164,15 +182,22 @@
             : 'keep the soil, area and system they ran with'}; to correct a soil or area, edit that season's crop.
         </p>
       {/if}
-      <details class="text-sm" open={field?.field_capacity !== null && field?.field_capacity !== undefined}>
-        <summary class="cursor-pointer text-ink-muted">Use your own field capacity and wilting point</summary>
-        <div class="mt-3 grid gap-4 sm:grid-cols-2">
+      <!-- Kept mounted while closed, so its values are submitted -->
+      <details bind:open={soilWaterOpen} class="group rounded-md border border-line">
+        <summary class="cursor-pointer list-none px-3 py-2 text-sm">
+          <span class="flex items-center justify-between gap-2">
+            <span class="font-display font-semibold">Soil water</span>
+            <span class="text-ink-muted group-open:hidden">Change</span>
+          </span>
+          <span class="block text-ink-muted">{soilWaterSummary}</span>
+        </summary>
+        <div class="grid gap-4 border-t border-line p-3 sm:grid-cols-2">
           <NumberField
             label="Field capacity"
             name="field[field_capacity]"
             scale={100}
             unitLabel="%"
-            value={field?.field_capacity ?? null}
+            bind:value={fieldCapacity}
             blankValue={soil?.field_capacity ?? null}
             hint="Blank: {soil?.name ?? 'the soil'}'s"
             info="field.field_capacity"
@@ -183,7 +208,7 @@
             name="field[perm_wilting_pt]"
             scale={100}
             unitLabel="%"
-            value={field?.perm_wilting_pt ?? null}
+            bind:value={wiltingPoint}
             blankValue={soil?.perm_wilting_pt ?? null}
             hint="Blank: {soil?.name ?? 'the soil'}'s"
             info="field.wilting_point"

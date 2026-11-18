@@ -406,7 +406,7 @@ test('a linear is sized by dragging a corner and turned by its handle', async ({
   const before = await travel.inputValue()
   await dragHandle(page, 'Drag to resize the linear', 0, 20)
   await expect(travel).not.toHaveValue(before)
-  const direction = page.getByLabel('Direction of travel')
+  const direction = page.getByLabel('Direction of travel', { exact: true })
   await expect(direction).toHaveValue('0')
   await dragHandle(page, 'Drag to turn the linear', 60, 0)
   await expect(direction).not.toHaveValue('0')
@@ -418,6 +418,11 @@ test('a linear is sized by dragging a corner and turned by its handle', async ({
   // Delete it again (from its edit page): a new pivot sorts first on the dashboard, and its weather
   // cell has no seeded weather, so leaving it would change what later tests open
   await row.getByRole('link', { name: `Edit ${name}` }).click()
+  // A saved system's kind is one line until Change shows the choices, the current one focused
+  await expect(page.getByRole('radio', { name: /Linear/ })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Change the kind of system' }).click()
+  await expect(page.getByRole('radio', { name: /Linear/ })).toBeChecked()
+  await expect(page.getByRole('radio', { name: /Linear/ })).toBeFocused()
   // A saved system's map is locked until Edit on the map; Cancel puts back what the map changed
   const saved = await travel.inputValue()
   await expect(page.getByRole('application', { name: /^Map of the linear/ }).locator('canvas')).toBeVisible()

@@ -6,7 +6,7 @@ import type { Units } from './units'
 // most two sentences (fieldInfo.test.ts), for what the input does here and when to change it; a
 // hint that must be read before typing stays under the box instead. Where the input's label is a
 // glossary term, `term` adds its definition below the tip. When two forms ask the same thing for
-// the same reason, the second names the first's entry (`FIELD_INFO['pivot.latitude']`), so this
+// the same reason, both name one shared entry (`fieldCapacity` below), so this
 // module lists every tip in the app. Wording from the About page, lib/guidance.ts and the legacy
 // user guide; a tip that needs a value in the user's units is a function of them.
 
@@ -14,10 +14,6 @@ type Entry = {
   text: string | ((u: Units) => string)
   /** A glossary id: its definition is shown below the tip */
   term?: string
-}
-
-const pivotLatitude: Entry = {
-  text: "Where the system sits (a center pivot's pivot point, the middle of a linear or a block), in decimal degrees; placing it on the map fills this in. WISP gets its weather for this spot.",
 }
 
 const arc: Entry = {
@@ -50,8 +46,9 @@ export const FIELD_INFO = {
     text: 'How this system waters. A center pivot or linear is drawn to its size on the map; the others are a single point, their area the total of their fields.',
     term: 'irrigation_system',
   },
-  'pivot.latitude': pivotLatitude,
-  'pivot.longitude': pivotLatitude,
+  'pivot.coordinates': {
+    text: "Where the system sits (a center pivot's pivot point, the middle of a linear or a block), which is where WISP gets its weather; placing it on the map fills this in. You can paste them from Google Maps (right-click the spot) or two spreadsheet cells, or type the latitude then the longitude, in decimal degrees or degrees, minutes and seconds.",
+  },
   'pivot.radius': {
     text: "From the pivot point to the edge of the area it waters, including an end gun's reach. It draws the circle on the map; each field's area is set on the field.",
   },
@@ -65,6 +62,9 @@ export const FIELD_INFO = {
   },
   'pivot.travel': {
     text: "How far the machine travels from one end of its run to the other. With the machine's length, it draws the rectangle on the map.",
+  },
+  'pivot.bearing': {
+    text: 'The compass direction the machine travels, as a whole number from 0 to 179: 0 means it travels north and south, 90 east and west. Turning it by its handle on the map fills this in.',
   },
   'pivot.pump_capacity': {
     text: 'The water the system delivers while it runs. With it, you can enter irrigation as the hours it ran, and WISP works out the depth over its fields in season.',

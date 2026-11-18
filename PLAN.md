@@ -18,6 +18,8 @@ Read this first; rewrite it at the end of each session. (The per-feature handoff
 
 **Anti-abuse (2026-11-18, on `main`):** blocked email domains widened from `.ru` to a few spam top-level domains and the disposable-address list (`EmailDomainBlocklist`), a honeypot and time check on sign-up (`SignUpGuard`), per-address limits on confirmation resends and password resets, confirmation links expiring after 3 days, and a daily purge of accounts unconfirmed after 30 days (`docs/architecture.md`, Accounts and abuse).
 
+**Form sections (2026-11-18, on `main`):** the system page in sections with its kind collapsed when saved, one Coordinates box reading pasted locations, and the field dialog's Soil water summary (Phase 9, Quality of life).
+
 **Analytics (Phase 8 H), on branch `analytics`:** built and approved by Ben (Usage page and privacy wording); CI, merge and deploy next. On the same branch, the About page's "What's changed" (a changelog no grower had seen) became "What's new in WISP 3", with a History section (A3600 by Curwen and Massie, the satellite ET work behind AgWeather, WISP 2012, A3600-01/-02) and rewritten credits; both publications (2019 revisions) are served from `public/publications/` and linked from History, the crop coefficients and the soil moisture advice.
 
 **Next:**
@@ -1513,7 +1515,7 @@ After the merge of `beta-readiness` (2026-11-17 review, Ben). Refactors and qual
 - [ ] **Duplicate an irrigation system** in Setup (a farm of similar pivots).
 - [ ] **Daily entry:** offer yesterday's amounts for systems that ran yesterday, as a placeholder to accept, not a value.
 - [ ] **Remember the last choices** in setup forms for the session (soil, crop, emergence date), as suggestions.
-- [ ] **Sections on other long forms** (the field dialog, the system page), as the planting form has (G.13 part 3), if they need it.
+- [x] **Sections on other long forms** (Ben, 2026-11-18), as the planting form has (G.13 part 3). The system page is one card in sections (Kind of system, Location and size, Equipment and notes; `SectionHeading`, also in quick setup's step 2), a saved system's kind one line with **Change** (the choices, the current one focused); Direction of travel's hint became a tip. Latitude and longitude are one **Coordinates** box (`CoordinatesField`, `lib/coordinates.ts`) reading what growers paste: Google Maps' pair, two spreadsheet cells, degrees, minutes and seconds, a Maps link; a pair only a US place the other way round is swapped and said so, a place outside the US warned (a sign left off). Ben: no toggle for separate boxes. The field dialog's field capacity and wilting point are **Soil water**, collapsed to what's in effect ("Field capacity 18% · wilting point 8%, from sandy loam"), opened by an error. Tests: `coordinates.test.ts`, `CoordinatesField.test.ts`, the linear smoke test's Change.
 
 ### After launch
 

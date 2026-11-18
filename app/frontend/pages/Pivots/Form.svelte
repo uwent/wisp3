@@ -7,6 +7,7 @@
   import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
+  import SectionHeading from '@/lib/components/SectionHeading.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import {
@@ -117,36 +118,39 @@
           error={(attribute) => errors[attribute]}
           others={other_pivots}
           soilTypes={soil_types}
-          surveyLevel="h2"
+          headingLevel="h2"
           locked={editing}
         />
-      </section>
 
-      <section class="grid gap-4 rounded-lg border border-line bg-surface-raised p-6 sm:grid-cols-2">
-        <NumberField
-          label={isPoint(shape.kind) ? 'Flow' : 'Pump capacity'}
-          name="pivot[pump_capacity_gpm]"
-          quantity="flow"
-          value={pivot.pump_capacity_gpm ?? null}
-          info="pivot.pump_capacity"
-          error={errors.pump_capacity_gpm}
-          optional
-        />
-        <TextField
-          label="Equipment"
-          name="pivot[equipment]"
-          value={pivot.equipment ?? ''}
-          placeholder={EQUIPMENT_EXAMPLES[shape.kind]}
-          info="pivot.equipment"
-          optional
-          hint={shape.kind === 'traveler' ? 'The machine, named the same at each field it waters' : undefined}
-        />
-        <div class="space-y-1 sm:col-span-2">
-          <FieldLabel label="Notes" for="pivot-notes" optional />
-          <textarea id="pivot-notes" name="pivot[notes]" rows="2" class="block w-full rounded-md text-sm"
-            >{pivot.notes ?? ''}</textarea
-          >
-        </div>
+        <section class="space-y-4" aria-labelledby="pivot-equipment">
+          <SectionHeading label="Equipment and notes" id="pivot-equipment" level="h2" />
+          <div class="grid gap-4 sm:grid-cols-2">
+            <NumberField
+              label={isPoint(shape.kind) ? 'Flow' : 'Pump capacity'}
+              name="pivot[pump_capacity_gpm]"
+              quantity="flow"
+              value={pivot.pump_capacity_gpm ?? null}
+              info="pivot.pump_capacity"
+              error={errors.pump_capacity_gpm}
+              optional
+            />
+            <TextField
+              label="Equipment"
+              name="pivot[equipment]"
+              value={pivot.equipment ?? ''}
+              placeholder={EQUIPMENT_EXAMPLES[shape.kind]}
+              info="pivot.equipment"
+              optional
+              hint={shape.kind === 'traveler' ? 'The machine, named the same at each field it waters' : undefined}
+            />
+            <div class="space-y-1 sm:col-span-2">
+              <FieldLabel label="Notes" for="pivot-notes" optional />
+              <textarea id="pivot-notes" name="pivot[notes]" rows="2" class="block w-full rounded-md text-sm"
+                >{pivot.notes ?? ''}</textarea
+              >
+            </div>
+          </div>
+        </section>
       </section>
 
       <FormFooter
