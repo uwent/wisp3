@@ -2,6 +2,7 @@ module Users
   # Email confirmation links, and resending them
   class ConfirmationsController < Devise::ConfirmationsController
     include InertiaDeviseResponses
+    include LimitsEmailsPerAddress
 
     def new
       render inertia: "Auth/ResendConfirmation", props: {email: params[:email].to_s}
@@ -28,7 +29,7 @@ module Users
         redirect_to new_user_session_path, notice: "Your email address is already confirmed. You can sign in.", status: :see_other
       else
         redirect_to new_user_confirmation_path, status: :see_other,
-          alert: "That confirmation link didn't work. It may be from an older email. Request a new one below, " \
+          alert: "That confirmation link didn't work. Links work for 3 days, and only the newest one works. Request a new one below, " \
             "or sign in if you've already confirmed."
       end
     end

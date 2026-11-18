@@ -1,6 +1,6 @@
 <p style="<%= email_style(:p) %>">Welcome to WISP, <%= @email %>.</p>
 
-<p style="<%= email_style(:p) %>">Please confirm your email address with the button below. After that you can sign in.</p>
+<p style="<%= email_style(:p) %>">Please confirm your email address with the button below. After that you can sign in. The link works for 3 days.</p>
 
 <%= email_button "Confirm my email", confirmation_url(@resource, confirmation_token: @token) %>
 

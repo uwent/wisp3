@@ -3,6 +3,7 @@ module Users
   # requesting a reset never reveals whether an account exists.
   class PasswordsController < Devise::PasswordsController
     include InertiaDeviseResponses
+    include LimitsEmailsPerAddress
 
     def new
       render inertia: "Auth/ForgotPassword", props: {email: params[:email].to_s}

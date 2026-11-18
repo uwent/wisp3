@@ -32,6 +32,8 @@ Rails.application.configure do
       policy.img_src :self, :data, :blob, :https, vite
       policy.connect_src :self, :https, vite, vite.sub("http:", "ws:")
       policy.worker_src :self, :blob, vite
+      # Letter Opener (/letter_opener) shows each email in a frame of its own
+      policy.frame_ancestors :self
     end
   end
 

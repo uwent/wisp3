@@ -24,7 +24,7 @@ class User < ApplicationRecord
   validates :digest_frequency, inclusion: {in: DIGEST_FREQUENCIES}
   validates :digest_scope, inclusion: {in: DIGEST_SCOPES}
   validates :first_name, :last_name, length: {maximum: 100}
-  validate :email_domain_allowed
+  validate :email_domain_allowed, if: :will_save_change_to_email?
 
   after_create :create_personal_group
   before_destroy :destroy_groups_left_empty, prepend: true
@@ -141,6 +141,8 @@ class User < ApplicationRecord
     return false if confirmed? || unconfirmed_email.present?
 
     transaction do
+      # The link proves the address however old the confirmation email is, so confirm_within doesn't apply
+      self.confirmation_sent_at = nil
       confirm
       update_column(:encrypted_password, "") # matches no password; "Forgot your password?" sets one
     end
@@ -170,8 +172,10 @@ class User < ApplicationRecord
   end
 
   # Carried over from the legacy app, which saw spam sign-ups from these domains
+  # Checked only when the address is set or changed, so adding a domain to the list doesn't stop
+  # existing accounts from saving
   def email_domain_allowed
-    errors.add(:email, "can't be used to create a WISP account") if email.to_s.match?(/\.ru\z/i)
+    errors.add(:email, "can't be used for a WISP account") if EmailDomainBlocklist.blocked?(email)
   end
 
   # Deleting an account deletes the farm data only it could reach; shared groups stay, and one

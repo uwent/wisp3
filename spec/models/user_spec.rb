@@ -19,10 +19,17 @@ RSpec.describe User do
   end
 
   describe "validations" do
-    it "rejects .ru addresses" do
+    it "rejects addresses on the blocklist" do
       user = build(:user, email: "someone@mail.ru")
       expect(user).not_to be_valid
-      expect(user.errors[:email]).to include("can't be used to create a WISP account")
+      expect(user.errors[:email]).to include("can't be used for a WISP account")
+    end
+
+    it "checks the blocklist only when the address changes" do
+      user = create(:user)
+      user.update_column(:email, "someone@mailinator.com") # on the list after the account was made
+      expect(user.update(first_name: "Pat")).to be(true)
+      expect(user.update(email: "other@mailinator.com")).to be(false)
     end
 
     it "only allows known unit systems" do
@@ -39,6 +46,13 @@ RSpec.describe User do
       expect(user.reload).to be_confirmed
       expect(user.valid_password?("attacker-password-1")).to be(false)
       expect(user.valid_password?("")).to be(false)
+    end
+
+    it "confirms after the confirmation email's link has expired" do
+      user = create(:user, :unconfirmed)
+      travel 10.days
+      expect(user.confirm_by_magic_link!).to be(true)
+      expect(user.reload).to be_confirmed
     end
 
     it "leaves a confirmed account's password alone" do

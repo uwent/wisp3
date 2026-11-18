@@ -28,6 +28,10 @@ production: &production
   forecast_prune:
     class: ForecastPruneJob
     schedule: at 4am every sunday America/Chicago
+  # Accounts still unconfirmed 30 days after signing up (UnconfirmedAccountPurgeJob)
+  unconfirmed_account_purge:
+    class: UnconfirmedAccountPurgeJob
+    schedule: at 4:15am every day America/Chicago
   # Failed jobs are reported by the health check the morning after; kept a week for a retry
   discard_old_failed_jobs:
     command: "SolidQueue::FailedExecution.where(created_at: ...7.days.ago).discard_all_in_batches"
