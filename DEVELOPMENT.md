@@ -137,7 +137,7 @@ Settings read from the environment (`WISP3_DATABASE_PASSWORD`, `OPEN_METEO_API_K
 | Stage | How | Command |
 |---|---|---|
 | staging (`dev.wisp.cals.wisc.edu`) | Capistrano: Puma and the Solid Queue worker as systemd user services owned by `deploy` | `cap staging deploy` |
-| production (AWS: EC2 and RDS; `v3.wisp.cals.wisc.edu` until launch) | Docker Compose: the commit's image built on the server from GitHub, run as `web` (Thruster and Puma) and `jobs` | `bin/production deploy` |
+| production (AWS: EC2 and RDS; `wisp.cals.wisc.edu`) | Docker Compose: the commit's image built on the server from GitHub, run as `web` (Thruster and Puma) and `jobs` | `bin/production deploy` |
 
 ```bash
 cap staging deploy                 # main (BRANCH=… for another): packages, assets, migrations, restart

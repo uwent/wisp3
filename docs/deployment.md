@@ -3,7 +3,7 @@
 | Stage | Where | How | URL | Rails env |
 |---|---|---|---|---|
 | staging | `dev.agweather.cals.wisc.edu` (SSH port 216), local Postgres | Capistrano, systemd user services | https://dev.wisp.cals.wisc.edu | `staging` |
-| production | AWS us-east-1: EC2 `wisp-prod` (54.159.70.187), RDS `wisp-prod` (PostgreSQL 18) | Docker Compose, images built on the server | https://v3.wisp.cals.wisc.edu until launch, then https://wisp.cals.wisc.edu | `production` |
+| production | AWS us-east-1: EC2 `wisp-prod` (54.159.70.187), RDS `wisp-prod` (PostgreSQL 18) | Docker Compose, images built on the server | https://wisp.cals.wisc.edu | `production` |
 
 Both run the same two processes: the web server (Puma) and the Solid Queue worker (weather refresh, the daily digest, the health check and other background jobs).
 
@@ -20,7 +20,7 @@ On the staging host WISP 3 runs as two **systemd user services** owned by `deplo
 - `wisp3-web`: Puma on `127.0.0.1:3100`, behind nginx
 - `wisp3-jobs`: the Solid Queue worker
 
-The staging host also runs ag-weather and the legacy WISP staging app. WISP 3 takes over the `dev.wisp.cals.wisc.edu` site; legacy files in `~/wisp` are left alone.
+The staging host also runs ag-weather. Legacy WISP's staging app is no longer in service: WISP 3 took over the `dev.wisp.cals.wisc.edu` site; legacy files in `~/wisp` are left alone.
 
 For SSH and `scp`, add the host to `~/.ssh/config` on your machine (Capistrano has its own settings in `config/deploy/staging.rb` and doesn't need this):
 
@@ -137,8 +137,8 @@ CALS IT set up the server, the database and Amazon SES for mail (step 7). The ap
 | Resource | Name | Address |
 |---|---|---|
 | App server (EC2, Ubuntu 26.04, t3.medium: 2 vCPUs, 4 GB, 38 GB disk) | `wisp-prod` | 54.159.70.187 (Elastic IP); you log in as yourself with an SSH key |
-| Database (RDS PostgreSQL 18) | `wisp-prod` | `wisp-prod.chjgrhbg1z6x.us-east-1.rds.amazonaws.com:5432` |
-| Site | | `https://v3.wisp.cals.wisc.edu` until launch (step 3) |
+| Database (RDS PostgreSQL 18, db.t4g.small) | `wisp-prod` | `wisp-prod.chjgrhbg1z6x.us-east-1.rds.amazonaws.com:5432` |
+| Site | | `https://wisp.cals.wisc.edu` (step 3) |
 
 On the server, everything is in `/opt/wisp`, owned by you:
 
@@ -272,11 +272,11 @@ REVOKE CONNECT ON DATABASE wisp3_production, wisp3_production_cache, wisp3_produ
 
 Ask IT (and campus DNS) for these early, as they take longest:
 - **Inbound 80 and 443** from anywhere in the server's security group. Let's Encrypt checks port 80, and browsers use 443.
-- **A DNS record:** the hostname resolving to 54.159.70.187. `wisp.cals.wisc.edu` still serves legacy until launch (PLAN.md §13), so start with a temporary name: `v3.wisp.cals.wisc.edu` (October 2026).
+- **A DNS record:** the hostname resolving to 54.159.70.187. Until launch, production ran as `v3.wisp.cals.wisc.edu` (October 2026); at launch (2026-11-19) `wisp.cals.wisc.edu` moved to this server, legacy moved to `old.wisp.cals.wisc.edu`, and the `v3` record was removed.
 
 Until a record exists, use `54-159-70-187.sslip.io` as `APP_HOST`. sslip.io is a public DNS service that resolves any name with an IP address in it to that address, so Let's Encrypt can issue a real certificate for it. If its certificate hits Let's Encrypt's rate limits (many people use sslip.io), `54.159.70.187.nip.io` works the same way.
 
-**Changing `APP_HOST`** (to the temporary name, then at launch): edit it in `.env` and run `bin/production reload`. Thruster gets a certificate for the new name on its first request. Everyone is signed out, since sessions belong to the old name, and links in emails already sent point to the old name.
+**Changing `APP_HOST`** (as at launch): edit it in `.env` and run `bin/production reload`. Thruster gets a certificate for the new name on its first request. Everyone is signed out, since sessions belong to the old name, and links in emails already sent point to the old name.
 
 #### 4. The settings file
 
@@ -292,7 +292,7 @@ One `NAME='value'` per line. Single quotes keep Compose from reading `$` or `#` 
 RAILS_MASTER_KEY='…'               # contents of config/credentials/production.key (password manager)
 WISP3_DATABASE_PASSWORD='…'        # the wisp3 password from step 2
 DB_HOST='wisp-prod.chjgrhbg1z6x.us-east-1.rds.amazonaws.com'
-APP_HOST='v3.wisp.cals.wisc.edu'   # the public hostname (step 3)
+APP_HOST='wisp.cals.wisc.edu'      # the public hostname (step 3)
 OPEN_METEO_API_KEY='…'             # optional; without it the free API is used
 GA_MEASUREMENT_ID='G-…'            # optional, production only: Google Analytics on the public pages (PLAN.md H.1)
 # Mail through Amazon SES (step 7); until SMTP_ADDRESS is set, production can't send mail
@@ -367,7 +367,16 @@ Then check the app's own mail: sign up with a second address and receive the con
 
 - After the 5 am, 11 am or 5 pm (Central) weather refresh, `/admin/weather` shows weather for every active cell.
 - After 7 am, `/up` reads `ok`, and the admin weather page shows the health check's result. An uptime monitor can alert on a non-200 response or on `"status":"degraded"`.
-- Before launch, restore an RDS snapshot to a scratch instance once and check the app against it (IT may need to do this).
+- Restore an RDS snapshot to a scratch instance once and check the app against it (IT may need to do this):
+  1. In the RDS console, `wisp-prod` → Actions → **Restore to point in time** (the latest restorable time), as `wisp-restore-test`, in the **same VPC, subnet group and security group** as `wisp-prod` (or the server can't reach it), a small class, no public access.
+  2. On the server (`bin/production ssh`), run this once as is (live) and once with `-e DB_HOST=wisp-restore-test.chjgrhbg1z6x.us-east-1.rds.amazonaws.com` after `-T`; the restore should show the same migration version, and counts and latest times matching live up to the restore time. TLS verifies as usual (the endpoint is still `*.rds.amazonaws.com`).
+     ```bash
+     docker compose run --rm --no-deps -T web bin/rails runner '
+       puts ActiveRecord::Base.connection_pool.migration_context.current_version
+       [User, Group, Farm, Pivot, Field, Planting, FieldEntry, PlantingEntry, WeatherDay].each { |m|
+         puts "#{m.name}: #{m.count}  latest #{m.maximum(:updated_at)}" }'
+     ```
+  3. Delete `wisp-restore-test` (it's billed while it runs). The cache and queue databases come back with it, on the same instance.
 
 ---
 

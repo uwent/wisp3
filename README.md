@@ -4,9 +4,9 @@ The Wisconsin Irrigation Scheduling Program (WISP) helps growers decide when to 
 
 WISP grew out of UW Extension publication A3600's checkbook method of irrigation scheduling and was developed as a web app (WISP 2012) by the Departments of Soil Science and Biological Systems Engineering at the University of Wisconsin–Madison. It is maintained by the [Vegetable Entomology Lab](https://vegento.russell.wisc.edu/) in the UW–Madison Department of Entomology. It is built for Wisconsin and the upper Midwest, and is free to use.
 
-WISP 3 is a rewrite of the [original WISP](https://github.com/uwent/wisp), for the 2027 season. Growers set up their operations fresh; the legacy app stays readable for a season after launch.
+WISP 3 is a rewrite of the [original WISP](https://github.com/uwent/wisp), for the 2027 season. Growers set up their operations fresh; the legacy app stays readable at https://old.wisp.cals.wisc.edu until January 2027.
 
-- **Production:** https://v3.wisp.cals.wisc.edu until launch (then https://wisp.cals.wisc.edu)
+- **Production:** https://wisp.cals.wisc.edu
 - **Staging:** https://dev.wisp.cals.wisc.edu
 - **An example farm**, read-only and without an account, at `/example`
 - **Documentation for growers:** the app's About page (`/about`)
