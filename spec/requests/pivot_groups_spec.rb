@@ -36,6 +36,16 @@ RSpec.describe "Pivot groups", type: :request do
     expect(group.pivots.reload).to be_empty
   end
 
+  it "sets the group's rainfall setting, blank following the farm's (Q7)" do
+    post pivot_groups_path, params: {pivot_group: {farm_id: farm.id, name: "Home gauge", use_model_precip: "false", pivot_ids: [""]}}
+    group = PivotGroup.last
+    expect(group.use_model_precip).to be(false)
+    patch pivot_group_path(group), params: {pivot_group: {name: group.name, use_model_precip: "true"}}
+    expect(group.reload.use_model_precip).to be(true)
+    patch pivot_group_path(group), params: {pivot_group: {name: group.name, use_model_precip: ""}}
+    expect(group.reload.use_model_precip).to be_nil
+  end
+
   it "needs a name" do
     post pivot_groups_path, params: {pivot_group: {farm_id: farm.id, name: " ", pivot_ids: [""]}}
     expect(response).to redirect_to(setup_path)
@@ -55,7 +65,7 @@ RSpec.describe "Pivot groups", type: :request do
     north.update!(pivot_group: group)
     get setup_path
     farm_props = inertia.props[:farms].sole
-    expect(farm_props[:pivot_groups]).to eq([{"id" => group.id, "name" => "Home gauge", "created_by_id" => nil}])
+    expect(farm_props[:pivot_groups]).to eq([{"id" => group.id, "name" => "Home gauge", "created_by_id" => nil, "use_model_precip" => nil}])
     expect(farm_props[:pivots].find { |pivot| pivot[:id] == north.id }[:pivot_group_id]).to eq(group.id)
   end
 

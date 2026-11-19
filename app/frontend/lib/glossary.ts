@@ -113,7 +113,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Entered rain only',
     matches: ['only the rain you enter', 'only the rain we enter'],
     definition:
-      "A rainfall setting for an operation or a single field. Instead of the modeled rain, the balance counts only the rain you enter and treats days with no entry as dry. The days ahead still use the forecast's rain, and the outlook also says when the field would need water if no rain fell. Use it if you read a gauge every day it rains. Nothing is deleted, so you can switch back at any time.",
+      "A rainfall setting for a farm or one of its irrigation groups. Instead of the modeled rain, the balance counts only the rain you enter and treats days with no entry as dry. The days ahead still use the forecast's rain, and the outlook also says when the field would need water if no rain fell. Use it if you read a gauge every day it rains. Nothing is deleted, so you can switch back at any time.",
   },
   {
     id: 'planting',

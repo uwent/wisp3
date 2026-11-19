@@ -61,19 +61,20 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(check).to include(kind: "canopy_check", due: true, todo: match(/days ahead of the typical potato curve/))
     end
 
-    it "sets the field's rainfall setting, and clears it to follow the operation's (Q7)" do
-      patch field_path(field), params: {field: {use_model_precip: "false"}}, headers: {"Referer" => field_url(field)}
-      expect(response).to redirect_to(field_url(field))
-      expect(field.reload.use_model_precip).to be(false)
-
+    it "uses only entered rain when the system's irrigation group says so, else its farm's setting (Q7)" do
+      pivot_group = create(:pivot_group, farm:, pivots: [pivot], use_model_precip: false)
       get planting_path(planting)
-      expect(inertia.props[:field][:use_model_precip]).to be(false)
-      expect(inertia.props[:summary][:use_model_precip]).to be(false)
+      expect(inertia.props[:pivot]).to include(use_model_precip: false, pivot_group: {id: pivot_group.id, name: pivot_group.name})
+      expect(inertia.props[:summary]).to include(use_model_precip: false, rain_group_id: pivot_group.id, rain_farm_id: farm.id)
       expect(inertia.props[:days][4]).to include(rain: 0.0, rain_source: "none", rain_model: 0.4)
       expect(inertia.props[:summary][:totals]).to include(rain: 0.0, rain_model: 0.4)
 
-      patch field_path(field), params: {field: {use_model_precip: ""}}
-      expect(field.reload.use_model_precip).to be_nil
+      pivot_group.update!(use_model_precip: nil)
+      get field_path(field)
+      expect(inertia.props[:pivot]).to include(use_model_precip: true)
+      farm.update!(use_model_precip: false)
+      get field_path(field)
+      expect(inertia.props[:pivot]).to include(use_model_precip: false)
     end
 
     it "shows a pivot's irrigation as from the pivot, and the pivot amount under a field's override" do
@@ -139,7 +140,7 @@ RSpec.describe "Field status and daily entry", type: :request do
     it "gives the target, and for a field on entered rain the no-rain case beside the forecast's, without an ensemble" do
       planting.update!(target_ad_pct: 40)
       planting.canopy_observations.create!(date: Date.new(2026, 7, 1), pct_cover: 80) # adjusted ET = et0
-      field.update!(use_model_precip: false)
+      create(:pivot_group, farm:, pivots: [pivot], use_model_precip: false)
       pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: (Date.new(2026, 7, 20)..Date.new(2026, 7, 22)).map { |d| {date: d.iso8601, et0_in: 0.2, precip_in: 0.5} }})
 
@@ -475,11 +476,12 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(fields["North corn"]).to include(plantings: [], entry: nil)
     end
 
-    it "leaves out the modeled rain on a field that uses only entered rain (Q7)" do
-      field.update!(use_model_precip: false)
+    it "leaves out the modeled rain on a system whose irrigation group uses only entered rain (Q7)" do
+      pivot_group = create(:pivot_group, farm:, pivots: [pivot], use_model_precip: false)
       get daily_entry_path(date: "2026-07-05")
-      fields = inertia.props[:farms].sole[:pivots].sole[:fields]
-      expect(fields.map { |f| [f[:name], f[:rain_model]] }).to eq([["North corn", 0.4], ["North potatoes", nil]])
+      farm_props = inertia.props[:farms].sole
+      expect(farm_props[:pivot_groups]).to eq([{"id" => pivot_group.id, "name" => pivot_group.name, "use_model_precip" => false}])
+      expect(farm_props[:pivots].sole[:fields].map { |f| f[:rain_model] }).to eq([nil, nil])
     end
 
     it "saves pivot irrigation and field entries for the day together" do

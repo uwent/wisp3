@@ -34,6 +34,13 @@ class Pivot < ApplicationRecord
   before_destroy :hand_over_plantings
 
   validates :name, presence: true, length: {maximum: 100}
+
+  # Whether the balance takes modeled rain on days without entered rain (Q7): its irrigation group's
+  # setting, else its farm's. Either way the projection uses forecast rain (DailyInputs).
+  def use_model_precip?
+    own = pivot_group&.use_model_precip
+    own.nil? ? farm.use_model_precip : own
+  end
   validates :latitude, presence: true, numericality: {in: LATITUDES, message: "must be in the US or Canada"}
   validates :longitude, presence: true, numericality: {in: LONGITUDES, message: "must be in the US or Canada"}
   validates :kind, inclusion: {in: KINDS}

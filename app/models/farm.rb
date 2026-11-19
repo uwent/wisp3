@@ -8,5 +8,8 @@ class Farm < ApplicationRecord
 
   validates :name, presence: true, length: {maximum: 100}
 
+  # use_model_precip: the farm's rainfall setting (Q7), for its systems in no irrigation group or in
+  # one following it (Pivot#use_model_precip?): a farm is a compact area, where rain runs alike
+
   normalizes :notes, with: ->(text) { text.strip.presence }
 end

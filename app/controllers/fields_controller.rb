@@ -7,7 +7,7 @@ class FieldsController < AuthenticatedController
   # every planting on it shares (no balance: that's each planting's page). ?year= picks the season.
   # ?planting_id= (links from before plantings had their own pages) goes to that planting's page.
   def show
-    field = Current.group.fields.includes(:soil_type, pivot: [:farm, :weather_cell],
+    field = Current.group.fields.includes(:soil_type, pivot: [:farm, :weather_cell, :pivot_group],
       plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell]).find(params[:id])
     if (planting = field.plantings.find { |p| p.id == params[:planting_id].to_i })
       return redirect_to planting_path(planting, request.query_parameters.slice("as_of"))
@@ -62,8 +62,7 @@ class FieldsController < AuthenticatedController
   private
 
   def field_params
-    params.expect(field: [:pivot_id, :name, :area_acres, :soil_type_id, :field_capacity, :perm_wilting_pt, :notes,
-      :use_model_precip, :boundary])
+    params.expect(field: [:pivot_id, :name, :area_acres, :soil_type_id, :field_capacity, :perm_wilting_pt, :notes, :boundary])
   end
 
   # Each planting of the season with its status today (PlantingSummarySerializer), sharing the

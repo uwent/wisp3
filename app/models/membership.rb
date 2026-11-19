@@ -1,4 +1,4 @@
-# A user's place in a group (Q8): owners manage the group (its name and rainfall setting, its
+# A user's place in a group (Q8): owners manage the group (its name, its
 # members, deleting farms, pivots and fields, and deleting the group); members do everything else.
 class Membership < ApplicationRecord
   belongs_to :user

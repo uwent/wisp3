@@ -8,7 +8,7 @@ class PlantingsController < AuthenticatedController
   # farm (PLAN.md G.8) shows its day that way when the season covers it, with no other day to pick.
   def show
     field_id = Current.group.plantings.where(id: params[:id]).pick(:field_id) or raise ActiveRecord::RecordNotFound
-    field = Current.group.fields.includes(:soil_type, pivot: [:farm, :weather_cell],
+    field = Current.group.fields.includes(:soil_type, pivot: [:farm, :weather_cell, :pivot_group],
       plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell]).find(field_id)
     planting = field.plantings.find { |p| p.id == params[:id].to_i }
     past = requested_date&.then { |date| date if date < Current.today } unless Current.as_of
@@ -73,7 +73,7 @@ class PlantingsController < AuthenticatedController
 
   # The season's daily balance as CSV (the legacy export's columns, plus where each value came from)
   def export
-    planting = Current.group.plantings.includes(:plant, field: [:soil_type, {pivot: {farm: :group}}]).find(params[:id])
+    planting = Current.group.plantings.includes(:plant, field: [:soil_type, {pivot: [:pivot_group, {farm: :group}]}]).find(params[:id])
     filename = "wisp-#{planting.field.name.parameterize}-#{planting.season_year}.csv"
     csv = PlantingCsv.new(PlantingStatus.new(planting), exported_by: current_user, about_url:).to_csv
     send_data csv, filename:, type: "text/csv; charset=utf-8"

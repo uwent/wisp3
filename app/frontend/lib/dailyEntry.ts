@@ -53,7 +53,10 @@ export type DayPivot = {
 export type DayFarm = {
   id: number
   name: string
-  pivot_groups: { id: number; name: string }[]
+  /** The farm's rainfall setting, which its groups follow unless they have their own (Q7) */
+  use_model_precip: boolean
+  /** use_model_precip: the group's own rainfall setting, null following the farm's (Q7) */
+  pivot_groups: { id: number; name: string; use_model_precip: boolean | null }[]
   pivots: DayPivot[]
 }
 
@@ -73,7 +76,7 @@ export const pivotHasEntry = (pivot: DayPivot) => pivot.irrigation !== null || p
 
 export type FarmRows = {
   /** Pivot groups with a pivot in season, and those pivots */
-  groups: { id: number; name: string; pivots: DayPivot[] }[]
+  groups: { id: number; name: string; use_model_precip: boolean | null; pivots: DayPivot[] }[]
   /** Pivots in season and in no group */
   pivots: DayPivot[]
   /** Pivots with no field in season that day, at the end of the farm */
@@ -92,6 +95,12 @@ export function farmRows(farm: DayFarm): FarmRows {
     pivots: farm.pivots.filter((p) => active(p) && !grouped.has(p.id)),
     idle: farm.pivots.filter((p) => !active(p)),
   }
+}
+
+/** A group's rainfall setting when it isn't its farm's (the farm's is by its name), for its row */
+export function rainNote(group: { use_model_precip: boolean | null }, farm: DayFarm): string {
+  if (group.use_model_precip === null || group.use_model_precip === farm.use_model_precip) return ''
+  return group.use_model_precip ? ' · modeled rain counts' : ' · only entered rain counts'
 }
 
 /** The fields a pivot's or group's rain fills: those in season */

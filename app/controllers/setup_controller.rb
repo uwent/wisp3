@@ -1,5 +1,5 @@
 # Setup (PLAN.md §11): the group's farms, pivots, fields and plantings, shown for one season. The
-# group's own settings (name, rainfall) are on its page (GroupsController).
+# group's own settings (its name) are on its page (GroupsController).
 class SetupController < AuthenticatedController
   def show
     year = requested_year

@@ -27,5 +27,5 @@ class FarmsController < AuthenticatedController
 
   private
 
-  def farm_params = params.expect(farm: [:name, :notes])
+  def farm_params = params.expect(farm: [:name, :notes, :use_model_precip])
 end

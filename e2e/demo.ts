@@ -5,7 +5,7 @@ import names from './demo.json' with { type: 'json' }
 // first field from the same file.
 //
 // firstField: a field with one planting (firstCrop) that the seed keeps in season past today
-// (firstPlantingPath). researchField: plots side by side on researchSystem, one of them dripPlot,
+// (firstPlantingPath), its system in the irrigation group firstFieldGroup. researchField: plots side by side on researchSystem, one of them dripPlot,
 // with its own irrigation. hayField: alfalfa with cuttings, on traveler. gauge: an irrigation group,
 // its fields including hayField and gaugeField. splitPivot: a pivot split into two outlined
 // halves, splitWest and splitEast. shapeField: a field whose shape the tests replace, away from

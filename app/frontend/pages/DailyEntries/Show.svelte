@@ -15,6 +15,7 @@
     pivotHasEntry,
     plots,
     rainFields,
+    rainNote,
     wholeField,
     type DayFarm,
     type DayField,
@@ -496,7 +497,11 @@
           {@const idleOpen = shown(idleKey, rows.idle.some(pivotHasEntry))}
           {#if farm.pivots.length}
             <section class="space-y-2" aria-labelledby="farm-{farm.id}">
-              <h3 id="farm-{farm.id}" class="font-medium text-ink-muted">{farm.name}</h3>
+              <h3 id="farm-{farm.id}" class="font-medium text-ink-muted">
+                {farm.name}{#if !farm.use_model_precip}<span class="text-xs font-normal"
+                    >{' · only entered rain counts'}</span
+                  >{/if}
+              </h3>
               <div class="relative overflow-x-auto rounded-lg border border-line bg-surface-raised">
                 <table class="w-full min-w-xl text-sm">
                   <thead class="text-xs text-ink-muted">
@@ -521,7 +526,10 @@
                             <span>
                               <span class="font-medium">{group.name}</span>
                               <span class="block text-xs font-normal text-ink-muted"
-                                >{`Irrigation group · ${count(group.pivots.length, 'system')}`}</span
+                                >{`Irrigation group · ${count(group.pivots.length, 'system')}`}{rainNote(
+                                  group,
+                                  farm,
+                                )}</span
                               >
                             </span>
                           </span>

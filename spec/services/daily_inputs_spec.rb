@@ -22,28 +22,40 @@ RSpec.describe DailyInputs do
     expect(resolve(weather: {})).to have_attributes(rain: nil, rain_source: :missing, et0: nil, et0_source: :missing)
   end
 
-  it "uses 0 rain, not the model, when the group enters rain by hand" do
-    field.pivot.farm.group.update!(use_model_precip: false)
+  it "uses 0 rain, not the model, when the farm enters rain by hand" do
+    field.pivot.farm.update!(use_model_precip: false)
     expect(resolve).to have_attributes(rain: 0.0, rain_source: :none, rain_model: 0.35)
   end
 
-  describe "the field's rainfall setting (Q7)" do
+  describe "the irrigation group's rainfall setting (Q7)" do
+    let(:pivot_group) { create(:pivot_group, farm: pivot.farm, pivots: [pivot]) }
+
     def resolve_for(field, on = date, today: date) = described_class.new(field.reload, [on], weather:, today:).days.first
 
-    it "overrides the group's either way, and follows it when not set" do
-      field.update!(use_model_precip: false)
+    it "overrides the farm's either way, and follows it when not set" do
+      pivot_group.update!(use_model_precip: false)
       expect(resolve_for(field)).to have_attributes(rain: 0.0, rain_source: :none, rain_model: 0.35)
-      field.pivot.farm.group.update!(use_model_precip: false)
-      field.update!(use_model_precip: true)
+      pivot.farm.update!(use_model_precip: false)
+      pivot_group.update!(use_model_precip: true)
       expect(resolve_for(field)).to have_attributes(rain: 0.35, rain_source: :model)
-      field.update!(use_model_precip: nil)
+      pivot_group.update!(use_model_precip: nil)
       expect(resolve_for(field).rain_source).to eq(:none)
     end
 
+    it "is the planting's system's for a season that ran on another" do
+      pivot_group.update!(use_model_precip: false)
+      planting = create(:planting, field:, season_start: date - 30, end_date: date + 30)
+      field.update!(pivot: create(:pivot, farm: pivot.farm))
+      planting.update_columns(pivot_id: pivot.id)
+      days = described_class.new(field.reload, [date], weather:, today: date, planting: planting.reload).days
+      expect(days.first.rain_source).to eq(:none)
+      expect(resolve_for(field).rain_source).to eq(:model)
+    end
+
     it "still takes the forecast's rain after today, but not today's" do
-      field.update!(use_model_precip: false)
+      pivot_group.update!(use_model_precip: false)
       ahead = {date => {et0: 0.2, precip: 0.4, forecast: true}}
-      expect(described_class.new(field, [date], weather: ahead, today: date - 1).days.first)
+      expect(described_class.new(field.reload, [date], weather: ahead, today: date - 1).days.first)
         .to have_attributes(rain: 0.4, rain_source: :forecast)
       expect(described_class.new(field, [date], weather: ahead, today: date).days.first)
         .to have_attributes(rain: 0.0, rain_source: :none)

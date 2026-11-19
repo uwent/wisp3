@@ -166,6 +166,12 @@ class Planting < ApplicationRecord
   def effective_field_capacity = field_capacity || soil_type.field_capacity
   def effective_perm_wilting_pt = perm_wilting_pt || soil_type.perm_wilting_pt
 
+  # The system the season ran on, its field's (already loaded) while it's still there
+  def system = (pivot_id == field.pivot_id) ? field.pivot : pivot
+
+  # Whether days without entered rain take the model's: its system's setting (Q7, Pivot#use_model_precip?)
+  def use_model_precip? = system.use_model_precip?
+
   def ended?(today = Date.current) = end_date < today
 
   # Whether part-field plantings in season on some day of this one's add up to more than the field

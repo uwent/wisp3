@@ -95,8 +95,8 @@ class PlantingStatus
     planting.canopy_observations.none? { |obs| obs[attribute] && obs.date.between?(planting.emergence_date, today) }
   end
 
-  # Whether days without entered rain take the model's (the field's setting, or its group's)
-  def use_model_precip? = planting.field.effective_use_model_precip
+  # Whether days without entered rain take the model's (its irrigation group's setting, or the operation's)
+  def use_model_precip? = planting.use_model_precip?
 
   # For a field using only entered rain: the projection's balance (WaterBalance::Results) with no
   # forecast rain, keeping planned irrigation and any rain entered ahead. Empty otherwise.

@@ -23,6 +23,7 @@
   import { plotSize } from '@/lib/plantings'
   import { cellValue, type DayColumn } from '@/lib/fieldDays'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
+  import { rainSettingLink } from '@/lib/rainSetting'
   import { save } from '@/lib/save'
   import { seasonStats } from '@/lib/seasonStats'
   import { stickyHeight } from '@/lib/stickyBars'
@@ -31,7 +32,6 @@
     dailyEntries,
     exportPlanting,
     fieldDays,
-    fields,
     planting as plantingRoute,
     plantings as plantingRoutes,
     setup,
@@ -480,8 +480,9 @@
       <p class="mt-2 text-xs">
         Rain: <Term id="entered_rain_only">only what you enter</Term>, plus the forecast for the days ahead.
         {#if !readOnly}
-          <Link href="{fields.show(field.id).url}#rainfall" class="text-brand-600 underline underline-offset-2"
-            >Change this</Link
+          <Link
+            href={rainSettingLink(summary.rain_group_id, summary.rain_farm_id)}
+            class="text-brand-600 underline underline-offset-2">Change this</Link
           >
         {/if}
       </p>

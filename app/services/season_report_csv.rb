@@ -100,7 +100,7 @@ class SeasonReportCsv
   def statuses
     @statuses ||= begin
       plantings = @group.plantings.where(season_start: Date.new(@year).all_year)
-        .includes(:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell, field: {pivot: {farm: :group}})
+        .includes(:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell, field: {pivot: [:pivot_group, {farm: :group}]})
         .sort_by { |p| [p.field.pivot.farm.name, p.field.pivot.name, p.field.name, p.season_start] }
       if plantings.empty?
         []

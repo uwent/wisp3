@@ -201,9 +201,6 @@
       <p class="text-xs text-ink-muted">
         {fieldArea(field)} · {field.soil_type_name}
         {#if field.field_capacity !== null || field.perm_wilting_pt !== null}(own field capacity and wilting point){/if}
-        {#if field.use_model_precip !== null}· {field.use_model_precip
-            ? 'modeled rain'
-            : 'only the rain you enter'}{/if}
       </p>
     </div>
     <div class="flex gap-1 text-xs">
@@ -384,6 +381,7 @@
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div class="min-w-0">
         <h2 class="text-lg font-medium"><span class="font-normal text-ink-muted">Farm:</span> {farm.name}</h2>
+        {#if !farm.use_model_precip}<p class="text-xs text-ink-muted">Rain: only what you enter</p>{/if}
         {#if farm.notes}<p class="text-sm whitespace-pre-line text-ink-muted">{farm.notes}</p>{/if}
       </div>
       <div class="flex flex-wrap gap-1 text-sm">
@@ -424,7 +422,13 @@
                 <span class="font-normal text-ink-muted">Irrigation group:</span>
                 {pivotGroup.name}
               </h3>
-              <p class="text-xs text-ink-muted">Rain entered for the group on Daily entry fills into all its fields</p>
+              <p class="text-xs text-ink-muted">
+                Rain entered for the group on Daily entry fills into all its fields{pivotGroup.use_model_precip === null
+                  ? ''
+                  : pivotGroup.use_model_precip
+                    ? ' · modeled rain'
+                    : ' · only the rain you enter'}
+              </p>
             </div>
             <div class="flex gap-1 text-sm">
               <Button

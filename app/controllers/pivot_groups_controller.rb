@@ -1,5 +1,5 @@
-# Pivot groups (PLAN.md Phase 8 G.4), managed in Setup: a name and which of the farm's pivots share
-# the group's rain gauge. A pivot joining a group leaves any other; deleting a group ungroups its
+# Pivot groups (PLAN.md Phase 8 G.4), managed in Setup: a name, which of the farm's pivots share
+# the group's rain gauge, and which rain their balances use (Q7; blank follows the operation). A pivot joining a group leaves any other; deleting a group ungroups its
 # pivots.
 class PivotGroupsController < AuthenticatedController
   def create
@@ -22,9 +22,9 @@ class PivotGroupsController < AuthenticatedController
   private
 
   def save(pivot_group, done)
-    values = params.expect(pivot_group: [:name, pivot_ids: []])
+    values = params.expect(pivot_group: [:name, :use_model_precip, pivot_ids: []])
     saved = PivotGroup.transaction do
-      next false unless pivot_group.update(name: values[:name])
+      next false unless pivot_group.update(values.slice(:name, :use_model_precip))
       assign_pivots(pivot_group, values[:pivot_ids]) if values.key?(:pivot_ids)
       true
     end

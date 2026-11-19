@@ -6,6 +6,7 @@ import {
   farmRows,
   fieldHasEntry,
   rainFields,
+  rainNote,
   type DayFarm,
   type DayField,
   type DayPivot,
@@ -52,16 +53,34 @@ describe('farmRows', () => {
     const farm: DayFarm = {
       id: 1,
       name: 'Home',
+      use_model_precip: true,
       pivot_groups: [
-        { id: 7, name: 'Gauge' },
-        { id: 8, name: 'Idle gauge' },
+        { id: 7, name: 'Gauge', use_model_precip: null },
+        { id: 8, name: 'Idle gauge', use_model_precip: null },
       ],
       pivots: [grouped, alone, idle, idleInGroup],
     }
     const rows = farmRows(farm)
-    expect(rows.groups).toEqual([{ id: 7, name: 'Gauge', pivots: [grouped] }])
+    expect(rows.groups).toEqual([{ id: 7, name: 'Gauge', use_model_precip: null, pivots: [grouped] }])
     expect(rows.pivots).toEqual([alone])
     expect(rows.idle).toEqual([idle, idleInGroup])
+  })
+})
+
+describe('rainNote', () => {
+  const farm = (use_model_precip: boolean): DayFarm => ({
+    id: 1,
+    name: 'Home',
+    use_model_precip,
+    pivot_groups: [],
+    pivots: [],
+  })
+
+  it("notes a group's own setting only where it differs from its farm's", () => {
+    expect(rainNote({ use_model_precip: null }, farm(false))).toBe('')
+    expect(rainNote({ use_model_precip: false }, farm(false))).toBe('')
+    expect(rainNote({ use_model_precip: false }, farm(true))).toBe(' · only entered rain counts')
+    expect(rainNote({ use_model_precip: true }, farm(false))).toBe(' · modeled rain counts')
   })
 })
 

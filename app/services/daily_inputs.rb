@@ -2,7 +2,7 @@
 # weather, with where each value came from (PLAN.md §4 "Precedence"; field groups, a source between
 # the field's entries and the model, were retired in Phase 8 G.4):
 #
-#   rain       = field entry ?? (the field uses model rain ? weather : 0.0)
+#   rain       = field entry ?? (its irrigation group, or farm, uses model rain ? weather : 0.0)
 #   irrigation = field entry ?? pivot irrigation (if it covers this field) ?? 0.0
 #
 # The pivot irrigation is the system's the planting's season ran on (it keeps it when its field
@@ -131,8 +131,9 @@ class DailyInputs
     candidates.find { |value, _| !value.nil? } || [nil, candidates.last.last]
   end
 
+  # The planting's system's setting, or for the field as a whole its system's now (Q7)
   def use_model_precip?
-    @use_model_precip = @field.effective_use_model_precip if @use_model_precip.nil?
+    @use_model_precip = (@planting || @field.pivot).use_model_precip? if @use_model_precip.nil?
     @use_model_precip
   end
 end

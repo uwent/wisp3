@@ -608,7 +608,6 @@ test('time travel shows a field on an earlier day, read-only, and returns to tod
   await expect(page).toHaveTitle(/^As of /)
   await expect(page.locator('[data-grid]')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Edit in setup' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Rainfall preferences' })).toHaveCount(0)
   // The picker starts open on the day in view, with Today beside it, and the clock hasn't moved
   await expect(rewind).toHaveAttribute('aria-expanded', 'true')
   await expect(date).toHaveValue(pick)
@@ -638,7 +637,7 @@ test('time travel shows a field on an earlier day, read-only, and returns to tod
   await expect(page.getByRole('link', { name: 'Edit in setup' })).toBeVisible()
 })
 
-test('a field switches to entered rain only and back', async ({ page }) => {
+test('an irrigation group switches to entered rain only and back', async ({ page }) => {
   const planting = await firstPlantingPath(page)
   await page.goto(planting)
   // The section starts open, like the page's others (G.6)
@@ -646,31 +645,28 @@ test('a field switches to entered rain only and back', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Season summary' })).toHaveAttribute('aria-expanded', 'true')
   await expect(summary).toContainText('Your gauge and the model')
   const note = page.getByText('Rain: only what you enter, plus the forecast for the days ahead.')
+  await expect(note).toBeHidden()
 
-  // The setting is the field's, on its page
-  await page
-    .getByRole('navigation', { name: 'Field and plantings' })
-    .getByRole('link', { name: /^Field/ })
-    .click()
-  await expect(page).toHaveURL(/\/fields\/\d+/)
-  const details = page.locator('#rainfall')
-  const rainfall = page.getByRole('button', { name: 'Rainfall preferences' })
-  if ((await rainfall.getAttribute('aria-expanded')) === 'false') await rainfall.click()
-  const setting = (name: RegExp) => details.getByRole('radio', { name })
+  // The setting is the irrigation group's, in its dialog in Setup
+  await page.goto('/setup')
+  await page.getByRole('button', { name: `Edit ${DEMO.firstFieldGroup}`, exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  const setting = (name: RegExp) => dialog.getByRole('radio', { name })
   await setting(/^Only the rain you enter/).check()
-  await details.getByRole('button', { name: 'Save' }).click()
-  await expect(setting(/^Only the rain you enter/)).toBeChecked()
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(dialog).toBeHidden()
 
   await page.goto(planting)
   await expect(note).toBeVisible()
   await expect(summary).toContainText('Modeled rain not used in the balance')
 
-  // Back to following the operation, as the seed had it, from the note's link
+  // Back to following the farm, as the seed had it, from the note's link to the group's dialog
   await page.getByRole('link', { name: 'Change this' }).click()
-  await expect(details).toBeVisible()
-  await setting(/^Follow the operation's setting/).check()
-  await details.getByRole('button', { name: 'Save' }).click()
-  await expect(setting(/^Follow the operation's setting/)).toBeChecked()
+  await expect(page).toHaveURL(/\/setup/)
+  await expect(setting(/^Only the rain you enter/)).toBeChecked()
+  await setting(/^The farm's setting/).check()
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(dialog).toBeHidden()
   await page.goto(planting)
   await expect(note).toBeHidden()
 })

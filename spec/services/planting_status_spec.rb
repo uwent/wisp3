@@ -151,7 +151,9 @@ RSpec.describe PlantingStatus, "projection" do
       end
     end
 
-    before { field.update!(use_model_precip: false) }
+    let(:pivot_group) { create(:pivot_group, farm: field.pivot.farm, pivots: [field.pivot]) }
+
+    before { pivot_group.update!(use_model_precip: false) }
 
     it "projects with the forecast's rain, and also with none" do
       projection = status
@@ -171,7 +173,7 @@ RSpec.describe PlantingStatus, "projection" do
     end
 
     it "has no dry case on a field using modeled rain" do
-      field.update!(use_model_precip: nil)
+      pivot_group.update!(use_model_precip: nil)
       expect([status.dry_projection, status.dry_crossing]).to eq([[], nil])
     end
   end

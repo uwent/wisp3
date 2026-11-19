@@ -2,7 +2,7 @@
 class AdminGroupSerializer < ApplicationSerializer
   typelize_from Group
 
-  attributes :id, :name, :use_model_precip
+  attributes :id, :name
 
   attribute :members do |group|
     group.memberships.sort_by { |membership| membership.user.email }.map do |membership|

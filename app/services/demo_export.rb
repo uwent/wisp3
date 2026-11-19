@@ -5,7 +5,7 @@
 class DemoExport
   SYSTEM_ATTRIBUTES = %w[name kind latitude longitude radius_ft arc_start_deg arc_end_deg length_ft travel_ft
     travel_bearing_deg pump_capacity_gpm equipment notes].freeze
-  FIELD_ATTRIBUTES = %w[area_acres field_capacity perm_wilting_pt use_model_precip notes].freeze
+  FIELD_ATTRIBUTES = %w[area_acres field_capacity perm_wilting_pt notes].freeze
   PLANTING_ATTRIBUTES = %w[variety et_method target_ad_pct initial_moisture_pct max_root_zone_depth mad_frac
     canopy_interpolation canopy_curve_key season_days partial plot_length_ft plot_width_ft own_soil notes].freeze
   ENTRY_VALUES = %w[rain_in irrigation_in soil_moisture_pct notes].freeze
@@ -28,10 +28,12 @@ class DemoExport
 
   def data
     {"farms" => @group.farms.order(:id).includes(pivot_groups: :pivots).map do |farm|
-      {"name" => farm.name, "notes" => farm.notes,
+      # Its rainfall setting only when it isn't the default, modeled rain
+      {"name" => farm.name, "notes" => farm.notes, "use_model_precip" => (false unless farm.use_model_precip),
        "systems" => farm.pivots.reorder(:id).map { |pivot| system(pivot) },
        "irrigation_groups" => farm.pivot_groups.order(:id).map do |pivot_group|
-         {"name" => pivot_group.name, "systems" => pivot_group.pivots.sort_by(&:id).map(&:name)}
+         {"name" => pivot_group.name, "use_model_precip" => pivot_group.use_model_precip,
+          "systems" => pivot_group.pivots.sort_by(&:id).map(&:name)}.compact
        end.presence}.compact
     end}
   end

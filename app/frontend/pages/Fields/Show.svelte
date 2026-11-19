@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Form, Link, page } from '@inertiajs/svelte'
+  import { Link, page } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import CollapsibleSection from '@/lib/components/CollapsibleSection.svelte'
@@ -8,6 +8,7 @@
   import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import Spinner from '@/lib/components/Spinner.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
+  import Term from '@/lib/components/Term.svelte'
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { currentYear, formatDate, today as todayDate } from '@/lib/dates'
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
@@ -16,16 +17,18 @@
   import { cardWhen, cropName, plotSize, seasonDates, seasonLine } from '@/lib/plantings'
   import { cellLabel, cellText, cellValue, depthUnitName as depthUnit, irrigationFrom } from '@/lib/fieldDays'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
+  import { rainSettingLink, rainSettingOwner } from '@/lib/rainSetting'
   import { rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import { units as unitsFor } from '@/lib/units'
-  import { fieldDays, fields, pivots, planting as plantingRoute } from '@/routes'
+  import { fieldDays, pivots, planting as plantingRoute } from '@/routes'
   import type { Field, ForecastDay, GenericCurve, Plant, PlantingSummary, SoilType } from '@/types/serializers'
 
   // The field page (PLAN.md Phase 8 G.11): the land, not one crop on it. The season's plantings on
   // a timeline and with their status today, the field's own rain and irrigation (which every
-  // planting on it shares; each planting's balance is on its own page), and its rainfall setting.
+  // planting on it shares; each planting's balance is on its own page). Which rain counts is its
+  // irrigation group's setting, or its farm's (lib/rainSetting.ts).
   type FieldDayRow = {
     date: string
     rain: number | null
@@ -51,7 +54,16 @@
     generic_curves,
   }: {
     field: Field
-    pivot: { id: number; name: string; kind: PivotKind; kind_name: string; pump_capacity_gpm: number | null }
+    pivot: {
+      id: number
+      name: string
+      kind: PivotKind
+      kind_name: string
+      pump_capacity_gpm: number | null
+      /** Whether days without entered rain take the modeled rain: its group's setting, else its farm's */
+      use_model_precip: boolean
+      pivot_group: { id: number; name: string } | null
+    }
     farm: { id: number; name: string }
     year: number
     years: number[]
@@ -99,20 +111,6 @@
       { only: ['plantings', 'days', 'errors'] },
     )
   }
-
-  // The operation's rainfall setting, which a field follows unless it has its own
-  const operationUsesModel = $derived(page.props.auth.group?.use_model_precip ?? true)
-  const rainSetting = $derived(field.use_model_precip === null ? '' : String(field.use_model_precip))
-  // [value, label, hint]: blank follows the operation
-  const rainOptions = $derived([
-    ['', `Follow the operation's setting (${operationUsesModel ? 'modeled rain' : 'only the rain you enter'})`, null],
-    ['true', 'Modeled rain for this location', 'Your own rain gauge readings replace it on the days you enter them.'],
-    [
-      'false',
-      'Only the rain you enter',
-      'Best if you read your gauge every day it rains. Days without an entry count as dry. The projection still uses the forecast rain, and also shows what happens if none falls.',
-    ],
-  ] as const)
 
   // The example farm (PLAN.md G.8) is only viewed
   const readOnly = $derived(isExample(page.props))
@@ -306,41 +304,20 @@
           >{noun}'s irrigation page</Link
         > or on the Daily entry page.
       </p>
+      {#if !pivot.use_model_precip}
+        <p class="text-xs">
+          Rain: <Term id="entered_rain_only">only what you enter</Term>, {rainSettingOwner(pivot.pivot_group)} setting. Days
+          without an entry count as dry.
+          {#if !readOnly}
+            <Link
+              href={rainSettingLink(pivot.pivot_group?.id ?? null, farm.id)}
+              class="text-brand-600 underline underline-offset-2">Change this</Link
+            >
+          {/if}
+        </p>
+      {/if}
     </div>
   </CollapsibleSection>
 {/if}
-
-{#if !readOnly}<CollapsibleSection title="Rainfall preferences" id="rainfall" storageKey="rainfall">
-    <Form
-      action={fields.update(field.id)}
-      class="max-w-xl space-y-3 rounded-lg border border-line bg-surface-raised p-4"
-      options={{ preserveScroll: true }}
-    >
-      {#snippet children({ processing })}
-        <fieldset class="space-y-2">
-          <legend class="text-sm font-medium">Which rain this field's plantings use</legend>
-          {#each rainOptions as [value, label, hint] (value)}
-            <label class="flex items-start gap-3 text-sm">
-              <input
-                type="radio"
-                name="field[use_model_precip]"
-                {value}
-                checked={rainSetting === value}
-                class="mt-0.5"
-              />
-              <span
-                >{label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}</span
-              >
-            </label>
-          {/each}
-        </fieldset>
-        <p class="text-xs text-ink-muted">
-          This only changes which rain the balance uses. Nothing is copied or deleted, so you can switch back at any
-          time.
-        </p>
-        <Button type="submit" disabled={processing}>Save</Button>
-      {/snippet}
-    </Form>
-  </CollapsibleSection>{/if}
 
 <PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} genericCurves={generic_curves} />

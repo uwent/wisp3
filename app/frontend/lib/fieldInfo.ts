@@ -34,9 +34,16 @@ export const FIELD_INFO = {
   'farm.name': {
     text: 'A farm groups the irrigation systems you view and manage together, usually one place. The dashboard, Setup and Daily entry list systems under their farm.',
   },
+  'farm.rainfall': {
+    text: "Where the water balance gets each day's rain on this farm's systems. Modeled rain needs no gauge but can miss a storm's edge; only the rain you enter is exact, but needs a reading every day it rains.",
+  },
 
   'pivot_group.name': {
     text: 'Group systems that share a rain gauge, usually ones close together. On Daily entry, rain typed for the group fills in every field of its systems.',
+  },
+  'pivot_group.rainfall': {
+    text: "Where the balance gets each day's rain for the fields on these systems. Leave it on the farm's setting unless this group's gauge is read differently from the rest of the farm.",
+    term: 'entered_rain_only',
   },
 
   'pivot.farm': {
@@ -143,11 +150,8 @@ export const FIELD_INFO = {
     text: "The soil moisture on the season's first day, if you know the soil is drier than full. Most seasons start after spring rain with the soil full, so leave it blank.",
   },
 
-  'operation.rainfall': {
-    text: "Where the water balance gets each day's rain. Modeled rain needs no gauge but can miss a storm's edge; only the rain you enter is exact, but needs a reading every day it rains.",
-  },
   'membership.role': {
-    text: "Members can enter readings and set up farms, systems and fields, but not delete them. Owners can also delete, change the operation's settings and add or remove people.",
+    text: 'Members can enter readings and set up farms, systems and fields, but not delete them. Owners can also delete, rename the operation and add or remove people.',
   },
 } as const satisfies Record<string, Entry>
 

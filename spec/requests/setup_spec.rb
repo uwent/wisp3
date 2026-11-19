@@ -43,6 +43,16 @@ RSpec.describe "Setup", type: :request do
       expect(group.farms).to be_empty
     end
 
+    it "sets a farm's rainfall setting (Q7), modeled rain for a new one" do
+      post farms_path, params: {farm: {name: "Plover"}}
+      farm = group.farms.sole
+      expect(farm.use_model_precip).to be(true)
+      patch farm_path(farm), params: {farm: {name: farm.name, use_model_precip: "false"}}
+      expect(farm.reload.use_model_precip).to be(false)
+      get setup_path
+      expect(inertia.props[:farms].sole).to include(use_model_precip: false)
+    end
+
     it "sends validation errors back" do
       post farms_path, params: {farm: {name: ""}}
       follow_redirect!

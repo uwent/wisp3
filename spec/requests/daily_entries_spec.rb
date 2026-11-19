@@ -21,7 +21,7 @@ RSpec.describe "Daily entry", type: :request do
     it "lists farms with their pivot groups, pivots, fields and plantings in season" do
       get daily_entry_path(date:)
       farm_props = inertia.props[:farms].sole
-      expect(farm_props[:pivot_groups]).to eq([{"id" => pivot_group.id, "name" => "Home gauge"}])
+      expect(farm_props[:pivot_groups]).to eq([{"id" => pivot_group.id, "name" => "Home gauge", "use_model_precip" => nil}])
       pivot_props = farm_props[:pivots].sole
       expect(pivot_props).to include(name: "River", pivot_group_id: pivot_group.id)
       field_props = pivot_props[:fields].sole

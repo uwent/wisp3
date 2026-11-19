@@ -3,7 +3,6 @@
 
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
-  import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { formatDate } from '@/lib/dates'
@@ -80,51 +79,11 @@
     <Form action={groups.update()} class="max-w-xl space-y-4" options={{ preserveScroll: true }}>
       {#snippet children({ errors, processing })}
         <TextField label="Operation name" name="group[name]" value={group.name} error={errors.name} required />
-        <fieldset class="space-y-2" aria-labelledby="operation-rainfall">
-          <FieldLabel as="legend" label="Rainfall" labelId="operation-rainfall" info="operation.rainfall" />
-          <label class="flex items-start gap-3 text-sm">
-            <input
-              type="radio"
-              name="group[use_model_precip]"
-              value="true"
-              checked={group.use_model_precip}
-              class="mt-0.5"
-            />
-            <span>
-              Modeled rain for each irrigation system's location
-              <span class="block text-ink-muted">Your own gauge readings replace it on the days you enter them.</span>
-            </span>
-          </label>
-          <label class="flex items-start gap-3 text-sm">
-            <input
-              type="radio"
-              name="group[use_model_precip]"
-              value="false"
-              checked={!group.use_model_precip}
-              class="mt-0.5"
-            />
-            <span>Only the rain you enter</span>
-          </label>
-          <p class="text-xs text-ink-muted">
-            A field can have its own setting, on its page. The forecast's rain counts in the days ahead either way.
-          </p>
-        </fieldset>
         <Button type="submit" disabled={processing}>Save</Button>
       {/snippet}
     </Form>
   {:else}
-    <dl class="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
-      <dt class="text-ink-muted">Rainfall</dt>
-      <dd>
-        {group.use_model_precip
-          ? "Modeled for each irrigation system's location, and replaced by your gauge readings on the days you enter them"
-          : 'Only the rain you enter'}
-      </dd>
-    </dl>
-    <p class="text-sm text-ink-muted">
-      Only owners can change the operation's name and rainfall setting; a field can have its own rainfall setting, on
-      its page.
-    </p>
+    <p class="text-sm text-ink-muted">Only owners can change the operation's name.</p>
   {/if}
 </section>
 

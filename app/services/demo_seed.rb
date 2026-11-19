@@ -58,10 +58,10 @@ class DemoSeed
 
   def build(group, data)
     data.fetch("farms").each do |farm_data|
-      farm = group.farms.create!(name: farm_data.fetch("name"), notes: farm_data["notes"])
+      farm = group.farms.create!(name: farm_data.fetch("name"), notes: farm_data["notes"], use_model_precip: farm_data.fetch("use_model_precip", true))
       systems = farm_data.fetch("systems").to_h { |system_data| [system_data.fetch("name").to_s, system(farm, system_data)] }
       Array(farm_data["irrigation_groups"]).each do |group_data|
-        farm.pivot_groups.create!(name: group_data.fetch("name")).pivots << systems.fetch_values(*group_data.fetch("systems").map(&:to_s))
+        farm.pivot_groups.create!(name: group_data.fetch("name"), use_model_precip: group_data["use_model_precip"]).pivots << systems.fetch_values(*group_data.fetch("systems").map(&:to_s))
       end
     end
   end

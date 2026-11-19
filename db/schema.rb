@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_18_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -62,6 +62,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_130000) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "use_model_precip", default: true, null: false
     t.index ["group_id"], name: "index_farms_on_group_id"
   end
 
@@ -91,7 +92,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_130000) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "use_model_precip"
     t.index ["pivot_id"], name: "index_fields_on_pivot_id"
     t.index ["soil_type_id"], name: "index_fields_on_soil_type_id"
     t.check_constraint "area_acres IS NULL OR area_acres > 0::double precision", name: "fields_area_positive"
@@ -102,7 +102,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_130000) do
     t.string "name", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "use_model_precip", default: true, null: false
     t.date "example_as_of"
     t.index ["example_as_of"], name: "index_groups_one_example", unique: true, where: "(example_as_of IS NOT NULL)"
   end
@@ -124,6 +123,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_130000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "created_by_id"
+    t.boolean "use_model_precip"
     t.index ["created_by_id"], name: "index_pivot_groups_on_created_by_id"
     t.index ["farm_id"], name: "index_pivot_groups_on_farm_id"
     t.index ["id", "farm_id"], name: "index_pivot_groups_on_id_and_farm_id", unique: true

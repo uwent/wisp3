@@ -125,9 +125,7 @@
         <div>
           <h3 class="font-medium">{group.name}</h3>
           <p class="text-xs text-ink-muted">
-            Group {group.id} · {summary([group])} · rain from {group.use_model_precip
-              ? 'the weather model'
-              : 'entries only'}
+            Group {group.id} · {summary([group])}
           </p>
           <p class="mt-1 text-sm">
             Members:

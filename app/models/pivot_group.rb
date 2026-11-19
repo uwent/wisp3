@@ -8,5 +8,8 @@ class PivotGroup < ApplicationRecord
 
   validates :name, presence: true, length: {maximum: 100}
 
+  # use_model_precip: the group's rainfall setting (Q7), as it shares a rain gauge; NULL follows its
+  # farm's (Pivot#use_model_precip?)
+
   normalizes :name, with: ->(name) { name.strip }
 end

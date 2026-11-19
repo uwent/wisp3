@@ -2,7 +2,8 @@
 # Depths are inches; recent is AD over the last RECENT_DAYS days, for sparklines. projection is
 # each day ahead: the forecast's AD and, with an ensemble, its 10th–90th percentiles and the chance
 # of reaching the threshold by then. crossing is when the projection first reaches the threshold.
-# For a field using only entered rain (use_model_precip false), dry_ad and dry_crossing are the same
+# rain_group_id is the irrigation group whose rainfall setting the planting follows (null: its
+# farm's, rain_farm_id). For a planting using only entered rain (use_model_precip false), dry_ad and dry_crossing are the same
 # with no forecast rain (Q7); otherwise null.
 class PlantingSummarySerializer < ApplicationSerializer
   RECENT_DAYS = 21
@@ -41,6 +42,8 @@ class PlantingSummarySerializer < ApplicationSerializer
   attribute(:threshold) { |status| status.threshold.round(WaterBalance::PRECISION) }
   attribute(:crossing) { |status| status.crossing&.to_h }
   attribute(:use_model_precip, &:use_model_precip?)
+  attribute(:rain_group_id) { |status| status.planting.system.pivot_group_id }
+  attribute(:rain_farm_id) { |status| status.planting.system.farm_id }
   attribute(:dry_crossing) { |status| status.dry_crossing&.to_h }
   attribute(:ensemble_size, &:ensemble_size)
   # forecast, or observed while time travelling: the projection is the weather that followed
@@ -75,7 +78,7 @@ class PlantingSummarySerializer < ApplicationSerializer
       "entered_rain_days: number; entered_rain: number; entered_rain_model: number; " \
       "irrigation_days: number; rain_days: number; drainage_days: number; stress_days: number }",
     threshold: :number, crossing: "{ date: string; days: number; ad: number; refill: number } | null",
-    use_model_precip: :boolean, dry_crossing: "{ date: string; days: number; ad: number; refill: number } | null",
+    use_model_precip: :boolean, rain_group_id: "number | null", rain_farm_id: :number, dry_crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     ensemble_size: :number, projection_source: "'forecast' | 'observed'", canopy_fit: "{ shift: number; stretch: number; height: number } | null",
     tasks: "{ kind: 'soil_moisture' | 'canopy' | 'canopy_check'; label: string; last_date: string | null; " \
       "due: boolean; note: 'due' | 'canopy closed' | 'vines killed' | 'optional' | null; todo: string | null; message: string | null }[]",

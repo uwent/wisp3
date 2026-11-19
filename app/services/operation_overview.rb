@@ -11,7 +11,7 @@ class OperationOverview
   def initialize(group, today: Current.today, year: today.year)
     @today = today
     @year = year
-    @farms = group.farms.order(:name).includes(:pivot_groups, pivots: [:weather_cell,
+    @farms = group.farms.order(:name).includes(:pivot_groups, pivots: [:weather_cell, :pivot_group,
       {fields: [:soil_type, {plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type]}]}]).to_a
     cell_ids = pivots.map(&:weather_cell_id).uniq
     WeatherCell.keep_current(cell_ids)

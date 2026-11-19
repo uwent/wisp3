@@ -29,10 +29,10 @@ RSpec.describe "Farm operations", type: :request do
   end
 
   describe "settings" do
-    it "lets an owner rename the operation and change its rainfall" do
+    it "lets an owner rename the operation" do
       sign_in_to(owner, group)
-      patch group_path, params: {group: {name: "Sands Farms", use_model_precip: "false"}}
-      expect(group.reload).to have_attributes(name: "Sands Farms", use_model_precip: false)
+      patch group_path, params: {group: {name: "Sands Farms"}}
+      expect(group.reload.name).to eq("Sands Farms")
     end
 
     it "keeps members from changing them" do
