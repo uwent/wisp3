@@ -54,14 +54,46 @@ May–September, the share of half-hours each variable was measured (FLUXNET QC 
 
 **Gaps:**
 
-1. **Crop dates and canopy cover: not in AmeriFlux.** The BADM gives only the crop and year. Planting, emergence, vine kill and harvest dates and canopy cover are what Ben asked Desai's group for. Without them: the full-cover period can be estimated from the towers themselves (ET/ET0 rising to a plateau, the albedo from SW_OUT/SW_IN as the canopy closes), enough to measure the full-cover coefficient, but not to test `CropEt` through canopy development.
+1. **Crop dates and canopy cover: not in AmeriFlux.** The BADM gives only the crop and year. Desai's group has since sent vine kill and harvest dates and canopy cover for 2018–2021 (below; their planting dates turned out to be the towers' installation). For US-CS6 and CS8 the full-cover period still has to be estimated from the towers themselves (ET/ET0 rising to a plateau, the albedo from SW_OUT/SW_IN as the canopy closes).
 2. **No soil heat flux at US-CS1, CS3 and CS4** (the paper's three training sites), so ONEFlux couldn't correct their ET for closure (no `LE_CORR`). Closure there has to be estimated: from daytime sums with G modeled (FAO-56's hourly 0.1 Rn by day, 0.5 Rn at night), or from the closure measured at CS5, CS6 and CS8, the same instruments and crop in later years.
 3. **Closure is low and the correction is uncertain.** Measured closure at the potato sites is 0.73–0.87 over May–September (CS6's 0.73 has only half the season). ONEFlux's half-hourly correction runs larger (median 1.36–1.69, and corrected June–August ET of 4.9–6.0 mm a day), likely because the correction is largest at low-flux hours and its days aren't the same as the gap-filled ones. Note 03 has to settle which closure to use, with both bounds shown: uncorrected ET is a floor, Bowen-ratio-corrected ET with the measured seasonal closure the likely value.
-4. **Irrigation isn't recorded.** The rain gauges probably catch the pivot (June–August totals of 400–700 mm against about 300 mm of normal rain), which marks irrigation days: wet-canopy days, when ET runs above the crop's transpiration-limited rate, can be flagged. Desai's group may have the growers' irrigation records.
+4. **Irrigation isn't in AmeriFlux.** The towers' rain gauges catch the pivot (June–August totals of 400–700 mm against about 300 mm of normal rain). Desai's group has since sent the pivots' logs for 2018, 2020 and 2021 (below); for the other seasons the gauge marks irrigation days, so wet-canopy days, when ET runs above the crop's transpiration-limited rate, can still be flagged.
 5. **Soil moisture only at US-CS5.** The fields were irrigated potato, so water stress should be rare; CS5 can confirm it for one season.
 6. **Corn is two short, raw records.** Enough to see whether corn's measured coefficient sits near FAO-56's 1.20, not to fit one.
 
 7. **Instrument doubts at the Worzella sites** (found in 03): midday albedo of 0.07–0.12 at US-CS6 and CS8 (0.21–0.22 at the Heartland sites), and US-CS8's soil heat flux about 10 times CS5's and CS6's. Worth asking Desai's group about.
+
+## Crop dates, irrigation and canopy cover
+
+Received from Desai's group 2026-11-19 as two workbooks, `US_CS_sites_dates_harvest.xlsx` and `US_CS_sites_irrigation_canopy_cover.xlsx`, kept as received in `tmp/ameriflux/desai/` (not committed: the data are the group's and unpublished). We use what holds up against the towers' own records and leave the rest, rather than go back with questions about records several years old. `scripts/season_data.py` writes the CSVs beside the workbooks:
+
+| File | What |
+|---|---|
+| `seasons.csv` | **What the analysis uses**, per potato season: emergence, full cover, vine kill, harvest, how far to trust the canopy cover, and where irrigation comes from |
+| `sites.csv` | Per tower: crop, position and the dates, as given |
+| `irrigation.csv` | The pivot logs' entries (2018, 2020, 2021), as given |
+| `irrigation_daily.csv` | The same per day, first entry to harvest, 0 on a day with none |
+| `canopy_cover.csv` | Canopy cover in percent, April to October, as given |
+
+The irrigation and canopy sheets have no site column; each year is that year's potato tower (2018 US-CS1, 2019 CS3, 2020 CS4, 2021 CS5). The winter rows (canopy 1%, irrigation 0) are filler and left out.
+
+| Site | Emergence | Full cover | Vine kill | Harvest | Canopy cover | Irrigation |
+|---|---|---|---|---|---|---|
+| US-CS1 2018 | May 23 | Jul 1 – Aug 27 | Aug 29 | Sep 29 | phases only | pivot log, 11.8 in |
+| US-CS3 2019 | May 8 | Jul 8 – Aug 19 | Aug 18 | Sep 7 | phases only | tower gauge |
+| US-CS4 2020 | Apr 25 | Jun 23 – Jul 27 | Aug 27 | Sep 23 | observed (about every other day) | pivot log, 18.2 in |
+| US-CS5 2021 | Apr 21 | Jul 3 – Aug 15 | Aug 18 | Sep 24 | observed (daily) | pivot log, 15.3 in |
+| US-CS6 2022 | – | from the tower | – | Sep 30 | none | tower gauge |
+| US-CS8 2023 | – | from the tower | – | – | none | tower gauge |
+
+What's kept, what isn't, and why:
+
+- **Emergence comes from canopy cover** (the first day above the 1% the sheet holds for bare ground), not from the "plantation date". That column is each tower's installation date (it matches the group's record start at every site, to the day), and it can't be planting: 2021's canopy and irrigation start two weeks before it, and 2018's canopy rises five days after it.
+- **Full cover, vine kill and harvest are kept.** The towers' midday albedo, though a weak sign of canopy over this sand, peaks within the 100% windows and falls with each decline in all four years, and canopy begins to drop within days of the first vine kill date (2020 excepted: its canopy falls from late July and mostly by mid-August, before the Aug 27 vine kill). Where vine kill has several dates (successive desiccant passes), the first is used.
+- **2018 and 2019's canopy cover is used for its phases only** (emergence, the full-cover window, the decline), not as day-by-day readings: the two years share values day for day in mid-June though planted weeks apart, and step down through the same sequence, so the values between are a template, not observations. 2020 and 2021 are observed and can test `Canopy` through development: 2020 against the tower from emergence, 2021 from May 19, when its tower starts (22% cover).
+- **2019's "irrigation" sheet isn't used.** It's hourly, in 0.01 in steps, and follows the storms, not the pivot: a rain record. 2019's irrigation days come from the tower's gauge, as CS6's and CS8's do.
+- **The pivot logs are kept.** The tower's gauge catches at least half the logged amount on 35 of 37 logged days in 2021 and 33 of 44 in 2020. 2020's eleven 0.09 in passes are likely chemigation. 2018's log matters only from June 29, when its tower starts.
+- **US-CS6 and CS8 have no canopy record**, and CS8's "planting" (June 19, 2023) is its tower's installation; their full-cover periods stay estimated from the towers, as in 03. US_CS7's longitude is given as east; `sites.csv` corrects the sign.
 
 ## Daily file
 

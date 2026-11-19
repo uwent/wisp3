@@ -5,12 +5,13 @@ Whether WISP 3's crop ET (FAO-56 Penman-Monteith ET0 × the crop's coefficient �
 Notes, in order:
 
 - `01-background.md`: the two Talib et al. papers, legacy WISP's ET and its "adjusted" variant, where WISP 3 stands, and the question this work answers.
-- `02-data.md`: the AmeriFlux sites and files, what each season measured, energy balance closure, and what's missing.
+- `02-data.md`: the AmeriFlux sites and files, what each season measured, energy balance closure, what's missing, and Desai's group's crop dates, irrigation logs and canopy cover: what's usable and what isn't.
 - `03-results.md`: potato at full cover (July, six seasons) on the towers' own weather: the coefficient the towers imply, closure and how much it matters, WISP 3 and legacy's two equations against them, and net longwave.
 - `04-weather.md`: the same with the weather each model really uses: WISP 3's corrected Open-Meteo weather, and AgWeather's gridded ET, classic and adjusted.
 - `05-corn.md`: the two short corn records (inconclusive).
+- `06-season.md`: the whole potato season (2018–2021, with Desai's group's crop dates and canopy cover) through WISP 3's own canopy and `CropEt`, by phase, by cover, and after vine kill, with the changes it suggests.
 
-Still to do: the whole potato season (development and decline), once Desai's group sends the crop dates and canopy cover.
+Still to do: Ben's decision on 06's suggested changes (soil evaporation at low cover and after vine kill, the early August decline, canopy timing), then the About page's summary.
 
 **In short (2026-11-19):**
 
@@ -18,5 +19,6 @@ Still to do: the whole potato season (development and decline), once Desai's gro
 - On the towers' weather, WISP 3 is 3% above the closure-corrected towers. On its own weather (Open-Meteo, corrected), 9% above (3% without the 2023 drought season); its reference ET is 5% above the towers', where Open-Meteo's own is 18% above.
 - Legacy's classic equation is high either way (+42% against the towers as recorded, on AgWeather's own data). Talib et al.'s adjusted equation fits the towers as recorded (+7%), as it was fitted to, and is 15% below them once closure is corrected. Their diagnosis of legacy's longwave error holds against the towers' radiometers.
 - So the funded research found a real flaw in legacy WISP, and its towers are what WISP 3 is validated against.
+- Over the whole season (06, four seasons) WISP 3's total is within 1–6% of the corrected towers, but by cancelling errors: it misses soil evaporation at low cover (−21% in development with the measured canopy) and after vine kill (−49%), and holds full Kc into early August, when the towers' coefficient has eased to 0.97 (+13%). Potato's curve also grows faster than these canopies did, two to three weeks early for April emergence.
 
-Raw downloads stay out of git (`tmp/ameriflux/`; AmeriFlux data are CC BY 4.0, cited by each site's DOI). Scripts are in `scripts/`, as in `docs/canopy/`: `inventory.py`, `et0.py` and `compare.py` (02–03), `weather_at_towers.rb` and `compare_weather.py` (04), `corn.py` (05).
+Raw downloads stay out of git (`tmp/ameriflux/`; AmeriFlux data are CC BY 4.0, cited by each site's DOI). Scripts are in `scripts/`, as in `docs/canopy/`: `inventory.py`, `season_data.py`, `et0.py` and `compare.py` (02–03), `weather_at_towers.rb` and `compare_weather.py` (04), `corn.py` (05), `season.rb` (06, through `bin/rails runner`).

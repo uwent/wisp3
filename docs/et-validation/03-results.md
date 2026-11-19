@@ -1,6 +1,6 @@
 # 03. Results: full cover
 
-First results, 2026-11-19: potato at full cover (July), all six Central Sands seasons. Canopy development and decline wait for the crop dates (02, gap 1); corn for a look at the two short records.
+First results, 2026-11-19: potato at full cover (July), all six Central Sands seasons. The rest of the season, with the crop dates, is in 06; corn in 05.
 
 Reproduce:
 
@@ -58,10 +58,10 @@ A wider window, June 20 – August 8 (257 days), gives the same picture (closure
 - **The Worzella seasons (US-CS6, CS8) are less certain.** Their midday albedo is 0.07–0.12, against 0.21–0.22 at the Heartland sites and the 0.20–0.25 expected over a potato canopy, which points to the upward shortwave sensor (too much Rn, closure too low, correction too large: CS6's 1.24). US-CS8's soil heat flux averages 1.8 MJ/m² a day in July, about 10 times what CS5 and CS6 measure; with G taken as 0, CS8's closure is 0.74 and its corrected coefficient 1.11 instead of 0.96. The Heartland seasons alone (US-CS1, CS3, CS4, CS5: 112 days) give 1.09, the same as all six.
 - **Wet canopy days can't be screened.** The rain gauges catch the pivots, so almost every July day has "rain"; FAO-56's Kc mid includes the usual sprinkler wetting, so the comparison is like for like.
 - **Footprint.** The towers see a few hundred meters of a single field; WISP's ET0 comes from a 9 km weather cell. This test removes the weather source; how Open-Meteo's corrected ET0 compares with these towers' ET0 is a separate check (01, step 6).
-- **One month, one crop stage.** Full cover is where the coefficient question was; whether WISP's canopy curve tracks development and decline needs the crop dates.
+- **One month, one crop stage.** Full cover is where the coefficient question was; development, decline and vine kill are in 06.
 
 ## Next
 
-- With the crop dates and canopy cover from Desai's group: the whole season, with WISP's `CropEt` and canopy curve (or the measured cover) against the towers, development and decline included.
+- ~~With the crop dates and canopy cover from Desai's group: the whole season.~~ Done in 06.
 - WISP 3's own weather at the towers: Open-Meteo's historical forecasts with WISP's corrections, against the towers' ET0, for the seasons it covers (2022 and 2023 at least).
 - Corn: US-CC1 (about 38 days) at full cover, as a rough check against 1.20.
