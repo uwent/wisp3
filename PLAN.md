@@ -6,16 +6,16 @@ A full rewrite of the Wisconsin Irrigation Scheduling Program (WISP), replacing 
 
 Read this first; rewrite it at the end of each session. (The per-feature handoffs that were in `docs/handoffs/` are folded into their sections: G.10, G.13 and G.14.)
 
-**Where things stand.** **WISP 3 launched on 2026-11-19, months ahead of the March plan:** production is `https://wisp.cals.wisc.edu` (EC2 t3.medium and RDS db.t4g.small, mail through SES), and the `v3.wisp.cals.wisc.edu` record was removed. Legacy moved to `https://old.wisp.cals.wisc.edu` and will be deleted in January 2027 (§13). The winter off-season is the beta: growers set up their operations now, Ben sends the announcement email and holds a training session. Staging is still `dev.wisp.cals.wisc.edu`; legacy has no staging server any more. Production runs `main` as of `dae08af` (C21, analytics, anti-abuse, form sections). Phases 0–7 are done; of Phase 8, the screen reader walkthrough, the wording review and the RDS restore test remain. Work is on `main`, with no feature branches open.
+**Where things stand.** **WISP 3 launched on 2026-11-19, months ahead of the March plan:** production is `https://wisp.cals.wisc.edu` (EC2 t3.medium and RDS db.t4g.small, mail through SES), and the `v3.wisp.cals.wisc.edu` record was removed. Legacy moved to `https://old.wisp.cals.wisc.edu` and will be deleted on December 31, 2027 (§13). The winter off-season is the beta: growers set up their operations now, Ben sends the announcement email and holds a training session. Staging is still `dev.wisp.cals.wisc.edu`; legacy has no staging server any more. Production runs `main` as of `dae08af` (C21, analytics, anti-abuse, form sections). Phases 0–7 are done; of Phase 8, the screen reader walkthrough, the wording review and the RDS restore test remain. Work is on `main`, with no feature branches open.
 
-**This session (2026-11-19):** the docs moved to the new hostnames, with the RDS restore drill written out (`docs/deployment.md`, Production step 8). In legacy (`../wisp`, not yet committed or deployed when this was written): a banner on every page saying it's deleted in January 2027 with a link to the new WISP, sign-ups sent to the new WISP (`RegistrationsController`), the sidebar's Feb 15 note replaced, mail links on `old.wisp.cals.wisc.edu`, and `cap staging deploy` stopped with a note (`config/initializers/retirement.rb` holds the URL and date).
+**This session (2026-11-19):** the docs moved to the new hostnames, with the RDS restore drill written out (`docs/deployment.md`, Production step 8). In legacy (`../wisp`, not yet committed or deployed when this was written): a banner on every page saying it's deleted at the end of 2027 with a link to the new WISP, sign-ups sent to the new WISP (`RegistrationsController`), the sidebar's Feb 15 note replaced, mail links on `old.wisp.cals.wisc.edu`, and `cap staging deploy` stopped with a note (`config/initializers/retirement.rb` holds the URL and date).
 
 **Then (2026-11-19), the ET validation (D14, `docs/et-validation/`):** prompted by the potato growers' funded flux tower research (Talib et al. 2021, 2024), WISP 3's crop ET was checked against six seasons of AmeriFlux towers over Central Sands potato. At full cover it matches the closure-corrected towers (+3% on their weather, +9% on WISP's own), where legacy's classic ET runs 13% high and the paper's adjusted version 15% low; C21 stands. The About page has a plain-language summary (Weather, "Checked against measured water use") and the towers' credit. Waiting on Desai's group for crop dates and canopy cover to test the whole season, and on Stoy's group about the corn sites (TODO.md). Ben noted AgWeather v2 as a possible future provider (D6).
 
 **Then (2026-11-19), the rainfall setting moved** (Q7, "Changed"): from the operation and its fields to farms and irrigation groups, set in their Setup dialogs; the field page's Rainfall preferences section is gone. Production needs the migration on its next deploy (no data to move).
 
 **Next:**
-1. **Legacy:** commit, push and `cap production deploy` the retirement changes; take the archive `pg_dump` before the January deletion (TODO.md).
+1. **Legacy:** commit, push and `cap production deploy` the retirement changes; take the archive `pg_dump` before it's deleted on December 31, 2027 (TODO.md).
 2. **Ben** (TODO.md): the RDS restore test; the announcement email and training session; GA's settings and the privacy wording; the wording review (C21's included) and the screen reader walkthrough.
 3. **Code during the winter beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); the intermittent contrast finding on the shape page (Phase 9) when CI names it; whatever the beta and training session turn up.
 4. **Phase 9 quality of life**, checked with the beta before building most of it.
@@ -482,7 +482,7 @@ Every ported method is checked against this list. Items marked **Hotfix** should
 - **Mail**: staging uses the host's sendmail (Postfix relaying through SES). The production container has no sendmail and EC2 blocks port 25, so production sends through Amazon SES's SMTP interface on 587 (`SMTP_ADDRESS` etc. in `.env`; CALS IT asked for SES rather than the CALS relay, 2026-10-30). Before alerts launch, confirm SPF and DKIM for the sender domain with campus IT. Add `List-Unsubscribe` and one-click unsubscribe to alert emails. *Status 2026-11-07: SES is configured, but the test send fails with `554` because the account is still in the SES sandbox; waiting on production access (`docs/deployment.md` step 7).*
 - **DNS** (done 2026-11-19): `wisp.cals.wisc.edu` points at the EC2 server, legacy moved to `old.wisp.cals.wisc.edu` (§13), and the temporary `v3.wisp.cals.wisc.edu` was removed.
 - **Monitoring**: a `/up` health check; an admin weather-status page; a daily job summary emailed to admins when any job fails or a cell's data is more than 24 h stale. Optional: an error tracker such as Honeybadger or Sentry.
-- **Staging**: dev.wisp.cals.wisc.edu runs WISP 3 from Phase 1 onward, so legacy has no staging server. Legacy production stays on its own box, at `old.wisp.cals.wisc.edu`, until it's deleted in January 2027.
+- **Staging**: dev.wisp.cals.wisc.edu runs WISP 3 from Phase 1 onward, so legacy has no staging server. Legacy production stays on its own box, at `old.wisp.cals.wisc.edu`, until it's deleted on December 31, 2027.
 
 ---
 
@@ -492,10 +492,10 @@ Users start fresh in WISP 3. That removes the riskiest part of the project (the 
 
 - **Fast setup.** Getting from a new account to a working field takes one form per level, with sensible defaults, and the pivot map picker in the setup flow (Phase 4, not Phase 7). Target: a two-field pivot set up in under 5 minutes. Tested in the beta.
 - **Announcement email** (at launch, November 2026, with a training session) to confirmed legacy users, sent from the legacy app (it already has the addresses): what's new, the new address, "please create a new account", a link to a short setup video or guide, and a note about sign-in links.
-- **Legacy stays readable until January 2027** (Ben, 2026-11-19; shortened from a season, as launch came in November), at `old.wisp.cals.wisc.edu`:
-  - Sign-ups go to WISP 3, and a banner on every page says it's deleted in January 2027 and links to WISP 3 (`config/initializers/retirement.rb` in legacy).
+- **Legacy stays readable until December 31, 2027** (Ben, 2026-11-19: through the 2027 season), at `old.wisp.cals.wisc.edu`:
+  - Sign-ups go to WISP 3, and a banner on every page says it's deleted at the end of 2027 and links to WISP 3 (`config/initializers/retirement.rb` in legacy).
   - Growers can still look up and export their 2026 data (the CSV export already exists).
-  - Delete it in January 2027, keeping an archived `pg_dump`.
+  - Delete it on December 31, 2027, keeping an archived `pg_dump`.
 - **Legacy data used offline only:**
   - Anonymized golden-test fixtures (§10).
   - The AgWeather comparison export (§8.4).
@@ -923,7 +923,7 @@ Measure first; fix what the numbers show. The app already feels fast enough (Ben
   - [x] The first admin account (docs/deployment.md, step 6).
   - [x] Production mail through SES (docs/deployment.md, step 7): SMTP credentials, the sender identity verified with DKIM, production access out of the sandbox; `SMTP_*` in `.env`, a test checked for `dkim=pass`.
   - [ ] Restore an RDS snapshot to a scratch instance once, and check the app against it.
-- [x] Legacy goes read-only (sign-ups disabled, banner) and moves to its legacy hostname; DNS switch; **launch by ~Mar 20, 2027** (§13). *(Launched 2026-11-19: `wisp.cals.wisc.edu` to the EC2 server, legacy at `old.wisp.cals.wisc.edu` until January 2027, `v3` removed. Legacy's banner and closed sign-ups written the same day, to deploy.)*
+- [x] Legacy goes read-only (sign-ups disabled, banner) and moves to its legacy hostname; DNS switch; **launch by ~Mar 20, 2027** (§13). *(Launched 2026-11-19: `wisp.cals.wisc.edu` to the EC2 server, legacy at `old.wisp.cals.wisc.edu` until December 31, 2027, `v3` removed. Legacy's banner and closed sign-ups written the same day, to deploy.)*
 - **Exit:** WISP 3 live on the new server before April 1 (done 2026-11-19); announcement emailed to legacy users from the legacy app (new address, create a new account, sign-in links, setup guide).
 
 #### E. Weather corrections (D12, §8.5; before the beta)

@@ -14,7 +14,7 @@ Things only you can do, roughly in order. Done items are removed (their record i
 - [ ] Ask the large pivot growers whether importing from FieldNET or Valley 365 would decide whether they use WISP.
 - [ ] **ET validation, waiting on Desai's group** (`docs/et-validation/02-data.md`, asked 2026-11-19): canopy cover, planting, emergence, vine kill and harvest dates for US-CS1, CS3, CS4, CS5, CS6 and CS8 (2018–2023), irrigation records if kept, and how they handled energy balance closure (CS1, CS3 and CS4 have no soil heat flux in AmeriFlux). Also worth asking: the low albedo at CS6 and CS8 (0.07–0.12) and CS8's large soil heat flux (03). And Paul Stoy's group, for US-CC1 and CC2 (2021): field or sweet corn, planting and harvest dates, irrigated or not (05).
 
-## Legacy shutdown (January 2027)
+## Legacy shutdown (December 31, 2027)
 
 - [ ] **Legacy archive:** take an archive `pg_dump` of legacy production before it's deleted.
 - [ ] **Delete legacy** (`old.wisp.cals.wisc.edu`) with IT, and its DNS record.
