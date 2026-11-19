@@ -690,6 +690,29 @@ t: days since emergence; t′: days since the decline starts</code
       The corrections were fitted in Wisconsin. Irrigation systems elsewhere get them too until they're checked against
       stations in other states.
     </p>
+    <h3 id="et-validation">Checked against measured water use</h3>
+    <p>
+      Reference ET and crop coefficients are estimates, so we checked WISP's crop water use against measurements. From
+      2018 to 2023, UW–Madison researchers (Ammara Talib, Ankur Desai and colleagues), funded in part by the Wisconsin
+      Potato and Vegetable Growers Association, ran flux towers in center-pivot irrigated potato fields in the Central
+      Sands, one each season. A flux tower measures the water vapor rising from a field, so it measures the crop's water
+      use directly. Their study found that the ET WISP used until WISP 3, from AgWeather, ran 20–35% above what the
+      towers measured, and traced the error to how it estimated the heat a field loses to the sky.
+    </p>
+    <p>
+      We ran WISP 3's method over the same six potato seasons. At full canopy, its potato water use came within 3% of
+      what the towers measured when worked out from the towers' own weather readings, and about 9% above when worked out
+      from the weather WISP uses (3% leaving out the 2023 drought). Those comparisons include the standard correction
+      for what towers like these miss: they account for only about 80% of the energy reaching a field, and over a
+      well-watered crop nearly all of the rest goes into water use. On the same comparison, the old AgWeather ET ran 13%
+      high, and the researchers' adjusted version of it 15% low.
+    </p>
+    <p>
+      The analysis, its data and scripts are in
+      <a href="https://github.com/uwent/wisp3/tree/main/docs/et-validation" target="_blank" rel="noopener"
+        >the WISP source code</a
+      >. It continues with the rest of the season, as the canopy fills in and dies back.
+    </p>
 
     <h2 id="glossary">Glossary</h2>
     <dl>
@@ -759,7 +782,8 @@ t: days since emergence; t′: days since the decline starts</code
       </li>
       <li>
         <strong>Crop water use</strong> from each crop's FAO-56 crop coefficient and a typical canopy curve, which your
-        cover readings correct (see <a href="#crops">Crops</a>).
+        cover readings correct (see <a href="#crops">Crops</a>), checked against flux towers in Central Sands potato
+        fields (see <a href="#et-validation">Checked against measured water use</a>).
       </li>
       <li>
         <strong>Plantings on part of a field,</strong> side by side, each with its own balance and page, and a page that can
@@ -812,6 +836,17 @@ t: days since emergence; t′: days since the decline starts</code
       UW–Madison Department of Entomology. WISP 2012 was built by Rick Wayne, Paul Kaarakka, Mark McEahern, Allen
       Ballman and Ben Bradford, with academic leadership from Bill Bland (Soil Science) and John Panuska and Scott
       Sanford (Biological Systems Engineering).
+    </p>
+    <p>
+      The flux tower measurements are AmeriFlux data from Ankur Desai's group (UW–Madison Atmospheric and Oceanic
+      Sciences), shared under CC BY 4.0: Talib et al. (2024),
+      <cite
+        >Improving parameterization of an evapotranspiration estimation model with eddy covariance measurements for a
+        regional irrigation scheduling program</cite
+      >,
+      <a href="https://doi.org/10.1016/j.agrformet.2024.109967" target="_blank" rel="noopener"
+        >Agricultural and Forest Meteorology 350</a
+      >.
     </p>
     <p>
       Questions, comments and bug reports are welcome at

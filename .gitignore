@@ -33,3 +33,4 @@
 /test-results/
 /playwright-report/
 /.svelte-check/
+__pycache__/
