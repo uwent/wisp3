@@ -53,9 +53,14 @@ class PlantingSummarySerializer < ApplicationSerializer
     fit = status.canopy.fit
     fit && {shift: fit.shift, stretch: fit.stretch.round(3), height: fit.height.round(3)}
   end
-  # Whether the percent cover curve runs by growing degree days at the planting's weather cell (C23);
-  # false by calendar days (no normals for the cell yet, or an LAI curve)
-  attribute(:canopy_thermal) { |status| status.canopy.thermal? }
+  # Whether the percent cover curve runs by growing degree days at the planting's weather cell (C23):
+  # true; false for a crop that would but whose cell has no normals yet; null for a curve that runs by
+  # days (a crop not on degree days, or an LAI curve)
+  attribute(:canopy_thermal) do |status|
+    if status.canopy.thermal? then true
+    elsif status.planting.thermal_curve? then false
+    end
+  end
   # Readings to enter and checks to make (PlantingTasks), while the season is on
   attribute(:tasks) { |status| status.tasks.map(&:to_h) }
   attribute(:projection) do |status|
@@ -83,7 +88,7 @@ class PlantingSummarySerializer < ApplicationSerializer
     threshold: :number, crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     use_model_precip: :boolean, rain_group_id: "number | null", rain_farm_id: :number, dry_crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     ensemble_size: :number, projection_source: "'forecast' | 'observed'", canopy_fit: "{ shift: number; stretch: number; height: number } | null",
-    canopy_thermal: :boolean,
+    canopy_thermal: "boolean | null",
     tasks: "{ kind: 'soil_moisture' | 'canopy' | 'canopy_check'; label: string; last_date: string | null; " \
       "due: boolean; note: 'due' | 'canopy closed' | 'vines killed' | 'optional' | null; todo: string | null; message: string | null }[]",
     projection: "{ date: string; ad: number; p10: number | null; p50: number | null; p90: number | null; " \

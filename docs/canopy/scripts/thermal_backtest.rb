@@ -34,7 +34,7 @@ ratio = ->(c) { CropEt.from_pct_cover(0.2, c) / 0.2 }
 
 # A canopy for a series from readings known, in calendar days or degree days
 canopy = lambda do |s, known, thermal|
-  curve = CanopyCurve.for(s[:crop])
+  curve = thermal ? ThermalScripts.on_degree_days(s[:crop]) : CanopyCurve.for(s[:crop])
   cell = temperatures[[s[:lat], s[:lng]]] ||= ThermalScripts.cell_temperatures(s[:lat], s[:lng], s[:emergence].year)
   clock = thermal ? curve.clock(cell) : nil
   em = s[:emergence]

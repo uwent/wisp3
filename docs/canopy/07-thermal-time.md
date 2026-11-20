@@ -201,3 +201,8 @@ slightly negative (field corn negative), and in-sample for the calendar curves. 
 
 Either way, rerun `thermal_backtest.rb` on the 2027 season's readings, which will be the first season
 whose readings weren't used to make the curves.
+
+## Decision (2026-11-19)
+
+Ben chose to run potato on degree days and keep the other crops on calendar days for now: potato's gain is clear at the towers and on the grower readings with the curve alone, while the other crops did a little worse than their calendar curves on the 2026 readings those curves were tuned to. Their conversions stay in `canopy_curves.yml` as `thermal_candidate:` (nothing in the app runs on them) to check against the 2027 readings; renaming a crop's line to `thermal:` puts it on degree days.
+

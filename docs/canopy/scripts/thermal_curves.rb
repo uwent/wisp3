@@ -65,18 +65,20 @@ results = CROPS.map do |key, (base, upper, source, emergence, why)|
 end
 
 # --write: puts each thermal: line in db/reference/canopy_curves.yml, after the curve's growth (and
-# decline), replacing the one there
+# decline), replacing the one there and keeping its key (thermal, or thermal_candidate for a crop not
+# yet on degree days)
 if ARGV.include?("--write")
   lines = File.readlines(CanopyCurve::FILE)
   results.each do |key, thermal, _|
     at = lines.index("  #{key}:\n") or abort "#{key} isn't in the file"
     block = (at + 1...lines.size).take_while { |i| lines[i].start_with?("    ") }
-    old = block.find { |i| lines[i].start_with?("    thermal:") }
+    old = block.find { |i| lines[i].match?(/\A    thermal(_candidate)?:/) }
+    name = old ? lines[old][/\A    (\w+):/, 1] : "thermal"
     lines.delete_at(old) if old
     growth = block.find { |i| lines[i].start_with?("    growth:") }
     after = lines[growth + 1].start_with?("    decline:") ? growth + 2 : growth + 1
     values = thermal.map { |name, value| "#{name}: #{value.is_a?(String) ? value.to_json : value}" }.join(", ")
-    lines.insert(after, "    thermal: {#{values}}\n")
+    lines.insert(after, "    #{name}: {#{values}}\n")
   end
   File.write(CanopyCurve::FILE, lines.join)
   puts "Wrote #{CanopyCurve::FILE}\n\n"

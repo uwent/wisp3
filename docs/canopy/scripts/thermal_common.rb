@@ -14,6 +14,17 @@ module ThermalScripts
 
   module_function
 
+  # A crop's curve on degree days: its thermal line, or its thermal_candidate for a crop the app still
+  # runs by calendar days (canopy_curves.yml), so the candidates can be checked against new readings
+  def on_degree_days(key)
+    curve = CanopyCurve.for(key) || CanopyCurve.generic.fetch(key)
+    return curve if curve.thermal
+    data = YAML.safe_load_file(CanopyCurve::FILE, aliases: true)
+    sources = data.fetch("sources").to_h { |id, source| [id, CanopyCurve::Source.new(id:, **source.symbolize_keys)] }
+    definition = data.fetch("crops")[key] || data.fetch("generic").fetch(key)
+    CanopyCurve.new(key, definition.merge("thermal" => definition.fetch("thermal_candidate")), sources)
+  end
+
   # {date => [tmax_f, tmin_f]} at a point, from first through last
   def temperatures(lat, lng, first, last)
     FileUtils.mkdir_p(CACHE)

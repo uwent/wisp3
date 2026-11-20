@@ -89,14 +89,25 @@ RSpec.describe ThermalTime do
 
     def day_reaching(curve, pct, **) = (0..200).find { |day| curve.cover(emergence, emergence + day, **) >= pct }
 
-    it "has thermal parameters for every curve, from AquaCrop's temperatures where it has a crop file" do
+    # A crop still on calendar days, run on its candidate conversion (canopy_curves.yml)
+    def on_degree_days(key)
+      data = YAML.safe_load_file(CanopyCurve::FILE, aliases: true)
+      sources = data.fetch("sources").to_h { |id, source| [id, CanopyCurve::Source.new(id:, **source.symbolize_keys)] }
+      definition = data.fetch("crops").fetch(key)
+      CanopyCurve.new(key, definition.merge("thermal" => definition.fetch("thermal_candidate")), sources)
+    end
+
+    it "runs potato on degree days and keeps every other curve's conversion as a candidate" do
       (CanopyCurve.all.values + CanopyCurve.generic.values).each do |curve|
-        expect(curve.thermal).to be_present, curve.key
-        expect(curve.thermal.cgc).to be_between(0.002, 0.03), curve.key
-        expect(curve.thermal.basis).to be_present
+        thermal = curve.thermal || curve.thermal_candidate
+        expect(thermal).to be_present, curve.key
+        expect(curve.thermal.nil?).to eq(curve.key != "potato"), curve.key
+        expect(thermal.cgc).to be_between(0.002, 0.03), curve.key
+        expect(thermal.basis).to be_present
       end
       expect(potato.thermal).to have_attributes(base_c: 2, upper_c: 26, emergence: "05-15")
-      expect(CanopyCurve.for("field_corn").thermal).to have_attributes(base_c: 8, upper_c: 30)
+      expect(CanopyCurve.for("field_corn").thermal_candidate).to have_attributes(base_c: 8, upper_c: 30)
+      expect(CanopyCurve.for("field_corn").clock(CellTemperatures.new({}, {}))).to be_nil
     end
 
     it "grows by degree days: at the degree days a day the calendar curve's rate implies, it is the calendar curve" do
@@ -131,7 +142,7 @@ RSpec.describe ThermalTime do
     end
 
     it "starts an AquaCrop decline at its degree days" do
-      corn = CanopyCurve.for("field_corn")
+      corn = on_degree_days("field_corn")
       clock = clock_at(10, 8, 30)
       start = (corn.thermal.decline_start / 10.0).ceil # days
       expect(corn.cover(emergence, emergence + start - 1, clock:)).to be_within(0.01).of(96)
@@ -139,7 +150,7 @@ RSpec.describe ThermalTime do
     end
 
     it "starts the late season (C22) where the curve in degree days declines" do
-      corn = CanopyCurve.for("field_corn")
+      corn = on_degree_days("field_corn")
       clock = clock_at(10, 8, 30)
       late = corn.decline_start(emergence, clock:)
       expect(corn.cover(emergence, late + 1, clock:)).to be < corn.cover(emergence, late, clock:)

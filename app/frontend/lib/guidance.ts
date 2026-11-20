@@ -76,7 +76,7 @@ export function guidance(
   /** How the crop's curve was fitted to the readings (summary.canopy_fit), or null */
   fit: CanopyFit = null,
   /** Whether the curve runs by growing degree days (summary.canopy_thermal); false by calendar days
-   * until WISP has the location's normal temperatures; null when unknown (no status) */
+   * until WISP has the location's normal temperatures; null for a curve that runs by days (or no status) */
   thermal: boolean | null = null,
 ): Guidance {
   const crop = planting.plant_name
@@ -167,7 +167,7 @@ function summaryText(planting: GuidedPlanting): string {
 
 /** How a percent cover curve keeps time (PLAN.md §9 C23): a sentence, or '' without a curve */
 function timingText(planting: GuidedPlanting, thermal: boolean | null): string {
-  if (!planting.canopy_curve) return ''
+  if (!planting.canopy_curve || thermal === null) return ''
   if (thermal === false) {
     return "For now the curve runs by days since emergence: once WISP has this location's normal temperatures, usually within a day, it runs by growing degree days instead. "
   }

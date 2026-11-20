@@ -51,11 +51,11 @@ describe('guidance', () => {
     expect(readingsOnly.summary.split('. ')).toHaveLength(2)
   })
 
-  it('says the curve runs by growing degree days, or by days until the location has normals (C23)', () => {
+  it('says the curve runs by growing degree days, or by days until the location has normals (C23), and nothing for a curve by days', () => {
     const method = (thermal: boolean | null, planting: Parameters<typeof guidance>[0] = potato) =>
       guidance(planting, units('imperial'), [], today, null, thermal).paragraphs[0]
     expect(method(true)).toContain('The curve runs by growing degree days at the field')
-    expect(method(null)).toContain('The curve runs by growing degree days')
+    expect(method(null)).not.toContain('degree days') // a crop whose curve runs by days
     expect(method(false)).toContain('For now the curve runs by days since emergence')
     expect(method(true, { ...potato, canopy_curve: false })).not.toContain('degree days')
     expect(method(true, corn)).not.toContain('degree days') // LAI runs by days

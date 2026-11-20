@@ -38,6 +38,9 @@ class CanopyCurve
   attr_reader :name, :default_for
   # Its Thermal parameters, or nil if it runs only by calendar days
   attr_reader :thermal
+  # A conversion to degree days kept for a crop still on calendar days (canopy_curves.yml), to check
+  # against later readings; nothing runs on it
+  attr_reader :thermal_candidate
   # Changes with the curve's definition, so fits to it are redone (CanopyFit.fetch)
   attr_reader :digest
 
@@ -79,9 +82,12 @@ class CanopyCurve
     @decline = definition["decline"]&.symbolize_keys
     @basis, @notes = definition.fetch("basis"), definition["notes"]
     @digest = Digest::SHA256.hexdigest(definition.slice("growth", "decline", "thermal").to_json).first(12)
-    @thermal = definition["thermal"]&.then { |thermal| Thermal.new(**thermal.symbolize_keys) }
-    if @thermal && @decline&.fetch(:type) == "aquacrop" && !(@thermal.decline_start && @thermal.cdc)
-      raise ArgumentError, "#{key}: thermal parameters need the decline's start and cdc"
+    @thermal, @thermal_candidate = %w[thermal thermal_candidate].map do |name|
+      thermal = definition[name]&.then { |values| Thermal.new(**values.symbolize_keys) }
+      if thermal && @decline&.fetch(:type) == "aquacrop" && !(thermal.decline_start && thermal.cdc)
+        raise ArgumentError, "#{key}: thermal parameters need the decline's start and cdc"
+      end
+      thermal
     end
     @vine_kill = definition.fetch("vine_kill", false)
     @season_days, @season_basis = definition["season"]&.values_at("days", "basis")
