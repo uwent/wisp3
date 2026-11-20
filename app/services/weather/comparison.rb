@@ -34,8 +34,11 @@ module Weather
       def initialize(et0:, precip:, wind: {}, rh_min: {}) = super
     end
 
-    # The standard field's crop for "wisp_kc": potato in db/reference/plants.yml (FAO-56 Table 12)
-    POTATO = WaterBalance::Crop.new(kc_mid: 1.15, height_m: 0.6)
+    # The standard field's crop for "wisp_kc": potato in db/reference/plants.yml (FAO-56 Table 17,
+    # C22), held at mid season's coefficient (the field has no late season), on sand's readily
+    # evaporable water (soil_types.yml)
+    POTATO = WaterBalance::Crop.new(kcb_mid: 1.10, kcb_end: 0.65, height_m: 0.6)
+    SAND_REW_IN = 0.177
 
     def initialize(points: DEFAULT_POINTS, years: [2025, 2026], client: OpenMeteo.new, log: ->(_) {})
       @points, @years, @client, @log = points, years, client, log
@@ -80,8 +83,9 @@ module Weather
     end
 
     def simulate(series, crop: nil)
-      params = WaterBalance::Params.new(**FIELD, crop:)
+      params = WaterBalance::Params.new(**FIELD, crop:, rew: SAND_REW_IN)
       ad = params.initial_ad
+      surface = nil
       history = []
       irrigations = []
       pending = false
@@ -92,7 +96,8 @@ module Weather
         irrigations << date if pending
         day = WaterBalance::Day.new(date:, et0: series.et0[date], rain: series.precip[date], irrigation:, canopy: cover,
           wind_mph: series.wind[date], rh_min_pct: series.rh_min[date])
-        result = WaterBalance.run(params, [day], initial_ad: ad, et_history: history).first
+        result = WaterBalance.run(params, [day], initial_ad: ad, et_history: history, evaporation: surface).first
+        surface = result.evaporation
         history << [date, result.adj_et] if result.et_source == :computed
         ad = result.ad
         pending = ad <= 0

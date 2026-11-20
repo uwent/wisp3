@@ -10,8 +10,8 @@ module EnsembleProjection
   # days: the projection's PlantingBalance::Days (resolved inputs and canopy) after today.
   # members: [{date => {et0:, precip:}}, ...]. start_ad: today's AD, or nil if today is already at or
   # below threshold (every member then counts as crossed). et_history: [[date, adj_et], ...] before
-  # the first day, for gap fill.
-  def run(params, days:, members:, start_ad:, threshold:, et_history: [], already_crossed: false)
+  # the first day, for gap fill; evaporation: today's soil surface (WaterBalance::Result#evaporation).
+  def run(params, days:, members:, start_ad:, threshold:, et_history: [], evaporation: nil, already_crossed: false)
     return [] if days.empty? || members.empty?
 
     runs = members.map do |member|
@@ -22,7 +22,7 @@ module EnsembleProjection
           soil_moisture_pct: day.inputs.soil_moisture_pct, canopy: day.canopy,
           wind_mph: day.inputs.wind_mph, rh_min_pct: day.inputs.rh_min_pct)
       end
-      WaterBalance.run(params, balance_days, initial_ad: start_ad, et_history:).map(&:ad)
+      WaterBalance.run(params, balance_days, initial_ad: start_ad, et_history:, evaporation:).map(&:ad)
     end
 
     crossed = Array.new(runs.size, already_crossed)

@@ -53,4 +53,16 @@ RSpec.describe CanopyCurve do
     expect(corn.cover(emergence, emergence + 101)).to be_within(0.1).of(96)
     expect(corn.cover(emergence, emergence + 115)).to be < 80
   end
+
+  it "gives the last day before the decline, where FAO-56's late season starts (C22)" do
+    potato, corn = described_class.for("potato"), described_class.for("field_corn")
+    expect(potato.decline_start(emergence)).to eq(Date.new(2026, 7, 25))
+    late = Date.new(2026, 7, 1)
+    expect(potato.decline_start(late)).to eq(late + potato.full_day)
+    start = corn.decline_start(emergence)
+    expect(start).to eq(emergence + 101)
+    expect(corn.cover(emergence, start + 1)).to be < corn.cover(emergence, start)
+    expect(corn.decline_start(emergence, stretch: 1.2)).to eq(emergence + 121)
+    expect(described_class.generic.values.first.decline_start(emergence)).to be_nil
+  end
 end

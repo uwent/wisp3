@@ -8,8 +8,15 @@
 # compare.py (90% of half-hours with every ET0 input measured, 40% with LE measured, ET0 ≥ 1 mm).
 #
 # ET0 is the tower's own (et0.py), so this tests the crop side of WISP, not its weather. Crop ET is
-# CropEt.from_pct_cover with potato's Kc mid adjusted each day for wind and minimum RH (C21), from
-# three canopies:
+# computed two ways, each from three canopies:
+# - before C22 ("old"): CropEt.from_pct_cover with potato's Kc mid adjusted each day for wind and
+#   minimum RH (C21);
+# - C22 ("dual"): FAO-56's dual crop coefficient as WaterBalance runs it, Kcb from the canopy
+#   (CropEt.kcb, potato's Table 17 values easing to Kcb end at harvest after the curve's decline
+#   start, WaterBalance::Crop) plus soil evaporation (SoilEvaporation, carried day by day from
+#   emergence, wetted by the tower's own rain gauge, which catches the pivot's water too, fw 1). It's
+#   run on sand's and loamy sand's soil values (soil_types.yml), the Central Sands' two textures.
+# The canopies:
 # - measured: Desai's group's cover, linear between their values (the test of CropEt's cover to
 #   crop coefficient relation, apart from the canopy's timing);
 # - curve: what a grower gets entering emergence, vine kill and harvest and no readings (potato's
@@ -21,7 +28,11 @@ require "yaml"
 
 dir = ARGV[0] || "tmp/ameriflux"
 MM_PER_IN = 25.4
-POTATO = YAML.load_file(Rails.root.join("db/reference/plants.yml")).find { |p| p["key"] == "potato" }
+REFERENCE = Rails.root.join("db/reference")
+POTATO = YAML.load_file(REFERENCE.join("plants.yml")).find { |p| p["key"] == "potato" }
+SOILS = YAML.load_file(REFERENCE.join("soil_types.yml")).select { |s| %w[sand loamy_sand].include?(s["key"]) }
+  .to_h { |s| [s["key"], SoilEvaporation.new(tew: SoilEvaporation.tew(s["field_capacity"], s["perm_wilting_pt"]), rew: s["rew_in"])] }
+CANOPIES = %i[measured_cover curve readings]
 CURVE = CanopyCurve.for("potato")
 U2_PER_U10 = Weather::Fao56.wind_speed_2m(1.0)
 OBSERVED = %w[US-CS4 US-CS5] # cover observed day by day; 2018 and 2019's is a template between phases
@@ -62,23 +73,42 @@ seasons.each do |s|
   weekly = measured.select { |d, _| d >= season[:emergence] + 7 && d < season[:vine_kill] && ((d - season[:emergence]).to_i % 7).zero? }
   readings = canopy.call(weekly)
 
-  days[site].each do |r|
-    date = Date.parse(r["date"])
-    next unless date.between?(season[:emergence], season[:harvest])
-    et0 = num.call(r["et0_mm"])
-    et = num.call(r["et_mm"])
-    next if et0.nil? || et.nil? || num.call(r["inputs_measured"]) < 0.9 || num.call(r["le_measured"]) < 0.4 || et0 < 1
+  crop = WaterBalance::Crop.new(kcb_mid: POTATO["kcb_mid"], kcb_end: POTATO["kcb_end"], height_m: POTATO["crop_height_m"],
+    late_start: CURVE.decline_start(season[:emergence]), end_date: season[:harvest])
+  # The surface layer per canopy and soil, carried through every day of the season (kept or not)
+  surfaces = CANOPIES.product(SOILS.keys).to_h { |key| [key, SoilEvaporation::State.initial] }
+  by_date = days[site].index_by { |r| r["date"] }
 
-    kc = CropEt.kc_mid(POTATO["kc_mid"], POTATO["crop_height_m"],
-      wind_mph: r["u2_mean_m_s"].to_f / U2_PER_U10 / CropEt::MPH_TO_MS, rh_min_pct: num.call(r["rh_min_pct"]))
-    crop = ->(pct) { pct && CropEt.from_pct_cover(et0 / MM_PER_IN, pct, kc:) * MM_PER_IN }
-    measured_cover = interpolate(measured, date)
-    prev = days[site].find { |x| x["date"] == (date - 1).iso8601 }
+  (season[:emergence]..season[:harvest]).each do |date|
+    r = by_date[date.iso8601]
+    et0 = r && num.call(r["et0_mm"])
+    next unless et0 # no ET0: the layer is left as it was, as WaterBalance does
+
+    weather = {wind_mph: r["u2_mean_m_s"].to_f / U2_PER_U10 / CropEt::MPH_TO_MS, rh_min_pct: num.call(r["rh_min_pct"])}
+    kc = CropEt.kc_mid(POTATO["kc_mid"], POTATO["crop_height_m"], **weather)
+    old = ->(pct) { pct && CropEt.from_pct_cover(et0 / MM_PER_IN, pct, kc:) * MM_PER_IN }
+    covers = {measured_cover: interpolate(measured, date), curve: curve.on(date), readings: readings.on(date)}
+    kcb_full = crop.kcb_full(date, **weather)
+    dual = covers.flat_map do |canopy, pct|
+      kcb = CropEt.kcb("pct_cover", kcb_full, pct, crop.height_m)
+      SOILS.map do |soil, layer|
+        step = layer.step(surfaces[[canopy, soil]], et0: et0 / MM_PER_IN, kcb:, kc_max: CropEt.kc_max(kcb, crop.height_m, **weather),
+          cover: pct / 100.0, rain: num.call(r["p_mm"]).to_f / MM_PER_IN)
+        surfaces[[canopy, soil]] = step.state
+        [:"dual_#{canopy}_#{soil}", (kcb + step.ke) * et0]
+      end
+    end.to_h
+
+    et = num.call(r["et_mm"])
+    next if et.nil? || num.call(r["inputs_measured"]) < 0.9 || num.call(r["le_measured"]) < 0.4 || et0 < 1
+
+    prev = by_date[(date - 1).iso8601]
     rows << {
       site:, date:, phase: phase(season, date), et0:, et:, rn: num.call(r["rn_mj"]), g: num.call(r["g_mj"]),
       h: num.call(r["h_mj"]), le: num.call(r["le_mj"]), wet: [r, prev].compact.any? { |x| num.call(x["p_mm"]).to_f > 0.5 },
-      cover_measured: measured_cover, cover_curve: curve.on(date), cover_readings: readings.on(date), kc:,
-      et_measured_cover: crop.call(measured_cover), et_curve: crop.call(curve.on(date)), et_readings: crop.call(readings.on(date))
+      cover_measured: covers[:measured_cover], cover_curve: covers[:curve], cover_readings: covers[:readings], kc:,
+      et_measured_cover: old.call(covers[:measured_cover]), et_curve: old.call(covers[:curve]), et_readings: old.call(covers[:readings]),
+      **dual
     }
   end
 end
@@ -102,7 +132,50 @@ bias = ->(rs, k) { format("%+.0f%%", 100 * (rs.sum { |r| r[k] } / rs.sum { |r| r
 f2 = ->(x) { x ? format("%.2f", x) : "–" }
 PHASES = ["development", "full cover", "decline", "vine kill to harvest"]
 
-puts "## By phase\n\nET / ET0 (the crop coefficient) and bias against closure-corrected ET.\n\n"
+MODELS = CANOPIES.map { |c| [:"et_#{c}", "old, #{c.to_s.tr("_", " ")}"] } +
+  SOILS.keys.flat_map { |soil| CANOPIES.map { |c| [:"dual_#{c}_#{soil}", "C22 #{soil.tr("_", " ")}, #{c.to_s.tr("_", " ")}"] } }
+cell = ->(xs, k) { "#{f2.call(ratio.call(xs, k))} (#{bias.call(xs, k)})" }
+
+puts "## Summary: ET / ET0 by phase (bias against closure-corrected ET), all sites\n\n"
+puts "| Phase | Days | Corrected | #{MODELS.map(&:last).join(" | ")} |"
+puts "|" + "---|" * (MODELS.size + 3)
+(PHASES + [nil]).each do |ph|
+  xs = rows.select { |r| (ph.nil? || r[:phase] == ph) && r[:et_corrected] }
+  puts "| #{ph || "**Season**"} | #{xs.size} | #{f2.call(ratio.call(xs, :et_corrected))} | #{MODELS.map { |k, _| cell.call(xs, k) }.join(" | ")} |"
+end
+
+puts "\n## C22 by site and phase (ET / ET0)\n\n"
+puts "| Site | Phase | Days | Corrected | #{MODELS.map(&:last).join(" | ")} |"
+puts "|" + "---|" * (MODELS.size + 4)
+rows.group_by { |r| r[:site] }.each do |site, rs|
+  PHASES.each do |ph|
+    xs = rs.select { |r| r[:phase] == ph && r[:et_corrected] }
+    next if xs.empty?
+    puts "| #{site} | #{ph} | #{xs.size} | #{f2.call(ratio.call(xs, :et_corrected))} | #{MODELS.map { |k, _| f2.call(ratio.call(xs, k)) }.join(" | ")} |"
+  end
+end
+
+puts "\n## Through the summer (all sites, corrected ET / ET0 against the models, curve)\n\n"
+puts "| | Days | Corrected | old, curve | C22 sand, curve | C22 loamy sand, curve |"
+puts "|---|---|---|---|---|---|"
+[["July 1–15", 7, 1..15], ["July 16–31", 7, 16..31], ["August 1–15", 8, 1..15], ["August 16–31", 8, 16..31]].each do |label, month, range|
+  xs = rows.select { |r| r[:date].month == month && range.cover?(r[:date].day) && r[:et_corrected] && r[:phase] != "vine kill to harvest" }
+  next if xs.empty?
+  puts "| #{label} | #{xs.size} | #{f2.call(ratio.call(xs, :et_corrected))} | #{f2.call(ratio.call(xs, :et_curve))} | " \
+    "#{f2.call(ratio.call(xs, :dual_curve_sand))} | #{f2.call(ratio.call(xs, :dual_curve_loamy_sand))} |"
+end
+
+puts "\n## After vine kill, wet and dry days (C22 against corrected, curve)\n\n"
+puts "| Site | Wet days | Corrected | C22 sand | C22 loamy sand | Dry days | Corrected | C22 sand | C22 loamy sand |"
+puts "|---|---|---|---|---|---|---|---|---|"
+rows.select { |r| r[:phase] == "vine kill to harvest" && r[:et_corrected] }.group_by { |r| r[:site] }.each do |site, rs|
+  wet, dry = rs.partition { |r| r[:wet] }
+  c = ->(ys, k) { ys.empty? ? "–" : f2.call(ratio.call(ys, k)) }
+  puts "| #{site} | #{wet.size} | #{c.call(wet, :et_corrected)} | #{c.call(wet, :dual_curve_sand)} | #{c.call(wet, :dual_curve_loamy_sand)} | " \
+    "#{dry.size} | #{c.call(dry, :et_corrected)} | #{c.call(dry, :dual_curve_sand)} | #{c.call(dry, :dual_curve_loamy_sand)} |"
+end
+
+puts "\n## By phase\n\nET / ET0 (the crop coefficient) and bias against closure-corrected ET.\n\n"
 puts "| Site | Phase | Days | ET0 mm/d | Closure | Measured | Corrected | Model, measured cover | Model, curve | Model, readings | Bias, measured cover | Bias, curve | Bias, readings |"
 puts "|" + "---|" * 13
 rows.group_by { |r| r[:site] }.each do |site, rs|
@@ -134,15 +207,17 @@ end
 
 puts "\n## Crop coefficient by measured cover (#{OBSERVED.join(", ")}, emergence to vine kill)\n\n"
 puts "Corrected uses each day's site-and-phase closure. Wet: rain or irrigation over 0.5 mm that day or the day before.\n\n"
-puts "| Cover % | Days | Wet days | Measured | Corrected | Corrected, wet | Corrected, dry | CropEt |"
-puts "|---|---|---|---|---|---|---|---|"
+puts "| Cover % | Days | Wet days | Measured | Corrected | Corrected, wet | Corrected, dry | Old (C21) | C22 sand | C22 loamy sand | C22 sand, wet | C22 sand, dry |"
+puts "|---|---|---|---|---|---|---|---|---|---|---|---|"
 [[0, 10], [10, 30], [30, 50], [50, 80], [80, 100], [100, 101]].each do |lo, hi|
   xs = rows.select { |r| OBSERVED.include?(r[:site]) && r[:phase] != "vine kill to harvest" && r[:et_corrected] && r[:cover_measured]&.then { |c| c >= lo && c < hi } }
   next if xs.empty?
   wet, dry = xs.partition { |r| r[:wet] }
   c = ->(ys) { ys.empty? ? "–" : f2.call(ratio.call(ys, :et_corrected)) }
+  m = ->(ys, k) { ys.empty? ? "–" : f2.call(ratio.call(ys, k)) }
   puts "| #{(hi > 100) ? "100" : "#{lo}–#{hi}"} | #{xs.size} | #{wet.size} | #{f2.call(ratio.call(xs, :et))} | #{c.call(xs)} | #{c.call(wet)} | #{c.call(dry)} | " \
-    "#{f2.call(ratio.call(xs, :et_measured_cover))} |"
+    "#{m.call(xs, :et_measured_cover)} | #{m.call(xs, :dual_measured_cover_sand)} | #{m.call(xs, :dual_measured_cover_loamy_sand)} | " \
+    "#{m.call(wet, :dual_measured_cover_sand)} | #{m.call(dry, :dual_measured_cover_sand)} |"
 end
 
 puts "\n## Canopy: curve against measured cover, by phase (mean %)\n\n"

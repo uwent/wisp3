@@ -153,6 +153,11 @@ class Planting < ApplicationRecord
   # CanopyFit fits readings around it.
   def time_stretch = (season_days && typical_season_days) ? season_days.to_f / typical_season_days : 1.0
 
+  # The start of FAO-56's late season (C22): the day before its crop's typical curve declines, on the
+  # planting's own season length; nil for a crop whose curve has no decline (or no curve). The crop
+  # coefficient eases from mid season's to harvest's after it (WaterBalance::Crop).
+  def late_stage_start = cover_curve&.decline_start(emergence_date, stretch: time_stretch)
+
   # Whether the crop takes a vine kill date (potato; canopy_curves.yml)
   def vine_kill_crop? = plant.present? && CanopyCurve.for(plant.key)&.vine_kill? || false
 

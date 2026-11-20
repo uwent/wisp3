@@ -7,6 +7,8 @@ class SoilType < ApplicationRecord
   validates :key, :name, presence: true
   validates :key, uniqueness: true
   validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}
+  # FAO-56 Table 19's readily evaporable water, inches (C22); nil takes SoilEvaporation's default
+  validates :rew_in, numericality: {greater_than: 0, less_than: 1}, allow_nil: true
 
   def self.default = find_by!(key: DEFAULT_KEY)
 

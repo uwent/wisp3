@@ -108,7 +108,8 @@ class PlantingStatus
           soil_moisture_pct: day.inputs.soil_moisture_pct, canopy: day.canopy,
           wind_mph: day.inputs.wind_mph, rh_min_pct: day.inputs.rh_min_pct)
       end
-      WaterBalance.run(params, dry_days, initial_ad: current.result.ad, et_history:)
+      WaterBalance.run(params, dry_days, initial_ad: current.result.ad, et_history:,
+        evaporation: current.result.evaporation)
     else
       []
     end
@@ -124,7 +125,7 @@ class PlantingStatus
   def ensemble
     @ensemble ||= if phase == :active && current && forecast_days.any? && ensemble_members.present?
       EnsembleProjection.run(params, days: forecast_days, members: ensemble_members, start_ad: current.result.ad,
-        threshold:, et_history:, already_crossed: current.result.ad <= threshold)
+        threshold:, et_history:, evaporation: current.result.evaporation, already_crossed: current.result.ad <= threshold)
     else
       []
     end

@@ -10,23 +10,45 @@
 # - C6/C7: missing et0 is gap-filled from computed days only (legacy fed filled values back).
 # - No truncation of small drainage (legacy zeroed drainage under 0.01 and ignored excess
 #   under 0.00001); outputs are rounded to 4 places instead.
-# - C21: crop ET by the crop's coefficient against FAO-56 ET0 (CropEt), when Params has kc_mid.
+# - C21 (superseded by C22): the percent cover table scaled by the crop's Kc mid against FAO-56 ET0.
+# - C22: crop ET by FAO-56's dual crop coefficient, (Kcb + Ke) × ET0, when Params has a crop: Kcb from
+#   the canopy (CropEt.kcb), easing from mid season's to harvest's over the late season (Crop), and Ke
+#   from the soil surface's wetting and drying (SoilEvaporation), carried from day to day.
 module WaterBalance
   GAP_FILL_DAYS = 7 # gap fill: mean of the top GAP_FILL_TOP adjusted ETs in the previous 7 days
   GAP_FILL_TOP = 3
   PRECISION = 4
 
-  # FAO-56 Table 12 values for a planting's crop (plants.yml): Kc mid and height in meters
-  Crop = Data.define(:kc_mid, :height_m) do
-    def self.for(plant) = plant&.kc_mid && new(kc_mid: plant.kc_mid, height_m: plant.crop_height_m)
+  # A planting's crop (C22): FAO-56 Table 17's basal coefficients at mid season and harvest
+  # (plants.yml), its height in meters, and its season: the late stage's start (the day before its
+  # canopy curve declines, Planting#late_stage_start; nil holds mid season's to the end) and its end.
+  Crop = Data.define(:kcb_mid, :kcb_end, :height_m, :late_start, :end_date) do
+    def initialize(kcb_mid:, kcb_end:, height_m:, late_start: nil, end_date: nil) = super
+
+    def self.for(planting)
+      plant = planting.plant
+      plant&.kcb_mid && new(kcb_mid: plant.kcb_mid, kcb_end: plant.kcb_end, height_m: plant.crop_height_m,
+        late_start: planting.late_stage_start, end_date: planting.end_date)
+    end
+
+    # Kcb at full cover on date, adjusted for the day's wind and humidity (FAO-56 eq. 70): mid
+    # season's through late_start, then straight down to harvest's at end_date (eq. 66)
+    def kcb_full(date, wind_mph: nil, rh_min_pct: nil)
+      mid = CropEt.kc_mid(kcb_mid, height_m, wind_mph:, rh_min_pct:)
+      return mid unless late_start && end_date && date > late_start && end_date > late_start
+      last = (kcb_end >= CropEt::KCB_END_ADJUST_FROM) ? CropEt.kc_mid(kcb_end, height_m, wind_mph:, rh_min_pct:) : kcb_end
+      mid + (last - mid) * [(date - late_start).to_f / (end_date - late_start), 1.0].min
+    end
   end
 
   # FC and PWP are fractions; MRZD inches; MAD a fraction; percents are 0–100. crop: a Crop, or nil
-  # for the percent cover table as legacy used it (CropEt, C21)
+  # for the percent cover table as legacy used it (CropEt). rew: the soil's readily evaporable water
+  # (inches; nil: SoilEvaporation's default) and irrigation_fw the fraction of the surface its
+  # irrigation wets, for soil evaporation (C22).
   Params = Data.define(:field_capacity, :perm_wilting_pt, :max_root_zone_depth, :mad_frac, :et_method,
-    :target_ad_pct, :initial_moisture_pct, :crop) do
+    :target_ad_pct, :initial_moisture_pct, :crop, :rew, :irrigation_fw) do
     def initialize(field_capacity:, perm_wilting_pt:, max_root_zone_depth:, mad_frac:, et_method: "pct_cover",
-      target_ad_pct: nil, initial_moisture_pct: nil, crop: nil)
+      target_ad_pct: nil, initial_moisture_pct: nil, crop: nil, rew: nil, irrigation_fw: 1.0)
       unless perm_wilting_pt.positive? && perm_wilting_pt < field_capacity && field_capacity < 1
         raise ArgumentError, "need 0 < wilting point < field capacity < 1"
       end
@@ -40,8 +62,12 @@ module WaterBalance
       new(field_capacity: planting.effective_field_capacity, perm_wilting_pt: planting.effective_perm_wilting_pt,
         max_root_zone_depth: planting.max_root_zone_depth, mad_frac: planting.mad_frac,
         et_method: planting.et_method, target_ad_pct: planting.target_ad_pct,
-        initial_moisture_pct: planting.initial_moisture_pct, crop: Crop.for(planting.plant))
+        initial_moisture_pct: planting.initial_moisture_pct, crop: Crop.for(planting),
+        rew: planting.soil_type.rew_in, irrigation_fw: SoilEvaporation.wetted_fraction(planting.system&.kind))
     end
+
+    # The soil surface's evaporation layer (C22), from the planting's own soil values
+    def evaporation = SoilEvaporation.new(tew: SoilEvaporation.tew(field_capacity, perm_wilting_pt), rew:)
 
     # Total available water, field capacity to wilting point
     def taw = (field_capacity - perm_wilting_pt) * max_root_zone_depth
@@ -63,7 +89,7 @@ module WaterBalance
 
   # One day's resolved inputs. et0 nil = missing (gap-filled); rain and irrigation nil = none.
   # canopy is percent cover or LAI, matching Params#et_method. wind_mph (mean at 10 m) and
-  # rh_min_pct adjust the crop's Kc mid (CropEt.kc_mid); nil counts as FAO-56's standard climate.
+  # rh_min_pct adjust the crop's coefficients (CropEt.kc_mid); nil counts as FAO-56's standard climate.
   Day = Data.define(:date, :et0, :rain, :irrigation, :soil_moisture_pct, :canopy, :wind_mph, :rh_min_pct) do
     def initialize(date:, et0: nil, rain: nil, irrigation: nil, soil_moisture_pct: nil, canopy: 0.0, wind_mph: nil,
       rh_min_pct: nil)
@@ -72,23 +98,32 @@ module WaterBalance
   end
 
   # et_source: :computed, :gap_fill, or :missing (et0 missing and no recent ET to fill from;
-  # the day then has no ET). moisture_reset: AD came from a soil moisture reading.
-  Result = Data.define(:date, :adj_et, :et_source, :ad, :deep_drainage, :pct_moisture, :moisture_reset)
+  # the day then has no ET). moisture_reset: AD came from a soil moisture reading. evaporation: the
+  # soil surface's SoilEvaporation::State at the end of the day (nil without a crop), for a run
+  # resuming from it.
+  Result = Data.define(:date, :adj_et, :et_source, :ad, :deep_drainage, :pct_moisture, :moisture_reset,
+    :evaporation) do
+    def initialize(evaporation: nil, **) = super
+  end
 
   module_function
 
   # Runs days in date order from initial_ad (default: the season-start value). et_history:
   # [[date, adj_et], ...] from before the first day, so a run that resumes mid-season (the
-  # projection) gap-fills the same way.
-  def run(params, days, initial_ad: params.initial_ad, et_history: [])
+  # projection) gap-fills the same way; evaporation: the soil surface's state it resumes from
+  # (Result#evaporation; default: wet, as at season start).
+  def run(params, days, initial_ad: params.initial_ad, et_history: [], evaporation: nil)
     ad = initial_ad
     history = et_history.dup
+    layer = params.crop && params.evaporation
+    surface = layer && (evaporation || SoilEvaporation::State.initial)
     days.map do |day|
-      adj_et, et_source = crop_et(params, day, history)
+      adj_et, et_source, after = crop_et(params, day, history, layer, surface)
       history << [day.date, adj_et] if et_source == :computed
 
       if day.soil_moisture_pct
-        # A reading replaces the day's balance; that day's ET is reported but not applied
+        # A reading replaces the day's balance; that day's ET is reported but not applied, and the
+        # surface layer is left as it was
         raw = params.ad_from_moisture(day.soil_moisture_pct)
         drainage = [raw - params.ad_max, 0.0].max
         ad = raw.clamp(params.ad_pwp, params.ad_max)
@@ -96,27 +131,39 @@ module WaterBalance
         water = ad + day.rain.to_f + day.irrigation.to_f - adj_et.to_f
         drainage = [water - params.ad_max, 0.0].max
         ad = water.clamp(params.ad_pwp, params.ad_max)
+        surface = after if after
       end
 
       Result.new(date: day.date, adj_et: adj_et&.round(PRECISION), et_source:, ad: ad.round(PRECISION),
         deep_drainage: drainage.round(PRECISION), pct_moisture: params.pct_moisture(ad).round(PRECISION),
-        moisture_reset: !day.soil_moisture_pct.nil?)
+        moisture_reset: !day.soil_moisture_pct.nil?, evaporation: surface)
     end
   end
 
-  def crop_et(params, day, history)
-    return [CropEt.adjusted(params.et_method, day.et0, day.canopy, kc: kc(params, day)), :computed] if day.et0
+  # [adj_et, source, the surface layer after the day (nil unless computed with a crop)]
+  def crop_et(params, day, history, layer = nil, surface = nil)
+    if day.et0
+      return [CropEt.adjusted(params.et_method, day.et0, day.canopy), :computed, nil] unless layer
+      adj_et, after = dual(params, day, layer, surface)
+      return [adj_et, :computed, after]
+    end
 
     recent = history.filter_map { |date, et| et if date >= day.date - GAP_FILL_DAYS }
-    return [nil, :missing] if recent.empty?
+    return [nil, :missing, nil] if recent.empty?
     top = recent.max(GAP_FILL_TOP)
-    [top.sum / top.size, :gap_fill]
+    [top.sum / top.size, :gap_fill, nil]
   end
 
-  # The day's crop coefficient at full cover (C21), nil without a crop
-  def kc(params, day)
+  # FAO-56's dual crop coefficient (C22): [crop ET, the surface layer after the day]
+  def dual(params, day, layer, surface)
     crop = params.crop
-    crop && CropEt.kc_mid(crop.kc_mid, crop.height_m, wind_mph: day.wind_mph, rh_min_pct: day.rh_min_pct)
+    et0 = [day.et0, 0.0].max
+    weather = {wind_mph: day.wind_mph, rh_min_pct: day.rh_min_pct}
+    kcb = CropEt.kcb(params.et_method, crop.kcb_full(day.date, **weather), day.canopy, crop.height_m)
+    step = layer.step(surface, et0:, kcb:, kc_max: CropEt.kc_max(kcb, crop.height_m, **weather),
+      cover: CropEt.cover_fraction(params.et_method, day.canopy), rain: day.rain, irrigation: day.irrigation,
+      irrigation_fw: params.irrigation_fw)
+    [(kcb + step.ke) * et0, step.state]
   end
 
   # Today's status from AD (PLAN.md §5.5); projections add "caution" for a coming crossing

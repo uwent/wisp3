@@ -72,6 +72,17 @@ RSpec.describe PlantingStatus do
     expect(days[Date.new(2026, 7, 24)]).to have_attributes(canopy: 0.0, result: have_attributes(adj_et: 0.01))
   end
 
+  it "counts the bare soil's evaporation after vine kill, more just after rain (C22)" do
+    potato = create(:plant, key: "potato", kcb_mid: 1.10, kcb_end: 0.65)
+    planting.update!(plant: potato, vine_kill_date: Date.new(2026, 7, 10))
+    weather[Date.new(2026, 7, 25)] = {et0: 0.2, precip: 0.5}
+    days = status(Date.new(2026, 8, 15)).days.index_by { |day| day.inputs.date }
+    expect(days[Date.new(2026, 7, 24)]).to have_attributes(canopy: 0.0, result: have_attributes(adj_et: be < 0.01))
+    # Wet soil evaporates at Kc max (1.2) the day after rain
+    expect(days[Date.new(2026, 7, 26)].result.adj_et).to be_within(1e-4).of(0.24)
+    expect(days[Date.new(2026, 7, 29)].result.adj_et).to be < 0.1
+  end
+
   it "gives no weather totals, not zeros, before any weather arrives (missing is nil)" do
     totals = described_class.new(planting, today: Date.new(2026, 7, 10), weather: {}).totals
     expect(totals).to have_attributes(rain: nil, rain_model: nil, adj_et: nil, irrigation: 0.0)
@@ -209,6 +220,16 @@ RSpec.describe PlantingStatus, "projection" do
     it "counts every member as crossed when today already is" do
       planting.update!(target_ad_pct: 50)
       expect(status(ensemble: members).ensemble.first.chance).to eq(1.0)
+    end
+  end
+
+  it "resumes the projections from today's soil surface (C22)" do
+    planting.plant.update!(kcb_mid: 1.10, kcb_end: 0.65)
+    planting.canopy_observations.first.update!(pct_cover: 30)
+    wet = weather.merge(today - 1 => {et0: 0.1, precip: 0.3, forecast: false})
+    projection = status(weather: wet, ensemble: [wet.select { |date, _| date > today }])
+    projection.ensemble.zip(projection.forecast_days) do |band, day|
+      expect(band.p50).to be_within(2e-4).of(day.result.ad) # from today's rounded AD
     end
   end
 
