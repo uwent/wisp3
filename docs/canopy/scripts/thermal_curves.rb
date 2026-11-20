@@ -3,9 +3,9 @@
 #
 #   bin/rails runner docs/canopy/scripts/thermal_curves.rb
 #
-# For each curve: the base and upper temperatures (AquaCrop's crop file where there is one, else an
-# assumption, below) and a typical Wisconsin emergence date. Over each of the 20 years 2006–2025 at
-# Hancock (Central Sands; Open-Meteo's ERA5 archive, thermal_common.rb), the curve emerges on that
+# For each curve: the base and upper temperatures (AquaCrop's crop file where there is one, FAO-56
+# Rev.1 Table 6.10 for potato, else an assumption, below) and a typical Wisconsin emergence date.
+# Over each of the 20 years 2006–2025 at Hancock (Central Sands; Open-Meteo's ERA5 archive, thermal_common.rb), the curve emerges on that
 # date and degree days are summed from it by AquaCrop's method 3 (Weather::DegreeDays.aquacrop).
 # Growth: the coefficient per degree day (CC₀ and CCx kept) that best matches the calendar curve from
 # emergence to full cover, all years together (least squares in cover). Decline (aquacrop): its start
@@ -22,7 +22,7 @@ WARM = "assumed for warm-season vegetables (50 °F, the usual base for cucurbits
 DEFAULT = "from AquaCrop's default crop file"
 # curve key => [base °C, upper °C, where they're from, typical emergence (month-day), why that date]
 CROPS = {
-  "potato" => [2, 26, AQUACROP % "potato", "05-15", "Central Sands plantings from mid-April to mid-May; 2026 readings' median May 19"],
+  "potato" => [2, 30, "from FAO-56 Rev.1 Table 6.10 (the same base as AquaCrop's potato crop file, whose upper is 26 °C)", "05-15", "Central Sands plantings from mid-April to mid-May; 2026 readings' median May 19"],
   "field_corn" => [8, 30, AQUACROP % "maize", "05-15", "2026 readings' median May 18"],
   "corn_silage" => [8, 30, AQUACROP % "maize", "05-15", "as field corn"],
   "sweet_corn" => [8, 30, AQUACROP % "maize", "06-01", "processing plantings from May into June; 2026 readings May 22 and June 9"],

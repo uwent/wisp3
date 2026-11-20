@@ -34,10 +34,11 @@ module Weather
       def initialize(et0:, precip:, wind: {}, rh_min: {}) = super
     end
 
-    # The standard field's crop for "wisp_kc": potato in db/reference/plants.yml (FAO-56 Table 17,
-    # C22), held at mid season's coefficient (the field has no late season), on sand's readily
-    # evaporable water (soil_types.yml)
-    POTATO = WaterBalance::Crop.new(kcb_mid: 1.10, kcb_end: 0.65, height_m: 0.6)
+    # The standard field's crop for "wisp_kc": potato in db/reference/plants.yml (FAO-56 Rev.1's long
+    # season row, C22 and C25), held at mid season's coefficient (the field has no late season), on
+    # sand's readily evaporable water (soil_types.yml)
+    POTATO = YAML.load_file(Rails.root.join("db/reference/plants.yml")).find { |plant| plant["key"] == "potato" }
+      .then { |plant| WaterBalance::Crop.new(kcb_mid: plant["kcb_mid"], kcb_end: plant["kcb_end"], height_m: plant["crop_height_m"]) }
     SAND_REW_IN = 0.177
 
     def initialize(points: DEFAULT_POINTS, years: [2025, 2026], client: OpenMeteo.new, log: ->(_) {})

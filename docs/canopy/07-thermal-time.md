@@ -26,7 +26,7 @@ between the crop's base and upper temperatures, its min only below the upper, th
 base, at least 0 (`Weather::DegreeDays.aquacrop`, °C days from WISP's °F highs and lows).
 
 **Base and upper temperatures** come from AquaCrop's crop files where they have the crop: potato
-2/26 °C, maize 8/30 (field corn, corn silage, sweet corn), soybean 5/30, dry bean 9/30 (snap and dry
+2/26 °C (2/30 °C since C25, FAO-56 Rev.1 Table 6.10; days to cover at the towers change by a day at most), maize 8/30 (field corn, corn silage, sweet corn), soybean 5/30, dry bean 9/30 (snap and dry
 beans), tomato 7/28 (and pepper, assumed), barley 0/15, wheat 0/26 (and oats, assumed), sugar beet
 5/30, sorghum 8/30, alfalfa 5/30 (the perennial regrowth curve). Elsewhere they're assumptions: cool-
 season vegetables (peas, crucifers, carrot, beets, celery, leafy greens) 4.4 °C (40 °F, the base of

@@ -83,7 +83,7 @@ RSpec.describe ThermalTime do
   describe CanopyCurve do
     let(:potato) { CanopyCurve.for("potato") }
 
-    def clock_at(gdd, base_c, upper_c = 26)
+    def clock_at(gdd, base_c, upper_c = 30)
       CellTemperatures.new({}, (1..366).to_h { |day| [day, steady(gdd, base_c)] }).thermal_time(base_c:, upper_c:)
     end
 
@@ -105,7 +105,7 @@ RSpec.describe ThermalTime do
         expect(thermal.cgc).to be_between(0.002, 0.03), curve.key
         expect(thermal.basis).to be_present
       end
-      expect(potato.thermal).to have_attributes(base_c: 2, upper_c: 26, emergence: "05-15")
+      expect(potato.thermal).to have_attributes(base_c: 2, upper_c: 30, emergence: "05-15")
       expect(CanopyCurve.for("field_corn").thermal_candidate).to have_attributes(base_c: 8, upper_c: 30)
       expect(CanopyCurve.for("field_corn").clock(CellTemperatures.new({}, {}))).to be_nil
     end

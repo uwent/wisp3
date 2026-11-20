@@ -9,262 +9,292 @@
 # EC3015's table of root zone depths (citing NRCS); sorghum as field corn, both 3–4 ft effective
 # rooting in UNL NebGuide G2245; corn silage as field corn; oats as barley and wheat.
 
-# kc_mid and crop_height_m (PLAN.md §9 C21, Q11): the crop coefficient at full cover against FAO-56
-# grass reference ET, and the crop's mean maximum height, from FAO-56 Table 12 (Allen et al. 1998,
-# https://www.fao.org/4/x0490e/x0490e0b.htm, for RHmin ≈ 45% and wind ≈ 2 m/s; CropEt adjusts Kc mid
-# for each day's wind and humidity, eq. 62). Rows: beans green (snap bean), peas fresh (shell peas),
-# onions dry, pumpkin/winter squash (pumpkin too), squash zucchini (summer squash), sweet melons
-# (melon), spinach and lettuce (leafy greens), maize field (field corn and corn silage), beans dry and
-# pulses (dry bean). Where the table gives a range, the middle: soybean height 0.5–1.0 m, mint
-# 0.6–0.8 m, asparagus 0.2–0.8 m, sorghum Kc 1.00–1.10 and 1–2 m. Alfalfa takes the individual
-# cutting periods' 1.20 (not the averaged 0.95), as WISP models each cutting's regrowth in the canopy
-# (CutCanopy). Other and garden vegetables take the small vegetables group's 1.05, at 0.4 m.
-# Since C22, kc_mid is shown on the About page but no longer runs the balance: kcb_mid and kcb_end do.
-
-# kcb_mid and kcb_end (PLAN.md §9 C22): the basal crop coefficient (transpiration, with the soil
-# surface dry) at full cover in mid season and at harvest, from FAO-56 Table 17 (chapter 7,
-# https://www.fao.org/4/x0490e/x0490e0c.htm, same climate). The water balance adds soil evaporation
-# to it (SoilEvaporation), ramps kcb_mid to kcb_end from the canopy curve's decline to the end date,
-# and adjusts both for wind and humidity (eq. 70; kcb_end only when 0.45 or more). Same rows as
-# kc_mid, with: tomato's 0.60–0.80 at the middle, 0.70; leafy greens between spinach (0.90 / 0.85)
-# and lettuce (0.90 / 0.90), 0.88 at harvest; spring wheat's 0.15–0.3 at harvest, 0.23 (the higher
-# end is hand harvest); sorghum grain's 0.95–1.05, 1.00; field corn's 0.50 (harvest at high grain
-# moisture; 0.15 after drying in the field), corn silage the same; sweet corn's 1.00 (harvested
-# fresh). Potato's 0.65 is Table 17's main value; its note gives about 0.35 for long-season potato
-# with vine kill, which WISP models in the canopy instead (the cover ramps to 0). Alfalfa takes the
-# individual cutting periods (1.15 / 1.10), as for kc_mid. Other and garden vegetables take the
-# small vegetables group's 0.95 / 0.85.
+# Crop coefficients and heights (PLAN.md §9 C21, C22, C25) are from FAO-56's second edition: Pereira,
+# L. S., Allen, R. G., Paredes, P., López-Urrea, R., Raes, D., Smith, M., Kilic, A. & Salman, M.
+# (2025), Crop evapotranspiration: Guidelines for computing crop water requirements, FAO Irrigation
+# and Drainage Paper 56 Rev.1, Rome, FAO, https://doi.org/10.4060/cd6621en (CC BY 4.0). They replace
+# the 1998 edition's Tables 12 and 17 (Allen et al. 1998) since C25 (2026-11-19). All are for the
+# standard subhumid climate (RHmin ≈ 45%, wind ≈ 2 m/s), and adjusted for each day's wind and
+# humidity (eqs. 6.16 and 7.2, CropEt.kc_mid; kcb_end only when 0.45 or more, as Rev.1 does).
+#
+# kc_mid and crop_height_m: the single crop coefficient at full cover against grass reference ET, and
+# the crop's maximum height, from Rev.1 Table 6.1 (vegetables, pp. 165–167), 6.2 (field crops,
+# pp. 168–169) or 6.4 (grasslands, p. 176). Since C22, kc_mid is shown on the About page and used by
+# LegacyEngine's C21 path, but no longer runs the balance; crop_height_m adjusts both coefficients
+# for the climate and enters the density coefficient Kd (Kcb from cover, eq. 9.13; 1998 eq. 98).
+#
+# kcb_mid and kcb_end: the basal crop coefficient (transpiration, with the soil surface dry) at full
+# cover in mid season and at harvest, from Rev.1 Table 7.1 (vegetables, pp. 217–219) or 7.2 (field
+# crops, pp. 220–221), the same row as kc_mid. The water balance adds soil evaporation to it
+# (SoilEvaporation) and ramps kcb_mid to kcb_end from the canopy curve's decline to the end date.
+#
+# Rows: potato long season (Central Sands russets run long, and the towers can't tell the two apart;
+# short season is Kc 1.10 / Kcb 1.05 / 0.50 at harvest); common bean green (snap bean) and dry (dry
+# bean); pea fresh (shell peas); onions dry; common cabbage; table beets (beets); bell pepper
+# (pepper); peppermint, single harvest (mint: Upper Midwest peppermint is mostly cut once; multiple
+# harvests is Kcb 0.90 / 0.85); tomato fresh market, without trellis (processing is 0.75 at harvest);
+# melon; pumpkin, winter squash (pumpkin and winter squash); zucchini, squash (summer squash);
+# cucumber fresh market; maize grain, high grain moisture at harvest (field corn, and corn silage
+# with it; low moisture is 0.25 at harvest, and Rev.1's silage row Kc 1.15 / Kcb 1.10 / 0.80,
+# 2.50–3.20 m);
+# maize sweet (sweet corn); sorghum grain; wheat common, spring, low grain moisture at harvest (wheat:
+# Wisconsin's wheat is combined dry, and winter wheat's low moisture row has the same Kc mid and Kcb,
+# 1.15 and 1.10 / 0.20; high moisture is 0.40 at harvest); sugar beet; barley; oats; soybean;
+# sweet potato; asparagus; carrots; broccoli; celery. Where a table gives a range, the middle: the
+# heights of field corn (2.50–3.50 m), sweet corn (1.50–2.50), beans (0.50–0.70), barley
+# (0.70–0.90), oats (0.80–1.10), wheat (0.70–1.10), sorghum (1.50–2.00) and mint (0.30–0.50); leafy
+# greens between spinach (Kc 1.05, Kcb 0.95 / 0.95, 0.35 m) and lettuce (1.05, 1.00 / 1.00,
+# 0.35 m), 0.98 / 0.98.
+#
+# Bell pepper and zucchini take Table 7.1's Kcb (1.00 / 0.70 and 0.90 / 0.60), where Table 9.1's
+# standard Kcb (p. 311, from the A&P approach) differs (1.05 / 1.00 and 0.95 / 0.65).
+#
+# Alfalfa: Table 6.4's alfalfa for hay, typical multiple cutting cycles, Kc mid 1.20 (WISP models
+# each cutting's regrowth in the canopy, CutCanopy). Rev.1 has no alfalfa row in Table 7.x; its
+# Kcb, 1.05 / 1.05, is Table 9.4's standard Kcb for the same row (p. 327), and its height the middle
+# of that row's 0.50–0.75 m.
+#
+# Other and garden vegetables: Rev.1 drops the 1998 edition's small vegetables group (Kc 1.05, Kcb
+# 0.95 / 0.85, 0.4 m), so they take the median of Rev.1's rows for that group's crops (broccoli,
+# cabbage, carrots, cauliflower, celery, lettuce, onions dry, radish, spinach): Kc 1.05, Kcb 1.00 /
+# 0.95, 0.40 m.
+#
+# Potato's kcb_end (0.30) acts only from the late stage's start (its July 25 decline) to vine kill,
+# as the slope of the ramp to harvest: WISP models vine kill in the canopy (it ramps to 0% cover), so
+# Kcb is 0 after it whatever Kcb end is, and the soil's evaporation is what's left. The 1998
+# edition's 0.65 (Table 17's main value; its note gave about 0.35 for long-season potato with vine
+# kill) held Kcb higher through the decline.
 
 - key: potato
   name: Potato
   default_max_root_zone_depth: 16.0
-  kc_mid: 1.15
+  kc_mid: 1.10
   crop_height_m: 0.6
-  kcb_mid: 1.10
-  kcb_end: 0.65
+  kcb_mid: 1.05
+  kcb_end: 0.30
 - key: sweet_corn
   name: Sweet Corn
   default_max_root_zone_depth: 27.0
   kc_mid: 1.15
-  crop_height_m: 1.5
+  crop_height_m: 2.0
   kcb_mid: 1.10
   kcb_end: 1.00
 - key: snap_bean
   name: Snap bean
   default_max_root_zone_depth: 21.0
   kc_mid: 1.05
-  crop_height_m: 0.4
+  crop_height_m: 0.6
   kcb_mid: 1.00
-  kcb_end: 0.80
+  kcb_end: 0.85
 - key: shell_peas
   name: Shell peas
   default_max_root_zone_depth: 36.0
   kc_mid: 1.15
-  crop_height_m: 0.5
+  crop_height_m: 0.6
   kcb_mid: 1.10
   kcb_end: 1.05
 - key: onion
   name: Onion
   default_max_root_zone_depth: 12.0
   kc_mid: 1.05
-  crop_height_m: 0.4
-  kcb_mid: 0.95
-  kcb_end: 0.65
+  crop_height_m: 0.45
+  kcb_mid: 1.00
+  kcb_end: 0.60
 - key: cabbage
   name: Cabbage
   default_max_root_zone_depth: 15.0
   kc_mid: 1.05
   crop_height_m: 0.4
-  kcb_mid: 0.95
-  kcb_end: 0.85
+  kcb_mid: 1.00
+  kcb_end: 0.90
 - key: carrot
   name: Carrot
   default_max_root_zone_depth: 12.0
-  kc_mid: 1.05
+  kc_mid: 1.00
   crop_height_m: 0.3
-  kcb_mid: 0.95
-  kcb_end: 0.85
+  kcb_mid: 0.90
+  kcb_end: 0.75
 - key: soybean
   name: Soybean
   default_max_root_zone_depth: 33.0
-  kc_mid: 1.15
-  crop_height_m: 0.75
-  kcb_mid: 1.10
-  kcb_end: 0.30
+  kc_mid: 1.10
+  crop_height_m: 0.8
+  kcb_mid: 1.05
+  kcb_end: 0.35
 - key: field_corn
   name: Field Corn
   default_max_root_zone_depth: 33.0
   canopy_model: field_corn
   kc_mid: 1.20
-  crop_height_m: 2.0
+  crop_height_m: 3.0
   kcb_mid: 1.15
-  kcb_end: 0.50
+  kcb_end: 0.55
 - key: beets
   name: Beets
   default_max_root_zone_depth: 18.0
   kc_mid: 1.05
   crop_height_m: 0.4
-  kcb_mid: 0.95
-  kcb_end: 0.85
+  kcb_mid: 1.00
+  kcb_end: 0.90
 - key: broccoli
   name: Broccoli
   default_max_root_zone_depth: 15.0
-  kc_mid: 1.05
-  crop_height_m: 0.3
-  kcb_mid: 0.95
-  kcb_end: 0.85
+  kc_mid: 1.10
+  crop_height_m: 0.6
+  kcb_mid: 1.00
+  kcb_end: 1.00
 - key: pepper
   name: Pepper
   default_max_root_zone_depth: 18.0
-  kc_mid: 1.05
+  kc_mid: 1.10
   crop_height_m: 0.7
   kcb_mid: 1.00
-  kcb_end: 0.80
+  kcb_end: 0.70
 - key: sweet_potato
   name: Sweet potato
   default_max_root_zone_depth: 16.0
-  kc_mid: 1.15
-  crop_height_m: 0.4
-  kcb_mid: 1.10
-  kcb_end: 0.55
+  kc_mid: 1.10
+  crop_height_m: 0.5
+  kcb_mid: 1.05
+  kcb_end: 0.50
 - key: mint
   name: Mint
   default_max_root_zone_depth: 15.0
-  kc_mid: 1.15
-  crop_height_m: 0.7
-  kcb_mid: 1.10
-  kcb_end: 1.05
+  kc_mid: 1.10
+  crop_height_m: 0.4
+  kcb_mid: 1.05
+  kcb_end: 0.95
 - key: tomato
   name: Tomato
   default_max_root_zone_depth: 15.0
-  kc_mid: 1.15
+  kc_mid: 1.10
   crop_height_m: 0.6
-  kcb_mid: 1.10
-  kcb_end: 0.70
+  kcb_mid: 1.05
+  kcb_end: 0.90
 - key: melon
   name: Melon
   default_max_root_zone_depth: 18.0
-  kc_mid: 1.05
-  crop_height_m: 0.4
-  kcb_mid: 1.00
-  kcb_end: 0.70
+  kc_mid: 1.00
+  crop_height_m: 0.3
+  kcb_mid: 0.95
+  kcb_end: 0.75
 - key: pumpkin
   name: Pumpkin
   default_max_root_zone_depth: 18.0
-  kc_mid: 1.00
+  kc_mid: 0.95
   crop_height_m: 0.4
-  kcb_mid: 0.95
-  kcb_end: 0.70
+  kcb_mid: 0.90
+  kcb_end: 0.55
 - key: winter_squash
   name: Winter squash
   default_max_root_zone_depth: 18.0
-  kc_mid: 1.00
+  kc_mid: 0.95
   crop_height_m: 0.4
-  kcb_mid: 0.95
-  kcb_end: 0.70
+  kcb_mid: 0.90
+  kcb_end: 0.55
 - key: summer_squash
   name: Summer squash
   default_max_root_zone_depth: 18.0
-  kc_mid: 0.95
-  crop_height_m: 0.3
+  kc_mid: 1.00
+  crop_height_m: 0.5
   kcb_mid: 0.90
-  kcb_end: 0.70
+  kcb_end: 0.60
 - key: leafy_greens
   name: Leafy greens
   default_max_root_zone_depth: 12.0
-  kc_mid: 1.00
-  crop_height_m: 0.3
-  kcb_mid: 0.90
-  kcb_end: 0.88
+  kc_mid: 1.05
+  crop_height_m: 0.35
+  kcb_mid: 0.98
+  kcb_end: 0.98
 - key: cucumber
   name: Cucumber
   default_max_root_zone_depth: 18.0
   kc_mid: 1.00
-  crop_height_m: 0.3
+  crop_height_m: 0.4
   kcb_mid: 0.95
   kcb_end: 0.70
 - key: asparagus
   name: Asparagus
   default_max_root_zone_depth: 27.0
-  kc_mid: 0.95
-  crop_height_m: 0.5
-  kcb_mid: 0.90
+  kc_mid: 1.00
+  crop_height_m: 0.8
+  kcb_mid: 0.80
   kcb_end: 0.20
 - key: celery
   name: Celery
   default_max_root_zone_depth: 15.0
   kc_mid: 1.05
   crop_height_m: 0.6
-  kcb_mid: 0.95
-  kcb_end: 0.90
+  kcb_mid: 1.00
+  kcb_end: 0.95
 - key: wheat
   name: Wheat
   default_max_root_zone_depth: 33.0
   kc_mid: 1.15
-  crop_height_m: 1.0
+  crop_height_m: 0.9
   kcb_mid: 1.10
-  kcb_end: 0.23
+  kcb_end: 0.20
 - key: alfalfa
   name: Alfalfa
   default_max_root_zone_depth: 42.0
   kc_mid: 1.20
-  crop_height_m: 0.7
-  kcb_mid: 1.15
-  kcb_end: 1.10
+  crop_height_m: 0.63
+  kcb_mid: 1.05
+  kcb_end: 1.05
 - key: barley
   name: Barley
   default_max_root_zone_depth: 33.0
-  kc_mid: 1.15
-  crop_height_m: 1.0
-  kcb_mid: 1.10
-  kcb_end: 0.15
+  kc_mid: 1.10
+  crop_height_m: 0.8
+  kcb_mid: 1.05
+  kcb_end: 0.20
 - key: other
   name: Other
   default_max_root_zone_depth: 36.0
   kc_mid: 1.05
   crop_height_m: 0.4
-  kcb_mid: 0.95
-  kcb_end: 0.85
+  kcb_mid: 1.00
+  kcb_end: 0.95
 - key: garden_vegetables
   name: Garden vegetables (mixed)
   default_max_root_zone_depth: 18.0
   kc_mid: 1.05
   crop_height_m: 0.4
-  kcb_mid: 0.95
-  kcb_end: 0.85
+  kcb_mid: 1.00
+  kcb_end: 0.95
 - key: dry_bean
   name: Dry bean
   default_max_root_zone_depth: 33.0
-  kc_mid: 1.15
-  crop_height_m: 0.4
-  kcb_mid: 1.10
-  kcb_end: 0.25
+  kc_mid: 1.05
+  crop_height_m: 0.6
+  kcb_mid: 1.00
+  kcb_end: 0.30
 - key: corn_silage
   name: Corn silage
   default_max_root_zone_depth: 33.0
   canopy_model: field_corn
   kc_mid: 1.20
-  crop_height_m: 2.0
+  crop_height_m: 3.0
   kcb_mid: 1.15
-  kcb_end: 0.50
+  kcb_end: 0.55
 - key: oats
   name: Oats
   default_max_root_zone_depth: 33.0
-  kc_mid: 1.15
-  crop_height_m: 1.0
-  kcb_mid: 1.10
-  kcb_end: 0.15
+  kc_mid: 1.05
+  crop_height_m: 0.95
+  kcb_mid: 1.00
+  kcb_end: 0.20
 - key: sugar_beet
   name: Sugar beet
   default_max_root_zone_depth: 36.0
-  kc_mid: 1.20
+  kc_mid: 1.10
   crop_height_m: 0.5
-  kcb_mid: 1.15
-  kcb_end: 0.50
+  kcb_mid: 1.05
+  kcb_end: 0.65
 - key: sorghum
   name: Sorghum
   default_max_root_zone_depth: 33.0
   kc_mid: 1.05
-  crop_height_m: 1.5
+  crop_height_m: 1.75
   kcb_mid: 1.00
   kcb_end: 0.35

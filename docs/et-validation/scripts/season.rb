@@ -12,7 +12,7 @@
 # - before C22 ("old"): CropEt.from_pct_cover with potato's Kc mid adjusted each day for wind and
 #   minimum RH (C21);
 # - C22 ("dual"): FAO-56's dual crop coefficient as WaterBalance runs it, Kcb from the canopy
-#   (CropEt.kcb, potato's Table 17 values easing to Kcb end at harvest after the curve's decline
+#   (CropEt.kcb, potato's FAO-56 Rev.1 values (C25) easing to Kcb end at harvest after the curve's decline
 #   start, WaterBalance::Crop) plus soil evaporation (SoilEvaporation, carried day by day from
 #   emergence, wetted by the tower's own rain gauge, which catches the pivot's water too, fw 1). It's
 #   run on sand's and loamy sand's soil values (soil_types.yml), the Central Sands' two textures.
