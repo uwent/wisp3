@@ -178,45 +178,48 @@
       bind:this={outline}
       class="sticky top-6 max-h-[calc(100dvh-3rem)] overflow-y-auto border-l border-line text-sm"
     >
-      <span
-        class="absolute left-0 w-0.5 rounded-full bg-brand-600 transition-[top,height] duration-300 ease-out"
-        class:opacity-0={!bar.shown}
-        style:top="{bar.top}px"
-        style:height="{bar.height}px"
-        aria-hidden="true"
-      ></span>
-      <!-- pb-1: the bar on the last entry ends at the list's edge, and a fraction of a pixel over it gave the
-           outline a scrollbar at the foot of the page -->
-      <ul class="space-y-0.5 pb-1">
-        {#each sections as section (section.id)}
-          <li>
-            <a
-              href="#{section.id}"
-              data-outline={section.id}
-              aria-current={current === section.id ? 'location' : undefined}
-              class="block py-1 pr-2 pl-3 transition-colors hover:text-ink {current === section.id
-                ? 'font-medium text-ink'
-                : 'text-ink-muted'}">{section.title}</a
-            >
-            {#if current === section.id && subsections[section.id]}
-              <ul transition:slide={{ duration: motion(200) }}>
-                {#each subsections[section.id] as sub (sub.id)}
-                  <li>
-                    <a
-                      href="#{sub.id}"
-                      data-outline={sub.id}
-                      aria-current={currentSub === sub.id ? 'location' : undefined}
-                      class="block py-0.5 pr-2 pl-6 text-xs transition-colors hover:text-ink {currentSub === sub.id
-                        ? 'text-ink'
-                        : 'text-ink-muted'}">{sub.title}</a
-                    >
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-          </li>
-        {/each}
-      </ul>
+      <!-- The bar is clipped to the list, so it never makes the outline scroll: it's measured before a
+           section's subsections close above it (and rounded to whole pixels), which left it past the list's
+           foot for a moment, or a fraction of a pixel for good, and gave the outline a scrollbar there -->
+      <div class="relative overflow-clip">
+        <span
+          class="absolute left-0 w-0.5 rounded-full bg-brand-600 transition-[top,height] duration-300 ease-out"
+          class:opacity-0={!bar.shown}
+          style:top="{bar.top}px"
+          style:height="{bar.height}px"
+          aria-hidden="true"
+        ></span>
+        <ul class="space-y-0.5">
+          {#each sections as section (section.id)}
+            <li>
+              <a
+                href="#{section.id}"
+                data-outline={section.id}
+                aria-current={current === section.id ? 'location' : undefined}
+                class="block py-1 pr-2 pl-3 transition-colors hover:text-ink {current === section.id
+                  ? 'font-medium text-ink'
+                  : 'text-ink-muted'}">{section.title}</a
+              >
+              {#if current === section.id && subsections[section.id]}
+                <ul transition:slide={{ duration: motion(200) }}>
+                  {#each subsections[section.id] as sub (sub.id)}
+                    <li>
+                      <a
+                        href="#{sub.id}"
+                        data-outline={sub.id}
+                        aria-current={currentSub === sub.id ? 'location' : undefined}
+                        class="block py-0.5 pr-2 pl-6 text-xs transition-colors hover:text-ink {currentSub === sub.id
+                          ? 'text-ink'
+                          : 'text-ink-muted'}">{sub.title}</a
+                      >
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </div>
     </div>
   </nav>
 
