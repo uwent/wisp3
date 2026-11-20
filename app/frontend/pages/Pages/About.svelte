@@ -479,7 +479,7 @@
       less for many vegetables. It's adjusted each day for the wind and humidity, as FAO-56 does (a dry, windy day raises
       a tall crop's water use more than a short one's), and from the time the canopy starts to decline (late July for potato)
       it eases toward the crop's value at harvest. The soil's share comes from the wet surface between the plants: after rain
-      or irrigation bare, wet soil evaporates about as much as a full crop, and less as the surface dries over the next few
+      or irrigation, bare wet soil evaporates about as much as a full crop, and less as the surface dries over the next few
       days, more slowly on finer soils. Drip wets only part of the surface, so less evaporates. The canopy shades the soil
       as it fills in, so evaporation matters most while the crop is small and after vine kill.
     </p>
