@@ -1,6 +1,6 @@
 # Brings one cell up to date without waiting for the scheduled refresh: the last week and a new
 # forecast if its forecast is stale (WeatherForecast::STALE_AFTER), a new ensemble likewise, then
-# any gaps since its season start. Queued when a pivot gets a new cell and when someone opens a page showing the cell's
+# any gaps since its season start, and the cell's temperature normals if it has none (WeatherNormalsJob). Queued when a pivot gets a new cell and when someone opens a page showing the cell's
 # pivots (WeatherCell.keep_current); active or not, since a new pivot has no planting yet.
 #
 # While one is queued or running, its cell is marked as updating (WeatherCell.updating_ids), so pages
@@ -27,5 +27,6 @@ class WeatherUpdateJob < WeatherJob
     fetcher.refresh([cell]) if cell.forecast_stale?
     fetcher.refresh_ensemble([cell]) if cell.forecast_stale?(kind: "ensemble")
     fetcher.backfill(cell, from: cell.backfill_start)
+    WeatherNormalsJob.perform_later(cell.id) unless cell.normals?
   end
 end

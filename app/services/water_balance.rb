@@ -25,10 +25,11 @@ module WaterBalance
   Crop = Data.define(:kcb_mid, :kcb_end, :height_m, :late_start, :end_date) do
     def initialize(kcb_mid:, kcb_end:, height_m:, late_start: nil, end_date: nil) = super
 
-    def self.for(planting)
+    # temperatures: the cell's CellTemperatures, for a late stage in degree days (Planting#late_stage_start)
+    def self.for(planting, temperatures: nil)
       plant = planting.plant
       plant&.kcb_mid && new(kcb_mid: plant.kcb_mid, kcb_end: plant.kcb_end, height_m: plant.crop_height_m,
-        late_start: planting.late_stage_start, end_date: planting.end_date)
+        late_start: planting.late_stage_start(temperatures:), end_date: planting.end_date)
     end
 
     # Kcb at full cover on date, adjusted for the day's wind and humidity (FAO-56 eq. 70): mid
@@ -57,12 +58,12 @@ module WaterBalance
       super
     end
 
-    # The planting's own soil values (its season's, PLAN.md Phase 8 G.9)
-    def self.for(planting)
+    # The planting's own soil values (its season's, PLAN.md Phase 8 G.9). temperatures: as Crop.for
+    def self.for(planting, temperatures: nil)
       new(field_capacity: planting.effective_field_capacity, perm_wilting_pt: planting.effective_perm_wilting_pt,
         max_root_zone_depth: planting.max_root_zone_depth, mad_frac: planting.mad_frac,
         et_method: planting.et_method, target_ad_pct: planting.target_ad_pct,
-        initial_moisture_pct: planting.initial_moisture_pct, crop: Crop.for(planting),
+        initial_moisture_pct: planting.initial_moisture_pct, crop: Crop.for(planting, temperatures:),
         rew: planting.soil_type.rew_in, irrigation_fw: SoilEvaporation.wetted_fraction(planting.system&.kind))
     end
 

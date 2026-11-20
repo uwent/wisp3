@@ -20,6 +20,19 @@ namespace :weather do
     WeatherCell.active.each { |cell| WeatherBackfillJob.perform_now(cell.id) }
     puts "Refreshed #{WeatherCell.active.count} cells"
   end
+  desc "Fetch temperature normals (PLAN.md §9 C23) for every cell with a pivot that has none; NOW=yes " \
+    "fetches them here instead of queueing a job per cell"
+  task normals: :environment do
+    cells = WeatherCell.without_normals(WeatherCell.with_pivots.select(:id)).order(:id).to_a
+    if ENV["NOW"] == "yes"
+      cells.each { |cell| WeatherNormalsJob.perform_now(cell.id) }
+      puts "Fetched normals for #{cells.size} cells"
+    else
+      cells.each { |cell| WeatherNormalsJob.perform_later(cell.id) }
+      puts "Queued #{cells.size} jobs on the weather queue"
+    end
+  end
+
   desc "Refetch stored weather through the current corrections (PLAN.md Phase 8 E): counts the days and " \
     "Open-Meteo calls; CONFIRM=yes queues a job per cell with a pivot"
   task recorrect: :environment do

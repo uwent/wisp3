@@ -46,6 +46,9 @@ module Weather
       def initialize(utc_offset_seconds: nil, **) = super
     end
 
+    # One location's daily response (Weather::Normals): dates are the location's local days
+    Daily = Data.define(:latitude, :longitude, :timezone, :elevation, :dates, :values)
+
     def self.api_key = ENV["OPEN_METEO_API_KEY"].presence || Rails.application.credentials.dig(:open_meteo, :api_key)
 
     # Models for ET, rain and the rest, in order of preference: each daily value comes from the
@@ -80,6 +83,20 @@ module Weather
         @limiter.acquire!(RateLimiter.weight(locations: batch.size, variables: counted, days:))
         Array.wrap(get(endpoint, params)).map { |json| parse(json, variables) }
       end
+    end
+
+    # Daily values for one location from start_date through end_date (the archive's daily highs and
+    # lows for Weather::Normals), in metric units and local days
+    def daily(location, endpoint:, model:, variables:, start_date:, end_date:)
+      latitude, longitude = location
+      params = {latitude: latitude.round(6), longitude: longitude.round(6), daily: variables.join(","), models: model,
+                timezone: "auto", start_date:, end_date:}
+      @limiter.acquire!(RateLimiter.weight(locations: 1, variables: variables.size, days: (end_date - start_date).to_i + 1))
+      json = Array.wrap(get(endpoint, params)).first
+      daily = json.fetch("daily")
+      Daily.new(latitude: json["latitude"], longitude: json["longitude"], timezone: json["timezone"],
+        elevation: json["elevation"], dates: daily.fetch("time").map { |date| Date.parse(date) },
+        values: variables.to_h { |variable| [variable, daily[variable] || []] })
     end
 
     def url(endpoint, params)

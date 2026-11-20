@@ -75,9 +75,12 @@ export function guidance(
   today: string | null,
   /** How the crop's curve was fitted to the readings (summary.canopy_fit), or null */
   fit: CanopyFit = null,
+  /** Whether the curve runs by growing degree days (summary.canopy_thermal); false by calendar days
+   * until WISP has the location's normal temperatures; null when unknown (no status) */
+  thermal: boolean | null = null,
 ): Guidance {
   const crop = planting.plant_name
-  const paragraphs = [methodText(planting, fit)]
+  const paragraphs = [methodText(planting, fit, thermal)]
   if (CROP_NOTES[planting.plant_key]) paragraphs.push(CROP_NOTES[planting.plant_key])
   if (planting.vine_kill_crop) paragraphs.push(vineKillText(planting))
 
@@ -162,7 +165,16 @@ function summaryText(planting: GuidedPlanting): string {
   return `WISP estimates ${crop} water use from how much of the ground its canopy covers, ${follows}. Enter percent cover about weekly until the canopy closes, and a soil moisture reading about once a week to correct any drift.`
 }
 
-function methodText(planting: GuidedPlanting, fit: CanopyFit = null): string {
+/** How a percent cover curve keeps time (PLAN.md §9 C23): a sentence, or '' without a curve */
+function timingText(planting: GuidedPlanting, thermal: boolean | null): string {
+  if (!planting.canopy_curve) return ''
+  if (thermal === false) {
+    return "For now the curve runs by days since emergence: once WISP has this location's normal temperatures, usually within a day, it runs by growing degree days instead. "
+  }
+  return "The curve runs by growing degree days at the field's weather location (the season's weather so far, then the forecast, then normal temperatures), so the canopy grows faster in a warm spring and slower in a cool one. "
+}
+
+function methodText(planting: GuidedPlanting, fit: CanopyFit = null, thermal: boolean | null = null): string {
   const crop = planting.plant_name
   if (planting.et_method === 'pct_cover') {
     const curve = planting.generic_curve_name
@@ -170,7 +182,7 @@ function methodText(planting: GuidedPlanting, fit: CanopyFit = null): string {
       : planting.canopy_curve
         ? `Without readings, WISP follows a ${crop.toLowerCase()} canopy curve from the emergence date (its source is on the About page). `
         : `This planting follows no canopy curve (readings only), so until you enter your first reading, the model treats the field as bare soil and counts only evaporation from the soil, and can't say when to irrigate. `
-    return `${crop} water use is modeled from percent canopy cover, the share of the ground shaded by the crop: the day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${seasonText(planting)}${interpolationText(planting, fit)} Enter percent cover about weekly from emergence until the canopy covers about ${FULL_COVER_PCT}% of the ground. For row crops, divide the average canopy width by the row spacing: 18 in wide on 36 in rows is 50%.`
+    return `${crop} water use is modeled from percent canopy cover, the share of the ground shaded by the crop: the day's reference ET is adjusted for the cover to estimate the crop's water use. ${curve}${timingText(planting, thermal)}${seasonText(planting)}${interpolationText(planting, fit)} Enter percent cover about weekly from emergence until the canopy covers about ${FULL_COVER_PCT}% of the ground. For row crops, divide the average canopy width by the row spacing: 18 in wide on 36 in rows is 50%.`
   }
   const lai = `${crop} water use is modeled from leaf area index (LAI), the leaf area of the crop per unit of ground beneath it: the day's reference ET is adjusted for how much of the light the leaves intercept.`
   // LAI is offered only for crops with a growth curve (Planting#lai_needs_curve), so far field corn's

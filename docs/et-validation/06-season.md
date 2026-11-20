@@ -122,6 +122,7 @@ Each would be a deliberate change to the balance: a fix ID in PLAN.md §9, a `Le
 1. **Count soil evaporation at low cover and after vine kill.** The simplest option is a floor on the crop coefficient near FAO-56's Kc ini for potato. A floor of 0.4 alone brings vine kill to harvest from −49% to −7% (curve), but leaves development with measured cover at −15%, because the table is also low at 10–30% cover. The fuller option is FAO-56's dual coefficient (Kcb plus an evaporation term Ke that rises after rain or irrigation and decays as the surface dries), which matches the wet/dry pattern above. It's also more machinery, and its inputs (wetted fraction, readily evaporable water for each soil) are more for growers to get wrong.
 2. **Reduce ET in early August**, either by letting the decline count below full Kc (the 80% saturation in `CropEt` hides the rule's first weeks) or by a gentler Kc mid to Kc end slope as in FAO-56 (potato Kc end 0.75). One season of observed decline is thin evidence, so this needs care.
 3. **Canopy in thermal time, or a later default for April emergence.** Readings already fix it for growers who enter them; the default curve (`docs/canopy/`) could grow by growing degree days, which the four seasons here are consistent with but can't fit on their own.
+   *(Built 2026-11-20 on branch `gdd-canopy`: C23, `docs/canopy/07-thermal-time.md`.)*
 
 Until one of these is decided, WISP 3's season total is right and its timing is not: wetter than the field in development and after vine kill, drier in early August.
 

@@ -81,8 +81,13 @@ RSpec.describe "Weather jobs" do
       fetcher = instance_double(Weather::Fetcher, refresh: nil, refresh_ensemble: 0)
       allow(Weather::Fetcher).to receive(:new).and_return(fetcher)
       expect { described_class.perform_now }.to have_enqueued_job(WeatherBackfillJob).with(WeatherCell.sole.id)
+        .and have_enqueued_job(WeatherNormalsJob).with(WeatherCell.sole.id)
       expect(fetcher).to have_received(:refresh).with([WeatherCell.sole])
       expect(fetcher).to have_received(:refresh_ensemble).with([WeatherCell.sole])
+
+      WeatherNormal.create!(weather_cell: WeatherCell.sole, day_of_year: 1, tmax_f: 20, tmin_f: 5, first_year: 2006,
+        last_year: 2025, model: "era5_seamless", fetched_at: Time.current)
+      expect { described_class.perform_now }.not_to have_enqueued_job(WeatherNormalsJob)
     end
 
     it "refreshes every cell with a pivot when asked for all" do
@@ -150,6 +155,27 @@ RSpec.describe "Weather jobs" do
     it "does nothing for a cell that's gone" do
       described_class.perform_now(0)
       expect(Weather::Fetcher).not_to have_received(:new)
+    end
+
+    it "queues the cell's temperature normals until it has them" do
+      expect { described_class.perform_now(cell.id) }.to have_enqueued_job(WeatherNormalsJob).with(cell.id)
+      WeatherNormal.create!(weather_cell: cell, day_of_year: 1, tmax_f: 20, tmin_f: 5, first_year: 2006, last_year: 2025,
+        model: "era5_seamless", fetched_at: Time.current)
+      expect { described_class.perform_now(cell.id) }.not_to have_enqueued_job(WeatherNormalsJob)
+    end
+  end
+
+  describe WeatherNormalsJob do
+    it "fetches a cell's normals once (C23)" do
+      normals = instance_double(Weather::Normals)
+      allow(normals).to receive(:fetch) do |c|
+        WeatherNormal.create!(weather_cell: c, day_of_year: 1, tmax_f: 20, tmin_f: 5, first_year: 2006, last_year: 2025,
+          model: "era5_seamless", fetched_at: Time.current)
+      end
+      allow(Weather::Normals).to receive(:new).and_return(normals)
+      2.times { described_class.perform_now(cell.id) }
+      described_class.perform_now(0) # a cell that's gone
+      expect(normals).to have_received(:fetch).with(cell).once
     end
   end
 

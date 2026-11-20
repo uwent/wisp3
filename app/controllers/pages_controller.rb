@@ -49,7 +49,8 @@ class PagesController < AuthenticatedController
   private
 
   # Each crop's percent cover curve for the About page (PLAN.md Phase 6.7): its parameters, sources and
-  # confidence from db/reference/canopy_curves.yml, and its cover by day for a May 15 emergence
+  # confidence from db/reference/canopy_curves.yml, and its cover by day for a May 15 emergence, by the
+  # calendar curve (in the field it runs by growing degree days, C23, matching this in a typical season)
   def canopy_curves
     emergence = Date.new(Date.current.year, 5, 15)
     Plant.order(:name).filter_map do |plant|
@@ -59,6 +60,8 @@ class PagesController < AuthenticatedController
        confidence_label: curve.confidence_label, notes: curve.notes,
        season: curve.season_days && {days: curve.season_days, basis: curve.season_basis},
        growth: {cc0: curve.cc0, ccx: curve.ccx, cgc: curve.cgc}, decline: curve.decline,
+       # In growing degree days (C23): what the field runs on, converted from the calendar curve drawn here
+       thermal: curve.thermal&.to_h&.slice(:base_c, :upper_c, :cgc, :decline_start, :cdc, :basis),
        days_to: [50, 80].to_h { |pct| [pct, covers.index { |cover| cover >= pct }] },
        covers:, sources: curve.sources.map { |source| {citation: source.citation, url: source.url} }}
     end

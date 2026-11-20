@@ -10,6 +10,7 @@ class WeatherCell < ApplicationRecord
   has_many :plantings, dependent: :nullify
   has_many :weather_days, dependent: :delete_all
   has_many :weather_forecasts, dependent: :delete_all
+  has_many :weather_normals, dependent: :delete_all
 
   validates :latitude, :longitude, presence: true
 
@@ -88,6 +89,13 @@ class WeatherCell < ApplicationRecord
   # Backfills start on January 1, so a weather zone's page has the whole year (G.12), or at the
   # earliest season start this year if it began the year before
   def backfill_start = [season_start, today.beginning_of_year].compact.min
+
+  # Whether its temperature normals are stored (WeatherNormalsJob); until they are, canopy curves
+  # run by calendar days (ThermalTime)
+  def normals? = weather_normals.exists?
+
+  # Of these cells, the ones without normals
+  def self.without_normals(ids) = where(id: ids).where.not(id: WeatherNormal.select(:weather_cell_id))
 
   # Open-Meteo gives elevation in meters; growers see feet
   def elevation_ft = elevation_m && (elevation_m / 0.3048).round

@@ -150,6 +150,7 @@
         summary?.tasks ?? [],
         summary?.phase === 'active' ? summary.date : null,
         summary?.canopy_fit ?? null,
+        summary?.canopy_thermal ?? null,
       ),
   )
   // Whether "More about how … is modeled" is open: closed until opened, then remembered in this browser (G.6)
