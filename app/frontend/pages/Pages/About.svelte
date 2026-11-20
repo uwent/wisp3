@@ -1,12 +1,15 @@
 <script lang="ts">
   import { page } from '@inertiajs/svelte'
+  import { onMount, tick } from 'svelte'
+  import { slide } from 'svelte/transition'
 
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import Term from '@/lib/components/Term.svelte'
-  import CanopyCurvePlot from '@/lib/docs/CanopyCurvePlot.svelte'
+  import CanopyCurveCard, { type CanopyCurve } from '@/lib/docs/CanopyCurveCard.svelte'
   import Introduction from '@/lib/docs/Introduction.svelte'
   import WeatherCorrectionsTable, { type WeatherCorrection } from '@/lib/docs/WeatherCorrectionsTable.svelte'
   import { GLOSSARY } from '@/lib/glossary'
+  import { motion } from '@/lib/motion'
   import { FULL_COVER_PCT, READING_EVERY } from '@/lib/guidance'
   import { units as unitsFor } from '@/lib/units'
 
@@ -29,34 +32,6 @@
     generic_curve: string | null
   }
   type GenericCurve = { key: string; name: string; basis: string; season: string | null; crops: string[] }
-  // A crop's percent cover curve, from db/reference/canopy_curves.yml (PagesController#canopy_curves)
-  type CanopyCurve = {
-    key: string
-    name: string
-    basis: string
-    confidence: string
-    confidence_label: string
-    notes: string | null
-    growth: { cc0: number; ccx: number; cgc: number }
-    decline:
-      | { type: 'aquacrop'; start_day: number; cdc: number }
-      | { type: 'rule'; date: string; days: number; floor: number }
-      | null
-    days_to: { 50: number | null; 80: number | null }
-    /** The curve in growing degree days (°C days), which plantings run on (PLAN.md §9 C23) */
-    thermal: {
-      base_c: number
-      upper_c: number
-      cgc: number
-      decline_start: number | null
-      cdc: number | null
-      basis: string
-    } | null
-    /** Typical days from emergence to harvest (PLAN.md Phase 8 G.2) */
-    season: { days: number; basis: string } | null
-    covers: number[]
-    sources: { citation: string; url: string }[]
-  }
   type Soil = {
     key: string
     name: string
@@ -91,18 +66,6 @@
   const withoutCurve = $derived(plants.filter((plant) => !plant.cover_curve).map((plant) => plant.name.toLowerCase()))
 
   const pct = (fraction: number) => `${+(fraction * 100).toFixed(2)}%`
-  function declineText(decline: CanopyCurve['decline']): string {
-    if (!decline) return "Holds its maximum cover until the planting's end date."
-    if (decline.type === 'aquacrop') {
-      return `Declines from day ${decline.start_day} after emergence in a typical season, following AquaCrop's equation (CDC ${decline.cdc} a day).`
-    }
-    const [month, day] = decline.date.split('-').map(Number)
-    const date = new Date(2000, month - 1, day).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-    return (
-      `Starting ${date} (or once the canopy is full, if that comes later), cover eases down to ${decline.floor}% ` +
-      `over ${decline.days} days, fastest at the halfway point, then holds until the end date.`
-    )
-  }
 
   const units = $derived(unitsFor(page.props.auth.user?.unit_system))
   const depth = (inches: number) => units.format('rootDepth', inches)
@@ -133,31 +96,135 @@
     { id: 'history', title: 'History' },
     { id: 'contact', title: 'Credits and contact' },
   ]
+
+  // Where the reader is (Ben, 2026-11-19): the outline marks the section being read, with a bar that
+  // slides between entries, and opens its subsections (the article's h3s with an id, read from the
+  // page so they stay in step with it). A heading counts as reached once it's in the top quarter of
+  // the window; at the foot of the page the last section is current.
+  let article: HTMLElement | undefined = $state()
+  let outline: HTMLElement | undefined = $state()
+  let subsections: Record<string, { id: string; title: string }[]> = $state({})
+  let current = $state('introduction')
+  let currentSub: string | null = $state(null)
+  let bar = $state({ top: 0, height: 0, shown: false })
+
+  function locate() {
+    if (!article) return
+    const reached = innerHeight / 4
+    let section = sections[0].id
+    let sub: string | null = null
+    for (const heading of article.querySelectorAll<HTMLElement>(':scope > h2[id], :scope > h3[id]')) {
+      if (heading.getBoundingClientRect().top > reached) break
+      if (heading.tagName === 'H2') {
+        section = heading.id
+        sub = null
+      } else {
+        sub = heading.id
+      }
+    }
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2) {
+      section = sections.at(-1)!.id
+      sub = null
+    }
+    current = section
+    currentSub = sub
+  }
+
+  onMount(() => {
+    const found: typeof subsections = {}
+    let section: string | null = null
+    for (const child of article?.children ?? []) {
+      if (child.tagName === 'H2' && child.id) section = child.id
+      else if (child.tagName === 'H3' && child.id && section) {
+        ;(found[section] ??= []).push({ id: child.id, title: child.textContent?.trim() ?? '' })
+      }
+    }
+    subsections = found
+    let frame = 0
+    const onScroll = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(locate)
+    }
+    locate()
+    addEventListener('scroll', onScroll, { passive: true })
+    addEventListener('resize', onScroll)
+    return () => {
+      cancelAnimationFrame(frame)
+      removeEventListener('scroll', onScroll)
+      removeEventListener('resize', onScroll)
+    }
+  })
+
+  // The bar follows the current entry, once the subsections it opens have laid out
+  $effect(() => {
+    const id = currentSub ?? current
+    const measure = () => {
+      const link = outline?.querySelector<HTMLElement>(`[data-outline="${id}"]`)
+      if (link) bar = { top: link.offsetTop, height: link.offsetHeight, shown: true }
+    }
+    void tick().then(measure)
+    // Again once a section's subsections have finished opening or closing above it
+    const settled = setTimeout(measure, motion(200) + 20)
+    return () => clearTimeout(settled)
+  })
 </script>
 
 <svelte:head><title>About WISP</title></svelte:head>
 
 <div class="grid gap-8 lg:grid-cols-[12rem_1fr]">
   <nav aria-label="On this page" class="hidden lg:block">
-    <ul class="sticky top-6 space-y-1 text-sm">
-      {#each sections as section (section.id)}
-        <li>
-          <a href="#{section.id}" class="block rounded px-2 py-1 text-ink-muted hover:bg-surface-raised hover:text-ink"
-            >{section.title}</a
-          >
-        </li>
-      {/each}
-    </ul>
+    <div
+      bind:this={outline}
+      class="sticky top-6 max-h-[calc(100dvh-3rem)] overflow-y-auto border-l border-line text-sm"
+    >
+      <span
+        class="absolute left-0 w-0.5 rounded-full bg-brand-600 transition-[top,height] duration-300 ease-out"
+        class:opacity-0={!bar.shown}
+        style:top="{bar.top}px"
+        style:height="{bar.height}px"
+        aria-hidden="true"
+      ></span>
+      <ul class="space-y-0.5">
+        {#each sections as section (section.id)}
+          <li>
+            <a
+              href="#{section.id}"
+              data-outline={section.id}
+              aria-current={current === section.id ? 'location' : undefined}
+              class="block py-1 pr-2 pl-3 transition-colors hover:text-ink {current === section.id
+                ? 'font-medium text-ink'
+                : 'text-ink-muted'}">{section.title}</a
+            >
+            {#if current === section.id && subsections[section.id]}
+              <ul transition:slide={{ duration: motion(200) }}>
+                {#each subsections[section.id] as sub (sub.id)}
+                  <li>
+                    <a
+                      href="#{sub.id}"
+                      data-outline={sub.id}
+                      aria-current={currentSub === sub.id ? 'location' : undefined}
+                      class="block py-0.5 pr-2 pl-6 text-xs transition-colors hover:text-ink {currentSub === sub.id
+                        ? 'text-ink'
+                        : 'text-ink-muted'}">{sub.title}</a
+                    >
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </div>
   </nav>
 
-  <article class="prose max-w-3xl min-w-0 prose-headings:scroll-mt-6 prose-headings:font-display">
+  <article bind:this={article} class="prose max-w-3xl min-w-0 prose-headings:scroll-mt-6 prose-headings:font-display">
     <h1>About WISP</h1>
 
     <h2 id="introduction">What WISP is</h2>
     <Introduction />
 
     <h2 id="how-it-works">How it works</h2>
-    <h3>The water balance</h3>
+    <h3 id="water-balance">The water balance</h3>
     <p>
       WISP treats each planting's root zone as a single bucket. How big the bucket is depends on the soil and the crop:
       it is the water held between <Term id="field_capacity">field capacity</Term> and the <Term id="wilting_point"
@@ -188,7 +255,7 @@
       so a value you correct from last week is reflected in today's numbers right away.
     </p>
 
-    <h3>Weather</h3>
+    <h3 id="how-weather">Weather</h3>
     <p>
       Each irrigation system's weather comes from <a href="https://open-meteo.com/" target="_blank" rel="noopener"
         >Open-Meteo</a
@@ -200,7 +267,7 @@
       such a field also says when it would need water if no rain fell.
     </p>
 
-    <h3>The outlook</h3>
+    <h3 id="outlook">The outlook</h3>
     <p>
       WISP runs each planting's balance forward through the next {defaults.forecast_days} days of forecast, counting any irrigation
       you've planned, to find the day it would reach 0 AD, or the target you've set for the planting. That day is its
@@ -235,7 +302,7 @@
     </table>
 
     <h2 id="getting-started">Getting started</h2>
-    <h3>Your account and operation</h3>
+    <h3 id="account">Your account and operation</h3>
     <p>
       Create an account with your email address. You can sign in with a password, or have WISP email you a sign-in link
       and code. Your account comes with an operation of your own. To work on the same farms as other people, add them to
@@ -243,7 +310,7 @@
       and enter data. Owners can also change the operation's settings and members, and delete farms, irrigation systems
       and fields.
     </p>
-    <h3>Farms, irrigation systems, fields and plantings</h3>
+    <h3 id="farms-fields">Farms, irrigation systems, fields and plantings</h3>
     <p>WISP organizes everything the way irrigation is managed:</p>
     <ul>
       <li><strong>Farm:</strong> any set of irrigation systems you want to see together, such as one location.</li>
@@ -430,6 +497,7 @@
       <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a> or your own measurements,
       enter them for the field and they replace its soil type's.
     </p>
+    <h3 id="soil-survey">Suggested from the soil survey</h3>
     <p>
       When you place an irrigation system, WISP looks up the USDA soil survey under it (around it, for one without a
       shape) and suggests the soil type that covers most of it, from the surface layer of each map unit's main soil; the
@@ -437,6 +505,7 @@
       found there first, with their shares, and notes when the one chosen isn't the main one. It's a suggestion: check it
       against what you know of the field.
     </p>
+    <h3 id="soil-values">Soil water values</h3>
     <div class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised">
       <table class="w-full text-sm">
         <thead class="border-b border-line text-left text-xs text-ink-muted">
@@ -481,33 +550,6 @@
       {defaults.mad_pct}% and a season from April 1 to its typical harvest (November 30 for crops without one); you can
       change any of these for your planting.
     </p>
-    <p>
-      <strong>Crop coefficients.</strong> WISP follows FAO-56's dual crop coefficient, which counts the crop's own water use
-      and the soil's evaporation separately. The crop's share rises with its canopy to its value at full cover (FAO-56 Table
-      17, the table below): about 10% more than the reference grass for potato, soybean or sweet corn, 15% for field corn,
-      less for many vegetables. It's adjusted each day for the wind and humidity, as FAO-56 does (a dry, windy day raises
-      a tall crop's water use more than a short one's), and from the time the canopy starts to decline (late July for potato)
-      it eases toward the crop's value at harvest. The soil's share comes from the wet surface between the plants: after rain
-      or irrigation, bare wet soil evaporates about as much as a full crop, and less as the surface dries over the next few
-      days, more slowly on finer soils. Drip wets only part of the surface, so less evaporates. The canopy shades the soil
-      as it fills in, so evaporation matters most while the crop is small and after vine kill.
-    </p>
-    <p>
-      <strong>Season length.</strong> Each crop with a curve has a typical season, from emergence to harvest (on its card
-      below). If your variety or region runs longer or shorter, such as oats farther south or an earlier corn hybrid, set
-      the planting's season length: WISP stretches or shortens the crop's whole curve to fit, its growth and its decline alike,
-      and suggests the harvest date from it. Your canopy readings then adjust the stretched curve as they would the typical
-      one.
-    </p>
-    <p>
-      <strong>Winter crops.</strong> A planting can run across the new year, but WISP models the irrigated season: enter winter
-      wheat or rye from spring green-up, using that date as its emergence.
-    </p>
-    <p>
-      <strong>Crops WISP doesn't model.</strong> Cranberries are managed by flooding, frost protection and the water table
-      rather than by a root zone's water balance, and ginseng grows under shade, which changes its water use in ways WISP's
-      reference ET doesn't account for. Neither is in the crop list.
-    </p>
     <!-- Wider than a phone with its Kcb columns: a scrolling region must be reachable by keyboard (axe) -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
@@ -551,6 +593,35 @@
         </tbody>
       </table>
     </div>
+    <h3 id="crop-coefficients">Crop coefficients</h3>
+    <p>
+      WISP follows FAO-56's dual crop coefficient, which counts the crop's own water use and the soil's evaporation
+      separately. The crop's share rises with its canopy to its value at full cover (FAO-56 Table 17, in the table
+      above): about 10% more than the reference grass for potato, soybean or sweet corn, 15% for field corn, less for
+      many vegetables. It's adjusted each day for the wind and humidity, as FAO-56 does (a dry, windy day raises a tall
+      crop's water use more than a short one's), and from the time the canopy starts to decline (late July for potato)
+      it eases toward the crop's value at harvest. The soil's share comes from the wet surface between the plants: after
+      rain or irrigation, bare wet soil evaporates about as much as a full crop, and less as the surface dries over the
+      next few days, more slowly on finer soils. Drip wets only part of the surface, so less evaporates. The canopy
+      shades the soil as it fills in, so evaporation matters most while the crop is small and after vine kill.
+    </p>
+    <h3 id="season-length">Season length</h3>
+    <p>
+      Each crop with a curve has a typical season, from emergence to harvest (on its card below). If your variety or
+      region runs longer or shorter, such as oats farther south or an earlier corn hybrid, set the planting's season
+      length: WISP stretches or shortens the crop's whole curve to fit, its growth and its decline alike, and suggests
+      the harvest date from it. Your canopy readings then adjust the stretched curve as they would the typical one.
+    </p>
+    <h3 id="other-crops">Winter crops, and crops WISP doesn't model</h3>
+    <p>
+      A planting can run across the new year, but WISP models the irrigated season: enter winter wheat or rye from
+      spring green-up, using that date as its emergence.
+    </p>
+    <p>
+      Cranberries are managed by flooding, frost protection and the water table rather than by a root zone's water
+      balance, and ginseng grows under shade, which changes its water use in ways WISP's reference ET doesn't account
+      for. Neither is in the crop list.
+    </p>
 
     <h2 id="canopy">Canopy curves</h2>
     <p>
@@ -558,26 +629,28 @@
       below has a typical <Term id="canopy_curve">canopy curve</Term>: its percent cover as it grows from emergence.
       With no readings WISP follows it from the emergence date.
     </p>
+    <h3 id="canopy-warmth">Potato's curve runs on warmth</h3>
     <p>
-      <strong>Potato's curve runs on warmth, not the calendar.</strong> Crops grow faster in warm weather, so for potato WISP
-      counts the curve's time in growing degree days at the field's weather location: the season's weather so far, then the
-      forecast, then normal temperatures (the average of the last 20 years) for the rest of the season. The curve was converted
-      from days so that, emerging on May 15 in a typical Central Sands season, it matches the one drawn on its card; in a
-      warm spring the canopy closes sooner, and in a cool one, or after an early April emergence, later. Against four seasons
-      of potato canopy measured at the Central Sands flux towers (emerged April 21 to May 23), it put 80% cover 3 to 11 days
-      early, where counting days ran from 3 days late to 21 days early, three weeks for April emergence. Until WISP has a
-      location's normal temperatures (usually within a day of adding an irrigation system there), it runs by days, and its
-      late-July decline keeps its date. The other crops' curves run by days after emergence for now: converted the same way,
-      they matched Wisconsin growers' 2026 readings a little less closely than their day curves, which were tuned to those
+      Crops grow faster in warm weather, so for potato WISP counts the curve's time in growing degree days at the
+      field's weather location: the season's weather so far, then the forecast, then normal temperatures (the average of
+      the last 20 years) for the rest of the season. The curve was converted from days so that, emerging on May 15 in a
+      typical Central Sands season, it matches the one drawn on its card; in a warm spring the canopy closes sooner, and
+      in a cool one, or after an early April emergence, later. Against four seasons of potato canopy measured at the
+      Central Sands flux towers (emerged April 21 to May 23), it put 80% cover 3 to 11 days early, where counting days
+      ran from 3 days late to 21 days early, three weeks for April emergence. Until WISP has a location's normal
+      temperatures (usually within a day of adding an irrigation system there), it runs by days, and its late-July
+      decline keeps its date. The other crops' curves run by days after emergence for now: converted the same way, they
+      matched Wisconsin growers' 2026 readings a little less closely than their day curves, which were tuned to those
       readings, so they'll be checked again against the 2027 readings.
     </p>
+    <h3 id="canopy-readings">How your readings adjust the curve</h3>
     <p>
-      <strong>Your readings adjust the curve, in two steps.</strong> First WISP fits the curve to them: it can run
-      earlier or later, grow faster or slower, and be fuller or thinner. Each change is held back by how much crops
-      typically vary from field to field (about {defaults.fit_shift_days} days in timing), and each reading pulls by how far
-      it is from the curve, allowing about {defaults.fit_noise_pct} points for how precise a reading by eye is. So one or
-      two readings barely move the curve, and as readings add up it fits them more closely. Readings of 80% or more count
-      as "at least 80%", since many growers stop there.
+      Your readings adjust the curve in two steps. First WISP fits the curve to them: it can run earlier or later, grow
+      faster or slower, and be fuller or thinner. Each change is held back by how much crops typically vary from field
+      to field (about {defaults.fit_shift_days} days in timing), and each reading pulls by how far it is from the curve, allowing
+      about {defaults.fit_noise_pct} points for how precise a reading by eye is. So one or two readings barely move the curve,
+      and as readings add up it fits them more closely. Readings of 80% or more count as "at least 80%", since many growers
+      stop there.
     </p>
     <p>
       Then the canopy passes through every reading. At each one WISP takes the ratio of your reading to the fitted
@@ -592,20 +665,20 @@
       the rest of the season by about 40% compared with holding the last reading's ratio all season.
     </p>
     <p>
-      <strong>When your readings and the curve disagree,</strong> the planting's page says so. That happens if readings
-      between 10% and 80% run more than {defaults.shift_warning_days} days ahead of or behind the curve (often a sign that
-      the emergence date is off), or if a reading drops by more than {defaults.drop_warning} points while the curve is still
-      growing or holding steady. Either way, WISP keeps following the curve through your readings.
+      When your readings and the curve disagree, the planting's page says so. That happens if readings between 10% and
+      80% run more than {defaults.shift_warning_days} days ahead of or behind the curve (often a sign that the emergence date
+      is off), or if a reading drops by more than {defaults.drop_warning} points while the curve is still growing or holding
+      steady. Either way, WISP keeps following the curve through your readings.
     </p>
+    <h3 id="canopy-made">How the curves were made</h3>
     <p>
-      <strong>How the curves were made.</strong> Growth follows the canopy cover equations of FAO's AquaCrop model, with
-      three numbers per crop: the cover just after emergence (CC₀), the maximum cover (CCx), and a growth rate (CGC).
-      Some crops also decline late in the season. Where FAO's AquaCrop has a crop file, WISP starts from its values by
-      calendar day. They matched Wisconsin 2026 readings within a few days for potato, field corn and snap bean, and
-      were adjusted to match for soybean and sweet corn. For other crops the timing comes from the stage lengths in
-      FAO-56. Potato's is then converted to growing degree days (above), with base and upper temperatures (2 and 26 °C)
-      from AquaCrop's potato file. Each card says which source was used and how well it has been checked. The research
-      notes, data screening and scripts are in
+      Growth follows the canopy cover equations of FAO's AquaCrop model, with three numbers per crop: the cover just
+      after emergence (CC₀), the maximum cover (CCx), and a growth rate (CGC). Some crops also decline late in the
+      season. Where FAO's AquaCrop has a crop file, WISP starts from its values by calendar day. They matched Wisconsin
+      2026 readings within a few days for potato, field corn and snap bean, and were adjusted to match for soybean and
+      sweet corn. For other crops the timing comes from the stage lengths in FAO-56. Potato's is then converted to
+      growing degree days (above), with base and upper temperatures (2 and 26 °C) from AquaCrop's potato file. Each card
+      says which source was used and how well it has been checked. The research notes, data screening and scripts are in
       <a href="https://github.com/uwent/wisp3/tree/main/docs/canopy" target="_blank" rel="noopener"
         >the WISP source code</a
       >.
@@ -619,11 +692,12 @@ decline: CC = CCx · [1 − 0.05 · (e^(3.33·CDC·t′ / (CCx + 2.29)) − 1)]
 t: days since emergence (for potato, growing degree days: °C days, AquaCrop's method)
 t′: days since the decline starts</code
       ></pre>
+    <h3 id="canopy-generic">Crops without their own curve</h3>
     <p>
-      <strong>Crops without their own curve</strong> ({withoutCurve.join(', ')}) follow a generic one, a rough shape
-      that your percent cover readings correct the same way, so enter one now and then. We found no published canopy
-      values for onion to check against; alfalfa and mint are cut and regrow during the season; and we found no source
-      for asparagus fern growth after harvest. The planting form offers each generic curve for these crops:
+      Some crops ({withoutCurve.join(', ')}) follow a generic one, a rough shape that your percent cover readings
+      correct the same way, so enter one now and then. We found no published canopy values for onion to check against;
+      alfalfa and mint are cut and regrow during the season; and we found no source for asparagus fern growth after
+      harvest. The planting form offers each generic curve for these crops:
     </p>
     <ul>
       {#each generic_curves as curve (curve.key)}
@@ -640,11 +714,12 @@ t′: days since the decline starts</code
       <StatusBadge status="needs_canopy" size="sm" /> until then.
     </p>
     <p>
-      <strong>LAI</strong> is offered only for crops with an LAI curve, so far field corn (and corn silage), whose curve comes
-      from the Wisconsin Irrigation Scheduler (WIS v6.3.11) spreadsheet and peaks at about 4 around 80 days after emergence.
-      Estimating LAI from percent cover would put crop water use 20 to 40% below the percent cover method while the canopy
-      develops, so WISP doesn't offer it.
+      LAI is offered only for crops with an LAI curve, so far field corn (and corn silage), whose curve comes from the
+      Wisconsin Irrigation Scheduler (WIS v6.3.11) spreadsheet and peaks at about 4 around 80 days after emergence.
+      Estimating LAI from percent cover would put crop water use 20 to 40% below the percent cover method while the
+      canopy develops, so WISP doesn't offer it.
     </p>
+    <h3 id="canopy-crops">The curves, crop by crop</h3>
     <p class="text-sm text-ink-muted">
       Each curve is drawn by days for a crop that emerges on May 15 in a typical season, over {curves[0]?.covers
         .length - 1} days. Point at a curve for its cover on a day; potato's also shows the growing degree days it runs on
@@ -652,62 +727,7 @@ t′: days since the decline starts</code
     </p>
     <div class="not-prose grid gap-4 sm:grid-cols-2">
       {#each curves as curve (curve.key)}
-        <section
-          id="canopy-{curve.key}"
-          aria-labelledby="canopy-{curve.key}-name"
-          class="scroll-mt-6 space-y-2 rounded-lg border border-line bg-surface-raised p-3 text-sm"
-        >
-          <div class="flex flex-wrap items-baseline justify-between gap-x-2">
-            <h3 id="canopy-{curve.key}-name" class="font-display font-semibold">{curve.name}</h3>
-            <span class="text-xs text-ink-muted">{curve.confidence_label}</span>
-          </div>
-          <CanopyCurvePlot
-            covers={curve.covers}
-            degreeDaysPerDay={curve.thermal ? curve.growth.cgc / curve.thermal.cgc : null}
-            label="{curve.name} canopy cover by day since emergence{curve.days_to[50] !== null
-              ? `: 50% on day ${curve.days_to[50]}`
-              : ''}{curve.days_to[80] !== null ? `, 80% on day ${curve.days_to[80]}` : ''}"
-          />
-          <p>
-            {#if curve.days_to[50] !== null}50% cover on day {curve.days_to[50]}{/if}{#if curve.days_to[80] !== null},
-              80% on day {curve.days_to[80]}{/if}. {declineText(curve.decline)}
-          </p>
-          <details class="text-xs text-ink-muted">
-            <summary class="cursor-pointer">Details and sources</summary>
-            <div class="mt-1 space-y-2">
-              <p>
-                {curve.basis}. Starting cover (CC₀) {pct(curve.growth.cc0)}, maximum cover (CCx) {pct(
-                  curve.growth.ccx,
-                )}, growth rate (CGC) {curve.growth.cgc} a day.
-              </p>
-              {#if curve.thermal}
-                <p>
-                  In growing degree days: base {curve.thermal.base_c} °C, upper {curve.thermal.upper_c} °C, growth rate {curve
-                    .thermal.cgc} a degree day{curve.thermal.decline_start
-                    ? `, decline from ${curve.thermal.decline_start} degree days (CDC ${curve.thermal.cdc} a degree day)`
-                    : ''}. {curve.thermal.basis}.
-                </p>
-              {/if}
-              {#if curve.notes}<p>{curve.notes}</p>{/if}
-              {#if curve.season}
-                <p>
-                  Typical season: {curve.season.days} days from emergence to harvest ({curve.season.basis}).
-                </p>
-              {/if}
-            </div>
-            <p class="mt-2 font-medium">Sources</p>
-            <ul class="mt-1 list-disc space-y-1 pl-4">
-              {#each curve.sources as source (source.url)}
-                <li>
-                  {source.citation}
-                  <a href={source.url} target="_blank" rel="noopener" class="break-all text-brand-600 hover:underline"
-                    >{source.url}</a
-                  >
-                </li>
-              {/each}
-            </ul>
-          </details>
-        </section>
+        <CanopyCurveCard {curve} />
       {/each}
     </div>
 

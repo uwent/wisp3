@@ -96,6 +96,16 @@ test('signed-out pages', { tag: '@phone' }, async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test("the About page's canopy curve dialog", { tag: '@phone' }, async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/about')
+  await page.getByRole('button', { name: 'Potato: details and sources', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Potato canopy curve' })).toBeVisible()
+  const results = await new AxeBuilder({ page }).withTags(TAGS).include('[role="dialog"]').analyze()
+  expect(results.violations.map((violation) => violation.id)).toEqual([])
+  expect(errors).toEqual([])
+})
+
 test('the example farm, signed out (G.8)', { tag: '@phone' }, async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/example')
