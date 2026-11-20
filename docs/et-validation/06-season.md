@@ -190,3 +190,18 @@ The Python prototype checked before building it (TEW 8 mm, REW 4 mm) gave the sa
 6. **Weekly readings no longer hurt.** With the canopy right, development is +10% (it was −19%), the same as with the measured cover: the error that readings exposed (point 3 above) is what C22 fixes.
 
 Still open: point 3 of the proposals (canopy in thermal time) is separate work; the curve's early canopy for April emergence is why development with the curve (+16%) runs higher than with readings (+10%).
+
+## With the canopy in degree days too (C22 and C23)
+
+The canopy curve now runs in growing degree days (C23, `docs/canopy/07-thermal-time.md`), which puts potato's development closer to these four seasons' timing (days to 50% and 80% cover off by 7 days on average, against 14 by the calendar). `season.rb` runs it as a fourth canopy, "curve, degree days": the season's temperatures at each tower and normals from the 20 years before, from Open-Meteo's archive, with the late stage starting where that curve declines.
+
+| Phase | Days | Corrected | Old, curve | Old, curve in degree days | C22 sand, curve | C22 sand, curve in degree days | C22 loamy sand, curve in degree days |
+|---|---|---|---|---|---|---|---|
+| Development | 115 | 0.88 | 0.86 (−1%) | 0.73 (−17%) | 1.01 (+16%) | 0.96 (+10%) | 1.01 (+16%) |
+| Full cover | 159 | 1.05 | 1.11 (+6%) | 1.11 (+6%) | 1.03 (−1%) | 1.03 (−1%) | 1.05 (0%) |
+| Decline | 30 | 0.86 | 1.07 (+25%) | 1.07 (+25%) | 0.88 (+2%) | 0.88 (+2%) | 0.88 (+2%) |
+| Vine kill to harvest | 96 | 0.54 | 0.27 (−49%) | 0.27 (−49%) | 0.60 (+11%) | 0.60 (+11%) | 0.66 (+22%) |
+| **Season** | 400 | 0.88 | 0.87 (−1%) | 0.83 (−6%) | 0.93 (+6%) | 0.92 (+4%) | 0.95 (+7%) |
+
+The two changes needed each other. With the old table, timing the canopy right made development worse (−1% to −17%): the calendar curve had been hiding the missing soil evaporation by running ahead. With the dual coefficient, the degree-day curve brings development from +16% to +10%, the same as the measured canopy gives (+10%), so what's left in development is the dual coefficient's own excess on nearly bare ground (point 2 above), not the canopy's timing. On sand, every phase is now within −1% to +11% of the corrected towers, and the season +4%.
+

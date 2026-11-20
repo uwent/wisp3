@@ -21,10 +21,14 @@
 #   crop coefficient relation, apart from the canopy's timing);
 # - curve: what a grower gets entering emergence, vine kill and harvest and no readings (potato's
 #   curve, its July 25 decline rule, the vine kill ramp);
-# - readings: the same with a reading each week to vine kill, taken from the measured cover.
+# - readings: the same with a reading each week to vine kill, taken from the measured cover;
+# - curve_gdd: the curve in degree days (C23), with the season's temperatures at the tower and normals
+#   from the 20 years before, from Open-Meteo's archive (docs/canopy/scripts/thermal_common.rb, cached;
+#   the first run needs the network); its late stage starts where that curve declines.
 # Measured ET is corrected for energy balance closure per site and phase, as in 03 (Bowen ratio kept).
 require "csv"
 require "yaml"
+require_relative "../../canopy/scripts/thermal_common"
 
 dir = ARGV[0] || "tmp/ameriflux"
 MM_PER_IN = 25.4
@@ -32,7 +36,10 @@ REFERENCE = Rails.root.join("db/reference")
 POTATO = YAML.load_file(REFERENCE.join("plants.yml")).find { |p| p["key"] == "potato" }
 SOILS = YAML.load_file(REFERENCE.join("soil_types.yml")).select { |s| %w[sand loamy_sand].include?(s["key"]) }
   .to_h { |s| [s["key"], SoilEvaporation.new(tew: SoilEvaporation.tew(s["field_capacity"], s["perm_wilting_pt"]), rew: s["rew_in"])] }
-CANOPIES = %i[measured_cover curve readings]
+CANOPIES = %i[measured_cover curve readings curve_gdd]
+# docs/et-validation/scripts/weather_at_towers.rb
+TOWERS = {"US-CS1" => [44.1031, -89.5379], "US-CS3" => [44.1394, -89.5727], "US-CS4" => [44.1597, -89.5475],
+          "US-CS5" => [44.1095, -89.5377]}.freeze
 CURVE = CanopyCurve.for("potato")
 U2_PER_U10 = Weather::Fao56.wind_speed_2m(1.0)
 OBSERVED = %w[US-CS4 US-CS5] # cover observed day by day; 2018 and 2019's is a template between phases
@@ -72,9 +79,17 @@ seasons.each do |s|
   curve = canopy.call([])
   weekly = measured.select { |d, _| d >= season[:emergence] + 7 && d < season[:vine_kill] && ((d - season[:emergence]).to_i % 7).zero? }
   readings = canopy.call(weekly)
+  clock = CURVE.clock(ThermalScripts.cell_temperatures(*TOWERS.fetch(site), season[:emergence].year))
+  gdd_curve = ->(stretch: 1.0, **fit) { CURVE.from(season[:emergence], stretch:, clock:, **fit) }
+  curve_gdd = Canopy.new(emergence_date: season[:emergence], end_date: season[:harvest], curve: gdd_curve.call,
+    fit_curve: gdd_curve, vine_kill: season[:vine_kill])
 
-  crop = WaterBalance::Crop.new(kcb_mid: POTATO["kcb_mid"], kcb_end: POTATO["kcb_end"], height_m: POTATO["crop_height_m"],
-    late_start: CURVE.decline_start(season[:emergence]), end_date: season[:harvest])
+  crop_for = ->(late_start) {
+    WaterBalance::Crop.new(kcb_mid: POTATO["kcb_mid"], kcb_end: POTATO["kcb_end"], height_m: POTATO["crop_height_m"],
+      late_start:, end_date: season[:harvest])
+  }
+  crop = crop_for.call(CURVE.decline_start(season[:emergence]))
+  crop_gdd = crop_for.call(CURVE.decline_start(season[:emergence], clock:))
   # The surface layer per canopy and soil, carried through every day of the season (kept or not)
   surfaces = CANOPIES.product(SOILS.keys).to_h { |key| [key, SoilEvaporation::State.initial] }
   by_date = days[site].index_by { |r| r["date"] }
@@ -87,9 +102,10 @@ seasons.each do |s|
     weather = {wind_mph: r["u2_mean_m_s"].to_f / U2_PER_U10 / CropEt::MPH_TO_MS, rh_min_pct: num.call(r["rh_min_pct"])}
     kc = CropEt.kc_mid(POTATO["kc_mid"], POTATO["crop_height_m"], **weather)
     old = ->(pct) { pct && CropEt.from_pct_cover(et0 / MM_PER_IN, pct, kc:) * MM_PER_IN }
-    covers = {measured_cover: interpolate(measured, date), curve: curve.on(date), readings: readings.on(date)}
-    kcb_full = crop.kcb_full(date, **weather)
+    covers = {measured_cover: interpolate(measured, date), curve: curve.on(date), readings: readings.on(date),
+              curve_gdd: curve_gdd.on(date)}
     dual = covers.flat_map do |canopy, pct|
+      kcb_full = ((canopy == :curve_gdd) ? crop_gdd : crop).kcb_full(date, **weather)
       kcb = CropEt.kcb("pct_cover", kcb_full, pct, crop.height_m)
       SOILS.map do |soil, layer|
         step = layer.step(surfaces[[canopy, soil]], et0: et0 / MM_PER_IN, kcb:, kc_max: CropEt.kc_max(kcb, crop.height_m, **weather),
@@ -106,8 +122,8 @@ seasons.each do |s|
     rows << {
       site:, date:, phase: phase(season, date), et0:, et:, rn: num.call(r["rn_mj"]), g: num.call(r["g_mj"]),
       h: num.call(r["h_mj"]), le: num.call(r["le_mj"]), wet: [r, prev].compact.any? { |x| num.call(x["p_mm"]).to_f > 0.5 },
-      cover_measured: covers[:measured_cover], cover_curve: covers[:curve], cover_readings: covers[:readings], kc:,
-      et_measured_cover: old.call(covers[:measured_cover]), et_curve: old.call(covers[:curve]), et_readings: old.call(covers[:readings]),
+      cover_measured: covers[:measured_cover], cover_curve: covers[:curve], cover_readings: covers[:readings], cover_curve_gdd: covers[:curve_gdd], kc:,
+      et_measured_cover: old.call(covers[:measured_cover]), et_curve: old.call(covers[:curve]), et_readings: old.call(covers[:readings]), et_curve_gdd: old.call(covers[:curve_gdd]),
       **dual
     }
   end

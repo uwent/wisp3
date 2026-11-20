@@ -137,6 +137,16 @@ RSpec.describe ThermalTime do
       expect(corn.cover(emergence, emergence + start - 1, clock:)).to be_within(0.01).of(96)
       expect(corn.cover(emergence, emergence + start + 30, clock:)).to be < 90
     end
+
+    it "starts the late season (C22) where the curve in degree days declines" do
+      corn = CanopyCurve.for("field_corn")
+      clock = clock_at(10, 8, 30)
+      late = corn.decline_start(emergence, clock:)
+      expect(corn.cover(emergence, late + 1, clock:)).to be < corn.cover(emergence, late, clock:)
+      expect(corn.cover(emergence, late, clock:)).to be_within(0.01).of(96)
+      expect(potato.decline_start(emergence, clock: clock_at(6, 2))).to be_between(Date.new(2026, 8, 17), Date.new(2026, 8, 25))
+      expect(potato.decline_start(emergence, clock: clock_at(20, 2))).to eq(Date.new(2026, 7, 25))
+    end
   end
 
   describe "a planting's canopy" do
