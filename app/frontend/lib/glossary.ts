@@ -103,6 +103,20 @@ export const GLOSSARY: GlossaryEntry[] = [
       "A crop's typical percent cover (or LAI) as it grows from emergence. Curves run by days after emergence, except potato's, which runs by growing degree days, so its canopy grows faster in warm weather and slower in cool weather. WISP follows the curve until you enter readings, then adjusts it to pass through them. Each crop's curve and its source are on the About page.",
   },
   {
+    id: 'fao56',
+    term: 'FAO-56',
+    matches: ['FAO-56'],
+    definition:
+      "The UN Food and Agriculture Organization's Irrigation and Drainage Paper 56, Crop Evapotranspiration (Allen, Pereira, Raes and Smith, 1998), the standard guide to estimating crop water use worldwide. WISP takes its reference ET equation, crop coefficients and soil evaporation from it. See Sources on the About page.",
+  },
+  {
+    id: 'aquacrop',
+    term: 'AquaCrop',
+    matches: ['AquaCrop'],
+    definition:
+      "FAO's crop growth model, which simulates how a crop's canopy grows and declines and how its yield responds to water. WISP's canopy curves use its canopy cover equations, and start from its crop files where it has one. See Sources on the About page.",
+  },
+  {
     id: 'deep_drainage',
     term: 'Deep drainage',
     matches: ['deep drainage'],

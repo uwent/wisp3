@@ -94,6 +94,7 @@
     { id: 'privacy', title: 'Privacy' },
     { id: 'wisp-3', title: "What's new in WISP 3" },
     { id: 'history', title: 'History' },
+    { id: 'sources', title: 'Sources' },
     { id: 'contact', title: 'Credits and contact' },
   ]
 
@@ -878,8 +879,8 @@ t′: days since the decline starts</code
         >Irrigation Management in Wisconsin: The Wisconsin Irrigation Scheduling Program (WISP)</cite
       >, by David Curwen (Horticulture) and Leonard Massie (Biological Systems Engineering), taught growers to schedule
       irrigation like balancing a checkbook: rain and irrigation as deposits, the crop's water use as withdrawals, kept
-      day by day on an accounting form. Its table for adjusting ET to the crop's percent cover is still part of WISP.
-      Spreadsheets and desktop programs carried the method onto computers.
+      day by day on an accounting form. Its table for adjusting ET to the crop's percent cover served WISP until WISP 3
+      moved to FAO-56's crop coefficients. Spreadsheets and desktop programs carried the method onto computers.
     </p>
     <p>
       In the 1990s, scientists in UW–Madison's Department of Soil Science and its Cooperative Institute for
@@ -897,6 +898,95 @@ t′: days since the decline starts</code
       >). Since 2021 WISP has been maintained in the Department of Entomology, and WISP 3 was rewritten there for the
       2027 season.
     </p>
+
+    <h2 id="sources">Sources</h2>
+    <p>
+      WISP's methods come from published research, checked against Wisconsin measurements, and its data from public
+      services. The main ones are below; others are cited where they're used on this page, and each crop's canopy curve
+      lists its own.
+    </p>
+    <h3 id="sources-methods">Research behind the model</h3>
+    <ul>
+      <li>
+        <strong><Term id="fao56">FAO-56</Term></strong>: Allen, R. G., Pereira, L. S., Raes, D. and Smith, M. (1998),
+        <a href="https://www.fao.org/4/x0490e/x0490e00.htm" target="_blank" rel="noopener"
+          ><cite>Crop evapotranspiration: Guidelines for computing crop water requirements</cite></a
+        >, FAO Irrigation and Drainage Paper 56. The UN Food and Agriculture Organization's standard guide to crop water
+        use. WISP takes from it the Penman-Monteith equation for <Term id="reference_et">reference ET</Term>, each
+        crop's coefficients (Tables 12 and 17), their adjustment for wind and humidity, and the soil evaporation model.
+        FAO published a second edition in 2025 (<a
+          href="https://doi.org/10.4060/cd6621en"
+          target="_blank"
+          rel="noopener">FAO-56 Rev.1</a
+        >, Pereira, Allen and colleagues), with updated crop coefficients; WISP still uses the 1998 edition's.
+      </li>
+      <li>
+        <strong><Term id="aquacrop">AquaCrop</Term></strong>: Steduto, P., Hsiao, T. C., Raes, D. and Fereres, E.
+        (2009),
+        <a href="https://doi.org/10.2134/agronj2008.0139s" target="_blank" rel="noopener"
+          ><cite>AquaCrop, the FAO crop model to simulate yield response to water</cite></a
+        >, Agronomy Journal 101, and FAO's crop files for it (as distributed with
+        <a href="https://doi.org/10.1016/j.agwat.2021.106976" target="_blank" rel="noopener">AquaCrop-OSPy</a>). FAO's
+        crop growth model: WISP's canopy curves use its canopy cover equations, its crop files' growth rates where it
+        has a crop, and its base and upper temperatures for potato's growing degree days.
+      </li>
+      <li>
+        <strong>UW Extension A3600</strong>: the original WISP method, Curwen and Massie's
+        <cite>Irrigation Management in Wisconsin</cite>, revised by Panuska and Sanford as
+        <a href="/publications/a3600-01-irrigation-management-in-wisconsin.pdf" target="_blank" rel="noopener"
+          >A3600-01</a
+        >
+        with
+        <a href="/publications/a3600-02-methods-to-monitor-soil-moisture.pdf" target="_blank" rel="noopener">A3600-02</a
+        >
+        on monitoring soil moisture (see <a href="#history">History</a>).
+      </li>
+      <li>
+        <strong>The Central Sands flux towers</strong>: Talib, A., Desai, A. R. and colleagues (2021, 2024), measuring
+        water use over center-pivot potato from 2018 to 2023,
+        <a href="https://doi.org/10.1016/j.agrformet.2024.109967" target="_blank" rel="noopener"
+          >Agricultural and Forest Meteorology 350</a
+        >; the data are on <a href="https://ameriflux.lbl.gov/" target="_blank" rel="noopener">AmeriFlux</a> (CC BY
+        4.0). WISP 3's crop water use is checked against them (<a href="#et-validation"
+          >Checked against measured water use</a
+        >).
+      </li>
+      <li>
+        <strong>WISP's own research notes</strong>: how each method was chosen and tested, with the data screening and
+        scripts, including the canopy curves against Wisconsin growers' 2026 readings and the crop water use against the
+        flux towers, are in
+        <a href="https://github.com/uwent/wisp3/tree/main/docs" target="_blank" rel="noopener">the WISP source code</a>.
+      </li>
+    </ul>
+    <h3 id="sources-data">Data</h3>
+    <ul>
+      <li>
+        <strong>Weather</strong>: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY
+        4.0), from the National Blend of Models, other weather models and the GFS ensemble for forecasts, and ERA5 for
+        the 20-year normals behind growing degree days. Its corrections were fitted against
+        <a href="https://wisconet.wisc.edu/" target="_blank" rel="noopener">Wisconet</a> stations by
+        <a href="https://agweather.cals.wisc.edu/" target="_blank" rel="noopener">AgWeather</a>.
+      </li>
+      <li>
+        <strong>Soils</strong>: the USDA NRCS soil survey (SSURGO), the data behind
+        <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a>, read through
+        its Soil Data Access service, for the soil suggested under each irrigation system and the soil table's water
+        values;
+        <a href="https://doi.org/10.2136/sssaj2005.0117" target="_blank" rel="noopener">Saxton and Rawls (2006)</a> where
+        Wisconsin's survey has too few soils.
+      </li>
+      <li>
+        <strong>Crops</strong>: root zone depths from the NRCS National Engineering Handbook, part 652 (Table 3.4), with
+        University of Nebraska Extension tables for dry bean, sugar beet and sorghum.
+      </li>
+      <li>
+        <strong>Maps</strong>: imagery from the USGS National Map, roads and places from
+        <a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> (OpenStreetMap data), place
+        search from OpenStreetMap's Nominatim, radar from the Iowa Environmental Mesonet, rain estimates from NOAA's
+        MRMS, forecast rain from NOAA's Weather Prediction Center, and the
+        <a href="https://droughtmonitor.unl.edu/" target="_blank" rel="noopener">U.S. Drought Monitor</a>.
+      </li>
+    </ul>
 
     <h2 id="contact">Credits and contact</h2>
     <p>
