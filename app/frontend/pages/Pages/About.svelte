@@ -767,12 +767,12 @@ t′: days since the decline starts</code
       towers measured, and traced the error to how it estimated the heat a field loses to the sky.
     </p>
     <p>
-      We ran WISP 3's method over the same six potato seasons. At full canopy, its potato water use came within 3% of
-      what the towers measured when worked out from the towers' own weather readings, and about 9% above when worked out
-      from the weather WISP uses (3% leaving out the 2023 drought). Those comparisons include the standard correction
-      for what towers like these miss: they account for only about 80% of the energy reaching a field, and over a
-      well-watered crop nearly all of the rest goes into water use. On the same comparison, the old AgWeather ET ran 13%
-      high, and the researchers' adjusted version of it 15% low.
+      We ran WISP 3's method over the same six potato seasons. At full canopy, worked out from the towers' own weather
+      readings, its potato water use comes within 3% of what the towers measured, and the reference ET it works out from
+      the weather it uses runs about 5% above the towers'. Those comparisons include the standard correction for what
+      towers like these miss: they account for only about 80% of the energy reaching a field, and over a well-watered
+      crop nearly all of the rest goes into water use. On the same comparison, the old AgWeather ET ran 13% high, and
+      the researchers' adjusted version of it 15% low.
     </p>
     <p>
       The analysis, its data and scripts are in
@@ -781,8 +781,9 @@ t′: days since the decline starts</code
       >. Over the whole season, with the researchers' crop dates and canopy cover for four of the seasons, it showed
       that WISP's earlier method missed the water evaporating from wet soil while the canopy was small and after vine
       kill, and kept the crop's full water use into August. WISP now counts that evaporation and eases the crop's water
-      use toward harvest, as described under <a href="#crops">Crops</a>: against the towers it's within 1% at full
-      canopy and 5% over the season, and still somewhat high while the canopy is small and after vine kill.
+      use toward harvest, as described under <a href="#crops">Crops</a>: against the towers it's within 3% at full
+      canopy and 2% over the season, somewhat high while the canopy is small and after vine kill, and somewhat low in
+      August.
     </p>
 
     <h2 id="glossary">Glossary</h2>

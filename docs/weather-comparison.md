@@ -39,32 +39,32 @@ Rain days: days with at least 0.05 in; agreement is the share of days where both
 
 A potato field on sand (FC 0.15, PWP 0.05, 16 in roots, MAD 0.5, emergence May 20, full cover by July 1) run through the WISP 3 engine on each source's weather, irrigated 0.75 in the day after AD reaches 0. Irrigations per season (first irrigation date):
 
-| Point | Year | AgWeather | Open-Meteo best_match | NBM | WISP 2026 (NBM, best_match; Open-Meteo ET0) | WISP corrected (FAO-56 ET0, corrected shortwave) | WISP corrected, potato Kc (C21) |
+| Point | Year | AgWeather | Open-Meteo best_match | NBM | WISP 2026 (NBM, best_match; Open-Meteo ET0) | WISP corrected (FAO-56 ET0, corrected shortwave) | WISP corrected, potato crop coefficients (C22, C25) |
 |---|---|---|---|---|---|---|---|
-| Hancock | 2025 | 8 (Jul 4) | 16 (Jun 5) | 8 (Jun 16) | 8 (Jun 16) | 5 (Jun 16) | 10 (Jun 2) |
+| Hancock | 2025 | 8 (Jul 4) | 16 (Jun 5) | 8 (Jun 16) | 8 (Jun 16) | 5 (Jun 16) | 8 (Jun 2) |
 | Plainfield | 2025 | 9 (Jul 5) | 15 (Jun 5) | 7 (Jun 16) | 7 (Jun 16) | 5 (Jun 18) | 8 (Jun 2) |
-| Coloma | 2025 | 9 (Jun 23) | 16 (Jun 5) | 9 (Jun 15) | 9 (Jun 15) | 6 (Jun 15) | 11 (Jun 2) |
+| Coloma | 2025 | 9 (Jun 23) | 16 (Jun 5) | 9 (Jun 15) | 9 (Jun 15) | 6 (Jun 15) | 8 (Jun 2) |
 | Almond | 2025 | 8 (Jul 10) | 16 (Jun 6) | 8 (Jun 18) | 8 (Jun 18) | 6 (Jun 22) | 9 (Jun 2) |
 | Bancroft | 2025 | 8 (Jul 5) | 17 (Jun 8) | 9 (Jun 18) | 9 (Jun 18) | 7 (Jun 22) | 11 (Jun 2) |
 | Plover | 2025 | 8 (Jul 4) | 17 (Jun 8) | 10 (Jun 23) | 10 (Jun 23) | 8 (Jul 5) | 11 (Jun 2) |
-| Wautoma | 2025 | 10 (Jul 11) | 19 (Jun 12) | 10 (Jun 15) | 11 (Jun 15) | 10 (Jun 16) | 13 (Jun 1) |
+| Wautoma | 2025 | 10 (Jul 11) | 19 (Jun 12) | 10 (Jun 15) | 11 (Jun 15) | 10 (Jun 16) | 11 (Jun 2) |
 | Grand Marsh | 2025 | 9 (Jun 23) | 15 (Jun 5) | 9 (Jun 15) | 9 (Jun 15) | 7 (Jun 15) | 10 (Jun 2) |
 | Arena | 2025 | 12 (Jun 15) | 16 (Jun 11) | 9 (Jun 21) | 9 (Jun 21) | 7 (Jun 22) | 11 (Jun 2) |
-| Spring Green | 2025 | 11 (Jun 15) | 18 (Jun 6) | 11 (Jun 15) | 11 (Jun 15) | 9 (Jun 15) | 13 (Jun 2) |
-| Antigo | 2025 | 10 (Jul 4) | 15 (Jun 5) | 9 (Jul 5) | 8 (Jul 5) | 5 (Jul 14) | 9 (Jun 1) |
-| Janesville | 2025 | 12 (Jun 13) | 15 (Jun 14) | 13 (Jun 14) | 13 (Jun 14) | 10 (Jun 14) | 15 (Jun 1) |
-| Hancock | 2026 | 13 (Jun 8) | 17 (Jun 3) | 11 (Jun 4) | 11 (Jun 4) | 8 (Jun 5) | 13 (May 30) |
+| Spring Green | 2025 | 11 (Jun 15) | 18 (Jun 6) | 11 (Jun 15) | 11 (Jun 15) | 9 (Jun 15) | 12 (Jun 2) |
+| Antigo | 2025 | 10 (Jul 4) | 15 (Jun 5) | 9 (Jul 5) | 8 (Jul 5) | 5 (Jul 14) | 6 (Jun 1) |
+| Janesville | 2025 | 12 (Jun 13) | 15 (Jun 14) | 13 (Jun 14) | 13 (Jun 14) | 10 (Jun 14) | 13 (Jun 1) |
+| Hancock | 2026 | 13 (Jun 8) | 17 (Jun 3) | 11 (Jun 4) | 11 (Jun 4) | 8 (Jun 5) | 10 (May 31) |
 | Plainfield | 2026 | 10 (Jun 8) | 18 (Jun 3) | 11 (Jun 5) | 11 (Jun 5) | 10 (Jun 5) | 12 (May 31) |
-| Coloma | 2026 | 13 (Jun 22) | 18 (Jun 2) | 11 (Jun 4) | 11 (Jun 4) | 11 (Jun 4) | 13 (May 30) |
-| Almond | 2026 | 13 (Jun 23) | 18 (Jun 5) | 12 (Jun 5) | 12 (Jun 5) | 9 (Jun 5) | 13 (May 31) |
-| Bancroft | 2026 | 13 (Jun 10) | 17 (Jun 5) | 10 (Jun 5) | 10 (Jun 5) | 9 (Jun 5) | 12 (Jun 1) |
+| Coloma | 2026 | 13 (Jun 22) | 18 (Jun 2) | 11 (Jun 4) | 11 (Jun 4) | 11 (Jun 4) | 12 (May 31) |
+| Almond | 2026 | 13 (Jun 23) | 18 (Jun 5) | 12 (Jun 5) | 12 (Jun 5) | 9 (Jun 5) | 11 (May 31) |
+| Bancroft | 2026 | 13 (Jun 10) | 17 (Jun 5) | 10 (Jun 5) | 10 (Jun 5) | 9 (Jun 5) | 10 (Jun 1) |
 | Plover | 2026 | 11 (Jun 24) | 18 (Jun 5) | 11 (Jun 5) | 11 (Jun 5) | 8 (Jul 8) | 11 (Jun 3) |
-| Wautoma | 2026 | 14 (Jun 8) | 18 (Jun 2) | 13 (Jun 4) | 13 (Jun 4) | 10 (Jun 5) | 14 (May 31) |
-| Grand Marsh | 2026 | 12 (Jun 21) | 17 (Jun 2) | 10 (Jun 4) | 10 (Jun 4) | 7 (Jun 5) | 12 (May 31) |
-| Arena | 2026 | 15 (Jun 5) | 19 (Jun 2) | 9 (Jun 4) | 9 (Jun 4) | 6 (Jun 5) | 10 (May 30) |
-| Spring Green | 2026 | 15 (Jun 5) | 19 (Jun 2) | 10 (Jun 4) | 10 (Jun 4) | 7 (Jun 5) | 11 (May 30) |
-| Antigo | 2026 | 11 (Jun 29) | 17 (Jun 4) | 9 (Jun 8) | 9 (Jun 8) | 6 (Jul 15) | 10 (May 31) |
-| Janesville | 2026 | 13 (Jun 17) | 16 (Jun 2) | 10 (Jun 3) | 10 (Jun 3) | 9 (Jun 3) | 12 (May 29) |
+| Wautoma | 2026 | 14 (Jun 8) | 18 (Jun 2) | 13 (Jun 4) | 13 (Jun 4) | 10 (Jun 5) | 13 (May 31) |
+| Grand Marsh | 2026 | 12 (Jun 21) | 17 (Jun 2) | 10 (Jun 4) | 10 (Jun 4) | 7 (Jun 5) | 9 (May 31) |
+| Arena | 2026 | 15 (Jun 5) | 19 (Jun 2) | 9 (Jun 4) | 9 (Jun 4) | 6 (Jun 5) | 7 (May 31) |
+| Spring Green | 2026 | 15 (Jun 5) | 19 (Jun 2) | 10 (Jun 4) | 10 (Jun 4) | 7 (Jun 5) | 9 (May 30) |
+| Antigo | 2026 | 11 (Jun 29) | 17 (Jun 4) | 9 (Jun 8) | 9 (Jun 8) | 6 (Jul 15) | 9 (May 31) |
+| Janesville | 2026 | 13 (Jun 17) | 16 (Jun 2) | 10 (Jun 3) | 10 (Jun 3) | 9 (Jun 3) | 11 (May 29) |
 
 Average difference from AgWeather:
 
@@ -72,8 +72,8 @@ Average difference from AgWeather:
 - **NBM**: -1.2 irrigations per season on average (range -6 to 2); first irrigation -10.2 days vs AgWeather.
 - **WISP 2026 (NBM, best_match; Open-Meteo ET0)**: -1.2 irrigations per season on average (range -6 to 2); first irrigation -10.2 days vs AgWeather.
 - **WISP corrected (FAO-56 ET0, corrected shortwave)**: -3.4 irrigations per season on average (range -9 to 0); first irrigation -5.8 days vs AgWeather.
-- **WISP corrected, potato Kc (C21)**: +0.3 irrigations per season on average (range -5 to 3); first irrigation -21.0 days vs AgWeather.
+- **WISP corrected, potato crop coefficients (C22, C25)**: -1.0 irrigations per season on average (range -8 to 3); first irrigation -20.8 days vs AgWeather.
 
 The correction itself (WISP corrected minus WISP 2026): -2.2 irrigations per season on average (range -3 to 0).
 
-The crop's Kc (C21: WISP corrected with potato's Kc minus without): +3.7 irrigations per season on average (range 2 to 5).
+The crop's coefficients (C22 and C25: WISP corrected with potato's coefficients minus without): +2.4 irrigations per season on average (range 1 to 4).
