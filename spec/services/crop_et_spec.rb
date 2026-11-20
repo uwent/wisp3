@@ -119,6 +119,37 @@ RSpec.describe CropEt do
     end
   end
 
+  describe "the dual crop coefficient's basal Kcb (C22)" do
+    def mph(u2) = u2 / (4.87 / Math.log(67.8 * 10 - 5.42)) / CropEt::MPH_TO_MS
+
+    it "is 0 on bare soil and the full-cover Kcb under a closed canopy (FAO-56 eq. 98)" do
+      expect(described_class.kcb_from_cover(1.1, 0, 0.6)).to eq(0.0)
+      expect(described_class.kcb_from_cover(1.1, 100, 0.6)).to be_within(1e-12).of(1.1)
+      expect(described_class.kcb_from_cover(1.1, 120, 0.6)).to be_within(1e-12).of(1.1)
+    end
+
+    it "rises with cover by its effective shade, Kd = min(1, 2·fc, fc^(1/(1+h)))" do
+      # 10% cover: fc^(1/(1 + 0.06)) = 0.114; 50%: fc^(1/(1 + 0.3)) = 0.587
+      expect(described_class.kcb_from_cover(1.1, 10, 0.6)).to be_within(1e-9).of(0.15 + 0.1**(1 / 1.06) * 0.95)
+      expect(described_class.kcb_from_cover(1.1, 50, 0.6)).to be_within(1e-9).of(0.15 + 0.5**(1 / 1.3) * 0.95)
+      values = (1..100).map { |cover| described_class.kcb_from_cover(1.1, cover, 0.6) }
+      expect(values.each_cons(2)).to all(satisfy { |low, high| high >= low })
+    end
+
+    it "follows leaf area by FAO-56 eq. 97" do
+      expect(described_class.kcb_from_lai(1.15, 0)).to eq(0.0)
+      expect(described_class.kcb_from_lai(1.15, 3)).to be_within(1e-12).of(0.15 + 1.0 * (1 - Math.exp(-2.1)))
+      expect(described_class.cover_fraction("lai", 3)).to be_within(1e-12).of(1 - Math.exp(-2.1))
+      expect(described_class.cover_fraction("pct_cover", 40)).to eq(0.4)
+      expect(described_class.kcb("lai", 1.15, 3, 2.0)).to eq(described_class.kcb_from_lai(1.15, 3))
+    end
+
+    it "takes Kc max from eq. 72 (FAO-56 Example 32: cotton, u2 3 m/s, RHmin 20%, 1 m)" do
+      expect(described_class.kc_max(0.9, 1.0, wind_mph: mph(3), rh_min_pct: 20)).to be_within(0.005).of(1.30)
+      expect(described_class.kc_max(1.2, 0.6)).to be_within(1e-12).of(1.25)
+    end
+  end
+
   it "rejects an unknown method" do
     expect { described_class.adjusted("kc", 0.2, 1) }.to raise_error(ArgumentError)
   end

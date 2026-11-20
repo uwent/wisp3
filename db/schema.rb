@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_19_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -251,6 +251,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
     t.datetime "updated_at", null: false
     t.float "kc_mid"
     t.float "crop_height_m"
+    t.float "kcb_mid"
+    t.float "kcb_end"
     t.index ["key"], name: "index_plants_on_key", unique: true
   end
 
@@ -261,6 +263,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
     t.float "perm_wilting_pt", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.float "rew_in"
     t.index ["key"], name: "index_soil_types_on_key", unique: true
     t.check_constraint "perm_wilting_pt > 0::double precision AND perm_wilting_pt < field_capacity AND field_capacity < 0.6::double precision", name: "soil_types_water_fractions"
   end

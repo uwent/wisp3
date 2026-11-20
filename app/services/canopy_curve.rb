@@ -89,6 +89,18 @@ class CanopyCurve
   # The curve as a function of date, for Canopy
   def from(emergence_date, **fit) = ->(date) { cover(emergence_date, date, **fit) }
 
+  # The last day before the curve's decline (cover falls the day after), or nil for a crop without
+  # one: the start of FAO-56's late season, when the crop coefficient eases toward harvest's (C22,
+  # WaterBalance::Crop). Same terms as #cover; potato's rule date is in the emergence year.
+  def decline_start(emergence_date, shift: 0, stretch: 1.0)
+    case decline&.fetch(:type)
+    when "aquacrop" then emergence_date + (shift + stretch * decline.fetch(:start_day)).floor
+    when "rule"
+      month, day = decline.fetch(:date).split("-").map(&:to_i)
+      [Date.new(emergence_date.year, month, day), emergence_date + (shift + stretch * full_day).round].max
+    end
+  end
+
   # Days from emergence until the canopy is full (FULL of its maximum)
   def full_day = (Math.log(ccx / (4 * (1 - FULL) * cc0)) / cgc).ceil
 

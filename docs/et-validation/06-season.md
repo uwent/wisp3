@@ -115,7 +115,7 @@ Corrected ET / ET0 from vine kill to harvest, split into wet days (rain or irrig
 - **Weeds and residue after vine kill** may add some of the late ET. The wet/dry split (point 4) says most of it is soil evaporation.
 - **The towers' footprint after harvest** includes the dug field; harvest is the end of every phase here, so no post-harvest days are counted.
 
-## What could change in WISP 3 (for Ben to decide)
+## What could change in WISP 3 (as proposed; 1 and 2 were made as C22, below)
 
 Each would be a deliberate change to the balance: a fix ID in PLAN.md §9, a `LegacyEngine` switch, and the About page's wording.
 
@@ -124,3 +124,68 @@ Each would be a deliberate change to the balance: a fix ID in PLAN.md §9, a `Le
 3. **Canopy in thermal time, or a later default for April emergence.** Readings already fix it for growers who enter them; the default curve (`docs/canopy/`) could grow by growing degree days, which the four seasons here are consistent with but can't fit on their own.
 
 Until one of these is decided, WISP 3's season total is right and its timing is not: wetter than the field in development and after vine kill, drier in early August.
+
+## After the change: FAO-56's dual crop coefficient (C22)
+
+2026-11-19. Ben chose the fuller option for points 1 and 2: crop ET is now FAO-56's dual crop coefficient (chapter 7), (Kcb + Ke) × ET0, for every planting with a crop (PLAN.md §9 C22, `CropEt`, `SoilEvaporation`, `WaterBalance`):
+
+- **Kcb** (transpiration, with the surface dry) comes from the canopy by FAO-56 eq. 98: Kc min 0.15 plus the share of full cover's Kcb that the canopy's effective shade gives, Kd = min(1, 2·fc, fc^(1/(1+h))). Bare ground is 0. Potato's full-cover Kcb is Table 17's 1.10, adjusted for wind and minimum RH (eq. 70) like Kc mid before it. From the curve's decline start (potato: July 25, or full cover if later) it falls in a straight line to Table 17's Kcb end, 0.65, at harvest.
+- **Ke** (soil evaporation) runs day by day: a 0.10 m surface layer holds TEW = (θFC − 0.5 θWP) × Ze (eq. 73, from the planting's own soil), evaporating at Kc max − Kcb while it has lost less than REW (Table 19's middle: sand 4.5 mm, loamy sand 6 mm), then in proportion to what's left. Rain and irrigation refill it. Its share of the surface is what the canopy leaves exposed (1 − fc) and the water wetted (all of it for rain and sprinklers, 35% for drip).
+
+`season.rb` now runs both methods. The dual coefficient's layer is carried from emergence through every day, kept or not, wetted by the tower's own rain gauge (which catches the pivot's water), with sand's soil values (TEW 8 mm, REW 4.5 mm) and loamy sand's (TEW 12 mm, REW 6 mm), the Central Sands' two textures. Nothing was fitted to the towers: every value is FAO-56's or the soil file's.
+
+### By phase, all four seasons
+
+ET / ET0, and the bias against closure-corrected ET. "Old" is C21's percent cover table, as in the tables above.
+
+| Phase | Days | Corrected | Old, measured cover | Old, curve | Old, readings | C22 sand, measured cover | C22 sand, curve | C22 sand, readings | C22 loamy sand, curve |
+|---|---|---|---|---|---|---|---|---|---|
+| Development | 115 | 0.88 | 0.69 (−21%) | 0.86 (−1%) | 0.71 (−19%) | 0.96 (+10%) | 1.01 (+16%) | 0.97 (+10%) | 1.05 (+20%) |
+| Full cover | 159 | 1.05 | 1.12 (+7%) | 1.11 (+6%) | 1.11 (+6%) | 1.04 (−1%) | 1.03 (−1%) | 1.04 (0%) | 1.04 (0%) |
+| Decline | 30 | 0.86 | 0.98 (+14%) | 1.07 (+25%) | 1.09 (+27%) | 0.82 (−5%) | 0.88 (+2%) | 0.88 (+2%) | 0.88 (+2%) |
+| Vine kill to harvest | 96 | 0.54 | 0.54 (−1%) | 0.27 (−49%) | 0.29 (−46%) | 0.69 (+27%) | 0.60 (+11%) | 0.60 (+12%) | 0.66 (+22%) |
+| **Season** | 400 | 0.88 | 0.87 (−2%) | 0.87 (−1%) | 0.83 (−6%) | 0.93 (+5%) | 0.93 (+6%) | 0.92 (+4%) | 0.96 (+9%) |
+
+The Python prototype checked before building it (TEW 8 mm, REW 4 mm) gave the same within a point or two: development +9% / +15% (measured cover / curve), full cover −1%, decline −5% / +2%, vine kill to harvest +26% / +10%, season +5%.
+
+### By cover (US-CS4 and CS5, measured cover, emergence to vine kill)
+
+| Cover % | Days | Corrected | Corrected, wet days | Corrected, dry days | Old | C22 sand | C22 sand, wet days | C22 sand, dry days | C22 loamy sand |
+|---|---|---|---|---|---|---|---|---|---|
+| 0–10 | 7 | 0.47 | 0.73 | 0.40 | 0.17 | 0.76 | 0.98 | 0.70 | 0.92 |
+| 10–30 | 21 | 0.55 | 0.62 | 0.40 | 0.33 | 0.68 | 0.74 | 0.55 | 0.75 |
+| 30–50 | 18 | 0.91 | 0.97 | 0.78 | 0.72 | 0.85 | 1.04 | 0.49 | 0.87 |
+| 50–80 | 14 | 1.08 | 1.17 | 0.91 | 1.00 | 0.94 | 1.05 | 0.74 | 0.99 |
+| 80–99 | 34 | 0.99 | 0.99 | 0.97 | 1.13 | 1.05 | 1.05 | 1.01 | 1.05 |
+| 100 | 64 | 1.02 | 1.02 | 0.97 | 1.12 | 1.06 | 1.06 | 1.01 | 1.06 |
+
+### Through the summer (the curve)
+
+| | Days | Corrected | Old | C22 sand | C22 loamy sand |
+|---|---|---|---|---|---|
+| July 1–15 | 52 | 1.09 | 1.12 | 1.06 | 1.07 |
+| July 16–31 | 60 | 1.05 | 1.12 | 1.06 | 1.06 |
+| August 1–15 | 54 | 0.97 | 1.10 | 0.97 | 0.99 |
+| August 16–31 | 23 | 0.86 | 1.01 | 0.79 | 0.80 |
+
+(Days before vine kill only.)
+
+### After vine kill, wet and dry days (the curve)
+
+| Site | Wet days | Corrected | C22 sand | C22 loamy sand | Dry days | Corrected | C22 sand | C22 loamy sand |
+|---|---|---|---|---|---|---|---|---|
+| US-CS1 | 8 | 0.82 | 0.74 | 0.73 | 11 | 0.40 | 0.30 | 0.47 |
+| US-CS3 | 13 | 0.70 | 0.83 | 0.82 | 5 | 0.39 | 0.56 | 0.79 |
+| US-CS4 | 15 | 0.57 | 0.81 | 0.78 | 9 | 0.27 | 0.31 | 0.53 |
+| US-CS5 | 20 | 0.69 | 0.88 | 0.86 | 15 | 0.38 | 0.23 | 0.30 |
+
+### What it shows
+
+1. **The phases now agree with the towers to within the season total's margin, except development and the days after vine kill, which run high instead of low.** Full cover went from +6–7% to −1%, the decline from +14–27% to −5% to +2%, and early August from 1.10 to the towers' 0.97. Development went from −21% to +10% with the measured canopy, vine kill to harvest from −49% to +11% with the curve. The season total is +4–6% on sand (it was −1% to −6%, by cancelling errors).
+2. **Bare and nearly bare ground runs high.** Below 10% cover the dual coefficient gives 0.76 against the towers' 0.47 (7 days, two of them wet), and 10–30% gives 0.68 against 0.55. Its wet days are close to the towers' (0.98 against 0.73 below 10% and 0.74 against 0.62 at 10–30%, but on 2 and 14 days); its dry days are high (0.70 against 0.40 below 10%), as if the sand's surface dries faster than TEW 8 mm allows, or the towers' footprint at low cover includes drier ground than the planted rows. These are few days, and the share of the season they carry is small, so the development phase is +10%.
+3. **After vine kill the wet/dry pattern is right in kind,** wet days 0.74–0.88 against the towers' 0.57–0.82, and dry days lower. It's high on wet days at US-CS3 and CS4 (0.83 and 0.81 against 0.70 and 0.57) and low on dry days at CS1 and CS5 (0.30 and 0.23 against 0.40 and 0.38), so the layer's drying isn't off the same way at every site; the gauge's rain and irrigation (02) are its only wetting, and a pass it under-catches leaves the layer drier than the field. With the measured cover it's +27%, but 2019's cover after vine kill is a template (02).
+4. **The late season's straight line to Kcb end at harvest is close through mid-August** (0.97 against 0.97) and a little low in late August (0.79 against 0.86, before vine kill), which Table 17's potato note (Kcb end about 0.35 with vine kill) wouldn't help; 0.65 at harvest is kept.
+5. **Loamy sand's larger TEW (12 mm) adds 3–4 points** in development and 10 after vine kill (+20% and +22% with the curve). Sand's values fit these fields better; a grower's soil type sets which a field gets.
+6. **Weekly readings no longer hurt.** With the canopy right, development is +10% (it was −19%), the same as with the measured cover: the error that readings exposed (point 3 above) is what C22 fixes.
+
+Still open: point 3 of the proposals (canopy in thermal time) is separate work; the curve's early canopy for April emergence is why development with the curve (+16%) runs higher than with readings (+10%).

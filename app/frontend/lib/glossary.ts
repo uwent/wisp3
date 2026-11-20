@@ -65,7 +65,8 @@ export const GLOSSARY: GlossaryEntry[] = [
     id: 'crop_et',
     term: 'Crop ET',
     matches: ['crop ET', 'adjusted ET'],
-    definition: 'The water the crop uses in a day: reference ET multiplied by a crop coefficient based on its canopy.',
+    definition:
+      "The water the crop and its soil use in a day: reference ET multiplied by a crop coefficient, from the crop's canopy and how wet the soil's surface is.",
   },
   {
     id: 'et',
@@ -78,7 +79,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Crop coefficient (Kc)',
     matches: ['crop coefficient', 'Kc'],
     definition:
-      "The fraction of reference ET the crop uses: near 0 for bare soil, rising with the canopy to the crop's full-cover value from FAO-56 (1.15 for potato, 1.20 for field corn), adjusted for the day's wind and humidity. WISP calculates it from percent cover or LAI.",
+      "The fraction of reference ET the field uses, in two parts (FAO-56's dual crop coefficient). The crop's own share rises with the canopy to its full-cover value from FAO-56 (1.10 for potato, 1.15 for field corn), adjusted for the day's wind and humidity, and eases toward its harvest value late in the season. The soil's share is evaporation from the wet surface between the plants: high just after rain or irrigation, falling as the surface dries, and small under a closed canopy. WISP calculates it from percent cover or LAI.",
   },
   {
     id: 'percent_cover',

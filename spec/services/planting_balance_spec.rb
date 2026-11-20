@@ -23,17 +23,39 @@ RSpec.describe PlantingBalance do
     }).last.ad)
   end
 
-  it "takes crop ET from the crop's Kc mid at full cover, adjusted for the day's wind and humidity (C21)" do
-    planting.plant.update!(kc_mid: 1.15, crop_height_m: 0.6)
-    create(:canopy_observation, planting:, date: Date.new(2026, 6, 2), pct_cover: 100)
-    calm = weather.transform_values { |values| values.merge(wind: nil, rh_min: nil) }
-    dry = weather.transform_values { |values| values.merge(wind: 15.0, rh_min: 25.0) }
+  describe "with the crop's dual coefficient (C22)" do
+    before { planting.plant.update!(kcb_mid: 1.10, kcb_end: 0.65, crop_height_m: 0.6) }
 
-    expect(described_class.new(planting, weather: calm).days[4].result.adj_et).to be_within(1e-4).of(0.2 * 1.15)
-    windy = described_class.new(planting, weather: dry).days[4]
-    expect(windy.inputs).to have_attributes(wind_mph: 15.0, rh_min_pct: 25.0)
-    expect(windy.result.adj_et).to be_within(1e-4).of(0.2 * CropEt.kc_mid(1.15, 0.6, wind_mph: 15.0, rh_min_pct: 25.0))
-    expect(windy.result.adj_et).to be > 0.2 * 1.15
+    it "takes Kcb mid at full cover, adjusted for the day's wind and humidity" do
+      create(:canopy_observation, planting:, date: Date.new(2026, 6, 2), pct_cover: 100)
+      calm = weather.transform_values { |values| values.merge(wind: nil, rh_min: nil) }
+      dry = weather.transform_values { |values| values.merge(wind: 15.0, rh_min: 25.0) }
+
+      # Four days without rain have dried the surface: no evaporation (Ke 0)
+      expect(described_class.new(planting, weather: calm).days[4].result.adj_et).to be_within(1e-4).of(0.2 * 1.10)
+      windy = described_class.new(planting, weather: dry).days[4]
+      expect(windy.inputs).to have_attributes(wind_mph: 15.0, rh_min_pct: 25.0)
+      kcb = CropEt.kc_mid(1.10, 0.6, wind_mph: 15.0, rh_min_pct: 25.0)
+      expect(windy.result.adj_et).to be_within(1e-4).of(0.2 * kcb)
+      expect(windy.result.adj_et).to be > 0.2 * 1.10
+    end
+
+    it "evaporates from the wet bare soil before emergence's canopy, then less as it dries" do
+      planting.update!(emergence_date: Date.new(2026, 6, 20), end_date: Date.new(2026, 6, 30))
+      days = described_class.new(planting, weather:).days
+      expect(days.first.result.adj_et).to be_within(1e-4).of(0.2 * 1.2)
+      expect(days.map { |day| day.result.adj_et }.first(10).each_cons(2)).to all(satisfy { |a, b| b <= a })
+      expect(days[9].result.evaporation.depletion).to be > days[0].result.evaporation.depletion
+    end
+
+    it "takes the soil's readily evaporable water and the irrigation system's wetted fraction" do
+      soil_type.update!(rew_in: 0.2)
+      planting.pivot.update!(kind: "drip")
+      params = described_class.new(planting.reload).params
+      expect(params).to have_attributes(rew: 0.2, irrigation_fw: 0.35)
+      expect(params.evaporation.tew).to be_within(1e-9).of((0.15 - 0.025) / 0.254)
+      expect(params.crop).to have_attributes(kcb_mid: 1.10, kcb_end: 0.65, end_date: planting.end_date)
+    end
   end
 
   it "reads wind and minimum humidity from stored days and the forecast" do

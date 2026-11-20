@@ -19,171 +19,252 @@
 # 0.6–0.8 m, asparagus 0.2–0.8 m, sorghum Kc 1.00–1.10 and 1–2 m. Alfalfa takes the individual
 # cutting periods' 1.20 (not the averaged 0.95), as WISP models each cutting's regrowth in the canopy
 # (CutCanopy). Other and garden vegetables take the small vegetables group's 1.05, at 0.4 m.
+# Since C22, kc_mid is shown on the About page but no longer runs the balance: kcb_mid and kcb_end do.
+
+# kcb_mid and kcb_end (PLAN.md §9 C22): the basal crop coefficient (transpiration, with the soil
+# surface dry) at full cover in mid season and at harvest, from FAO-56 Table 17 (chapter 7,
+# https://www.fao.org/4/x0490e/x0490e0c.htm, same climate). The water balance adds soil evaporation
+# to it (SoilEvaporation), ramps kcb_mid to kcb_end from the canopy curve's decline to the end date,
+# and adjusts both for wind and humidity (eq. 70; kcb_end only when 0.45 or more). Same rows as
+# kc_mid, with: tomato's 0.60–0.80 at the middle, 0.70; leafy greens between spinach (0.90 / 0.85)
+# and lettuce (0.90 / 0.90), 0.88 at harvest; spring wheat's 0.15–0.3 at harvest, 0.23 (the higher
+# end is hand harvest); sorghum grain's 0.95–1.05, 1.00; field corn's 0.50 (harvest at high grain
+# moisture; 0.15 after drying in the field), corn silage the same; sweet corn's 1.00 (harvested
+# fresh). Potato's 0.65 is Table 17's main value; its note gives about 0.35 for long-season potato
+# with vine kill, which WISP models in the canopy instead (the cover ramps to 0). Alfalfa takes the
+# individual cutting periods (1.15 / 1.10), as for kc_mid. Other and garden vegetables take the
+# small vegetables group's 0.95 / 0.85.
 
 - key: potato
   name: Potato
   default_max_root_zone_depth: 16.0
   kc_mid: 1.15
   crop_height_m: 0.6
+  kcb_mid: 1.10
+  kcb_end: 0.65
 - key: sweet_corn
   name: Sweet Corn
   default_max_root_zone_depth: 27.0
   kc_mid: 1.15
   crop_height_m: 1.5
+  kcb_mid: 1.10
+  kcb_end: 1.00
 - key: snap_bean
   name: Snap bean
   default_max_root_zone_depth: 21.0
   kc_mid: 1.05
   crop_height_m: 0.4
+  kcb_mid: 1.00
+  kcb_end: 0.80
 - key: shell_peas
   name: Shell peas
   default_max_root_zone_depth: 36.0
   kc_mid: 1.15
   crop_height_m: 0.5
+  kcb_mid: 1.10
+  kcb_end: 1.05
 - key: onion
   name: Onion
   default_max_root_zone_depth: 12.0
   kc_mid: 1.05
   crop_height_m: 0.4
+  kcb_mid: 0.95
+  kcb_end: 0.65
 - key: cabbage
   name: Cabbage
   default_max_root_zone_depth: 15.0
   kc_mid: 1.05
   crop_height_m: 0.4
+  kcb_mid: 0.95
+  kcb_end: 0.85
 - key: carrot
   name: Carrot
   default_max_root_zone_depth: 12.0
   kc_mid: 1.05
   crop_height_m: 0.3
+  kcb_mid: 0.95
+  kcb_end: 0.85
 - key: soybean
   name: Soybean
   default_max_root_zone_depth: 33.0
   kc_mid: 1.15
   crop_height_m: 0.75
+  kcb_mid: 1.10
+  kcb_end: 0.30
 - key: field_corn
   name: Field Corn
   default_max_root_zone_depth: 33.0
   canopy_model: field_corn
   kc_mid: 1.20
   crop_height_m: 2.0
+  kcb_mid: 1.15
+  kcb_end: 0.50
 - key: beets
   name: Beets
   default_max_root_zone_depth: 18.0
   kc_mid: 1.05
   crop_height_m: 0.4
+  kcb_mid: 0.95
+  kcb_end: 0.85
 - key: broccoli
   name: Broccoli
   default_max_root_zone_depth: 15.0
   kc_mid: 1.05
   crop_height_m: 0.3
+  kcb_mid: 0.95
+  kcb_end: 0.85
 - key: pepper
   name: Pepper
   default_max_root_zone_depth: 18.0
   kc_mid: 1.05
   crop_height_m: 0.7
+  kcb_mid: 1.00
+  kcb_end: 0.80
 - key: sweet_potato
   name: Sweet potato
   default_max_root_zone_depth: 16.0
   kc_mid: 1.15
   crop_height_m: 0.4
+  kcb_mid: 1.10
+  kcb_end: 0.55
 - key: mint
   name: Mint
   default_max_root_zone_depth: 15.0
   kc_mid: 1.15
   crop_height_m: 0.7
+  kcb_mid: 1.10
+  kcb_end: 1.05
 - key: tomato
   name: Tomato
   default_max_root_zone_depth: 15.0
   kc_mid: 1.15
   crop_height_m: 0.6
+  kcb_mid: 1.10
+  kcb_end: 0.70
 - key: melon
   name: Melon
   default_max_root_zone_depth: 18.0
   kc_mid: 1.05
   crop_height_m: 0.4
+  kcb_mid: 1.00
+  kcb_end: 0.70
 - key: pumpkin
   name: Pumpkin
   default_max_root_zone_depth: 18.0
   kc_mid: 1.00
   crop_height_m: 0.4
+  kcb_mid: 0.95
+  kcb_end: 0.70
 - key: winter_squash
   name: Winter squash
   default_max_root_zone_depth: 18.0
   kc_mid: 1.00
   crop_height_m: 0.4
+  kcb_mid: 0.95
+  kcb_end: 0.70
 - key: summer_squash
   name: Summer squash
   default_max_root_zone_depth: 18.0
   kc_mid: 0.95
   crop_height_m: 0.3
+  kcb_mid: 0.90
+  kcb_end: 0.70
 - key: leafy_greens
   name: Leafy greens
   default_max_root_zone_depth: 12.0
   kc_mid: 1.00
   crop_height_m: 0.3
+  kcb_mid: 0.90
+  kcb_end: 0.88
 - key: cucumber
   name: Cucumber
   default_max_root_zone_depth: 18.0
   kc_mid: 1.00
   crop_height_m: 0.3
+  kcb_mid: 0.95
+  kcb_end: 0.70
 - key: asparagus
   name: Asparagus
   default_max_root_zone_depth: 27.0
   kc_mid: 0.95
   crop_height_m: 0.5
+  kcb_mid: 0.90
+  kcb_end: 0.20
 - key: celery
   name: Celery
   default_max_root_zone_depth: 15.0
   kc_mid: 1.05
   crop_height_m: 0.6
+  kcb_mid: 0.95
+  kcb_end: 0.90
 - key: wheat
   name: Wheat
   default_max_root_zone_depth: 33.0
   kc_mid: 1.15
   crop_height_m: 1.0
+  kcb_mid: 1.10
+  kcb_end: 0.23
 - key: alfalfa
   name: Alfalfa
   default_max_root_zone_depth: 42.0
   kc_mid: 1.20
   crop_height_m: 0.7
+  kcb_mid: 1.15
+  kcb_end: 1.10
 - key: barley
   name: Barley
   default_max_root_zone_depth: 33.0
   kc_mid: 1.15
   crop_height_m: 1.0
+  kcb_mid: 1.10
+  kcb_end: 0.15
 - key: other
   name: Other
   default_max_root_zone_depth: 36.0
   kc_mid: 1.05
   crop_height_m: 0.4
+  kcb_mid: 0.95
+  kcb_end: 0.85
 - key: garden_vegetables
   name: Garden vegetables (mixed)
   default_max_root_zone_depth: 18.0
   kc_mid: 1.05
   crop_height_m: 0.4
+  kcb_mid: 0.95
+  kcb_end: 0.85
 - key: dry_bean
   name: Dry bean
   default_max_root_zone_depth: 33.0
   kc_mid: 1.15
   crop_height_m: 0.4
+  kcb_mid: 1.10
+  kcb_end: 0.25
 - key: corn_silage
   name: Corn silage
   default_max_root_zone_depth: 33.0
   canopy_model: field_corn
   kc_mid: 1.20
   crop_height_m: 2.0
+  kcb_mid: 1.15
+  kcb_end: 0.50
 - key: oats
   name: Oats
   default_max_root_zone_depth: 33.0
   kc_mid: 1.15
   crop_height_m: 1.0
+  kcb_mid: 1.10
+  kcb_end: 0.15
 - key: sugar_beet
   name: Sugar beet
   default_max_root_zone_depth: 36.0
   kc_mid: 1.20
   crop_height_m: 0.5
+  kcb_mid: 1.15
+  kcb_end: 0.50
 - key: sorghum
   name: Sorghum
   default_max_root_zone_depth: 33.0
   kc_mid: 1.05
   crop_height_m: 1.5
+  kcb_mid: 1.00
+  kcb_end: 0.35

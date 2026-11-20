@@ -5,8 +5,16 @@ require "rails_helper"
 RSpec.describe LegacyEngine do
   let(:rng) { Random.new(42) }
   let(:soil) { {field_capacity: 0.15, perm_wilting_pt: 0.05, max_root_zone_depth: 24.0, mad_frac: 0.5} }
-  let(:crop) { {kc_mid: 1.15, crop_height_m: 0.6} }
-  let(:params) { WaterBalance::Params.new(**soil, crop: WaterBalance::Crop.new(kc_mid: 1.15, height_m: 0.6)) }
+  let(:late_start) { Date.new(2026, 7, 25) }
+  let(:end_date) { Date.new(2026, 9, 20) }
+  let(:evaporation) { {rew: 0.177, irrigation_fw: 1.0} }
+  let(:crop) do
+    {kc_mid: 1.15, crop_height_m: 0.6, kcb_mid: 1.10, kcb_end: 0.65, late_start:, end_date:, **evaporation}
+  end
+  let(:params) do
+    WaterBalance::Params.new(**soil, **evaporation,
+      crop: WaterBalance::Crop.new(kcb_mid: 1.10, kcb_end: 0.65, height_m: 0.6, late_start:, end_date:))
+  end
 
   def season(length = 180)
     length.times.map do |i|
@@ -32,6 +40,33 @@ RSpec.describe LegacyEngine do
     end
   end
 
+  context "with drip irrigation (C22's wetted fraction)" do
+    let(:evaporation) { {rew: 0.3, irrigation_fw: 0.35} }
+
+    it "matches WaterBalance with every fix applied" do
+      5.times do
+        days = season
+        legacy = described_class.run(**soil, **crop, days:, fixes: described_class::FIXES.keys)
+        expect(new_engine(days).zip(legacy)).to all(satisfy { |new, old| (new - old).abs < 1e-4 })
+      end
+    end
+  end
+
+  context "by LAI" do
+    let(:params) do
+      WaterBalance::Params.new(**soil, **evaporation, et_method: "lai",
+        crop: WaterBalance::Crop.new(kcb_mid: 1.10, kcb_end: 0.65, height_m: 0.6, late_start:, end_date:))
+    end
+
+    it "matches WaterBalance with every fix applied" do
+      5.times do
+        days = season.map { |day| day.merge(canopy: day[:canopy] / 20) }
+        legacy = described_class.run(**soil, **crop, days:, et_method: "lai", fixes: described_class::FIXES.keys)
+        expect(new_engine(days).zip(legacy)).to all(satisfy { |new, old| (new - old).abs < 1e-4 })
+      end
+    end
+  end
+
   it "differs without the fixes only on days some fix explains" do
     differing = 0
     10.times do
@@ -41,11 +76,17 @@ RSpec.describe LegacyEngine do
       unfixed = described_class.run(**soil, **crop, days:)
       without = all_fixes.to_h { |fix| [fix, described_class.run(**soil, **crop, days:, fixes: all_fixes - [fix])] }
 
+      # A day at the wilting point (or field capacity) in the fixed run can be there with a fix removed
+      # too, though the fix brought it there sooner: the differing day before it explains it
+      bounds = [params.ad_pwp, params.ad_max]
+      explained = false
       fixed.each_index do |i|
         next if (fixed[i] - unfixed[i]).abs < 1e-3
         differing += 1
         causes = without.select { |_, ads| (ads[i] - fixed[i]).abs >= 1e-6 }.keys
-        expect(causes).not_to be_empty, "day #{i} differs by #{fixed[i] - unfixed[i]} with no fix to explain it"
+        held = bounds.any? { |bound| (fixed[i] - bound).abs < 1e-9 }
+        explained = causes.any? || (held && explained)
+        expect(explained).to be(true), "day #{i} differs by #{fixed[i] - unfixed[i]} with no fix to explain it"
       end
     end
     expect(differing).to be > 50 # the fixes do matter on these seasons

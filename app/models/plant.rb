@@ -8,5 +8,7 @@ class Plant < ApplicationRecord
   # FAO-56 Table 12 (C21): the crop coefficient at full cover and the crop's height
   validates :kc_mid, numericality: {greater_than: 0, less_than: 2}
   validates :crop_height_m, numericality: {greater_than: 0, less_than: 10}
+  # FAO-56 Table 17 (C22): the basal crop coefficient at full cover in mid season and at harvest
+  validates :kcb_mid, :kcb_end, numericality: {greater_than: 0, less_than: 2}, allow_nil: true
   validates :canopy_model, inclusion: {in: ->(_) { CanopyModel::CURVES.keys }}, allow_nil: true
 end

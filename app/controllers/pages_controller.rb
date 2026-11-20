@@ -17,7 +17,8 @@ class PagesController < AuthenticatedController
   def about
     render inertia: "Pages/About", props: {
       plants: Plant.order(:name).map do |plant|
-        {key: plant.key, name: plant.name, root_zone_in: plant.default_max_root_zone_depth, kc_mid: plant.kc_mid,
+        {key: plant.key, name: plant.name, root_zone_in: plant.default_max_root_zone_depth, kcb_mid: plant.kcb_mid,
+         kcb_end: plant.kcb_end,
          lai_curve: plant.canopy_model.present?, cover_curve: CanopyCurve.for(plant.key).present?,
          generic_curve: CanopyCurve.for(plant.key) ? nil : CanopyCurve.default_generic(plant.key)&.name}
       end,

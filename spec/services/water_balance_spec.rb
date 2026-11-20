@@ -117,6 +117,83 @@ RSpec.describe WaterBalance do
     end
   end
 
+  describe "with a crop: FAO-56's dual crop coefficient (C22)" do
+    let(:crop) { WaterBalance::Crop.new(kcb_mid: 1.10, kcb_end: 0.65, height_m: 0.6) }
+    # Sand's TEW is (0.15 − 0.025) × 3.94 in = 0.49 in; REW 0.2 in
+    let(:params) do
+      WaterBalance::Params.new(field_capacity: 0.15, perm_wilting_pt: 0.05, max_root_zone_depth: 24.0, mad_frac: 0.5,
+        crop:, rew: 0.2)
+    end
+
+    def bare(offset, **inputs) = day(offset, canopy: 0.0, et0: 0.2, **inputs)
+
+    it "evaporates wet bare soil at Kc max, slowing as the surface dries, until rain wets it again" do
+      results = run((0..9).map { |i| bare(i, rain: (i == 6) ? 0.5 : 0.0) })
+      ets = results.map(&:adj_et)
+      expect(ets.first).to be_within(1e-4).of(0.24)
+      expect(ets.first(6).each_cons(2)).to all(satisfy { |a, b| b <= a })
+      expect(ets[5]).to be < 0.05
+      # Kr comes from the day before's depletion, so the rain shows the day after
+      expect(ets[7]).to be_within(1e-4).of(0.24)
+      expect(results[6].evaporation.depletion).to be < 0.05
+    end
+
+    it "wets less of the surface under drip, so less evaporates" do
+      dry = SoilEvaporation::State.new(depletion: params.evaporation.tew, fw: 1.0)
+      days = (0..5).map { |i| bare(i, irrigation: i.zero? ? 0.3 : 0.0) }
+      sprinkled = run(days, evaporation: dry)
+      dripped = described_class.run(params.with(irrigation_fw: 0.35), days, evaporation: dry)
+      expect(dripped.sum(&:adj_et)).to be < sprinkled.sum(&:adj_et)
+      expect(dripped.first.evaporation.fw).to eq(0.35)
+    end
+
+    it "resumes from a day's surface layer as if it had run on" do
+      days = (0..11).map { |i| bare(i, rain: (i == 2) ? 0.3 : 0.0, canopy: i * 5.0) }
+      whole = run(days)
+      resumed = run(days.drop(6), initial_ad: whole[5].ad, evaporation: whole[5].evaporation)
+      expect(resumed.map(&:adj_et)).to eq(whole.drop(6).map(&:adj_et))
+      expect(run(days.drop(6), initial_ad: whole[5].ad).map(&:adj_et)).not_to eq(whole.drop(6).map(&:adj_et))
+    end
+
+    it "leaves the surface layer as it was on a soil moisture reading's day and a day without weather" do
+      results = run([bare(0), bare(1, soil_moisture_pct: 12.0), bare(2, et0: nil), bare(3)])
+      expect(results[1].evaporation).to eq(results[0].evaporation)
+      expect(results[1].adj_et).to be > 0
+      expect(results[2]).to have_attributes(et_source: :gap_fill, evaporation: results[0].evaporation)
+    end
+
+    it "eases Kcb from mid season's to harvest's over the late season (FAO-56 eq. 66)" do
+      late = crop.with(late_start: Date.new(2026, 7, 25), end_date: Date.new(2026, 9, 3))
+      expect(late.kcb_full(Date.new(2026, 7, 25))).to eq(1.10)
+      expect(late.kcb_full(Date.new(2026, 8, 14))).to be_within(1e-12).of(0.875)
+      expect(late.kcb_full(Date.new(2026, 9, 3))).to be_within(1e-12).of(0.65)
+      expect(crop.kcb_full(Date.new(2026, 9, 3))).to eq(1.10)
+      # Eq. 70 adjusts Kcb end only from 0.45
+      windy = {wind_mph: 15.0, rh_min_pct: 25.0}
+      expect(late.kcb_full(Date.new(2026, 9, 3), **windy)).to be_within(1e-12).of(CropEt.kc_mid(0.65, 0.6, **windy))
+      expect(late.with(kcb_end: 0.25).kcb_full(Date.new(2026, 9, 3), **windy)).to be_within(1e-12).of(0.25)
+    end
+
+    it "keeps AD in range and conserves water over random seasons" do
+      rng = Random.new(7)
+      10.times do
+        days = 150.times.map do |i|
+          WaterBalance::Day.new(date: start + i, et0: (rng.rand < 0.05) ? nil : rng.rand(0.0..0.35),
+            rain: (rng.rand < 0.3) ? rng.rand(0.0..1.5) : 0.0, irrigation: (rng.rand < 0.15) ? rng.rand(0.3..1.0) : 0.0,
+            canopy: [i * 1.0, 100].min)
+        end
+        ad = params.initial_ad
+        run(days).zip(days).each do |result, input|
+          expect(result.ad).to be_between(params.ad_pwp, params.ad_max)
+          expect(result.evaporation.depletion).to be_between(0.0, params.evaporation.tew)
+          expected = ad + input.rain + input.irrigation - result.adj_et.to_f - result.deep_drainage
+          expect(result.ad).to be_within(1e-3).of(expected) unless result.ad <= params.ad_pwp
+          ad = result.ad
+        end
+      end
+    end
+  end
+
   describe "properties over random seasons" do
     let(:rng) { Random.new(20261003) }
 

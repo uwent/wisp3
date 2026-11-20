@@ -20,8 +20,9 @@
     key: string
     name: string
     root_zone_in: number
-    /** FAO-56 Table 12's crop coefficient at full cover (C21) */
-    kc_mid: number
+    /** FAO-56 Table 17's basal crop coefficient at full cover, mid season and at harvest (C22) */
+    kcb_mid: number
+    kcb_end: number
     lai_curve: boolean
     cover_curve: boolean
     /** The generic curve a crop without its own follows by default (G.3) */
@@ -161,9 +162,9 @@
       <li>
         <strong>The crop's water use</strong> (<Term id="crop_et">crop ET</Term>) takes from it. It is the day's
         <Term id="reference_et">reference ET</Term>, worked out from the weather, adjusted for how much of the ground
-        the crop covers (<Term id="percent_cover">percent cover</Term> or <Term id="lai">LAI</Term>) and, as the canopy
-        fills in, for the crop itself (its <Term id="kc">crop coefficient</Term> at full cover; see
-        <a href="#crops">Crops</a>).
+        the crop covers (<Term id="percent_cover">percent cover</Term> or <Term id="lai">LAI</Term>), for the crop
+        itself (its <Term id="kc">crop coefficient</Term>; see <a href="#crops">Crops</a>), and for the water
+        evaporating from the soil between the plants, which is most just after rain or irrigation.
       </li>
       <li>
         Water beyond field capacity drains below the roots and is counted as <Term id="deep_drainage"
@@ -472,14 +473,15 @@
       change any of these for your planting.
     </p>
     <p>
-      <strong>Crop coefficients.</strong> A crop with a full canopy uses more water than the reference grass: about 15%
-      more for potato, soybean or sweet corn, 20% for field corn, less for summer squash and asparagus. WISP takes each
-      crop's coefficient at full cover from FAO-56 (Table 12, the table below), and adjusts it each day for the wind and
-      humidity, as FAO-56 does: a dry, windy day raises a tall crop's water use more than a short one's. Below full
-      cover the coefficient rises with the canopy, from bare soil's evaporation (the percent cover table in UW Extension
-      <a href="/publications/a3600-01-irrigation-management-in-wisconsin.pdf" target="_blank" rel="noopener">A3600-01</a
-      >, Appendix Table B) to the full-cover value at {FULL_COVER_PCT}% cover. Field corn on LAI reaches it as its leaf
-      area grows.
+      <strong>Crop coefficients.</strong> WISP follows FAO-56's dual crop coefficient, which counts the crop's own water use
+      and the soil's evaporation separately. The crop's share rises with its canopy to its value at full cover (FAO-56 Table
+      17, the table below): about 10% more than the reference grass for potato, soybean or sweet corn, 15% for field corn,
+      less for many vegetables. It's adjusted each day for the wind and humidity, as FAO-56 does (a dry, windy day raises
+      a tall crop's water use more than a short one's), and from the time the canopy starts to decline (late July for potato)
+      it eases toward the crop's value at harvest. The soil's share comes from the wet surface between the plants: after rain
+      or irrigation bare, wet soil evaporates about as much as a full crop, and less as the surface dries over the next few
+      days, more slowly on finer soils. Drip wets only part of the surface, so less evaporates. The canopy shades the soil
+      as it fills in, so evaporation matters most while the crop is small and after vine kill.
     </p>
     <p>
       <strong>Season length.</strong> Each crop with a curve has a typical season, from emergence to harvest (on its card
@@ -497,7 +499,7 @@
       rather than by a root zone's water balance, and ginseng grows under shade, which changes its water use in ways WISP's
       reference ET doesn't account for. Neither is in the crop list.
     </p>
-    <!-- Wider than a phone with its Kc column: a scrolling region must be reachable by keyboard (axe) -->
+    <!-- Wider than a phone with its Kcb columns: a scrolling region must be reachable by keyboard (axe) -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
       class="not-prose overflow-x-auto rounded-lg border border-line bg-surface-raised"
@@ -511,7 +513,10 @@
             <th class="px-3 py-2 font-medium">Crop</th>
             <th class="px-3 py-2 text-right font-medium">Root zone</th>
             <th class="px-3 py-2 text-right font-medium">Sensor depths</th>
-            <th class="px-3 py-2 text-right font-medium"><abbr title="Crop coefficient at full cover">Kc</abbr></th>
+            <th class="px-3 py-2 text-right font-medium"
+              ><abbr title="Basal crop coefficient at full cover, mid season">Kcb</abbr></th
+            >
+            <th class="px-3 py-2 text-right font-medium">Kcb at harvest</th>
             <th class="px-3 py-2 font-medium">Canopy methods</th>
           </tr>
         </thead>
@@ -523,7 +528,8 @@
               <td class="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">
                 {depth(plant.root_zone_in * 0.25)} and {depth(plant.root_zone_in * 0.75)}
               </td>
-              <td class="px-3 py-1.5 text-right tabular-nums">{plant.kc_mid.toFixed(2)}</td>
+              <td class="px-3 py-1.5 text-right tabular-nums">{plant.kcb_mid.toFixed(2)}</td>
+              <td class="px-3 py-1.5 text-right tabular-nums">{plant.kcb_end.toFixed(2)}</td>
               <td class="px-3 py-1.5"
                 >{plant.cover_curve
                   ? 'Percent cover, with a curve'
@@ -711,7 +717,11 @@ t: days since emergence; t′: days since the decline starts</code
       The analysis, its data and scripts are in
       <a href="https://github.com/uwent/wisp3/tree/main/docs/et-validation" target="_blank" rel="noopener"
         >the WISP source code</a
-      >. It continues with the rest of the season, as the canopy fills in and dies back.
+      >. Over the whole season, with the researchers' crop dates and canopy cover for four of the seasons, it showed
+      that WISP's earlier method missed the water evaporating from wet soil while the canopy was small and after vine
+      kill, and kept the crop's full water use into August. WISP now counts that evaporation and eases the crop's water
+      use toward harvest, as described under <a href="#crops">Crops</a>: against the towers it's within 1% at full
+      canopy and 5% over the season, and still somewhat high while the canopy is small and after vine kill.
     </p>
 
     <h2 id="glossary">Glossary</h2>
