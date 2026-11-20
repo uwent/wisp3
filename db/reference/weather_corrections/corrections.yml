@@ -27,15 +27,17 @@ corrections:
     evidence: https://github.com/uwent/agweather2/blob/main/docs/validation-openmeteo.md
 
   - id: et0-fao56
-    version: 1
-    fitted: "2026-11-10"
+    version: 2
+    fitted: "2026-11-19"
     variable: Reference evapotranspiration (ET0)
     method: >-
       FAO-56's hourly Penman-Monteith grass reference ET0 computed by WISP from Open-Meteo's
       temperature, wind and pressure with the corrected shortwave and dew point, summed over the
-      local day, in place of Open-Meteo's own ET0.
-    fitted_against: Not fitted; FAO Irrigation and Drainage Paper 56 (Allen and others, 1998), as AgWeather v2 computes it.
-    effect: About 11% lower than Open-Meteo's own ET0, which ran 16% above ET0 from the stations' own measurements (April–October).
+      local day, in place of Open-Meteo's own ET0. Version 2 takes the second edition's surface
+      resistance, 50 s/m by day and 200 s/m at night (version 1: the 1998 edition's 70 s/m every
+      hour), which raises ET0 about 5%.
+    fitted_against: Not fitted; FAO Irrigation and Drainage Paper 56 Rev.1 (Pereira and others, 2025), equations 2.5a and 2.5b.
+    effect: About 7% lower than Open-Meteo's own ET0, which ran 10% above ET0 from the stations' own measurements computed the same way (April–October); the corrected ET0 runs 3% above them.
     evidence: https://github.com/uwent/agweather2/blob/main/docs/validation-openmeteo.md
 
   - id: et0-ensemble-ratio
@@ -47,5 +49,5 @@ corrections:
       to uncorrected ET0 for the same day, so the range shifts with the main forecast and keeps its
       width.
     fitted_against: Not fitted; follows the main forecast's correction. To be checked against a season of archived forecasts.
-    effect: Moves the forecast range with the main forecast's ET0, about 11% lower.
+    effect: Moves the forecast range with the main forecast's ET0, about 7% lower.
     evidence: https://github.com/uwent/agweather2/blob/main/docs/validation-openmeteo.md

@@ -745,7 +745,7 @@ t′: days since the decline starts</code
     <h3 id="weather-corrections">Weather corrections</h3>
     <p>
       Checked against 80 Wisconet weather stations across Wisconsin in 2025 and 2026, Open-Meteo's solar radiation reads
-      15–20% high and its humidity runs dry, so its <Term id="reference_et">reference ET</Term> came out about 16% above what
+      15–20% high and its humidity runs dry, so its <Term id="reference_et">reference ET</Term> came out about 10% above what
       the stations' own measurements give. WISP corrects both, hour by hour, and works out reference ET itself from the corrected
       hours with the same FAO-56 equation. The corrections and the evidence for them come from AgWeather, the UW–Madison weather
       service, which made the comparison. Each day of weather records which corrections it went through, and the weather downloads
@@ -918,7 +918,8 @@ t′: days since the decline starts</code
           href="https://doi.org/10.4060/cd6621en"
           target="_blank"
           rel="noopener">FAO-56 Rev.1</a
-        >, Pereira, Allen and colleagues), with updated crop coefficients; WISP still uses the 1998 edition's.
+        >, Pereira, Allen and colleagues), with updated crop coefficients and a revised hourly reference ET equation.
+        WISP computes reference ET with the new equation and still uses the 1998 edition's crop coefficients.
       </li>
       <li>
         <strong><Term id="aquacrop">AquaCrop</Term></strong>: Steduto, P., Hsiao, T. C., Raes, D. and Fereres, E.

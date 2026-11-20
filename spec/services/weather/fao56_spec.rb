@@ -5,7 +5,9 @@ RSpec.describe Weather::Fao56 do
   subject(:fao) { described_class }
 
   # FAO-56 Example 19: N'Diaye, Senegal (16°13'N, 16°15'W, 8 m), 1 October. Its clock uses a 15°W
-  # standard meridian, so clock time is UTC − 1 h: its 14–15 h is the hour ending 16:00 UTC.
+  # standard meridian, so clock time is UTC − 1 h: its 14–15 h is the hour ending 16:00 UTC. The
+  # second edition's Example 4.3 (Pereira and others, 2025, pp. 123–124) works the same data through
+  # Rev.1's hourly ET0 (eq. 2.5a by day, 2.5b at night), which is what WISP computes (C24).
   let(:lat) { 16 + 13 / 60.0 }
   let(:lon) { -(16 + 15 / 60.0) }
   let(:z) { 8 }
@@ -73,21 +75,23 @@ RSpec.describe Weather::Fao56 do
     expect(fao.extraterrestrial_radiation_hourly(night_end, lat, lon)).to eq 0
   end
 
-  it "matches Example 19's day hour" do
+  it "matches Example 19's day hour, with Rev.1 Example 4.3's ET0" do
     ea = 0.52 * fao.saturation_vapor_pressure_kpa(38) # RH 52%
     expect(ea).to be_within(0.001).of(3.445)
     rso = (0.75 + 2e-5 * z) * fao.extraterrestrial_radiation_hourly(day_end, lat, lon)
     expect(rso).to be_within(0.01).of(2.658)
     rn = fao.net_radiation_hourly_mj(2.450, 2.450 / rso, 38, ea)
     expect(rn).to be_within(0.005).of(1.749)
-    expect(fao.et0_hourly_mm(38, ea, 3.3, rn, 0.1 * rn, pressure)).to be_within(0.005).of(0.63)
+    # rs 50 s/m (eq. 2.5a): radiative term 0.481 + aerodynamic 0.175 (the 1998 edition's 70 s/m gave 0.63)
+    expect(fao.et0_hourly_mm(38, ea, 3.3, rn, 0.1 * rn, pressure)).to be_within(0.001).of(0.656)
   end
 
-  it "matches Example 19's night hour" do
+  it "matches Example 19's night hour, with Rev.1 Example 4.3's ET0" do
     ea = 0.90 * fao.saturation_vapor_pressure_kpa(28) # RH 90%
     rn = fao.net_radiation_hourly_mj(0.0, 0.8, 28, ea)
     expect(rn).to be_within(0.002).of(-0.100)
-    expect(fao.et0_hourly_mm(28, ea, 1.9, rn, 0.5 * rn, pressure)).to be_within(0.005).of(0.0)
+    # rs 200 s/m (eq. 2.5b): radiative term −0.011 + aerodynamic 0.014, 0.004 (0.00 to two places)
+    expect(fao.et0_hourly_mm(28, ea, 1.9, rn, 0.5 * rn, pressure)).to be_within(0.001).of(0.004)
   end
 
   it "converts wind to 2 m (Example 14) and pressure to elevation" do

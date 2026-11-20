@@ -2,10 +2,12 @@
 # day (docs/et-validation/02-data.md, 03-results.md). Python 3, standard library only.
 #
 #   python3 -I docs/et-validation/scripts/et0.py [DIR]      writes DIR/daily.csv
-#   python3 -I docs/et-validation/scripts/et0.py --check    FAO-56 Example 19
+#   python3 -I docs/et-validation/scripts/et0.py --check    FAO-56 Rev.1 Example 4.3 (1998's Example 19)
 #
 # DIR defaults to tmp/ameriflux. ET0 is WISP's hourly chain (app/services/weather/fao56.rb, ported
-# below function for function): eq. 53 each hour, G = 0.1 Rn by day and 0.5 Rn at night, net
+# below function for function): FAO-56 Rev.1's eq. 2.5a/2.5b each hour (rs 50 s/m while Rn >= 0,
+# 200 s/m while Rn < 0; until 2026-11-19 the 1998 eq. 53's 70 s/m, PLAN.md §9 C24), G = 0.1 Rn by
+# day and 0.5 Rn at night, net
 # longwave from Rs/Rso carried from the last hour with the sun above 17.2°. The towers' half-hours
 # (local standard time, UTC−6) are averaged to hours. Wind is taken to 2 m by FAO-56 eq. 47 from the
 # instrument's height; vapor pressure is e°(T) − VPD.
@@ -93,7 +95,8 @@ def net_radiation_hourly(rs_mj, ratio, t, ea):
 def et0_hourly(t, ea, u2, rn, g, p):
     d, gm = delta(t), gamma(p)
     num = 0.408 * d * (rn - g) + gm * 37 / (t + 273) * u2 * (es(t) - ea)
-    return max(num / (d + gm * (1 + 0.34 * u2)), 0.0)
+    resistance = 0.24 if rn >= 0 else 0.96  # Rev.1 Box 2.3: rs 50 s/m by day, 200 s/m at night
+    return max(num / (d + gm * (1 + resistance * u2)), 0.0)
 
 
 def check():
@@ -106,17 +109,17 @@ def check():
     rso = (0.75 + 2e-5 * z) * ra
     rn = net_radiation_hourly(2.450, 2.450 / rso, 38, ea)
     et0 = et0_hourly(38, ea, 3.3, rn, 0.1 * rn, p)
-    results += [("Ra day", ra, 3.543, 0.01), ("Rso", rso, 2.658, 0.01), ("Rn day", rn, 1.749, 0.005), ("ET0 day", et0, 0.63, 0.005)]
+    results += [("Ra day", ra, 3.543, 0.01), ("Rso", rso, 2.658, 0.01), ("Rn day", rn, 1.749, 0.005), ("ET0 day", et0, 0.656, 0.001)]
     ea = 0.90 * es(28)
     rn = net_radiation_hourly(0.0, 0.8, 28, ea)
     results += [("Ra night", ra_hourly(night_end, lat, lon), 0.0, 1e-9), ("Rn night", rn, -0.100, 0.002),
-                ("ET0 night", et0_hourly(28, ea, 1.9, rn, 0.5 * rn, p), 0.0, 0.005),
+                ("ET0 night", et0_hourly(28, ea, 1.9, rn, 0.5 * rn, p), 0.004, 0.001),
                 ("u2 from 1.0 at 10 m", wind_2m(1.0, 10), 0.748, 0.001)]
     ok = True
     for name, got, want, tol in results:
         good = abs(got - want) <= tol
         ok &= good
-        print(f"{'ok ' if good else 'BAD'} {name}: {got:.4f} (FAO-56 {want})")
+        print(f"{'ok ' if good else 'BAD'} {name}: {got:.4f} (FAO-56 Rev.1 {want})")
     return ok
 
 

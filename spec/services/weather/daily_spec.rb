@@ -73,7 +73,7 @@ RSpec.describe Weather::Daily do
     expect(day["rh_mean_pct"]).not_to eq(day["rh_mean_raw_pct"])
     expect(day["et0_in"]).to be_between(0.12, 0.25)
     expect(day["et0_openmeteo_in"]).to be_within(1e-9).of(6 / 25.4)
-    expect(day["corrections"]).to eq ["openmeteo-shortwave v1", "openmeteo-rh v1", "et0-fao56 v1"]
+    expect(day["corrections"]).to eq ["openmeteo-shortwave v1", "openmeteo-rh v1", "et0-fao56 v2"]
   end
 
   it "averages wind directions as vectors" do

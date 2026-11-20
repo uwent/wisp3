@@ -8,7 +8,8 @@ described in `corrections.yml` and applied by `Weather::Corrections` as hours ar
 | `openmeteo_shortwave_correction.json` | `openmeteo-shortwave v1` | 2026-10-31 | `ncep_nbm_conus` then `best_match` (historical-forecast) at 80 Wisconet stations, 2025–2026, against the stations' hourly pyranometer means |
 | `openmeteo_rh_map.json` | `openmeteo-rh v1` | 2026-10-31 | the same, against AgWeather v2's hourly RH at the stations' cells |
 
-ET0 computed here (`Weather::Fao56`) is labelled `et0-fao56 v1`; it has no table.
+ET0 computed here (`Weather::Fao56`) is labelled `et0-fao56 v2` (FAO-56 Rev.1's hourly form, 2026-11-19;
+v1 was the 1998 edition's, as v2 computes it); it has no table.
 
 Copied unchanged from AgWeather v2 (github.com/uwent/agweather2), `packages/agdata/src/agdata/data/`,
 at commit `bbb0a6dc26b0d37321bc44aef923968bd2789c74` (2026-11-10). v2 applies them in

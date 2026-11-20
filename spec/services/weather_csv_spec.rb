@@ -30,7 +30,7 @@ RSpec.describe WeatherCsv do
     expect(data.last).to include("GDD since the first day (50/86 °F)" => "48.0000", "Corrections" => nil)
     expect(data.first).to include("Reference ET, Open-Meteo's (in)" => "0.2400", "Corrections" => "openmeteo-shortwave v1 et0-fao56 v1")
     expect(rows.flatten.compact.find { |line| line.start_with?("Weather corrections:") })
-      .to include("openmeteo-shortwave v1, openmeteo-rh v1, et0-fao56 v1")
+      .to include("openmeteo-shortwave v1, openmeteo-rh v1, et0-fao56 v2")
   end
 
   it "gives the cell's elevation, and says how many days are forecast" do

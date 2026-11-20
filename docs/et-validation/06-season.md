@@ -205,3 +205,5 @@ The canopy curve now runs in growing degree days (C23, `docs/canopy/07-thermal-t
 
 The two changes needed each other. With the old table, timing the canopy right made development worse (−1% to −17%): the calendar curve had been hiding the missing soil evaporation by running ahead. With the dual coefficient, the degree-day curve brings development from +16% to +10%, the same as the measured canopy gives (+10%), so what's left in development is the dual coefficient's own excess on nearly bare ground (point 2 above), not the canopy's timing. On sand, every phase is now within −1% to +11% of the corrected towers, and the season +4%.
 
+**2026-11-19: FAO-56 Rev.1's hourly ET0 (PLAN.md §9 C24).** With the towers' ET0 in the second edition's form (about 5% higher), `season.rb` on the same coefficients gives, for C22 on sand with the calendar curve: development +21%, full cover +3%, decline +6%, vine kill to harvest +14%, season +10% (402 days; closure-corrected ET / ET0 0.84 for the season, 1.00 at full cover). Potato's coefficients are being moved to Rev.1's at the same time, and the tables in this note will be redone on both.
+

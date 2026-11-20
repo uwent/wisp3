@@ -50,12 +50,12 @@ RSpec.describe Weather::Fetcher do
       expect(day.et0_in).to be_between(0.05, 0.2) # WISP's FAO-56, from 10 °C, a 6 °C dew point and 500 W/m² by day
       expect(day.shortwave_raw_mj).to be_within(1e-9).of(12 * 500 * 0.0036)
       expect(day.shortwave_mj).to be < day.shortwave_raw_mj
-      expect(day.corrections).to eq ["openmeteo-shortwave v1", "openmeteo-rh v1", "et0-fao56 v1"]
+      expect(day.corrections).to eq ["openmeteo-shortwave v1", "openmeteo-rh v1", "et0-fao56 v2"]
 
       forecast = cell.latest_forecast
       expect(forecast.days.keys).to eq((today..today + 15).to_a)
       expect(forecast.days[today]["soil_moisture_0_7cm"]).to eq(0.3)
-      expect(forecast.days[today]).to include("et0_in" => be > 0, "corrections" => include("et0-fao56 v1"))
+      expect(forecast.days[today]).to include("et0_in" => be > 0, "corrections" => include("et0-fao56 v2"))
       expect(cell.reload).to have_attributes(timezone: "America/Chicago", elevation_m: 300.0, last_error: nil)
     end
 
@@ -93,7 +93,7 @@ RSpec.describe Weather::Fetcher do
       expect(client.calls.map { |call| call.values_at(:endpoint, :start_date, :end_date) }.uniq)
         .to eq [[:historical_forecast, Date.new(2026, 6, 1), Date.new(2026, 6, 2)]]
       day = cell.weather_days.find_by(date: Date.new(2026, 6, 1))
-      expect(day).to have_attributes(final: true, corrections: include("et0-fao56 v1"), et0_openmeteo_in: be_present)
+      expect(day).to have_attributes(final: true, corrections: include("et0-fao56 v2"), et0_openmeteo_in: be_present)
       expect(cell.weather_days.find_by(date: today - 3).corrections).to eq []
       expect(fetcher.recorrect_runs(cell)).to be_empty
     end

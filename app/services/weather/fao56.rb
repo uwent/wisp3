@@ -3,7 +3,9 @@ module Weather
   # https://www.fao.org/4/x0490e/x0490e00.htm): humidity, the sun's geometry, clear-sky radiation and
   # the hourly Penman-Monteith grass reference ET0 (PLAN.md §8.5, D12). Ported from AgWeather v2's
   # `agmodels.weather` (at bbb0a6d), whose results WISP's corrected weather must match
-  # (spec/services/weather/fao56_spec.rb, weather_corrections_spec.rb).
+  # (spec/services/weather/fao56_spec.rb, weather_corrections_spec.rb), except the hourly ET0's
+  # surface resistance, which follows FAO-56's second edition (Pereira and others, 2025,
+  # doi:10.4060/cd6621en; PLAN.md §9 C24).
   #
   # Plain functions on numbers; a nil input gives nil. Times are UTC `Time`s, and an hourly value
   # stamped t covers the hour ending at t. Units are SI unless the name says otherwise: °C, kPa, m/s,
@@ -18,6 +20,10 @@ module Weather
     # 0.3–1: below 0.3 heavy cloud would turn net longwave into a gain
     RS_RSO_MIN = 0.3
     DEFAULT_RS_RSO = 0.8 # before any daytime value to carry (Example 19's night assumption)
+    # (1 + rs/ra) = 1 + c u2 for the hourly ET0 (FAO-56 Rev.1 Box 2.3, eq. 2.5a/2.5b): rs = 50 s/m by
+    # day (Rn ≥ 0) and 200 s/m at night (Rn < 0), where the 1998 edition's eq. 53 took 70 s/m (0.34) every hour
+    SURFACE_RESISTANCE_DAY = 0.24
+    SURFACE_RESISTANCE_NIGHT = 0.96
     # Where an hour has no pressure, clear-sky radiation takes this (only its elevation term uses it)
     FALLBACK_PRESSURE_KPA = 97.0
     W_M2_HOUR_TO_MJ = 0.0036 # a mean W/m² over an hour, in MJ/m²
@@ -148,7 +154,8 @@ module Weather
       (1 - ALBEDO_GRASS) * rs_mj - rnl
     end
 
-    # The Penman-Monteith grass reference ET0 for one hour, mm (eq. 53); negative (dew) becomes 0
+    # The Penman-Monteith grass reference ET0 for one hour, mm (FAO-56 Rev.1 eq. 2.5a by day, 2.5b at
+    # night, split on the sign of Rn; Rev.1 Example 4.3); negative (dew) becomes 0
     def et0_hourly_mm(temperature_c, vapor_pressure_kpa, wind_speed_2m_m_s, net_radiation_mj, soil_heat_flux_mj, pressure_kpa)
       inputs = [temperature_c, vapor_pressure_kpa, wind_speed_2m_m_s, net_radiation_mj, soil_heat_flux_mj, pressure_kpa]
       return if inputs.any?(&:nil?)
@@ -157,7 +164,8 @@ module Weather
       deficit = saturation_vapor_pressure_kpa(temperature_c) - vapor_pressure_kpa
       numerator = 0.408 * delta * (net_radiation_mj - soil_heat_flux_mj) +
         gamma * 37 / (temperature_c + 273) * wind_speed_2m_m_s * deficit
-      [numerator / (delta + gamma * (1 + 0.34 * wind_speed_2m_m_s)), 0.0].max
+      resistance = (net_radiation_mj >= 0) ? SURFACE_RESISTANCE_DAY : SURFACE_RESISTANCE_NIGHT
+      [numerator / (delta + gamma * (1 + resistance * wind_speed_2m_m_s)), 0.0].max
     end
 
     # Hourly ET0 (mm) for a point's series of hours: the whole hourly chain from the stored variables.
