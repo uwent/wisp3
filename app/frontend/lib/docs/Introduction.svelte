@@ -17,7 +17,7 @@
   the roots and carries nutrients with it.
 </p>
 <p>
-  WISP was developed by the Departments of Soil Science and Biological Systems Engineering at the University of
-  Wisconsin–Madison, and is maintained by the UW–Madison Vegetable Entomology Lab. It is built for Wisconsin and the
-  upper Midwest, and is free to use.
+  WISP is a University of Wisconsin–Madison program, developed and maintained by the Vegetable Entomology Lab and
+  checked against water use measured in Wisconsin fields. It is built for Wisconsin and the upper Midwest, and is free
+  to use.
 </p>
