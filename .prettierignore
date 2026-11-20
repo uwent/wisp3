@@ -14,3 +14,5 @@ vendor
 pnpm-lock.yaml
 # weather correction tables, copied byte for byte from AgWeather v2
 db/reference/weather_corrections/*.json
+# a recorded Open-Meteo archive response (two years of daily values), kept compact
+spec/fixtures/files/open_meteo/archive_daily_two_years.json

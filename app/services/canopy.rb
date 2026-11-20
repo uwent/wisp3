@@ -46,6 +46,10 @@ class Canopy
   # follows the curve and has readings (nil otherwise).
   attr_reader :curve, :fit, :emergence_date
 
+  # Whether the curve runs in degree days at the planting's weather cell (C23); false for calendar
+  # days (an LAI curve, a crop without thermal parameters, or a cell without normals yet)
+  def thermal? = @thermal
+
   # curve: date → value, or nil. fit_curve: ->(shift:, stretch:, height:) { date → value }, the curve
   # adjusted, to fit it to the readings (without it the typical curve is used as is); fit_key
   # identifies it for caching the fit (CanopyFit.fetch; without one it's fitted each time). noise and
@@ -53,8 +57,9 @@ class Canopy
   # instead (the curve is near 0 just after emergence).
   def initialize(emergence_date:, end_date:, observations: [], curve: nil, fit_curve: nil, fit_key: nil,
     follow_curve: true, floor: 1.0, noise: CanopyFit::COVER_NOISE, censor_at: CanopyFit::COVER_CENSOR, check: false,
-    vine_kill: nil)
+    vine_kill: nil, thermal: false)
     @emergence_date, @end_date, @curve, @floor, @check, @vine_kill = emergence_date, end_date, curve, floor, check, vine_kill
+    @thermal = thermal
     readings = observations.select { |date, _| date >= emergence_date }.sort_by(&:first)
     @readings, @kill_readings = readings.partition { |date, _| vine_kill.nil? || date < vine_kill }
     @follow = curve && follow_curve && @readings.any?
@@ -68,10 +73,13 @@ class Canopy
 
   # For a Planting, from its canopy observations (percent cover or LAI, by its ET method). through:
   # leaves out readings after that date (time travel on the field page, PLAN.md Phase 8 F).
-  def self.for(planting, through: nil)
+  # temperatures: its weather cell's CellTemperatures over at least ThermalTime.dates_for(planting)
+  # (pages with many plantings preload them; loaded if not given), for a percent cover curve in
+  # degree days (C23). Without normals for the cell, the curve runs by calendar days.
+  def self.for(planting, through: nil, temperatures: nil)
     # A perennial cut during the season regrows from each cutting (G.3)
     cuttings = planting.cutting_dates.select { |date| through.nil? || date <= through }
-    return CutCanopy.for(planting, cuttings, through:) if cuttings.any?
+    return CutCanopy.for(planting, cuttings, through:, temperatures:) if cuttings.any?
 
     lai = planting.et_method == "lai"
     attribute = lai ? :lai : :pct_cover
@@ -86,15 +94,30 @@ class Canopy
       fit_curve = ->(stretch: 1.0, **fit) { CanopyModel.from(key, emergence, stretch: stretch * base, **fit) } if key
       fit_key = ["lai", key, CanopyModel::VERSION, emergence, base]
     else
-      # The crop's own curve, or the generic one it follows (G.3)
+      # The crop's own curve, or the generic one it follows (G.3), in degree days where it can be
       crop_curve = planting.cover_curve
-      fit_curve = ->(stretch: 1.0, **fit) { crop_curve.from(emergence, stretch: stretch * base, **fit) } if crop_curve
-      fit_key = ["cover", crop_curve&.key, crop_curve&.digest, emergence, base]
+      clock = thermal_clock(crop_curve, planting, temperatures)
+      fit_curve = ->(stretch: 1.0, **fit) { crop_curve.from(emergence, stretch: stretch * base, clock:, **fit) } if crop_curve
+      fit_key = ["cover", crop_curve&.key, crop_curve&.digest, emergence, base, *thermal_key(clock, emergence, observations)]
     end
     new(emergence_date: emergence, end_date: planting.end_date, observations:, curve: fit_curve&.call, fit_curve:, fit_key:,
       follow_curve: planting.canopy_interpolation != "linear", floor: lai ? 0.05 : 1.0,
       noise: lai ? CanopyFit::LAI_NOISE : CanopyFit::COVER_NOISE, censor_at: lai ? nil : CanopyFit::COVER_CENSOR,
-      check: !lai, vine_kill: planting.vine_kill_date)
+      check: !lai, vine_kill: planting.vine_kill_date, thermal: clock.present?)
+  end
+
+  # The ThermalTime a planting's percent cover curve runs on, or nil for calendar days (C23)
+  def self.thermal_clock(curve, planting, temperatures)
+    return unless curve&.thermal && planting.weather_cell_id
+    curve.clock(temperatures || CellTemperatures.for(planting.weather_cell_id, ThermalTime.dates_for(planting)))
+  end
+
+  # What a fit to readings depends on beyond the curve: the temperatures from the earliest shifted
+  # start through the last reading, so a revised day or a new forecast refits it
+  def self.thermal_key(clock, emergence, observations)
+    return [] unless clock
+    last = observations.map(&:first).max or return ["thermal"]
+    ["thermal", clock.digest(emergence - CanopyFit::MAX_SHIFT, last)]
   end
 
   def on(date)

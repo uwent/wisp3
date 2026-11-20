@@ -23,7 +23,9 @@ module LegacyEngine
     c3: "percent cover held to the end date (legacy: 6 days) and interpolated from emergence",
     c4: "LAI growth curve for field corn only (legacy used the corn curve for every crop)",
     c20: "crop canopy curves: followed with no readings and between readings (legacy: 0% cover until the first " \
-      "reading, then straight lines)"
+      "reading, then straight lines)",
+    c23: "percent cover curves run by growing degree days at the planting's weather cell (stored weather, the " \
+      "forecast, then normals), not calendar days since emergence"
   }.freeze
 
   module_function

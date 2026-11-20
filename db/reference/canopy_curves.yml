@@ -65,6 +65,7 @@ crops:
     season: {days: 105, basis: "AquaCrop crop file: maturity 105 days after emergence"}
     growth: {cc0: 0.006, ccx: 0.92, cgc: 0.18896}
     decline: {type: rule, date: "07-25", days: 42, floor: 50}
+    thermal: {base_c: 2, upper_c: 26, cgc: 0.013363, emergence: "05-15", basis: "Base and upper temperatures from AquaCrop's potato crop file; converted for emergence on May 15 (Central Sands plantings from mid-April to mid-May; 2026 readings' median May 19)"}
     vine_kill: true
     basis: AquaCrop potato crop file (calendar days)
     confidence: matches_wi
@@ -82,6 +83,7 @@ crops:
     season: {days: 126, basis: "AquaCrop crop file: maturity 126 days after emergence (maize)"}
     growth: &maize_growth {cc0: 0.0049, ccx: 0.96, cgc: 0.16312}
     decline: &maize_decline {type: aquacrop, start_day: 101, cdc: 0.11691}
+    thermal: {base_c: 8, upper_c: 30, cgc: 0.018577, decline_start: 1216, cdc: 0.01088, emergence: "05-15", basis: "Base and upper temperatures from AquaCrop's maize crop file; converted for emergence on May 15 (2026 readings' median May 18)"}
     basis: AquaCrop maize crop file (calendar days)
     confidence: matches_wi
     sources: [aquacrop, aquacrop_crop_files, wisp_2026]
@@ -92,6 +94,7 @@ crops:
   sweet_corn:
     season: {days: 80, basis: "FAO-56 Table 11 (sweet corn, Idaho) through mid-season, 90 days from planting, less about 10 days to emergence: harvested green, before the late stage"}
     growth: {cc0: 0.0049, ccx: 0.96, cgc: 0.124}
+    thermal: {base_c: 8, upper_c: 30, cgc: 0.01031, emergence: "06-01", basis: "Base and upper temperatures from AquaCrop's maize crop file; converted for emergence on June 1 (processing plantings from May into June; 2026 readings May 22 and June 9)"}
     basis: AquaCrop maize crop file, growth slowed to fit Wisconsin sweet corn
     confidence: adjusted_wi
     sources: [aquacrop, aquacrop_crop_files, fao56, wisp_2026]
@@ -104,6 +107,7 @@ crops:
     season: {days: 121, basis: "AquaCrop crop file: maturity 121 days after emergence"}
     growth: {cc0: 0.0165, ccx: 0.98, cgc: 0.087}
     decline: {type: aquacrop, start_day: 95, cdc: 0.02885}
+    thermal: {base_c: 5, upper_c: 30, cgc: 0.006359, decline_start: 1458, cdc: 0.002085, emergence: "05-20", basis: "Base and upper temperatures from AquaCrop's soybean crop file; converted for emergence on May 20 (2026 readings May 14–24)"}
     basis: AquaCrop soybean crop file (calendar days), growth slowed to fit Wisconsin soybeans
     confidence: adjusted_wi
     sources: [aquacrop, aquacrop_crop_files, wisp_2026]
@@ -114,6 +118,7 @@ crops:
   snap_bean:
     season: {days: 70, basis: "FAO-56 Table 11 (beans, green) through mid-season, 80 days from planting, less about 10 days to emergence: harvested green, before the late stage"}
     growth: {cc0: 0.0132, ccx: 0.99, cgc: 0.11804}
+    thermal: {base_c: 9, upper_c: 30, cgc: 0.00964, emergence: "06-15", basis: "Base and upper temperatures from AquaCrop's dry bean crop file; converted for emergence on June 15 (processing plantings from May to July; 2026 readings May 18 to July 24)"}
     basis: AquaCrop dry bean crop file (calendar days)
     confidence: matches_wi
     sources: [aquacrop, aquacrop_crop_files, wisp_2026]
@@ -123,6 +128,7 @@ crops:
   shell_peas:
     season: {days: 65, basis: "FAO-56 Table 11 (peas, Europe) through mid-season, 75 days from planting, less about 10 days to emergence: harvested green, before the late stage"}
     growth: {cc0: 0.0453, ccx: 0.95, cgc: 0.088}
+    thermal: {base_c: 4.4, upper_c: 26, cgc: 0.008609, emergence: "05-05", basis: "Base and upper temperatures assumed for cool-season vegetables (40 °F, the base of pea heat units; upper as AquaCrop's potato and wheat); converted for emergence on May 5 (2026 readings May 3–11)"}
     basis: AquaCrop equations fitted to Wisconsin 2026 readings
     confidence: fitted_wi
     sources: [aquacrop, wisp_2026, fao56]
@@ -134,6 +140,7 @@ crops:
     season: {days: 145, basis: "FAO-56 Table 11 (California, Apr/May, 155 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.00667, ccx: 0.75, cgc: 0.12286}
     decline: {type: aquacrop, start_day: 87, cdc: 0.07238}
+    thermal: {base_c: 7, upper_c: 28, cgc: 0.009699, decline_start: 1193, cdc: 0.008863, emergence: "06-01", basis: "Base and upper temperatures from AquaCrop's tomato crop file; converted for emergence on June 1 (transplanted late May to early June)"}
     basis: AquaCrop tomato crop file (calendar days, from transplanting)
     confidence: published
     sources: [aquacrop, aquacrop_crop_files]
@@ -142,6 +149,7 @@ crops:
     season: {days: 125, basis: "FAO-56 Table 11 (barley, oats and wheat, 35–45° latitude, 135 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0225, ccx: 0.80, cgc: 0.1241}
     decline: {type: aquacrop, start_day: 58, cdc: 0.07697}
+    thermal: {base_c: 0, upper_c: 15, cgc: 0.012539, decline_start: 694, cdc: 0.005225, emergence: "04-25", basis: "Base and upper temperatures from AquaCrop's barley crop file; converted for emergence on April 25 (spring small grains planted in April)"}
     basis: AquaCrop barley crop file (calendar days)
     confidence: published
     sources: [aquacrop, aquacrop_crop_files]
@@ -150,6 +158,7 @@ crops:
     season: {days: 125, basis: "FAO-56 Table 11 (barley, oats and wheat, 35–45° latitude, 135 days from planting) less about 10 days to emergence"}
     growth: &small_grains {cc0: 0.0338, ccx: 0.95, cgc: 0.1084}
     decline: {type: aquacrop, start_day: 95, cdc: 0.07697}
+    thermal: {base_c: 0, upper_c: 26, cgc: 0.009274, decline_start: 1651, cdc: 0.003733, emergence: "04-25", basis: "Base and upper temperatures from AquaCrop's wheat crop file; converted for emergence on April 25 (spring wheat planted in April)"}
     basis: "FAO-56 spring small grains (35–45° latitude, March/April planting); decline at AquaCrop barley's rate"
     confidence: fao56
     sources: [fao56, aquacrop]
@@ -160,6 +169,7 @@ crops:
   cabbage:
     season: {days: 155, basis: "FAO-56 Table 11 (California desert, September, 165 days from planting) less about 10 days to emergence"}
     growth: &crucifers {cc0: 0.0164, ccx: 0.95, cgc: 0.0904}
+    thermal: {base_c: 4.4, upper_c: 26, cgc: 0.006539, emergence: "05-20", basis: "Base and upper temperatures assumed for cool-season vegetables (40 °F, the base of pea heat units; upper as AquaCrop's potato and wheat); converted for emergence on May 20 (transplanted in May)"}
     basis: FAO-56 crucifers (Mediterranean, April planting)
     confidence: fao56
     sources: [fao56, aquacrop]
@@ -167,6 +177,7 @@ crops:
   broccoli:
     season: {days: 125, basis: "FAO-56 Table 11 (California desert, September, 135 days from planting) less about 10 days to emergence"}
     growth: *crucifers
+    thermal: {base_c: 4.4, upper_c: 26, cgc: 0.006539, emergence: "05-20", basis: "Base and upper temperatures assumed for cool-season vegetables (40 °F, the base of pea heat units; upper as AquaCrop's potato and wheat); converted for emergence on May 20 (transplanted in May)"}
     basis: FAO-56 crucifers (Mediterranean, April planting)
     confidence: fao56
     sources: [fao56, aquacrop]
@@ -174,18 +185,21 @@ crops:
   carrot:
     season: {days: 140, basis: "FAO-56 Table 11 (Mediterranean, Feb/Mar, 150 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0338, ccx: 0.95, cgc: 0.0678}
+    thermal: {base_c: 4.4, upper_c: 26, cgc: 0.004847, emergence: "05-20", basis: "Base and upper temperatures assumed for cool-season vegetables (40 °F, the base of pea heat units; upper as AquaCrop's potato and wheat); converted for emergence on May 20 (seeded in May)"}
     basis: FAO-56 carrots (Mediterranean, February/March planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   beets:
     season: {days: 60, basis: "FAO-56 Table 11 (table beets, Mediterranean, 70 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0420, ccx: 0.95, cgc: 0.1084}
+    thermal: {base_c: 4.4, upper_c: 26, cgc: 0.009166, emergence: "05-15", basis: "Base and upper temperatures assumed for cool-season vegetables (40 °F, the base of pea heat units; upper as AquaCrop's potato and wheat); converted for emergence on May 15 (seeded in May)"}
     basis: FAO-56 table beets (Mediterranean, April/May planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   celery:
     season: {days: 115, basis: "FAO-56 Table 11 (Mediterranean, April, 125 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0184, ccx: 0.95, cgc: 0.0678}
+    thermal: {base_c: 4.4, upper_c: 26, cgc: 0.004361, emergence: "06-01", basis: "Base and upper temperatures assumed for cool-season vegetables (40 °F, the base of pea heat units; upper as AquaCrop's potato and wheat); converted for emergence on June 1 (transplanted late May to early June)"}
     basis: FAO-56 celery (Mediterranean, April planting)
     confidence: fao56
     sources: [fao56, aquacrop]
@@ -193,12 +207,14 @@ crops:
   leafy_greens:
     season: {days: 65, basis: "FAO-56 Table 11 (lettuce, Mediterranean, 75 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0309, ccx: 0.95, cgc: 0.0904}
+    thermal: {base_c: 4.4, upper_c: 26, cgc: 0.008571, emergence: "05-05", basis: "Base and upper temperatures assumed for cool-season vegetables (40 °F, the base of pea heat units; upper as AquaCrop's potato and wheat); converted for emergence on May 5 (first plantings in early May)"}
     basis: FAO-56 lettuce (Mediterranean, April planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   pepper:
     season: {days: 115, basis: "FAO-56 Table 11 (sweet peppers, Europe, 125 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0055, ccx: 0.75, cgc: 0.1036}
+    thermal: {base_c: 7, upper_c: 28, cgc: 0.007941, emergence: "06-01", basis: "Base and upper temperatures from AquaCrop's tomato crop file (assumed for pepper); converted for emergence on June 1 (transplanted late May to early June)"}
     basis: FAO-56 sweet peppers (Europe and Mediterranean, April–June planting)
     confidence: fao56
     sources: [fao56, aquacrop, aquacrop_crop_files]
@@ -206,24 +222,28 @@ crops:
   cucumber:
     season: {days: 95, basis: "FAO-56 Table 11 (arid, June/Aug, 105 days from planting) less about 10 days to emergence"}
     growth: &cucurbits_fast {cc0: 0.0309, ccx: 0.95, cgc: 0.0904}
+    thermal: {base_c: 10, upper_c: 30, cgc: 0.008878, emergence: "06-05", basis: "Base and upper temperatures assumed for warm-season vegetables (50 °F, the usual base for cucurbits and sweet potato; upper as AquaCrop's warm-season crops); converted for emergence on June 5 (seeded or transplanted after frost, late May to mid-June)"}
     basis: FAO-56 cucumber (arid region, June/August planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   summer_squash:
     season: {days: 80, basis: "FAO-56 Table 11 (zucchini, Mediterranean/Europe, 90 days from planting) less about 10 days to emergence"}
     growth: *cucurbits_fast
+    thermal: {base_c: 10, upper_c: 30, cgc: 0.008878, emergence: "06-05", basis: "Base and upper temperatures assumed for warm-season vegetables (50 °F, the usual base for cucurbits and sweet potato; upper as AquaCrop's warm-season crops); converted for emergence on June 5 (seeded or transplanted after frost)"}
     basis: FAO-56 squash and zucchini (Mediterranean and Europe, May/June planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   melon:
     season: {days: 110, basis: "FAO-56 Table 11 (sweet melons, Mediterranean, 120 days from planting) less about 10 days to emergence"}
     growth: &cucurbits_slow {cc0: 0.0248, ccx: 0.95, cgc: 0.0775}
+    thermal: {base_c: 10, upper_c: 30, cgc: 0.00737, emergence: "06-05", basis: "Base and upper temperatures assumed for warm-season vegetables (50 °F, the usual base for cucurbits and sweet potato; upper as AquaCrop's warm-season crops); converted for emergence on June 5 (transplanted after frost)"}
     basis: FAO-56 sweet melons (Mediterranean, May planting)
     confidence: fao56
     sources: [fao56, aquacrop]
   pumpkin:
     season: {days: 110, basis: "FAO-56 Table 11 (pumpkin and winter squash, Europe, 120 days from planting) less about 10 days to emergence"}
     growth: *cucurbits_slow
+    thermal: {base_c: 10, upper_c: 30, cgc: 0.00737, emergence: "06-05", basis: "Base and upper temperatures assumed for warm-season vegetables (50 °F, the usual base for cucurbits and sweet potato; upper as AquaCrop's warm-season crops); converted for emergence on June 5 (seeded late May to mid-June)"}
     basis: FAO-56 pumpkin and winter squash (Europe, June planting)
     confidence: fao56
     sources: [fao56, aquacrop]
@@ -231,6 +251,7 @@ crops:
   winter_squash:
     season: {days: 110, basis: "FAO-56 Table 11 (pumpkin and winter squash, Europe, 120 days from planting) less about 10 days to emergence"}
     growth: *cucurbits_slow
+    thermal: {base_c: 10, upper_c: 30, cgc: 0.00737, emergence: "06-05", basis: "Base and upper temperatures assumed for warm-season vegetables (50 °F, the usual base for cucurbits and sweet potato; upper as AquaCrop's warm-season crops); converted for emergence on June 5 (seeded late May to mid-June)"}
     basis: FAO-56 pumpkin and winter squash (Europe, June planting)
     confidence: fao56
     sources: [fao56, aquacrop]
@@ -238,6 +259,7 @@ crops:
   sweet_potato:
     season: {days: 140, basis: "FAO-56 Table 11 (Mediterranean, April, 150 days from planting) less about 10 days to emergence"}
     growth: {cc0: 0.0164, ccx: 0.95, cgc: 0.0904}
+    thermal: {base_c: 10, upper_c: 30, cgc: 0.008639, emergence: "06-05", basis: "Base and upper temperatures assumed for warm-season vegetables (50 °F, the usual base for cucurbits and sweet potato; upper as AquaCrop's warm-season crops); converted for emergence on June 5 (transplanted after the soil warms)"}
     basis: FAO-56 sweet potato (Mediterranean, April planting)
     confidence: fao56
     sources: [fao56, aquacrop]
@@ -247,6 +269,7 @@ crops:
     season: {days: 102, basis: "AquaCrop maize crop file: flowering 60 days after emergence, then about six weeks to half milk line, when corn is usually cut for silage"}
     growth: *maize_growth
     decline: *maize_decline
+    thermal: {base_c: 8, upper_c: 30, cgc: 0.018577, decline_start: 1216, cdc: 0.01088, emergence: "05-15", basis: "Base and upper temperatures from AquaCrop's maize crop file; converted for emergence on May 15 (as field corn)"}
     basis: AquaCrop maize crop file (calendar days), as field corn
     confidence: matches_wi
     sources: [aquacrop, aquacrop_crop_files, wisp_2026]
@@ -258,6 +281,7 @@ crops:
     season: {days: 109, basis: "AquaCrop crop file: maturity 109 days after emergence (dry bean)"}
     growth: {cc0: 0.0132, ccx: 0.99, cgc: 0.11804}
     decline: {type: aquacrop, start_day: 69, cdc: 0.08612}
+    thermal: {base_c: 9, upper_c: 30, cgc: 0.010583, decline_start: 836, cdc: 0.008465, emergence: "06-05", basis: "Base and upper temperatures from AquaCrop's dry bean crop file; converted for emergence on June 5 (planted late May to early June)"}
     basis: AquaCrop dry bean crop file (calendar days)
     confidence: published
     sources: [aquacrop, aquacrop_crop_files, wisp_2026]
@@ -269,6 +293,7 @@ crops:
     season: {days: 100, basis: "UW oat and barley performance trials (planted mid-April to mid-May, harvested in early to late August): about 100 days from emergence"}
     growth: *small_grains
     decline: {type: aquacrop, start_day: 78, cdc: 0.07697}
+    thermal: {base_c: 0, upper_c: 26, cgc: 0.009274, decline_start: 1289, cdc: 0.003622, emergence: "04-25", basis: "Base and upper temperatures from AquaCrop's wheat crop file (assumed for oats); converted for emergence on April 25 (oats planted mid-April to mid-May (UW trials))"}
     basis: "FAO-56 spring small grains (barley, oats and wheat, 35–45° latitude), stage lengths shortened to Wisconsin oat seasons; decline at AquaCrop barley's rate"
     confidence: fao56
     sources: [fao56, aquacrop, uw_oat_trials]
@@ -280,6 +305,7 @@ crops:
     season: {days: 138, basis: "AquaCrop crop file: maturity 138 days after emergence (sugar beet)"}
     growth: {cc0: 0.001, ccx: 0.98, cgc: 0.13572}
     decline: {type: aquacrop, start_day: 111, cdc: 0.07143}
+    thermal: {base_c: 5, upper_c: 30, cgc: 0.011984, decline_start: 1592, cdc: 0.005243, emergence: "05-05", basis: "Base and upper temperatures from AquaCrop's sugar beet crop file; converted for emergence on May 5 (planted mid to late April)"}
     basis: AquaCrop sugar beet crop file (calendar days)
     confidence: published
     sources: [aquacrop, aquacrop_crop_files]
@@ -290,6 +316,7 @@ crops:
     season: {days: 89, basis: "AquaCrop crop file: maturity 89 days after emergence (grain sorghum)"}
     growth: {cc0: 0.00222, ccx: 0.90, cgc: 0.1815}
     decline: {type: aquacrop, start_day: 78, cdc: 0.117}
+    thermal: {base_c: 8, upper_c: 30, cgc: 0.015644, decline_start: 1009, cdc: 0.00963, emergence: "06-01", basis: "Base and upper temperatures from AquaCrop's sorghum crop file; converted for emergence on June 1 (planted when the soil reaches 60 °F)"}
     basis: AquaCrop grain sorghum crop file (calendar days)
     confidence: published
     sources: [aquacrop, aquacrop_crop_files]
@@ -302,6 +329,7 @@ generic:
   leafy_fast:
     name: Fast, leafy
     growth: {cc0: 0.02, ccx: 0.90, cgc: 0.1319}
+    thermal: {base_c: 4.4, upper_c: 26, cgc: 0.013646, emergence: "05-05", basis: "Base and upper temperatures assumed for cool-season vegetables (40 °F, the base of pea heat units; upper as AquaCrop's potato and wheat); converted for emergence on May 5 (as leafy greens)"}
     season: {days: 60, basis: "Generic: a short leafy crop, after FAO-56 Table 11's lettuce row (75 days from planting)"}
     basis: "Generic shape: 80% cover 35 days after emergence, like lettuce and other leafy greens"
     confidence: generic
@@ -310,6 +338,7 @@ generic:
   vegetable_medium:
     name: Vegetable, medium
     growth: {cc0: 0.015, ccx: 0.90, cgc: 0.0943}
+    thermal: {base_c: 5.5, upper_c: 30, cgc: 0.006864, emergence: "05-25", basis: "Base and upper temperatures from AquaCrop's default crop file; converted for emergence on May 25 (a mid-May to early June planting)"}
     season: {days: 110, basis: "Generic: a mid-length vegetable season, between FAO-56 Table 11's shorter and longer vegetable rows"}
     basis: "Generic shape: 80% cover 52 days (about 7 to 8 weeks) after emergence, like most transplanted or row vegetables"
     confidence: generic
@@ -318,6 +347,7 @@ generic:
   slow_partial:
     name: Slow, partial cover
     growth: {cc0: 0.01, ccx: 0.65, cgc: 0.0666}
+    thermal: {base_c: 5.5, upper_c: 30, cgc: 0.006152, emergence: "05-01", basis: "Base and upper temperatures from AquaCrop's default crop file; converted for emergence on May 1 (onions planted in April)"}
     season: {days: 120, basis: "Generic: FAO-56 Table 11's dry onion (150 days from planting) shortened toward Wisconsin harvests in August and September"}
     basis: "Generic shape: slow growth to a canopy that never closes, 55% cover 70 days after emergence, like onion"
     confidence: generic
@@ -326,6 +356,7 @@ generic:
   perennial_regrowth:
     name: Perennial, regrowth
     growth: {cc0: 0.05, ccx: 0.95, cgc: 0.1362}
+    thermal: {base_c: 5, upper_c: 30, cgc: 0.009784, emergence: "06-01", basis: "Base and upper temperatures from AquaCrop's alfalfa crop file; converted for emergence on June 1 (regrowth between cuttings in early summer)"}
     basis: "Generic shape: regrowth from 5% cover to 80% in 25 days, from spring green-up (the emergence date) or after each cutting, after FAO-56 Table 11's alfalfa cuttings (about 25 days from a cutting to full cover)"
     confidence: generic
     sources: [aquacrop_algorithms, fao56]

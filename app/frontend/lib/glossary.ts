@@ -99,7 +99,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Canopy curve',
     matches: ['canopy curve', 'crop curve'],
     definition:
-      "A crop's typical percent cover (or LAI) by day since emergence. WISP follows it until you enter readings, then adjusts it to pass through them. Each crop's curve and its source are on the About page.",
+      "A crop's typical percent cover (or LAI) as it grows from emergence. Percent cover curves run by growing degree days, so the canopy grows faster in warm weather and slower in cool weather; the LAI curve runs by days. WISP follows the curve until you enter readings, then adjusts it to pass through them. Each crop's curve and its source are on the About page.",
   },
   {
     id: 'deep_drainage',

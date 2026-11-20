@@ -42,6 +42,15 @@
       | { type: 'rule'; date: string; days: number; floor: number }
       | null
     days_to: { 50: number | null; 80: number | null }
+    /** The curve in growing degree days (°C days), which plantings run on (PLAN.md §9 C23) */
+    thermal: {
+      base_c: number
+      upper_c: number
+      cgc: number
+      decline_start: number | null
+      cdc: number | null
+      basis: string
+    } | null
     /** Typical days from emergence to harvest (PLAN.md Phase 8 G.2) */
     season: { days: number; basis: string } | null
     covers: number[]
@@ -84,7 +93,7 @@
   function declineText(decline: CanopyCurve['decline']): string {
     if (!decline) return "Holds its maximum cover until the planting's end date."
     if (decline.type === 'aquacrop') {
-      return `Declines from day ${decline.start_day} after emergence, following AquaCrop's equation (CDC ${decline.cdc} a day).`
+      return `Declines from day ${decline.start_day} after emergence in a typical season, following AquaCrop's equation (CDC ${decline.cdc} a day).`
     }
     const [month, day] = decline.date.split('-').map(Number)
     const date = new Date(2000, month - 1, day).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
@@ -540,8 +549,21 @@
     <h2 id="canopy">Canopy curves</h2>
     <p>
       A crop's water use follows its canopy, so WISP needs the canopy every day of the season. Every crop with a card
-      below has a typical <Term id="canopy_curve">canopy curve</Term>: its percent cover by day since emergence. With no
-      readings WISP follows it from the emergence date.
+      below has a typical <Term id="canopy_curve">canopy curve</Term>: its percent cover as it grows from emergence.
+      With no readings WISP follows it from the emergence date.
+    </p>
+    <p>
+      <strong>The curves run on warmth, not the calendar.</strong> Crops grow faster in warm weather, so WISP counts a curve's
+      time in growing degree days at the field's weather location: the season's weather so far, then the forecast, then normal
+      temperatures (the average of the last 20 years) for the rest of the season. Each curve was converted from days so that,
+      emerging on its typical date in a typical Central Sands season, it matches the curve drawn on its card; in a warm spring
+      the canopy closes sooner, and in a cool one, or after an early April emergence, later. Against four seasons of potato
+      canopy measured at the Central Sands flux towers (emerged April 21 to May 23), it put 80% cover 3 to 11 days early,
+      where counting days ran from 3 days late to 21 days early, three weeks for April emergence. Against Wisconsin growers'
+      2026 readings, mostly from mid to late May emergence, it was a little less close than counting days (5 days off on average,
+      against 3 for the day curves, which were tuned to those readings), so readings still matter. Until WISP has a location's
+      normal temperatures (usually within a day of adding an irrigation system there), its curves run by days. Potato's late-July
+      decline keeps its date, and field corn's LAI curve runs by days.
     </p>
     <p>
       <strong>Your readings adjust the curve, in two steps.</strong> First WISP fits the curve to them: it can run
@@ -572,11 +594,13 @@
     <p>
       <strong>How the curves were made.</strong> Growth follows the canopy cover equations of FAO's AquaCrop model, with
       three numbers per crop: the cover just after emergence (CC₀), the maximum cover (CCx), and a growth rate (CGC).
-      Some crops also decline late in the season. Where FAO's AquaCrop has a crop file, WISP uses its values by calendar
-      day. They matched Wisconsin 2026 readings within a few days for potato, field corn and snap bean, and were
-      adjusted to match for soybean and sweet corn. For other crops the timing comes from the stage lengths in FAO-56.
-      Each card says which source was used and how well it has been checked. The research notes, data screening and
-      scripts are in
+      Some crops also decline late in the season. Where FAO's AquaCrop has a crop file, WISP starts from its values by
+      calendar day. They matched Wisconsin 2026 readings within a few days for potato, field corn and snap bean, and
+      were adjusted to match for soybean and sweet corn. For other crops the timing comes from the stage lengths in
+      FAO-56. Each is then converted to growing degree days (above), with base and upper temperatures from AquaCrop's
+      crop files, or assumed for crops without one: 40 °F for cool-season vegetables, 50 °F for warm-season ones. Each
+      card says which source was used and how well it has been checked. The research notes, data screening and scripts
+      are in
       <a href="https://github.com/uwent/wisp3/tree/main/docs/canopy" target="_blank" rel="noopener"
         >the WISP source code</a
       >.
@@ -587,7 +611,8 @@
         >growth:  CC = CC₀ · e^(CGC·t)                   while CC ≤ CCx/2
          CC = CCx − ¼ · CCx² / CC₀ · e^(−CGC·t)  after, up to CCx
 decline: CC = CCx · [1 − 0.05 · (e^(3.33·CDC·t′ / (CCx + 2.29)) − 1)]
-t: days since emergence; t′: days since the decline starts</code
+t: growing degree days since emergence (°C days, AquaCrop's method; days on the cards)
+t′: growing degree days since the decline starts</code
       ></pre>
     <p>
       <strong>Crops without their own curve</strong> ({withoutCurve.join(', ')}) follow a generic one, a rough shape
@@ -616,7 +641,8 @@ t: days since emergence; t′: days since the decline starts</code
       develops, so WISP doesn't offer it.
     </p>
     <p class="text-sm text-ink-muted">
-      Each curve is drawn for a crop that emerges on May 15, over {curves[0]?.covers.length - 1} days.
+      Each curve is drawn by days for a crop that emerges on May 15 in a typical season, over {curves[0]?.covers
+        .length - 1} days. In the field it runs by growing degree days, as each card says.
     </p>
     <div class="not-prose grid gap-4 sm:grid-cols-2">
       {#each curves as curve (curve.key)}
@@ -643,6 +669,14 @@ t: days since emergence; t′: days since the decline starts</code
             {curve.basis}. Starting cover (CC₀) {pct(curve.growth.cc0)}, maximum cover (CCx) {pct(curve.growth.ccx)},
             growth rate (CGC) {curve.growth.cgc} a day.
           </p>
+          {#if curve.thermal}
+            <p class="text-ink-muted">
+              In growing degree days: base {curve.thermal.base_c} °C, upper {curve.thermal.upper_c} °C, growth rate {curve
+                .thermal.cgc} a degree day{curve.thermal.decline_start
+                ? `, decline from ${curve.thermal.decline_start} degree days (CDC ${curve.thermal.cdc} a degree day)`
+                : ''}. {curve.thermal.basis}.
+            </p>
+          {/if}
           {#if curve.notes}<p class="text-ink-muted">{curve.notes}</p>{/if}
           {#if curve.season}
             <p class="text-ink-muted">

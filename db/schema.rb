@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_20_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -377,6 +377,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
     t.check_constraint "kind::text = ANY (ARRAY['deterministic'::character varying::text, 'ensemble'::character varying::text])", name: "weather_forecasts_kind"
   end
 
+  create_table "weather_normals", force: :cascade do |t|
+    t.bigint "weather_cell_id", null: false
+    t.integer "day_of_year", null: false
+    t.float "tmax_f", null: false
+    t.float "tmin_f", null: false
+    t.integer "first_year", null: false
+    t.integer "last_year", null: false
+    t.string "model", null: false
+    t.datetime "fetched_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["weather_cell_id", "day_of_year"], name: "index_weather_normals_on_weather_cell_id_and_day_of_year", unique: true
+  end
+
   add_foreign_key "activity_days", "users", on_delete: :cascade
   add_foreign_key "canopy_cuttings", "plantings", on_delete: :cascade
   add_foreign_key "canopy_observations", "plantings"
@@ -402,4 +416,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
   add_foreign_key "plantings", "weather_cells", on_delete: :nullify
   add_foreign_key "weather_days", "weather_cells"
   add_foreign_key "weather_forecasts", "weather_cells"
+  add_foreign_key "weather_normals", "weather_cells"
 end

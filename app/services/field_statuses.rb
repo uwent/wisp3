@@ -21,12 +21,14 @@ class FieldStatuses
     cell_ids = current.map(&:weather_cell_id).uniq
     weather = WeatherDay.balance_inputs_by_cell(cell_ids, dates)
     ensembles = as_of ? {} : WeatherForecast.ensemble.latest_by_cell(cell_ids).transform_values(&:members)
+    # Temperatures for canopy curves in degree days (C23), over each curve's own dates
+    temperatures = CellTemperatures.for_plantings(current)
 
     fields.to_h do |field|
       [field.id, plantings[field.id].map do |planting|
         cell_id = planting.weather_cell_id
         status(planting, today:, as_of:, records: records[field.id], weather: weather.fetch(cell_id, {}),
-          ensemble: ensembles.fetch(cell_id, []))
+          ensemble: ensembles.fetch(cell_id, []), temperatures: temperatures[cell_id])
       end]
     end
   end
@@ -34,11 +36,11 @@ class FieldStatuses
   # A planting's status today; as of the example farm's day (as_of) through time travel's view of it
   # (PlantingStatus as_of: what followed in place of a forecast) when its season covers the day, as
   # it then stood (upcoming or ended) otherwise
-  def self.status(planting, today:, as_of: nil, records: nil, weather: nil, ensemble: :load)
+  def self.status(planting, today:, as_of: nil, records: nil, weather: nil, ensemble: :load, temperatures: nil)
     if as_of && planting.season_range.cover?(as_of)
-      PlantingStatus.new(planting, as_of:, weather:)
+      PlantingStatus.new(planting, as_of:, weather:, temperatures:)
     else
-      PlantingStatus.new(planting, today:, records:, weather:, ensemble: as_of ? [] : ensemble)
+      PlantingStatus.new(planting, today:, records:, weather:, ensemble: as_of ? [] : ensemble, temperatures:)
     end
   end
 

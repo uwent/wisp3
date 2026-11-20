@@ -72,9 +72,10 @@ class FieldsController < AuthenticatedController
     dates = plantings.map(&:season_start).min..[plantings.map(&:end_date).max, today + PlantingStatus::HORIZON].min
     records = DailyInputs.preload([field], dates).fetch(field.id)
     weather = WeatherDay.balance_inputs_by_cell(plantings.map(&:weather_cell_id).uniq, dates)
+    temperatures = CellTemperatures.for_plantings(plantings)
     plantings.map do |planting|
       status = FieldStatuses.status(planting, today:, as_of: Current.as_of, records:,
-        weather: weather.fetch(planting.weather_cell_id, {}))
+        weather: weather.fetch(planting.weather_cell_id, {}), temperatures: temperatures[planting.weather_cell_id])
       PlantingSummarySerializer.new(status).to_h
     end
   end

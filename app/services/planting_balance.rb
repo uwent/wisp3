@@ -3,16 +3,19 @@
 # days for the planting's weather cell (its pivot's, kept for the season, G.9); pass weather: {date => {et0:, precip:}} to override, and
 # records: (DailyInputs.preload) to skip querying the field's entries. today: where the projection
 # starts (DailyInputs). canopy_through: leaves out canopy readings after that date (Canopy.for).
+# temperatures: the cell's CellTemperatures for a canopy curve in degree days (Canopy.for; loaded
+# if needed and not given).
 class PlantingBalance
   Day = Data.define(:inputs, :canopy, :result)
 
-  def initialize(planting, weather: nil, records: nil, today: Current.today, canopy_through: nil)
+  def initialize(planting, weather: nil, records: nil, today: Current.today, canopy_through: nil, temperatures: nil)
     @planting, @weather, @records, @today, @canopy_through = planting, weather, records, today, canopy_through
+    @temperatures = temperatures
   end
 
   def params = @params ||= WaterBalance::Params.for(@planting)
 
-  def canopy = @canopy ||= Canopy.for(@planting, through: @canopy_through)
+  def canopy = @canopy ||= Canopy.for(@planting, through: @canopy_through, temperatures: @temperatures)
 
   # One Day per date from season start through `through` (default: end_date)
   def days(through: @planting.end_date)

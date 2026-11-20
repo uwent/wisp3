@@ -109,9 +109,11 @@ class SeasonReportCsv
         dates = plantings.map(&:season_start).min..[plantings.map(&:end_date).max, @today].min
         records = DailyInputs.preload(fields, dates)
         weather = WeatherDay.balance_inputs_by_cell(plantings.map(&:weather_cell_id).uniq, dates)
+        temperatures = CellTemperatures.for_plantings(plantings)
         plantings.map do |planting|
           PlantingStatus.new(planting, today: @today, records: records[planting.field_id],
-            weather: weather.fetch(planting.weather_cell_id, {}), ensemble: [])
+            weather: weather.fetch(planting.weather_cell_id, {}), ensemble: [],
+            temperatures: temperatures[planting.weather_cell_id])
         end
       end
     end

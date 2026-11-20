@@ -26,17 +26,18 @@ class PlantingStatus
 
   attr_reader :planting, :today, :as_of
 
-  # weather: and records: are passed to PlantingBalance (pages showing many plantings preload them).
+  # weather:, records: and temperatures: are passed to PlantingBalance (pages showing many plantings
+  # preload them).
   # ensemble: the cell's ensemble members (WeatherForecast#members); loaded if not given. as_of:
   # time travel (above); it sets today and builds its own records, cut at the date.
-  def initialize(planting, today: Current.today, weather: nil, records: nil, ensemble: :load, as_of: nil)
+  def initialize(planting, today: Current.today, weather: nil, records: nil, ensemble: :load, as_of: nil, temperatures: nil)
     if as_of
       today, ensemble = as_of, nil
       through = [as_of + HORIZON, planting.end_date].min
       records = DailyInputs.preload([planting.field], planting.season_start..through).fetch(planting.field.id)
     end
     @planting, @today, @ensemble_members, @as_of = planting, today, ensemble, as_of
-    @balance = PlantingBalance.new(planting, weather:, records:, today:, canopy_through: as_of)
+    @balance = PlantingBalance.new(planting, weather:, records:, today:, canopy_through: as_of, temperatures:)
   end
 
   # Where the projection's weather comes from: the forecast, or (time travelling) what followed

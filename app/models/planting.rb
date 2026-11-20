@@ -156,6 +156,10 @@ class Planting < ApplicationRecord
   # Whether the crop takes a vine kill date (potato; canopy_curves.yml)
   def vine_kill_crop? = plant.present? && CanopyCurve.for(plant.key)&.vine_kill? || false
 
+  # Whether its canopy curve can run in degree days (PLAN.md §9 C23): a percent cover curve with
+  # thermal parameters (Canopy.for; at a cell without normals yet it still runs by calendar days)
+  def thermal_curve? = et_method != "lai" && cover_curve&.thermal.present?
+
   # Whether the crop has a canopy curve for this planting's method (CanopyCurve, or CanopyModel for LAI)
   def canopy_curve? = (et_method == "lai") ? plant.canopy_model.present? : cover_curve.present?
 
