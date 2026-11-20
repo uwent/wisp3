@@ -185,7 +185,9 @@
         style:height="{bar.height}px"
         aria-hidden="true"
       ></span>
-      <ul class="space-y-0.5">
+      <!-- pb-1: the bar on the last entry ends at the list's edge, and a fraction of a pixel over it gave the
+           outline a scrollbar at the foot of the page -->
+      <ul class="space-y-0.5 pb-1">
         {#each sections as section (section.id)}
           <li>
             <a
