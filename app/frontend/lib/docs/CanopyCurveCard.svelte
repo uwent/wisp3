@@ -85,11 +85,12 @@
   {@render takeaway()}
   <button
     type="button"
-    class="mt-auto self-end text-xs text-ink-muted hover:text-ink hover:underline"
+    class="mt-auto self-start text-xs text-ink-muted hover:text-ink hover:underline"
     aria-haspopup="dialog"
     aria-label="{curve.name}: details and sources"
-    onclick={() => (open = true)}>Details and sources</button
-  >
+    onclick={() => (open = true)}
+    >Details and sources »
+  </button>
 </section>
 
 <Dialog bind:open title="{curve.name} canopy curve" description={curve.confidence_label} wide>
