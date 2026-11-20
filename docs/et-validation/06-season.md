@@ -207,16 +207,16 @@ The two changes needed each other. With the old table, timing the canopy right m
 
 ## On FAO-56's second edition (C24 and C25)
 
-2026-11-19. WISP 3 moved to FAO-56 Rev.1 (Pereira, Allen et al. 2025, https://doi.org/10.4060/cd6621en): its hourly reference ET (C24: surface resistance 50 s/m by day and 200 s/m at night in place of 70 s/m every hour, which raises the towers' May–August ET0 by 4–6%), its crop coefficients (C25: potato's long-season row, Kcb 1.05 mid and 0.30 at harvest, in place of the 1998 edition's 1.10 and 0.65) and potato's canopy upper temperature (30 °C, in place of AquaCrop's 26 °C; timing within a day). The tables above were made before; `season.rb` on both, 402 days:
+2026-11-19. WISP 3 moved to FAO-56 Rev.1 (Pereira, Allen et al. 2025, https://doi.org/10.4060/cd6621en): its hourly reference ET (C24: surface resistance 50 s/m by day and 200 s/m at night in place of 70 s/m every hour, which raises the towers' May–August ET0 by 4–6%), its crop coefficients (C25) and potato's canopy upper temperature (30 °C, in place of AquaCrop's 26 °C; timing within a day). For potato Rev.1 has a long-season row (Kcb 1.05 mid, 0.30 at harvest) and a short-season one (1.05, 0.50), where the 1998 edition had one (1.10, 0.65). Ben chose the short-season row: the towers can't tell the two apart in development or at full cover, but long season's put August 7–18% below them (August 1–15 0.87 against 0.93, August 16–31 0.67 against 0.82, before vine kill), while the vines are still green and irrigated. The tables above were made before; `season.rb` with both changes and the short-season row, 402 days:
 
-| Phase | Corrected ET / ET0 | C22 sand, measured cover | C22 sand, curve | C22 sand, curve in degree days | C22 loamy sand, curve in degree days | Before (1998), C22 sand, curve in degree days |
-|---|---|---|---|---|---|---|
-| Development | 0.83 | 0.93 (+12%) | 0.98 (+17%) | 0.93 (+12%) | 0.97 (+17%) | +10% |
-| Full cover | 1.00 | 0.96 (−3%) | 0.97 (−3%) | 0.97 (−3%) | 0.98 (−2%) | −1% |
-| Decline | 0.82 | 0.73 (−11%) | 0.77 (−6%) | 0.77 (−6%) | 0.77 (−6%) | +2% |
-| Vine kill to harvest | 0.51 | 0.58 (+15%) | 0.54 (+7%) | 0.54 (+7%) | 0.59 (+17%) | +11% |
-| **Season** | 0.84 | 0.86 (+3%) | 0.87 (+4%) | 0.86 (+2%) | 0.89 (+6%) | +4% |
+| Phase | Corrected ET / ET0 | C22 sand, measured cover | C22 sand, curve | C22 sand, curve in degree days | C22 loamy sand, curve in degree days | Before (1998), C22 sand, curve in degree days | Long-season row, C22 sand, curve in degree days |
+|---|---|---|---|---|---|---|---|
+| Development | 0.83 | 0.93 (+12%) | 0.98 (+17%) | 0.93 (+12%) | 0.97 (+17%) | +10% | +12% |
+| Full cover | 1.00 | 0.98 (−2%) | 0.98 (−2%) | 0.98 (−2%) | 0.99 (−1%) | −1% | −3% |
+| Decline | 0.82 | 0.76 (−7%) | 0.81 (−1%) | 0.81 (−1%) | 0.81 (−1%) | +2% | −6% |
+| Vine kill to harvest | 0.51 | 0.63 (+23%) | 0.56 (+10%) | 0.56 (+10%) | 0.61 (+20%) | +11% | +7% |
+| **Season** | 0.84 | 0.88 (+5%) | 0.88 (+5%) | 0.87 (+4%) | 0.90 (+7%) | +4% | +2% |
 
 Corrected ET / ET0 is lower than in the tables above (0.84 for the season, 1.00 at full cover) because Rev.1's reference ET is higher; the towers' ET is the same.
 
-Through the summer (the curve, sand): July 1–15 1.01 against the towers' 1.04, July 16–31 1.00 against 1.00, August 1–15 0.87 against 0.93, August 16–31 0.67 against 0.82 (before vine kill). So Rev.1's lower Kcb end for long-season potato (0.30 at harvest) brings August below the towers, where the 1998 value (0.65) matched them (point 4 of the C22 section). Rev.1's short-season row (Kcb end 0.50) gives August 0.91 and 0.72, the decline −1%, full cover −2%, vine kill to harvest +10% and the season +4%, with the canopy in degree days on sand: closer through August, slightly higher over the season.
+Through the summer (the curve, sand): July 1–15 1.01 against the towers' 1.04, July 16–31 1.01 against 1.00, August 1–15 0.91 against 0.93, August 16–31 0.72 against 0.82 (before vine kill). Late August is still low, as it was with the 1998 coefficients (0.79 against 0.86).

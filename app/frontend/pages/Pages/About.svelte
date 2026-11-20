@@ -757,14 +757,15 @@ t′: days since the decline starts</code
       The corrections were fitted in Wisconsin. Irrigation systems elsewhere get them too until they're checked against
       stations in other states.
     </p>
-    <h3 id="et-validation">Checked against measured water use</h3>
+    <h3 id="et-validation">Field validation with eddy covariance towers</h3>
     <p>
       Reference ET and crop coefficients are estimates, so we checked WISP's crop water use against measurements. From
       2018 to 2023, UW–Madison researchers (Ammara Talib, Ankur Desai and colleagues), funded in part by the Wisconsin
       Potato and Vegetable Growers Association, ran flux towers in center-pivot irrigated potato fields in the Central
-      Sands, one each season. A flux tower measures the water vapor rising from a field, so it measures the crop's water
-      use directly. Their study found that the ET WISP used until WISP 3, from AgWeather, ran 20–35% above what the
-      towers measured, and traced the error to how it estimated the heat a field loses to the sky.
+      Sands, one each season. A flux tower (an eddy covariance tower) measures the water vapor rising from a field, so
+      it measures the crop's water use directly. Their study found that the ET WISP used until WISP 3, from AgWeather,
+      ran 20–35% above what the towers measured, and traced the error to how it estimated the heat a field loses to the
+      sky.
     </p>
     <p>
       We ran WISP 3's method over the same six potato seasons. At full canopy, worked out from the towers' own weather
@@ -782,8 +783,8 @@ t′: days since the decline starts</code
       that WISP's earlier method missed the water evaporating from wet soil while the canopy was small and after vine
       kill, and kept the crop's full water use into August. WISP now counts that evaporation and eases the crop's water
       use toward harvest, as described under <a href="#crops">Crops</a>: against the towers it's within 3% at full
-      canopy and 2% over the season, somewhat high while the canopy is small and after vine kill, and somewhat low in
-      August.
+      canopy and 4% over the season, somewhat high while the canopy is small and after vine kill, and somewhat low in
+      late August.
     </p>
 
     <h2 id="glossary">Glossary</h2>
@@ -855,7 +856,7 @@ t′: days since the decline starts</code
       <li>
         <strong>Crop water use</strong> from each crop's FAO-56 crop coefficient and a typical canopy curve, which your
         cover readings correct (see <a href="#crops">Crops</a>), checked against flux towers in Central Sands potato
-        fields (see <a href="#et-validation">Checked against measured water use</a>).
+        fields (see <a href="#et-validation">Field validation with eddy covariance towers</a>).
       </li>
       <li>
         <strong>Plantings on part of a field,</strong> side by side, each with its own balance and page, and a page that can
@@ -951,7 +952,7 @@ t′: days since the decline starts</code
           >Agricultural and Forest Meteorology 350</a
         >; the data are on <a href="https://ameriflux.lbl.gov/" target="_blank" rel="noopener">AmeriFlux</a> (CC BY
         4.0). WISP 3's crop water use is checked against them (<a href="#et-validation"
-          >Checked against measured water use</a
+          >Field validation with eddy covariance towers</a
         >).
       </li>
       <li>

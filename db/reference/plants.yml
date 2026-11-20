@@ -28,15 +28,15 @@
 # crops, pp. 220–221), the same row as kc_mid. The water balance adds soil evaporation to it
 # (SoilEvaporation) and ramps kcb_mid to kcb_end from the canopy curve's decline to the end date.
 #
-# Rows: potato long season (Central Sands russets run long, and the towers can't tell the two apart;
-# short season is Kc 1.10 / Kcb 1.05 / 0.50 at harvest); common bean green (snap bean) and dry (dry
+# Rows: potato short season (Ben, 2026-11-19: against the Central Sands towers it matches August,
+# while vines are green and irrigated, far better than long season's Kcb 0.30 at harvest, which put
+# August 7–18% low; docs/et-validation/06-season.md); common bean green (snap bean) and dry (dry
 # bean); pea fresh (shell peas); onions dry; common cabbage; table beets (beets); bell pepper
 # (pepper); peppermint, single harvest (mint: Upper Midwest peppermint is mostly cut once; multiple
 # harvests is Kcb 0.90 / 0.85); tomato fresh market, without trellis (processing is 0.75 at harvest);
 # melon; pumpkin, winter squash (pumpkin and winter squash); zucchini, squash (summer squash);
-# cucumber fresh market; maize grain, high grain moisture at harvest (field corn, and corn silage
-# with it; low moisture is 0.25 at harvest, and Rev.1's silage row Kc 1.15 / Kcb 1.10 / 0.80,
-# 2.50–3.20 m);
+# cucumber fresh market; maize grain, high grain moisture at harvest (field corn; low moisture is
+# 0.25 at harvest); maize silage (corn silage, Ben 2026-11-19; 2.50–3.20 m);
 # maize sweet (sweet corn); sorghum grain; wheat common, spring, low grain moisture at harvest (wheat:
 # Wisconsin's wheat is combined dry, and winter wheat's low moisture row has the same Kc mid and Kcb,
 # 1.15 and 1.10 / 0.20; high moisture is 0.40 at harvest); sugar beet; barley; oats; soybean;
@@ -59,7 +59,7 @@
 # cabbage, carrots, cauliflower, celery, lettuce, onions dry, radish, spinach): Kc 1.05, Kcb 1.00 /
 # 0.95, 0.40 m.
 #
-# Potato's kcb_end (0.30) acts only from the late stage's start (its July 25 decline) to vine kill,
+# Potato's kcb_end (0.50) acts only from the late stage's start (its July 25 decline) to vine kill,
 # as the slope of the ramp to harvest: WISP models vine kill in the canopy (it ramps to 0% cover), so
 # Kcb is 0 after it whatever Kcb end is, and the soil's evaporation is what's left. The 1998
 # edition's 0.65 (Table 17's main value; its note gave about 0.35 for long-season potato with vine
@@ -71,7 +71,7 @@
   kc_mid: 1.10
   crop_height_m: 0.6
   kcb_mid: 1.05
-  kcb_end: 0.30
+  kcb_end: 0.50
 - key: sweet_corn
   name: Sweet Corn
   default_max_root_zone_depth: 27.0
@@ -273,10 +273,10 @@
   name: Corn silage
   default_max_root_zone_depth: 33.0
   canopy_model: field_corn
-  kc_mid: 1.20
-  crop_height_m: 3.0
-  kcb_mid: 1.15
-  kcb_end: 0.55
+  kc_mid: 1.15
+  crop_height_m: 2.85
+  kcb_mid: 1.10
+  kcb_end: 0.80
 - key: oats
   name: Oats
   default_max_root_zone_depth: 33.0
