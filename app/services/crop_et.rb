@@ -5,8 +5,8 @@
 # times FAO-56 grass reference ET, so its "full cover = reference ET" meant a crop coefficient near
 # FAO-56's mid-season values. Against WISP's corrected FAO-56 ET0 (D12) the table is scaled by a factor
 # rising with cover, from 1 on bare soil to the crop's Kc mid at 80% cover and above, and the LAI
-# formula tops out at the crop's Kc mid in place of 1.1. Kc mid is FAO-56 Table 12's
-# (db/reference/plants.yml), adjusted for the day's wind and humidity (eq. 62, kc_mid). kc: nil keeps
+# formula tops out at the crop's Kc mid in place of 1.1. Kc mid is FAO-56 Rev.1's
+# (C25; db/reference/plants.yml), adjusted for the day's wind and humidity (eq. 62, kc_mid). kc: nil keeps
 # the table as it was (legacy).
 #
 # C22 (PLAN.md §9): for a planting with a crop, FAO-56's dual crop coefficient (chapter 7) replaces
@@ -69,7 +69,7 @@ module CropEt
     end
   end
 
-  # FAO-56 eq. 62 (eq. 70 for Kcb, eq. 72 for Kc max's 1.2: the same adjustment): Table 12's Kc mid for a day's wind (mean at 10 m, mph, as stored) and minimum
+  # FAO-56 eq. 62 (eq. 70 for Kcb, eq. 72 for Kc max's 1.2: the same adjustment): the table's Kc mid for a day's wind (mean at 10 m, mph, as stored) and minimum
   # relative humidity (%), each clamped to the equation's range; a missing one counts as the table's
   # standard (2 m/s, 45%). Not applied below 0.1 m, where a crop behaves like the grass reference.
   def kc_mid(kc, height_m, wind_mph: nil, rh_min_pct: nil)

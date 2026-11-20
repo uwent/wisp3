@@ -20,9 +20,10 @@
 # (Weather::DegreeDays.aquacrop; AquaCrop-OSPy's GDDmethod 3): the day's max held between base_c and
 # upper_c, its min only below upper_c, their mean less base_c, at least 0. cgc is per °C day; an
 # aquacrop decline starts at decline_start °C days with cdc per °C day; a rule keeps its calendar date.
-# base_c and upper_c come from AquaCrop's crop file for the crop (aquacrop_crop_files), or are assumed
-# where it has none: 4.4 °C (40 °F) and 26 °C for cool-season vegetables, 10 °C (50 °F) and 30 °C for
-# warm-season ones, AquaCrop's default file (5.5 °C, 30 °C) for the generic vegetable curves. cgc,
+# base_c and upper_c come from AquaCrop's crop file for the crop (aquacrop_crop_files), except
+# potato's, which are FAO-56 Rev.1 Table 6.10's (2 °C and 30 °C, PLAN.md §9 C25; AquaCrop's upper is
+# 26 °C), or are assumed where it has none: 4.4 °C (40 °F) and 26 °C for cool-season vegetables,
+# 10 °C (50 °F) and 30 °C for warm-season ones, AquaCrop's default file (5.5 °C, 30 °C) for the generic vegetable curves. cgc,
 # decline_start and cdc are converted from the calendar curve, not taken from AquaCrop's GDD files
 # (which run 5–10 days off in Wisconsin, docs/canopy/02): fitted so that, emerging on the typical
 # date given (emergence), the curve matches the calendar one in each of the 20 years 2006–2025 at
@@ -75,6 +76,9 @@ sources:
   fao56:
     citation: "Allen, R. G., Pereira, L. S., Raes, D. & Smith, M. (1998). Crop evapotranspiration: Guidelines for computing crop water requirements. FAO Irrigation and Drainage Paper 56, Table 11 (lengths of crop development stages)."
     url: https://www.fao.org/4/x0490e/x0490e0b.htm
+  fao56_rev1:
+    citation: "Pereira, L. S., Allen, R. G., Paredes, P., López-Urrea, R., Raes, D., Smith, M., Kilic, A. & Salman, M. (2025). Crop evapotranspiration: Guidelines for computing crop water requirements, second edition. FAO Irrigation and Drainage Paper 56 Rev.1, Table 6.10 (base and upper temperatures for growing degree days)."
+    url: https://doi.org/10.4060/cd6621en
   uw_oat_trials:
     citation: "University of Wisconsin–Madison Cereal Variety Trials (2023 and 2025). Oats and Barley Wisconsin Performance Tests: planting and harvest dates by location."
     url: https://cerealvarietytrials.labs.wisc.edu/
@@ -90,11 +94,11 @@ crops:
     season: {days: 105, basis: "AquaCrop crop file: maturity 105 days after emergence"}
     growth: {cc0: 0.006, ccx: 0.92, cgc: 0.18896}
     decline: {type: rule, date: "07-25", days: 42, floor: 50}
-    thermal: {base_c: 2, upper_c: 26, cgc: 0.013363, emergence: "05-15", basis: "Base and upper temperatures from AquaCrop's potato crop file; converted for emergence on May 15 (Central Sands plantings from mid-April to mid-May; 2026 readings' median May 19)"}
+    thermal: {base_c: 2, upper_c: 30, cgc: 0.013179, emergence: "05-15", basis: "Base and upper temperatures from FAO-56 Rev.1 Table 6.10 (the same base as AquaCrop's potato crop file, whose upper is 26 °C); converted for emergence on May 15 (Central Sands plantings from mid-April to mid-May; 2026 readings' median May 19)"}
     vine_kill: true
     basis: AquaCrop potato crop file (calendar days)
     confidence: matches_wi
-    sources: [aquacrop, aquacrop_crop_files, wisp_2026, era5]
+    sources: [aquacrop, aquacrop_crop_files, wisp_2026, era5, fao56_rev1]
     notes: >-
       Reaches 50% cover about 24 days after emergence and 80% about 31 days after (in Wisconsin
       growers' 2026 readings: 22 and 32 days). The decline follows a Central Wisconsin management rule

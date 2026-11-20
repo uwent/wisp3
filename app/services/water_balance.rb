@@ -19,7 +19,7 @@ module WaterBalance
   GAP_FILL_TOP = 3
   PRECISION = 4
 
-  # A planting's crop (C22): FAO-56 Table 17's basal coefficients at mid season and harvest
+  # A planting's crop (C22): FAO-56 Rev.1's basal coefficients (C25) at mid season and harvest
   # (plants.yml), its height in meters, and its season: the late stage's start (the day before its
   # canopy curve declines, Planting#late_stage_start; nil holds mid season's to the end) and its end.
   Crop = Data.define(:kcb_mid, :kcb_end, :height_m, :late_start, :end_date) do

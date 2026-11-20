@@ -79,7 +79,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Crop coefficient (Kc)',
     matches: ['crop coefficient', 'Kc'],
     definition:
-      "The fraction of reference ET the field uses, in two parts (FAO-56's dual crop coefficient). The crop's own share rises with the canopy to its full-cover value from FAO-56 (1.10 for potato, 1.15 for field corn), adjusted for the day's wind and humidity, and eases toward its harvest value late in the season. The soil's share is evaporation from the wet surface between the plants: high just after rain or irrigation, falling as the surface dries, and small under a closed canopy. WISP calculates it from percent cover or LAI.",
+      "The fraction of reference ET the field uses, in two parts (FAO-56's dual crop coefficient). The crop's own share rises with the canopy to its full-cover value from FAO-56 (1.05 for potato, 1.15 for field corn), adjusted for the day's wind and humidity, and eases toward its harvest value late in the season. The soil's share is evaporation from the wet surface between the plants: high just after rain or irrigation, falling as the surface dries, and small under a closed canopy. WISP calculates it from percent cover or LAI.",
   },
   {
     id: 'percent_cover',
@@ -107,7 +107,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'FAO-56',
     matches: ['FAO-56'],
     definition:
-      "The UN Food and Agriculture Organization's Irrigation and Drainage Paper 56, Crop Evapotranspiration (Allen, Pereira, Raes and Smith, 1998), the standard guide to estimating crop water use worldwide. WISP takes its reference ET equation, crop coefficients and soil evaporation from it. See Sources on the About page.",
+      "The UN Food and Agriculture Organization's Irrigation and Drainage Paper 56, Crop Evapotranspiration, the standard guide to estimating crop water use worldwide (first edition 1998, Allen, Pereira, Raes and Smith; second edition 2025, Pereira, Allen and colleagues). WISP takes its crop coefficients and soil evaporation from the 2025 edition, and its reference ET equation from the 1998 one. See Sources on the About page.",
   },
   {
     id: 'aquacrop',

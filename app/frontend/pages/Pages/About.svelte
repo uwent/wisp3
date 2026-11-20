@@ -23,7 +23,7 @@
     key: string
     name: string
     root_zone_in: number
-    /** FAO-56 Table 17's basal crop coefficient at full cover, mid season and at harvest (C22) */
+    /** FAO-56 Rev.1's basal crop coefficient at full cover, mid season and at harvest (C22, C25) */
     kcb_mid: number
     kcb_end: number
     lai_curve: boolean
@@ -597,14 +597,15 @@
     <h3 id="crop-coefficients">Crop coefficients</h3>
     <p>
       WISP follows FAO-56's dual crop coefficient, which counts the crop's own water use and the soil's evaporation
-      separately. The crop's share rises with its canopy to its value at full cover (FAO-56 Table 17, in the table
-      above): about 10% more than the reference grass for potato, soybean or sweet corn, 15% for field corn, less for
-      many vegetables. It's adjusted each day for the wind and humidity, as FAO-56 does (a dry, windy day raises a tall
-      crop's water use more than a short one's), and from the time the canopy starts to decline (late July for potato)
-      it eases toward the crop's value at harvest. The soil's share comes from the wet surface between the plants: after
-      rain or irrigation, bare wet soil evaporates about as much as a full crop, and less as the surface dries over the
-      next few days, more slowly on finer soils. Drip wets only part of the surface, so less evaporates. The canopy
-      shades the soil as it fills in, so evaporation matters most while the crop is small and after vine kill.
+      separately. The crop's share rises with its canopy to its value at full cover (from FAO-56's 2025 edition, in the
+      table above): about 5% more than the reference grass for potato or soybean, 10% for sweet corn, 15% for field
+      corn, and about the same or less for most vegetables. It's adjusted each day for the wind and humidity, as FAO-56
+      does (a dry, windy day raises a tall crop's water use more than a short one's), and from the time the canopy
+      starts to decline (late July for potato) it eases toward the crop's value at harvest. The soil's share comes from
+      the wet surface between the plants: after rain or irrigation, bare wet soil evaporates about as much as a full
+      crop, and less as the surface dries over the next few days, more slowly on finer soils. Drip wets only part of the
+      surface, so less evaporates. The canopy shades the soil as it fills in, so evaporation matters most while the crop
+      is small and after vine kill.
     </p>
     <h3 id="season-length">Season length</h3>
     <p>
@@ -908,17 +909,20 @@ t′: days since the decline starts</code
     <h3 id="sources-methods">Research behind the model</h3>
     <ul>
       <li>
-        <strong><Term id="fao56">FAO-56</Term></strong>: Allen, R. G., Pereira, L. S., Raes, D. and Smith, M. (1998),
+        <strong><Term id="fao56">FAO-56</Term></strong>: Pereira, L. S., Allen, R. G., Paredes, P., López-Urrea, R.,
+        Raes, D., Smith, M., Kilic, A. and Salman, M. (2025),
+        <a href="https://doi.org/10.4060/cd6621en" target="_blank" rel="noopener"
+          ><cite>Crop evapotranspiration: Guidelines for computing crop water requirements</cite></a
+        >, second edition, FAO Irrigation and Drainage Paper 56 Rev.1. The UN Food and Agriculture Organization's
+        standard guide to crop water use. WISP takes from it each crop's coefficients (Tables 6.1–6.4, 7.1 and 7.2),
+        their adjustment for wind and humidity, and the soil evaporation model.
+      </li>
+      <li>
+        The hourly Penman-Monteith equation for <Term id="reference_et">reference ET</Term> is from the first edition: Allen,
+        R. G., Pereira, L. S., Raes, D. and Smith, M. (1998),
         <a href="https://www.fao.org/4/x0490e/x0490e00.htm" target="_blank" rel="noopener"
           ><cite>Crop evapotranspiration: Guidelines for computing crop water requirements</cite></a
-        >, FAO Irrigation and Drainage Paper 56. The UN Food and Agriculture Organization's standard guide to crop water
-        use. WISP takes from it the Penman-Monteith equation for <Term id="reference_et">reference ET</Term>, each
-        crop's coefficients (Tables 12 and 17), their adjustment for wind and humidity, and the soil evaporation model.
-        FAO published a second edition in 2025 (<a
-          href="https://doi.org/10.4060/cd6621en"
-          target="_blank"
-          rel="noopener">FAO-56 Rev.1</a
-        >, Pereira, Allen and colleagues), with updated crop coefficients; WISP still uses the 1998 edition's.
+        >, FAO Irrigation and Drainage Paper 56.
       </li>
       <li>
         <strong><Term id="aquacrop">AquaCrop</Term></strong>: Steduto, P., Hsiao, T. C., Raes, D. and Fereres, E.
