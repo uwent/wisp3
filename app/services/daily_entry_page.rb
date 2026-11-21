@@ -6,6 +6,13 @@
 # it ran on, G.14 part 7), which for today is its own. Loads everything up front, with no query per
 # field.
 class DailyEntryPage
+  # The day daily entry opens on, and the day its week view ends on, without a date: rain gauges
+  # are read in the morning, and the reading is mostly yesterday's rain, so before noon (Central,
+  # config.time_zone) yesterday, from noon on today
+  def self.default_date
+    (Time.current.hour < 12) ? Current.today - 1 : Current.today
+  end
+
   def initialize(group, date)
     @group, @date = group, date
   end

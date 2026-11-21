@@ -67,6 +67,8 @@ Rails.application.routes.draw do
   end
   resources :pivot_groups, only: [:create, :update, :destroy]
   resource :daily_entry, only: [:show, :update], path: "daily"
+  # Its week view (Phase 9 §6): rain and irrigation for the seven days ending on ?date=
+  resource :daily_entry_week, only: [:show, :update], path: "daily/week"
   # Every pivot on a map with its fields' status, and optional weather and drought layers
   resource :map, only: :show, controller: "map"
   # Weather by zone (G.12): the operation's zones with the week ahead, a zone's season of weather

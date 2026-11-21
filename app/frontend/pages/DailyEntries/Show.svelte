@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { untrack } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import { Form, Link, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
+  import DailyViewSwitch, { DAILY_VIEW_KEY } from '@/lib/components/DailyViewSwitch.svelte'
   import IrrigationAmount from '@/lib/components/IrrigationAmount.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import {
@@ -30,7 +31,13 @@
   import { count } from '@/lib/text'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { currentUnits } from '@/lib/units'
-  import { dailyEntries, fields as fieldRoutes, newQuickSetup, plantings as plantingRoutes } from '@/routes'
+  import {
+    dailyEntries,
+    dailyEntryWeeks,
+    fields as fieldRoutes,
+    newQuickSetup,
+    plantings as plantingRoutes,
+  } from '@/routes'
 
   let { date, farms }: { date: string; farms: DayFarm[] } = $props()
 
@@ -38,6 +45,15 @@
   /** A system in a placeholder: "pivot", "traveler", "drip" */
   const short = (pivot: DayPivot) => KIND_NAMES[pivot.kind].toLowerCase()
   const today = todayDate()
+
+  // Day | Week (Phase 9 §6): the Day switch (view=day) remembers the day view; daily entry reached
+  // with no date or view (the nav's link) goes on to the week when that was the last chosen
+  onMount(() => {
+    const query = new URLSearchParams(location.search)
+    if (query.get('view') === 'day') writeStored(DAILY_VIEW_KEY, 'day')
+    else if (!query.has('date') && readStored(DAILY_VIEW_KEY) === 'week')
+      router.visit(dailyEntryWeeks.show().url, { replace: true })
+  })
 
   // Typed values not yet saved: set by any input, cleared by a successful save
   let dirty = $state(false)
@@ -437,25 +453,29 @@
       Rain, irrigation, soil moisture and percent cover for all your fields on one day.
     </p>
   </div>
-  <div class="flex items-center gap-1">
-    <Button variant="secondary" class="px-3" onclick={() => go(addDays(date, -1))} aria-label="Previous day">‹</Button>
-    <input
-      type="date"
-      value={date}
-      max={today}
-      class="rounded-md text-sm"
-      aria-label="Date"
-      onchange={(event) => {
-        if (!go(event.currentTarget.value)) event.currentTarget.value = date
-      }}
-    />
-    <Button
-      variant="secondary"
-      class="px-3"
-      onclick={() => go(addDays(date, 1))}
-      disabled={date >= today}
-      aria-label="Next day">›</Button
-    >
+  <div class="flex flex-wrap items-center gap-3">
+    <DailyViewSwitch view="day" {date} />
+    <div class="flex items-center gap-1">
+      <Button variant="secondary" class="px-3" onclick={() => go(addDays(date, -1))} aria-label="Previous day">‹</Button
+      >
+      <input
+        type="date"
+        value={date}
+        max={today}
+        class="rounded-md text-sm"
+        aria-label="Date"
+        onchange={(event) => {
+          if (!go(event.currentTarget.value)) event.currentTarget.value = date
+        }}
+      />
+      <Button
+        variant="secondary"
+        class="px-3"
+        onclick={() => go(addDays(date, 1))}
+        disabled={date >= today}
+        aria-label="Next day">›</Button
+      >
+    </div>
   </div>
 </div>
 

@@ -1024,6 +1024,84 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
   await expect(page.getByLabel('Date', { exact: true })).not.toHaveValue(date)
 })
 
+// Late August: a week no other test enters or reads (the desktop project only)
+const lateAugust = `/daily/week?date=${new Date().getFullYear()}-08-30`
+const weekCell = (row: string, kind: 'rain' | 'irrigation', day: string) =>
+  new RegExp(`^${literal(row)} ${kind}(?: \\(hours\\))?, \\w{3}, ${day}$`)
+
+test("daily entry's week saves rain for a group's fields and a system's irrigation, and asks before replacing varied rain", async ({
+  page,
+}) => {
+  await page.goto(lateAugust)
+  await expect(page.getByText(/Aug 24–30/).first()).toBeVisible()
+  const rain = page.getByLabel(weekCell(DEMO.gauge, 'rain', 'Aug 25'))
+  const irrigation = page.getByLabel(weekCell(DEMO.otherPivot, 'irrigation', 'Aug 26'))
+  await rain.fill('0.4')
+  await irrigation.fill('0.5')
+  await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
+  await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
+  await expect(rain).toHaveValue('0.4')
+  await expect(irrigation).toHaveValue('0.5')
+
+  // The date links to the day, where the group's fields have the rain; one changed there
+  await page
+    .getByRole('link', { name: /Aug 25/ })
+    .first()
+    .click()
+  const field = page.getByLabel(`Rain on ${DEMO.gaugeField}`, { exact: true })
+  await expect(field).toHaveValue('0.4')
+  await field.fill('0.6')
+  await page.getByRole('button', { name: /^Save / }).click()
+  await expect(page.getByText(/^Saved /)).toBeVisible()
+
+  // Back in the week, the group's rain varies, and replacing it asks first
+  await page.goto(lateAugust)
+  await expect(rain).toHaveValue('')
+  await expect(rain).toHaveAttribute('placeholder', 'varies')
+  await rain.fill('0.3')
+  let message = ''
+  page.once('dialog', (dialog) => {
+    message = dialog.message()
+    return dialog.dismiss()
+  })
+  await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
+  await expect
+    .poll(() => message)
+    .toMatch(
+      new RegExp(
+        `^This replaces different amounts on each field for: ${literal(DEMO.gauge)}, \\w{3}, Aug 25\\. Save anyway\\?$`,
+      ),
+    )
+  await expect(rain).toHaveValue('0.3')
+
+  // Cleared for the next run, which replaces the varied amounts too
+  await rain.fill('')
+  await irrigation.fill('')
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
+  await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
+  await page.reload()
+  await expect(rain).toHaveAttribute('placeholder', '')
+  await expect(irrigation).toHaveValue('')
+})
+
+test('daily entry remembers the week view, and the Day switch goes back to the day', async ({ page }) => {
+  await page.goto(midSeason)
+  await page.getByRole('link', { name: 'Week', exact: true }).click()
+  await expect(page).toHaveURL(/\/daily\/week\?date=\d{4}-07-15$/)
+  await expect(page.getByText(/Jul 9–15/).first()).toBeVisible()
+
+  // The nav's Daily entry now opens the week
+  await page.getByRole('link', { name: 'Daily entry', exact: true }).click()
+  await expect(page).toHaveURL(/\/daily\/week$/)
+
+  await page.getByRole('link', { name: 'Day', exact: true }).click()
+  await expect(page.getByLabel('Date', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Daily entry', exact: true }).click()
+  await expect(page).toHaveURL(/\/daily$/)
+  await expect(page.getByLabel('Date', { exact: true })).toBeVisible()
+})
+
 test("Setup's Duplicate starts a new irrigation system from another, to be placed on the map", async ({ page }) => {
   await page.goto('/setup')
   await page.getByRole('link', { name: `Duplicate ${DEMO.otherPivot}`, exact: true }).click()

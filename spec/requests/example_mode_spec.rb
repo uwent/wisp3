@@ -62,7 +62,7 @@ RSpec.describe "Example mode", type: :request do
     expect(example_pivot.pivot_irrigations).to be_empty
     expect(example_field.reload.name).not_to eq("Mine now")
 
-    [setup_path, daily_entry_path, alerts_path, settings_path, group_path, admin_users_path].each do |path|
+    [setup_path, daily_entry_path, daily_entry_week_path, alerts_path, settings_path, group_path, admin_users_path].each do |path|
       get path
       expect(response).to redirect_to(root_path), path
     end
