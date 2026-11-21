@@ -33,6 +33,6 @@ export class ButtonControl implements IControl {
 
 /** A pivot framed by corners: fit every pivot in view */
 export const FIT_ICON =
-  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#333" stroke-width="2" ' +
+  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" ' +
   'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"/><circle cx="12" cy="12" r="3.5"/></svg>'

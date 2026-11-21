@@ -147,7 +147,7 @@
         >
       {:else if column.key === 'actions'}
         {#if !user.confirmed && !user.admin && user.id !== me}
-          <Button variant="danger-ghost" class="!px-2 !py-1" onclick={() => confirmDelete(user)}>Delete</Button>
+          <Button variant="danger-ghost" class="px-2 py-1" onclick={() => confirmDelete(user)}>Delete</Button>
         {:else}
           <Link href={adminUsers.show(user.id)} class="px-2 text-sm text-brand-600 hover:underline">View</Link>
         {/if}

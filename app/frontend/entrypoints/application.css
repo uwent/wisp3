@@ -221,6 +221,10 @@
     color: var(--color-ink);
     border-color: var(--color-line);
   }
+  /* Its placeholders are gray-500, 3.5:1 on dark mode's inputs; the muted ink passes in both */
+  :is(input, textarea):not([type='checkbox'], [type='radio'])::placeholder {
+    color: var(--color-ink-muted);
+  }
 }
 
 /* Long-form text (the About page): the typography plugin's colors from the design tokens, so prose
@@ -246,6 +250,72 @@
    to win over MapLibre's stylesheet, which loads after this one */
 .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner a {
   text-decoration: underline;
+}
+
+/* MapLibre's buttons (zoom, fit, find my location) and credits in the app's colors, light and dark.
+   Each rule starts with .maplibregl-map to outrank MapLibre's own, which loads after this one. Its
+   icons are dark gray background images: in dark mode they're inverted, and turned back around the
+   color wheel so the location button's blue (and error red) keep their hue */
+.maplibregl-map .maplibregl-ctrl-group {
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+  color: var(--color-ink);
+}
+.maplibregl-map .maplibregl-ctrl-group:not(:empty) {
+  box-shadow:
+    0 0 0 1px var(--color-line),
+    0 1px 3px rgb(0 0 0 / 0.15);
+}
+.maplibregl-map .maplibregl-ctrl-group button + button {
+  border-top-color: var(--color-line);
+}
+.maplibregl-map .maplibregl-ctrl-group button:not(:disabled):hover {
+  background-color: var(--color-surface);
+}
+.maplibregl-map .maplibregl-ctrl-group button:focus:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-brand-500);
+}
+.maplibregl-map .maplibregl-ctrl-attrib.maplibregl-compact {
+  background-color: color-mix(in srgb, var(--color-surface-raised) 90%, transparent);
+  color: var(--color-ink);
+}
+.maplibregl-map .maplibregl-ctrl-attrib a {
+  color: var(--color-ink);
+}
+.maplibregl-map :is(.maplibregl-ctrl-icon, .maplibregl-ctrl-attrib-button) {
+  @variant dark {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}
+
+/* The scale bar as a small see-through card in the app's colors. MapLibre sets the element's
+   width to the bar's length, so padding goes outside that width (content-box) and the bar is drawn
+   across the content. The card is 75% opaque, not less, and the label is full ink, not muted: that
+   keeps it at 4.5:1 over any imagery, black or white, in light and dark mode. Three classes deep to
+   win over MapLibre's stylesheet (loaded after this one), whose control margins are two */
+.maplibregl-map .maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale {
+  position: relative;
+  box-sizing: content-box;
+  margin: 0 0 10px 10px;
+  padding: 4px 6px 11px;
+  border: 0;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-surface-raised) 75%, transparent);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+  color: var(--color-ink);
+  font: 500 11px/1.2 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+.maplibregl-map .maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  left: 6px;
+  height: 5px;
+  border: 1.5px solid var(--color-ink);
+  border-top: 0;
 }
 
 /* Reduced motion (WCAG 2.3.3): transitions and animations, Svelte's slides included, end at once.

@@ -79,18 +79,19 @@
   {#if searchError}
     <p class="mb-1 rounded-md bg-surface-raised px-3 py-1.5 text-xs text-status-irrigate-ink shadow">{searchError}</p>
   {/if}
-  <div class="flex overflow-hidden rounded-md border border-line bg-surface-raised shadow">
+  <!-- 90% opaque: the most see-through that keeps the placeholder and "Go" at 4.5:1 over any imagery -->
+  <div class="flex overflow-hidden rounded-md border border-line bg-surface-raised/90 shadow backdrop-blur-sm">
     <input
       type="search"
       bind:value={query}
       onkeydown={onKey}
       placeholder="Find a place, e.g. Hancock WI"
       aria-label="Find a place on the map"
-      class="min-w-0 flex-1 border-0 px-3 py-1.5 text-sm focus:ring-0"
+      class="min-w-0 flex-1 border-0 bg-transparent px-3 py-1.5 text-sm focus:ring-0"
     />
     <button
       type="button"
-      class="px-3 text-sm text-brand-600 hover:bg-brand-50 disabled:opacity-60"
+      class="px-3 text-sm font-medium text-ink hover:bg-brand-50 disabled:opacity-60"
       onclick={search}
       disabled={searching}
     >
