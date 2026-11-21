@@ -3,6 +3,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import TextField from '@/lib/components/TextField.svelte'
+  import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { settings, usersRegistrations } from '@/routes'
 
   let {
@@ -20,6 +21,15 @@
     metric: { name: 'Metric', detail: 'millimeters, °C, hectares, L/s' },
   }
 
+  // Typed values not yet saved, per form; cleared by its save. The confirm lists the profile form's
+  // changes only, so a typed password is never shown in it
+  let profileDirty = $state(false)
+  let accountDirty = $state(false)
+  confirmUnsavedChanges(
+    () => profileDirty || accountDirty,
+    () => document.getElementById('profile-form'),
+  )
+
   // Returning false from onBefore cancels the request
   const confirmDelete = () =>
     confirm("Delete your account? This can't be undone. Farm data that only you can access will be deleted with it.")
@@ -31,7 +41,15 @@
 
 <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
   <h2 class="text-lg font-medium">Profile and units</h2>
-  <Form action={settings.update()} class="max-w-xl space-y-4" options={{ preserveScroll: true }}>
+  <Form
+    id="profile-form"
+    action={settings.update()}
+    class="max-w-xl space-y-4"
+    options={{ preserveScroll: true }}
+    oninput={() => (profileDirty = true)}
+    onchange={() => (profileDirty = true)}
+    onSuccess={() => (profileDirty = false)}
+  >
     {#snippet children({ errors, processing })}
       <div class="grid gap-4 sm:grid-cols-2">
         <TextField
@@ -107,6 +125,9 @@
       options={{ preserveScroll: true }}
       resetOnSuccess={['user[password]', 'user[password_confirmation]', 'user[current_password]']}
       resetOnError={['user[password]', 'user[password_confirmation]', 'user[current_password]']}
+      oninput={() => (accountDirty = true)}
+      onchange={() => (accountDirty = true)}
+      onSuccess={() => (accountDirty = false)}
     >
       {#snippet children({ errors, processing })}
         <TextField

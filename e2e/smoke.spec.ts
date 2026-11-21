@@ -763,7 +763,12 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   await expect(dialog.getByText(/^That's more than the field's [\d.,]+ ac\.$/)).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Save planting' })).toBeDisabled()
 
-  // "Add the next planting" starts a new one the day after this one ends, the same size
+  // "Add the next planting" starts a new one the day after this one ends, the same size, asking
+  // first about the length typed above
+  page.once('dialog', (confirm) => {
+    expect(confirm.message()).toContain('Length: 300')
+    void confirm.accept()
+  })
   await dialog.getByRole('button', { name: 'Add the next planting' }).click()
   const next = page.getByRole('dialog', { name: `Add the next planting on ${DEMO.researchField}` })
   // Its season and size show once a crop is chosen (G.13 part 3)

@@ -140,26 +140,45 @@
     startRows(rows.map((row) => row.shape))
   }
 
-  // The soil survey's main soil for each new field, one at a time, until the grower picks one
+  // The soil survey's main soil for each new field, one at a time, until the grower picks one. A call
+  // while a run is going (a row made new, another file or name attribute) has the run start over once
+  // it's through, so rows behind it aren't missed. Each shape's answer is kept (null: none, or the
+  // survey couldn't be reached), so rows made again for another name attribute don't ask twice.
   let surveying = false
+  let again = false
+  const surveyed = new WeakMap<object, number | null>()
+  async function soilFor(shape: ImportedShape) {
+    if (!surveyed.has(shape)) {
+      let id: number | null = null
+      try {
+        const suggestion = suggestSoil(await fetchSoilSurvey(shape.boundary))
+        id = soil_types.find((type) => type.key === suggestion.key)?.id ?? null
+      } catch {
+        // The survey can't be reached: the default stays, and the grower can pick
+      }
+      surveyed.set(shape, id)
+    }
+    return surveyed.get(shape) ?? null
+  }
   async function surveyNewRows() {
-    if (surveying) return
+    if (surveying) {
+      again = true
+      return
+    }
     surveying = true
     try {
-      for (let index = 0; index < rows.length; index++) {
-        const row = rows[index]
-        if (row.choice.kind !== 'new' || row.soil !== 'default') continue
-        try {
-          const suggestion = suggestSoil(await fetchSoilSurvey(row.shape.boundary))
-          const soil = soil_types.find((type) => type.key === suggestion.key)
-          if (soil && rows[index] === row && row.soil === 'default') {
-            row.soilTypeId = soil.id
+      do {
+        again = false
+        for (let index = 0; index < rows.length; index++) {
+          const row = rows[index]
+          if (row.choice.kind !== 'new' || row.soil !== 'default') continue
+          const soilId = await soilFor(row.shape)
+          if (soilId !== null && rows[index] === row && row.soil === 'default') {
+            row.soilTypeId = soilId
             row.soil = 'survey'
           }
-        } catch {
-          // The survey can't be reached: the default stays, and the grower can pick
         }
-      }
+      } while (again)
     } finally {
       surveying = false
     }

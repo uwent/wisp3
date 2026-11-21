@@ -9,6 +9,7 @@
   import { isExample } from '@/lib/permissions'
   import { type FieldSeasons, fieldsOn } from '@/lib/irrigation'
   import { units as unitsFor } from '@/lib/units'
+  import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots } from '@/routes'
   import type { ForecastDay, Pivot, PivotIrrigation } from '@/types/serializers'
 
@@ -46,7 +47,19 @@
   let date = $state(today)
   const existing = $derived(editing ? undefined : irrigations.find((irrigation) => irrigation.date === date))
 
-  function edit(irrigation: PivotIrrigation | null) {
+  // Typed values not yet saved: set by any input, cleared by a save or Cancel
+  let dirty = $state(false)
+  const unsaved = confirmUnsavedChanges(
+    () => dirty,
+    () => document.getElementById('irrigation-form'),
+  )
+  /** Whether what's typed may go: nothing is, or the user says so */
+  const mayDrop = () => !dirty || confirm(unsaved.message())
+
+  /** Puts another irrigation (or a new one) in the form; ask: first, if there are unsaved values */
+  function edit(irrigation: PivotIrrigation | null, ask = true) {
+    if (ask && !mayDrop()) return
+    dirty = false
     editing = irrigation
     byHours = irrigation !== null && irrigation.inches === null
     date = irrigation?.date ?? today
@@ -99,7 +112,14 @@
     class="rounded-md text-sm"
     aria-label="Season"
     value={year}
-    onchange={(e) => router.get(pivots.show(pivot.id).url, { year: e.currentTarget.value })}
+    onchange={(e) => {
+      if (!mayDrop()) {
+        e.currentTarget.value = String(year)
+        return
+      }
+      dirty = false
+      router.get(pivots.show(pivot.id).url, { year: e.currentTarget.value })
+    }}
   >
     {#each [year - 2, year - 1, year, year + 1] as y (y)}<option value={y}>{y}</option>{/each}
   </select>
@@ -115,12 +135,15 @@
       </p>
     </div>
     <Form
+      id="irrigation-form"
       action={editing
         ? pivotIrrigations.update({ pivotId: pivot.id, id: editing.id })
         : pivotIrrigations.create(pivot.id)}
       class="space-y-4"
       options={{ preserveScroll: true }}
-      onSuccess={() => edit(null)}
+      oninput={() => (dirty = true)}
+      onchange={() => (dirty = true)}
+      onSuccess={() => edit(null, false)}
     >
       {#snippet children({ errors, processing })}
         <div class="grid gap-4 sm:grid-cols-3">
@@ -209,7 +232,7 @@
         </div>
         <div class="flex gap-2">
           <Button type="submit" disabled={processing}>Save irrigation</Button>
-          {#if editing}<Button variant="secondary" onclick={() => edit(null)}>Cancel</Button>{/if}
+          {#if editing}<Button variant="secondary" onclick={() => edit(null, false)}>Cancel</Button>{/if}
         </div>
       {/snippet}
     </Form>

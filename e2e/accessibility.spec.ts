@@ -29,6 +29,14 @@ async function scan(page: Page, path: string) {
   if (await tools.count()) await expect(tools).toBeEnabled()
   // Nothing hovered where the last click left the pointer
   await page.mouse.move(0, 0)
+  // Transitions finished: axe blends a fading element's text into its background (the shape page's
+  // tools fade in from disabled:opacity-60 when the map is ready, which read as 3.7:1 in dark mode);
+  // a spinner's endless one aside
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity),
+  )
   // Charts draw after ECharts loads
   for (const chart of await page.locator('[data-chart]').all()) await expect(chart.locator('canvas')).toBeAttached()
   // Not an email preview's frame: it's the email's HTML, and sandboxed without scripts, axe waits on it forever
@@ -124,7 +132,8 @@ test('the example farm, signed out (G.8)', { tag: '@phone' }, async ({ page }) =
 })
 
 test('signed-in pages', { tag: '@phone' }, async ({ page }) => {
-  test.setTimeout(120_000)
+  // Every page in one test: about 1.5 minutes alone, more beside the other worker
+  test.setTimeout(180_000)
   await signIn(page)
   const paths = await signedInPages(page)
   const errors = watchErrors(page)

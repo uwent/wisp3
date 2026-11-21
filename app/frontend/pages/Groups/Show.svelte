@@ -6,6 +6,7 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { formatDate } from '@/lib/dates'
+  import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { currentGroups, groups, memberships } from '@/routes'
   import type { Member } from '@/types/serializers'
 
@@ -54,6 +55,16 @@
     router.visit(url, { method, data: { group_id: id } })
   }
 
+  // Typed values not yet saved, per form; cleared by its save. The confirm lists the name form's
+  // changes (the others are a single box each)
+  let nameDirty = $state(false)
+  let memberDirty = $state(false)
+  let newDirty = $state(false)
+  confirmUnsavedChanges(
+    () => nameDirty || memberDirty || newDirty,
+    () => document.getElementById('operation-form'),
+  )
+
   let deleteOpen = $state(false)
   let deleting = $state(false)
   function destroy() {
@@ -76,7 +87,14 @@
 <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
   <h2 class="text-lg font-medium">Settings</h2>
   {#if owner}
-    <Form action={groups.update()} class="max-w-xl space-y-4" options={{ preserveScroll: true }}>
+    <Form
+      id="operation-form"
+      action={groups.update()}
+      class="max-w-xl space-y-4"
+      options={{ preserveScroll: true }}
+      oninput={() => (nameDirty = true)}
+      onSuccess={() => (nameDirty = false)}
+    >
       {#snippet children({ errors, processing })}
         <TextField label="Operation name" name="group[name]" value={group.name} error={errors.name} required />
         <Button type="submit" disabled={processing}>Save</Button>
@@ -129,7 +147,15 @@
   </ul>
 
   {#if owner}
-    <Form action={memberships.create()} resetOnSuccess options={{ preserveScroll: true }} class="space-y-3">
+    <Form
+      action={memberships.create()}
+      resetOnSuccess
+      options={{ preserveScroll: true }}
+      class="space-y-3"
+      oninput={() => (memberDirty = true)}
+      onchange={() => (memberDirty = true)}
+      onSuccess={() => (memberDirty = false)}
+    >
       {#snippet children({ errors, processing })}
         <h3 class="font-medium">Add someone</h3>
         <div class="grid items-start gap-3 sm:grid-cols-[1fr_10rem_auto]">
@@ -181,7 +207,13 @@
       </li>
     {/each}
   </ul>
-  <Form action={groups.create()} class="space-y-3" resetOnSuccess>
+  <Form
+    action={groups.create()}
+    class="space-y-3"
+    resetOnSuccess
+    oninput={() => (newDirty = true)}
+    onSuccess={() => (newDirty = false)}
+  >
     {#snippet children({ errors, processing })}
       <div class="grid items-start gap-3 sm:grid-cols-[1fr_auto]">
         <TextField

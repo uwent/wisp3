@@ -2,7 +2,7 @@
 
 A full rewrite of the Wisconsin Irrigation Scheduling Program (WISP), replacing the legacy app at `../wisp`. Target: running in production before **April 1, 2027** (start of the 2027 season), with the October–March off-season used for build, validation, and beta. *(Launched 2026-11-19 at wisp.cals.wisc.edu; the winter is the beta.)*
 
-## Handoff (2026-11-20)
+## Handoff (2026-11-21)
 
 Read this first; rewrite it at the end of each session. (The per-feature handoffs that were in `docs/handoffs/` are folded into their sections: G.10, G.13 and G.14.)
 
@@ -18,12 +18,14 @@ Read this first; rewrite it at the end of each session. (The per-feature handoff
 
 **Then (2026-11-20), admin tools, on branch `admin-tools`, merged to `main` the same day** (Phase 9, "Admin tools"): a users CSV on Admin → Users (`AdminUsersCsv`: counts, last active, the bounding box of each account's systems), whose table pins its ID and actions columns and scrolls sideways (`Column.pin`, `nowrap` in `DataTable`); and **announcements by email** (Admin → Announcements: a Markdown composer with placeholders and a live preview, drafts, a test send, then a send to an audience, five a second, resumable; replies to `agweather@cals.wisc.edu`; an unsubscribe of its own, separate from the digest's, also in Settings). Production needs the migration on its next deploy (`announcements`, `announcement_deliveries`, `users.announcements`). `bin/ci` and all of `bin/e2e` passed before the merge.
 
+**Then (2026-11-21), a review before the announcement:** four reviewers over the backend, services, pages and maps, and a walk through a grower's season, made **[`docs/plans/phase-9.md`](docs/plans/phase-9.md)**, Phase 9's open work in priority order (new plans go in `docs/plans/`, not at the end of this file). Its section 1 is done: sign-in mail on a worker of its own (`mailers`; announcements and the digest on `bulk`), a season at most 366 days, the planting form showing every server error, unsaved changes guarded on the system page, the next-planting button, Settings and the operation page, Alerts' last save no longer bouncing back, the outline import's soil survey no longer skipping rows, exports naming the system a season ran on, and the example farm reusing its preload. The shape page's intermittent contrast finding was the scan catching the tools mid-fade (`scan` waits for transitions). `bin/ci` and all of `bin/e2e` passed. No migrations.
+
 **Next:**
 1. **Legacy:** commit, push and `cap production deploy` the retirement changes; take the archive `pg_dump` before it's deleted on December 31, 2027 (TODO.md).
 2. **Ben** (TODO.md): the RDS restore test; the announcement email and training session; GA's settings and the privacy wording; the wording review (C21's included) and the screen reader walkthrough.
-3. **Code during the winter beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); the intermittent contrast finding on the shape page (Phase 9) when CI names it; whatever the beta and training session turn up.
-4. **Phase 9 quality of life**, checked with the beta before building most of it.
-5. **Deploy `main`** (`bin/production deploy`): `et-season`'s C22–C25 and About page, the rainfall setting's migration, and the admin tools (users CSV, announcements; a migration).
+3. **Code during the winter beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); whatever the beta and training session turn up.
+4. **`docs/plans/phase-9.md`** from section 2 (cheap workflow wins: which day the morning's rain goes on, "Did you irrigate?", a home-screen icon), then its smaller bugs and simplifications, before the dashboard list view, the week grid and the rest.
+5. **Deploy `main`** (`bin/production deploy`) before the announcement: `et-season`'s C22–C25 and About page, the rainfall setting's migration, the admin tools (users CSV, announcements; a migration), and section 1's fixes (the job queues among them).
 
 ---
 

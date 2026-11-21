@@ -114,28 +114,25 @@
   let saveState = $state<'saved' | 'pending' | 'saving' | 'failed'>('saved')
   let saveError = $state<string | null>(null)
   let timer: ReturnType<typeof setTimeout> | undefined
+  const digest = () => ({ digest: { frequency: chosen, scope: chosenScope, field_ids: ['', ...picked] } })
   function save() {
     timer = undefined
-    router.patch(
-      alerts.update().url,
-      { digest: { frequency: chosen, scope: chosenScope, field_ids: ['', ...picked] } },
-      {
-        preserveScroll: true,
-        preserveState: true,
-        only: previewOpen ? ['errors', 'preview'] : ['errors'],
-        onStart: () => (saveState = 'saving'),
-        onSuccess: () => {
-          // A change made while this was on its way is saved by its own timer
-          if (!timer) saveState = 'saved'
-          saveError = null
-        },
-        onError: (errors) => {
-          saveState = 'failed'
-          saveError =
-            [Object.values(errors)[0]].flat()[0] ?? "Couldn't save your settings. Check your connection and try again."
-        },
+    router.patch(alerts.update().url, digest(), {
+      preserveScroll: true,
+      preserveState: true,
+      only: previewOpen ? ['errors', 'preview'] : ['errors'],
+      onStart: () => (saveState = 'saving'),
+      onSuccess: () => {
+        // A change made while this was on its way is saved by its own timer
+        if (!timer) saveState = 'saved'
+        saveError = null
       },
-    )
+      onError: (errors) => {
+        saveState = 'failed'
+        saveError =
+          [Object.values(errors)[0]].flat()[0] ?? "Couldn't save your settings. Check your connection and try again."
+      },
+    })
   }
   let loaded = false
   $effect(() => {
@@ -149,12 +146,29 @@
     clearTimeout(timer)
     timer = setTimeout(save, SAVE_DELAY)
   })
-  onDestroy(() => {
-    if (timer) {
-      clearTimeout(timer)
-      save()
-    }
+  // Leaving the page (or closing the tab) with a change still waiting saves it on the way out. Not
+  // through the router: its visit would finish after the next page has shown, and follow the
+  // controller's redirect back here. A plain request, kept alive past the page, never navigates.
+  function flush() {
+    if (!timer) return
+    clearTimeout(timer)
+    timer = undefined
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? ''
+    fetch(alerts.update().url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': token },
+      body: JSON.stringify(digest()),
+      credentials: 'same-origin',
+      // The redirect back to Alerts isn't followed (nothing would read it)
+      redirect: 'manual',
+      keepalive: true,
+    }).catch(() => {}) // offline: the change is lost, as closing the tab before a save would
+  }
+  $effect(() => {
+    addEventListener('pagehide', flush)
+    return () => removeEventListener('pagehide', flush)
   })
+  onDestroy(flush)
   const saved = $derived(saveState === 'saved')
   const testOptions = { preserveScroll: true, preserveState: true, only: ['test_wait'] }
 

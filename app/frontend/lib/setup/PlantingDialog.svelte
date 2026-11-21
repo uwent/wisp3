@@ -34,8 +34,9 @@
     isOpen = true
   }
 
+  // The form is swapped for a new one: ask first, as leaving would
   function addNext() {
-    if (!planting) return
+    if (!planting || !leave()) return
     const { partial, plot_length_ft, plot_width_ft, area_acres } = planting
     template = {
       ...nextSeason(planting),

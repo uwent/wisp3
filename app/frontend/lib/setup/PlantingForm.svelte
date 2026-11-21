@@ -189,7 +189,7 @@
     const later = [seasonStart, emergence].filter(Boolean).sort().at(-1)
     return later ? (loose ? later : addDays(later, 1)) : undefined
   })
-  const datesWrong = $derived(Boolean(problems.end || problems.vineKill))
+  const datesWrong = $derived(Boolean(problems.emergence || problems.end || problems.vineKill))
 
   // Settings: collapsed to a line saying what's in effect; opened when one of them has an error
   let settingsOpen = $state(false)
@@ -217,6 +217,34 @@
 
   let seasonSoilId = $state(untrack(() => String(planting?.soil_type_id ?? '')))
   const seasonSoil = $derived(soilTypes.find((s) => String(s.id) === seasonSoilId))
+
+  // The error keys shown beside a control as the form is now; the server's others (and ones whose
+  // control is hidden) are listed at the bottom with base, so none comes back unshown
+  const shownErrorKeys = $derived.by(() => {
+    const keys = ['plant']
+    if (!plant) return keys
+    const add = (...names: string[]) => keys.push(...names)
+    add('season_start', 'emergence_date', 'end_date', 'partial', 'max_root_zone_depth', 'mad_frac', 'et_method')
+    add('target_ad_pct', 'initial_moisture_pct')
+    if (typicalDays) add('season_days')
+    if (plant.has_vine_kill) add('vine_kill_date')
+    if (generic) add('canopy_curve_key')
+    if (hasCurve) add('canopy_interpolation')
+    if (partial) {
+      add('area_acres')
+      if (sizeBy === 'plot') add('plot_length_ft', 'plot_width_ft')
+      if (soilTypes.length && ownSoil) add('soil_type', 'field_capacity', 'perm_wilting_pt')
+    } else if (planting?.ended && soilTypes.length) {
+      add('soil_type', 'area_acres', 'field_capacity', 'perm_wilting_pt')
+    }
+    return keys
+  })
+  const firstError = (error: string | string[] | undefined) => (Array.isArray(error) ? error[0] : error)
+  function otherErrors(errors: Record<string, string | string[] | undefined>): string[] {
+    return Object.entries(errors)
+      .filter(([key, error]) => error && !shownErrorKeys.includes(key))
+      .map(([, error]) => firstError(error)!)
+  }
 </script>
 
 <Form
@@ -308,7 +336,7 @@
           {@render dateInput(
             'emergence_date',
             'Emergence',
-            errors.emergence_date,
+            problems.emergence ?? errors.emergence_date,
             emergence,
             (v) => {
               emergence = v
@@ -391,6 +419,9 @@
               </label>
             {/each}
           </div>
+          {#if errors.partial}
+            <p class="text-sm text-status-irrigate-ink">{firstError(errors.partial)}</p>
+          {/if}
           {#if partial}
             <div class="space-y-3 rounded-md border border-line p-3">
               <div class="flex flex-wrap gap-4 text-sm">
@@ -576,6 +607,9 @@
                 </span>
               </label>
             {/if}
+            {#if errors.et_method}
+              <p class="text-sm text-status-irrigate-ink">{firstError(errors.et_method)}</p>
+            {/if}
           </fieldset>
           <!-- Blank leaves the crop's own curve or its default; a crop with its own never sends one -->
           <input type="hidden" name="planting[canopy_curve_key]" value={generic ? curveChoice : ''} />
@@ -629,6 +663,9 @@
                   now and then.
                 {/if}
               </p>
+              {#if errors.canopy_curve_key}
+                <p class="text-sm text-status-irrigate-ink">{firstError(errors.canopy_curve_key)}</p>
+              {/if}
             </fieldset>
           {/if}
           {#if hasCurve}
@@ -666,6 +703,9 @@
                 />
                 <span>Straight lines <span class="text-ink-muted">(keeping the last reading after it)</span></span>
               </label>
+              {#if errors.canopy_interpolation}
+                <p class="text-sm text-status-irrigate-ink">{firstError(errors.canopy_interpolation)}</p>
+              {/if}
             </fieldset>
           {/if}
           <div class="grid gap-4 sm:grid-cols-2">
@@ -750,7 +790,9 @@
         >
       </div>
     {/if}
-    {#if errors.base}<p class="text-sm text-status-irrigate-ink">{errors.base}</p>{/if}
+    {#each otherErrors(errors) as message, i (i)}
+      <p class="text-sm text-status-irrigate-ink">{message}</p>
+    {/each}
     <FormFooter {ondelete} deleteLabel="Delete this planting">
       <Button type="submit" disabled={processing || !plant || tooBig || datesWrong}
         >{planting ? 'Save planting' : 'Add planting'}</Button

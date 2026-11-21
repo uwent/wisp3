@@ -24,6 +24,8 @@ Status colors as fills keep their values apart from the OK green; the chart pale
 
 Later (2026-11-16): the soil survey's "USDA Web Soil Survey" link (`SoilSurvey`, on the shape page and a system's edit page) was underlined only on hover (`link-in-text-block`). The scans had missed it because the survey only shows once the USDA service answers, and it was down; now underlined, and the scans answer the survey themselves (`e2e/test.ts`).
 
+Later (2026-11-21): the intermittent contrast finding on the shape page (about one full run in six) was the scan catching the shape tools mid-fade: their buttons go from `disabled:opacity-60` to full opacity (`Button`'s `transition`) when the map is ready, and axe blends a fading element's text into its background (brand-600 at about 70% read as 3.7:1 in dark mode). The colors were never short; `scan` now waits for running transitions to finish (a spinner's endless animation aside).
+
 ## Manual checks
 
 In this order (PLAN.md Phase 8 A). Each finding is recorded with the page, the WCAG criterion and the fix.
