@@ -189,6 +189,16 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(plot.canopy_observations).to be_empty
   end
 
+  it "ignores other groups' pivots and fields in daily entry's week" do
+    day = {pivots: {their_pivot.id => {inches: 1}}, fields: {their_field.id => {rain_in: 1}}}
+    patch daily_entry_week_path, params: {date: "2026-07-07", days: {"2026-07-01" => day}}
+    expect(response).to redirect_to(daily_entry_week_path(date: "2026-07-07"))
+    expect(their_pivot.pivot_irrigations).to be_empty
+    expect(their_field.field_entries).to be_empty
+    patch daily_entry_week_path, params: {date: "2026-07-07", days: {"2026-07-03" => {pivots: {my_pivot.id => {inches: 1, field_ids: [their_field.id]}}}}}
+    expect(my_pivot.pivot_irrigations).to be_empty
+  end
+
   it "won't apply my pivot's irrigation to another group's field" do
     post pivot_irrigations_path(my_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1, field_ids: [their_field.id]}}
     patch daily_entry_path, params: {date: "2026-07-03", pivots: {my_pivot.id => {inches: 1, field_ids: [their_field.id]}}}
@@ -259,6 +269,9 @@ RSpec.describe "Tenant isolation", type: :request do
     get setup_path
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
     get daily_entry_path
+    expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
+    [my_field, their_field].each { |field| create(:planting, field:, season_start: Date.current - 30, end_date: Date.current + 30) }
+    get daily_entry_week_path
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
   end
 end
