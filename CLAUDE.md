@@ -7,6 +7,7 @@ Guidance for Claude Code when working in this repository.
 WISP 3: a rewrite of the Wisconsin Irrigation Scheduling Program (legacy app in `../wisp`).
 
 - `PLAN.md`: the design, decisions (D1–D13), phases and open questions. Its **Handoff** at the top says where things stand and what's next; read it at the start of a session, check the phase's section before starting work in it, update its checklists as work lands, and rewrite the handoff at the end of a session.
+- `docs/plans/`: the work plans since the app was built, one file a phase (`phase-9.md`: polish before grower feedback, in priority order). Tick items there as they land; `PLAN.md` keeps the decisions and the handoff.
 - `docs/architecture.md`: how each area works (pages, irrigation systems, fields and plantings, canopy, weather, daily entry, maps, charts, wording, email, CSV, outside services). Read the area's section before changing it, and keep it current.
 - `DEVELOPMENT.md` (setting up a machine, commands), `docs/deployment.md` (staging and production), `TODO.md` (what only Ben can do).
 

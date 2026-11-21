@@ -1492,6 +1492,8 @@ A code review of the branch (backend, controllers and tenancy, the map and outli
 
 ### Phase 9: Polish
 
+**The open work is in [`docs/plans/phase-9.md`](docs/plans/phase-9.md)** (2026-11-21), in priority order: fixes before the announcement, cheap workflow wins, smaller bugs, simplifications, then the dashboard list view, a week grid in daily entry, setup speed-ups, a pivot's percent timer and more on the dashboard. What's below is the record of what was done before it. New phases' plans go in `docs/plans/`, one file each.
+
 After the merge of `beta-readiness` (2026-11-17 review, Ben). Refactors and quality-of-life improvements that don't change what the beta tests; take them as they fit around G.8 and the beta.
 
 **Refactors**
@@ -1508,18 +1510,14 @@ After the merge of `beta-readiness` (2026-11-17 review, Ben). Refactors and qual
 - [x] The reflow checks (320 px, 200% text) inside the accessibility scan, on each page as scanned, with its sections open (signed-out pages too now); the signed-in page list built once.
 - [x] Two workers, files side by side: the phone project's daily entry writes its own day, and the desktop one waits for its clearing save before it ends. `bin/e2e` skips `vite build` when nothing it's built from changed.
 - [x] Found on the way: the time travel tests skipped themselves at random (they looked for the button before the page was drawn); a shape page was scanned before its map was ready (its tools' fieldset disabled, which axe doesn't exempt); buttons kept their hover color while disabled (`enabled:hover:` in `Button`).
-- [ ] **An intermittent contrast finding on the shape page** (`/fields/:id/outline`, about one full run in six, not reproduced since the tools' wait): the scan's message now names the elements and why, so the next CI failure says which. Then fix it or wait for it in `scan`.
+- Moved to `docs/plans/phase-9.md` (section 3): the intermittent contrast finding on the shape page.
 - [x] Trim overlap between the file-import and drawing tests (the drawing test no longer reads the KML the import test does). The weather tab's assertions stay: they cost nothing beside the page loads, and "Today" is the browser's to get right.
 
 **Quality of life** (ideas from the review; check with the beta before building most of them)
 
 - [x] **Weather charts tidied** (Ben, 2026-11-17): ordered by how often they're read, in pairs (air temperature and precipitation; ET and GDD; soil moisture and soil temperature; solar and wind; humidity and VPD); every card one height in a grid whose rows line up; "Summary and data" (bottom right) opens a dialog (`DataDialog`) with the summary, Download CSV, Copy to clipboard (tab-separated, for spreadsheets) and the table; "all of this zone's weather" opens every chart's columns in one table (`combinedTable`), with the zone's whole CSV; CSV files named by the cell's location (`WeatherCell#file_location`, `fileLocation`: `wisp-weather-44.12N-89.54W-2026.csv`).
 
-- [ ] **Keep an outline file's shapes while setting up:** the field shape page reads a file and uses one shape, so outlining twelve fields one at a time means reading the same file twelve times. Keep the last file's shapes in the browser (IndexedDB, per operation, until the tab's session ends or a day passes) and offer them on the next field's shape page ("Shapes from Fields.zip: pick one"), the one that holds the field's system or matches its name first (`lib/outlines/matching.ts`), with those already used marked. Link to Setup's import for doing them all at once.
-- [ ] **The same crop on several fields:** after saving a planting, "Plant this on other fields too" with a checklist of the system's fields without one that season (same crop, dates and settings), for first-time setup and next season.
-- [ ] **Duplicate an irrigation system** in Setup (a farm of similar pivots).
-- [ ] **Daily entry:** offer yesterday's amounts for systems that ran yesterday, as a placeholder to accept, not a value.
-- [ ] **Remember the last choices** in setup forms for the session (soil, crop, emergence date), as suggestions.
+- Moved to `docs/plans/phase-9.md` (section 7, Setup speed-ups): keeping an outline file's shapes, the same crop on several fields, duplicating a system, yesterday's amounts in daily entry, remembering the last choices.
 - [x] **Sections on other long forms** (Ben, 2026-11-18), as the planting form has (G.13 part 3). The system page is one card in sections (Kind of system, Location and size, Equipment and notes; `SectionHeading`, also in quick setup's step 2), a saved system's kind one line with **Change** (the choices, the current one focused); Direction of travel's hint became a tip. Latitude and longitude are one **Coordinates** box (`CoordinatesField`, `lib/coordinates.ts`) reading what growers paste: Google Maps' pair, two spreadsheet cells, degrees, minutes and seconds, a Maps link; a pair only a US place the other way round is swapped and said so, a place outside the US warned (a sign left off). Ben: no toggle for separate boxes. The field dialog's field capacity and wilting point are **Soil water**, collapsed to what's in effect ("Field capacity 18% · wilting point 8%, from sandy loam"), opened by an error. Tests: `coordinates.test.ts`, `CoordinatesField.test.ts`, the linear smoke test's Change.
 
 **Admin tools** (Ben, 2026-11-20; branch `admin-tools`)
