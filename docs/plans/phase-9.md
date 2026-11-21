@@ -4,6 +4,24 @@ From the 2026-11-21 review (four reviewers over the backend, services, pages and
 
 New plans for later phases go in this folder (`docs/plans/`), one file each, rather than at the end of `PLAN.md`.
 
+## Handoff (2026-11-21)
+
+**Done on `main`** (`bin/ci` and all of `bin/e2e` passed; not yet deployed): sections 1–4, everything before the announcement, the cheap workflow wins, the smaller bugs and the simplifications.
+
+**On branch `phase-9-ui`, waiting for Ben's look in the app** (`bin/ci` and all of `bin/e2e` passed there): section 5 (the dashboard's Cards | List, By system | Needs water first, status filters) and three of section 7 (Duplicate a system in Setup, yesterday's amounts in daily entry, remembered setup choices). Look at the dashboard on a phone and a desktop, both orders and a filter; Setup's Duplicate; daily entry on a day after irrigation. Then merge to `main` (or note changes for a round).
+
+**Ben to decide:**
+- The home-screen icon's phone bar is the branding bar's red (`theme-color` in `application.html.erb`); the brand blue instead?
+- Duplicate is open to any member, as Add is (systems are created by members; only deleting is owners'). Owners only?
+- Needs water first applies to cards as well as the list (one flat grid). Keep, or list only?
+
+**Next to build, in order:**
+1. Deploy `main` (`bin/production deploy`) before the announcement email.
+2. Section 7's remaining two (the same crop on several fields; keeping an outline file's shapes), which need no decisions.
+3. Section 6, the week grid: sketch the layout with Ben first (a grid of systems and rain rows by seven days, one Save).
+4. Section 8, the percent timer: check the conversion against a grower's sprinkler chart, and ask the beta whether they know their pivot's circle hours at 100% or its depth.
+5. Section 9, logging irrigation from the dashboard and a rain forecast strip, after the list view settles.
+
 ## 1. Fix before the announcement
 
 Bugs a wave of new growers would hit, or that the announcement's traffic would make worse.
