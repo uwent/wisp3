@@ -212,13 +212,13 @@ export function nameKey(properties: Properties[]): string | null {
 }
 
 /** A shape's name under an attribute: its value as text, trimmed, or '' */
-export function shapeName(shape: ImportedShape, key: string | null): string {
+export function shapeName(shape: { properties: Properties }, key: string | null): string {
   const value = key ? shape.properties[key] : null
   return value === null || value === undefined ? '' : String(value).trim()
 }
 
 /** A shape's notes as one sentence ("Kept the largest of 3 parts; 1 hole removed"), or '' */
-export function shapeNotes(shape: ImportedShape): string {
+export function shapeNotes(shape: { notes: string[] }): string {
   const text = shape.notes.join('; ')
   return text && text[0].toUpperCase() + text.slice(1)
 }
