@@ -293,8 +293,8 @@
 
   <div class="flex min-h-0 flex-1 flex-col md:flex-row">
     <aside
-      class="order-2 flex min-h-0 flex-col border-line bg-surface md:order-1 md:border-r
-        {prefs.listOpen ? 'max-h-[45%] border-t md:max-h-none md:w-80 md:border-t-0' : 'md:hidden'}"
+      class="order-2 min-h-0 flex-col border-line bg-surface md:order-1 md:border-r
+        {prefs.listOpen ? 'flex max-h-[45%] border-t md:max-h-none md:w-80 md:border-t-0' : 'hidden'}"
       aria-label="Fields"
     >
       <div class="flex items-center gap-2 border-b border-line px-3 py-2">
@@ -311,10 +311,12 @@
         </button>
         <button
           type="button"
-          class="rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-surface-raised hover:text-ink md:hidden"
-          aria-expanded={prefs.listOpen}
-          onclick={() => (prefs.listOpen = !prefs.listOpen)}>{prefs.listOpen ? 'Hide' : 'Show'}</button
+          class="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-surface-raised hover:text-ink md:hidden"
+          aria-expanded="true"
+          onclick={() => (prefs.listOpen = false)}
         >
+          Hide <span aria-hidden="true">▾</span>
+        </button>
       </div>
       <div class="space-y-2 border-b border-line px-3 py-2">
         <!-- What the map and list show (season, farm, plantings), then the list's filters and order -->
@@ -416,10 +418,15 @@
     {#if !prefs.listOpen}
       <button
         type="button"
-        class="order-3 border-t border-line bg-surface px-3 py-2 text-left text-sm font-medium md:hidden"
+        class="order-3 flex items-center gap-2 border-t border-line bg-surface px-3 py-2 text-left md:hidden"
         aria-expanded="false"
-        onclick={() => (prefs.listOpen = true)}>Show the fields ({listedCount})</button
+        onclick={() => (prefs.listOpen = true)}
       >
+        <span class="mr-auto min-w-0 truncate text-xs text-ink-muted">{listedSummary}</span>
+        <span class="flex shrink-0 items-center gap-1 text-xs font-medium">
+          Show <span aria-hidden="true">▴</span>
+        </span>
+      </button>
     {/if}
 
     <div

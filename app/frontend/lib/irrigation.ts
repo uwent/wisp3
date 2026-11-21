@@ -34,3 +34,21 @@ export const enteredAsHours = (irrigation: Amounts | null | undefined): boolean 
 /** A saved irrigation's amount in the box for inches or for run hours; null for none */
 export const savedAmount = (irrigation: Amounts | null | undefined, byHours: boolean): number | null =>
   (byHours ? irrigation?.run_hours : irrigation?.inches) ?? null
+
+/**
+ * "Same as yesterday" on daily entry: the day before's irrigation as it was entered (inches or run
+ * hours) and the fields it applied to, still on the system; null when there's nothing to offer (run
+ * hours the system can no longer convert)
+ */
+export function sameAsBefore(
+  before: (Amounts & { field_ids: number[] | null }) | null | undefined,
+  pivot: { pump_capacity_gpm: number | null; fields: { id: number; area_acres: number | null }[] },
+): { byHours: boolean; value: number; fieldIds: number[] } | null {
+  if (!before) return null
+  const byHours = enteredAsHours(before)
+  const value = savedAmount(before, byHours)
+  if (value === null || (byHours && !canUseHours(pivot))) return null
+  const here = pivot.fields.map((field) => field.id)
+  const fieldIds = before.field_ids?.filter((id) => here.includes(id)) ?? []
+  return { byHours, value, fieldIds: fieldIds.length ? fieldIds : here }
+}

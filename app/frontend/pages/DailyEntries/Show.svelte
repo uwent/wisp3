@@ -24,7 +24,7 @@
   } from '@/lib/dailyEntry'
   import { addDays, formatDate, today as todayDate } from '@/lib/dates'
   import { KIND_NAMES, KIND_NOUNS, systemName } from '@/lib/geo'
-  import { canUseHours, enteredAsHours, savedAmount } from '@/lib/irrigation'
+  import { canUseHours, enteredAsHours, sameAsBefore, savedAmount } from '@/lib/irrigation'
   import { cropName, plotSize } from '@/lib/plantings'
   import { readStored, writeStored } from '@/lib/storage'
   import { count } from '@/lib/text'
@@ -87,6 +87,24 @@
   function switchHours(pivot: DayPivot, hours: boolean) {
     byHours[pivot.id] = hours
     pivotAmount[pivot.id] = savedAmount(pivot.irrigation, hours)
+  }
+
+  // The day before's irrigation, offered as a placeholder and "Same as yesterday" (a value only when
+  // chosen) while nothing is entered for the system this day
+  const dayBefore = $derived(date === today ? 'yesterday' : 'the day before')
+  const beforePlaceholder = (pivot: DayPivot, hours: boolean, otherwise: string) => {
+    const amount = savedAmount(pivot.yesterday, hours)
+    if (amount === null) return otherwise
+    const shown = hours ? String(amount) : units.input('depth', amount)
+    return `${shown} ${date === today ? 'yesterday' : 'day before'}`
+  }
+  function sameAsYesterday(pivot: DayPivot) {
+    const same = sameAsBefore(pivot.yesterday, pivot)
+    if (!same) return
+    byHours[pivot.id] = same.byHours
+    pivotAmount[pivot.id] = same.value
+    applied[pivot.id] = same.fieldIds
+    dirty = true
   }
 
   const pivotReaches = (pivot: DayPivot, field: DayField) =>
@@ -326,11 +344,19 @@
             bind:value={pivotAmount[pivot.id]}
             inchesLabel="Irrigation by {pivot.name}"
             hoursLabel="Run hours of {pivot.name}"
-            inchesPlaceholder={short(pivot)}
-            hoursPlaceholder="hours"
+            inchesPlaceholder={beforePlaceholder(pivot, false, short(pivot))}
+            hoursPlaceholder={beforePlaceholder(pivot, true, 'hours')}
             errors={{ inches: errs[`pivots.${pivot.id}.inches`], run_hours: errs[`pivots.${pivot.id}.run_hours`] }}
           />
         </div>
+        {#if pivotAmount[pivot.id] == null && sameAsBefore(pivot.yesterday, pivot)}
+          <button
+            type="button"
+            class="py-2 text-xs text-brand-600 hover:underline"
+            aria-label="Same as {dayBefore} for {pivot.name}"
+            onclick={() => sameAsYesterday(pivot)}>Same as {dayBefore}</button
+          >
+        {/if}
         {#if canUseHours(pivot)}
           <label class="flex items-center gap-1.5 py-2 text-xs">
             <input

@@ -36,6 +36,8 @@ class DailyEntryPage
     {id: pivot.id, name: pivot.name, kind: pivot.kind, kind_name: pivot.kind_name, pivot_group_id: pivot.pivot_group_id,
      pump_capacity_gpm: pivot.pump_capacity_gpm,
      irrigation: irrigation && PivotIrrigationSerializer.new(irrigation).to_h,
+     # The day before's, as entered, offered as "Same as yesterday" while nothing is entered this day
+     yesterday: (irrigations_before[pivot.id]&.slice(:inches, :run_hours, :field_ids) unless irrigation),
      fields: fields_by_pivot.fetch(pivot.id, []).map { |field| field_props(pivot, field) }}
   end
 
@@ -77,6 +79,10 @@ class DailyEntryPage
 
   def irrigations
     @irrigations ||= PivotIrrigation.where(pivot: pivots, date: @date).index_by(&:pivot_id)
+  end
+
+  def irrigations_before
+    @irrigations_before ||= PivotIrrigation.where(pivot: pivots, date: @date - 1).index_by(&:pivot_id)
   end
 
   def field_entries

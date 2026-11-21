@@ -407,7 +407,6 @@
           new maplibre.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false }),
           'top-right',
         )
-        m.addControl(new maplibre.FullscreenControl({ container: wrapper }), 'top-right')
         m.addControl(
           new maplibre.ScaleControl({ unit: unitSystem === 'metric' ? 'metric' : 'imperial' }),
           'bottom-left',

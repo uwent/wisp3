@@ -48,8 +48,11 @@ export type DayPivot = {
   pivot_group_id: number | null
   pump_capacity_gpm: number | null
   irrigation: PivotIrrigation | null
+  /** The day before's irrigation as entered, while there's none this day, for "Same as yesterday" */
+  yesterday: DayIrrigation | null
   fields: DayField[]
 }
+export type DayIrrigation = Pick<PivotIrrigation, 'inches' | 'run_hours' | 'field_ids'>
 export type DayFarm = {
   id: number
   name: string

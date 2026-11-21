@@ -22,6 +22,7 @@
   } from '@/lib/plantings'
   import { fetchSoilSurvey, soilOptionsByShare, soilShares } from '@/lib/soils'
   import { currentUnits } from '@/lib/units'
+  import { lastPlanting, rememberPlanting } from './lastChoices'
   import { plantings } from '@/routes'
   import type { Field, GenericCurve, Plant, Planting, SoilType } from '@/types/serializers'
 
@@ -61,7 +62,11 @@
   } = $props()
 
   const units = $derived(currentUnits())
-  const start = untrack(() => planting ?? template)
+  // A new planting starts from the crop and dates last saved this season in this session
+  // (lib/setup/lastChoices.ts), but not the next planting, which starts from its template
+  const last = untrack(() => (planting || template ? null : lastPlanting(year)))
+  const remembered = untrack(() => last !== null && plants.some((p) => p.id === last.plant_id))
+  const start: Partial<Planting> | undefined = untrack(() => planting ?? template ?? (remembered ? last! : undefined))
   let seasonStart = $state(untrack(() => start?.season_start ?? `${year}-04-01`))
   let emergence = $state(untrack(() => start?.emergence_date ?? `${year}-05-01`))
   let endDate = $state(untrack(() => start?.end_date ?? `${year}-11-30`))
@@ -112,7 +117,7 @@
   )
 
   // Form fields start from the props; the dialog mounts a new form each time it opens
-  let plantId = $state(untrack(() => String(planting?.plant_id ?? '')))
+  let plantId = $state(untrack(() => String(planting?.plant_id ?? (remembered ? last!.plant_id : ''))))
   // Blank root zone and MAD stand for the crop's default depth and 50%, shown as placeholders and
   // submitted when blank; a planting on the defaults opens with them blank
   const DEFAULT_MAD = 0.5
@@ -250,7 +255,11 @@
   action={planting ? plantings.update(planting.id) : plantings.create({ query: { year } })}
   class="space-y-5"
   options={{ preserveScroll: true, preserveState: true }}
-  onSuccess={ondone}
+  onSuccess={() => {
+    if (plant)
+      rememberPlanting({ plant_id: plant.id, season_start: seasonStart, emergence_date: emergence, end_date: endDate })
+    ondone()
+  }}
   onError={(errors) => {
     if (Object.keys(errors).some((key) => SETTINGS.includes(key))) settingsOpen = true
   }}
@@ -305,6 +314,7 @@
         ]}
         error={errors.plant}
         info="planting.crop"
+        hint={remembered && plantId === String(last!.plant_id) ? 'As your last planting' : undefined}
         required
       />
       <TextField

@@ -20,6 +20,7 @@
   import FieldAreaInput from './FieldAreaInput.svelte'
   import FieldSoilInput from './FieldSoilInput.svelte'
   import ShapeThumbnail from './ShapeThumbnail.svelte'
+  import { lastSoil, rememberSoil } from './lastChoices'
 
   // Create a field under a pivot, or edit one (including moving it to another pivot, which its
   // seasons that haven't ended follow; ended ones keep theirs, PLAN.md Phase 8 G.9, G.14 part 7).
@@ -50,9 +51,17 @@
     () => inputs,
   )
 
-  // Form fields start from the props; the dialog mounts a new form each time it opens
+  // Form fields start from the props; the dialog mounts a new form each time it opens. A new field
+  // starts on the soil last saved in this session (lib/setup/lastChoices.ts), until the survey suggests one
   let soilTypeId = $state(
-    untrack(() => String(field?.soil_type_id ?? soilTypes.find((s) => s.key === 'sandy_loam')?.id ?? soilTypes[0]?.id)),
+    untrack(() =>
+      String(
+        field?.soil_type_id ??
+          soilTypes.find((s) => s.id === lastSoil())?.id ??
+          soilTypes.find((s) => s.key === 'sandy_loam')?.id ??
+          soilTypes[0]?.id,
+      ),
+    ),
   )
   const soil = $derived(soilTypes.find((s) => String(s.id) === soilTypeId))
 
@@ -112,7 +121,10 @@
   action={field ? fields.update(field.id) : fields.create()}
   class="space-y-4"
   options={{ preserveScroll: true, preserveState: true }}
-  onSuccess={ondone}
+  onSuccess={() => {
+    if (soil) rememberSoil(soil.id)
+    ondone()
+  }}
   onError={(errors) => {
     if (errors.field_capacity || errors.perm_wilting_pt) soilWaterOpen = true
   }}

@@ -31,14 +31,22 @@
     farms,
     other_pivots,
     soil_types,
+    pivot_group = null,
+    copy_of = null,
   }: {
     pivot: Partial<Omit<Pivot, 'fields'>>
     farms: { id: number; name: string }[]
     other_pivots: Outline[]
     soil_types: SoilType[]
+    /** The group a duplicated system's copy joins */
+    pivot_group?: { id: number; name: string; farm_id: number } | null
+    /** The system being duplicated (Setup's Duplicate, ?copy_of=): everything but its location is copied */
+    copy_of?: { id: number; name: string } | null
   } = $props()
 
   const editing = $derived(pivot.id !== undefined)
+  let farmId = $state(untrack(() => String(pivot.farm_id ?? farms[0]?.id ?? '')))
+  const joinsGroup = $derived(!editing && pivot_group && String(pivot_group.farm_id) === farmId ? pivot_group : null)
 
   // The map and the inputs edit the same values
   let shape = $state(untrack(() => shapeDraft(pivot)))
@@ -57,7 +65,9 @@
   const title = $derived(
     editing
       ? `Edit ${systemName({ name: pivot.name ?? '', kind_name: KIND_NAMES[pivot.kind ?? 'center'] })}`
-      : 'Add an irrigation system',
+      : copy_of
+        ? `Duplicate ${copy_of.name}`
+        : 'Add an irrigation system',
   )
   const noun = $derived(KIND_NOUNS[shape.kind])
 
@@ -87,7 +97,9 @@
   <p class="text-sm text-ink-muted">
     Weather comes from its location. {editing
       ? `If you move the ${noun}, WISP gets weather for its new location.`
-      : "You can move it or change any of this after it's created."}
+      : copy_of
+        ? `Its kind, size and equipment are copied from ${copy_of.name}, not its fields. Place the new ${noun} on the map.`
+        : "You can move it or change any of this after it's created."}
   </p>
 </div>
 
@@ -99,15 +111,18 @@
 >
   {#snippet children({ errors, processing })}
     <div class="space-y-6" oninput={() => (edited = true)} onchange={() => (edited = true)}>
+      {#if copy_of}<input type="hidden" name="copy_of" value={copy_of.id} />{/if}
+      {#if joinsGroup}<input type="hidden" name="pivot[pivot_group_id]" value={joinsGroup.id} />{/if}
       <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
         <div class="grid gap-4 sm:grid-cols-2">
           <TextField label="Name" name="pivot[name]" value={pivot.name ?? ''} error={errors.name} required />
           <SelectField
             label="Farm"
             name="pivot[farm_id]"
-            value={String(pivot.farm_id ?? farms[0]?.id ?? '')}
+            bind:value={farmId}
             options={farms.map((farm) => ({ value: String(farm.id), label: farm.name }))}
             info="pivot.farm"
+            hint={joinsGroup ? `It joins the group ${joinsGroup.name}` : undefined}
             error={errors.farm}
             required
           />

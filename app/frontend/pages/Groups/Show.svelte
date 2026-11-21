@@ -132,12 +132,12 @@
         <div class="flex items-center gap-1">
           <!-- The last owner stays an owner and can't leave; the server checks this too -->
           {#if owner && !lastOwner(member)}
-            <Button variant="ghost" class="!px-2 !py-1" onclick={() => setRole(member, !member.owner)}>
+            <Button variant="ghost" class="px-2 py-1" onclick={() => setRole(member, !member.owner)}>
               {member.owner ? 'Make member' : 'Make owner'}
             </Button>
           {/if}
           {#if (member.id === membership_id || owner) && !lastOwner(member) && members.length > 1}
-            <Button variant="danger-ghost" class="!px-2 !py-1" onclick={() => remove(member)}>
+            <Button variant="danger-ghost" class="px-2 py-1" onclick={() => remove(member)}>
               {member.id === membership_id ? 'Leave' : 'Remove'}
             </Button>
           {/if}
@@ -202,7 +202,7 @@
         {#if operation.id === group.id}
           <span class="text-xs text-ink-muted">Current</span>
         {:else}
-          <Button variant="secondary" class="!px-3 !py-1" onclick={() => switchTo(operation.id)}>Switch</Button>
+          <Button variant="secondary" class="px-3 py-1" onclick={() => switchTo(operation.id)}>Switch</Button>
         {/if}
       </li>
     {/each}

@@ -32,6 +32,7 @@
     selected = false,
     onselect,
     links = false,
+    context,
   }: {
     card: FieldCard
     weather?: WeatherUpdate
@@ -42,6 +43,8 @@
     onselect?: () => void
     /** With onselect, View and Edit links under the card */
     links?: boolean
+    /** Its system (and farm), on the dashboard's cards when they aren't under them ("Needs water first") */
+    context?: string
   } = $props()
 
   const MANY = 3
@@ -77,6 +80,7 @@
       <span class="font-normal text-ink-muted">Field:</span>
       {card.name}
     </h4>
+    {#if context}<p class="truncate text-xs text-ink-muted">{context}</p>{/if}
     {#if single && !several}
       <p class="truncate text-xs text-ink-muted">{cropName(single)}</p>
       <p class="truncate text-[0.7rem] text-ink-muted">{cardWhen(single, today)}</p>

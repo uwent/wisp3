@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { canUseHours, enteredAsHours, fieldsOn, savedAmount } from './irrigation'
+import { canUseHours, enteredAsHours, fieldsOn, sameAsBefore, savedAmount } from './irrigation'
 
 describe('fieldsOn', () => {
   const stayed = { id: 1, name: 'Stayed', here: true, seasons: [{ from: '2026-04-01', to: '2026-10-01', here: true }] }
@@ -50,5 +50,39 @@ describe('run hours', () => {
     expect(savedAmount(irrigation, false)).toBe(0.5)
     expect(savedAmount(irrigation, true)).toBeNull()
     expect(savedAmount(null, false)).toBeNull()
+  })
+})
+
+describe('sameAsBefore', () => {
+  const pivot = {
+    pump_capacity_gpm: 800,
+    fields: [
+      { id: 1, area_acres: 60 },
+      { id: 2, area_acres: 70 },
+    ],
+  }
+
+  it('offers nothing without an irrigation the day before', () => {
+    expect(sameAsBefore(null, pivot)).toBeNull()
+  })
+
+  it('offers inches, or run hours, as they were entered', () => {
+    expect(sameAsBefore({ inches: 0.8, run_hours: null, field_ids: null }, pivot)).toEqual({
+      byHours: false,
+      value: 0.8,
+      fieldIds: [1, 2],
+    })
+    expect(sameAsBefore({ inches: null, run_hours: 10, field_ids: [2] }, pivot)).toEqual({
+      byHours: true,
+      value: 10,
+      fieldIds: [2],
+    })
+  })
+
+  it("keeps only fields still on the system, and leaves out run hours it can't convert", () => {
+    expect(sameAsBefore({ inches: 0.5, run_hours: null, field_ids: [9] }, pivot)?.fieldIds).toEqual([1, 2])
+    expect(
+      sameAsBefore({ inches: null, run_hours: 10, field_ids: null }, { ...pivot, pump_capacity_gpm: null }),
+    ).toBeNull()
   })
 })

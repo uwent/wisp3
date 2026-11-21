@@ -5,10 +5,13 @@ import type { PlantingSummary } from '@/types/serializers'
 import {
   buildTree,
   daysToIrrigate,
+  filterByStatus,
   type FarmGroup,
   type FarmNode,
   type FieldCard,
   type GroupNode,
+  matchesStatus,
+  needsWaterFirst,
   needsWaterWithin,
   type OverviewSystem,
   pivotStatus,
@@ -225,5 +228,68 @@ describe('buildTree', () => {
       },
     ]
     expect(treeFields(buildTree(tied, { order: 'urgent' })).map((c) => c.name)).toEqual(['North field', 'South field'])
+  })
+})
+
+describe('the dashboard', () => {
+  const system = (id: number, name: string, fields: FieldCard[]): OverviewSystem => ({
+    id,
+    name,
+    kind_name: 'Pivot',
+    pivot_group_id: null,
+    weather_updating: false,
+    fields,
+  })
+  const farms: FarmGroup[] = [
+    {
+      id: 1,
+      name: 'Home',
+      pivot_groups: [],
+      pivots: [
+        system(1, 'North', [card('ended', { phase: 'ended' }), card('ok soon', { crossing: crossing(5) })]),
+        system(2, 'South', [card('ok', {}), card('dry', { status: 'irrigate' })]),
+      ],
+    },
+    {
+      id: 2,
+      name: 'Away',
+      pivot_groups: [],
+      pivots: [system(3, 'East', [card('caution', { status: 'caution' }), card('none', null)]), system(4, 'Empty', [])],
+    },
+  ]
+
+  it('orders every field most urgent first, the soonest to need water before the rest, ended last', () => {
+    const order = needsWaterFirst(farms).map(({ card, pivot, farm }) => `${card.name} ${pivot.name} ${farm.name}`)
+    expect(order).toEqual([
+      'dry South Home',
+      'caution East Away',
+      'ok soon North Home',
+      'ok South Home',
+      'ended North Home',
+      'none East Away',
+    ])
+  })
+
+  it('matches a field by its most urgent planting', () => {
+    const plots: FieldCard = {
+      id: 9,
+      name: 'plots',
+      plantings: [summary({ status: 'ok' }), summary({ status: 'caution' })],
+    }
+    expect(matchesStatus(plots, 'caution')).toBe(true)
+    expect(matchesStatus(plots, 'ok')).toBe(false)
+    expect(matchesStatus(plots, null)).toBe(true)
+    expect(matchesStatus(card('ended', { phase: 'ended', status: 'ok' }), 'ended')).toBe(true)
+    expect(matchesStatus(card('ended', { phase: 'ended', status: 'ok' }), 'ok')).toBe(false)
+  })
+
+  it('keeps only the fields at a status, and the systems and farms left with any', () => {
+    expect(filterByStatus(farms, null)).toBe(farms)
+    const ok = filterByStatus(farms, 'ok')
+    expect(ok.map((farm) => farm.name)).toEqual(['Home'])
+    expect(ok[0].pivots.map((pivot) => [pivot.name, pivot.fields.map((c) => c.name)])).toEqual([
+      ['North', ['ok soon']],
+      ['South', ['ok']],
+    ])
   })
 })
