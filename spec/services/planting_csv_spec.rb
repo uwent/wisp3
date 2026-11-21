@@ -37,6 +37,16 @@ RSpec.describe PlantingCsv do
     expect(totals[columns.index("Irrigation (in)")]).to eq("0.4000")
   end
 
+  it "names the system the season ran on, after its field moves to another" do
+    planting.update!(end_date: Date.new(2026, 7, 8))
+    field.update!(pivot: create(:pivot, farm:, name: "South", latitude: 45.3, longitude: -90.1))
+    rows = CSV.parse(described_class.new(PlantingStatus.new(planting.reload, today: Date.new(2026, 7, 10), weather:))
+      .to_csv.delete_prefix(CsvExport::BOM))
+    header = rows.index { |row| row.first == "Farm" }
+    expect(rows[header].zip(rows[header + 1]).to_h).to include("Irrigation system" => "'#{pivot.name}", "Field" => "North")
+    expect(rows).to include(["Field: Hancock / #{pivot.label} / North"])
+  end
+
   it "names the canopy column by the planting's method" do
     header = ->(rows) { rows.find { |row| row.first == "Date" } }
     expect(header.call(rows)).to include("Percent cover")

@@ -27,7 +27,8 @@ RSpec.describe SeasonReportCsv do
     end
     pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 3), inches: 0.6)
     east.field_entries.create!(date: Date.new(2026, 7, 5), irrigation_in: 0.4)
-    create(:planting, field: create(:field, pivot:), season_start: Date.new(2025, 5, 1)) # another season
+    create(:planting, field: create(:field, pivot:), season_start: Date.new(2025, 5, 1), emergence_date: Date.new(2025, 5, 15),
+      end_date: Date.new(2025, 9, 30)) # another season
   end
 
   it "opens with frontmatter: what it covers, who exported it and when, and a summary" do
@@ -83,6 +84,19 @@ RSpec.describe SeasonReportCsv do
   it "gives each field's vine kill date, blank where there's none" do
     east.plantings.sole.update!(plant: create(:plant, key: "potato"), vine_kill_date: Date.new(2026, 9, 10))
     expect(section("Fields").map { |row| [row["Field"], row["Vine kill"]] }).to eq([["East", "2026-09-10"], ["West", nil]])
+  end
+
+  it "files a season under the system it ran on, after its field moves to another" do
+    east.plantings.sole.update!(end_date: Date.new(2026, 7, 8))
+    south = create(:pivot, farm:, name: "South", latitude: 45.3, longitude: -90.1)
+    east.update!(pivot: south)
+    expect(east.plantings.sole.pivot).to eq(pivot)
+
+    expect(section("Fields").map { |row| [row["Field"], row["Irrigation system"]] }).to eq([["East", "North"], ["West", "North"]])
+    expect(rows).to include(["Fields: 2 fields on 1 pivot across 1 farm, 120.0 acres"])
+    pivot_row = section("Irrigation by irrigation system").sole
+    expect(pivot_row).to include("Irrigation system" => "North", "Fields" => "2")
+    expect(section("Weather by zone").sole).to include("Irrigation systems" => "North (pivot)")
   end
 
   it "says so for a season without crops" do

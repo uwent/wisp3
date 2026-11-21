@@ -24,6 +24,10 @@ RSpec.describe "Constants mirrored in the frontend" do
       .to eq([Pivot::LONGITUDES.begin, Pivot::LONGITUDES.end])
   end
 
+  it "has Planting's longest season in lib/plantings.ts" do
+    expect(frontend_constant("plantings.ts", "MAX_SEASON_DAYS")).to eq(Planting::MAX_SEASON_DAYS)
+  end
+
   it "has PlantingStatus's lead days in lib/outlook.ts" do
     expect(frontend_constant("outlook.ts", "LEAD_DAYS")).to eq(PlantingStatus::LEAD_DAYS)
   end

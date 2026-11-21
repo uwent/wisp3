@@ -179,13 +179,21 @@ export function canReplace(other: { season_start: string; emergence_date: string
   return other.season_start < lastDay && other.emergence_date < lastDay
 }
 
+/**
+ * The longest a season runs, season start to harvest, and how far before the start a crop can have
+ * emerged: a year, with room for a leap day (Planting::MAX_SEASON_DAYS). A year's typo would
+ * otherwise backfill years of weather and run a balance that long.
+ */
+export const MAX_SEASON_DAYS = 366
+
 export type SeasonDates = { seasonStart: string; emergence: string; end: string; vineKill?: string | null }
 
 /**
  * What's out of order in a planting's dates, by the date to fix, checked as they're typed (G.13
- * part 3): harvest after the season start and after emergence (a season is at least a day long),
- * and vine kill from emergence to harvest. Emergence may be on or before the season start (a
- * transplant; a perennial, or a crop already up when tracking starts). Planting#dates_in_order
+ * part 3): harvest after the season start and after emergence (a season is at least a day long)
+ * and within a year of the start (MAX_SEASON_DAYS), and vine kill from emergence to harvest.
+ * Emergence may be on or up to a year before the season start (a transplant; a perennial, or a crop
+ * already up when tracking starts). Planting#dates_in_order
  * checks the same on save. Blank dates aren't checked (the inputs are required). loose: a saved
  * planting whose dates aren't changing, held to the rules before G.13 (harvest on or after the
  * season start and emergence), as the server holds it, so it stays editable.
@@ -194,14 +202,20 @@ export function dateProblems(
   { seasonStart, emergence, end, vineKill }: SeasonDates,
   endLabel = 'Harvest',
   { loose = false } = {},
-): { end?: string; vineKill?: string } {
-  const problems: { end?: string; vineKill?: string } = {}
+): { emergence?: string; end?: string; vineKill?: string } {
+  const problems: { emergence?: string; end?: string; vineKill?: string } = {}
   const after = loose ? 'on or after' : 'after'
   const early = (other: string) => (loose ? end < other : end <= other)
+  const startWithYear = seasonStart && formatDate(seasonStart, { year: true })
   if (end && emergence && early(emergence)) {
     problems.end = `${endLabel} must be ${after} emergence (${formatDate(emergence)}).`
   } else if (end && seasonStart && early(seasonStart)) {
     problems.end = `${endLabel} must be ${after} the season start (${formatDate(seasonStart)}).`
+  } else if (!loose && end && seasonStart && daysBetween(seasonStart, end) > MAX_SEASON_DAYS) {
+    problems.end = `${endLabel} must be within a year of the season start (${startWithYear}).`
+  }
+  if (!loose && emergence && seasonStart && daysBetween(emergence, seasonStart) > MAX_SEASON_DAYS) {
+    problems.emergence = `Emergence must be no more than a year before the season start (${startWithYear}).`
   }
   if (vineKill && emergence && vineKill < emergence) {
     problems.vineKill = `Vine kill can't be before emergence (${formatDate(emergence)}).`

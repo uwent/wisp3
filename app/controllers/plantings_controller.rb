@@ -73,7 +73,7 @@ class PlantingsController < AuthenticatedController
 
   # The season's daily balance as CSV (the legacy export's columns, plus where each value came from)
   def export
-    planting = Current.group.plantings.includes(:plant, field: [:soil_type, {pivot: [:pivot_group, {farm: :group}]}]).find(params[:id])
+    planting = Current.group.plantings.includes(:plant, pivot: {farm: :group}, field: [:soil_type, {pivot: [:pivot_group, {farm: :group}]}]).find(params[:id])
     filename = "wisp-#{planting.field.name.parameterize}-#{planting.season_year}.csv"
     csv = PlantingCsv.new(PlantingStatus.new(planting), exported_by: current_user, about_url:).to_csv
     send_data csv, filename:, type: "text/csv; charset=utf-8"

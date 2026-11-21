@@ -29,12 +29,14 @@ class PlantingStatus
   # weather:, records: and temperatures: are passed to PlantingBalance (pages showing many plantings
   # preload them).
   # ensemble: the cell's ensemble members (WeatherForecast#members); loaded if not given. as_of:
-  # time travel (above); it sets today and builds its own records, cut at the date.
+  # time travel (above); it sets today, and the records (given, or loaded here) must cover season
+  # start through the days that followed (as_of + HORIZON, or the season's end): entries after the
+  # date are what happened next, so they're kept, and only canopy readings are cut at it.
   def initialize(planting, today: Current.today, weather: nil, records: nil, ensemble: :load, as_of: nil, temperatures: nil)
     if as_of
       today, ensemble = as_of, nil
       through = [as_of + HORIZON, planting.end_date].min
-      records = DailyInputs.preload([planting.field], planting.season_start..through).fetch(planting.field.id)
+      records ||= DailyInputs.preload([planting.field], planting.season_start..through).fetch(planting.field.id)
     end
     @planting, @today, @ensemble_members, @as_of = planting, today, ensemble, as_of
     @balance = PlantingBalance.new(planting, weather:, records:, today:, canopy_through: as_of, temperatures:)

@@ -7,6 +7,9 @@
 class AnnouncementJob < ApplicationJob
   class Incomplete < StandardError; end
 
+  # Runs for minutes on purpose; the bulk queue keeps it from holding up mail (config/queue.yml)
+  queue_as :bulk
+
   THROTTLE = 0.2 # seconds: five emails a second
 
   def perform(announcement, throttle: THROTTLE)

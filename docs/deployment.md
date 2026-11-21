@@ -5,7 +5,7 @@
 | staging | `dev.agweather.cals.wisc.edu` (SSH port 216), local Postgres | Capistrano, systemd user services | https://dev.wisp.cals.wisc.edu | `staging` |
 | production | AWS us-east-1: EC2 `wisp-prod` (54.159.70.187), RDS `wisp-prod` (PostgreSQL 18) | Docker Compose, images built on the server | https://wisp.cals.wisc.edu | `production` |
 
-Both run the same two processes: the web server (Puma) and the Solid Queue worker (weather refresh, the daily digest, the health check and other background jobs).
+Both run the same two processes: the web server (Puma) and the Solid Queue worker (weather refresh, the daily digest, the health check and other background jobs). The worker (`bin/jobs`) starts a process for mail alone beside the one for everything else (`config/queue.yml`), so a sign-in code never waits behind an announcement.
 
 - [Staging](#staging-capistrano)
 - [Production](#production-docker-on-ec2)
@@ -392,4 +392,5 @@ Things to know before editing the deploy configuration:
 - **New settings:** a setting the app reads from `ENV` goes in production's `/opt/wisp/.env` (and the list in Production step 4), not in credentials; production's credentials hold only `secret_key_base`.
 - **The compose file used is the deployed commit's**, copied to `/opt/wisp/compose.yaml` by each deploy, not your working copy's.
 - **Mail:** production sends through SES's SMTP interface (`SMTP_*`; the container has no sendmail and EC2 blocks port 25); staging uses the host's sendmail.
+- **Job workers** (`config/queue.yml`): `bin/jobs` forks a dispatcher, a mail worker (the `mailers` queue, 2 threads) and a general worker (every queue, 3 threads; `JOB_CONCURRENCY` processes of it, 1 unless set). Each process needs its threads + 2 database connections within `database.yml`'s `max_connections` (`RAILS_MAX_THREADS`, 5 unless set, which neither jobs service sets), so more threads in a worker means setting `RAILS_MAX_THREADS` for the jobs service too. A job that runs long on purpose goes on the `bulk` queue, never on `mailers`.
 - **Builds share the server's 4 GB** with the running site; exit code 137 is out of memory (Production step 1, swap).

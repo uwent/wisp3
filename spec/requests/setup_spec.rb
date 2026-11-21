@@ -389,9 +389,10 @@ RSpec.describe "Setup", type: :request do
 
     it "reports plantings it couldn't copy" do
       field = create(:field, pivot:, name: "West", soil_type: sand)
-      # A season running into the next year: its copy would overlap it
+      # A season running into the next year, saved before seasons were limited to a year: its copy
+      # would overlap it, and runs too long
       create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 15),
-        end_date: Date.new(2026, 5, 1))
+        end_date: Date.new(2025, 9, 30)).update_columns(end_date: Date.new(2026, 5, 1))
       post season_copy_path(year: 2026)
       expect(field.plantings.in_season(2026)).to be_empty
       expect(flash[:alert]).to start_with("Couldn't copy Potato on West (")

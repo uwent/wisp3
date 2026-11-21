@@ -71,6 +71,25 @@ RSpec.describe "Domain models" do
       expect(planting.tap(&:validate).errors[:end_date]).to eq(["must be after emergence"])
     end
 
+    it "runs no more than a year from its season start, and emerges no more than a year before it" do
+      planting = build(:planting, season_start: Date.new(2027, 9, 15), emergence_date: Date.new(2028, 4, 1),
+        end_date: Date.new(2028, 9, 15))
+      expect(planting).to be_valid # winter wheat tracked from fall, a leap year's 366 days
+      planting.end_date = Date.new(2028, 9, 16)
+      expect(planting.tap(&:validate).errors[:end_date]).to eq(["must be within a year of the season start"])
+      # A season start typed a decade early
+      planting = build(:planting, season_start: Date.new(2016, 4, 1), emergence_date: Date.new(2026, 5, 1),
+        end_date: Date.new(2026, 9, 30))
+      expect(planting.tap(&:validate).errors[:end_date]).to eq(["must be within a year of the season start"])
+      # An emergence typed a decade early
+      planting = build(:planting, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2016, 5, 1),
+        end_date: Date.new(2026, 9, 30))
+      expect(planting.tap(&:validate).errors[:emergence_date])
+        .to eq(["must be no more than a year before the season start"])
+      planting.emergence_date = Date.new(2025, 4, 1) # a stand up since last spring
+      expect(planting).to be_valid
+    end
+
     it "keeps an older planting ending on its emergence day editable until its dates change" do
       planting = create(:planting, emergence_date: Date.new(2026, 5, 15), end_date: Date.new(2026, 9, 30))
       planting.update_columns(end_date: Date.new(2026, 5, 15))

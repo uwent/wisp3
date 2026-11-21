@@ -6,6 +6,9 @@
 class DailyDigestJob < ApplicationJob
   class Incomplete < StandardError; end
 
+  # One job for every user; the bulk queue keeps it from holding up mail (config/queue.yml)
+  queue_as :bulk
+
   def perform(today: Date.current)
     sent = 0
     failures = {}

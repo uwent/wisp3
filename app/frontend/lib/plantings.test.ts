@@ -144,6 +144,23 @@ describe('dateProblems (G.13 part 3)', () => {
     )
   })
 
+  it('keeps harvest within a year of the season start, and emergence no more than a year before it', () => {
+    // Winter wheat tracked from fall, over a leap year's 366 days
+    expect(dateProblems({ seasonStart: '2027-09-15', emergence: '2028-04-01', end: '2028-09-15' })).toEqual({})
+    expect(dateProblems({ seasonStart: '2027-09-15', emergence: '2028-04-01', end: '2028-09-16' }).end).toBe(
+      'Harvest must be within a year of the season start (Sep 15, 2027).',
+    )
+    expect(dateProblems({ ...dates, seasonStart: '2016-04-01' }).end).toBe(
+      'Harvest must be within a year of the season start (Apr 1, 2016).',
+    )
+    expect(dateProblems({ ...dates, emergence: '2016-05-01' }).emergence).toBe(
+      'Emergence must be no more than a year before the season start (Apr 1, 2026).',
+    )
+    expect(dateProblems({ ...dates, emergence: '2025-04-01' })).toEqual({})
+    // A saved planting whose dates aren't changing is held to the older rules
+    expect(dateProblems({ ...dates, seasonStart: '2016-04-01' }, 'Harvest', { loose: true })).toEqual({})
+  })
+
   it('keeps vine kill between emergence and harvest', () => {
     expect(dateProblems({ ...dates, vineKill: '2026-04-20' }).vineKill).toBe(
       "Vine kill can't be before emergence (May 1).",

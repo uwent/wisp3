@@ -34,6 +34,9 @@ module Wisp
     # Sender for all mail (Devise, sign-in links, alerts)
     config.x.mailer_from = ENV.fetch("MAILER_FROM", "WISP <agweather@cals.wisc.edu>")
 
+    # Mail sent with deliver_later goes on its own queue, which has its own worker (config/queue.yml)
+    config.action_mailer.deliver_later_queue_name = "mailers"
+
     # Don't generate system test files.
     config.generators.system_tests = nil
   end

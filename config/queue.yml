@@ -1,9 +1,19 @@
+# Three queues (docs/architecture.md, Email): "mailers" (sign-in codes and other mail sent with
+# deliver_later), "default" and "weather" for the app's jobs, and "bulk" for jobs that run long on
+# purpose (AnnouncementJob's paced sends, DailyDigestJob's pass over every user). Mail gets a worker
+# of its own, so a sign-in code never waits behind a long job; the general worker serves every
+# queue, mail included. Each worker process holds threads + 2 database connections, within
+# database.yml's max_connections (5 unless RAILS_MAX_THREADS says otherwise).
 default: &default
   dispatchers:
     - polling_interval: 1
       batch_size: 500
   workers:
-    - queues: "*"
+    - queues: mailers
+      threads: 2
+      processes: 1
+      polling_interval: 0.5
+    - queues: '*'
       threads: 3
       processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
       polling_interval: 1

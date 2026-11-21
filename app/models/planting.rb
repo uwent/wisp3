@@ -83,6 +83,12 @@ class Planting < ApplicationRecord
 
   SQUARE_FEET_PER_ACRE = 43_560
 
+  # The longest a season runs, season start to harvest, and how far before the season start a crop
+  # can have emerged: a year, with room for a leap day. Seasons are a growing year's: winter wheat and
+  # perennials take spring green-up as emergence. A year's typo would otherwise backfill years of
+  # weather and run a balance that long. lib/plantings.ts (MAX_SEASON_DAYS) mirrors it.
+  MAX_SEASON_DAYS = 366
+
   # A season ends no later than this, the legacy default end
   LATEST_END = [11, 30].freeze
 
@@ -315,8 +321,9 @@ class Planting < ApplicationRecord
   def dates_in_order
     return unless season_start && emergence_date && end_date
     # A season is at least a day long, and so is the crop's time in it: harvest comes after the season
-    # start and after emergence. Emergence may be the season's first day (a transplant), or before it
-    # (a perennial, or a crop already up when its tracking starts). lib/plantings.ts (dateProblems)
+    # start and after emergence, and within a year of the start (MAX_SEASON_DAYS). Emergence may be the
+    # season's first day (a transplant), or up to a year before it (a perennial, or a crop already up
+    # when its tracking starts). lib/plantings.ts (dateProblems)
     # checks the same as the dates are typed. Checked when a date changes (G.13 part 3), so a planting
     # saved under the looser rules before stays editable.
     unless new_record? || will_save_change_to_season_start? || will_save_change_to_emergence_date? ||
@@ -329,6 +336,11 @@ class Planting < ApplicationRecord
       errors.add(:end_date, "must be after emergence")
     elsif end_date <= season_start
       errors.add(:end_date, "must be after the season start")
+    elsif end_date > season_start + MAX_SEASON_DAYS
+      errors.add(:end_date, "must be within a year of the season start")
+    end
+    if emergence_date < season_start - MAX_SEASON_DAYS
+      errors.add(:emergence_date, "must be no more than a year before the season start")
     end
     check_vine_kill
   end

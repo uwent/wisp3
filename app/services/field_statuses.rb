@@ -14,7 +14,8 @@ class FieldStatuses
     plantings = fields.to_h { |field| [field.id, plantings_for(field, today, year)] }
 
     current = plantings.values.flatten
-    last = [today + PlantingStatus::HORIZON, current.map(&:end_date).max].compact.min
+    # Through the projection's days, or as of the example farm's day, the days that followed it
+    last = [[today, as_of].compact.max + PlantingStatus::HORIZON, current.map(&:end_date).max].compact.min
     dates = current.any? ? current.map(&:season_start).min..last : today..today
     records = DailyInputs.preload(fields, dates)
     # Each planting's weather cell: its pivot's, or where the pivot was in an ended season (G.9)
@@ -35,10 +36,11 @@ class FieldStatuses
 
   # A planting's status today; as of the example farm's day (as_of) through time travel's view of it
   # (PlantingStatus as_of: what followed in place of a forecast) when its season covers the day, as
-  # it then stood (upcoming or ended) otherwise
+  # it then stood (upcoming or ended) otherwise. records: the field's, covering the planting's season
+  # through as_of's days that followed (PlantingStatus) when time travelling
   def self.status(planting, today:, as_of: nil, records: nil, weather: nil, ensemble: :load, temperatures: nil)
     if as_of && planting.season_range.cover?(as_of)
-      PlantingStatus.new(planting, as_of:, weather:, temperatures:)
+      PlantingStatus.new(planting, as_of:, records:, weather:, temperatures:)
     else
       PlantingStatus.new(planting, today:, records:, weather:, ensemble: as_of ? [] : ensemble, temperatures:)
     end
