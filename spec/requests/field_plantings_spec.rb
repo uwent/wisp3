@@ -69,7 +69,8 @@ RSpec.describe "Fields with several plantings", type: :request do
 
       get planting_path(soy)
       expect_inertia.to render_component("Plantings/Show")
-      expect(inertia.props[:planting]).to include(partial: true, exceeds_field_area: false)
+      expect(inertia.props[:planting]).to include(partial: true)
+      expect(inertia.props[:exceeds_field_area]).to be(false)
       days = inertia.props[:days].index_by { |day| day[:date] }
       expect(days["2026-07-10"]).to include(irrigation: 0.6, irrigation_source: "field", field_inches: 0.6)
       expect(days["2026-07-11"]).to include(irrigation: 0.2, irrigation_source: "entered", field_inches: 0.4)
@@ -79,7 +80,7 @@ RSpec.describe "Fields with several plantings", type: :request do
       plot(length: 300, width: 200) # 1.38 ac
       big = plot("Corn", length: 300, width: 200)
       get planting_path(big)
-      expect(inertia.props[:planting][:exceeds_field_area]).to be(true)
+      expect(inertia.props[:exceeds_field_area]).to be(true)
     end
   end
 

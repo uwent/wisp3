@@ -3,6 +3,6 @@ class SeasonReportsController < AuthenticatedController
   def show
     year = requested_year
     csv = SeasonReportCsv.new(Current.group, year, exported_by: current_user, about_url:).to_csv
-    send_data csv, filename: "wisp-season-#{Current.group.name.parameterize}-#{year}.csv", type: "text/csv; charset=utf-8"
+    send_csv csv, "wisp-season-#{Current.group.name.parameterize}-#{year}.csv"
   end
 end

@@ -16,6 +16,13 @@ export const BASEMAPS: { key: Basemap; name: string }[] = [
 /** The font our labels use; both basemaps serve it */
 export const LABEL_FONT = ['Noto Sans Regular']
 
+/** Our labels' paint: white with a black halo, legible on either basemap */
+export const labelPaint = (haloWidth = 1) => ({
+  'text-color': '#ffffff',
+  'text-halo-color': '#000000',
+  'text-halo-width': haloWidth,
+})
+
 // Roads, place names and county lines over the imagery, from OpenFreeMap's tiles (the Map basemap's
 // source), drawn light for a dark background: the main roads pale yellow, the rest white and fainter
 // the smaller they are, names in white with a dark halo
@@ -210,8 +217,8 @@ const STYLE_TIMEOUT_MS = 20_000
 
 /**
  * Changes the basemap. A new style replaces every source and layer, so ours (the sources isOwn
- * picks, and the layers drawing them, in their order) are copied into it. `before` and `after` run
- * around the switch itself (terra-draw stops and starts there). Switches on one map run in turn, and
+ * picks, and the layers drawing them, in their order) are copied into it. `before` runs just before
+ * the switch itself (terra-draw stops there). Switches on one map run in turn, and
  * one a later call has replaced is skipped (resolving false). Resolves true once the new style is
  * in place, before its tiles load, or false if it doesn't load in time (another click retries).
  */
@@ -219,7 +226,7 @@ export function setBasemap(
   map: MapLibreMap,
   basemap: Basemap,
   isOwn: (sourceId: string) => boolean,
-  { before, after }: { before?: () => void; after?: () => void } = {},
+  { before }: { before?: () => void } = {},
 ): Promise<boolean> {
   wanted.set(map, basemap)
   const run = (running.get(map) ?? Promise.resolve()).then(async () => {
@@ -253,9 +260,51 @@ export function setBasemap(
     })
     const ok = await loaded
     if (ok) shown.set(map, basemap)
-    after?.()
     return ok
   })
   running.set(map, run)
   return run
+}
+
+/**
+ * A map's basemap toggle: shows the choice at once, switches with setBasemap (carrying over the
+ * sources isOwn picks), and runs `after` once the new style is in place (images and terra-draw come
+ * back there). A switch that fails (its style didn't load in time) puts the toggle back on what the
+ * map shows, so the same button tries again; one a later click replaced is left to that click.
+ */
+export class BasemapSwitch {
+  #shown: Basemap
+  #wanted: Basemap
+
+  constructor(
+    initial: Basemap,
+    private readonly options: {
+      map: () => MapLibreMap | undefined
+      isOwn: (sourceId: string) => boolean
+      /** Shows a choice on the toggle */
+      show: (basemap: Basemap) => void
+      before?: () => void
+      after?: () => void
+    },
+  ) {
+    this.#shown = initial
+    this.#wanted = initial
+  }
+
+  async change(to: Basemap): Promise<boolean> {
+    const { map, isOwn, show, before, after } = this.options
+    const m = map()
+    if (!m || to === this.#wanted) return false
+    this.#wanted = to
+    show(to)
+    const ok = await setBasemap(m, to, isOwn, { before })
+    if (ok) {
+      this.#shown = to
+      after?.()
+    } else if (this.#wanted === to) {
+      this.#wanted = this.#shown
+      show(this.#shown)
+    }
+    return ok
+  }
 }

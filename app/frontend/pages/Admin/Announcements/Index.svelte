@@ -3,6 +3,7 @@
 
   import AdminTabs from '@/lib/components/AdminTabs.svelte'
   import { formatDate } from '@/lib/dates'
+  import { count } from '@/lib/text'
   import { adminAnnouncements } from '@/routes'
   import type { AdminAnnouncement } from '@/types/serializers'
 
@@ -46,7 +47,7 @@
             >
             <p class="text-sm text-ink-muted">
               {announcement.audience_text}{announcement.recipients_count !== null
-                ? ` · ${announcement.recipients_count.toLocaleString()} ${announcement.recipients_count === 1 ? 'person' : 'people'}`
+                ? ` · ${count(announcement.recipients_count, 'person', 'people')}`
                 : ''}
             </p>
           </div>

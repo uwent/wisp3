@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { page } from '@inertiajs/svelte'
   import { onMount, tick } from 'svelte'
   import { slide } from 'svelte/transition'
 
@@ -11,7 +10,7 @@
   import { GLOSSARY } from '@/lib/glossary'
   import { motion } from '@/lib/motion'
   import { FULL_COVER_PCT, READING_EVERY } from '@/lib/guidance'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
 
   // The About page (PLAN.md Phase 6.5): WISP's documentation, replacing the legacy PDF user guide.
   // Public; the crop table comes from the plants table, the soil table from soil_types (with each
@@ -67,7 +66,7 @@
 
   const pct = (fraction: number) => `${+(fraction * 100).toFixed(2)}%`
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   const depth = (inches: number) => units.format('rootDepth', inches)
 
   const BASES: Record<Soil['basis'], string> = {

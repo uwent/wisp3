@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { page } from '@inertiajs/svelte'
   import { type Snippet, tick, untrack } from 'svelte'
 
   import CoordinatesField from '@/lib/components/CoordinatesField.svelte'
@@ -18,7 +17,7 @@
     shapeAcres,
     type ShapeDraft,
   } from '@/lib/geo'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
   import type { SoilType } from '@/types/serializers'
 
   // An irrigation system's kind, location and size: the map picker and the inputs that edit the same
@@ -77,7 +76,7 @@
     [true, 'Partial circle'],
   ] as const
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   const outline = $derived(draftShape(shape))
   const area = $derived(outline ? shapeAcres(outline) : null)
   const areaHint = $derived(area ? `Irrigates about ${units.format('area', area)}` : undefined)

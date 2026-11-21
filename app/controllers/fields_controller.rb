@@ -7,8 +7,7 @@ class FieldsController < AuthenticatedController
   # every planting on it shares (no balance: that's each planting's page). ?year= picks the season.
   # ?planting_id= (links from before plantings had their own pages) goes to that planting's page.
   def show
-    field = Current.group.fields.includes(:soil_type, pivot: [:farm, :weather_cell, :pivot_group],
-      plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell]).find(params[:id])
+    field = Current.group.fields.with_season_tree.find(params[:id])
     if (planting = field.plantings.find { |p| p.id == params[:planting_id].to_i })
       return redirect_to planting_path(planting, request.query_parameters.slice("as_of"))
     end
@@ -16,8 +15,7 @@ class FieldsController < AuthenticatedController
     today = Current.today
     year = requested_year
     plantings = field.plantings.select { |p| p.season_year == year }
-    WeatherCell.keep_current([field.pivot.weather_cell_id])
-    weather_updating = WeatherCell.updating_ids([field.pivot.weather_cell_id]).any?
+    weather_updating = WeatherCell.keep_current_updating_ids([field.pivot.weather_cell_id]).any?
 
     render inertia: "Fields/Show", props: {
       **FieldHeaderProps.for(field),
@@ -27,9 +25,7 @@ class FieldsController < AuthenticatedController
       **WeatherZone.page_props(Current.group, field.pivot.weather_cell, forecast: year == today.year),
       plantings: summaries(field, plantings, today),
       days: field_days(field, year, plantings, today),
-      plants: PlantSerializer.new(Plant.order(:name)).to_h,
-      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h,
-      generic_curves: GenericCurveSerializer.all
+      **ReferenceProps.planting_form
     }
   end
 

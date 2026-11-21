@@ -31,7 +31,7 @@
     type PivotShape,
     type ShapeDraft,
   } from '@/lib/geo'
-  import { LABEL_FONT, setBasemap, type Basemap } from '@/lib/map/basemaps'
+  import { BasemapSwitch, LABEL_FONT, labelPaint, type Basemap } from '@/lib/map/basemaps'
   import { createMap } from '@/lib/map/createMap'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { resizeCursor, ROTATE_CURSOR } from '@/lib/map/cursors'
@@ -215,7 +215,7 @@
         'text-variable-anchor': ['center', 'top'],
         'text-radial-offset': 0.8,
       },
-      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
+      paint: labelPaint(),
     })
     m.addSource('pivot', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
     m.addLayer({
@@ -443,12 +443,15 @@
     soilLayer.load()
   })
 
-  async function switchBase(to: Basemap) {
-    if (!map) return
-    basemap = to
-    await setBasemap(map, to, (id) => OWN_SOURCES.includes(id))
-    drawPivot()
-  }
+  const basemapSwitch = new BasemapSwitch(
+    untrack(() => basemap),
+    {
+      map: () => map,
+      isOwn: (id) => OWN_SOURCES.includes(id),
+      show: (to) => (basemap = to),
+      after: () => drawPivot(),
+    },
+  )
 
   function showPivot() {
     if (center) map?.flyTo({ center, zoom: Math.max(map.getZoom(), PIVOT_ZOOM - 1) })
@@ -528,7 +531,7 @@
 
     <div class="absolute top-2 left-2">
       <div class="flex gap-2">
-        <BasemapToggle value={basemap} onchange={switchBase} />
+        <BasemapToggle value={basemap} onchange={(to) => basemapSwitch.change(to)} />
         <MapLayersButton id="pivot-map-layers" {basemap} count={soilLayer.on ? 1 : 0}>
           <SoilTypesOption layer={soilLayer} />
         </MapLayersButton>

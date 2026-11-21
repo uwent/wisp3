@@ -124,6 +124,3 @@ export function appliedLabel(fieldIds: number[] | null, total: number): string {
   if (count === total) return total === 1 ? 'Its field' : `All ${total} fields`
   return `${count} of ${total} ${total === 1 ? 'field' : 'fields'}`
 }
-
-/** "3 fields", "1 field" */
-export const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`

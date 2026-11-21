@@ -11,7 +11,6 @@ import {
   combinedTable,
   correctedOn,
   defaultView,
-  type FieldRain,
   gddFrom,
   panelCsvRows,
   panelSummary,
@@ -68,11 +67,8 @@ const days = Array.from({ length: 65 }, (_, i) => ({
   snow_depth_in: null,
 })) as unknown as WeatherPanelDay[]
 
-const field = { fieldCapacity: 0.1, wiltingPoint: 0.04 }
-// The balance's crop ET, through the projection; the last forecast day has none (the projection ends there)
-const cropEt = Object.fromEntries(days.slice(0, -1).map((day) => [day.date, 0.1]))
 const panel = (key: string, system: 'imperial' | 'metric' = 'imperial') =>
-  weatherPanels(units(system), { field, cropEt }).find((p) => p.key === key)!
+  weatherPanels(units(system)).find((p) => p.key === key)!
 type SeriesOption = { name: string; type: string; stack?: string; xAxisIndex: number; data: (number | null)[] }
 
 describe('weather charts', () => {
@@ -143,14 +139,11 @@ describe('weather charts', () => {
     expect(total.data[21]).toBeNull()
   })
 
-  it('pairs reference and crop ET bars, with crop ET through the projection', () => {
+  it('draws reference ET as bars, with its running total in view below', () => {
     const option = weatherChartOption(panel('et'), days, units('imperial'), palette)
-    const [reference, crop, referenceTotal, cropTotal] = option.series as SeriesOption[]
-    expect([reference.stack, crop.stack]).toEqual([undefined, undefined])
-    expect([reference.data[61], crop.data[59], crop.data[61], crop.data[64]]).toEqual([0.2, 0.1, 0.1, null])
+    const [reference, referenceTotal] = option.series as SeriesOption[]
+    expect([reference.type, reference.stack, reference.data[61]]).toEqual(['bar', undefined, 0.2])
     expect(referenceTotal.data[64]).toBe(Number((0.2 * (65 - defaultView(days).start)).toFixed(2)))
-    expect(cropTotal.data[63]).toBe(Number((0.1 * (DEFAULT_WINDOW_DAYS + 4)).toFixed(2)))
-    expect(cropTotal.data[64]).toBeNull()
   })
 
   it('shows precipitation in mm for metric', () => {
@@ -217,89 +210,6 @@ describe('weather charts', () => {
     expect(html).toContain('Snow and other')
     expect(html).not.toContain('Snowfall')
     expect(formatter([param(2, 'Snowfall', 1.5)])).toContain('1.50 in')
-  })
-
-  describe("with the field's rain", () => {
-    // Day 30: rain entered over the model's 0.5; day 31: an entered zero; day 40: the model's, used
-    const fieldRain = (unused: 'none' | 'model' = 'model'): FieldRain =>
-      Object.fromEntries(
-        days.map((day, i) => [
-          day.date,
-          i === 30
-            ? { rain: 0.8, rain_source: 'entered', rain_model: 0.5 }
-            : i === 31
-              ? { rain: 0, rain_source: 'entered', rain_model: 0 }
-              : {
-                  rain: unused === 'none' && !day.forecast ? 0 : day.precip_in,
-                  rain_source: day.forecast ? 'forecast' : unused,
-                  rain_model: day.precip_in,
-                },
-        ]),
-      )
-    const option = (rain: FieldRain, view?: { start: number; end: number }) =>
-      weatherChartOption(
-        weatherPanels(units('imperial'), { fieldRain: rain }).find((p) => p.key === 'precipitation')!,
-        days,
-        units('imperial'),
-        palette,
-        view,
-      )
-    type Item = number | null | { value: number; unused?: boolean; itemStyle: { color: string; borderType: string } }
-
-    it('adds the entered rain beside the model, and outlines the modeled rain it replaced', () => {
-      const series = option(fieldRain()).series as { name: string; data: Item[]; stack?: string }[]
-      expect(series.map((s) => s.name).filter((name) => name !== 'Forecast shading')).toEqual([
-        'Rain',
-        'Snow and other',
-        'Entered rain',
-        'Modeled total',
-        'Used by the balance',
-      ])
-      const [rain, , entered] = series
-      expect(entered.stack).toBeUndefined()
-      expect(entered.data.slice(29, 33)).toEqual([null, 0.8, 0, null])
-      expect(rain.data[30]).toMatchObject({
-        value: 0.4,
-        unused: true,
-        itemStyle: { color: 'transparent', borderType: 'dashed' },
-      })
-      expect(rain.data[40]).toBe(0.4)
-    })
-
-    it('outlines every modeled day the balance leaves out on a field using only entered rain, but not the forecast', () => {
-      const [rain] = option(fieldRain('none')).series as { data: Item[] }[]
-      expect(rain.data[40]).toMatchObject({ value: 0.4, unused: true })
-      expect(rain.data[60]).toBe(0.4)
-    })
-
-    it("totals the model's precipitation and the rain the balance used", () => {
-      const series = option(fieldRain('none'), { start: 30, end: 64 }).series as {
-        name: string
-        data: (number | null)[]
-      }[]
-      const total = (name: string) => series.find((s) => s.name === name)!.data[64]
-      // Model: days 30, 40, 50 and 60; balance: the 0.8 entered and the forecast's 0.5 on day 60
-      expect([total('Modeled total'), total('Used by the balance')]).toEqual([2, 1.3])
-    })
-
-    it('names entered rain in the legend and tooltip only where there is some', () => {
-      const legend = (view: { start: number; end: number }) => legendNames(option(fieldRain(), view))
-      expect(legend({ start: 0, end: 20 })).not.toContain('Entered rain')
-      expect(legend({ start: 20, end: 40 })).toContain('Entered rain')
-      const formatter = (option(fieldRain()).tooltip as { formatter: (params: unknown) => string }).formatter
-      const param = (seriesIndex: number, seriesName: string, value: number | null, data: unknown = value) => ({
-        axisValue: days[30].date,
-        seriesIndex,
-        seriesName,
-        marker: '',
-        value,
-        data,
-      })
-      expect(formatter([param(0, 'Rain', 0.4), param(2, 'Entered rain', null)])).not.toContain('Entered rain')
-      expect(formatter([param(0, 'Rain', 0.4, { value: 0.4, unused: true }), param(2, 'Entered rain', 0)])).toMatch(
-        /not used[\s\S]*Entered rain/,
-      )
-    })
   })
 
   it('treats a missing day as a gap in the running total, not a zero', () => {
@@ -398,7 +308,7 @@ describe('weather charts', () => {
   })
 
   it('explains every chart', () => {
-    for (const p of weatherPanels(units('metric'), { field })) expect(p.info.length).toBeGreaterThan(40)
+    for (const p of weatherPanels(units('metric'))) expect(p.info.length).toBeGreaterThan(40)
     expect(panel('air_temperature', 'metric').info).toContain('30 °C')
   })
 
@@ -412,15 +322,11 @@ describe('weather charts', () => {
       marker: '',
       value,
     })
-    const html = formatter([
-      param(2, 'Reference ET total', 1.5),
-      param(0, 'Reference ET', 0.2),
-      param(1, 'Crop ET', null),
-    ])
+    const html = formatter([param(1, 'Reference ET total', 1.5), param(0, 'Reference ET', 0.2)])
     expect(html.match(/<strong>[^<]*<\/strong>/)![0]).not.toContain('2026-06-02')
     expect(html.indexOf('Reference ET<')).toBeLessThan(html.indexOf('Reference ET total'))
     expect(html).toContain('0.20 in')
-    expect(html).toContain('—')
+    expect(formatter([param(0, 'Reference ET', null)])).toContain('—')
     expect(html).not.toContain('Corrected') // stored before the corrections
     const later = formatter([{ ...param(0, 'Reference ET', 0.2), axisValue: '2026-06-03' }])
     expect(later).toContain('Corrected (About › Weather)')
@@ -428,7 +334,7 @@ describe('weather charts', () => {
 
   it('marks the panels whose values are corrected', () => {
     const corrected = Object.fromEntries(
-      weatherPanels(units('imperial'), { field, cropEt })
+      weatherPanels(units('imperial'))
         .filter((p) => p.corrected)
         .map((p) => [p.key, p.corrected]),
     )

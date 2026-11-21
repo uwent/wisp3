@@ -1,10 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { page } from '@inertiajs/svelte'
 
   import NumberField from '@/lib/components/NumberField.svelte'
   import type { FieldInfoKey } from '@/lib/fieldInfo'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
 
   // A field's area (PLAN.md Phase 8 G.14 part 7): the area saved beside the box, and the shape's area
   // under them, how far apart said (in the caution color when it's far). The same in the field dialog
@@ -34,7 +33,7 @@
     info?: FieldInfoKey
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   const format = (acres: number) => units.format('area', acres, { digits: 2 })
   const rounded = $derived(drawn === null ? null : Math.round(drawn * 100) / 100)
 

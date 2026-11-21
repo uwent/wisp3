@@ -1,4 +1,4 @@
-import type { FieldDay, WeatherPanelDay } from '@/types/serializers'
+import type { WeatherPanelDay } from '@/types/serializers'
 
 import type { CsvValue } from '../csv'
 import { formatDate } from '../dates'
@@ -25,10 +25,6 @@ type Series = {
    * view has any, and out of the tooltip on days without
    */
   sparse?: boolean
-  /** A value only on some days (entered rain): out of the legend and tooltip without one, but zero kept */
-  entries?: boolean
-  /** Days drawn as an outline: modeled rain the field's balance doesn't use */
-  hollow?: (day: WeatherPanelDay) => boolean
   /** Its own unit, when not the panel's (a series in the lower grid) */
   unit?: (units: Units) => string
   /** Its own decimals, when not the panel's */
@@ -41,9 +37,6 @@ type Series = {
   /** In the lower grid, its line: solid for the first series, dashed for the rest unless given */
   dash?: 'solid' | 'dashed' | 'dotted'
 }
-
-/** A field's rain by date as its balance resolved it (FieldDay), for the precipitation chart */
-export type FieldRain = Record<string, Pick<FieldDay, 'rain' | 'rain_source' | 'rain_model'>>
 
 export type WeatherPanel = {
   key: string
@@ -124,30 +117,18 @@ export function gddFrom(days: WeatherPanelDay[], from: string): Record<string, n
 }
 
 /**
- * The panels for a weather zone. The options overlay one planting's own values (unused since the
- * panels left the planting page, G.12):
- * - field: its capacity and wilting point, as reference lines on the modeled soil moisture
- * - cropEt: the field's crop-adjusted ET by date (the balance's adjusted ET), through the forecast
- *   (the projection's); without it the ET chart shows reference ET only
+ * The panels for a weather zone:
  * - gddSince: what the stored total (gdd_since_emergence) counts from ('emergence', or a date's label)
  * - gddPlanting: a third degree-day total, from a planting's date (label: "planting (May 1)"), by date
- * - fieldRain: the field's rain as its balance used it; the precipitation chart then adds the rain
- *   entered, outlines the modeled rain the balance doesn't use, and totals both
  */
 export function weatherPanels(
   units: Units,
   {
-    field,
-    cropEt,
     gddSince = 'emergence',
     gddPlanting,
-    fieldRain,
   }: {
-    field?: { fieldCapacity: number; wiltingPoint: number }
-    cropEt?: Record<string, number | null>
     gddSince?: string
     gddPlanting?: { label: string; totals: Record<string, number | null> }
-    fieldRain?: FieldRain
   } = {},
 ): WeatherPanel[] {
   // Soil depths ("3–11 in") in the user's units, as root zone depths are
@@ -157,16 +138,6 @@ export function weatherPanels(
       .replace('in', units.label('rootDepth'))
   const temp = (f: number) => units.format('temperature', f)
   const depth = (value: number | null) => converted(units, 'depth', value)
-  // The rain the grower entered, and whether the balance left the model's out
-  const enteredRain = (day: WeatherPanelDay) => {
-    const rain = fieldRain?.[day.date]
-    return rain && rain.rain_source === 'entered' ? rain.rain : null
-  }
-  const modelUnused = (day: WeatherPanelDay) => {
-    const source = fieldRain?.[day.date]?.rain_source
-    return source === 'entered' || source === 'none'
-  }
-  const hollow = fieldRain ? { hollow: modelUnused } : {}
   // Most looked at first (Ben, 2026-11-17), in pairs that sit side by side in two columns: air
   // temperature and precipitation; the water balance's demand and the crop's development (ET, GDD);
   // the soil (moisture, temperature); then what drives ET (sun and wind, humidity and VPD)
@@ -194,33 +165,15 @@ export function weatherPanels(
         "is the part the weather model doesn't count as rain). The field's balance uses this unless you enter a rain gauge reading. " +
         'The lower panel adds it up from the first day in view, so zooming changes the total. When there is snow, ' +
         'the gray bars are snowfall (the depth of new snow) and the gray line is the snow on the ground, both ' +
-        'measured as snow, not water: 10 inches of snow holds roughly an inch of water, less when it is light and dry.' +
-        (fieldRain
-          ? " Here it also shows the rain you entered for this field, beside the model's. Modeled precipitation the " +
-            "field's balance doesn't use is drawn as an outline: on days you entered rain, and on every day you " +
-            "didn't if the field counts only the rain you enter. The lower panel totals the model's precipitation and " +
-            'the rain the balance used.'
-          : ''),
+        'measured as snow, not water: 10 inches of snow holds roughly an inch of water, less when it is light and dry.',
       bars: 'stack',
       series: [
         {
           name: 'Rain',
           color: (p) => p.rain,
           value: (day) => depth(day.rain_in === null ? null : Math.min(day.rain_in, day.precip_in ?? Infinity)),
-          ...hollow,
         },
-        { name: 'Snow and other', color: (p) => p.depths[0], value: (day) => depth(otherPrecip(day)), ...hollow },
-        ...(fieldRain
-          ? [
-              {
-                name: 'Entered rain',
-                color: (p: Palette) => p.rain,
-                value: (day: WeatherPanelDay) => depth(enteredRain(day)),
-                style: 'bar' as const,
-                entries: true,
-              },
-            ]
-          : []),
+        { name: 'Snow and other', color: (p) => p.depths[0], value: (day) => depth(otherPrecip(day)) },
         { name: 'Snowfall', color: (p) => p.snow, value: (day) => depth(day.snowfall_in), style: 'bar', sparse: true },
         {
           name: 'Snow depth',
@@ -230,16 +183,7 @@ export function weatherPanels(
           sparse: true,
         },
       ],
-      totals: fieldRain
-        ? [
-            { name: 'Modeled total', color: (p) => p.rain, value: (day) => depth(day.precip_in) },
-            {
-              name: 'Used by the balance',
-              color: (p) => p.ad,
-              value: (day) => depth(fieldRain[day.date]?.rain ?? null),
-            },
-          ]
-        : [{ name: 'Precipitation total', color: (p) => p.rain, value: (day) => depth(day.precip_in) }],
+      totals: [{ name: 'Precipitation total', color: (p) => p.rain, value: (day) => depth(day.precip_in) }],
     },
     {
       key: 'et',
@@ -248,39 +192,12 @@ export function weatherPanels(
       info:
         'Reference ET is the water a well-watered grass would use, worked out by WISP with the FAO-56 Penman–Monteith ' +
         "equation from the model's temperature and wind and its corrected humidity and sunshine (About › Weather). " +
-        (cropEt
-          ? "Crop ET is this field's estimate: reference ET adjusted for the crop's canopy, which is what the balance " +
-            "takes out of the soil. It's lower than reference ET while the canopy is small. In the forecast it's the projection's, " +
-            'from the forecast reference ET and the expected canopy. ' +
-            'The lower panel adds both up from the first day in view.'
-          : "Each planting's crop ET (reference ET adjusted for its canopy) is on its page. The lower panel adds " +
-            'reference ET up from the first day in view.'),
+        "Each planting's crop ET (reference ET adjusted for its canopy) is on its page. The lower panel adds " +
+        'reference ET up from the first day in view.',
       bars: 'group',
       corrected: 'et0-fao56',
-      series: [
-        { name: 'Reference ET', color: (p) => p.warm, value: (day) => depth(day.et0_in) },
-        ...(cropEt
-          ? [
-              {
-                name: 'Crop ET',
-                color: (p: Palette) => p.canopy,
-                value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null),
-              },
-            ]
-          : []),
-      ],
-      totals: [
-        { name: 'Reference ET total', color: (p) => p.warm, value: (day) => depth(day.et0_in) },
-        ...(cropEt
-          ? [
-              {
-                name: 'Crop ET total',
-                color: (p: Palette) => p.canopy,
-                value: (day: WeatherPanelDay) => depth(cropEt[day.date] ?? null),
-              },
-            ]
-          : []),
-      ],
+      series: [{ name: 'Reference ET', color: (p) => p.warm, value: (day) => depth(day.et0_in) }],
+      totals: [{ name: 'Reference ET total', color: (p) => p.warm, value: (day) => depth(day.et0_in) }],
     },
     {
       key: 'gdd',
@@ -337,10 +254,8 @@ export function weatherPanels(
       unit: () => '% of soil volume',
       info:
         "The weather model's own estimate of the water in the soil at four depths, as a percent of the soil's " +
-        "volume (ECMWF IFS). It isn't a field's balance and doesn't know about irrigation" +
-        (field
-          ? "; the dashed lines are the field's capacity and wilting point for comparison, and the model's soil may hold water differently."
-          : ', and its soil may hold water differently from your fields.'),
+        "volume (ECMWF IFS). It isn't a field's balance and doesn't know about irrigation, and its soil may hold " +
+        'water differently from your fields.',
       series: DEPTHS.map(([key, label], i) => ({
         name: depthName(label),
         color: (p) => p.depths[i],
@@ -349,10 +264,6 @@ export function weatherPanels(
           return value === null ? null : value * 100
         },
       })),
-      lines: field && [
-        { name: 'Field capacity', value: field.fieldCapacity * 100 },
-        { name: 'Wilting point', value: field.wiltingPoint * 100 },
-      ],
     },
     {
       key: 'soil_temperature',
@@ -445,11 +356,10 @@ const valueOn = (series: Series, day: WeatherPanelDay) => {
   return series.sparse && value === 0 ? null : value
 }
 
-/** Whether a sparse or entries series has something on a day (always, for the others) */
-const hasValue = (series: Series, day: WeatherPanelDay) =>
-  series.entries ? series.value(day) !== null : !series.sparse || (series.value(day) ?? 0) > 0
+/** Whether a sparse series has something on a day (always, for the others) */
+const hasValue = (series: Series, day: WeatherPanelDay) => !series.sparse || (series.value(day) ?? 0) > 0
 
-/** The panel's series with something to show: sparse ones (snow) and entries only when some day has some */
+/** The panel's series with something to show: sparse ones (snow) only when some day has some */
 export const shownSeries = (panel: WeatherPanel, days: WeatherPanelDay[]) =>
   panel.series.filter((series) => days.some((day) => hasValue(series, day)))
 
@@ -510,21 +420,12 @@ export function weatherChartOption(
   const outline = (s: Series) =>
     palette.dark || s.style !== 'bar' ? {} : { borderColor: palette.inkMuted, borderWidth: 0.5 }
   // Series named in the tooltip only on days they have a value
-  const sparse = new Set(series.filter((s) => s.sparse || s.entries).map((s) => s.name))
-  const hollowStyle = (s: Series) => ({
-    color: 'transparent',
-    borderColor: s.color(palette),
-    borderType: 'dashed',
-    borderWidth: 1,
-  })
+  const sparse = new Set(series.filter((s) => s.sparse).map((s) => s.name))
   const daily = series.map((s, i) => ({
     name: s.name,
     xAxisIndex: 0,
     yAxisIndex: 0,
-    data: days.map((day) => {
-      const value = digits(valueOn(s, day))
-      return value !== null && s.hollow?.(day) ? { value, unused: true, itemStyle: hollowStyle(s) } : value
-    }),
+    data: days.map((day) => digits(valueOn(s, day))),
     itemStyle: { color: s.color(palette), ...outline(s) },
     ...(panel.bars && s.style !== 'line'
       ? { type: 'bar', barMaxWidth: 10, ...(panel.bars === 'stack' && !s.style ? { stack: panel.key } : {}) }
@@ -695,7 +596,6 @@ type TooltipParam = {
   seriesName: string
   marker: string
   value: unknown
-  data?: unknown
 }
 
 /**
@@ -714,11 +614,8 @@ function tooltip(
   if (!all.length) return ''
   const list = all.filter((param) => typeof param.value === 'number' || !sparse.has(param.seriesName))
   const rows = list.map((param) => {
-    const unused = (param.data as { unused?: boolean } | null)?.unused
-      ? ' <span style="opacity:.7">not used</span>'
-      : ''
     const { unit, digits } = format.get(param.seriesName) ?? { unit: '', digits: 1 }
-    const value = typeof param.value === 'number' ? `${param.value.toFixed(digits)} ${unit}${unused}` : '—'
+    const value = typeof param.value === 'number' ? `${param.value.toFixed(digits)} ${unit}` : '—'
     return `<tr><td style="padding-right:12px">${param.marker}${param.seriesName}</td><td style="text-align:right"><strong>${value}</strong></td></tr>`
   })
   const note = corrected(all[0].axisValue)
@@ -822,12 +719,6 @@ export function panelTable(panel: WeatherPanel, days: WeatherPanelDay[], units: 
 }
 
 /**
- * The panel's daily values for a CSV file, oldest first: a header (Date, Forecast, then each series it
- * shows with its unit), then a row per day. Build the panel with imperial units to get the values
- * as stored. Unlike the table, a zero stays a zero (no snow is 0, not missing), and values keep
- * three decimals.
- */
-/**
  * Every panel's columns in one table (the weather page's "all of this zone's weather"), in the
  * panels' order, a column two panels share (cloud cover) once
  */
@@ -860,6 +751,12 @@ export function tableTsv(table: {
     .join('\n')
 }
 
+/**
+ * The panel's daily values for a CSV file, oldest first: a header (Date, Forecast, then each series it
+ * shows with its unit), then a row per day. Build the panel with imperial units to get the values
+ * as stored. Unlike the table, a zero stays a zero (no snow is 0, not missing), and values keep
+ * three decimals.
+ */
 export function panelCsvRows(panel: WeatherPanel, days: WeatherPanelDay[], units: Units): CsvValue[][] {
   const series = listedSeries(panel, days)
   const rounded = (value: number | null) => (value === null ? null : Number(value.toFixed(3)))

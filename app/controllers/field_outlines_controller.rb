@@ -21,7 +21,7 @@ class FieldOutlinesController < AuthenticatedController
       # Nearby systems and other fields' outlines, drawn for reference
       other_pivots: Current.group.pivots.where.not(id: field.pivot_id).order(:name).map { |pivot| pivot.slice(*SYSTEM) },
       other_fields: others.map { |other| {id: other.id, name: other.name, boundary: other.boundary} },
-      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h,
+      soil_types: ReferenceProps.soil_types,
       from: (params[:from] == "setup") ? "setup" : "field"
     }
   end

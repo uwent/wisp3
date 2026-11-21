@@ -193,7 +193,6 @@ RSpec.describe "Domain models" do
       Pivot::POINT_KINDS.each do |kind|
         pivot = create(:pivot, kind:, radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300, length_ft: 1300)
         expect(pivot.reload).to have_attributes(kind:, radius_ft: nil, arc_start_deg: nil, length_ft: nil)
-        expect(pivot).to be_point
       end
     end
 

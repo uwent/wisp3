@@ -21,10 +21,9 @@
     typicalEnd,
   } from '@/lib/plantings'
   import { fetchSoilSurvey, soilOptionsByShare, soilShares } from '@/lib/soils'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
   import { plantings } from '@/routes'
   import type { Field, GenericCurve, Plant, Planting, SoilType } from '@/types/serializers'
-  import { page } from '@inertiajs/svelte'
 
   // One planting on a field for one season. Dates default to Apr 1 – Nov 30 with emergence May 1,
   // and the root zone depth to the crop's (as in legacy WISP). A season that has ended keeps its own
@@ -61,7 +60,7 @@
     ondelete?: () => void
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   const start = untrack(() => planting ?? template)
   let seasonStart = $state(untrack(() => start?.season_start ?? `${year}-04-01`))
   let emergence = $state(untrack(() => start?.emergence_date ?? `${year}-05-01`))

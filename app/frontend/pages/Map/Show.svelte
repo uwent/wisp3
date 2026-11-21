@@ -17,7 +17,8 @@
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
   import { buildTree, type FarmGroup, treeSystems, type Selection, treeFields, updatingIds } from '@/lib/overview'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
-  import { units as unitsFor } from '@/lib/units'
+  import { count } from '@/lib/text'
+  import { currentUnits } from '@/lib/units'
   import { map as mapRoute, newQuickSetup } from '@/routes'
 
   // Every pivot on a map with its fields' status, beside a list of the operation as a tree of cards
@@ -30,7 +31,7 @@
     $props()
 
   const auth = $derived(page.props.auth)
-  const units = $derived(unitsFor(auth.user?.unit_system))
+  const units = $derived(currentUnits())
   const groupId = page.props.auth.group?.id
 
   let prefs = $state(loadPrefs(groupId))
@@ -97,13 +98,12 @@
   const tree = $derived(buildTree(shown, { order: prefs.sort, query, windowDays, growing: onlyGrowing }))
   const listedCount = $derived(treeFields(tree).length)
   // "3 farms · 8 systems · 25 fields · 40 plantings": what the list shows
-  const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
   const listedSummary = $derived(
     [
-      plural(tree.length, 'farm'),
-      plural(tree.flatMap(treeSystems).length, 'system'),
-      plural(listedCount, 'field'),
-      plural(
+      count(tree.length, 'farm'),
+      count(tree.flatMap(treeSystems).length, 'system'),
+      count(listedCount, 'field'),
+      count(
         treeFields(tree).reduce((sum, card) => sum + card.plantings.length, 0),
         'planting',
       ),

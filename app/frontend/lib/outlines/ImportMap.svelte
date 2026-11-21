@@ -2,15 +2,17 @@
   import 'maplibre-gl/dist/maplibre-gl.css'
 
   import { onMount, untrack } from 'svelte'
-  import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
+  import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 
+  import { type Palette, readPalette } from '@/lib/charts/palette'
   import { boundsOf } from '@/lib/geo'
   import { type Boundary, boundaryBounds, boundaryCenter } from '@/lib/boundary'
-  import { type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
+  import { type Basemap, BasemapSwitch, LABEL_FONT, labelPaint } from '@/lib/map/basemaps'
   import { createMap } from '@/lib/map/createMap'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import MapLayersButton from '@/lib/map/MapLayersButton.svelte'
   import { followRoads } from '@/lib/map/roads.svelte'
+  import { onThemeChange } from '@/lib/theme'
 
   import { addReferenceLayers, type Reference } from './references'
 
@@ -18,7 +20,7 @@
 
   // The shapes from an outline file (PLAN.md Phase 8 G.10), numbered as in the list below the map
   // and colored by where each goes (an existing field, a new one, or skipped), over the operation's
-  // systems and outlined fields. Clicking a shape picks its row.
+  // systems and outlined fields, with a legend of the colors below. Clicking a shape picks its row.
   let {
     shapes,
     references,
@@ -36,7 +38,28 @@
     height?: string
   } = $props()
 
-  const COLORS = { field: '#3987e5', new: '#16a34a', skip: '#9ca3af' }
+  // An existing field in a depth blue, a new one in the ok status green, a skipped shape muted; read
+  // again when the theme changes
+  const colorsFrom = (palette: Palette): Record<ShapeOnMap['state'], string> => ({
+    field: palette.depths[1],
+    new: palette.status.ok,
+    skip: palette.inkMuted,
+  })
+  let colors = $state(colorsFrom(readPalette()))
+  const LEGEND: { state: ShapeOnMap['state']; label: string }[] = [
+    { state: 'field', label: 'An existing field' },
+    { state: 'new', label: 'A new field' },
+    { state: 'skip', label: 'Skipped' },
+  ]
+  const colorExpression = (): ExpressionSpecification => [
+    'match',
+    ['get', 'state'],
+    'field',
+    colors.field,
+    'new',
+    colors.new,
+    colors.skip,
+  ]
 
   let container: HTMLDivElement
   let map = $state<MapLibreMap>()
@@ -69,21 +92,21 @@
 
   function addLayers(m: MapLibreMap) {
     addReferenceLayers(m, references)
-    const color = ['match', ['get', 'state'], 'field', COLORS.field, 'new', COLORS.new, COLORS.skip]
+    const color = colorExpression()
     m.addSource('shapes', { type: 'geojson', data: data() as never })
     m.addLayer({
       id: 'shapes-fill',
       type: 'fill',
       source: 'shapes',
       filter: ['!=', ['geometry-type'], 'Point'],
-      paint: { 'fill-color': color as never, 'fill-opacity': ['case', ['get', 'selected'], 0.5, 0.3] },
+      paint: { 'fill-color': color, 'fill-opacity': ['case', ['get', 'selected'], 0.5, 0.3] },
     })
     m.addLayer({
       id: 'shapes-line',
       type: 'line',
       source: 'shapes',
       filter: ['!=', ['geometry-type'], 'Point'],
-      paint: { 'line-color': color as never, 'line-width': ['case', ['get', 'selected'], 4, 2] },
+      paint: { 'line-color': color, 'line-width': ['case', ['get', 'selected'], 4, 2] },
     })
     m.addLayer({
       id: 'shapes-label',
@@ -91,7 +114,7 @@
       source: 'shapes',
       filter: ['==', ['geometry-type'], 'Point'],
       layout: { 'text-field': ['get', 'label'], 'text-size': 13, 'text-font': LABEL_FONT },
-      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.5 },
+      paint: labelPaint(1.5),
     })
     m.on('click', 'shapes-fill', (event) => {
       const index = event.features?.[0]?.properties?.index
@@ -101,21 +124,34 @@
     m.on('mouseleave', 'shapes-fill', () => (m.getCanvas().style.cursor = ''))
   }
 
-  async function changeBasemap(next: Basemap) {
-    if (!map || next === basemap) return
-    basemap = next
-    await setBasemap(map, next, (id) => id === 'reference' || id === 'shapes')
-  }
+  const basemapSwitch = new BasemapSwitch(
+    untrack(() => basemap),
+    {
+      map: () => map,
+      isOwn: (id) => id === 'reference' || id === 'shapes',
+      show: (to) => (basemap = to),
+    },
+  )
 
-  onMount(() =>
-    createMap(container, basemap, (m) =>
+  onMount(() => {
+    const remove = createMap(container, basemap, (m) =>
       m.on('load', () => {
         map = m
         addLayers(m)
         fit()
       }),
-    ),
-  )
+    )
+    const stopFollowing = onThemeChange(() => {
+      colors = colorsFrom(readPalette())
+      if (!map?.getLayer('shapes-fill')) return
+      map.setPaintProperty('shapes-fill', 'fill-color', colorExpression())
+      map.setPaintProperty('shapes-line', 'line-color', colorExpression())
+    })
+    return () => {
+      stopFollowing()
+      remove()
+    }
+  })
 
   // A changed choice or selection recolors the shapes; a new file (fileKey) also fits the map to them
   $effect(() => {
@@ -128,15 +164,25 @@
   })
 </script>
 
-<div class="relative overflow-hidden rounded-lg border border-line" style:height>
-  <div
-    bind:this={container}
-    class="h-full w-full"
-    role="img"
-    aria-label="Map of the file's shapes, numbered as in the list below"
-  ></div>
-  <div class="absolute top-2 left-2 flex gap-2">
-    <BasemapToggle value={basemap} onchange={changeBasemap} />
-    <MapLayersButton id="import-map-layers" {basemap} />
+<div class="space-y-3">
+  <div class="relative overflow-hidden rounded-lg border border-line" style:height>
+    <div
+      bind:this={container}
+      class="h-full w-full"
+      role="img"
+      aria-label="Map of the file's shapes, numbered as in the list below"
+    ></div>
+    <div class="absolute top-2 left-2 flex gap-2">
+      <BasemapToggle value={basemap} onchange={(to) => basemapSwitch.change(to)} />
+      <MapLayersButton id="import-map-layers" {basemap} />
+    </div>
   </div>
+  <p class="flex flex-wrap gap-x-4 text-xs text-ink-muted">
+    {#each LEGEND as { state, label } (state)}
+      <span>
+        <span class="inline-block size-3 rounded-sm align-middle" style:background-color={colors[state]}
+        ></span>{` ${label}`}
+      </span>
+    {/each}
+  </p>
 </div>

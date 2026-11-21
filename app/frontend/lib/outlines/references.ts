@@ -3,7 +3,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { boundsOf, type LngLat, type PivotShape, pivotOutline } from '@/lib/geo'
 import { type Boundary, boundaryBounds, boundaryCenter } from '@/lib/boundary'
 import { readPalette } from '@/lib/charts/palette'
-import { LABEL_FONT } from '@/lib/map/basemaps'
+import { LABEL_FONT, labelPaint } from '@/lib/map/basemaps'
 
 // What the outline pages draw for reference (PLAN.md Phase 8 G.10): irrigation systems (an outline,
 // or a point kind's dot) and fields' outlines, each named, the first one ("own") more strongly
@@ -124,6 +124,6 @@ export function addReferenceLayers(map: MapLibreMap, references: Reference[]) {
       'text-variable-anchor': ['top', 'center'],
       'text-radial-offset': 0.9,
     },
-    paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
+    paint: labelPaint(),
   })
 }

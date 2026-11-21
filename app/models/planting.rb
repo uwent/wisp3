@@ -71,7 +71,6 @@ class Planting < ApplicationRecord
   before_validation :copy_from_field, on: :create
   before_create :copy_from_field
 
-  scope :in_season, ->(year) { where(season_start: Date.new(year).all_year) }
   # Plantings whose season hasn't ended: they follow edits to their field and pivot
   scope :open, ->(today = Date.current) { where(end_date: today..) }
   # Plantings whose season includes date

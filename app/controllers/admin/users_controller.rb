@@ -12,7 +12,7 @@ module Admin
 
     def export
       csv = AdminUsersCsv.new(User.order(:id).to_a, AdminUserStats.new, exported_by: current_user, about_url:).to_csv
-      send_data csv, filename: "wisp-accounts-#{Current.today.iso8601}.csv", type: "text/csv; charset=utf-8"
+      send_csv csv, "wisp-accounts-#{Current.today.iso8601}.csv"
     end
 
     def show

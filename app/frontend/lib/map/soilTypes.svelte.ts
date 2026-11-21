@@ -1,6 +1,6 @@
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 
-import { LABEL_FONT } from '@/lib/map/basemaps'
+import { LABEL_FONT, labelPaint } from '@/lib/map/basemaps'
 import { type Bounds, fetchSoilAreas, SOIL_COLORS, type SoilAreas } from '@/lib/soils'
 
 // The Soil types layer (PLAN.md Phase 7 F; the pivot picker and the field shape page): the soil
@@ -133,7 +133,7 @@ export class SoilTypesLayer {
         source: SOIL_SOURCE,
         minzoom: 14,
         layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-font': LABEL_FONT },
-        paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
+        paint: labelPaint(1.2),
       },
       below,
     )

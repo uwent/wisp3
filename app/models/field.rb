@@ -6,6 +6,12 @@ class Field < ApplicationRecord
   has_many :field_entries, dependent: :destroy
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
 
+  # What the field and planting pages read: the field's system and every planting with its balance's inputs
+  scope :with_season_tree, -> {
+    includes(:soil_type, pivot: [:farm, :weather_cell, :pivot_group],
+      plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell])
+  }
+
   validates :name, presence: true, length: {maximum: 100}
   validates :area_acres, numericality: {greater_than: 0}, allow_nil: true
   validates :field_capacity, :perm_wilting_pt, numericality: {greater_than: 0, less_than: 0.6}, allow_nil: true

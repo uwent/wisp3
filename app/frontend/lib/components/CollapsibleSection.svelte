@@ -3,6 +3,7 @@
   import { slide } from 'svelte/transition'
 
   import { motion } from '../motion'
+  import { readStored, writeStored } from '../storage'
 
   // A page section under an h2 that opens and closes from its heading (a disclosure button with
   // a chevron). storageKey remembers the choice in this browser; without one it opens as `open`
@@ -32,12 +33,8 @@
   function remembered(): boolean | null {
     const k = key()
     if (!k) return null
-    try {
-      const stored = localStorage.getItem(k)
-      return stored === null ? null : stored === 'true'
-    } catch {
-      return null // Storage blocked: keep the default
-    }
+    const stored = readStored(k)
+    return typeof stored === 'boolean' ? stored : null // Nothing saved or storage blocked: keep the default
   }
   open = linked() || (remembered() ?? open)
 
@@ -45,11 +42,7 @@
     open = !open
     const k = key()
     if (!k) return
-    try {
-      localStorage.setItem(k, String(open))
-    } catch {
-      // Storage blocked: only this page view remembers
-    }
+    writeStored(k, open) // Storage blocked: only this page view remembers
   }
 
   onMount(() => {

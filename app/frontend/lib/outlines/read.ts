@@ -55,6 +55,16 @@ export async function readOutlineFile(file: File): Promise<ReadResult> {
   return shapesFrom(collections)
 }
 
+/** readOutlineFile for a page: its result, or the message to show when it can't be read */
+export async function readOutlineFileResult(file: File): Promise<{ result: ReadResult } | { error: string }> {
+  try {
+    return { result: await readOutlineFile(file) }
+  } catch (error) {
+    if (error instanceof OutlineFileError) return { error: error.message }
+    return { error: `This file couldn't be read (${(error as Error).message}).` }
+  }
+}
+
 async function parse(extension: string, file: File): Promise<Collection[]> {
   switch (extension) {
     case 'zip':

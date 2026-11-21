@@ -101,7 +101,7 @@ Where each part of WISP 3 lives and how it fits together, area by area. [CLAUDE.
 
 ## Maps
 
-- **MapLibre** through `lib/map/`: `createMap` (`lib/map/createMap.ts`) loads it (`loadMapLibre`, which sets its Vite-bundled worker), makes the map on its basemap with `transformStyle`, the controls and attribution, and returns one cleanup. `basemaps.ts` (`setBasemap`), `BasemapToggle`, `PlaceSearch`.
+- **MapLibre** through `lib/map/`: `createMap` (`lib/map/createMap.ts`) loads it (`loadMapLibre`, which sets its Vite-bundled worker), makes the map on its basemap with `transformStyle`, the controls and attribution, and returns one cleanup. `basemaps.ts` (`setBasemap`; `BasemapSwitch`, each map's toggle: it shows the choice, switches with the map's own sources, and puts the toggle back when the style doesn't load so the same button retries; `labelPaint` beside `LABEL_FONT`), `BasemapToggle`, `PlaceSearch`.
 - **Layers button:** every map has `MapLayersButton` beside the Satellite | Map pill: roads and place names over the imagery (`IMAGERY_ROADS`, OpenFreeMap tiles; the setting in `roads.svelte.ts`), then the map's own layers (Soil types; the Map tab's `OverviewLayers`). OpenFreeMap's street style is patched on load (`repairStyle`, `transformStyle`).
 - **Public layers** are listed in `lib/map/overlays.ts`, each with `valueAt` for the tooltip, and applied by `MapOverlays` (loaded in the browser; a failing provider marks its layer unavailable and the map carries on). Radar values are read from the IEM tile's colors (`lib/map/radar.ts`); MRMS values are millimeters.
 - **The pivot picker** (`PivotMap.svelte`, setup) has a Soil types layer from the soil survey. Its handles aren't MapLibre draggable markers, which follow the pointer and flicker against a constrained position; `followPointer` moves the shape and places each handle from it. Their custom cursors are SVG data URLs (`lib/map/cursors.ts`).
@@ -117,7 +117,7 @@ Where each part of WISP 3 lives and how it fits together, area by area. [CLAUDE.
   - MapLibre sets `position: relative` on its container, so size the container (`h-full w-full`) rather than positioning it absolutely. Its worker URL breaks under Vite unless loaded through `loadMapLibre()` (`worker.format: 'es'` in `vite.config.ts`).
   - ECharts and MapLibre can't parse `oklch()`: get colors through `readPalette()` (`lib/charts/palette.ts`).
   - terra-draw takes a MapLibre map's pointer events (`lib/outlines/OutlineMap.svelte`): the map's own `click` doesn't fire, so listen on the canvas container in the capture phase; and its `change` events fire for features loaded from code (`clear`, `addFeatures`), so ignore them while loading.
-  - Our layers survive a basemap switch through `setBasemap`, terra-draw's don't: stop it and start it again with its snapshot in `setBasemap`'s `before` and `after` (which run only for a switch that happens: a map's switches are queued, and one a later click replaced is skipped).
+  - Our layers survive a basemap switch through `setBasemap`, terra-draw's don't: `OutlineMap` stops it in `BasemapSwitch`'s `before` and starts it again with the outline in `after` (which runs only once a new style is in place: a map's switches are queued, one a later click replaced is skipped, and one that times out leaves terra-draw stopped until a switch succeeds).
 
 ## Charts
 

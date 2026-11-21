@@ -10,8 +10,8 @@ class OutlineImportsController < AuthenticatedController
       fields: Current.group.fields.order(:name).map do |field|
         field.slice(:id, :name, :pivot_id, :area_acres).merge(outlined: !field.boundary.nil?)
       end,
-      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h,
-      default_soil_type_id: SoilType.find_by(key: SoilType::DEFAULT_KEY)&.id
+      soil_types: ReferenceProps.soil_types,
+      default_soil_type_id: ReferenceProps.default_soil_type_id
     }
   end
 

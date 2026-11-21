@@ -1,4 +1,5 @@
 import { addDays, daysBetween, formatDate } from '@/lib/dates'
+import { count } from '@/lib/text'
 import type { Units } from '@/lib/units'
 
 // How a planting is named and sized in the interface (PLAN.md Phase 8 G.11): a planting covers the
@@ -65,7 +66,6 @@ type SeasonTotals = {
 }
 
 const times = (n: number) => (n === 1 ? 'once' : `${n} times`)
-const dayCount = (n: number) => (n === 1 ? '1 day' : `${n} days`)
 
 /**
  * An ended season in four stats, for its card (G.6): irrigation, rain, deep drainage, and the days
@@ -84,14 +84,14 @@ export function endedSeasonStats(totals: SeasonTotals, units: Units): { label: s
         totals.rain === null
           ? 'No data'
           : totals.rain_days
-            ? `${dayCount(totals.rain_days)}, ${depth(totals.rain)}`
+            ? `${count(totals.rain_days, 'day')}, ${depth(totals.rain)}`
             : 'None',
     },
     {
       label: 'Deep drainage',
-      value: totals.drainage_days ? `${dayCount(totals.drainage_days)}, ${depth(totals.deep_drainage)}` : 'None',
+      value: totals.drainage_days ? `${count(totals.drainage_days, 'day')}, ${depth(totals.deep_drainage)}` : 'None',
     },
-    { label: 'Below the irrigation point', value: totals.stress_days ? dayCount(totals.stress_days) : 'Never' },
+    { label: 'Below the irrigation point', value: totals.stress_days ? count(totals.stress_days, 'day') : 'Never' },
   ]
 }
 
@@ -102,7 +102,7 @@ export function seasonLine(totals: SeasonTotals, units: Units): string {
     totals.irrigation_days ? `Irrigated ${depth(totals.irrigation)}` : 'No irrigation',
     totals.rain === null ? null : `rain ${depth(totals.rain)}`,
     totals.stress_days
-      ? `${dayCount(totals.stress_days)} below the irrigation point`
+      ? `${count(totals.stress_days, 'day')} below the irrigation point`
       : 'never below the irrigation point',
   ]
     .filter(Boolean)

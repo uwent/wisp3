@@ -1,14 +1,14 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { Form, Link, page, router } from '@inertiajs/svelte'
+  import { Form, Link, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
+  import IrrigationAmount from '@/lib/components/IrrigationAmount.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import {
     applies,
     appliedLabel,
     common,
-    count,
     farmRows,
     fieldHasEntry,
     inSeason,
@@ -24,14 +24,17 @@
   } from '@/lib/dailyEntry'
   import { addDays, formatDate, today as todayDate } from '@/lib/dates'
   import { KIND_NAMES, KIND_NOUNS, systemName } from '@/lib/geo'
+  import { canUseHours, enteredAsHours, savedAmount } from '@/lib/irrigation'
   import { cropName, plotSize } from '@/lib/plantings'
+  import { readStored, writeStored } from '@/lib/storage'
+  import { count } from '@/lib/text'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
   import { dailyEntries, fields as fieldRoutes, newQuickSetup, plantings as plantingRoutes } from '@/routes'
 
   let { date, farms }: { date: string; farms: DayFarm[] } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   /** A system in a placeholder: "pivot", "traveler", "drip" */
   const short = (pivot: DayPivot) => KIND_NAMES[pivot.kind].toLowerCase()
   const today = todayDate()
@@ -58,14 +61,12 @@
   // save, not whenever the page's data changes (a reload for another reason keeps what's typed)
   function saved(pivots: DayPivot[]) {
     const fields = pivots.flatMap((pivot) => pivot.fields)
-    const hours = Object.fromEntries(pivots.map((p) => [p.id, p.irrigation !== null && p.irrigation.inches === null]))
+    const hours = Object.fromEntries(pivots.map((p) => [p.id, enteredAsHours(p.irrigation)]))
     return {
       rain: Object.fromEntries(fields.map((f) => [f.id, f.entry?.rain_in ?? null])),
       fieldIrrigation: Object.fromEntries(fields.map((f) => [f.id, f.entry?.irrigation_in ?? null])),
       byHours: hours,
-      pivotAmount: Object.fromEntries(
-        pivots.map((p) => [p.id, hours[p.id] ? (p.irrigation?.run_hours ?? null) : (p.irrigation?.inches ?? null)]),
-      ),
+      pivotAmount: Object.fromEntries(pivots.map((p) => [p.id, savedAmount(p.irrigation, hours[p.id])])),
       applied: Object.fromEntries(pivots.map((p) => [p.id, p.irrigation?.field_ids ?? p.fields.map((f) => f.id)])),
     }
   }
@@ -83,12 +84,9 @@
     })
   })
 
-  const canUseHours = (pivot: DayPivot) =>
-    pivot.pump_capacity_gpm !== null && pivot.fields.every((f) => f.area_acres !== null)
-
   function switchHours(pivot: DayPivot, hours: boolean) {
     byHours[pivot.id] = hours
-    pivotAmount[pivot.id] = hours ? (pivot.irrigation?.run_hours ?? null) : (pivot.irrigation?.inches ?? null)
+    pivotAmount[pivot.id] = savedAmount(pivot.irrigation, hours)
   }
 
   const pivotReaches = (pivot: DayPivot, field: DayField) =>
@@ -105,24 +103,15 @@
   // (fields with no crop, plots, pivots with nothing in season) start closed unless something was
   // entered there that day
   const STORAGE_KEY = 'wisp.dailyEntry.collapsed'
+  const stored = readStored(STORAGE_KEY)
   let collapsed = $state<Record<string, boolean>>(
-    (() => {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
-      } catch {
-        return {}
-      }
-    })(),
+    stored && typeof stored === 'object' ? (stored as Record<string, boolean>) : {},
   )
   let opened = $state<Record<string, boolean>>({})
   function remember(key: string, isCollapsed: boolean) {
     collapsed[key] = isCollapsed
-    try {
-      const kept = Object.fromEntries(Object.entries(collapsed).filter(([, closed]) => closed))
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(kept))
-    } catch {
-      // Not remembered (private window, blocked storage): it still works on this page
-    }
+    // Not remembered when storage is blocked: it still works on this page
+    writeStored(STORAGE_KEY, Object.fromEntries(Object.entries(collapsed).filter(([, closed]) => closed)))
   }
   const isOpen = (key: string) => !collapsed[key]
   const shown = (key: string, byDefault: boolean) => opened[key] ?? byDefault
@@ -136,8 +125,6 @@
     coverKinds.size > 1 ? 'Cover (% or LAI)' : coverKinds.has('lai') ? 'LAI' : 'Percent cover (%)',
   )
   const columns = $derived(anyCover ? 5 : 4)
-
-  const e = (errors: Record<string, string | string[]>, key: string) => errors[key]
 
   // Indents for each level's name cell, with room for its expand toggle
   const indent = ['pl-8', 'pl-13', 'pl-18', 'pl-23']
@@ -167,7 +154,7 @@
       label="{cover.kind === 'lai' ? 'LAI' : 'Percent cover'} on {label}{cover.due ? ' (due)' : ''}"
       name="canopy[{planting.id}]"
       value={cover.value}
-      error={e(errs, `canopy.${planting.id}`)}
+      error={errs[`canopy.${planting.id}`]}
     />
     {#if cover.value === null}
       <p class="mt-0.5 text-xs {cover.due ? 'font-medium text-status-caution-ink' : 'text-ink-muted'}">
@@ -218,7 +205,7 @@
         placeholder={field.rain_model === null
           ? ''
           : `modeled ${units.format('depth', field.rain_model, { unit: false })}`}
-        error={e(errs, `fields.${field.id}.rain_in`)}
+        error={errs[`fields.${field.id}.rain_in`]}
       />
     </td>
     <td class="w-36 px-2 py-1.5">
@@ -229,7 +216,7 @@
         quantity="depth"
         bind:value={fieldIrrigation[field.id]}
         placeholder={pivotReaches(pivot, field) ? `${short(pivot)}'s` : ''}
-        error={e(errs, `fields.${field.id}.irrigation_in`)}
+        error={errs[`fields.${field.id}.irrigation_in`]}
       />
     </td>
     <td class="w-28 px-2 py-1.5">
@@ -239,7 +226,7 @@
           label="Soil moisture reading on {field.name}"
           name="fields[{field.id}][soil_moisture_pct]"
           value={field.entry?.soil_moisture_pct ?? null}
-          error={e(errs, `fields.${field.id}.soil_moisture_pct`)}
+          error={errs[`fields.${field.id}.soil_moisture_pct`]}
         />
       {:else}
         <!-- A field growing only plots: each plot's reading is on its own row -->
@@ -277,7 +264,7 @@
             : pivotReaches(pivot, field)
               ? `${short(pivot)}'s`
               : ''}
-          error={e(errs, `plantings.${plot.id}.irrigation_in`)}
+          error={errs[`plantings.${plot.id}.irrigation_in`]}
         />
       </td>
       <td class="px-2 py-1.5">
@@ -286,7 +273,7 @@
           label="Soil moisture reading on {plotLabel} on {field.name}"
           name="plantings[{plot.id}][soil_moisture_pct]"
           value={plot.entry?.soil_moisture_pct ?? null}
-          error={e(errs, `plantings.${plot.id}.soil_moisture_pct`)}
+          error={errs[`plantings.${plot.id}.soil_moisture_pct`]}
         />
       </td>
       {#if anyCover}
@@ -332,29 +319,17 @@
     <td class="px-2 py-1.5" colspan={columns - 2}>
       <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
         <div class="w-32">
-          {#if byHours[pivot.id]}
-            <NumberField
-              hideLabel
-              label="Run hours of {pivot.name}"
-              name="pivots[{pivot.id}][run_hours]"
-              unitLabel="h"
-              bind:value={pivotAmount[pivot.id]}
-              placeholder="hours"
-              error={e(errs, `pivots.${pivot.id}.run_hours`)}
-            />
-            <input type="hidden" name="pivots[{pivot.id}][inches]" value="" />
-          {:else}
-            <NumberField
-              hideLabel
-              label="Irrigation by {pivot.name}"
-              name="pivots[{pivot.id}][inches]"
-              quantity="depth"
-              bind:value={pivotAmount[pivot.id]}
-              placeholder={short(pivot)}
-              error={e(errs, `pivots.${pivot.id}.inches`)}
-            />
-            <input type="hidden" name="pivots[{pivot.id}][run_hours]" value="" />
-          {/if}
+          <IrrigationAmount
+            hideLabel
+            name="pivots[{pivot.id}]"
+            byHours={byHours[pivot.id]}
+            bind:value={pivotAmount[pivot.id]}
+            inchesLabel="Irrigation by {pivot.name}"
+            hoursLabel="Run hours of {pivot.name}"
+            inchesPlaceholder={short(pivot)}
+            hoursPlaceholder="hours"
+            errors={{ inches: errs[`pivots.${pivot.id}.inches`], run_hours: errs[`pivots.${pivot.id}.run_hours`] }}
+          />
         </div>
         {#if canUseHours(pivot)}
           <label class="flex items-center gap-1.5 py-2 text-xs">
@@ -381,8 +356,8 @@
           </button>
         {/if}
       </div>
-      {#if e(errs, `pivots.${pivot.id}.field_ids`)}<p class="text-xs text-status-irrigate-ink">
-          {e(errs, `pivots.${pivot.id}.field_ids`)}
+      {#if errs[`pivots.${pivot.id}.field_ids`]}<p class="text-xs text-status-irrigate-ink">
+          {errs[`pivots.${pivot.id}.field_ids`]}
         </p>{/if}
     </td>
   </tr>

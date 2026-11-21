@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { formatNumber, parseNumber, units } from './units'
+import { page } from '@/test/page.svelte'
+
+import { currentUnits, formatNumber, parseNumber, units } from './units'
+
+vi.mock('@inertiajs/svelte', () => import('@/test/page.svelte'))
 
 describe('units', () => {
   const imperial = units('imperial')
@@ -66,5 +70,15 @@ describe('units', () => {
   it('formats plain numbers with grouping', () => {
     expect(formatNumber(1234.5, 1)).toBe('1,234.5')
     expect(formatNumber(null)).toBe('—')
+  })
+})
+
+describe('currentUnits', () => {
+  it("follows the signed-in user's units, imperial when signed out", () => {
+    page.props.auth.user = null
+    expect(currentUnits().system).toBe('imperial')
+    page.props.auth.user = { unit_system: 'metric' }
+    expect(currentUnits().system).toBe('metric')
+    page.props.auth.user = null
   })
 })

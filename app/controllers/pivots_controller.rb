@@ -79,7 +79,7 @@ class PivotsController < AuthenticatedController
       other_pivots: Current.group.pivots.where.not(id: pivot.id).map do |other|
         other.slice(:id, :name, *PivotSerializer::SHAPE)
       end,
-      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h
+      soil_types: ReferenceProps.soil_types
     }
   end
 end

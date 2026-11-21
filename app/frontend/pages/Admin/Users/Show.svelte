@@ -6,7 +6,8 @@
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
   import { formatDate, formatTimestamp } from '@/lib/dates'
-  import { units as unitsFor } from '@/lib/units'
+  import { count } from '@/lib/text'
+  import { currentUnits } from '@/lib/units'
   import { adminImpersonations, adminUsers } from '@/routes'
   import type { AdminGroup, AdminUserDetail, Field } from '@/types/serializers'
 
@@ -17,7 +18,7 @@
     impersonatable,
   }: { user: AdminUserDetail; groups: AdminGroup[]; deletable: boolean; impersonatable: boolean } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   const isMe = $derived(page.props.auth.user?.id === user.id)
 
   // Deleting the account deletes the groups only it belongs to, with their farms
@@ -27,10 +28,9 @@
     const pivots = farms.flatMap((farm) => farm.pivots)
     return { farms: farms.length, pivots: pivots.length, fields: pivots.flatMap((pivot) => pivot.fields).length }
   }
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
   const summary = (list: AdminGroup[]) => {
     const { farms, pivots, fields } = counts(list)
-    return `${plural(farms, 'farm')}, ${plural(pivots, 'pivot')}, ${plural(fields, 'field')}`
+    return `${count(farms, 'farm')}, ${count(pivots, 'pivot')}, ${count(fields, 'field')}`
   }
 
   const digestFrequencies = {
@@ -178,7 +178,7 @@
                                   · {field.soil_type_name}{field.area_acres !== null
                                     ? ` · ${units.format('area', field.area_acres)}`
                                     : ''}
-                                  · {plural(field.plantings.length, 'planting')} (#{field.id})
+                                  · {count(field.plantings.length, 'planting')} (#{field.id})
                                 </span>
                               </li>
                             {/each}

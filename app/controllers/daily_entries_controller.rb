@@ -44,12 +44,6 @@ class DailyEntriesController < AuthenticatedController
     values.permit(values.keys.index_with { attributes }).to_h
   end
 
-  def parse_date(value)
-    Date.iso8601(value.to_s) if value.present?
-  rescue Date::Error
-    nil
-  end
-
   # A pivot sent with neither inches nor run hours has its irrigation for the day removed
   def record_pivots(date, errors)
     values = by_id(:pivots, [:inches, :run_hours, :notes, field_ids: []])

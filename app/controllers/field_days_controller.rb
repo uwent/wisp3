@@ -7,7 +7,7 @@
 class FieldDaysController < AuthenticatedController
   def update
     field = Current.group.fields.find(params[:field_id])
-    date = Date.iso8601(params[:date])
+    date = parse_date(params[:date]) or raise ActionController::BadRequest, "Invalid date"
     values = params.expect(day: [*DailyEntry::VALUES, :canopy])
 
     part = field.plantings.find(params[:planting_id]) if params[:planting_id].present?
@@ -31,8 +31,6 @@ class FieldDaysController < AuthenticatedController
 
     target = request.referer || field_path(field)
     errors.any? ? redirect_with_errors(target, errors) : redirect_to(target)
-  rescue Date::Error
-    raise ActionController::BadRequest, "Invalid date"
   end
 
   private

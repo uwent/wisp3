@@ -6,6 +6,7 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { formatDate } from '@/lib/dates'
+  import { count } from '@/lib/text'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { currentGroups, groups, memberships } from '@/routes'
   import type { Member } from '@/types/serializers'
@@ -26,9 +27,8 @@
   const owner = $derived(page.props.auth.owner)
   const ownerCount = $derived(members.filter((member) => member.owner).length)
 
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
   const setupSummary = $derived(
-    `${plural(counts.farms, 'farm')}, ${plural(counts.pivots, 'pivot')} and ${plural(counts.fields, 'field')}`,
+    `${count(counts.farms, 'farm')}, ${count(counts.pivots, 'pivot')} and ${count(counts.fields, 'field')}`,
   )
 
   // Matches Membership#removal_error and #demotion_error, which the server checks
@@ -196,7 +196,7 @@
         <div>
           <div class="font-medium">{operation.name}</div>
           <div class="text-xs text-ink-muted">
-            {operation.owner ? 'Owner' : 'Member'} · {plural(operation.members, 'member')}
+            {operation.owner ? 'Owner' : 'Member'} · {count(operation.members, 'member')}
           </div>
         </div>
         {#if operation.id === group.id}
@@ -244,7 +244,7 @@
     <div class="space-y-4 text-sm">
       <p>
         This deletes {setupSummary}, with their crops, irrigation and other entries.
-        {#if members.length > 1}{plural(members.length - 1, 'other member')} will lose access too.{/if}
+        {#if members.length > 1}{count(members.length - 1, 'other member')} will lose access too.{/if}
       </p>
       <div class="flex justify-end gap-2">
         <Button variant="secondary" onclick={() => (deleteOpen = false)}>Cancel</Button>

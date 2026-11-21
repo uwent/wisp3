@@ -2,6 +2,8 @@
 // place values are converted, at the display and input edge. Every displayed or entered quantity
 // goes through format() or parse().
 
+import { page } from '@inertiajs/svelte'
+
 export type UnitSystem = 'imperial' | 'metric'
 
 export type Quantity =
@@ -95,6 +97,12 @@ export function units(system: UnitSystem = 'imperial'): Units {
       return { ok: true, value: unit(quantity).toStored(parsed.value) }
     },
   }
+}
+
+/** The signed-in user's units (imperial when signed out). It reads the page's props, so a component
+ * keeps it current with $derived: `const units = $derived(currentUnits())` */
+export function currentUnits(): Units {
+  return units(page?.props?.auth?.user?.unit_system)
 }
 
 /** A plain number (percent, fraction) typed by the user: blank is null */

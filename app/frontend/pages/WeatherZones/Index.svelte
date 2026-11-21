@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { Link, page } from '@inertiajs/svelte'
+  import { Link } from '@inertiajs/svelte'
   import { systemName } from '@/lib/geo'
 
   import ForecastStrip from '@/lib/components/ForecastStrip.svelte'
   import GlossaryText from '@/lib/components/GlossaryText.svelte'
   import Spinner from '@/lib/components/Spinner.svelte'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
   import { fields, pivots, setup } from '@/routes'
   import { weatherZone } from '@/lib/weatherZones'
   import type { ForecastDay, WeatherZone } from '@/types/serializers'
@@ -21,7 +21,7 @@
     updating_pivot_ids: number[]
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
 
   const weatherWait = pollWeather(() => updating_pivot_ids)
   const weatherState = $derived(weatherWait.state(updating_pivot_ids.length > 0))

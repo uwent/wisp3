@@ -2,13 +2,13 @@
   import { Form, Link, page, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
-  import NumberField from '@/lib/components/NumberField.svelte'
+  import IrrigationAmount from '@/lib/components/IrrigationAmount.svelte'
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { currentYear, formatDate, today as todayDate } from '@/lib/dates'
   import { isPoint, KIND_NOUNS, systemName } from '@/lib/geo'
   import { isExample } from '@/lib/permissions'
-  import { type FieldSeasons, fieldsOn } from '@/lib/irrigation'
-  import { units as unitsFor } from '@/lib/units'
+  import { canUseHours, enteredAsHours, type FieldSeasons, fieldsOn, savedAmount } from '@/lib/irrigation'
+  import { currentUnits } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots } from '@/routes'
   import type { ForecastDay, Pivot, PivotIrrigation } from '@/types/serializers'
@@ -31,17 +31,16 @@
     forecast: ForecastDay[]
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   // "pivot", "drip block"
   const noun = $derived(KIND_NOUNS[pivot.kind])
   const today = todayDate()
-  const canUseHours = $derived(
-    pivot.pump_capacity_gpm !== null && pivot.fields.every((field) => field.area_acres !== null),
-  )
 
   // The form edits a new irrigation, or an existing one picked from the list
   let editing = $state<PivotIrrigation | null>(null)
   let byHours = $state(false)
+  // The amount in the box shown, from the irrigation being edited
+  let amount = $state<number | null>(null)
   let formKey = $state(0)
   // Adding one on a date that already has an irrigation replaces it (the controller), so say so
   let date = $state(today)
@@ -61,7 +60,8 @@
     if (ask && !mayDrop()) return
     dirty = false
     editing = irrigation
-    byHours = irrigation !== null && irrigation.inches === null
+    byHours = enteredAsHours(irrigation)
+    amount = savedAmount(irrigation, byHours)
     date = irrigation?.date ?? today
     formKey++
   }
@@ -168,29 +168,25 @@
               </p>
             {/if}
           </div>
-          {#if byHours}
-            <NumberField
-              label="Run hours"
-              name="pivot_irrigation[run_hours]"
-              unitLabel="h"
-              value={editing?.run_hours ?? null}
-              error={errors.run_hours}
-            />
-            <input type="hidden" name="pivot_irrigation[inches]" value="" />
-          {:else}
-            <NumberField
-              label="Amount"
-              name="pivot_irrigation[inches]"
-              quantity="depth"
-              value={editing?.inches ?? null}
-              error={errors.inches}
-            />
-            <input type="hidden" name="pivot_irrigation[run_hours]" value="" />
-          {/if}
+          <IrrigationAmount
+            name="pivot_irrigation"
+            {byHours}
+            bind:value={amount}
+            errors={{ inches: errors.inches, run_hours: errors.run_hours }}
+          />
           <div class="flex items-end pb-2 text-sm">
-            {#if canUseHours}
+            {#if canUseHours(pivot)}
               <label class="flex items-center gap-2">
-                <input type="checkbox" bind:checked={byHours} class="rounded" /> Enter run hours
+                <input
+                  type="checkbox"
+                  checked={byHours}
+                  onchange={(event) => {
+                    byHours = event.currentTarget.checked
+                    amount = savedAmount(editing, byHours)
+                  }}
+                  class="rounded"
+                />
+                Enter run hours
               </label>
             {:else}
               <span class="text-ink-muted"

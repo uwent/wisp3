@@ -12,7 +12,7 @@
   import Button from '@/lib/components/Button.svelte'
   import { type LngLat } from '@/lib/geo'
   import { type Boundary, boundaryBounds, boundaryFrom, boundaryRing, pathCrossesItself } from '@/lib/boundary'
-  import { type Basemap, LABEL_FONT, setBasemap } from '@/lib/map/basemaps'
+  import { type Basemap, BasemapSwitch, LABEL_FONT, labelPaint } from '@/lib/map/basemaps'
   import { createMap } from '@/lib/map/createMap'
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { SOIL_SOURCE, SoilTypesLayer, viewArea } from '@/lib/map/soilTypes.svelte'
@@ -119,7 +119,8 @@
   let loading = false
 
   function loadDraw() {
-    if (!draw) return
+    // Stopped for a basemap switch, it loads the outline when it starts again
+    if (!draw?.enabled) return
     loading = true
     try {
       draw.clear()
@@ -270,7 +271,7 @@
         'text-keep-upright': true,
         'text-offset': [0, -0.9],
       },
-      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
+      paint: labelPaint(),
     })
   }
 
@@ -336,7 +337,7 @@
 
   // terra-draw's mode for ours; editing selects the shape so its corners show at once
   function applyMode() {
-    if (!draw) return
+    if (!draw?.enabled) return
     const wanted = mode === 'draw' ? 'polygon' : mode === 'edit' ? 'select' : 'static'
     if (draw.getMode() !== wanted) draw.setMode(wanted)
     if (mode !== 'edit') return
@@ -368,32 +369,26 @@
   }
 
   // terra-draw's layers don't survive a new style: it stops for the switch and starts again with what
-  // it held (only around a switch that happens: setBasemap skips one a later click replaced)
-  function changeBasemap(next: Basemap) {
-    if (!map || next === basemap) return
-    basemap = next
-    let snapshot: GeoJSONStoreFeatures[] = []
-    setBasemap(map, next, (id) => OWN_SOURCES.includes(id), {
+  // it held once a new style is in place (only around a switch that happens: setBasemap skips one a
+  // later click replaced), drawing the outline again from `boundary`. A switch that fails leaves it
+  // stopped until one succeeds.
+  const basemapSwitch = new BasemapSwitch(
+    untrack(() => basemap),
+    {
+      map: () => map,
+      isOwn: (id) => OWN_SOURCES.includes(id),
+      show: (to) => (basemap = to),
       before: () => {
-        // The finished shape only: not one half drawn, nor the corner and midpoint handles
-        snapshot = (draw?.getSnapshot() ?? [])
-          .filter((feature) => feature.properties.mode === 'polygon' && !feature.properties.currentlyDrawing)
-          .map((feature) => ({ ...feature, properties: { mode: 'polygon' } }))
-        draw?.stop()
+        if (draw?.enabled) draw.stop()
       },
       after: () => {
-        if (!draw) return
+        if (!draw || draw.enabled) return
         draw.start()
-        loading = true
-        try {
-          if (snapshot.length) draw.addFeatures(snapshot)
-        } finally {
-          loading = false
-        }
+        loadDraw()
         applyMode()
       },
-    })
-  }
+    },
+  )
 
   onMount(() => {
     let removed = false
@@ -446,7 +441,7 @@
       aria-label="Map of the field's shape: draw it here, or import it from a file above"
     ></div>
     <div class="absolute top-2 left-2 flex gap-2">
-      <BasemapToggle value={basemap} onchange={changeBasemap} />
+      <BasemapToggle value={basemap} onchange={(to) => basemapSwitch.change(to)} />
       <MapLayersButton id="outline-map-layers" {basemap} count={soilLayer.on ? 1 : 0}>
         <SoilTypesOption layer={soilLayer} />
       </MapLayersButton>

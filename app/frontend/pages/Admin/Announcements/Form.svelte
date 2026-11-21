@@ -8,6 +8,7 @@
   import FormFooter from '@/lib/components/FormFooter.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { type Edit, insert, link, prefixLines, wrap } from '@/lib/markdownEdit'
+  import { count } from '@/lib/text'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { adminAnnouncements } from '@/routes'
   import type { AdminAnnouncement } from '@/types/serializers'
@@ -110,8 +111,6 @@
     saved = true
     router.delete(adminAnnouncements.destroy(announcement.id).url, { onFinish: () => (saved = false) })
   }
-
-  const people = (n: number) => `${n.toLocaleString()} ${n === 1 ? 'person' : 'people'}`
 </script>
 
 <svelte:head><title>{title} · WISP</title></svelte:head>
@@ -157,7 +156,7 @@
                 />
                 <span
                   ><span class="font-medium">{option.label}</span>
-                  <span class="text-ink-muted">{` · ${people(option.count)}`}</span>
+                  <span class="text-ink-muted">{` · ${count(option.count, 'person', 'people')}`}</span>
                   <span class="block text-ink-muted">{option.description}</span></span
                 >
               </label>

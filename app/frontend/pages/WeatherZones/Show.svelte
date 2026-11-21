@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Link, page, router } from '@inertiajs/svelte'
+  import { Link, router } from '@inertiajs/svelte'
   import { systemName } from '@/lib/geo'
 
   import { gddFrom, plantingStarts, weatherPanels } from '@/lib/charts/weatherCharts'
@@ -9,7 +9,7 @@
   import Term from '@/lib/components/Term.svelte'
   import { currentYear, formatDate } from '@/lib/dates'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
-  import { units as unitsFor, type Units } from '@/lib/units'
+  import { currentUnits, type Units } from '@/lib/units'
   import { fields as fieldRoutes, pivots as pivotRoutes, weatherZones } from '@/routes'
   import { fileLocation, weatherZone, weatherZoneExport } from '@/lib/weatherZones'
   import type { ForecastDay, WeatherPanelDay, WeatherZone } from '@/types/serializers'
@@ -37,7 +37,7 @@
     updating_pivot_ids: number[]
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   // The zone's fields by system, in the systems' order, then by name
   const zoneFields = $derived(
     [...zone.fields].sort(

@@ -1,10 +1,9 @@
 <script lang="ts">
   import { type Snippet, untrack } from 'svelte'
-  import { page } from '@inertiajs/svelte'
 
   import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import type { FieldInfoKey } from '@/lib/fieldInfo'
-  import { parseNumber, type Quantity, units as unitsFor } from '@/lib/units'
+  import { currentUnits, parseNumber, type Quantity } from '@/lib/units'
 
   // A number input in the user's units (Q3). What's typed is shown as-is; a hidden input carries
   // the value converted to the stored unit, under `name`, for Inertia's <Form>.
@@ -57,7 +56,7 @@
     id?: string
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   const show = (stored: number | null) =>
     quantity ? units.input(quantity, stored) : stored === null ? '' : String(Number((stored * scale).toFixed(6)))
 

@@ -6,7 +6,6 @@ import { units } from '../units'
 import { fieldChartOption, roundUp, thresholds } from './fieldChart'
 import type { EChartsCoreOption } from './echarts'
 import type { Palette } from './palette'
-import { weatherPanels } from './weatherCharts'
 
 /** The legend's entry names (a line's entry is {name, itemStyle}) */
 const legendNames = (option: EChartsCoreOption) =>
@@ -409,15 +408,5 @@ describe('field chart', () => {
     const ids = (option.series as { id: string }[]).map((s) => s.id)
     expect(ids).not.toContain('forecast')
     expect(ids).not.toContain('planned')
-  })
-
-  it('compares modeled soil moisture with the field capacity in percent', () => {
-    const panel = weatherPanels(units('imperial'), { field: { fieldCapacity: 0.1, wiltingPoint: 0.04 } }).find(
-      (p) => p.key === 'soil_moisture',
-    )!
-    expect(panel.lines).toEqual([
-      { name: 'Field capacity', value: 10 },
-      { name: 'Wilting point', value: 4 },
-    ])
   })
 })

@@ -8,8 +8,8 @@ module EnsembleProjection
   module_function
 
   # days: the projection's PlantingBalance::Days (resolved inputs and canopy) after today.
-  # members: [{date => {et0:, precip:}}, ...]. start_ad: today's AD, or nil if today is already at or
-  # below threshold (every member then counts as crossed). et_history: [[date, adj_et], ...] before
+  # members: [{date => {et0:, precip:}}, ...]. start_ad: today's AD. already_crossed: today is already
+  # at or below threshold (every member then counts as crossed). et_history: [[date, adj_et], ...] before
   # the first day, for gap fill; evaporation: today's soil surface (WaterBalance::Result#evaporation).
   def run(params, days:, members:, start_ad:, threshold:, et_history: [], evaporation: nil, already_crossed: false)
     return [] if days.empty? || members.empty?

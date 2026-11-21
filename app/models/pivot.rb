@@ -75,8 +75,6 @@ class Pivot < ApplicationRecord
 
   def linear? = kind == "linear"
 
-  def point? = POINT_KINDS.include?(kind)
-
   # What growers call it: "Pivot", "Traveler", "Location"
   def kind_name = KIND_NAMES.fetch(kind, "Irrigation system")
 

@@ -6,7 +6,7 @@
 <script lang="ts">
   import 'maplibre-gl/dist/maplibre-gl.css'
 
-  import { mount, onMount, type Snippet, unmount } from 'svelte'
+  import { mount, onMount, type Snippet, unmount, untrack } from 'svelte'
   import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap, MapMouseEvent, Marker } from 'maplibre-gl'
 
   import { readPalette } from '@/lib/charts/palette'
@@ -15,7 +15,7 @@
   import { onThemeChange } from '@/lib/theme'
   import type { UnitSystem } from '@/lib/units'
 
-  import { type Basemap, LABEL_FONT, setBasemap } from './basemaps'
+  import { type Basemap, BasemapSwitch, LABEL_FONT, labelPaint } from './basemaps'
   import { createMap, DEFAULT_VIEW } from './createMap'
   import BasemapToggle from './BasemapToggle.svelte'
   import MapLayersButton from './MapLayersButton.svelte'
@@ -257,10 +257,10 @@
         'text-anchor': 'bottom',
         'text-offset': [0, -0.2],
       },
-      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2 },
+      paint: labelPaint(1.2),
     })
 
-    addSystemLayers(m, features() as never, readPalette())
+    addSystemLayers(m, features() as never, palette)
     for (const layer of SYSTEM_LAYERS) m.setLayoutProperty(layer, 'visibility', showSystems ? 'visible' : 'none')
   }
 
@@ -366,18 +366,23 @@
 
   export const getMap = () => map
 
-  async function changeBasemap(to: Basemap) {
-    if (!map) return
-    onbasemap(to)
-    // A switch a later click replaced, or a style that didn't load, leaves the map to that one
-    if (!(await setBasemap(map, to, isOwnSource)) || !map) return
-    // The new style has none of our icons
-    addGlyphImages(map)
-    // The style's pivot layers have the palette of the old theme only if it changed meanwhile
-    map.getSource<GeoJSONSource>('pivots')?.setData(features())
-    map.getSource<GeoJSONSource>('fields')?.setData(fields() as never)
-    onload?.(map)
-  }
+  const basemapSwitch = new BasemapSwitch(
+    untrack(() => basemap),
+    {
+      map: () => map,
+      isOwn: isOwnSource,
+      show: (to) => onbasemap(to),
+      after: () => {
+        if (!map) return
+        // The new style has none of our icons
+        addGlyphImages(map)
+        // The style's pivot layers have the palette of the old theme only if it changed meanwhile
+        map.getSource<GeoJSONSource>('pivots')?.setData(features())
+        map.getSource<GeoJSONSource>('fields')?.setData(fields() as never)
+        onload?.(map)
+      },
+    },
+  )
 
   function onClick(event: MapMouseEvent) {
     placeSearch?.close()
@@ -482,7 +487,7 @@
 
   <div class="pointer-events-none absolute top-2 left-2 flex w-[min(17rem,calc(100%-4rem))] flex-col gap-2">
     <div class="pointer-events-auto flex flex-wrap items-start gap-2">
-      <BasemapToggle value={basemap} onchange={changeBasemap} />
+      <BasemapToggle value={basemap} onchange={(to) => basemapSwitch.change(to)} />
       <MapLayersButton id="map-layers" {basemap} count={layersCount}>
         {@render layers?.()}
       </MapLayersButton>

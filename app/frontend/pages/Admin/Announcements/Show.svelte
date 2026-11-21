@@ -5,6 +5,7 @@
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
   import { formatTimestamp } from '@/lib/dates'
+  import { count } from '@/lib/text'
   import { adminAnnouncements } from '@/routes'
   import type { AdminAnnouncement } from '@/types/serializers'
 
@@ -23,7 +24,6 @@
     failures: { email: string; error: string | null }[]
   } = $props()
 
-  const people = (n: number) => `${n.toLocaleString()} ${n === 1 ? 'person' : 'people'}`
   const draft = $derived(announcement.status === 'draft')
   const sending = $derived(announcement.status === 'sending')
   const total = $derived(announcement.recipients_count ?? 0)
@@ -84,9 +84,7 @@
     <p class="text-sm">
       <span class="text-ink-muted">Audience:</span>
       <span class="font-medium">{announcement.audience_text}</span>
-      {#if draft && recipients_now !== null}{` · ${people(recipients_now)} now`}{:else if !draft}{` · ${people(
-          total,
-        )}`}{/if}
+      {#if draft && recipients_now !== null}{` · ${count(recipients_now, 'person', 'people')} now`}{:else if !draft}{` · ${count(total, 'person', 'people')}`}{/if}
     </p>
 
     {#if draft}
@@ -102,7 +100,7 @@
           {/snippet}
         </Form>
         <Button class="ml-auto" disabled={!recipients_now} onclick={() => (confirming = true)}>
-          Send to {people(recipients_now ?? 0)}
+          Send to {count(recipients_now ?? 0, 'person', 'people')}
         </Button>
       </div>
     {:else if progress}
@@ -162,7 +160,7 @@
 
 <Dialog
   bind:open={confirming}
-  title="Send to {people(recipients_now ?? 0)}?"
+  title="Send to {count(recipients_now ?? 0, 'person', 'people')}?"
   description="{announcement.audience_text}. It goes out a few a second and can't be stopped or changed once started."
 >
   <div class="flex justify-end gap-2">

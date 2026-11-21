@@ -9,7 +9,7 @@
   import { formatDate } from '@/lib/dates'
   import { updatingIds, type FarmGroup, type FieldCard as Card } from '@/lib/overview'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
   import { dailyEntries, pivots, setup } from '@/routes'
 
   let {
@@ -23,7 +23,7 @@
     getting_started: { farms: number; systems: number; fields: number } | null
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   let farmId = $state<number | 'all'>('all')
 
   // While a pivot's weather is on its way, reload the cards until it lands

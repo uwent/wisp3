@@ -1,5 +1,7 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 
+import { readStored, writeStored } from '@/lib/storage'
+
 // Roads and place names over the satellite imagery: on unless switched off, remembered in this
 // browser for every map (storage can be blocked, so it's guarded)
 
@@ -7,23 +9,12 @@ const KEY = 'wisp-map-roads'
 /** The road layers' ids (IMAGERY_ROADS in basemaps.ts) */
 export const ROAD_LAYER_PREFIX = 'imagery-'
 
-function load(): boolean {
-  try {
-    return localStorage.getItem(KEY) !== 'off'
-  } catch {
-    return true
-  }
-}
-
-export const roads = $state({ on: load() })
+export const roads = $state({ on: readStored(KEY) !== 'off' })
 
 export function setRoads(on: boolean) {
   roads.on = on
-  try {
-    localStorage.setItem(KEY, on ? 'on' : 'off')
-  } catch {
-    // Not remembered; this page still follows it
-  }
+  // Not remembered when storage is blocked; this page still follows it
+  writeStored(KEY, on ? 'on' : 'off')
 }
 
 /** Shows or hides the road layers on a map (on the imagery; the street map has its own) */

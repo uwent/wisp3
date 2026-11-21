@@ -21,7 +21,7 @@
   import { rainOverridden } from '@/lib/provenance'
   import { save } from '@/lib/save'
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
   import { fieldDays, pivots, planting as plantingRoute } from '@/routes'
   import type { Field, ForecastDay, GenericCurve, Plant, PlantingSummary, SoilType } from '@/types/serializers'
 
@@ -79,7 +79,7 @@
     generic_curves: GenericCurve[]
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   // "pivot", "drip block"
   const noun = $derived(KIND_NOUNS[pivot.kind])
   const today = todayDate()

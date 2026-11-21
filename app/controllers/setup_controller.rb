@@ -10,9 +10,7 @@ class SetupController < AuthenticatedController
       year:,
       years: (years + [Current.today.year, year]).uniq.sort,
       farms: FarmSerializer.new(farms).to_h,
-      plants: PlantSerializer.new(Plant.order(:name)).to_h,
-      soil_types: SoilTypeSerializer.new(SoilType.order(:field_capacity, :perm_wilting_pt)).to_h,
-      generic_curves: GenericCurveSerializer.all,
+      **ReferenceProps.planting_form,
       started:
     }
   end

@@ -108,7 +108,7 @@ module Admin
     end
 
     def render_form(announcement)
-      date = requested_date || announcement.audience_date || season_start
+      date = parse_date(params[:date]) || announcement.audience_date || season_start
       render inertia: "Admin/Announcements/Form", props: {
         announcement: announcement.persisted? ? AdminAnnouncementSerializer.new(announcement).serializable_hash : nil,
         audience_date: date.iso8601,
@@ -118,12 +118,6 @@ module Admin
         end,
         placeholders: Announcement::PLACEHOLDERS.map { |key, placeholder| {key:, description: placeholder[:description]} }
       }
-    end
-
-    def requested_date
-      Date.iso8601(params[:date].to_s)
-    rescue Date::Error
-      nil
     end
 
     # March 1 of this season, or last season's before March: when "active since" usually begins

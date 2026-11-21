@@ -9,7 +9,6 @@ class WeatherZonesController < AuthenticatedController
   def index
     zones = WeatherZone.for_group(Current.group)
     cell_ids = zones.map(&:id)
-    WeatherCell.keep_current(cell_ids)
     forecasts = ForecastDays.by_cell(cell_ids)
     render inertia: "WeatherZones/Index", props: {
       zones: zones.map do |zone|
@@ -26,7 +25,6 @@ class WeatherZonesController < AuthenticatedController
     season = plantings.select { |planting| planting.season_year == year }
     dates = year_dates(year)
     current = year == Current.today.year
-    WeatherCell.keep_current([zone.id]) if current
     zones = WeatherZone.for_group(Current.group)
     zones = (zones + [zone]).sort_by(&:sort_key) unless zones.any? { |other| other.id == zone.id }
 
@@ -51,8 +49,8 @@ class WeatherZonesController < AuthenticatedController
     year = requested_year
     dates = year_dates(year)
     days = WeatherPanel.new(zone.cell, dates, emergence_date: dates.first).days
-    send_data WeatherCsv.new(zone, Current.group, year, days, exported_by: current_user, about_url:).to_csv,
-      filename: "wisp-weather-#{zone.cell.file_location}-#{year}.csv", type: "text/csv; charset=utf-8"
+    send_csv WeatherCsv.new(zone, Current.group, year, days, exported_by: current_user, about_url:).to_csv,
+      "wisp-weather-#{zone.cell.file_location}-#{year}.csv"
   end
 
   # The old addresses by cell id (/weather/1, /weather/1/export) move to the zone's location
@@ -93,9 +91,10 @@ class WeatherZonesController < AuthenticatedController
     (year == today.year) ? from..(today + Weather::Fetcher::FORECAST_DAYS) : from..Date.new(year, 12, 31)
   end
 
-  # The zones' pivots whose cell has a weather update showing (lib/poll.ts reloads when they land)
+  # Keeps the zones' cells current (WeatherCell.keep_current), and returns their pivots whose cell
+  # has a weather update showing (lib/poll.ts reloads when they land)
   def updating_pivot_ids(zones)
-    updating = WeatherCell.updating_ids(zones.map(&:id)).to_set
+    updating = WeatherCell.keep_current_updating_ids(zones.map(&:id)).to_set
     zones.select { |zone| updating.include?(zone.id) }.flat_map { |zone| zone.pivots.map(&:id) }
   end
 end

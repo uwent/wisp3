@@ -9,7 +9,6 @@ module Weather
     MODEL = "era5_seamless"
     VARIABLES = %w[temperature_2m_max temperature_2m_min].freeze
     WINDOW = 15
-    LEAP_YEAR = 2000
 
     def initialize(client: OpenMeteo.new)
       @client = client
@@ -42,7 +41,7 @@ module Weather
       sums = Array.new(367) { [0.0, 0.0, 0] }
       dates.each_with_index do |date, i|
         next if highs[i].nil? || lows[i].nil?
-        sum = sums[Date.new(LEAP_YEAR, date.month, date.day).yday]
+        sum = sums[WeatherNormal.day_of_year(date)]
         sum[0] += highs[i]
         sum[1] += lows[i]
         sum[2] += 1

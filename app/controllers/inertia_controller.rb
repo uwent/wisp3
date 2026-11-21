@@ -22,6 +22,18 @@ class InertiaController < ApplicationController
 
   private
 
+  # An ISO 8601 date param (2026-07-20) as a Date, or nil when it's missing or malformed
+  def parse_date(value)
+    Date.iso8601(value) if value.is_a?(String) && value.present?
+  rescue Date::Error
+    nil
+  end
+
+  # A CSV export (CsvExport) as a download
+  def send_csv(csv, filename)
+    send_data csv, filename:, type: "text/csv; charset=utf-8"
+  end
+
   # A list sent as indexed names (rows[0][name]): an array, or a hash keyed "0", "1", … in order
   def indexed_list(value)
     return [] if value.blank?

@@ -27,7 +27,9 @@
   import { save } from '@/lib/save'
   import { seasonStats } from '@/lib/seasonStats'
   import { stickyHeight } from '@/lib/stickyBars'
-  import { formatNumber, units as unitsFor } from '@/lib/units'
+  import { readStored, writeStored } from '@/lib/storage'
+  import { count } from '@/lib/text'
+  import { currentUnits, formatNumber } from '@/lib/units'
   import {
     dailyEntries,
     exportPlanting,
@@ -46,6 +48,7 @@
     as_of,
     travel_dates,
     planting,
+    exceeds_field_area,
     summary,
     days,
     forecast_days,
@@ -61,6 +64,8 @@
     /** The season's days before today, which time travel can pick; null if none */
     travel_dates: { from: string; to: string } | null
     planting: Planting
+    /** Part-field plantings on the field at once add up to more than its area (a warning) */
+    exceeds_field_area: boolean
     summary: PlantingSummary
     days: FieldDay[]
     forecast_days: FieldDay[]
@@ -69,7 +74,7 @@
     forecast: ForecastDay[]
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   // "pivot", "drip block"
   const noun = $derived(KIND_NOUNS[pivot.kind])
   // Time travelling, nothing on the page edits, and the projection is the weather that followed
@@ -155,19 +160,10 @@
   )
   // Whether "More about how … is modeled" is open: closed until opened, then remembered in this browser (G.6)
   const GUIDANCE_KEY = 'wisp:planting-guidance-more'
-  let guidanceOpen = $state(false)
-  try {
-    guidanceOpen = localStorage.getItem(GUIDANCE_KEY) === 'true'
-  } catch {
-    // Storage blocked: stay closed
-  }
+  let guidanceOpen = $state(readStored(GUIDANCE_KEY) === true)
   function toggleGuidance(open: boolean) {
     guidanceOpen = open
-    try {
-      localStorage.setItem(GUIDANCE_KEY, String(open))
-    } catch {
-      // Storage blocked: only this page view remembers
-    }
+    writeStored(GUIDANCE_KEY, open)
   }
   let chartMode = $state<FieldChartMode>('ad')
   // The season summary: open, like every section, until closed; links in the summary open it
@@ -185,8 +181,7 @@
       ? summary.pct_at_ad_zero + ((summary.field_capacity_pct - summary.pct_at_ad_zero) * ad) / summary.ad_max
       : null
   // An ended season's day counts beside its totals (G.6): "24 days"
-  const dayCount = (n: number) => (n === 1 ? '1 day' : `${n} days`)
-  const counted = (n: number) => (summary?.phase === 'ended' ? ` (${dayCount(n)})` : '')
+  const counted = (n: number) => (summary?.phase === 'ended' ? ` (${count(n, 'day')})` : '')
 
   async function saveCell(day: FieldDay, column: DayColumn, text: string): Promise<string | null> {
     const parsed = cellValue(column, text, units)
@@ -380,7 +375,7 @@
             >· its own soil ({formatNumber(summary.field_capacity_pct, 1)}% field capacity)</span
           >{/if}
       </p>
-      {#if planting.exceeds_field_area}
+      {#if exceeds_field_area}
         <p role="status" class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2 text-sm">
           The plantings on this field in season together cover more than its {units.format('area', field.area_acres)}.
           Check their sizes, or the field's area in setup.
@@ -474,7 +469,7 @@
       <dd>{units.format('depth', summary.totals.deep_drainage)}{counted(summary.totals.drainage_days)}</dd>
       {#if summary.phase === 'ended'}
         <dt class="text-ink-muted">Below the irrigation point</dt>
-        <dd>{summary.totals.stress_days ? dayCount(summary.totals.stress_days) : 'Never'}</dd>
+        <dd>{summary.totals.stress_days ? count(summary.totals.stress_days, 'day') : 'Never'}</dd>
       {/if}
     </dl>
     {#if !summary.use_model_precip}

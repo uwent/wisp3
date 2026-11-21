@@ -143,7 +143,7 @@ class PlantingStatus
   def last_irrigation = days.rfind { |day| day.inputs.irrigation.to_f.positive? }
 
   def totals
-    entered = days.select { |day| %i[entered group].include?(day.inputs.rain_source) && day.inputs.rain_model }
+    entered = days.select { |day| day.inputs.rain_source == :entered && day.inputs.rain_model }
     Totals.new(
       rain: measured(days) { |day| day.inputs.rain }, irrigation: sum(days) { |day| day.inputs.irrigation },
       adj_et: measured(days) { |day| day.result.adj_et }, deep_drainage: sum(days) { |day| day.result.deep_drainage },

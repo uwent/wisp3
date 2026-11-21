@@ -47,9 +47,7 @@ class PlantingSerializer < ApplicationSerializer
 
   # An ended season keeps its own soil and area; one still running follows its field's
   attribute(:ended) { |planting| planting.ended? }
-  # Part-field plantings on the field at once add up to more than its area (a warning)
-  attribute(:exceeds_field_area) { |planting| planting.exceeds_field_area? }
-  typelize season_days: "number | null", typical_season_days: "number | null", effective_season_days: "number | null", ended: :boolean, exceeds_field_area: :boolean, plant_name: :string, plant_key: :string, canopy_curve: :boolean, vine_kill_crop: :boolean, year: :number,
+  typelize season_days: "number | null", typical_season_days: "number | null", effective_season_days: "number | null", ended: :boolean, plant_name: :string, plant_key: :string, canopy_curve: :boolean, vine_kill_crop: :boolean, year: :number,
     canopy_interpolation: "'linear' | 'curve' | null", effective_canopy_interpolation: "'linear' | 'curve'",
     et_method: "'pct_cover' | 'lai'"
 end

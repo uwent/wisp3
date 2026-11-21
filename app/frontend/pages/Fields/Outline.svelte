@@ -1,20 +1,13 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { Form, Link, page } from '@inertiajs/svelte'
+  import { Form, Link } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import { type PivotShape, systemName } from '@/lib/geo'
   import { type Boundary, boundaryAcres, boundaryCenter, boundaryErrors } from '@/lib/boundary'
   import OutlineMap, { type DrawMode } from '@/lib/outlines/OutlineMap.svelte'
-  import {
-    ACCEPT,
-    type ImportedShape,
-    OutlineFileError,
-    readOutlineFile,
-    shapeName,
-    shapeNotes,
-  } from '@/lib/outlines/read'
+  import { ACCEPT, type ImportedShape, readOutlineFileResult, shapeName, shapeNotes } from '@/lib/outlines/read'
   import {
     formatReach,
     reachLine,
@@ -28,7 +21,7 @@
   import FieldAreaInput from '@/lib/setup/FieldAreaInput.svelte'
   import FieldSoilInput from '@/lib/setup/FieldSoilInput.svelte'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
   import { fieldOutlines, fields, setup } from '@/routes'
   import type { Field, SoilType } from '@/types/serializers'
 
@@ -58,7 +51,7 @@
     from: 'setup' | 'field'
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
 
   let boundary = $state<Boundary | null>(untrack(() => field.boundary))
   let mode = $state<DrawMode>('view')
@@ -165,17 +158,13 @@
     reading = true
     fileError = null
     choices = null
-    try {
-      const result = await readOutlineFile(file)
-      const usable = result.shapes.filter((shape) => !shape.problems.length)
-      if (result.shapes.length === 1 && usable.length === 1) useShape(usable[0])
-      else choices = result
-    } catch (error) {
-      fileError =
-        error instanceof OutlineFileError ? error.message : `This file couldn't be read (${(error as Error).message}).`
-    } finally {
-      reading = false
-    }
+    const read = await readOutlineFileResult(file)
+    reading = false
+    if ('error' in read) return (fileError = read.error)
+    const { result } = read
+    const usable = result.shapes.filter((shape) => !shape.problems.length)
+    if (result.shapes.length === 1 && usable.length === 1) useShape(usable[0])
+    else choices = result
   }
 
   function useShape(shape: ImportedShape) {

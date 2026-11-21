@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Form, Link, page } from '@inertiajs/svelte'
+  import { Form, Link } from '@inertiajs/svelte'
   import { systemName } from '@/lib/geo'
 
   import Button from '@/lib/components/Button.svelte'
@@ -8,19 +8,12 @@
   import type { PivotShape } from '@/lib/geo'
   import ImportMap from '@/lib/outlines/ImportMap.svelte'
   import { type Choice, initialChoices, suggestSystem } from '@/lib/outlines/matching'
-  import {
-    ACCEPT,
-    type ImportedShape,
-    OutlineFileError,
-    readOutlineFile,
-    shapeName,
-    shapeNotes,
-  } from '@/lib/outlines/read'
+  import { ACCEPT, type ImportedShape, readOutlineFileResult, shapeName, shapeNotes } from '@/lib/outlines/read'
   import type { Reference } from '@/lib/outlines/references'
   import { formatArea } from '@/lib/plantings'
   import { fetchSoilSurvey, suggestSoil } from '@/lib/soils'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
   import { outlineImport, setup } from '@/routes'
   import type { SoilType } from '@/types/serializers'
 
@@ -43,7 +36,7 @@
     default_soil_type_id: number | null
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
 
   type Row = {
     shape: ImportedShape
@@ -80,14 +73,14 @@
     { value: 'new', label: 'New field' },
     ...fields.map((field) => {
       const system = pivots.find((p) => p.id === field.pivot_id)
-      return { value: `field:${field.id}`, label: `${field.name} (${system ? system.name : ''})` }
+      return { value: `field:${field.id}`, label: system ? `${field.name} (${system.name})` : field.name }
     }),
   ])
   const choiceValue = (choice: Choice) => (choice.kind === 'field' ? `field:${choice.fieldId}` : choice.kind)
   const parseChoice = (value: string): Choice =>
     value.startsWith('field:') ? { kind: 'field', fieldId: Number(value.slice(6)) } : { kind: value as 'skip' | 'new' }
 
-  const references = $derived<Reference[]>([...pivots.map((system) => ({ name: system.name, shape: system }))])
+  const references = $derived<Reference[]>(pivots.map((system) => ({ name: system.name, shape: system })))
 
   async function readFile(event: Event) {
     const input = event.currentTarget as HTMLInputElement
@@ -96,20 +89,16 @@
     if (!file) return
     reading = true
     fileError = null
-    try {
-      const result = await readOutlineFile(file)
-      fileName = file.name
-      skipped = result.skipped
-      keys = [...new Set(result.shapes.flatMap((shape) => Object.keys(shape.properties)))]
-      nameKey = result.nameKey
-      startRows(result.shapes)
-      fileKey++
-    } catch (error) {
-      fileError =
-        error instanceof OutlineFileError ? error.message : `This file couldn't be read (${(error as Error).message}).`
-    } finally {
-      reading = false
-    }
+    const read = await readOutlineFileResult(file)
+    reading = false
+    if ('error' in read) return (fileError = read.error)
+    const { result } = read
+    fileName = file.name
+    skipped = result.skipped
+    keys = [...new Set(result.shapes.flatMap((shape) => Object.keys(shape.properties)))]
+    nameKey = result.nameKey
+    startRows(result.shapes)
+    fileKey++
   }
 
   function startRows(shapes: ImportedShape[]) {
@@ -285,11 +274,6 @@
       {fileKey}
       onselect={pick}
     />
-    <p class="flex flex-wrap gap-x-4 text-xs text-ink-muted">
-      <span><span class="inline-block size-3 rounded-sm bg-[#3987e5] align-middle"></span> An existing field</span>
-      <span><span class="inline-block size-3 rounded-sm bg-[#16a34a] align-middle"></span> A new field</span>
-      <span><span class="inline-block size-3 rounded-sm bg-[#9ca3af] align-middle"></span> Skipped</span>
-    </p>
   </div>
 
   <Form

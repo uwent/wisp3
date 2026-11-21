@@ -387,11 +387,11 @@ RSpec.describe "Setup", type: :request do
         end_date: Date.new(2025, 9, 20), target_ad_pct: 40)
       post season_copy_path(year: 2026)
       expect(response).to redirect_to(setup_path(year: 2026))
-      expect(field.plantings.in_season(2026).sole).to have_attributes(emergence_date: Date.new(2026, 5, 18),
+      expect(field.plantings.where(season_start: Date.new(2026).all_year).sole).to have_attributes(emergence_date: Date.new(2026, 5, 18),
         end_date: Date.new(2026, 9, 20), target_ad_pct: 40)
 
       post season_copy_path(year: 2026)
-      expect(field.plantings.in_season(2026).count).to eq(1)
+      expect(field.plantings.where(season_start: Date.new(2026).all_year).count).to eq(1)
       expect(flash[:notice]).to start_with("Nothing to copy")
     end
 
@@ -402,7 +402,7 @@ RSpec.describe "Setup", type: :request do
       create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 15),
         end_date: Date.new(2025, 9, 30)).update_columns(end_date: Date.new(2026, 5, 1))
       post season_copy_path(year: 2026)
-      expect(field.plantings.in_season(2026)).to be_empty
+      expect(field.plantings.where(season_start: Date.new(2026).all_year)).to be_empty
       expect(flash[:alert]).to start_with("Couldn't copy Potato on West (")
       expect(flash[:notice]).to be_nil
     end

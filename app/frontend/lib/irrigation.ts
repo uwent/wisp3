@@ -18,3 +18,19 @@ export function fieldsOn<T extends FieldSeasons>(fields: T[], date: string): T[]
     return season ? season.here : field.here
   })
 }
+
+type HoursSystem = { pump_capacity_gpm: number | null; fields: { area_acres: number | null }[] }
+type Amounts = { inches: number | null; run_hours: number | null }
+
+// Run hours convert to inches through the pump capacity and the irrigated area
+// (PivotIrrigation#irrigated_acres), so they can be entered only when the system has both
+export const canUseHours = (pivot: HoursSystem): boolean =>
+  pivot.pump_capacity_gpm !== null && pivot.fields.every((field) => field.area_acres !== null)
+
+/** Whether a saved irrigation was entered as run hours (it has no inches of its own) */
+export const enteredAsHours = (irrigation: Amounts | null | undefined): boolean =>
+  irrigation != null && irrigation.inches === null
+
+/** A saved irrigation's amount in the box for inches or for run hours; null for none */
+export const savedAmount = (irrigation: Amounts | null | undefined, byHours: boolean): number | null =>
+  (byHours ? irrigation?.run_hours : irrigation?.inches) ?? null

@@ -233,7 +233,7 @@ RSpec.describe "Tenant isolation", type: :request do
     create(:planting, field: their_field, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 15),
       end_date: Date.new(2025, 9, 30))
     post season_copy_path(year: 2026)
-    expect(their_field.plantings.in_season(2026)).to be_empty
+    expect(their_field.plantings.where(season_start: Date.new(2026).all_year)).to be_empty
   end
 
   it "won't use another group's farm in the guided setup" do

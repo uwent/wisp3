@@ -19,6 +19,4 @@ class Group < ApplicationRecord
   scope :examples, -> { where.not(example_as_of: nil) }
 
   def self.example = examples.first
-
-  def example? = example_as_of.present?
 end

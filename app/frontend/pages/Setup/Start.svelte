@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte'
-  import { Form, page } from '@inertiajs/svelte'
+  import { Form } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
@@ -11,7 +11,7 @@
   import { MAX_LATITUDE, MAX_LONGITUDE, MIN_LATITUDE, MIN_LONGITUDE } from '@/lib/boundary'
   import { soilFit, soilOptionsByShare } from '@/lib/soils'
   import SoilFitNote from '@/lib/setup/SoilFitNote.svelte'
-  import { units as unitsFor } from '@/lib/units'
+  import { currentUnits } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { quickSetups } from '@/routes'
   import type { SoilType } from '@/types/serializers'
@@ -85,7 +85,7 @@
 
   // What the server would reject, checked here so the save waits until it's all in (the server
   // still checks everything). Ranges mirror Pivot's, through lib/geo.ts.
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   let farmName = $state('')
   let systemName = $state('')
   const within = (value: number | null, min: number, max: number) => value !== null && value >= min && value <= max
@@ -127,7 +127,6 @@
   }
 
   const submitLabel = $derived(systemLater ? 'Save the farm' : 'Save and continue')
-  const error = (errors: Record<string, string | string[]>, key: string) => errors[key]
 </script>
 
 <svelte:head><title>Get started · WISP</title></svelte:head>
@@ -193,7 +192,7 @@
             name="setup[farm][name]"
             bind:value={farmName}
             placeholder="e.g. Hancock Sands"
-            error={error(e, 'farm.name')}
+            error={e['farm.name']}
             required
           />
         {/if}
@@ -231,13 +230,13 @@
             name="setup[pivot][name]"
             bind:value={systemName}
             placeholder={shape.kind === 'center' ? 'e.g. North 160' : 'e.g. Home garden'}
-            error={error(e, 'pivot.name')}
+            error={e['pivot.name']}
             required
           />
           <PivotShapeFields
             bind:shape
             prefix="setup[pivot]"
-            error={(attribute) => error(e, `pivot.${attribute}`)}
+            error={(attribute) => e[`pivot.${attribute}`]}
             soilTypes={soil_types}
             onsuggest={suggestSoil}
             surveyNote="What the USDA soil survey says is under the {noun}, which sets the soil suggested for its fields in step 3. You'll see it again when you add more systems or fields in Setup."
@@ -249,7 +248,7 @@
               value={null}
               info="pivot.pump_capacity"
               optional
-              error={error(e, 'pivot.pump_capacity_gpm')}
+              error={e['pivot.pump_capacity_gpm']}
             />
           </PivotShapeFields>
         {/if}
@@ -282,7 +281,7 @@
                 onclick={() => (fieldsLater = true)}>set up fields later</button
               >.
             </p>
-            {#if error(e, 'fields')}<p class="text-sm text-status-irrigate-ink">{error(e, 'fields')}</p>{/if}
+            {#if e['fields']}<p class="text-sm text-status-irrigate-ink">{e['fields']}</p>{/if}
             {#each rows as row, i (row.key)}
               <fieldset
                 class="grid gap-3 border-t border-line pt-4 first-of-type:border-0 first-of-type:pt-0 sm:grid-cols-4"
@@ -294,7 +293,7 @@
                     name="setup[fields][{i}][name]"
                     bind:value={row.name}
                     placeholder={rows.length > 1 ? `e.g. ${i ? 'South' : 'North'} half` : 'e.g. North 160'}
-                    error={error(e, `fields.${i}.name`)}
+                    error={e[`fields.${i}.name`]}
                     required={row.area !== null}
                   />
                 </div>
@@ -304,7 +303,7 @@
                   quantity="area"
                   bind:value={row.area}
                   info="quick_setup.area"
-                  error={error(e, `fields.${i}.area_acres`)}
+                  error={e[`fields.${i}.area_acres`]}
                   optional
                 />
                 <SelectField

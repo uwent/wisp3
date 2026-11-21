@@ -7,7 +7,9 @@
   import { today as todayDate } from '@/lib/dates'
   import { isPoint, KIND_NOUNS, shapeAcres, systemName } from '@/lib/geo'
   import { mayDelete } from '@/lib/permissions'
-  import { units as unitsFor } from '@/lib/units'
+  import { readStored, writeStored } from '@/lib/storage'
+  import { count } from '@/lib/text'
+  import { currentUnits } from '@/lib/units'
   import { outlineProblems } from '@/lib/outlines/problems'
   import FarmForm from '@/lib/setup/FarmForm.svelte'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
@@ -51,7 +53,7 @@
     started: { farm_id: number; pivot_id: number | null } | null
   } = $props()
 
-  const units = $derived(unitsFor(page.props.auth.user?.unit_system))
+  const units = $derived(currentUnits())
   const group = $derived(page.props.auth.group!)
   // Only owners delete farms, pivots and fields (Q8); plantings and groups also their creator (G.15)
   const owner = $derived(page.props.auth.owner)
@@ -86,20 +88,9 @@
     field.plantings.some((planting) => planting.year === year || planting.year === year - 1)
   // The order the page lists things in (lib/setup/order.ts), remembered in this browser
   const ORDER_KEY = 'wisp.setup.order'
-  const savedOrder = (): SetupOrder => {
-    try {
-      return localStorage.getItem(ORDER_KEY) === 'name' ? 'name' : 'north'
-    } catch {
-      return 'north'
-    }
-  }
-  let order = $state<SetupOrder>(savedOrder())
+  let order = $state<SetupOrder>(readStored(ORDER_KEY) === 'name' ? 'name' : 'north')
   $effect(() => {
-    try {
-      localStorage.setItem(ORDER_KEY, order)
-    } catch {
-      // Storage blocked: the order lasts for this visit
-    }
+    writeStored(ORDER_KEY, order)
   })
   const orderedFarms = $derived(orderFarms(farms, order))
   const used = (pivot: Pivot) => orderFields(pivot, order).filter(inSeason)
@@ -292,7 +283,7 @@
       <!-- Fields used only in other seasons (rotated out, or set up for a later one) -->
       <details class="border-t border-line first:border-t-0">
         <summary class="cursor-pointer px-3 py-2 text-xs text-ink-muted hover:text-ink">
-          {unused(pivot).length === 1 ? '1 field' : `${unused(pivot).length} fields`} not used in {year - 1} or {year}
+          {count(unused(pivot).length, 'field')} not used in {year - 1} or {year}
         </summary>
         <ul class="divide-y divide-line border-t border-line">
           {#each unused(pivot) as field (field.id)}

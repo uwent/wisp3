@@ -14,9 +14,8 @@ class OperationOverview
     @farms = group.farms.order(:name).includes(:pivot_groups, pivots: [:weather_cell, :pivot_group,
       {fields: [:soil_type, {plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type]}]}]).to_a
     cell_ids = pivots.map(&:weather_cell_id).uniq
-    WeatherCell.keep_current(cell_ids)
     # Read before the balances, so weather landing in between still gets a reload
-    @updating = WeatherCell.updating_ids(cell_ids).to_set
+    @updating = WeatherCell.keep_current_updating_ids(cell_ids).to_set
     @statuses = FieldStatuses.for(pivots.flat_map(&:fields), today:, year:)
   end
 

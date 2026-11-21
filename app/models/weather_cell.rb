@@ -72,6 +72,13 @@ class WeatherCell < ApplicationRecord
     where(id: due).find_each { |cell| WeatherUpdateJob.perform_later(cell.id, quiet: !cell.incomplete?) }
   end
 
+  # keep_current, then the cells of these with an update queued or running (updating_ids), for a page's
+  # "Updating weather…"
+  def self.keep_current_updating_ids(ids)
+    keep_current(ids)
+    updating_ids(ids)
+  end
+
   # Of these cells, the ones with a WeatherUpdateJob queued or running
   def self.updating_ids(ids)
     ids = ids.compact.uniq

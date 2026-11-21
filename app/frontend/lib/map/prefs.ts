@@ -1,5 +1,6 @@
 import type { LngLat } from '@/lib/geo'
 import type { SortOrder } from '@/lib/overview'
+import { readStored, writeStored } from '@/lib/storage'
 
 import type { Basemap } from './basemaps'
 import { OVERLAYS } from './overlays'
@@ -40,26 +41,19 @@ const key = (groupId: number | undefined) => `wisp-map:${groupId ?? 'none'}`
 const defaults = (): MapPrefs => structuredClone(DEFAULT_PREFS)
 
 export function loadPrefs(groupId: number | undefined): MapPrefs {
-  try {
-    const saved = JSON.parse(localStorage.getItem(key(groupId)) ?? 'null')
-    if (!saved || typeof saved !== 'object') return defaults()
-    // Layers saved earlier that the map no longer has are dropped
-    const known = (id: unknown) => OVERLAYS.some((overlay) => overlay.id === id)
-    return {
-      ...defaults(),
-      ...saved,
-      rain: known(saved.rain) ? saved.rain : null,
-      overlays: Array.isArray(saved.overlays) ? saved.overlays.filter(known) : [],
-    }
-  } catch {
-    return defaults()
-  }
+  const saved = readStored(key(groupId)) as Partial<Record<keyof MapPrefs, unknown>> | undefined
+  if (!saved || typeof saved !== 'object') return defaults()
+  // Layers saved earlier that the map no longer has are dropped
+  const known = (id: unknown) => OVERLAYS.some((overlay) => overlay.id === id)
+  return {
+    ...defaults(),
+    ...saved,
+    rain: known(saved.rain) ? saved.rain : null,
+    overlays: Array.isArray(saved.overlays) ? saved.overlays.filter(known) : [],
+  } as MapPrefs
 }
 
 export function savePrefs(groupId: number | undefined, prefs: MapPrefs) {
-  try {
-    localStorage.setItem(key(groupId), JSON.stringify(prefs))
-  } catch {
-    // Storage blocked (private mode): the settings last for this page only
-  }
+  // Storage blocked (private mode): the settings last for this page only
+  writeStored(key(groupId), prefs)
 }
