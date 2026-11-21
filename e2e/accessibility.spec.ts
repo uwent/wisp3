@@ -159,6 +159,20 @@ test('a field viewed on an earlier date (time travel)', { tag: '@phone' }, async
   expect(errors).toEqual([])
 })
 
+test("the dashboard's list, by system and most urgent first", { tag: '@phone' }, async ({ page }) => {
+  await signIn(page)
+  // The choices are remembered in this browser, so set them before the scan loads the page
+  await page.goto('/')
+  await page.evaluate(() => localStorage.setItem('wisp:dashboard-view', JSON.stringify('list')))
+  const errors = watchErrors(page)
+  await scan(page, '/')
+  await expect(page.locator('[data-field-row]').first()).toBeVisible()
+  await page.evaluate(() => localStorage.setItem('wisp:dashboard-order', JSON.stringify('urgent')))
+  await scan(page, '/')
+  await expect(page.getByRole('region', { name: 'Fields, most urgent first' })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 test('the bar shown while signed in as someone else', { tag: '@phone' }, async ({ page }) => {
   await impersonateGrower(page)
   const errors = watchErrors(page)

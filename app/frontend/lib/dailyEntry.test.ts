@@ -41,6 +41,7 @@ const pivot = (id: number, fields: DayField[], pivot_group_id: number | null = n
   pivot_group_id,
   pump_capacity_gpm: null,
   irrigation: null,
+  yesterday: null,
   fields,
 })
 

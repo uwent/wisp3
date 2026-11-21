@@ -267,6 +267,11 @@
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
           aria-label="Edit {pivot.name}">Edit</Link
         >
+        <Link
+          href={pivots.new({ query: { copy_of: pivot.id } })}
+          class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
+          aria-label="Duplicate {pivot.name}">Duplicate</Link
+        >
       </div>
     </div>
     {#if pivot.fields.length === 0}

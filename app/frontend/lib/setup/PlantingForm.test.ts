@@ -121,3 +121,37 @@ describe('PlantingForm errors', () => {
     expect(screen.getAllByText('Area must be greater than 0')).toHaveLength(1)
   })
 })
+
+describe('PlantingForm last choices', () => {
+  beforeEach(() => {
+    form.errors = {}
+    sessionStorage.clear()
+  })
+
+  const showNew = (template?: Partial<Planting>) => {
+    render(PlantingForm, { field, year: 2026, plants: [corn, kale], genericCurves: curves, template, ondone: () => {} })
+    flushSync()
+  }
+
+  it("starts a new planting from this session's last crop and dates, for the same season", () => {
+    sessionStorage.setItem(
+      'setup.lastPlanting',
+      JSON.stringify({ plant_id: 2, season_start: '2026-04-20', emergence_date: '2026-05-12', end_date: '2026-07-15' }),
+    )
+    showNew()
+    expect(screen.getByRole('combobox', { name: /Crop/ })).toHaveValue('2')
+    expect(screen.getByText('As your last planting')).toBeInTheDocument()
+    expect(document.getElementById('planting-season_start')).toHaveValue('2026-04-20')
+    expect(document.getElementById('planting-emergence_date')).toHaveValue('2026-05-12')
+    expect(document.getElementById('planting-end_date')).toHaveValue('2026-07-15')
+  })
+
+  it('leaves the next planting to its template', () => {
+    sessionStorage.setItem(
+      'setup.lastPlanting',
+      JSON.stringify({ plant_id: 2, season_start: '2026-04-20', emergence_date: '2026-05-12', end_date: '2026-07-15' }),
+    )
+    showNew({ season_start: '2026-08-01', emergence_date: '2026-08-10', end_date: '2026-10-30' })
+    expect(screen.getByRole('combobox', { name: /Crop/ })).toHaveValue('')
+  })
+})

@@ -125,6 +125,58 @@ RSpec.describe "Setup", type: :request do
       expect([Pivot.exists?(pivot.id), Field.exists?(field.id), PivotIrrigation.exists?]).to eq([false, false, false])
     end
 
+    describe "duplicating" do
+      let(:pivot_group) { create(:pivot_group, farm:, name: "River") }
+      let(:source) do
+        create(:pivot, farm:, pivot_group:, name: "North", kind: "center", radius_ft: 1100, arc_start_deg: 30,
+          arc_end_deg: 300, pump_capacity_gpm: 850, equipment: "Valley 8000", notes: "Leaks")
+      end
+
+      it "starts the new system's form from another, without its location" do
+        create(:field, pivot: source)
+        get new_pivot_path(copy_of: source.id)
+        expect_inertia.to render_component("Pivots/Form")
+        expect(inertia.props[:pivot]).to eq("name" => "North copy", "farm_id" => farm.id, "pivot_group_id" => pivot_group.id,
+          "kind" => "center", "radius_ft" => 1100, "arc_start_deg" => 30, "arc_end_deg" => 300, "pump_capacity_gpm" => 850,
+          "equipment" => "Valley 8000")
+        expect(inertia.props[:copy_of]).to eq("id" => source.id, "name" => "North")
+        expect(inertia.props[:pivot_group]).to include("name" => "River")
+      end
+
+      it "saves the copy in the source's group, with no fields" do
+        create(:field, pivot: source)
+        post pivots_path, params: {copy_of: source.id, pivot: {farm_id: farm.id, pivot_group_id: pivot_group.id,
+                                                               name: "North 2", latitude: 44.12, longitude: -89.55, radius_ft: 1100}}
+        copy = farm.pivots.find_by!(name: "North 2")
+        expect(copy).to have_attributes(pivot_group:, radius_ft: 1100)
+        expect(copy.fields).to be_empty
+      end
+
+      it "keeps the copy's form when it's sent back" do
+        post pivots_path, params: {copy_of: source.id, pivot: {farm_id: farm.id, name: "North 2"}}
+        expect(response).to redirect_to(new_pivot_path(farm_id: farm.id, copy_of: source.id))
+      end
+
+      it "leaves the group out on another farm, or another account's group" do
+        other_farm = create(:farm, group:)
+        post pivots_path, params: {pivot: {farm_id: other_farm.id, pivot_group_id: pivot_group.id, name: "Away",
+                                           latitude: 44.12, longitude: -89.55}}
+        expect(other_farm.pivots.sole.pivot_group).to be_nil
+
+        stranger_group = create(:pivot_group, farm: create(:farm))
+        post pivots_path, params: {pivot: {farm_id: farm.id, pivot_group_id: stranger_group.id, name: "Mine",
+                                           latitude: 44.12, longitude: -89.55}}
+        expect(farm.pivots.find_by!(name: "Mine").pivot_group).to be_nil
+      end
+
+      it "can't copy another account's system" do
+        get setup_path
+        stranger = create(:pivot, name: "Theirs")
+        get new_pivot_path(copy_of: stranger.id)
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
     it "shows other pivots on the map picker" do
       create(:pivot, farm:, name: "Neighbor")
       get new_pivot_path(farm_id: farm.id)

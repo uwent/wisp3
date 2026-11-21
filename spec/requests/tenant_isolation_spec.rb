@@ -36,6 +36,8 @@ RSpec.describe "Tenant isolation", type: :request do
     expect_not_found
     get edit_pivot_path(their_pivot)
     expect_not_found
+    get new_pivot_path(copy_of: their_pivot.id)
+    expect_not_found
     patch pivot_path(their_pivot), params: {pivot: {name: "Mine now"}}
     expect_not_found
     delete pivot_path(their_pivot)

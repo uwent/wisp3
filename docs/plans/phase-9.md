@@ -55,9 +55,9 @@ Before the new features below, so they're built on the shared pieces (the week g
 
 Ben, 2026-11-21: a compact view, for phones above all. The map's `compact` card drops only last rain and irrigation, which saves little; a list does more.
 
-- [ ] **Cards | List** in the dashboard's header, remembered in this browser (a phone can keep List, a desktop Cards), at any width. A list row per field: its name, crop, status badge and the outlook's headline ("Irrigate by Thu · about 0.6 in refills it"), readings due as a small "2 due"; the row links as the card does. Left out: moisture and AD, the sparkline, last rain and irrigation, the task list. A field of plots: one row per planting under the field's name. Systems stay as headings, lighter than the cards' boxes.
-- [ ] **"Needs water first"**: the list (and cards) ordered by urgency across systems instead of by farm and system (`FieldStatuses.urgency` / `summaryUrgency`), each row naming its system.
-- [ ] **Status counts as filters:** the counts above the cards become toggles that show only fields at that status.
+- [x] **Cards | List** in the dashboard's header, remembered in this browser (a phone can keep List, a desktop Cards), at any width. A list row per field: its name, crop, status badge and the outlook's headline ("Irrigate by Thu · about 0.6 in refills it"), readings due as a small "2 due"; the row links as the card does. Left out: moisture and AD, the sparkline, last rain and irrigation, the task list. A field of plots: one row per planting under the field's name. Systems stay as headings, lighter than the cards' boxes. *(Built 2026-11-21 on `phase-9-ui`, for Ben's look: `FieldRow`; the view and order remembered in this browser.)*
+- [x] **"Needs water first"**: the list (and cards) ordered by urgency across systems instead of by farm and system (`FieldStatuses.urgency` / `summaryUrgency`), each row naming its system. *(Built 2026-11-21 on `phase-9-ui`: for cards and list alike, one flat grid or list, each naming its system (and farm with several); `needsWaterFirst` in `lib/overview.ts`.)*
+- [x] **Status counts as filters:** the counts above the cards become toggles that show only fields at that status. *(Built 2026-11-21 on `phase-9-ui`: one status at a time, Show all; not remembered; plain on the map.)*
 
 ## 6. A week grid for catching up
 
@@ -71,9 +71,9 @@ Moved from PLAN.md's Phase 9 (Quality of life). Setup is the first thing every n
 
 - [ ] **The same crop on several fields:** after saving a planting, "Plant this on other fields too" with a checklist of the system's fields without one that season (same crop, dates and settings), for first-time setup and next season.
 - [ ] **Keep an outline file's shapes while setting up:** the field shape page reads a file and uses one shape, so outlining twelve fields one at a time means reading the same file twelve times. Keep the last file's shapes in the browser (IndexedDB, per operation, until the tab's session ends or a day passes) and offer them on the next field's shape page ("Shapes from Fields.zip: pick one"), the one that holds the field's system or matches its name first (`lib/outlines/matching.ts`), with those already used marked. Link to Setup's import for doing them all at once.
-- [ ] **Duplicate an irrigation system** in Setup (a farm of similar pivots).
-- [ ] **Daily entry:** offer yesterday's amounts for systems that ran yesterday, as a placeholder to accept, not a value.
-- [ ] **Remember the last choices** in setup forms for the session (soil, crop, emergence date), as suggestions.
+- [x] **Duplicate an irrigation system** in Setup (a farm of similar pivots). *(Built 2026-11-21 on `phase-9-ui`, for Ben's look: Duplicate beside a system's links in Setup, `/pivots/new?copy_of=ID`, copying kind, size, pump, equipment, farm and group, location left to place; any member, as Add is.)*
+- [x] **Daily entry:** offer yesterday's amounts for systems that ran yesterday, as a placeholder to accept, not a value. *(Built 2026-11-21 on `phase-9-ui`, for Ben's look: "0.8 yesterday" as the placeholder and Same as yesterday, filling amount, unit and fields.)*
+- [x] **Remember the last choices** in setup forms for the session (soil, crop, emergence date), as suggestions. *(Built 2026-11-21 on `phase-9-ui`, for Ben's look: a new planting starts from the session's last crop and dates for that season ("As your last planting"), a new field from its last soil unless the survey suggests one.)*
 
 ## 8. A center pivot's percent timer
 

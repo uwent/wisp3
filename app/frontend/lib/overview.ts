@@ -202,3 +202,48 @@ export const treeSystems = <P>(node: FarmNode<P> | GroupNode<P> | SystemNode<P>)
 /** The fields listed in the tree */
 export const treeFields = <P>(tree: FarmNode<P>[]): FieldCard[] =>
   tree.flatMap(treeSystems).flatMap((node) => node.fields)
+
+// The dashboard's choices (Phase 9): its fields by farm and system or most urgent first, and a
+// status count clicked to show only the fields at that status
+
+/** A status count to filter by: a status in season, or the season ended */
+export type StatusFilter = Status | 'ended'
+
+/** Whether a field stands at the status, as StatusCounts counts it (its most urgent planting's) */
+export function matchesStatus(card: FieldCard, filter: StatusFilter | null): boolean {
+  if (filter === null) return true
+  const summary = primary(card)
+  if (filter === 'ended') return summary?.phase === 'ended'
+  return summary?.phase === 'active' && summary.status === filter
+}
+
+/** The farms with only the fields at the status, and the systems and farms left with any; all of them without a filter */
+export function filterByStatus<P extends OverviewSystem>(farms: FarmGroup<P>[], filter: StatusFilter | null) {
+  if (filter === null) return farms
+  return farms.flatMap((farm) => {
+    const pivots = farm.pivots.flatMap((pivot) => {
+      const fields = pivot.fields.filter((card) => matchesStatus(card, filter))
+      return fields.length ? [{ ...pivot, fields }] : []
+    })
+    return pivots.length ? [{ ...farm, pivots }] : []
+  })
+}
+
+/** A field with the system and farm it's under */
+export type PlacedField<P extends OverviewSystem = OverviewSystem> = { card: FieldCard; pivot: P; farm: FarmGroup<P> }
+
+/**
+ * "Needs water first": every field across farms and systems, most urgent first (urgency, then the
+ * soonest to need water), seasons ended and fields with no crop last; ties keep the farms' order
+ */
+export function needsWaterFirst<P extends OverviewSystem>(farms: FarmGroup<P>[]): PlacedField<P>[] {
+  const placed = farms.flatMap((farm) =>
+    farm.pivots.flatMap((pivot) => pivot.fields.map((card) => ({ card, pivot, farm }))),
+  )
+  const keyed = placed.map((item) => ({
+    item,
+    urgency: urgency(item.card),
+    soonest: daysToIrrigate(item.card) ?? Infinity,
+  }))
+  return keyed.toSorted((a, b) => a.urgency - b.urgency || a.soonest - b.soonest).map(({ item }) => item)
+}

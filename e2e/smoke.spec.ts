@@ -22,6 +22,38 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   await expect(page.getByRole('heading', { name: /^Farm: / }).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
+  // The list (Phase 9): a row per field without the cards' moisture lines, remembered in this browser
+  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'List' }).click()
+  await expect(page.getByRole('button', { name: 'List' })).toHaveAttribute('aria-pressed', 'true')
+  const rows = page.locator('[data-field-row]')
+  await expect(rows.first()).toBeVisible()
+  await expect(page.getByText(/% soil moisture · AD /)).toHaveCount(0)
+  await page.reload()
+  await expect(rows.first()).toBeVisible()
+  const fieldCount = await rows.count()
+
+  // Needs water first: one list across farms, the first row at the most urgent status shown
+  await page.getByLabel('Order', { exact: true }).selectOption('urgent')
+  await expect(page.getByRole('heading', { name: /^Farm: / })).toHaveCount(0)
+  await expect(rows).toHaveCount(fieldCount)
+  const statuses = page.getByRole('group', { name: 'Show fields by status' })
+  const first = statuses.getByRole('button').first()
+  const [, label, count] = (await first.textContent())!.match(
+    /(Irrigate|Caution|No canopy data|OK|Full|Season ended)\s*(\d+) fields?/,
+  )!
+  await expect(rows.first()).toContainText(label)
+
+  // A status count shows only the fields at that status, until Show all
+  await first.click()
+  await expect(first).toHaveAttribute('aria-pressed', 'true')
+  await expect(rows).toHaveCount(Number(count))
+  for (const row of await rows.all()) await expect(row).toContainText(label)
+  await statuses.getByRole('button', { name: 'Show all' }).click()
+  await expect(rows).toHaveCount(fieldCount)
+  await page.getByLabel('Order', { exact: true }).selectOption('system')
+  await page.getByRole('button', { name: 'Cards' }).click()
+  await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
+
   // A pivot's name links to its page: its irrigation, and its weather zone's week ahead (G.12)
   const pivot = page.getByRole('heading', { name: /^Irrigation system: / }).first()
   const name = (await pivot.textContent())!.replace('Irrigation system:', '').trim()
@@ -934,6 +966,18 @@ test("daily entry fills an irrigation group's rain into its fields, and saves a 
   await expect(rain(DEMO.gaugeField)).toHaveValue('')
 })
 
+test("daily entry offers the day before's irrigation, filled in only when chosen", async ({ page }) => {
+  // The demo's pivot ran on July 19 and has nothing on the 20th
+  await page.goto(midSeason.replace('-07-15', '-07-20'))
+  const amount = page.getByLabel(`Irrigation by ${DEMO.otherPivot}`, { exact: true })
+  await expect(amount).toHaveValue('')
+  await expect(amount).toHaveAttribute('placeholder', '0.8 day before')
+  const same = page.getByRole('button', { name: `Same as the day before for ${DEMO.otherPivot}` })
+  await same.click()
+  await expect(amount).toHaveValue('0.8')
+  await expect(same).toBeHidden()
+})
+
 test('daily entry asks before changing the date with unsaved values', async ({ page }) => {
   await page.goto(midSeason)
   const date = await page.getByLabel('Date', { exact: true }).inputValue()
@@ -956,6 +1000,15 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Previous day' }).click()
   await expect(page.getByLabel('Date', { exact: true })).not.toHaveValue(date)
+})
+
+test("Setup's Duplicate starts a new irrigation system from another, to be placed on the map", async ({ page }) => {
+  await page.goto('/setup')
+  await page.getByRole('link', { name: `Duplicate ${DEMO.otherPivot}`, exact: true }).click()
+  await expect(page.getByRole('heading', { name: `Duplicate ${DEMO.otherPivot}` })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(`${DEMO.otherPivot} copy`)
+  await expect(page.getByRole('textbox', { name: 'Pump capacity' })).toHaveValue(/^1,?000$/)
+  await expect(page.getByText(`It joins the group ${DEMO.firstFieldGroup}`)).toBeVisible()
 })
 
 test('a dialog asks before dropping changes, listing them (G.13)', async ({ page }) => {
