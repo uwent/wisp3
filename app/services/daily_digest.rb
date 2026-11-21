@@ -25,7 +25,6 @@ class DailyDigest
   PivotSection = Data.define(:pivot, :entries)
 
   ATTENTION = %i[irrigate caution].freeze
-  RANK = FieldStatuses::RANK
 
   attr_reader :user, :today
 
@@ -44,10 +43,7 @@ class DailyDigest
           outlook = Outlook.for(status, depth: method(:depth)) if status&.phase == :active
           Entry.new(field:, status:, outlook:)
         end
-      end.sort_by do |entry|
-        [entry.active? ? RANK.fetch(entry.status.status, RANK.size) : RANK.size + 1,
-          (entry.status.crossing&.days if entry.active?) || PlantingStatus::HORIZON + 1, *place_order(entry)]
-      end
+      end.sort_by { |entry| [*FieldStatuses.urgency(entry.status), *place_order(entry)] }
     end
   end
 

@@ -35,8 +35,14 @@ module DigestHelper
     day ? "#{digest.depth(day.inputs.public_send(kind))}, #{day.inputs.date.strftime("%b %-d")}" : "none recorded"
   end
 
-  # What's due for a field (PlantingTasks): ["Enter a soil moisture reading (last Oct 1)", …]
-  def digest_tasks(entry) = entry.active? ? entry.status.tasks.select(&:due).map(&:todo) : []
+  # What's due for a field (PlantingTasks), but the irrigation check, which has its own line:
+  # ["Enter a soil moisture reading (last Oct 1)", …]
+  def digest_tasks(entry) = due_tasks(entry).reject { |task| task.kind == :irrigation_check }.map(&:todo)
+
+  # The irrigation check's task when it's due ("Irrigated since …?", linking to daily entry), or nil
+  def digest_irrigation_check(entry) = due_tasks(entry).find { |task| task.kind == :irrigation_check }
+
+  def due_tasks(entry) = entry.active? ? entry.status.tasks.select(&:due) : []
 
   # A field out of season: "Potato · season starts Apr 1", "Potato · season ended Sep 15", or "No
   # crop this season"

@@ -30,11 +30,20 @@ class WeatherCell < ApplicationRecord
   end
 
   # Cells of the pivots in digests that list fields out of season too (every included field, or
-  # every morning all year)
+  # every morning all year), as User#digest_fields picks them, in one query however many users
   def self.digest_cell_ids
-    User.where.not(digest_frequency: "never").where.not(confirmed_at: nil)
+    users = User.where.not(digest_frequency: "never").where.not(confirmed_at: nil)
       .where("digest_scope = 'all' OR digest_frequency = 'daily_all_year'")
-      .flat_map { |user| user.digest_fields.joins(:pivot).distinct.pluck("pivots.weather_cell_id") }.uniq
+    Pivot.joins(:farm, :fields).where.not(weather_cell_id: nil)
+      .joins("JOIN memberships ON memberships.group_id = farms.group_id")
+      .where(memberships: {user_id: users.select(:id)})
+      .where(<<~SQL).distinct.pluck(:weather_cell_id)
+        NOT EXISTS (SELECT 1 FROM digest_exclusions excluded WHERE excluded.user_id = memberships.user_id AND (
+          (excluded.subject_type = 'Group' AND excluded.subject_id = farms.group_id) OR
+          (excluded.subject_type = 'Farm' AND excluded.subject_id = farms.id) OR
+          (excluded.subject_type = 'Pivot' AND excluded.subject_id = pivots.id) OR
+          (excluded.subject_type = 'Field' AND excluded.subject_id = fields.id)))
+      SQL
   end
 
   # The cell's address on the weather page, its center to 2 decimals: "44.12,-89.54" (G.6). Cells are

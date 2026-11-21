@@ -83,7 +83,7 @@ class PlantingsController < AuthenticatedController
 
   # The days of the season before today, which ?as_of= can pick ({from:, to:}), or nil if none
   def travel_dates(planting)
-    to = [planting.end_date, Date.current - 1].min
+    to = [planting.end_date, Current.today - 1].min
     {from: planting.season_start, to:} if to >= planting.season_start
   end
 
@@ -101,7 +101,8 @@ class PlantingsController < AuthenticatedController
     dates = as_of ? planting.season_start..[as_of + PlantingStatus::HORIZON, planting.end_date].min : planting.season_range
     attribute = (planting.et_method == "lai") ? :lai : :pct_cover
     # The irrigation of the system the season ran on (G.14 part 7)
-    pivot_inches = PivotIrrigation.where(pivot_id: planting.pivot_id, date: dates).select { |irrigation| irrigation.covers?(field.id) }
+    pivot_inches = PivotIrrigation.preload_areas(PivotIrrigation.where(pivot_id: planting.pivot_id, date: dates))
+      .select { |irrigation| irrigation.covers?(field.id) }
       .to_h { |irrigation| [irrigation.date, irrigation.applied_inches] }
     field_entries = field.field_entries.where(date: dates).index_by(&:date)
 

@@ -7,7 +7,7 @@ import type { Units } from './units'
 // field page. The advice follows the legacy WISP user guide (rev. 8/26/14): soil moisture weekly,
 // percent cover from emergence until about 80%, sensors at 25% and 75% of the root zone. The
 // model's behavior is Canopy, CanopyCurve and CanopyModel's (PLAN.md §5.3, Phase 6.7); change them
-// together. Which readings are due, and the canopy check, come from PlantingTasks (summary.tasks).
+// together. Which readings are due, and the canopy and irrigation checks, come from PlantingTasks (summary.tasks).
 
 /** How often a reading should be entered, in days (PlantingTasks::READING_EVERY) */
 export const READING_EVERY = 7
@@ -37,6 +37,9 @@ export type Guidance = {
   readings: Reading[]
   /** When canopy readings disagree with the crop's curve (the canopy_check task) */
   warning: string | null
+  /** The irrigation check: days at or below the irrigation point with no irrigation entered ("Irrigated
+   * since …?"), and the first of them, for daily entry; null when it isn't due */
+  irrigationCheck: { todo: string; date: string } | null
 }
 
 type GuidedPlanting = Pick<
@@ -94,9 +97,17 @@ export function guidance(
     summary: summaryText(planting),
     more: `More about how ${crop.toLowerCase()} is modeled`,
     paragraphs,
-    readings: tasks.filter((task) => task.kind !== 'canopy_check').map((task) => reading(task, today)),
+    readings: tasks
+      .filter((task) => task.kind !== 'canopy_check' && task.kind !== 'irrigation_check')
+      .map((task) => reading(task, today)),
     warning: tasks.find((task) => task.kind === 'canopy_check')?.message ?? null,
+    irrigationCheck: irrigationCheck(tasks),
   }
+}
+
+function irrigationCheck(tasks: Task[]): Guidance['irrigationCheck'] {
+  const check = tasks.find((task) => task.kind === 'irrigation_check' && task.due)
+  return check?.todo && check.date ? { todo: check.todo, date: check.date } : null
 }
 
 /** What vine kill does to the model: before a date is entered, and once it is */

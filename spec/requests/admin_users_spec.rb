@@ -75,6 +75,27 @@ RSpec.describe "Admin users", type: :request do
     expect(farm[:pivots].sole[:fields].sole[:plantings].sole).to include(id: planting.id, plant_name: "Potato")
   end
 
+  it "shows an account's farms without queries per farm, field or planting" do
+    grower = create(:user)
+    add_farm = lambda do
+      farm = create(:farm, group: grower.groups.first)
+      create(:pivot_group, farm:, pivots: [create(:pivot, farm:)])
+      create(:planting, field: create(:field, pivot: farm.pivots.first))
+    end
+    queries = lambda do
+      count = 0
+      counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { get admin_user_path(grower) }
+      count
+    end
+    add_farm.call
+    sign_in admin
+    get admin_user_path(grower)
+    one = queries.call
+    2.times { add_farm.call }
+    expect(queries.call).to eq(one)
+  end
+
   it "deletes an account with the groups only it belongs to, keeping shared groups" do
     grower = create(:user)
     own = grower.groups.first

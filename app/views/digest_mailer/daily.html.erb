@@ -81,6 +81,9 @@
                         <% else %>
                           <span style="<%= muted %>"><%= digest_summary(entry) %></span>
                         <% end %>
+                        <% if (check = digest_irrigation_check(entry)) %>
+                          <br><span style="font-size:13px"><%= email_link_to check.todo, daily_entry_link(entry, check.date) %></span>
+                        <% end %>
                         <% if (tasks = digest_tasks(entry)).any? %>
                           <br><span style="font-size:13px"><strong>To do:</strong> <%= tasks.join(" · ") %></span>
                         <% end %>

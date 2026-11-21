@@ -74,4 +74,10 @@ RSpec.describe PlantingCsv do
     expect(rows[farm_row]).to eq(["Hancock", "'=HYPERLINK(\"http://example.com\")", "Pivot", "'+Zimmatic", "North", "60.0", "Whole field"])
     expect(rows[farm_row + 4][1]).to eq("'@Russet")
   end
+
+  it "escapes text by the same rule as the chart downloads (lib/csv.ts): formulas, not plain numbers" do
+    escaper = Class.new { include CsvExport }.new
+    expect(%w[=SUM(A1) +1 -x @x -4.5 -5 12].map { |value| escaper.send(:text, value) })
+      .to eq(%w['=SUM(A1) '+1 '-x '@x -4.5 -5 12])
+  end
 end

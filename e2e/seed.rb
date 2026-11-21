@@ -20,6 +20,14 @@ grower.groups.where.not(id: demo.id).destroy_all
 today = Date.current
 now = Time.current
 
+# A sent announcement, for its page's scan (e2e/session.ts ANNOUNCEMENT); the smoke test makes and
+# deletes its own draft
+admin = User.find_by!(email: EMAIL)
+Announcement.find_or_create_by!(subject: "E2E sent announcement") do |announcement|
+  announcement.assign_attributes(body: "Hi {{first_name|there}}, the season's **first** irrigation is due.", status: "sent",
+    created_by: admin, sent_by: admin, sent_at: now, recipients_count: 0)
+end
+
 # Keep the first field's season (the planting the tests open, firstPlantingPath; e2e/demo.json)
 # running past today, so it has a projection whenever the tests run between April and the fall
 first_field = JSON.parse(File.read(File.join(__dir__, "demo.json"))).fetch("firstField")

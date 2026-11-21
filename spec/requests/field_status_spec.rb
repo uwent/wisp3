@@ -89,6 +89,22 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(days["2026-07-12"][:irrigation]).to be_within(0.001).of(900 * 10 * 60 / (27_154.0 * 60))
     end
 
+    it "converts run hours without queries per irrigation, on the planting and system pages" do
+      queries = lambda do |path|
+        count = 0
+        counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
+        ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { get path }
+        count
+      end
+      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 10), run_hours: 10)
+      get planting_path(planting) # Devise's sign-in and the first visit's one-off writes
+      get pivot_path(pivot)
+      planting_one, pivot_one = queries.call(planting_path(planting)), queries.call(pivot_path(pivot))
+      [12, 14, 16].each { |day| pivot.pivot_irrigations.create!(date: Date.new(2026, 7, day), run_hours: 10) }
+      expect(queries.call(planting_path(planting))).to eq(planting_one)
+      expect(queries.call(pivot_path(pivot))).to eq(pivot_one)
+    end
+
     it "queues a weather update for the field's cell, and for the dashboard's" do
       expect { get field_path(field) }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id, quiet: false)
       Rails.cache.clear
@@ -221,6 +237,12 @@ RSpec.describe "Field status and daily entry", type: :request do
       dates = Date.new(2026, 7, 20)..Date.new(2026, 8, 4)
       pivot.weather_cell.weather_forecasts.create!(kind: "ensemble", issued_at: 1.hour.ago, model: "gfs_seamless",
         payload: {dates: dates.map(&:iso8601), members: [{et0_in: [0.2] * 16, precip_in: [0.0] * 16}] * 2})
+    end
+
+    it "offers days before Current.today to travel to, not before the clock's" do
+      allow(Current).to receive(:today).and_return(Date.new(2026, 7, 15))
+      get planting_path(planting)
+      expect(inertia.props[:travel_dates]).to eq("from" => "2026-07-01", "to" => "2026-07-14")
     end
 
     it "shows the season as of an earlier day, projecting it on the weather that followed" do

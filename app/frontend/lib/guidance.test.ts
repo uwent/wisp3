@@ -29,7 +29,7 @@ const potato = {
 } as const
 type Task = Parameters<typeof guidance>[2][number]
 const task = (kind: Task['kind'], label: string, last_date: string | null, due: boolean, extra: Partial<Task> = {}) =>
-  ({ kind, label, last_date, due, note: due ? 'due' : null, todo: null, message: null, ...extra }) as Task
+  ({ kind, label, last_date, due, note: due ? 'due' : null, todo: null, message: null, date: null, ...extra }) as Task
 const today = '2026-07-20'
 
 describe('guidance', () => {
@@ -170,6 +170,22 @@ describe('guidance', () => {
     const result = guidance(potato, units('imperial'), [check], today)
     expect(result.warning).toBe('Your canopy readings run about 9 days ahead of the potato curve.')
     expect(result.readings).toEqual([])
+  })
+
+  it('gives the irrigation check apart from the readings, with the day daily entry opens on', () => {
+    const check = task('irrigation_check', 'Irrigation', null, true, {
+      note: null,
+      todo: 'Irrigated since Sun, Jul 19? Enter it so the balance catches up.',
+      date: '2026-07-19',
+    })
+    const result = guidance(potato, units('imperial'), [check], today)
+    expect(result.irrigationCheck).toEqual({
+      todo: 'Irrigated since Sun, Jul 19? Enter it so the balance catches up.',
+      date: '2026-07-19',
+    })
+    expect(result.readings).toEqual([])
+    expect(result.warning).toBeNull()
+    expect(guidance(potato, units('imperial'), [], today).irrigationCheck).toBeNull()
   })
 
   it("says when a planting's own season length stretches its curve (G.7)", () => {

@@ -2,7 +2,7 @@
 # Takes a DailyDigest, which the job and the previews build first to check there's something to send.
 class DigestMailer < ApplicationMailer
   helper :digest
-  helper_method :field_link, :pivot_link, :status_label, :status_style, :entry_status
+  helper_method :field_link, :daily_entry_link, :pivot_link, :status_label, :status_style, :entry_status
 
   # The app's --color-status-* tokens (EmailHelper::COLORS), with an icon so color isn't the only cue
   # (StatusBadge)
@@ -47,6 +47,9 @@ class DigestMailer < ApplicationMailer
     planting = entry.status&.planting
     planting ? planting_url(planting, operation: entry.group.id) : field_url(entry.field, operation: entry.group.id)
   end
+
+  # Daily entry on date (the irrigation check's first day), in the entry's operation
+  def daily_entry_link(entry, date) = daily_entry_url(date: date.iso8601, operation: entry.group.id)
 
   def pivot_link(pivot) = pivot_url(pivot, operation: pivot.farm.group_id)
 

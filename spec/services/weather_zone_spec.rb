@@ -30,4 +30,15 @@ RSpec.describe WeatherZone do
     other = create(:pivot, latitude: 46.2, longitude: -91.0) # another group's
     expect { described_class.find(group, other.weather_cell_id) }.to raise_error(ActiveRecord::RecordNotFound)
   end
+
+  it "names an earlier season's zone from the system that season ran on, not the field's current one" do
+    old = create(:pivot, farm:, name: "Old")
+    field = create(:field, pivot: old)
+    create(:planting, field:)
+    cell = old.weather_cell_id
+    now = create(:pivot, farm:, name: "Now", latitude: 45.5)
+    field.update_columns(pivot_id: now.id) # the field moved to another system
+    old.update_columns(weather_cell_id: create(:pivot, latitude: 46.2, longitude: -91.0).weather_cell_id) # and the old one moved
+    expect(described_class.find(group, cell).name).to eq("Old")
+  end
 end

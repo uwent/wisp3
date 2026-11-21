@@ -62,6 +62,13 @@ RSpec.describe DigestMailer do
     todo = "To do: Enter a soil moisture reading (last Jul 10) · Enter a percent cover reading (last Jul 1)"
     expect(mail.text_part.body.decoded).to include("\n     #{todo}\n")
     expect(Nokogiri::HTML(mail.html_part.body.decoded).text.squish).to include(todo)
+
+    # Below the irrigation point since Jul 19 with no irrigation entered: did they irrigate?
+    check = "Irrigated since Sun, Jul 19? Enter it so the balance catches up."
+    link = "http://example.com/daily?date=2026-07-19&operation=#{user.groups.first.id}"
+    expect(mail.text_part.body.decoded).to include("\n     #{check} #{link}\n     To do:")
+    html = Nokogiri::HTML(mail.html_part.body.decoded)
+    expect(html.at_css("a[href='#{link}']").text).to eq(check)
   end
 
   it "gives each operation its own section, and each its weather zones" do

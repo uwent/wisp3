@@ -47,6 +47,9 @@ Nothing needs your attention today. <%= @digest.nothing_listed %>
 <% else %>
      <%= digest_summary(entry) %>
 <% end %>
+<% if (check = digest_irrigation_check(entry)) %>
+     <%= check.todo %> <%= daily_entry_link(entry, check.date) %>
+<% end %>
 <% if (tasks = digest_tasks(entry)).any? %>
      To do: <%= tasks.join(" · ") %>
 <% end %>

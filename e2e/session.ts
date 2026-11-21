@@ -11,6 +11,9 @@ export const PASSWORD = 'e2e-password-1'
 // A grower in the demo farms, not an admin, for signing in as someone else
 export const GROWER_EMAIL = 'jane@example.com'
 
+// The announcement e2e/seed.rb sends, for its page's scan
+export const ANNOUNCEMENT = 'E2E sent announcement'
+
 // The session auth.setup.ts saves, signed in with the demo farms chosen
 export const AUTH_STATE = 'test-results/.auth/state.json'
 
@@ -109,6 +112,9 @@ export async function signedInPages(page: Page): Promise<string[]> {
     .filter({ has: page.getByRole('heading', { name: `Field: ${DEMO.hayField}` }) })
   const hay = new URL((await hayCard.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
   const user = await firstLinkPath(page, '/admin/users', 'td a[href*="/admin/users/"]')
+  await page.goto('/admin/announcements')
+  const announcementLink = page.getByRole('link', { name: ANNOUNCEMENT, exact: true })
+  const announcement = new URL((await announcementLink.getAttribute('href'))!, page.url()).pathname
   // A traveler, a point with no shape (G.5)
   await page.goto('/setup')
   const travelerLink = page.locator(`a[href*="/pivots/"][aria-label="View ${DEMO.traveler}"]`)
@@ -145,7 +151,9 @@ export async function signedInPages(page: Page): Promise<string[]> {
     '/admin/usage',
     '/admin/users',
     user,
+    `${user}/digest`,
     '/admin/announcements',
+    announcement,
     '/admin/announcements/new',
   ]
 }

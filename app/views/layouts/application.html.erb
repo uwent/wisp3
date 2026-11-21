@@ -12,6 +12,13 @@
     <% end %>
 
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <%# Add to Home Screen: the manifest (public/manifest.webmanifest; no service worker, no offline) and
+        iOS's icon. The browser's bars take the branding bar's red, light and dark, so the top runs on %>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="WISP">
+    <meta name="theme-color" content="#cf0a1b" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#a3030e" media="(prefers-color-scheme: dark)">
 
     <%# The light/dark choice from the theme toggle (app/frontend/lib/theme.ts), applied before the page paints %>
     <script nonce="<%= content_security_policy_nonce %>">

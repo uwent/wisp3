@@ -2,17 +2,25 @@
 # dashboard cards and the daily email: the readings that keep the model on track, as the legacy
 # user guide advised (soil moisture about weekly; percent cover about weekly from emergence until
 # the canopy covers about 80%), and canopy readings to check when they disagree with the crop's
-# curve (Canopy#check). lib/guidance.ts explains the same advice in its paragraphs.
+# curve (Canopy#check). lib/guidance.ts explains the same advice in its paragraphs. And the
+# irrigation check: a balance that has read "Irrigate now" for days with no irrigation entered asks
+# whether the grower irrigated and didn't enter it, before they decide the model is wrong.
 class PlantingTasks
   # How often a reading should be entered, in days
   READING_EVERY = 7
   # Percent cover readings can stop once the canopy covers this much of the ground
   FULL_COVER_PCT = 80
 
-  # kind: :soil_moisture, :canopy or :canopy_check. last_date: the latest reading, if any. due:
-  # whether it's to do now. note: "due", "canopy closed", "vines killed", "optional" or nil. todo: what to do, in
-  # a line (when due). message: more about it, for the canopy check.
-  Task = Data.define(:kind, :label, :last_date, :due, :note, :todo, :message)
+  # The irrigation check asks after this many days in a row at or below the threshold, ending today
+  IRRIGATION_CHECK_DAYS = 2
+
+  # kind: :irrigation_check, :soil_moisture, :canopy or :canopy_check. last_date: the latest reading,
+  # if any. due: whether it's to do now. note: "due", "canopy closed", "vines killed", "optional" or
+  # nil. todo: what to do, in a line (when due). message: more about it, for the checks. date: the
+  # day daily entry opens on to do it (the irrigation check's first day), or nil.
+  Task = Data.define(:kind, :label, :last_date, :due, :note, :todo, :message, :date) do
+    def initialize(date: nil, **) = super
+  end
 
   def initialize(status)
     @status = status
@@ -23,7 +31,7 @@ class PlantingTasks
   # the readings with their last dates only (the planting page lists them, G.6), none of them due
   def all
     case @status.phase
-    when :active then [soil_moisture, canopy, canopy_check].compact
+    when :active then [irrigation_check, soil_moisture, canopy, canopy_check].compact
     when :ended
       [soil_moisture, canopy].compact.map { |task| task.with(due: false, note: (task.note unless task.due), todo: nil) }
     else []
@@ -85,6 +93,27 @@ class PlantingTasks
   end
 
   def reading(kind, label, last, todo) = self.class.reading(kind, label, last, todo, @today)
+
+  # Due when the balance has been at or below the threshold (status irrigate, or below the target)
+  # for IRRIGATION_CHECK_DAYS or more days in a row ending today, with no irrigation entered (an
+  # entered 0 counts: the grower says there was none) for the field, its plot or by its system on
+  # any of them. Not on read-only pages (time travel, the example farm), which can't enter it.
+  def irrigation_check
+    return if @status.as_of || Current.as_of || @status.status.in?([nil, :needs_canopy]) || @status.weather_pending?
+
+    threshold = @status.threshold
+    run = @status.days.reverse.take_while do |day|
+      day.inputs.et0 && day.result.ad <= threshold && day.inputs.irrigation_source == :none
+    end
+    return if run.size < IRRIGATION_CHECK_DAYS || run.first.inputs.date != @today
+
+    since = run.last.inputs.date
+    level = @status.params.target_in ? "your target" : "the irrigation point"
+    Task.new(kind: :irrigation_check, label: "Irrigation", last_date: nil, due: true, note: nil,
+      todo: "Irrigated since #{Outlook.day(since)}? Enter it so the balance catches up.",
+      message: "The balance has been at or below #{level} since #{Outlook.day(since)} with no irrigation " \
+        "entered. If you irrigated, enter it in daily entry and the balance will catch up.", date: since)
+  end
 
   def canopy_check
     check = @status.canopy.check or return

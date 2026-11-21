@@ -61,7 +61,8 @@ class PlantingSummarySerializer < ApplicationSerializer
     elsif status.planting.thermal_curve? then false
     end
   end
-  # Readings to enter and checks to make (PlantingTasks), while the season is on
+  # Readings to enter and checks to make (PlantingTasks), while the season is on; date is the day
+  # daily entry opens on for the task (the irrigation check's first day)
   attribute(:tasks) { |status| status.tasks.map(&:to_h) }
   attribute(:projection) do |status|
     bands = status.ensemble.index_by(&:date)
@@ -89,8 +90,9 @@ class PlantingSummarySerializer < ApplicationSerializer
     use_model_precip: :boolean, rain_group_id: "number | null", rain_farm_id: :number, dry_crossing: "{ date: string; days: number; ad: number; refill: number } | null",
     ensemble_size: :number, projection_source: "'forecast' | 'observed'", canopy_fit: "{ shift: number; stretch: number; height: number } | null",
     canopy_thermal: "boolean | null",
-    tasks: "{ kind: 'soil_moisture' | 'canopy' | 'canopy_check'; label: string; last_date: string | null; " \
-      "due: boolean; note: 'due' | 'canopy closed' | 'vines killed' | 'optional' | null; todo: string | null; message: string | null }[]",
+    tasks: "{ kind: 'irrigation_check' | 'soil_moisture' | 'canopy' | 'canopy_check'; label: string; " \
+      "last_date: string | null; due: boolean; note: 'due' | 'canopy closed' | 'vines killed' | 'optional' | null; " \
+      "todo: string | null; message: string | null; date: string | null }[]",
     projection: "{ date: string; ad: number; p10: number | null; p50: number | null; p90: number | null; " \
       "chance: number | null; dry_ad: number | null }[]"
 end

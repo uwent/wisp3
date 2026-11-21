@@ -40,7 +40,12 @@ module CsvExport
 
   def num(value) = value && format("%.4f", value)
 
-  # Text a spreadsheet would read as a formula (=, +, -, @, or a leading tab or return) gets a quote
-  def text(value) = (value.is_a?(String) && value.match?(/\A[=+\-@\t\r]/)) ? "'#{value}" : value
+  # Text a spreadsheet would read as a formula (=, +, -, @, or a leading tab or return) gets a quote;
+  # a plain number written as text ("-4.5") doesn't, as it can't run anything. Same rule as lib/csv.ts.
+  def text(value)
+    formula = value.is_a?(String) && value.match?(/\A[=+\-@\t\r]/) && !value.match?(/\A-?\d+(\.\d+)?\z/)
+    formula ? "'#{value}" : value
+  end
+
   def pct(fraction) = (fraction * 100).round(2)
 end

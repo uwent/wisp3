@@ -9,7 +9,7 @@ export const SOURCE =
 
 /**
  * Text a spreadsheet would read as a formula (=, +, -, @, or a leading tab or return) gets a quote;
- * numbers written as text ("-4.5") don't
+ * numbers written as text ("-4.5") don't, as they can't run anything. Same rule as CsvExport#text.
  */
 const escaped = (value: string) => (/^[=+\-@\t\r]/.test(value) && !/^-?\d+(\.\d+)?$/.test(value) ? `'${value}` : value)
 

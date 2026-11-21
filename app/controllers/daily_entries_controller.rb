@@ -4,7 +4,7 @@
 # and each planting a canopy reading (percent cover or LAI). Props: DailyEntryPage.
 class DailyEntriesController < AuthenticatedController
   def show
-    date = parse_date(params[:date]) || Date.current
+    date = parse_date(params[:date]) || default_date
     page = DailyEntryPage.new(Current.group, date)
     WeatherCell.keep_current(page.pivots.map(&:weather_cell_id))
     render inertia: "DailyEntries/Show", props: page.props
@@ -29,6 +29,12 @@ class DailyEntriesController < AuthenticatedController
   end
 
   private
+
+  # Rain gauges are read in the morning, and the reading is mostly yesterday's rain: before noon
+  # (Central, config.time_zone) the page opens on yesterday, from noon on today
+  def default_date
+    (Time.current.hour < 12) ? Current.today - 1 : Current.today
+  end
 
   # {"id" => {attribute => value}} for the pivots or fields sent, with only these attributes; an id
   # sent without a hash of values is dropped

@@ -23,4 +23,26 @@ class Membership < ApplicationRecord
   def demotion_error
     "#{user.display_name} is the only owner. Make someone else an owner first." if owner? && group.memberships.owners.where.not(id:).none?
   end
+
+  # Makes this an owner or a member, unless it's the last owner: the error, or nil. The group's row
+  # lock makes the check and the write one step, so two owners demoting each other at once can't
+  # both pass the check.
+  def change_role(owner)
+    group.with_lock do
+      reload
+      error = demotion_error unless owner
+      update!(owner:) unless error
+      error
+    end
+  end
+
+  # Ends this membership unless it can't (removal_error): the error, or nil. Locked as change_role.
+  def remove
+    group.with_lock do
+      reload
+      error = removal_error
+      destroy! unless error
+      error
+    end
+  end
 end

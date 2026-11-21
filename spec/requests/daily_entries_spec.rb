@@ -18,6 +18,15 @@ RSpec.describe "Daily entry", type: :request do
   around { |example| travel_to(Date.new(2026, 7, 20)) { example.run } }
 
   describe "the page", :inertia do
+    it "opens on yesterday before noon (this morning's gauge reading) and on today from noon" do
+      travel_to(Time.zone.parse("2026-07-20 11:59"))
+      get daily_entry_path
+      expect(inertia.props[:date]).to eq("2026-07-19")
+      travel_to(Time.zone.parse("2026-07-20 12:00"))
+      get daily_entry_path
+      expect(inertia.props[:date]).to eq("2026-07-20")
+    end
+
     it "lists farms with their pivot groups, pivots, fields and plantings in season" do
       get daily_entry_path(date:)
       farm_props = inertia.props[:farms].sole

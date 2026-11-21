@@ -22,6 +22,15 @@ class PivotIrrigation < ApplicationRecord
     (date && ids.sort == pivot.fields_on(date).map(&:id).sort) ? nil : ids
   end
 
+  # Loads what converting run hours reads (irrigated_acres: the system's fields and plantings), once
+  # per system rather than about three queries per irrigation. Returns the irrigations.
+  def self.preload_areas(irrigations)
+    irrigations = irrigations.to_a
+    ActiveRecord::Associations::Preloader.new(records: irrigations.select(&:run_hours),
+      associations: {pivot: [:fields, {plantings: :field}]}).call
+    irrigations
+  end
+
   # Whether the field is among those it was applied to
   def covers?(field_id) = field_ids.nil? || field_ids.include?(field_id)
 

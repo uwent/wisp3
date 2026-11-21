@@ -42,7 +42,7 @@ class DailyEntryPage
   def field_props(pivot, field)
     {id: field.id, name: field.name, area_acres: field.area_acres,
      # Only as a hint where the balance would use it (Q7: not on a field using entered rain, through today)
-     rain_model: (pivot.use_model_precip? || @date > Date.current) ? rain[pivot.weather_cell_id] : nil,
+     rain_model: (pivot.use_model_precip? || @date > Current.today) ? rain[pivot.weather_cell_id] : nil,
      entry: field_entries[field.id]&.slice(:rain_in, :irrigation_in, :soil_moisture_pct),
      plantings: field.plantings_on(@date).sort_by(&:order_key)
        .map { |planting| planting_props(planting) }}

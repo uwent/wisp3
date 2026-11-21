@@ -8,7 +8,7 @@ class PivotsController < AuthenticatedController
     pivot = Current.group.pivots.includes(:farm, :weather_cell, fields: [:soil_type, {plantings: :plant}]).find(params[:id])
     year = requested_year
     WeatherCell.keep_current([pivot.weather_cell_id])
-    irrigations = pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(date: :desc)
+    irrigations = PivotIrrigation.preload_areas(pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(date: :desc))
 
     render inertia: "Pivots/Show", props: {
       pivot: PivotSerializer.new(pivot).to_h,

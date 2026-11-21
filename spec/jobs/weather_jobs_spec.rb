@@ -38,6 +38,20 @@ RSpec.describe "Weather jobs" do
       expect(WeatherCell.active).to be_empty
     end
 
+    it "leaves out what a digest leaves out, in one query however many digest users" do
+      users = Array.new(3) { create(:user, digest_frequency: "daily_all_year") }
+      fields = users.each_with_index.map do |user, i|
+        create(:field, pivot: create(:pivot, latitude: 44.12 + i, longitude: -89.53, farm: create(:farm, group: user.groups.first)))
+      end
+      users[1].digest_exclusions.create!(subject: fields[1].pivot.farm)
+      users[2].digest_exclusions.create!(subject: fields[2])
+      count = 0
+      counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
+      ids = ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { WeatherCell.digest_cell_ids }
+      expect(ids).to eq([fields[0].pivot.weather_cell_id])
+      expect(count).to eq(1)
+    end
+
     it "queues an update for cells being looked at, at most every 15 minutes each" do
       other = WeatherCell.for(36.7, -119.8)
       expect { WeatherCell.keep_current([cell.id, nil, cell.id]) }.to have_enqueued_job(WeatherUpdateJob).with(cell.id, quiet: false).exactly(:once)

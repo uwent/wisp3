@@ -19,7 +19,7 @@ class WeatherZone
   def self.find(group, cell_id)
     cell = WeatherCell.where(id: cell_ids(group)).find(cell_id)
     pivots = group.pivots.includes(:farm, :fields).where(weather_cell_id: cell.id)
-      .or(group.pivots.includes(:farm, :fields).where(id: group.plantings.where(weather_cell_id: cell.id).select("pivots.id")))
+      .or(group.pivots.includes(:farm, :fields).where(id: group.plantings.where(weather_cell_id: cell.id).select(:pivot_id)))
     new(cell, pivots.to_a.uniq)
   end
 

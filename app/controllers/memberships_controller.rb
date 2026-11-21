@@ -2,6 +2,8 @@
 # need an account first), change roles and remove members; anyone can leave.
 class MembershipsController < AuthenticatedController
   before_action :require_owner, only: [:create, :update]
+  # Adding a member emails them in the user's name
+  before_action :forbid_while_impersonating, only: :create
 
   def create
     email = params.expect(membership: [:email])[:email].to_s.strip.downcase
@@ -23,10 +25,10 @@ class MembershipsController < AuthenticatedController
   def update
     membership = Current.group.memberships.find(params[:id])
     owner = params.expect(membership: [:owner])[:owner] == "true"
-    error = membership.demotion_error unless owner
-    return redirect_to(group_path, alert: error) if error
+    if (error = membership.change_role(owner))
+      return redirect_to(group_path, alert: error)
+    end
 
-    membership.update!(owner:)
     redirect_to group_path, notice: "#{membership.user.display_name} is now #{owner ? "an owner" : "a member"}"
   end
 
@@ -34,11 +36,10 @@ class MembershipsController < AuthenticatedController
     membership = Current.group.memberships.find(params[:id])
     leaving = membership == Current.membership
     return require_owner unless leaving || Current.owner?
-    if (error = membership.removal_error)
+    if (error = membership.remove)
       return redirect_to(group_path, alert: error, status: :see_other)
     end
 
-    membership.destroy!
     if leaving
       session.delete(:group_id)
       redirect_to root_path, notice: "You left #{Current.group.name}", status: :see_other

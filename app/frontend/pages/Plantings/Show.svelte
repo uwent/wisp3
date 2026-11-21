@@ -506,7 +506,7 @@
     {/if}
   </div>
 
-  {#if guidance && (guidance.readings.length || guidance.warning)}
+  {#if guidance && (guidance.readings.length || guidance.warning || guidance.irrigationCheck)}
     <!-- The readings that keep the model on track, each with when it was last entered; due ones marked (G.6) -->
     <div class="space-y-2 border-t border-line pt-3 text-sm lg:col-span-3">
       <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -515,6 +515,15 @@
           <Link href={dailyEntries.show()} class="text-brand-600 underline underline-offset-2">Daily entry →</Link>
         {/if}
       </div>
+      {#if guidance.irrigationCheck && !readOnly}
+        <!-- Below the irrigation point for days with no irrigation entered: did they irrigate and not enter it? -->
+        <p class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2">
+          <Link
+            href={dailyEntries.show({ query: { date: guidance.irrigationCheck.date } })}
+            class="underline underline-offset-2">{guidance.irrigationCheck.todo}</Link
+          >
+        </p>
+      {/if}
       {#if guidance.warning}
         <p role="status" class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2">
           {guidance.warning}

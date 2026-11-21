@@ -6,7 +6,7 @@ class PivotIrrigationsController < AuthenticatedController
   # The year's irrigation (?year=) as CSV
   def index
     year = requested_year
-    irrigations = @pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(:date)
+    irrigations = PivotIrrigation.preload_areas(@pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(:date))
     csv = PivotIrrigationCsv.new(@pivot, year, irrigations, exported_by: current_user, about_url:).to_csv
     send_data csv, filename: "wisp-irrigation-#{@pivot.name.parameterize}-#{year}.csv", type: "text/csv; charset=utf-8"
   end

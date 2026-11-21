@@ -52,7 +52,7 @@ class PagesController < AuthenticatedController
   # confidence from db/reference/canopy_curves.yml, and its cover by day for a May 15 emergence, by the
   # calendar curve (in the field it runs by growing degree days, C23, matching this in a typical season)
   def canopy_curves
-    emergence = Date.new(Date.current.year, 5, 15)
+    emergence = Date.new(Current.today.year, 5, 15)
     Plant.order(:name).filter_map do |plant|
       curve = CanopyCurve.for(plant.key) or next
       covers = (0..CURVE_DAYS).map { |day| curve.cover(emergence, emergence + day).round(1) }

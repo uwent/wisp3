@@ -32,7 +32,7 @@ class QuickSetupsController < AuthenticatedController
 
   # This season and next, late in the year; nil the rest of it (no question asked)
   def seasons
-    today = Date.current
+    today = Current.today
     [today.year, today.year + 1] if today.month >= NEXT_SEASON_FROM_MONTH
   end
 

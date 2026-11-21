@@ -485,7 +485,12 @@
         {@const errs = errors as Record<string, string | string[]>}
         <input type="hidden" name="date" value={date} />
         <div class="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 class="text-lg font-medium">{formatDate(date, { weekday: true, year: true })}</h2>
+          <div>
+            <h2 class="text-lg font-medium">{formatDate(date, { weekday: true, year: true })}</h2>
+            {#if date === addDays(today, -1)}
+              <p class="text-xs text-ink-muted">Yesterday: rain read from your gauge this morning goes here.</p>
+            {/if}
+          </div>
           <p class="text-xs text-ink-muted">
             Rain typed for an irrigation system or group fills in its fields; change any field before saving.
           </p>

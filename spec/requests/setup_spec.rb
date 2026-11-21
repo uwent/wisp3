@@ -322,6 +322,14 @@ RSpec.describe "Setup", type: :request do
       expect(response).to redirect_to(setup_path(started_farm: group.farms.find_by!(name: "Plover").id))
     end
 
+    it "takes today from Current.today, the example farm's or the real one, not the clock" do
+      allow(Current).to receive(:today).and_return(Date.new(2025, 11, 15))
+      get new_quick_setup_path
+      expect(inertia.props[:seasons]).to eq([2025, 2026])
+      get setup_path(year: 2024)
+      expect(inertia.props[:years]).to eq([2024, 2025])
+    end
+
     it "saves a new farm alone when the irrigation system is left for later" do
       post quick_setup_path, params: {setup: {farm: {name: "Hancock"}}}
       farm = group.farms.sole

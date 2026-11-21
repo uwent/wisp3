@@ -48,11 +48,8 @@ class DailyInputs
     pivot_ids = fields.to_h { |field| [field.id, [field.pivot_id]] }
     Planting.where(field_id: field_ids, season_start: ..dates.end, end_date: dates.begin..).distinct
       .pluck(:field_id, :pivot_id).each { |field_id, pivot_id| pivot_ids[field_id] |= [pivot_id] }
-    irrigations = PivotIrrigation.where(pivot_id: pivot_ids.values.flatten.uniq, date: dates).to_a
-    # Run hours convert over the system's plantings in season (irrigated_acres): loaded once per system
-    ActiveRecord::Associations::Preloader.new(records: irrigations.select(&:run_hours),
-      associations: {pivot: [:fields, {plantings: :field}]}).call
-    irrigations = irrigations.group_by(&:pivot_id)
+    irrigations = PivotIrrigation.preload_areas(PivotIrrigation.where(pivot_id: pivot_ids.values.flatten.uniq, date: dates))
+      .group_by(&:pivot_id)
 
     fields.to_h do |field|
       [field.id, Records.new(entries: entries.fetch(field.id, []),
@@ -69,7 +66,7 @@ class DailyInputs
     @part = planting if planting&.partial?
     @records = records || Records.new(
       entries: @field.field_entries.where(date: span),
-      pivot_irrigations: PivotIrrigation.where(pivot_id: planting ? planting.pivot_id : pivot_ids, date: span),
+      pivot_irrigations: PivotIrrigation.preload_areas(PivotIrrigation.where(pivot_id: planting ? planting.pivot_id : pivot_ids, date: span)),
       planting_entries: @part ? @part.planting_entries.where(date: span).to_a : []
     )
   end

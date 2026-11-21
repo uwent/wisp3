@@ -6,7 +6,7 @@
 class SeasonReportCsv
   include CsvExport
 
-  def initialize(group, year, exported_by: nil, about_url: nil, today: Date.current)
+  def initialize(group, year, exported_by: nil, about_url: nil, today: Current.today)
     @group, @year, @exported_by, @about_url, @today = group, year, exported_by, about_url, today
   end
 

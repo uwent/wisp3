@@ -22,10 +22,50 @@ RSpec.describe PlantingTasks do
 
     field.field_entries.create!(date: Date.new(2026, 7, 15), soil_moisture_pct: 10)
     create(:canopy_observation, planting:, date: Date.new(2026, 7, 8), pct_cover: 40)
-    moisture, cover = tasks
+    moisture, cover = tasks.reject { |task| task.kind == :irrigation_check }
     expect(moisture).to have_attributes(due: false, last_date: Date.new(2026, 7, 15), note: nil, todo: nil)
     expect(cover).to have_attributes(due: true, last_date: Date.new(2026, 7, 8), note: "due",
       todo: "Enter a percent cover reading (last Jul 8)")
+  end
+
+  describe "the irrigation check" do
+    def check = tasks.find { |task| task.kind == :irrigation_check }
+
+    # A reading below the irrigation point (10% here) puts the balance there from its date
+    def dry_from(date) = field.field_entries.create!(date:, soil_moisture_pct: 9.5)
+
+    it "asks after two days in a row at or below the irrigation point with no irrigation entered" do
+      dry_from(Date.new(2026, 7, 19))
+      expect(tasks.first).to have_attributes(kind: :irrigation_check, label: "Irrigation", due: true,
+        date: Date.new(2026, 7, 19), todo: "Irrigated since Sun, Jul 19? Enter it so the balance catches up.")
+    end
+
+    it "doesn't ask after one day" do
+      dry_from(Date.new(2026, 7, 20))
+      expect(PlantingStatus.new(planting.reload).status).to eq(:irrigate)
+      expect(check).to be_nil
+    end
+
+    it "doesn't ask when irrigation was entered on one of the days, for the field or by its system" do
+      dry_from(Date.new(2026, 7, 18))
+      expect(check).to have_attributes(date: Date.new(2026, 7, 18))
+
+      entry = field.field_entries.create!(date: Date.new(2026, 7, 19), irrigation_in: 0.05)
+      expect(check).to be_nil
+
+      entry.destroy!
+      create(:pivot_irrigation, pivot:, date: Date.new(2026, 7, 19), inches: 0.05)
+      expect(check).to be_nil
+    end
+
+    it "doesn't ask once the season has ended, or time travelling" do
+      dry_from(Date.new(2026, 7, 15))
+      expect(PlantingStatus.new(planting.reload, as_of: Date.new(2026, 7, 18)).tasks.map(&:kind))
+        .not_to include(:irrigation_check)
+
+      planting.update!(end_date: Date.new(2026, 7, 19))
+      expect(tasks.map(&:kind)).not_to include(:irrigation_check)
+    end
   end
 
   it "stops asking for percent cover once the canopy is nearly closed" do

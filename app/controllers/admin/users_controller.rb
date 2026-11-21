@@ -18,7 +18,7 @@ module Admin
     def show
       user = User.find(params[:id])
       groups = user.groups.order(:name)
-        .includes(memberships: :user, farms: {pivots: {fields: [:soil_type, {plantings: :plant}]}})
+        .includes(memberships: :user, farms: [:pivot_groups, {pivots: {fields: [:soil_type, {plantings: [:plant, :canopy_cuttings]}]}}])
       render inertia: "Admin/Users/Show", props: {
         user: AdminUserDetailSerializer.new(user).serializable_hash,
         groups: AdminGroupSerializer.new(groups).serializable_hash,

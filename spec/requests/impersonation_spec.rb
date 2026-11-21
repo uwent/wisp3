@@ -60,6 +60,13 @@ RSpec.describe "Impersonation", type: :request do
       expect(flash[:alert]).to eq("That's turned off while you're signed in as someone else.")
     end
 
+    it "refuses adding a member, which emails them in the grower's name" do
+      create(:user, email: "third@example.com")
+      expect { post memberships_path, params: {membership: {email: "third@example.com"}} }
+        .not_to change(Membership, :count)
+      expect(flash[:alert]).to eq("That's turned off while you're signed in as someone else.")
+    end
+
     it "can't start another impersonation" do
       post admin_user_impersonation_path(create(:user))
       expect(response).to have_http_status(:not_found)
