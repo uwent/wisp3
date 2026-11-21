@@ -894,6 +894,28 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   await expect(dialog.getByText('This overlaps a planting covering the whole field')).toBeVisible()
 })
 
+test("a new whole-field planting offers the system's other fields free for its dates (Phase 9 §7)", async ({
+  page,
+}) => {
+  await page.goto('/setup')
+  await page.getByRole('button', { name: `Add a planting to ${DEMO.firstField}` }).click()
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^Add a \\d{4} planting to ${literal(DEMO.firstField)}`) })
+  await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
+  // Collapsed to a line with a count, opened to a checklist (or a line saying none is free)
+  const also = dialog.locator('details').filter({ hasText: 'Also plant this on' })
+  await expect(also.locator('summary')).toContainText(/other fields? free|None free for these dates/)
+  await also.locator('summary').click()
+  await expect(
+    also.getByText(/Fields on this irrigation system with nothing planted|all have a planting on these dates/),
+  ).toBeVisible()
+  // Not for part of the field
+  await dialog
+    .locator('label')
+    .filter({ hasText: /^\s*Part of the field\s*$/ })
+    .click()
+  await expect(also).toHaveCount(0)
+})
+
 // Mid-season, so the demo's fields are in season whatever today's date (in November they're collapsed)
 const midSeason = `/daily?date=${new Date().getFullYear()}-07-15`
 

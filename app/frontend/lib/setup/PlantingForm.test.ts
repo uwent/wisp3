@@ -155,3 +155,94 @@ describe('PlantingForm last choices', () => {
     expect(screen.getByRole('combobox', { name: /Crop/ })).toHaveValue('')
   })
 })
+
+describe('PlantingForm also plant this on', () => {
+  beforeEach(() => {
+    form.errors = {}
+    sessionStorage.clear()
+  })
+
+  const whole = (id: number, season_start: string, end_date: string, partial = false) =>
+    ({ id, plant_name: 'Soybean', variety: null, season_start, end_date, partial }) as unknown as Planting
+  const east = { ...field, id: 8, name: 'East 40', plantings: [whole(21, '2026-04-01', '2026-06-30')] } as Field
+  const west = { ...field, id: 9, name: 'West 40', plantings: [] } as unknown as Field
+  const plotted = { ...field, id: 10, name: 'Plots', plantings: [whole(22, '2026-05-01', '2026-09-30', true)] } as Field
+  const systemFields = [field, east, west, plotted]
+
+  const showNew = (extra: Record<string, unknown> = {}) => {
+    sessionStorage.setItem(
+      'setup.lastPlanting',
+      JSON.stringify({ plant_id: 1, season_start: '2026-04-15', emergence_date: '2026-05-01', end_date: '2026-09-15' }),
+    )
+    render(PlantingForm, { field, year: 2026, plants: [corn], systemFields, ondone: () => {}, ...extra })
+    flushSync()
+  }
+  const checkboxNames = () =>
+    [...document.querySelectorAll<HTMLInputElement>('input[name="also_field_ids[]"]')].map((box) =>
+      box
+        .closest('label')!
+        .textContent!.replace(/\s*\(.*\)/, '')
+        .trim(),
+    )
+  const setDate = (id: string, value: string) => {
+    const input = document.getElementById(id) as HTMLInputElement
+    input.value = value
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    flushSync()
+  }
+
+  it("offers a new whole-field planting the system's other fields free for its dates, as they change", () => {
+    showNew()
+    expect(screen.getByText('Also plant this on')).toBeInTheDocument()
+    expect(screen.getByText('1 other field free')).toBeInTheDocument()
+    expect(checkboxNames()).toEqual(['West 40'])
+
+    setDate('planting-season_start', '2026-07-01')
+    expect(screen.getByText('2 other fields free')).toBeInTheDocument()
+    expect(checkboxNames()).toEqual(['East 40', 'West 40'])
+  })
+
+  it('counts the fields chosen, and says so when none is free', () => {
+    showNew()
+    screen.getByRole('checkbox', { name: /West 40/ }).click()
+    flushSync()
+    expect(screen.getByText('1 of 1 chosen')).toBeInTheDocument()
+    document.body.innerHTML = ''
+
+    showNew({ systemFields: [field, east] })
+    expect(screen.getByText('None free for these dates')).toBeInTheDocument()
+    expect(checkboxNames()).toEqual([])
+  })
+
+  it('is left out for part of the field (the next planting of a plot too), an edit, and a field alone on its system', () => {
+    showNew({
+      template: { season_start: '2026-04-15', emergence_date: '2026-05-01', end_date: '2026-09-15', partial: true },
+    })
+    const crop = screen.getByRole('combobox', { name: /Crop/ }) as HTMLSelectElement
+    crop.value = '1'
+    crop.dispatchEvent(new Event('change', { bubbles: true }))
+    flushSync()
+    expect(screen.getByRole('group', { name: 'Planting size' })).toBeInTheDocument()
+    expect(screen.queryByText('Also plant this on')).not.toBeInTheDocument()
+    screen.getByRole('radio', { name: /Whole field/ }).click()
+    flushSync()
+    expect(screen.getByText('Also plant this on')).toBeInTheDocument()
+    document.body.innerHTML = ''
+
+    showNew({ planting: plantingOf(corn, { partial: false, area_acres: 40 }) })
+    expect(screen.queryByText('Also plant this on')).not.toBeInTheDocument()
+    document.body.innerHTML = ''
+
+    showNew({ systemFields: [field] })
+    expect(screen.queryByText('Also plant this on')).not.toBeInTheDocument()
+  })
+
+  it("shows the other fields' errors with their list, opening it", () => {
+    form.errors = { 'also.9.season_start': 'West 40: overlaps its Soybean planting' }
+    showNew()
+    const details = screen.getByText('Also plant this on').closest('details')!
+    expect(details.open).toBe(true)
+    expect(details).toHaveTextContent('West 40: overlaps its Soybean planting')
+    expect(screen.getAllByText('West 40: overlaps its Soybean planting')).toHaveLength(1)
+  })
+})

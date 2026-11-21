@@ -35,17 +35,25 @@ class PlantingsController < AuthenticatedController
   end
 
   # replace: end the plantings this one overlaps the day before it starts ("Replace" on the form),
-  # in the same transaction
+  # in the same transaction. also_field_ids: other fields to plant the same on (Phase 9 §7, a new
+  # whole-field planting only), each an independent planting on its own field's soil and area,
+  # saved with this one or not at all; replace applies only to this one.
   def create
     field = Current.group.fields.find(planting_params[:field_id])
     year = requested_year
     planting = Planting.build_for(field, planting_params.compact_blank.except(:field_id), year:, created_by: Current.user)
+    copies = copies_of(planting) or raise ActiveRecord::RecordNotFound
+    errors = {}
     saved = Planting.transaction do
       planting.replace_overlapping! if params[:replace].present?
       planting.save || raise(ActiveRecord::Rollback)
+      copies.each { |copy| copy.save || errors.merge!(copy_errors(copy)) }
+      errors.empty? || raise(ActiveRecord::Rollback)
     end
     if saved
-      redirect_back_or_to setup_path(year:), notice: "Added #{planting.plant.name} on #{field.name}"
+      redirect_back_or_to setup_path(year:), notice: added_notice(planting, copies)
+    elsif errors.any?
+      redirect_with_errors(request.referer || setup_path(year:), errors)
     else
       redirect_with_errors(request.referer || setup_path(year:), planting)
     end
@@ -113,6 +121,50 @@ class PlantingsController < AuthenticatedController
       # The projection's days, with planned irrigation (entries on future dates)
       forecast_days: FieldDaySerializer.new(status.forecast_days, params: day_params).to_h
     }
+  end
+
+  # The values a planting on several fields shares; the rest (soil, area, plot, notes) is each field's
+  COPIED = %w[plant_id variety season_start emergence_date end_date vine_kill_date max_root_zone_depth mad_frac et_method
+    canopy_interpolation canopy_curve_key season_days target_ad_pct initial_moisture_pct].freeze
+
+  # The same planting on the other fields chosen (also_field_ids), built from its values (its crop's
+  # defaults and suggested harvest already filled in); none for part of a field. nil if a field
+  # isn't the group's.
+  def copies_of(planting)
+    ids = params[:also_field_ids]
+    ids = ids.values if ids.is_a?(ActionController::Parameters) # indexed: also_field_ids[0]
+    ids = Array(ids).compact_blank.map { |id| id.to_s.to_i }.uniq - [planting.field_id]
+    return [] if ids.empty? || planting.partial?
+    fields = Current.group.fields.where(id: ids).includes(plantings: :plant, pivot: :weather_cell).to_a
+    return unless fields.size == ids.size
+
+    values = planting.attributes.slice(*COPIED).symbolize_keys
+    fields.sort_by(&:name).map { |field| Planting.build_for(field, values, year: planting.season_year, created_by: Current.user) }
+  end
+
+  # A copy's errors, keyed also.<field id>.<attribute> and naming its field ("East 40: overlaps its
+  # Soybean planting")
+  def copy_errors(copy)
+    field = copy.field
+    copy.errors.each_with_object({}) do |error, errors|
+      overlapping = field.plantings.select { |other| other.persisted? && other.overlaps?(copy) }
+      message = if error.attribute == :season_start && overlapping.any?
+        "#{field.name}: overlaps its #{overlapping.map { |other| other.plant.name }.to_sentence} planting"
+      else
+        "#{field.name}: #{error.full_message}"
+      end
+      (errors["also.#{field.id}.#{error.attribute}"] ||= []) << message
+    end
+  end
+
+  # "Added Corn on North 40", "… and East 40", "… and 3 other fields"
+  def added_notice(planting, copies)
+    notice = "Added #{planting.plant.name} on #{planting.field.name}"
+    case copies.size
+    when 0 then notice
+    when 1 then "#{notice} and #{copies.first.field.name}"
+    else "#{notice} and #{copies.size} other fields"
+    end
   end
 
   def planting_params

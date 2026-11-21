@@ -484,7 +484,14 @@
   {/if}
 </div>
 
-<PlantingDialog bind:this={plantingDialog} {year} {plants} soilTypes={soil_types} genericCurves={generic_curves} />
+<PlantingDialog
+  bind:this={plantingDialog}
+  {year}
+  {plants}
+  soilTypes={soil_types}
+  genericCurves={generic_curves}
+  systemFields={(field) => allPivots.find((pivot) => pivot.id === field.pivot_id)?.fields ?? []}
+/>
 
 <Dialog bind:open={dialogOpen} title={dialogTitle} guard>
   {#if dialog?.kind === 'farm'}
