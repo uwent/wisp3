@@ -1,0 +1,7 @@
+<% if @test %>
+A test of an announcement, sent only to you.
+
+<% end %>
+<%= @content[:text] %>
+
+You're getting this email because you have a WISP account. Unsubscribe from WISP announcements: <%= @unsubscribe_url %>

@@ -31,7 +31,8 @@ async function scan(page: Page, path: string) {
   await page.mouse.move(0, 0)
   // Charts draw after ECharts loads
   for (const chart of await page.locator('[data-chart]').all()) await expect(chart.locator('canvas')).toBeAttached()
-  const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze()
+  // Not an email preview's frame: it's the email's HTML, and sandboxed without scripts, axe waits on it forever
+  const { violations } = await new AxeBuilder({ page }).withTags(TAGS).exclude('iframe').analyze()
   for (const violation of violations) {
     findings.push({
       path,
@@ -90,6 +91,7 @@ test('signed-out pages', { tag: '@phone' }, async ({ page }) => {
     '/account/password/edit?reset_password_token=e2e',
     '/account/confirmation?confirmation_token=e2e',
     '/digest/unsubscribe?token=e2e',
+    '/announcements/unsubscribe?token=e2e',
   ]) {
     await scan(page, path)
   }

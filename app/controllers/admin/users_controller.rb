@@ -6,8 +6,13 @@ module Admin
     def index
       users = User.order(created_at: :desc)
       render inertia: "Admin/Users/Index", props: {
-        users: AdminUserSerializer.new(users, params: {counts: setup_counts}).serializable_hash
+        users: AdminUserSerializer.new(users, params: {stats: AdminUserStats.new}).serializable_hash
       }
+    end
+
+    def export
+      csv = AdminUsersCsv.new(User.order(:id).to_a, AdminUserStats.new, exported_by: current_user, about_url:).to_csv
+      send_data csv, filename: "wisp-accounts-#{Current.today.iso8601}.csv", type: "text/csv; charset=utf-8"
     end
 
     def show
@@ -46,18 +51,5 @@ module Admin
     private
 
     def deletable?(user) = user != current_user && !user.admin?
-
-    # {user_id => {farms:, pivots:, fields:}} over every group each user belongs to
-    def setup_counts
-      farms = Farm.group(:group_id).count
-      pivots = Pivot.joins(:farm).group("farms.group_id").count
-      fields = Field.joins(pivot: :farm).group("farms.group_id").count
-      Membership.pluck(:user_id, :group_id).each_with_object({}) do |(user_id, group_id), counts|
-        totals = counts[user_id] ||= {farms: 0, pivots: 0, fields: 0}
-        totals[:farms] += farms.fetch(group_id, 0)
-        totals[:pivots] += pivots.fetch(group_id, 0)
-        totals[:fields] += fields.fetch(group_id, 0)
-      end
-    end
   end
 end

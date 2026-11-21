@@ -5,7 +5,7 @@
   import Button from '@/lib/components/Button.svelte'
   import DataTable from '@/lib/components/DataTable.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
-  import { formatDate, formatTimestamp } from '@/lib/dates'
+  import { formatDate, formatTimestamp, today } from '@/lib/dates'
   import type { Column, SortDirection } from '@/lib/table'
   import { adminUsers } from '@/routes'
   import type { AdminUser } from '@/types/serializers'
@@ -13,6 +13,7 @@
   let { users }: { users: AdminUser[] } = $props()
 
   const me = $derived(page.props.auth.user?.id)
+  const year = Number(today().slice(0, 4))
   let sort = $state<{ key: string; direction: SortDirection } | null>({ key: 'created', direction: 'desc' })
   // The unconfirmed account the dialog asks about; it stays set while the dialog closes
   let deleting = $state<AdminUser | null>(null)
@@ -20,7 +21,7 @@
   let processing = $state(false)
 
   const columns: Column<AdminUser>[] = [
-    { key: 'id', label: 'ID', value: (u) => u.id, align: 'right', searchable: true },
+    { key: 'id', label: 'ID', value: (u) => u.id, align: 'center', searchable: true, pin: 'left' },
     { key: 'email', label: 'Email', value: (u) => u.email, searchable: true },
     {
       key: 'name',
@@ -33,6 +34,7 @@
       label: 'Created',
       value: (u) => u.created_at,
       text: (u) => formatDate(u.created_at, { year: true }),
+      align: 'center',
       firstDirection: 'desc',
     },
     {
@@ -44,16 +46,32 @@
       firstDirection: 'desc',
     },
     {
-      key: 'signed_in',
-      label: 'Last signed in',
-      value: (u) => u.current_sign_in_at,
-      text: (u) => formatDate(u.current_sign_in_at, { year: true }),
+      key: 'active',
+      label: 'Last active',
+      value: (u) => u.last_active_on,
+      text: (u) => formatDate(u.last_active_on, { year: true }),
+      align: 'center',
       firstDirection: 'desc',
     },
-    { key: 'farms', label: 'Farms', value: (u) => u.farms_count, align: 'right', firstDirection: 'desc' },
-    { key: 'pivots', label: 'Systems', value: (u) => u.pivots_count, align: 'right', firstDirection: 'desc' },
-    { key: 'fields', label: 'Fields', value: (u) => u.fields_count, align: 'right', firstDirection: 'desc' },
-    { key: 'actions', label: '', value: () => null, sortable: false, align: 'right' },
+    {
+      key: 'signed_in',
+      label: 'Last\nsigned in',
+      value: (u) => u.current_sign_in_at,
+      text: (u) => formatDate(u.current_sign_in_at, { year: true }),
+      align: 'center',
+      firstDirection: 'desc',
+    },
+    { key: 'farms', label: 'Farms', value: (u) => u.farms_count, align: 'center', firstDirection: 'desc' },
+    { key: 'pivots', label: 'Systems', value: (u) => u.pivots_count, align: 'center', firstDirection: 'desc' },
+    { key: 'fields', label: 'Fields', value: (u) => u.fields_count, align: 'center', firstDirection: 'desc' },
+    {
+      key: 'plantings',
+      label: `${year}\nplantings`,
+      value: (u) => u.plantings_season_count,
+      align: 'center',
+      firstDirection: 'desc',
+    },
+    { key: 'actions', label: '', value: () => null, sortable: false, align: 'center', pin: 'right' },
   ]
 
   const unconfirmed = $derived(users.filter((u) => !u.confirmed).length)
@@ -81,14 +99,24 @@
 <AdminTabs />
 
 <div class="space-y-4">
-  <div>
-    <h1 class="text-2xl font-semibold">Users</h1>
-    <p class="text-sm text-ink-muted">
-      {users.length}
-      {users.length === 1 ? 'account' : 'accounts'}, {unconfirmed} unconfirmed. Open an account to see its details and farm
-      setup. Farm, irrigation system and field counts are over every group the user belongs to. Unconfirmed accounts can be
-      deleted here.
-    </p>
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold">Users</h1>
+      <p class="text-sm text-ink-muted">
+        {users.length}
+        {users.length === 1 ? 'account' : 'accounts'}, {unconfirmed} unconfirmed. Open an account to see its details and farm
+        setup. Farm, irrigation system, field and planting counts are over every group the user belongs to. Last active is
+        the last day the account used WISP's pages. Unconfirmed accounts can be deleted here.
+      </p>
+    </div>
+    <a
+      href={adminUsers.export().url}
+      class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium whitespace-nowrap hover:bg-surface"
+      title="Every account with its setup counts, activity and the bounding box of its irrigation systems"
+      download
+    >
+      Download CSV
+    </a>
   </div>
 
   <DataTable
@@ -98,6 +126,7 @@
     label="Users"
     searchPlaceholder="Search ID, email or name"
     bind:sort
+    nowrap
   >
     {#snippet cell(user, column)}
       {#if column.key === 'email'}
@@ -106,6 +135,8 @@
         {#if user.admin}<span class="ml-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">admin</span>{/if}
       {:else if column.key === 'confirmed'}
         <span class={user.confirmed ? '' : 'font-medium text-status-caution-ink'}>{user.confirmed ? 'Yes' : 'No'}</span>
+      {:else if column.key === 'active'}
+        <span class="whitespace-nowrap">{formatDate(user.last_active_on, { year: true })}</span>
       {:else if column.key === 'signed_in'}
         <span class="whitespace-nowrap" title={formatTimestamp(user.current_sign_in_at)}
           >{formatDate(user.current_sign_in_at, { year: true })}</span

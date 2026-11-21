@@ -5,6 +5,8 @@
 
   // A table that sorts by any column (click a heading; again to reverse) and filters rows by a
   // search box over the searchable columns. Cells show cellText unless a `cell` snippet renders them.
+  // Too wide for its box, it scrolls sideways with its pinned columns (Column.pin) kept in view. A
+  // heading's label can break onto two lines at a newline.
 
   let {
     rows,
@@ -16,6 +18,7 @@
     cell,
     rowClass,
     empty = 'Nothing to show yet.',
+    nowrap = false,
   }: {
     rows: T[]
     columns: Column<T>[]
@@ -27,6 +30,8 @@
     cell?: Snippet<[T, Column<T>]>
     rowClass?: (row: T) => string
     empty?: string
+    /** Cells keep to one line, so rows stay one line high and the table scrolls sideways instead */
+    nowrap?: boolean
   } = $props()
 
   let query = $state('')
@@ -54,6 +59,26 @@
   }
 
   const alignClass = { left: 'text-left', right: 'text-right', center: 'text-center' }
+
+  // Pinned columns: each left one's offset is the width of those pinned before it, measured from
+  // the headings. The last left one and the right one draw a rule where the rest scroll under them.
+  let widths = $state<Record<string, number>>({})
+  const leftPinned = $derived(columns.filter((column) => column.pin === 'left'))
+  const lastLeft = $derived(leftPinned.at(-1)?.key)
+  function offset(column: Column<T>): number {
+    let total = 0
+    for (const other of leftPinned) {
+      if (other.key === column.key) break
+      total += widths[other.key] ?? 0
+    }
+    return total
+  }
+  function pinClass(column: Column<T>): string {
+    if (column.pin === 'right') return 'sticky right-0 z-10 bg-surface-raised shadow-[inset_1px_0_0_var(--color-line)]'
+    if (column.pin !== 'left') return ''
+    return `sticky z-10 bg-surface-raised ${column.key === lastLeft ? 'shadow-[inset_-1px_0_0_var(--color-line)]' : ''}`
+  }
+  const pinStyle = (column: Column<T>) => (column.pin === 'left' ? `left: ${offset(column)}px` : undefined)
   const ariaSort = (column: Column<T>) =>
     sort?.key === column.key
       ? sort.direction === 'asc'
@@ -72,8 +97,7 @@
         bind:value={query}
         placeholder={searchPlaceholder}
         aria-label={searchPlaceholder}
-        class="w-full max-w-xs rounded-md border-line bg-surface-raised shadow-sm focus:border-brand-500
-          focus:ring-brand-500 sm:text-sm"
+        class="w-full max-w-xs rounded-md border-line bg-surface-raised shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
       />
     {/if}
     <span class="text-xs text-ink-muted" role="status"
@@ -86,21 +110,31 @@
       <thead class="border-b border-line text-xs text-ink-muted">
         <tr>
           {#each columns as column (column.key)}
+            {@const lines = column.label.split('\n')}
             <th
               scope="col"
-              class="px-3 py-2 font-medium whitespace-nowrap {alignClass[column.align ?? 'left']}"
+              class="px-3 py-2 align-bottom font-medium whitespace-nowrap {alignClass[
+                column.align ?? 'left'
+              ]} {pinClass(column)}"
+              style={pinStyle(column)}
               aria-sort={ariaSort(column)}
+              bind:offsetWidth={widths[column.key]}
             >
               {#if column.sortable === false}
                 {column.label}
               {:else}
+                <!-- The arrow hangs past the label, so the label lines up with the column's cells -->
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1 hover:text-ink"
+                  class="relative inline-block hover:text-ink {alignClass[column.align ?? 'left']}"
+                  aria-label={lines.length > 1 ? lines.join(' ') : undefined}
                   onclick={() => toggle(column)}
                 >
-                  {column.label}
-                  <span aria-hidden="true" class="w-2 {sort?.key === column.key ? 'text-ink' : 'opacity-0'}">
+                  {#each lines as line, i (i)}{#if i}<br />{/if}{line}{/each}
+                  <span
+                    aria-hidden="true"
+                    class="absolute bottom-0 left-full ml-0.5 {sort?.key === column.key ? 'text-ink' : 'opacity-0'}"
+                  >
                     {sort?.key === column.key && sort.direction === 'desc' ? '▾' : '▴'}
                   </span>
                 </button>
@@ -113,7 +147,12 @@
         {#each shown as row (rowKey(row))}
           <tr class={rowClass?.(row) ?? ''}>
             {#each columns as column (column.key)}
-              <td class="px-3 py-2 {alignClass[column.align ?? 'left']}">
+              <td
+                class="px-3 py-2 {alignClass[column.align ?? 'left']} {nowrap ? 'whitespace-nowrap' : ''} {pinClass(
+                  column,
+                )}"
+                style={pinStyle(column)}
+              >
                 {#if cell}{@render cell(row, column)}{:else}{cellText(column, row)}{/if}
               </td>
             {/each}

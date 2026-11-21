@@ -2,7 +2,7 @@
 
 A full rewrite of the Wisconsin Irrigation Scheduling Program (WISP), replacing the legacy app at `../wisp`. Target: running in production before **April 1, 2027** (start of the 2027 season), with the October–March off-season used for build, validation, and beta. *(Launched 2026-11-19 at wisp.cals.wisc.edu; the winter is the beta.)*
 
-## Handoff (2026-11-19)
+## Handoff (2026-11-20)
 
 Read this first; rewrite it at the end of each session. (The per-feature handoffs that were in `docs/handoffs/` are folded into their sections: G.10, G.13 and G.14.)
 
@@ -16,12 +16,14 @@ Read this first; rewrite it at the end of each session. (The per-feature handoff
 
 **Then (2026-11-19), the rainfall setting moved** (Q7, "Changed"): from the operation and its fields to farms and irrigation groups, set in their Setup dialogs; the field page's Rainfall preferences section is gone. Production needs the migration on its next deploy (no data to move).
 
+**Then (2026-11-20), admin tools, on branch `admin-tools`, merged to `main` the same day** (Phase 9, "Admin tools"): a users CSV on Admin → Users (`AdminUsersCsv`: counts, last active, the bounding box of each account's systems), whose table pins its ID and actions columns and scrolls sideways (`Column.pin`, `nowrap` in `DataTable`); and **announcements by email** (Admin → Announcements: a Markdown composer with placeholders and a live preview, drafts, a test send, then a send to an audience, five a second, resumable; replies to `agweather@cals.wisc.edu`; an unsubscribe of its own, separate from the digest's, also in Settings). Production needs the migration on its next deploy (`announcements`, `announcement_deliveries`, `users.announcements`). `bin/ci` and all of `bin/e2e` passed before the merge.
+
 **Next:**
 1. **Legacy:** commit, push and `cap production deploy` the retirement changes; take the archive `pg_dump` before it's deleted on December 31, 2027 (TODO.md).
 2. **Ben** (TODO.md): the RDS restore test; the announcement email and training session; GA's settings and the privacy wording; the wording review (C21's included) and the screen reader walkthrough.
 3. **Code during the winter beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); the intermittent contrast finding on the shape page (Phase 9) when CI names it; whatever the beta and training session turn up.
 4. **Phase 9 quality of life**, checked with the beta before building most of it.
-5. **Deploy `main`** (`bin/production deploy`): `et-season`'s C22–C25 and About page, and the rainfall setting's migration.
+5. **Deploy `main`** (`bin/production deploy`): `et-season`'s C22–C25 and About page, the rainfall setting's migration, and the admin tools (users CSV, announcements; a migration).
 
 ---
 
@@ -1520,6 +1522,12 @@ After the merge of `beta-readiness` (2026-11-17 review, Ben). Refactors and qual
 - [ ] **Remember the last choices** in setup forms for the session (soil, crop, emergence date), as suggestions.
 - [x] **Sections on other long forms** (Ben, 2026-11-18), as the planting form has (G.13 part 3). The system page is one card in sections (Kind of system, Location and size, Equipment and notes; `SectionHeading`, also in quick setup's step 2), a saved system's kind one line with **Change** (the choices, the current one focused); Direction of travel's hint became a tip. Latitude and longitude are one **Coordinates** box (`CoordinatesField`, `lib/coordinates.ts`) reading what growers paste: Google Maps' pair, two spreadsheet cells, degrees, minutes and seconds, a Maps link; a pair only a US place the other way round is swapped and said so, a place outside the US warned (a sign left off). Ben: no toggle for separate boxes. The field dialog's field capacity and wilting point are **Soil water**, collapsed to what's in effect ("Field capacity 18% · wilting point 8%, from sandy loam"), opened by an error. Tests: `coordinates.test.ts`, `CoordinatesField.test.ts`, the linear smoke test's Change.
 
+**Admin tools** (Ben, 2026-11-20; branch `admin-tools`)
+
+- [x] **Users CSV** (Admin → Users, Download CSV; `AdminUsersCsv`, `AdminUserStats`): each account's email, name, created, confirmed, last signed in, last active (`ActivityDay`) and days active this season, digest setting, operations (and owned), farms, systems, fields, plantings (this season and all), and the bounding box of its systems' pins (south, west, north, east). Counts are over every operation the account belongs to. The table gained Last active and this season's plantings.
+- [x] **Announcements by email** (Admin → Announcements; `Announcement`, `AnnouncementMailer`, `AnnouncementJob`): a Markdown composer with a formatting toolbar, placeholders (`{{first_name}}`, `{{last_name}}`, `{{name}}`, `{{email}}`, each with an optional `|fallback`) and a live preview of the email in WISP's layout; drafts, a test to the admin, then a send to everyone, accounts active since a date, joined since a date, or with no farms yet, with the count shown for each. Replies go to `agweather@cals.wisc.edu` (Ben). Unsubscribing from announcements (the email's link, one-click, or Settings) is its own setting, separate from the digest's (Ben). Sent five a second; each recipient's delivery recorded, failures listed and resumable.
+- [x] Ben's look in the app (the users table: ID and actions pinned, the rest centered and scrolling), `bin/ci` and all of `bin/e2e`, merged 2026-11-20.
+
 ### After launch
 
 - Forecast accuracy tracking (stored forecasts vs finalized weather), from the daily archive started in Phase 8 E: by lead time, for ET0 and rain, and whether the ensemble's spread covers what happened. Part of the evaluation pages below.
@@ -1543,7 +1551,7 @@ After the merge of `beta-readiness` (2026-11-17 review, Ben). Refactors and qual
   - All operations at once on the dashboard and map (G.8), if consultants ask.
   - The digest's weather zones named as on the Weather tab, and a dashboard line per zone (G.12).
   - The soil survey's available water capacity beside a soil type's defaults, as a check (Phase 7 F).
-  - CSV export of users, and announcements in the app (Phase 8 B), if still wanted.
+  - Announcements shown in the app (Phase 8 B), if still wanted (by email: Phase 9, Admin tools).
   - An onboarding tour, and the water balance's equations on the About page (Phase 8 D), if the beta asks.
   - Importing irrigation from FieldNET or Valley 365 exports (G), if the beta's large growers ask.
 

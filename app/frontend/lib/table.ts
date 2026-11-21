@@ -14,6 +14,11 @@ export type Column<Row> = {
   sortable?: boolean
   /** The first click sorts this way (e.g. newest or largest first) */
   firstDirection?: SortDirection
+  /**
+   * Kept in view while the table scrolls sideways (narrow columns: an ID, a row's actions); left
+   * ones in order
+   */
+  pin?: 'left' | 'right'
 }
 
 /** What a cell shows: its text, or its value; blank when missing */

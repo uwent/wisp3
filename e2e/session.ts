@@ -85,7 +85,9 @@ export function watchErrors(page: Page): string[] {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(`${page.url()}: ${error.message}`))
   page.on('console', (message) => {
-    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource')) {
+    // Playwright's trace recorder tries to run its snapshot script in an email preview's sandboxed frame
+    const harness = message.text().includes("Blocked script execution in 'about:srcdoc'")
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource') && !harness) {
       errors.push(`${page.url()}: ${message.text()}`)
     }
   })
@@ -106,7 +108,7 @@ export async function signedInPages(page: Page): Promise<string[]> {
     .locator('main li')
     .filter({ has: page.getByRole('heading', { name: `Field: ${DEMO.hayField}` }) })
   const hay = new URL((await hayCard.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
-  const user = await firstLinkPath(page, '/admin/users', 'a[href*="/admin/users/"]')
+  const user = await firstLinkPath(page, '/admin/users', 'td a[href*="/admin/users/"]')
   // A traveler, a point with no shape (G.5)
   await page.goto('/setup')
   const travelerLink = page.locator(`a[href*="/pivots/"][aria-label="View ${DEMO.traveler}"]`)
@@ -143,5 +145,7 @@ export async function signedInPages(page: Page): Promise<string[]> {
     '/admin/usage',
     '/admin/users',
     user,
+    '/admin/announcements',
+    '/admin/announcements/new',
   ]
 }

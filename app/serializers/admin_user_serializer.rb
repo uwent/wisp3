@@ -1,5 +1,5 @@
-# A row of the admin users table. params[:counts] is {user_id => {farms:, pivots:, fields:}}
-# over the user's groups.
+# A row of the admin users table. params[:stats] is an AdminUserStats: counts over the user's
+# groups and when they were last active.
 class AdminUserSerializer < ApplicationSerializer
   typelize_from User
 
@@ -8,12 +8,17 @@ class AdminUserSerializer < ApplicationSerializer
   attribute :display_name, &:display_name
   attribute :confirmed, &:confirmed?
 
-  %i[farms pivots fields].each do |kind|
+  %i[farms pivots fields plantings_season].each do |kind|
     attribute :"#{kind}_count" do |user|
-      params[:counts].dig(user.id, kind) || 0
+      params[:stats][user.id][kind]
     end
   end
 
+  attribute :last_active_on do |user|
+    params[:stats][user.id].last_active_on&.iso8601
+  end
+
   typelize display_name: :string, confirmed: :boolean, created_at: :string, current_sign_in_at: "string | null",
-    farms_count: :number, pivots_count: :number, fields_count: :number
+    farms_count: :number, pivots_count: :number, fields_count: :number, plantings_season_count: :number,
+    last_active_on: "string | null"
 end

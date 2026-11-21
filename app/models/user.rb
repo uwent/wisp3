@@ -19,6 +19,7 @@ class User < ApplicationRecord
   has_many :groups, through: :memberships
   has_many :digest_exclusions, dependent: :delete_all
   has_many :activity_days, dependent: :delete_all
+  has_many :announcement_deliveries, dependent: :delete_all
 
   validates :unit_system, inclusion: {in: UNIT_SYSTEMS}
   validates :digest_frequency, inclusion: {in: DIGEST_FREQUENCIES}
@@ -37,6 +38,8 @@ class User < ApplicationRecord
 
   # The daily digest's unsubscribe link (and List-Unsubscribe header), which doesn't expire
   generates_token_for :digest_unsubscribe
+  # Announcements' unsubscribe link (Announcement), separate from the digest's
+  generates_token_for :announcement_unsubscribe
 
   def digest? = digest_frequency != "never"
 

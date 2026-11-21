@@ -38,6 +38,9 @@ Rails.application.routes.draw do
   # a button; the POST also takes mail providers' one-click unsubscribe (List-Unsubscribe-Post).
   get "digest/unsubscribe", to: "digest_unsubscribes#show", as: :digest_unsubscribe
   post "digest/unsubscribe", to: "digest_unsubscribes#create"
+  # Announcements' unsubscribe link (Announcement), the same way
+  get "announcements/unsubscribe", to: "announcement_unsubscribes#show", as: :announcement_unsubscribe
+  post "announcements/unsubscribe", to: "announcement_unsubscribes#create"
 
   # Setup: farms → pivots → fields → plantings, the guided first run, and copying last season
   resource :setup, only: :show, controller: "setup"
@@ -81,6 +84,8 @@ Rails.application.routes.draw do
 
   namespace :admin do
     resources :users, only: [:index, :show, :destroy] do
+      # Every account as a CSV (AdminUsersCsv)
+      get :export, on: :collection
       get :digest, on: :member
       # Signing in as the user for support; ended by DELETE /impersonation
       resource :impersonation, only: :create
@@ -92,6 +97,15 @@ Rails.application.routes.draw do
     resource :health_check, only: :create
     # How growers use WISP in a season (?year=)
     resource :usage, only: :show, controller: "usage"
+    # Emails to an audience of accounts (Announcement): composed, previewed, tested, then sent
+    resources :announcements do
+      post :preview, on: :collection
+      member do
+        post :test
+        post :deliver
+        post :resume
+      end
+    end
   end
   # Returning to admin from signing in as someone else (Admin::ImpersonationsController#create)
   resource :impersonation, only: :destroy

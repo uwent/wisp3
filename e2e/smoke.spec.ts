@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 
+import AxeBuilder from '@axe-core/playwright'
 import { type Page } from '@playwright/test'
 
 import { DEMO, literal } from './demo'
@@ -49,6 +50,47 @@ test('the Weather tab has the week ahead and a season of weather per zone (G.12)
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Weather:')
   await expect(page.getByRole('heading', { name: 'The week ahead' })).toBeVisible()
   await expect(page.getByLabel('Add the total since')).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('an announcement is composed with a live preview, saved and sent as a test', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/admin/announcements/new')
+  await page.getByRole('textbox', { name: 'Subject' }).fill('E2E news for {{first_name|you}}')
+  const message = page.getByRole('textbox', { name: 'Message' })
+  await message.fill('Hi ')
+  await page.getByRole('button', { name: 'Insert first name placeholder' }).click()
+  await message.press('End')
+  await message.pressSequentially(', see ')
+  await page.getByRole('button', { name: 'Bold', exact: true }).click()
+  await expect(message).toHaveValue('Hi {{first_name}}, see **bold text**')
+  // The preview is the email as the server renders it
+  const preview = page.frameLocator('iframe[title="Announcement preview"]')
+  await expect(preview.locator('strong', { hasText: 'bold text' })).toBeVisible()
+  await expect(preview.getByText('Unsubscribe from WISP announcements')).toBeVisible()
+
+  await page.getByRole('radio', { name: /Joined since a date/ }).check()
+  await expect(page.getByLabel('Date', { exact: true })).toBeVisible()
+  await page.getByRole('radio', { name: /Everyone/ }).check()
+  await page.getByRole('button', { name: 'Save draft' }).click()
+
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E news for {{first_name|you}}')
+  await expect(page.getByText(/Audience:\s*Everyone/)).toBeVisible()
+  await page.getByRole('button', { name: 'Send a test to me' }).click()
+  await expect(page.getByText(/Test sent to /)).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Send to \d+ (person|people)$/ })).toBeVisible()
+  // The page, not the email in its sandboxed frame, which axe can't reach
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .exclude('iframe')
+    .analyze()
+  expect(results.violations.map((violation) => violation.id)).toEqual([])
+
+  // Deleted again, so the list stays as the scans see it
+  await page.getByRole('link', { name: 'Edit' }).click()
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete draft' }).click()
+  await expect(page.getByRole('heading', { name: 'Announcements', level: 1 })).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -1070,8 +1112,7 @@ test("alerts previews today's email and sends a test, then waits", async ({ page
   await expect(field).not.toBeChecked()
   await field.check()
   await expect(status).toHaveText('Changes save automatically')
-  // Playwright's trace recorder tries to run its snapshot script in the preview's sandboxed frame
-  expect(errors.filter((error) => !error.includes("Blocked script execution in 'about:srcdoc'"))).toEqual([])
+  expect(errors).toEqual([])
 })
 
 test('glossary terms explain themselves on hover or tap', { tag: '@phone' }, async ({ page }) => {

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_20_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -22,6 +22,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_120000) do
     t.boolean "phone", default: false, null: false
     t.index ["date"], name: "index_activity_days_on_date"
     t.index ["user_id", "date"], name: "index_activity_days_on_user_id_and_date", unique: true
+  end
+
+  create_table "announcement_deliveries", force: :cascade do |t|
+    t.bigint "announcement_id", null: false
+    t.bigint "user_id", null: false
+    t.string "status", default: "pending", null: false
+    t.string "error"
+    t.datetime "sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["announcement_id", "status"], name: "index_announcement_deliveries_on_announcement_id_and_status"
+    t.index ["announcement_id", "user_id"], name: "index_announcement_deliveries_on_announcement_id_and_user_id", unique: true
+    t.index ["user_id"], name: "index_announcement_deliveries_on_user_id"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'sending'::character varying, 'sent'::character varying, 'failed'::character varying, 'skipped'::character varying]::text[])", name: "announcement_deliveries_status"
+  end
+
+  create_table "announcements", force: :cascade do |t|
+    t.string "subject", null: false
+    t.text "body", null: false
+    t.string "audience", default: "all", null: false
+    t.date "audience_date"
+    t.string "status", default: "draft", null: false
+    t.bigint "created_by_id"
+    t.bigint "sent_by_id"
+    t.datetime "sent_at"
+    t.integer "recipients_count"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_announcements_on_created_by_id"
+    t.index ["sent_by_id"], name: "index_announcements_on_sent_by_id"
+    t.check_constraint "audience::text = ANY (ARRAY['all'::character varying, 'active_since'::character varying, 'joined_since'::character varying, 'no_farms'::character varying]::text[])", name: "announcements_audience"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying, 'sending'::character varying, 'sent'::character varying, 'incomplete'::character varying]::text[])", name: "announcements_status"
   end
 
   create_table "canopy_cuttings", force: :cascade do |t|
@@ -296,6 +328,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_120000) do
     t.string "digest_frequency", default: "never", null: false
     t.datetime "digest_test_sent_at"
     t.string "digest_scope", default: "in_season", null: false
+    t.boolean "announcements", default: true, null: false
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
@@ -395,6 +428,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_120000) do
   end
 
   add_foreign_key "activity_days", "users", on_delete: :cascade
+  add_foreign_key "announcement_deliveries", "announcements", on_delete: :cascade
+  add_foreign_key "announcement_deliveries", "users", on_delete: :cascade
+  add_foreign_key "announcements", "users", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "announcements", "users", column: "sent_by_id", on_delete: :nullify
   add_foreign_key "canopy_cuttings", "plantings", on_delete: :cascade
   add_foreign_key "canopy_observations", "plantings"
   add_foreign_key "digest_exclusions", "users", on_delete: :cascade

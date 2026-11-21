@@ -5,7 +5,11 @@
   import TextField from '@/lib/components/TextField.svelte'
   import { settings, usersRegistrations } from '@/routes'
 
-  let { unit_systems, pending_email }: { unit_systems: string[]; pending_email: string | null } = $props()
+  let {
+    unit_systems,
+    pending_email,
+    announcements,
+  }: { unit_systems: string[]; pending_email: string | null; announcements: boolean } = $props()
 
   const user = $derived(page.props.auth.user!)
   // An admin signed in as this user for support can't change their email or password, or delete them
@@ -59,6 +63,20 @@
             >
           </label>
         {/each}
+      </fieldset>
+      <fieldset class="space-y-2">
+        <legend class="text-sm font-medium">Email</legend>
+        <input type="hidden" name="user[announcements]" value="0" />
+        <label class="flex items-start gap-3 text-sm">
+          <input type="checkbox" name="user[announcements]" value="1" checked={announcements} class="mt-0.5 rounded" />
+          <span
+            ><span class="font-medium">Announcements from WISP</span>
+            <span class="block text-ink-muted"
+              >News about the program, such as new features and training sessions. The daily email is set on the Alerts
+              page.</span
+            ></span
+          >
+        </label>
       </fieldset>
       <Button type="submit" disabled={processing}>Save</Button>
     {/snippet}

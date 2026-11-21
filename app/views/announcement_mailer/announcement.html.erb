@@ -1,0 +1,9 @@
+<% muted = email_style(:muted) %>
+<% if @test %>
+  <p style="margin:0 0 20px;padding:8px 12px;background:<%= EmailHelper::COLORS[:uw_gray_lightest] %>;font-size:13px;<%= muted %>">A test of an announcement, sent only to you.</p>
+<% end %>
+<%= @content[:html] %>
+
+<% content_for :footer do %>
+  You're getting this email because you have a WISP account. <%= email_link_to "Unsubscribe from WISP announcements", @unsubscribe_url %>; the daily email, if you get it, is set separately.
+<% end %>
