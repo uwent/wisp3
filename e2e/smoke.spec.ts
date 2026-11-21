@@ -1301,14 +1301,28 @@ test('a field shape is drawn corner by corner, or picked from a file of several 
 
   // A shapefile with two fields asks which one (a file of one is read in the test above)
   await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
-  await expect(page.getByText(`This file has 2 shapes. Which is ${DEMO.shapeField}?`)).toBeVisible()
-  await page.getByRole('button', { name: 'Home South' }).click()
+  await expect(
+    page.getByRole('heading', { name: `Shapes from clu_utm.zip: pick one for ${DEMO.shapeField}`, exact: true }),
+  ).toBeVisible()
+  const shapes = page.getByRole('table', { name: 'Shapes from clu_utm.zip' })
+  await expect(shapes.getByRole('columnheader', { name: 'FIELD_NAME' })).toBeVisible()
+  await shapes.getByRole('button', { name: 'Home South' }).click()
   await expect(page.getByText(/^Field as drawn: 10\d\.\d\d ac/)).toBeVisible()
+  // Picked, the list folds away, to open again for another
+  await expect(shapes).toBeHidden()
+  await page.getByRole('button', { name: 'Show the shapes' }).click()
+  await expect(shapes).toBeVisible()
 
   // Leaving asks first; nothing is saved
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('link', { name: 'Cancel' }).click()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
+
+  // The file's shapes are kept for the session: Setup's import offers them without reading it again
+  await page.getByRole('link', { name: 'Import field shapes' }).click()
+  await expect(page.getByText(/^The 2 shapes from clu_utm\.zip \(read at .*\) are still here\.$/)).toBeVisible()
+  await page.getByRole('button', { name: 'Use these shapes' }).click()
+  await expect(page.getByText(/^2 shapes\./)).toBeVisible()
   expect(errors).toEqual([])
 })
 

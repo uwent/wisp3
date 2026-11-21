@@ -1,13 +1,16 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { Form, Link } from '@inertiajs/svelte'
+  import { Form, Link, page } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import { type PivotShape, systemName } from '@/lib/geo'
   import { type Boundary, boundaryAcres, boundaryCenter, boundaryErrors } from '@/lib/boundary'
   import OutlineMap, { type DrawMode } from '@/lib/outlines/OutlineMap.svelte'
-  import { ACCEPT, type ImportedShape, readOutlineFileResult, shapeName, shapeNotes } from '@/lib/outlines/read'
+  import { forgetKept, keepShapes, readKept } from '@/lib/outlines/kept'
+  import type { PickerShape } from '@/lib/outlines/picker'
+  import { ACCEPT, readOutlineFileResult, shapeNotes } from '@/lib/outlines/read'
+  import ShapePicker from '@/lib/outlines/ShapePicker.svelte'
   import {
     formatReach,
     reachLine,
@@ -17,12 +20,11 @@
     touchesSystem,
   } from '@/lib/outlines/problems'
   import type { Reference } from '@/lib/outlines/references'
-  import { formatArea } from '@/lib/plantings'
   import FieldAreaInput from '@/lib/setup/FieldAreaInput.svelte'
   import FieldSoilInput from '@/lib/setup/FieldSoilInput.svelte'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { currentUnits } from '@/lib/units'
-  import { fieldOutlines, fields, setup } from '@/routes'
+  import { fieldOutlines, fields, newOutlineImport, setup } from '@/routes'
   import type { Field, SoilType } from '@/types/serializers'
 
   type System = PivotShape & { id: number; name: string; kind_name: string; weather_cell_id: number | null }
@@ -142,13 +144,26 @@
   // The server's errors arrive as a string or a list
   const listed = (error: string | string[] | undefined) => (error === undefined ? [] : [error].flat())
 
-  // A file: one shape is used; several are listed to pick one
+  // A file: one shape is used; several are listed to pick one, and kept for the session so the
+  // operation's other fields can be outlined from them without reading the file again (offered
+  // when the page opens; lib/outlines/kept.ts)
+  const groupId = page.props.auth.group?.id ?? null
   let fileInput = $state<HTMLInputElement>()
   let reading = $state(false)
   let fileError = $state<string | null>(null)
   // What reading the file changed in the shape used ("Kept the largest of 3 parts")
   let fileNote = $state<string | null>(null)
-  let choices = $state<{ shapes: ImportedShape[]; nameKey: string | null; skipped: number } | null>(null)
+  type Choices = {
+    fileName: string
+    shapes: PickerShape[]
+    nameKey: string | null
+    skipped: number
+    /** When kept shapes were read; null for a file read on this page */
+    savedAt: number | null
+  }
+  let choices = $state<Choices | null>(readKept(groupId))
+  // Kept shapes start open for a field without a shape
+  let choicesOpen = $state(untrack(() => !field.boundary))
 
   async function readFile(event: Event) {
     const input = event.currentTarget as HTMLInputElement
@@ -157,22 +172,38 @@
     if (!file) return
     reading = true
     fileError = null
-    choices = null
     const read = await readOutlineFileResult(file)
     reading = false
     if ('error' in read) return (fileError = read.error)
     const { result } = read
     const usable = result.shapes.filter((shape) => !shape.problems.length)
-    if (result.shapes.length === 1 && usable.length === 1) useShape(usable[0])
-    else choices = result
+    if (result.shapes.length === 1 && usable.length === 1) return useShape(usable[0])
+    keepShapes(groupId, { fileName: file.name, ...result })
+    choices = { fileName: file.name, ...result, savedAt: null }
+    choicesOpen = true
   }
 
-  function useShape(shape: ImportedShape) {
+  // A shape picked: the list folds away, to open again for another
+  function useShape(shape: PickerShape) {
+    if (!shape.boundary) return
     boundary = shape.boundary
-    choices = null
+    choicesOpen = false
     mode = 'view'
     fileNote = shapeNotes(shape) || null
   }
+
+  function forgetShapes() {
+    forgetKept(groupId)
+    choices = null
+  }
+
+  // What the list matches the shapes against: the field (its name, system and saved shape) and the
+  // other fields' shapes
+  const pickerContext = $derived({
+    field: { id: field.id, name: field.name, pivot_id: field.pivot_id, boundary: field.boundary },
+    system: pivot,
+    otherFields: other_fields,
+  })
 
   const backHref = $derived(from === 'setup' ? setup.show().url : fields.show(field.id).url)
   const MODE_HINTS: Record<DrawMode, string> = {
@@ -195,6 +226,30 @@
 </div>
 
 <div class="space-y-3">
+  {#if choices}
+    {#key choices}
+      <ShapePicker
+        shapes={choices.shapes}
+        fileName={choices.fileName}
+        bind:nameKey={choices.nameKey}
+        savedAt={choices.savedAt}
+        skipped={choices.skipped}
+        context={pickerContext}
+        systemLabel={systemName(pivot)}
+        bind:open={choicesOpen}
+        onpick={useShape}
+        onforget={forgetShapes}
+      >
+        <p class="text-xs text-ink-muted">
+          To give several fields their shapes at once, use <Link
+            href={newOutlineImport()}
+            class="text-brand-600 underline underline-offset-2">Import field shapes in Setup</Link
+          >.
+        </p>
+      </ShapePicker>
+    {/key}
+  {/if}
+
   <!-- The tools wait for the map, and for the shape being drawn or edited to be saved or canceled on it -->
   <fieldset class="flex flex-wrap items-center gap-2" disabled={!ready || mode !== 'view'} aria-label="Shape tools">
     {#if !boundary}
@@ -227,29 +282,6 @@
   {#if fileError}
     <p class="text-sm text-status-irrigate-ink" role="alert">{fileError}</p>
   {/if}
-  {#if choices}
-    <div class="rounded-lg border border-line bg-surface-raised p-4 text-sm">
-      <p class="font-medium">This file has {choices.shapes.length} shapes. Which is {field.name}?</p>
-      <ul class="mt-2 space-y-1">
-        {#each choices.shapes as shape, index (index)}
-          <li class="flex flex-wrap items-baseline gap-x-2">
-            <button
-              type="button"
-              class="text-brand-600 underline underline-offset-2 disabled:text-ink-muted disabled:no-underline"
-              disabled={shape.problems.length > 0}
-              onclick={() => useShape(shape)}>{shapeName(shape, choices!.nameKey) || `Shape ${index + 1}`}</button
-            >
-            <span class="text-ink-muted">{formatArea(units, shape.acres)}</span>
-            {#if shape.problems.length}<span class="text-status-irrigate-ink">: {shape.problems.join('; ')}</span>{/if}
-          </li>
-        {/each}
-      </ul>
-      <p class="mt-2 text-xs text-ink-muted">
-        To add shapes for several fields at once, use Import field shapes in Setup.
-      </p>
-    </div>
-  {/if}
-
   <OutlineMap
     bind:this={map}
     bind:boundary

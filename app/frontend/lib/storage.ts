@@ -32,3 +32,12 @@ export function writeStored(key: string, value: unknown, area: Area = 'local'): 
     return false
   }
 }
+
+/** Removes what's saved under key; nothing happens if storage is blocked */
+export function removeStored(key: string, area: Area = 'local'): void {
+  try {
+    storage(area).removeItem(key)
+  } catch {
+    // Blocked: there's nothing to remove
+  }
+}

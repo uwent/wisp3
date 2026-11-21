@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Form, Link } from '@inertiajs/svelte'
+  import { Form, Link, page } from '@inertiajs/svelte'
   import { systemName } from '@/lib/geo'
 
   import Button from '@/lib/components/Button.svelte'
@@ -8,6 +8,8 @@
   import type { PivotShape } from '@/lib/geo'
   import ImportMap from '@/lib/outlines/ImportMap.svelte'
   import { type Choice, initialChoices, suggestSystem } from '@/lib/outlines/matching'
+  import { forgetKept, type KeptFile, type KeptShape, keepShapes, readAt, readKept } from '@/lib/outlines/kept'
+  import { unusableSummary } from '@/lib/outlines/picker'
   import { ACCEPT, type ImportedShape, readOutlineFileResult, shapeName, shapeNotes } from '@/lib/outlines/read'
   import type { Reference } from '@/lib/outlines/references'
   import { formatArea } from '@/lib/plantings'
@@ -82,6 +84,16 @@
 
   const references = $derived<Reference[]>(pivots.map((system) => ({ name: system.name, shape: system })))
 
+  // The last file read here or on a field's shape page is kept for the session (lib/outlines/kept.ts),
+  // to finish here what was started there, or the other way round
+  const groupId = page.props.auth.group?.id ?? null
+  let kept = $state<KeptFile | null>(readKept(groupId))
+
+  // Shapes that can't be saved have no row (nor a soil survey, nor a place on the map): a county
+  // file's thousands are one line saying why
+  let unusable = $state<KeptShape[]>([])
+  const UNUSABLE_LISTED = 200
+
   async function readFile(event: Event) {
     const input = event.currentTarget as HTMLInputElement
     const file = input.files?.[0]
@@ -93,11 +105,31 @@
     reading = false
     if ('error' in read) return (fileError = read.error)
     const { result } = read
-    fileName = file.name
-    skipped = result.skipped
-    keys = [...new Set(result.shapes.flatMap((shape) => Object.keys(shape.properties)))]
-    nameKey = result.nameKey
-    startRows(result.shapes)
+    // This file is kept in place of the last one
+    if (result.shapes.length > 1) keepShapes(groupId, { fileName: file.name, ...result })
+    else forgetKept(groupId)
+    kept = null
+    load({ fileName: file.name, ...result })
+  }
+
+  function useKept() {
+    if (!kept) return
+    load(kept)
+    kept = null
+  }
+
+  function forgetShapes() {
+    forgetKept(groupId)
+    kept = null
+  }
+
+  function load(file: { fileName: string; nameKey: string | null; skipped: number; shapes: KeptShape[] }) {
+    fileName = file.fileName
+    skipped = file.skipped
+    keys = [...new Set(file.shapes.flatMap((shape) => Object.keys(shape.properties)))]
+    nameKey = file.nameKey
+    unusable = file.shapes.filter((shape) => shape.problems.length || !shape.boundary)
+    startRows(file.shapes.filter((shape): shape is ImportedShape => !shape.problems.length && shape.boundary !== null))
     fileKey++
   }
 
@@ -243,13 +275,44 @@
 </div>
 {#if fileError}<p class="text-sm text-status-irrigate-ink" role="alert">{fileError}</p>{/if}
 
+{#if kept && !fileName}
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line bg-surface-raised p-4 text-sm">
+    <p>
+      {`The ${kept.shapes.length.toLocaleString('en-US')} shapes from ${kept.fileName} (${readAt(kept.savedAt)}) are still here.`}
+    </p>
+    <Button type="button" variant="secondary" class="px-3 py-1" onclick={useKept}>Use these shapes</Button>
+    <Button type="button" variant="ghost" class="px-3 py-1" onclick={forgetShapes}>Forget these shapes</Button>
+  </div>
+{/if}
+
+{#if unusable.length}
+  <details class="rounded-lg border border-line bg-surface-raised p-4 text-sm">
+    <summary class="cursor-pointer">
+      <span class="text-status-irrigate-ink"
+        >{`${unusable.length.toLocaleString('en-US')} ${unusable.length === 1 ? "shape can't" : "shapes can't"} be used for a field`}</span
+      >{`: ${unusableSummary(unusable)}.`}
+    </summary>
+    <ul class="mt-2 space-y-0.5 text-ink-muted">
+      {#each unusable.slice(0, UNUSABLE_LISTED) as shape, index (index)}
+        <li>
+          {`${shapeName(shape, nameKey) || 'Unnamed shape'}, ${formatArea(units, shape.acres)}: ${shape.problems.join('; ')}`}
+        </li>
+      {/each}
+      {#if unusable.length > UNUSABLE_LISTED}
+        <li>{`and ${(unusable.length - UNUSABLE_LISTED).toLocaleString('en-US')} more`}</li>
+      {/if}
+    </ul>
+  </details>
+{/if}
+
 {#if rows.length}
   <div class="space-y-3">
     <p class="text-sm" aria-live="polite">
-      {rows.length === 1 ? 'One shape' : `${rows.length} shapes`}{skipped
-        ? `, and ${skipped} ${skipped === 1 ? 'point or line' : 'points or lines'} left out`
-        : ''}. Each goes to the field of the same name, or becomes a new field under the irrigation system it's under;
-      change any of them below.
+      {rows.length === 1 ? 'One shape' : `${rows.length.toLocaleString('en-US')} shapes`}{unusable.length
+        ? ' that can be used'
+        : ''}{skipped ? `, and ${skipped} ${skipped === 1 ? 'point or line' : 'points or lines'} left out` : ''}. Each
+      goes to the field of the same name, or becomes a new field under the irrigation system it's under; change any of
+      them below.
     </p>
     {#if keys.length > 1}
       <div class="max-w-xs">
