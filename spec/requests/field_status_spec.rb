@@ -493,7 +493,8 @@ RSpec.describe "Field status and daily entry", type: :request do
       pivot_props = inertia.props[:farms].sole[:pivots].sole
       expect(pivot_props[:irrigation]).to include(inches: 0.8, field_ids: [field.id])
       fields = pivot_props[:fields].index_by { |f| f[:name] }
-      expect(fields["North potatoes"]).to include(entry: {"rain_in" => 0.3, "irrigation_in" => nil, "soil_moisture_pct" => nil})
+      expect(fields["North potatoes"]).to include(entry: {"rain_in" => 0.3, "irrigation_in" => nil, "irrigation_pct" => nil,
+                                                          "soil_moisture_pct" => nil})
       expect(fields["North potatoes"][:plantings].map { |planting| planting[:plant_name] }).to eq(["Potato"])
       expect(fields["North corn"]).to include(plantings: [], entry: nil)
     end

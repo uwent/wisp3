@@ -14,7 +14,7 @@ class DailyEntrySave
   # values: the date's parameters (pivots, fields, plantings, canopy; any may be missing)
   def record(values, errors)
     return unless values.is_a?(ActionController::Parameters)
-    record_pivots(by_id(values[:pivots], [:inches, :run_hours, :notes, field_ids: []]), errors)
+    record_pivots(by_id(values[:pivots], [*PivotIrrigation::AMOUNTS, :notes, field_ids: []]), errors)
     record_fields(by_id(values[:fields], DailyEntry::VALUES), errors)
     record_plantings(by_id(values[:plantings], %i[irrigation_in soil_moisture_pct]), errors)
     record_canopy(values[:canopy], errors)
@@ -33,12 +33,12 @@ class DailyEntrySave
     record.errors.to_hash(true).each { |attribute, messages| errors["#{@prefix}#{key}.#{attribute}"] = messages }
   end
 
-  # A system sent with neither inches nor run hours has its irrigation for the day removed
+  # A system sent with no amount (inches, run hours or percent) has its irrigation for the day removed
   def record_pivots(values, errors)
     @group.pivots.where(id: values.keys).find_each do |pivot|
       submitted = values[pivot.id.to_s]
       irrigation = pivot.pivot_irrigations.find_or_initialize_by(date: @date)
-      if submitted["inches"].blank? && submitted["run_hours"].blank?
+      if submitted.values_at("inches", "run_hours", "percent_timer").all?(&:blank?)
         irrigation.destroy! if irrigation.persisted?
         next
       end
@@ -50,9 +50,28 @@ class DailyEntrySave
 
   def record_fields(values, errors)
     @group.fields.where(id: values.keys).find_each do |field|
-      entry = FieldEntry.record(field.field_entries, @date, values[field.id.to_s])
+      submitted = values[field.id.to_s]
+      next if percent_irrigation(field, submitted, errors)
+      entry = FieldEntry.record(field.field_entries, @date, submitted)
       add_errors(errors, "fields.#{field.id}", entry)
     end
+  end
+
+  # A field's irrigation entered as the percent timer's setting (docs/plans/phase-9.md §8) is saved as
+  # the inches it puts on that day under the field's system, with the percent kept to show it as
+  # entered. Adds an error and returns true when the system has no depth at 100%.
+  def percent_irrigation(field, submitted, errors)
+    percent = submitted["irrigation_pct"].presence&.to_f
+    return false unless percent
+    pivot = @group.pivots.find_by(id: field.pivot_id_on(@date))
+    inches = pivot&.inches_at_percent(percent) if percent.positive? && percent <= 100
+    if inches
+      submitted["irrigation_in"] = inches.round(4)
+      return false
+    end
+    message = pivot&.percent_timer? ? "must be more than 0 and at most 100" : "needs the system's depth at 100%; enter inches instead"
+    errors["#{@prefix}fields.#{field.id}.irrigation_pct"] = [message]
+    true
   end
 
   # A part-field planting's own irrigation and soil moisture (a whole-field planting's are the field's)

@@ -4,11 +4,11 @@
 # planting's root zone and MAD, a field's soil values) are left out.
 class DemoExport
   SYSTEM_ATTRIBUTES = %w[name kind latitude longitude radius_ft arc_start_deg arc_end_deg length_ft travel_ft
-    travel_bearing_deg pump_capacity_gpm equipment notes].freeze
+    travel_bearing_deg pump_capacity_gpm inches_at_100 equipment notes].freeze
   FIELD_ATTRIBUTES = %w[area_acres field_capacity perm_wilting_pt notes].freeze
   PLANTING_ATTRIBUTES = %w[variety et_method target_ad_pct initial_moisture_pct max_root_zone_depth mad_frac
     canopy_interpolation canopy_curve_key season_days partial plot_length_ft plot_width_ft own_soil notes].freeze
-  ENTRY_VALUES = %w[rain_in irrigation_in soil_moisture_pct notes].freeze
+  ENTRY_VALUES = %w[rain_in irrigation_in irrigation_pct soil_moisture_pct notes].freeze
 
   HEADER = <<~YAML
     # The demo farms (DemoSeed, bin/rails demo:seed). Written by bin/rails demo:export from the demo
@@ -45,6 +45,7 @@ class DemoExport
     names = fields.to_h { |field| [field.id, field.name] }
     irrigation = pivot.pivot_irrigations.order(:date).map do |irrigation|
       {"date" => month_day(irrigation.date), "inches" => irrigation.inches, "run_hours" => irrigation.run_hours,
+       "percent_timer" => irrigation.percent_timer, "circles" => irrigation.circles,
        "fields" => irrigation.field_ids&.map { |id| names.fetch(id) }, "notes" => irrigation.notes}.compact
     end
     values(pivot, SYSTEM_ATTRIBUTES).merge("irrigation" => irrigation.presence, "fields" => fields.map { |field| field(field) }).compact

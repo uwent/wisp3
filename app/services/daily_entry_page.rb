@@ -41,10 +41,10 @@ class DailyEntryPage
   def pivot_props(pivot)
     irrigation = irrigations[pivot.id]
     {id: pivot.id, name: pivot.name, kind: pivot.kind, kind_name: pivot.kind_name, pivot_group_id: pivot.pivot_group_id,
-     pump_capacity_gpm: pivot.pump_capacity_gpm,
+     pump_capacity_gpm: pivot.pump_capacity_gpm, inches_at_100: pivot.percent_timer? ? pivot.inches_at_100 : nil,
      irrigation: irrigation && PivotIrrigationSerializer.new(irrigation).to_h,
      # The day before's, as entered, offered as "Same as yesterday" while nothing is entered this day
-     yesterday: (irrigations_before[pivot.id]&.slice(:inches, :run_hours, :field_ids) unless irrigation),
+     yesterday: (irrigations_before[pivot.id]&.slice(:inches, :run_hours, :percent_timer, :circles, :field_ids) unless irrigation),
      fields: fields_by_pivot.fetch(pivot.id, []).map { |field| field_props(pivot, field) }}
   end
 
@@ -52,7 +52,7 @@ class DailyEntryPage
     {id: field.id, name: field.name, area_acres: field.area_acres,
      # Only as a hint where the balance would use it (Q7: not on a field using entered rain, through today)
      rain_model: (pivot.use_model_precip? || @date > Current.today) ? rain[pivot.weather_cell_id] : nil,
-     entry: field_entries[field.id]&.slice(:rain_in, :irrigation_in, :soil_moisture_pct),
+     entry: field_entries[field.id]&.slice(:rain_in, :irrigation_in, :irrigation_pct, :soil_moisture_pct),
      plantings: field.plantings_on(@date).sort_by(&:order_key)
        .map { |planting| planting_props(planting) }}
   end

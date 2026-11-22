@@ -76,7 +76,7 @@ class DemoSeed
     Array(data["irrigation"]).each do |irrigation|
       field_ids = irrigation["fields"] && fields.fetch_values(*irrigation["fields"].map(&:to_s)).map(&:id)
       pivot.pivot_irrigations.create!(date: date(irrigation.fetch("date")), field_ids:,
-        **irrigation.slice("inches", "run_hours", "notes").symbolize_keys)
+        **irrigation.slice("inches", "run_hours", "percent_timer", "circles", "notes").symbolize_keys)
     end
     pivot
   end

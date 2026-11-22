@@ -72,7 +72,8 @@ RSpec.describe DailyEntryWeek do
     create(:pivot_irrigation, pivot: north, date: week[2], inches: 0.6, field_ids: [n1.id])
 
     days = farm_props[:irrigation_rows].sole[:days]
-    expect(days[0]).to include(irrigation: {"inches" => 0.8, "run_hours" => nil, "field_ids" => nil}, some_fields: nil)
+    expect(days[0]).to include(irrigation: {"inches" => 0.8, "run_hours" => nil, "percent_timer" => nil, "circles" => nil,
+                                            "field_ids" => nil}, some_fields: nil)
     expect(days[1]).to include(irrigation: nil, some_fields: nil)
     expect(days[2]).to include(irrigation: include("field_ids" => [n1.id]), some_fields: ["N1"])
   end

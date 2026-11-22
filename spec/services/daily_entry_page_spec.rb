@@ -25,7 +25,8 @@ RSpec.describe DailyEntryPage do
       create(:pivot_irrigation, pivot: create(:pivot, farm:, name: "Earlier"), date: date - 2, inches: 1.0)
 
       page = described_class.new(group, date)
-      expect(pivot_props(page, ran)[:yesterday]).to eq("inches" => 0.8, "run_hours" => nil, "field_ids" => [field.id])
+      expect(pivot_props(page, ran)[:yesterday]).to eq("inches" => 0.8, "run_hours" => nil, "percent_timer" => nil, "circles" => nil,
+        "field_ids" => [field.id])
       expect(pivot_props(page, by_hours)[:yesterday]).to include("inches" => nil, "run_hours" => 10)
       expect(pivot_props(page, entered)[:yesterday]).to be_nil
       expect(page.props[:farms].sole[:pivots].find { |props| props[:name] == "Earlier" }[:yesterday]).to be_nil

@@ -17,9 +17,12 @@
     KIND_NOUNS,
     type PivotKind,
     type PivotShape,
+    shapeAcres,
     shapeDraft,
     systemName,
   } from '@/lib/geo'
+  import { circleNoun, hasTimer } from '@/lib/irrigation'
+  import { currentUnits } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { pivots, setup } from '@/routes'
   import type { Pivot, SoilType } from '@/types/serializers'
@@ -70,6 +73,24 @@
         : 'Add an irrigation system',
   )
   const noun = $derived(KIND_NOUNS[shape.kind])
+  const units = $derived(currentUnits())
+
+  // The percent timer (docs/plans/phase-9.md §8): the depth a circle (a linear's pass) puts on at
+  // 100%, from the sprinkler chart, or worked out from the hours one takes at 100%, the pump
+  // capacity and the system's own area on the map
+  let pumpGpm = $state<number | null>(untrack(() => pivot.pump_capacity_gpm ?? null))
+  let inchesAt100 = $state<number | null>(untrack(() => pivot.inches_at_100 ?? null))
+  let fromHours = $state(false)
+  let circleHours = $state<number | null>(null)
+  const circle = $derived(circleNoun(shape.kind))
+  const mappedAcres = $derived.by(() => {
+    const outline = draftShape(shape)
+    return outline ? shapeAcres(outline) : null
+  })
+  const GALLONS_PER_ACRE_INCH = 27_154
+  const workedOut = $derived(
+    pumpGpm && circleHours && mappedAcres ? (pumpGpm * circleHours * 60) / (GALLONS_PER_ACRE_INCH * mappedAcres) : null,
+  )
 
   // Only owners delete (Q8); the system's fields and their seasons go with it
   function destroy() {
@@ -139,16 +160,67 @@
 
         <section class="space-y-4" aria-labelledby="pivot-equipment">
           <SectionHeading label="Equipment and notes" id="pivot-equipment" level="h2" />
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div
+            class="grid items-start gap-4 sm:grid-cols-2 {hasTimer(shape.kind) ? 'sm:grid-rows-[auto_1fr_auto]' : ''}"
+          >
             <NumberField
               label={isPoint(shape.kind) ? 'Flow' : 'Pump capacity'}
               name="pivot[pump_capacity_gpm]"
               quantity="flow"
-              value={pivot.pump_capacity_gpm ?? null}
+              bind:value={pumpGpm}
               info="pivot.pump_capacity"
               error={errors.pump_capacity_gpm}
               optional
             />
+            {#if hasTimer(shape.kind)}
+              <!-- Beside the pump capacity and the equipment, so the helper below grows down the right -->
+              <div class="space-y-2 sm:row-span-2">
+                <NumberField
+                  label="Depth at 100%"
+                  name="pivot[inches_at_100]"
+                  quantity="depth"
+                  bind:value={inchesAt100}
+                  info="pivot.inches_at_100"
+                  error={errors.inches_at_100}
+                  hint="What a {circle} puts on at full speed, from its sprinkler chart. With it you can enter irrigation as the percent timer's setting."
+                  optional
+                />
+                {#if fromHours}
+                  <div class="space-y-2 rounded-md border border-line p-3">
+                    <NumberField
+                      label="Hours for a {circle} at 100%"
+                      id="pivot-circle-hours"
+                      unitLabel="h"
+                      bind:value={circleHours}
+                    />
+                    <p class="text-xs text-ink-muted" aria-live="polite">
+                      {#if !pumpGpm}Add the pump capacity first.{:else if !mappedAcres}Place the {noun} on the map first.{:else if workedOut === null}{`With the pump capacity over the ${units.format('area', mappedAcres)} it covers on the map.`}{:else}{`${units.format('flow', pumpGpm)} for ${circleHours} hours over ${units.format('area', mappedAcres)}: ${units.format('depth', workedOut)}. An end gun waters more than the map shows, so the depth is a little less.`}{/if}
+                    </p>
+                    <div class="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        class="px-3 py-1 text-xs"
+                        disabled={workedOut === null}
+                        onclick={() => {
+                          inchesAt100 = workedOut === null ? null : Number(workedOut.toFixed(3))
+                          fromHours = false
+                          edited = true
+                        }}>Use this depth</Button
+                      >
+                      <Button variant="ghost" class="px-3 py-1 text-xs" onclick={() => (fromHours = false)}
+                        >Cancel</Button
+                      >
+                    </div>
+                  </div>
+                {:else}
+                  <button
+                    type="button"
+                    class="text-xs text-brand-600 underline underline-offset-2"
+                    onclick={() => (fromHours = true)}>Work it out from the hours a {circle} takes</button
+                  >
+                {/if}
+              </div>
+            {/if}
             <TextField
               label="Equipment"
               name="pivot[equipment]"

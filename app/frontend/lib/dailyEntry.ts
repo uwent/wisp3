@@ -8,6 +8,8 @@ import type { PivotIrrigation } from '@/types/serializers'
 export type DayEntry = {
   rain_in: number | null
   irrigation_in: number | null
+  /** The percent timer's setting irrigation_in came from, when entered as one */
+  irrigation_pct: number | null
   soil_moisture_pct: number | null
 }
 export type DayCover = {
@@ -47,12 +49,14 @@ export type DayPivot = {
   kind_name: string
   pivot_group_id: number | null
   pump_capacity_gpm: number | null
+  /** The percent timer's depth at 100%, null when it can't be used */
+  inches_at_100: number | null
   irrigation: PivotIrrigation | null
   /** The day before's irrigation as entered, while there's none this day, for "Same as yesterday" */
   yesterday: DayIrrigation | null
   fields: DayField[]
 }
-export type DayIrrigation = Pick<PivotIrrigation, 'inches' | 'run_hours' | 'field_ids'>
+export type DayIrrigation = Pick<PivotIrrigation, 'inches' | 'run_hours' | 'percent_timer' | 'circles' | 'field_ids'>
 export type DayFarm = {
   id: number
   name: string

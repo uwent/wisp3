@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   cellErrors,
   changes,
-  defaultHours,
+  defaultUnit,
+  otherText,
   irrigationKey,
   keyMove,
   leavesBox,
@@ -18,6 +19,7 @@ import {
   type WeekRainDay,
   type WeekRainRow,
 } from './dailyWeek'
+import type { IrrigationUnit } from './irrigation'
 import { units } from './units'
 
 const imperial = units('imperial')
@@ -64,17 +66,23 @@ const irrigationRow: WeekIrrigationRow = {
   kind: 'center',
   kind_name: 'Pivot',
   hours: true,
+  inches_at_100: 0.2,
   days: [
-    irrigationDay({ irrigation: { inches: 0.8, run_hours: null, field_ids: null } }),
-    irrigationDay({ irrigation: { inches: 0.6, run_hours: null, field_ids: [1] }, some_fields: ['North'] }),
+    irrigationDay({
+      irrigation: { inches: 0.8, run_hours: null, percent_timer: null, circles: null, field_ids: null },
+    }),
+    irrigationDay({
+      irrigation: { inches: 0.6, run_hours: null, percent_timer: null, circles: null, field_ids: [1] },
+      some_fields: ['North'],
+    }),
     irrigationDay(),
   ],
 }
 const farms: WeekFarm[] = [{ id: 1, name: 'Home', rain_rows: [rainRow], irrigation_rows: [irrigationRow] }]
 
-function edit(edits: Record<string, string>, byHours = { 12: false }, u = imperial) {
-  const texts = { ...savedTexts(farms, dates, byHours, u), ...edits }
-  return changes(farms, dates, texts, byHours, u)
+function edit(edits: Record<string, string>, unit: Record<number, IrrigationUnit> = { 12: 'inches' }, u = imperial) {
+  const texts = { ...savedTexts(farms, dates, unit, u), ...edits }
+  return changes(farms, dates, texts, unit, u)
 }
 
 describe('weekLabel', () => {
@@ -85,19 +93,35 @@ describe('weekLabel', () => {
   })
 })
 
-describe('defaultHours', () => {
-  it("takes the unit of the week's latest entry, and inches when run hours can't be used", () => {
-    const row = (hours: boolean, ...irrigations: WeekIrrigationDay['irrigation'][]) => ({
+describe('defaultUnit', () => {
+  it("takes the unit of the week's latest entry, and inches when that unit can't be used", () => {
+    const row = (hours: boolean, percent: boolean, ...irrigations: WeekIrrigationDay['irrigation'][]) => ({
       ...irrigationRow,
       hours,
+      inches_at_100: percent ? 0.2 : null,
       days: irrigations.map((irrigation) => irrigationDay({ irrigation })),
     })
-    const byHours = { inches: null, run_hours: 6, field_ids: null }
-    const byInches = { inches: 0.8, run_hours: null, field_ids: null }
-    expect(defaultHours(row(true, byInches, byHours, null))).toBe(true)
-    expect(defaultHours(row(true, byHours, byInches))).toBe(false)
-    expect(defaultHours(row(true, null))).toBe(false)
-    expect(defaultHours(row(false, byHours))).toBe(false)
+    const byHours = { inches: null, run_hours: 6, percent_timer: null, circles: null, field_ids: null }
+    const byInches = { inches: 0.8, run_hours: null, percent_timer: null, circles: null, field_ids: null }
+    const byPercent = { inches: null, run_hours: null, percent_timer: 40, circles: null, field_ids: null }
+    expect(defaultUnit(row(true, true, byInches, byHours, null))).toBe('hours')
+    expect(defaultUnit(row(true, true, byHours, byInches))).toBe('inches')
+    expect(defaultUnit(row(true, true, byHours, byPercent))).toBe('percent')
+    expect(defaultUnit(row(true, true, null))).toBe('inches')
+    expect(defaultUnit(row(false, true, byHours))).toBe('inches')
+    expect(defaultUnit(row(true, false, byPercent))).toBe('inches')
+  })
+})
+
+describe('otherText', () => {
+  it('shows a day saved in another unit as it was entered', () => {
+    const day = (irrigation: WeekIrrigationDay['irrigation']) => irrigationDay({ irrigation })
+    const byPercent = { inches: null, run_hours: null, percent_timer: 40, circles: null, field_ids: null }
+    const byHours = { inches: null, run_hours: 6, percent_timer: null, circles: null, field_ids: null }
+    expect(otherText(day(byPercent), 'inches', imperial)).toBe('40%')
+    expect(otherText(day(byHours), 'percent', imperial)).toBe('6 h')
+    expect(otherText(day(byPercent), 'percent', imperial)).toBe('')
+    expect(otherText(day(null), 'inches', imperial)).toBe('')
   })
 })
 
@@ -113,9 +137,9 @@ describe('changes', () => {
       { name: 'days[2026-07-14][fields][1][rain_in]', value: '0.5' },
       { name: 'days[2026-07-14][fields][2][rain_in]', value: '0.5' },
     ])
-    const mm = savedTexts(farms, dates, { 12: false }, metric)
+    const mm = savedTexts(farms, dates, { 12: 'inches' }, metric)
     expect(
-      changes(farms, dates, { ...mm, [rainKey(rainRow, dates[0])]: '25.4' }, { 12: false }, metric).inputs[0],
+      changes(farms, dates, { ...mm, [rainKey(rainRow, dates[0])]: '25.4' }, { 12: 'inches' }, metric).inputs[0],
     ).toEqual({
       name: 'days[2026-07-14][fields][1][rain_in]',
       value: '1',
@@ -135,10 +159,14 @@ describe('changes', () => {
     expect(edit({ [irrigationKey(irrigationRow, dates[2])]: '1' }).inputs).toEqual([
       { name: 'days[2026-07-16][pivots][12][inches]', value: '1' },
       { name: 'days[2026-07-16][pivots][12][run_hours]', value: '' },
+      { name: 'days[2026-07-16][pivots][12][percent_timer]', value: '' },
+      { name: 'days[2026-07-16][pivots][12][circles]', value: '' },
     ])
     expect(edit({ [irrigationKey(irrigationRow, dates[1])]: '0.7' }).inputs).toEqual([
       { name: 'days[2026-07-15][pivots][12][inches]', value: '0.7' },
       { name: 'days[2026-07-15][pivots][12][run_hours]', value: '' },
+      { name: 'days[2026-07-15][pivots][12][percent_timer]', value: '' },
+      { name: 'days[2026-07-15][pivots][12][circles]', value: '' },
       { name: 'days[2026-07-15][pivots][12][field_ids][]', value: '' },
       { name: 'days[2026-07-15][pivots][12][field_ids][]', value: '1' },
     ])
@@ -148,12 +176,25 @@ describe('changes', () => {
     expect(edit({ [irrigationKey(irrigationRow, dates[0])]: '' }).inputs).toEqual([
       { name: 'days[2026-07-14][pivots][12][inches]', value: '' },
       { name: 'days[2026-07-14][pivots][12][run_hours]', value: '' },
+      { name: 'days[2026-07-14][pivots][12][percent_timer]', value: '' },
+      { name: 'days[2026-07-14][pivots][12][circles]', value: '' },
     ])
     // In hours, a day saved in inches starts blank: left alone, it's kept
-    expect(edit({}, { 12: true }).inputs).toEqual([])
-    expect(edit({ [irrigationKey(irrigationRow, dates[0])]: '6' }, { 12: true }).inputs).toEqual([
+    expect(edit({}, { 12: 'hours' }).inputs).toEqual([])
+    expect(edit({ [irrigationKey(irrigationRow, dates[0])]: '6' }, { 12: 'hours' }).inputs).toEqual([
       { name: 'days[2026-07-14][pivots][12][inches]', value: '' },
       { name: 'days[2026-07-14][pivots][12][run_hours]', value: '6' },
+      { name: 'days[2026-07-14][pivots][12][percent_timer]', value: '' },
+      { name: 'days[2026-07-14][pivots][12][circles]', value: '' },
+    ])
+  })
+
+  it('sends a percent in the percent unit, for one circle', () => {
+    expect(edit({ [irrigationKey(irrigationRow, dates[2])]: '40' }, { 12: 'percent' }).inputs).toEqual([
+      { name: 'days[2026-07-16][pivots][12][inches]', value: '' },
+      { name: 'days[2026-07-16][pivots][12][run_hours]', value: '' },
+      { name: 'days[2026-07-16][pivots][12][percent_timer]', value: '40' },
+      { name: 'days[2026-07-16][pivots][12][circles]', value: '' },
     ])
   })
 

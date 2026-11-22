@@ -1,6 +1,6 @@
 import { addDays, formatDate } from '@/lib/dates'
 import type { PivotKind } from '@/lib/geo'
-import { enteredAsHours, savedAmount } from '@/lib/irrigation'
+import { enteredAs, type IrrigationUnit, savedAmount } from '@/lib/irrigation'
 import { parseNumber, type ParseResult, type Units } from '@/lib/units'
 
 // Daily entry's week view (Phase 9 §6): rain and irrigation for the seven days ending on a date, as
@@ -28,7 +28,13 @@ export type WeekRainRow = {
   kind_name?: string
   days: WeekRainDay[]
 }
-export type WeekIrrigation = { inches: number | null; run_hours: number | null; field_ids: number[] | null }
+export type WeekIrrigation = {
+  inches: number | null
+  run_hours: number | null
+  percent_timer: number | null
+  circles: number | null
+  field_ids: number[] | null
+}
 export type WeekIrrigationDay = {
   active: boolean
   irrigation: WeekIrrigation | null
@@ -42,6 +48,8 @@ export type WeekIrrigationRow = {
   kind_name: string
   /** Run hours can be entered (a pump capacity and the fields' areas) */
   hours: boolean
+  /** The percent timer's depth at 100%, null when a percent can't be entered */
+  inches_at_100: number | null
   days: WeekIrrigationDay[]
 }
 export type WeekFarm = { id: number; name: string; rain_rows: WeekRainRow[]; irrigation_rows: WeekIrrigationRow[] }
@@ -60,32 +68,47 @@ export const weekOf = (end: string) => ({ start: addDays(end, -6), end, label: w
 export const rainKey = (row: WeekRainRow, date: string) => `rain:${row.key}:${date}`
 export const irrigationKey = (row: WeekIrrigationRow, date: string) => `irrigation:${row.id}:${date}`
 
+/** The units a system's irrigation can be entered in (unitsFor in lib/irrigation.ts) */
+export const rowUnits = (row: WeekIrrigationRow): IrrigationUnit[] => [
+  'inches',
+  ...(row.hours ? (['hours'] as const) : []),
+  ...(row.inches_at_100 !== null ? (['percent'] as const) : []),
+]
+
 /** A system's irrigation unit for the week: the way its latest entry that week was entered, else inches */
-export function defaultHours(row: WeekIrrigationRow): boolean {
-  if (!row.hours) return false
+export function defaultUnit(row: WeekIrrigationRow): IrrigationUnit {
   const latest = row.days.findLast((day) => day.irrigation !== null)
-  return enteredAsHours(latest?.irrigation)
+  const unit = enteredAs(latest?.irrigation)
+  return rowUnits(row).includes(unit) ? unit : 'inches'
 }
 
 /** A rain cell's text as saved */
 export const rainText = (day: WeekRainDay, units: Units) => units.input('depth', day.value)
 
-/** An irrigation cell's text as saved, in inches (the user's depth unit) or run hours */
-export function irrigationText(day: WeekIrrigationDay, byHours: boolean, units: Units): string {
-  const amount = savedAmount(day.irrigation, byHours)
+/** An irrigation cell's text as saved, in inches (the user's depth unit), run hours or percent */
+export function irrigationText(day: WeekIrrigationDay, unit: IrrigationUnit, units: Units): string {
+  const amount = savedAmount(day.irrigation, unit)
   if (amount === null) return ''
-  return byHours ? String(amount) : units.input('depth', amount)
+  return unit === 'inches' ? units.input('depth', amount) : String(amount)
 }
 
-/** What's typed in a cell, read: stored inches for depths, hours as typed */
-export const parseCell = (text: string, byHours: boolean, units: Units): ParseResult =>
-  byHours ? parseNumber(text) : units.parse('depth', text)
+/** A cell's saved irrigation entered in another unit, as its placeholder: "0.8 in", "10 h", "40%" */
+export function otherText(day: WeekIrrigationDay, unit: IrrigationUnit, units: Units): string {
+  const entered = enteredAs(day.irrigation)
+  const amount = savedAmount(day.irrigation, entered)
+  if (entered === unit || amount === null) return ''
+  return entered === 'inches' ? units.format('depth', amount) : entered === 'hours' ? `${amount} h` : `${amount}%`
+}
+
+/** What's typed in a cell, read: stored inches for depths, hours and percents as typed */
+export const parseCell = (text: string, unit: IrrigationUnit, units: Units): ParseResult =>
+  unit === 'inches' ? units.parse('depth', text) : parseNumber(text)
 
 /** The texts of every cell as saved, by cell key */
 export function savedTexts(
   farms: WeekFarm[],
   dates: string[],
-  byHours: Record<number, boolean>,
+  unit: Record<number, IrrigationUnit>,
   units: Units,
 ): Record<string, string> {
   const texts: Record<string, string> = {}
@@ -94,7 +117,7 @@ export function savedTexts(
       dates.forEach((date, i) => (texts[rainKey(row, date)] = rainText(row.days[i], units)))
     for (const row of farm.irrigation_rows)
       dates.forEach(
-        (date, i) => (texts[irrigationKey(row, date)] = irrigationText(row.days[i], byHours[row.id], units)),
+        (date, i) => (texts[irrigationKey(row, date)] = irrigationText(row.days[i], unit[row.id] ?? 'inches', units)),
       )
   }
   return texts
@@ -107,8 +130,9 @@ const stored = (value: number | null) => (value === null ? '' : String(value))
 
 /**
  * The cells changed from what's saved, and the hidden inputs that submit them: a rain cell's value
- * for each of its fields; an irrigation cell's inches or run hours (the other blank, so saving one
- * way clears the other, and both blank removes it), with the fields a saved irrigation applies to
+ * for each of its fields; an irrigation cell's inches, run hours or percent (one circle; the others
+ * blank, so saving one way clears another, and all blank removes it), with the fields a saved
+ * irrigation applies to
  * (not sent means all, PivotIrrigation.normalize_field_ids). A cell that can't be read is left out
  * (its box stops the form submitting).
  */
@@ -116,7 +140,7 @@ export function changes(
   farms: WeekFarm[],
   dates: string[],
   texts: Record<string, string>,
-  byHours: Record<number, boolean>,
+  unit: Record<number, IrrigationUnit>,
   units: Units,
 ): { cells: ChangedCell[]; inputs: Input[] } {
   const cells: ChangedCell[] = []
@@ -128,7 +152,7 @@ export function changes(
         const key = rainKey(row, date)
         const text = (texts[key] ?? '').trim()
         if (text === rainText(day, units)) return
-        const parsed = parseCell(text, false, units)
+        const parsed = parseCell(text, 'inches', units)
         if (!parsed.ok) return
         cells.push({ key, label: row.name, date, varies: day.varies })
         for (const field of day.fields)
@@ -136,18 +160,21 @@ export function changes(
       })
     }
     for (const row of farm.irrigation_rows) {
-      const hours = byHours[row.id] ?? false
+      const as = unit[row.id] ?? 'inches'
       dates.forEach((date, i) => {
         const day = row.days[i]
         const key = irrigationKey(row, date)
         const text = (texts[key] ?? '').trim()
-        if (text === irrigationText(day, hours, units)) return
-        const parsed = parseCell(text, hours, units)
+        if (text === irrigationText(day, as, units)) return
+        const parsed = parseCell(text, as, units)
         if (!parsed.ok) return
         cells.push({ key, label: row.name, date, varies: false })
         const name = `days[${date}][pivots][${row.id}]`
-        inputs.push({ name: `${name}[inches]`, value: hours ? '' : stored(parsed.value) })
-        inputs.push({ name: `${name}[run_hours]`, value: hours ? stored(parsed.value) : '' })
+        const amount = (u: IrrigationUnit) => (as === u ? stored(parsed.value) : '')
+        inputs.push({ name: `${name}[inches]`, value: amount('inches') })
+        inputs.push({ name: `${name}[run_hours]`, value: amount('hours') })
+        inputs.push({ name: `${name}[percent_timer]`, value: amount('percent') })
+        inputs.push({ name: `${name}[circles]`, value: '' })
         const fieldIds = day.irrigation?.field_ids
         if (fieldIds && parsed.value !== null) {
           // The blank first entry keeps the list a list (Rails can't tell an empty one from none sent)
@@ -238,7 +265,7 @@ export function cellErrors(
     }
     for (const row of farm.irrigation_rows) {
       dates.forEach((date) => {
-        const message = ['inches', 'run_hours', 'field_ids']
+        const message = ['inches', 'run_hours', 'percent_timer', 'circles', 'field_ids']
           .map((attribute) => firstMessage(errors[`days.${date}.pivots.${row.id}.${attribute}`]))
           .find(Boolean)
         if (message) found[irrigationKey(row, date)] = { label: `${row.name} irrigation`, date, message }

@@ -49,9 +49,13 @@ const farms: WeekFarm[] = [
         kind: 'center',
         kind_name: 'Pivot',
         hours: false,
+        inches_at_100: null,
         days: dates.map((date) => ({
           active: true,
-          irrigation: date === '2026-07-15' ? { inches: 0.6, run_hours: null, field_ids: [1] } : null,
+          irrigation:
+            date === '2026-07-15'
+              ? { inches: 0.6, run_hours: null, percent_timer: null, circles: null, field_ids: [1] }
+              : null,
           some_fields: date === '2026-07-15' ? ['North'] : null,
         })),
       },
@@ -85,6 +89,8 @@ describe('the week grid', () => {
     expect(hidden(container).slice(3)).toEqual([
       ['days[2026-07-15][pivots][12][inches]', '0.7'],
       ['days[2026-07-15][pivots][12][run_hours]', ''],
+      ['days[2026-07-15][pivots][12][percent_timer]', ''],
+      ['days[2026-07-15][pivots][12][circles]', ''],
       ['days[2026-07-15][pivots][12][field_ids][]', ''],
       ['days[2026-07-15][pivots][12][field_ids][]', '1'],
     ])

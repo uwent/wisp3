@@ -7,7 +7,7 @@
   import {
     cellErrors,
     changes,
-    defaultHours,
+    defaultUnit,
     fieldAmounts,
     irrigationKey,
     keyMove,
@@ -18,6 +18,8 @@
     rainKey,
     savedTexts,
     irrigationText,
+    otherText,
+    rowUnits,
     weekOf,
     type Cell,
     type WeekFarm,
@@ -25,7 +27,7 @@
   } from '@/lib/dailyWeek'
   import { addDays, formatDate, today as todayDate } from '@/lib/dates'
   import { systemName } from '@/lib/geo'
-  import { savedAmount } from '@/lib/irrigation'
+  import type { IrrigationUnit } from '@/lib/irrigation'
   import { writeStored } from '@/lib/storage'
   import { count } from '@/lib/text'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
@@ -49,19 +51,19 @@
 
   // Each system's unit for the week, and what's typed in every cell; set from what's saved, again
   // after a save, not whenever the page's data changes
-  const savedHours = (rows: WeekIrrigationRow[]) => Object.fromEntries(rows.map((row) => [row.id, defaultHours(row)]))
-  let byHours = $state<Record<number, boolean>>(untrack(() => savedHours(irrigationRows)))
-  let texts = $state<Record<string, string>>(untrack(() => savedTexts(farms, dates, byHours, units)))
+  const savedUnits = (rows: WeekIrrigationRow[]) => Object.fromEntries(rows.map((row) => [row.id, defaultUnit(row)]))
+  let unit = $state<Record<number, IrrigationUnit>>(untrack(() => savedUnits(irrigationRows)))
+  let texts = $state<Record<string, string>>(untrack(() => savedTexts(farms, dates, unit, units)))
   let saves = $state(0)
   $effect(() => {
     void [date, saves]
     untrack(() => {
-      byHours = savedHours(irrigationRows)
-      texts = savedTexts(farms, dates, byHours, units)
+      unit = savedUnits(irrigationRows)
+      texts = savedTexts(farms, dates, unit, units)
     })
   })
 
-  const changed = $derived(changes(farms, dates, texts, byHours, units))
+  const changed = $derived(changes(farms, dates, texts, unit, units))
   const changedKeys = $derived(new Set(changed.cells.map((cell) => cell.key)))
   const dirty = $derived(changed.cells.length > 0)
   confirmUnsavedChanges(
@@ -70,14 +72,14 @@
   )
 
   /** Switches a system's unit, putting its saved amounts back in that unit */
-  function switchHours(row: WeekIrrigationRow, hours: boolean) {
-    byHours[row.id] = hours
-    dates.forEach((day, i) => (texts[irrigationKey(row, day)] = irrigationText(row.days[i], hours, units)))
+  function switchUnit(row: WeekIrrigationRow, next: IrrigationUnit) {
+    unit[row.id] = next
+    dates.forEach((day, i) => (texts[irrigationKey(row, day)] = irrigationText(row.days[i], next, units)))
   }
 
   /** A cell's own complaint while what's typed can't be read (the form won't submit) */
-  function unreadable(key: string, hours: boolean): string | null {
-    const parsed = parseCell(texts[key] ?? '', hours, units)
+  function unreadable(key: string, as: IrrigationUnit): string | null {
+    const parsed = parseCell(texts[key] ?? '', as, units)
     return parsed.ok ? null : parsed.error
   }
   function validity(box: HTMLInputElement, message: string | null) {
@@ -259,7 +261,7 @@
                                 ? 'Rain can be entered once the day has come'
                                 : undefined}
                             bind:value={texts[key]}
-                            use:validity={unreadable(key, false)}
+                            use:validity={unreadable(key, 'inches')}
                           />
                           {#if problem || replacing}
                             <span id="{id}-note" class="sr-only"
@@ -278,20 +280,28 @@
                     </th>
                   </tr>
                   {#each farm.irrigation_rows as row, i (row.id)}
-                    {@const hours = byHours[row.id] ?? false}
+                    {@const as = unit[row.id] ?? 'inches'}
+                    {@const offered = rowUnits(row)}
                     <tr class="border-t border-line/60">
                       <th scope="row" class="{nameCell} font-normal">
                         <span class="flex items-center justify-between gap-2">
                           <span class="font-medium">{systemName(row)}</span>
-                          {#if row.hours}
+                          {#if offered.length > 1}
                             <select
                               class="rounded-md py-1 pr-7 pl-2 text-xs"
                               aria-label="Unit for {row.name}'s irrigation"
-                              value={hours ? 'hours' : 'depth'}
-                              onchange={(event) => switchHours(row, event.currentTarget.value === 'hours')}
+                              value={as}
+                              onchange={(event) => switchUnit(row, event.currentTarget.value as IrrigationUnit)}
                             >
-                              <option value="depth">{units.label('depth')}</option>
-                              <option value="hours">hours</option>
+                              {#each offered as option (option)}
+                                <option value={option}
+                                  >{option === 'inches'
+                                    ? units.label('depth')
+                                    : option === 'hours'
+                                      ? 'hours'
+                                      : '% timer'}</option
+                                >
+                              {/each}
                             </select>
                           {:else}
                             <span class="text-xs text-ink-muted">{units.label('depth')}</span>
@@ -303,8 +313,6 @@
                         {@const key = irrigationKey(row, day)}
                         {@const problem = problems[key]}
                         {@const id = `cell-${key.replaceAll(':', '-')}`}
-                        {@const other = savedAmount(cell.irrigation, !hours)}
-                        {@const otherOnly = savedAmount(cell.irrigation, hours) === null && other !== null}
                         <td class="relative px-1 py-1">
                           <input
                             {id}
@@ -314,14 +322,18 @@
                             class="{box} {cell.some_fields ? 'pr-5' : ''} {problem ? 'border-status-irrigate' : ''}"
                             data-row={rainRows + i}
                             data-col={c}
-                            data-unit={hours ? 'h' : units.label('depth')}
-                            aria-label="{row.name} irrigation{hours ? ' (hours)' : ''}, {dayName(day)}"
+                            data-unit={as === 'hours' ? 'h' : as === 'percent' ? '%' : units.label('depth')}
+                            aria-label="{row.name} irrigation{as === 'hours'
+                              ? ' (hours)'
+                              : as === 'percent'
+                                ? ' (percent timer, one circle)'
+                                : ''}, {dayName(day)}"
                             aria-invalid={problem ? 'true' : undefined}
                             aria-describedby={problem || cell.some_fields ? `${id}-note` : undefined}
                             disabled={!cell.active}
-                            placeholder={otherOnly ? (hours ? units.format('depth', other) : `${other} h`) : ''}
+                            placeholder={otherText(cell, as, units)}
                             bind:value={texts[key]}
-                            use:validity={unreadable(key, hours)}
+                            use:validity={unreadable(key, as)}
                           />
                           {#if cell.some_fields}
                             <Link

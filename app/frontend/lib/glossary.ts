@@ -158,6 +158,13 @@ export const GLOSSARY: GlossaryEntry[] = [
     definition:
       "One cell of the weather model's grid, about 6 miles (9 km) across. Irrigation systems in the same cell share its weather; the Weather tab has each zone's forecast and season.",
   },
+  {
+    id: 'percent_timer',
+    term: 'Percent timer',
+    matches: ['percent timer'],
+    definition:
+      "How a center pivot's or linear's panel sets its speed: the share of each minute the end tower moves. At 100% a circle (or pass) is fastest and puts on the least water, the depth at 100% from its sprinkler chart; at 40% it takes 2.5 times as long and puts on 2.5 times the depth. WISP works out the inches from the depth at 100%, so it can be entered once that's set on the system. It's the speed setting, not a VRI zone's nozzle rate, which puts on less water at a lower percent.",
+  },
 ]
 
 const byId = new Map(GLOSSARY.map((entry) => [entry.id, entry]))

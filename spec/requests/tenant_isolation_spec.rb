@@ -199,6 +199,13 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(my_pivot.pivot_irrigations).to be_empty
   end
 
+  it "won't set another group's field's own amount from my pivot's irrigation" do
+    post pivot_irrigations_path(my_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1,
+                                                                       field_amounts: {their_field.id => {irrigation_in: "2"}}}}
+    expect(my_pivot.pivot_irrigations.sole.inches).to eq(1.0)
+    expect(their_field.field_entries).to be_empty
+  end
+
   it "won't apply my pivot's irrigation to another group's field" do
     post pivot_irrigations_path(my_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1, field_ids: [their_field.id]}}
     patch daily_entry_path, params: {date: "2026-07-03", pivots: {my_pivot.id => {inches: 1, field_ids: [their_field.id]}}}

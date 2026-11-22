@@ -64,6 +64,8 @@ class DailyEntryWeek
     {id: pivot.id, name: pivot.name, kind: pivot.kind, kind_name: pivot.kind_name,
      # Run hours convert through the pump capacity and the fields' areas (canUseHours in lib/irrigation.ts)
      hours: pivot.pump_capacity_gpm.present? && pivot.fields.all?(&:area_acres),
+     # The percent timer's depth at 100% (canUsePercent), null when it can't be used
+     inches_at_100: pivot.percent_timer? ? pivot.inches_at_100 : nil,
      days: dates.map { |date| irrigation_day(pivot, date) }}
   end
 
@@ -73,7 +75,7 @@ class DailyEntryWeek
     left_out = irrigation&.field_ids ? under.reject { |field| irrigation.field_ids.include?(field.id) } : []
     applied = under.select { |field| irrigation&.covers?(field.id) }
     {active: growing(pivot, date).any? || irrigation.present?,
-     irrigation: irrigation&.slice(:inches, :run_hours, :field_ids),
+     irrigation: irrigation&.slice(:inches, :run_hours, :percent_timer, :circles, :field_ids),
      # Applied to only some of the fields on the system that day: their names
      some_fields: (applied.map(&:name) if left_out.any?)}
   end

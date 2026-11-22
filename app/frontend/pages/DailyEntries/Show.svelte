@@ -5,6 +5,7 @@
   import Button from '@/lib/components/Button.svelte'
   import DailyViewSwitch, { DAILY_VIEW_KEY } from '@/lib/components/DailyViewSwitch.svelte'
   import IrrigationAmount from '@/lib/components/IrrigationAmount.svelte'
+  import IrrigationUnitSwitch from '@/lib/components/IrrigationUnitSwitch.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import {
     applies,
@@ -25,7 +26,16 @@
   } from '@/lib/dailyEntry'
   import { addDays, formatDate, today as todayDate } from '@/lib/dates'
   import { KIND_NAMES, KIND_NOUNS, systemName } from '@/lib/geo'
-  import { canUseHours, enteredAsHours, sameAsBefore, savedAmount } from '@/lib/irrigation'
+  import {
+    canUsePercent,
+    circleNoun,
+    enteredAs,
+    type IrrigationUnit,
+    percentInches,
+    sameAsBefore,
+    savedAmount,
+    unitsFor,
+  } from '@/lib/irrigation'
   import { cropName, plotSize } from '@/lib/plantings'
   import { readStored, writeStored } from '@/lib/storage'
   import { count } from '@/lib/text'
@@ -77,48 +87,69 @@
   // save, not whenever the page's data changes (a reload for another reason keeps what's typed)
   function saved(pivots: DayPivot[]) {
     const fields = pivots.flatMap((pivot) => pivot.fields)
-    const hours = Object.fromEntries(pivots.map((p) => [p.id, enteredAsHours(p.irrigation)]))
+    // As the system's irrigation was entered; a percent when only its fields' own were (sectors)
+    const entered = (p: DayPivot): IrrigationUnit =>
+      !p.irrigation && canUsePercent(p) && p.fields.some((f) => f.entry?.irrigation_pct != null)
+        ? 'percent'
+        : enteredAs(p.irrigation)
+    const unit = Object.fromEntries(pivots.map((p) => [p.id, entered(p)]))
     return {
       rain: Object.fromEntries(fields.map((f) => [f.id, f.entry?.rain_in ?? null])),
       fieldIrrigation: Object.fromEntries(fields.map((f) => [f.id, f.entry?.irrigation_in ?? null])),
-      byHours: hours,
-      pivotAmount: Object.fromEntries(pivots.map((p) => [p.id, savedAmount(p.irrigation, hours[p.id])])),
+      fieldPercent: Object.fromEntries(fields.map((f) => [f.id, f.entry?.irrigation_pct ?? null])),
+      unit,
+      pivotAmount: Object.fromEntries(pivots.map((p) => [p.id, savedAmount(p.irrigation, unit[p.id])])),
+      pivotCircles: Object.fromEntries(pivots.map((p) => [p.id, p.irrigation?.circles ?? null])),
       applied: Object.fromEntries(pivots.map((p) => [p.id, p.irrigation?.field_ids ?? p.fields.map((f) => f.id)])),
     }
   }
   const initial = untrack(() => saved(allPivots))
   let rain = $state<Record<number, number | null>>(initial.rain)
   let fieldIrrigation = $state<Record<number, number | null>>(initial.fieldIrrigation)
+  let fieldPercent = $state<Record<number, number | null>>(initial.fieldPercent)
   let pivotAmount = $state<Record<number, number | null>>(initial.pivotAmount)
+  let pivotCircles = $state<Record<number, number | null>>(initial.pivotCircles)
   let applied = $state<Record<number, number[]>>(initial.applied)
-  let byHours = $state<Record<number, boolean>>(initial.byHours)
+  let unit = $state<Record<number, IrrigationUnit>>(initial.unit)
   let saves = $state(0)
   $effect(() => {
     void [date, saves]
     untrack(() => {
-      ;({ rain, fieldIrrigation, pivotAmount, applied, byHours } = saved(allPivots))
+      ;({ rain, fieldIrrigation, fieldPercent, pivotAmount, pivotCircles, applied, unit } = saved(allPivots))
     })
   })
 
-  function switchHours(pivot: DayPivot, hours: boolean) {
-    byHours[pivot.id] = hours
-    pivotAmount[pivot.id] = savedAmount(pivot.irrigation, hours)
+  function switchUnit(pivot: DayPivot, next: IrrigationUnit) {
+    unit[pivot.id] = next
+    pivotAmount[pivot.id] = savedAmount(pivot.irrigation, next)
+    pivotCircles[pivot.id] = pivot.irrigation?.circles ?? null
+    dirty = true
   }
+
+  // A field's own irrigation is a percent (the speed its sector ran at) while its system's is,
+  // unless it was saved in inches
+  const fieldByPercent = (pivot: DayPivot, field: DayField) =>
+    unit[pivot.id] === 'percent' &&
+    canUsePercent(pivot) &&
+    !(field.entry?.irrigation_in != null && field.entry.irrigation_pct == null)
+  const fieldHasOwn = (pivot: DayPivot, field: DayField) =>
+    fieldByPercent(pivot, field) ? fieldPercent[field.id] != null : fieldIrrigation[field.id] != null
 
   // The day before's irrigation, offered as a placeholder and "Same as yesterday" (a value only when
   // chosen) while nothing is entered for the system this day
   const dayBefore = $derived(date === today ? 'yesterday' : 'the day before')
-  const beforePlaceholder = (pivot: DayPivot, hours: boolean, otherwise: string) => {
-    const amount = savedAmount(pivot.yesterday, hours)
+  const beforePlaceholder = (pivot: DayPivot, as: IrrigationUnit, otherwise: string) => {
+    const amount = savedAmount(pivot.yesterday, as)
     if (amount === null) return otherwise
-    const shown = hours ? String(amount) : units.input('depth', amount)
+    const shown = as === 'hours' ? String(amount) : as === 'percent' ? `${amount}%` : units.input('depth', amount)
     return `${shown} ${date === today ? 'yesterday' : 'day before'}`
   }
   function sameAsYesterday(pivot: DayPivot) {
     const same = sameAsBefore(pivot.yesterday, pivot)
     if (!same) return
-    byHours[pivot.id] = same.byHours
+    unit[pivot.id] = same.unit
     pivotAmount[pivot.id] = same.value
+    pivotCircles[pivot.id] = same.circles
     applied[pivot.id] = same.fieldIds
     dirty = true
   }
@@ -243,15 +274,35 @@
       />
     </td>
     <td class="w-36 px-2 py-1.5">
-      <NumberField
-        hideLabel
-        label="Irrigation on {field.name} (replaces the {KIND_NOUNS[pivot.kind]}'s)"
-        name="fields[{field.id}][irrigation_in]"
-        quantity="depth"
-        bind:value={fieldIrrigation[field.id]}
-        placeholder={pivotReaches(pivot, field) ? `${short(pivot)}'s` : ''}
-        error={errs[`fields.${field.id}.irrigation_in`]}
-      />
+      {#if fieldByPercent(pivot, field)}
+        <!-- Saved as the inches it comes to (DailyEntrySave) -->
+        <NumberField
+          hideLabel
+          label="Percent timer on {field.name} (replaces the {KIND_NOUNS[pivot.kind]}'s)"
+          name="fields[{field.id}][irrigation_pct]"
+          unitLabel="%"
+          bind:value={fieldPercent[field.id]}
+          placeholder={pivotReaches(pivot, field) ? `${pivotAmount[pivot.id]}% ${short(pivot)}'s` : '% timer'}
+          error={errs[`fields.${field.id}.irrigation_pct`] ?? errs[`fields.${field.id}.irrigation_in`]}
+        />
+        <input type="hidden" name="fields[{field.id}][irrigation_in]" value="" />
+        {#if fieldPercent[field.id] != null}
+          <p class="mt-0.5 text-xs text-ink-muted">
+            {`% = ${units.format('depth', percentInches(pivot.inches_at_100, fieldPercent[field.id]))}`}
+          </p>
+        {/if}
+      {:else}
+        <!-- A percent saved before stays unless the inches change (DailyEntry.record) -->
+        <NumberField
+          hideLabel
+          label="Irrigation on {field.name} (replaces the {KIND_NOUNS[pivot.kind]}'s)"
+          name="fields[{field.id}][irrigation_in]"
+          quantity="depth"
+          bind:value={fieldIrrigation[field.id]}
+          placeholder={pivotReaches(pivot, field) ? `${short(pivot)}'s` : ''}
+          error={errs[`fields.${field.id}.irrigation_in`]}
+        />
+      {/if}
     </td>
     <td class="w-28 px-2 py-1.5">
       {#if whole || !inSeason(field)}
@@ -293,11 +344,7 @@
           name="plantings[{plot.id}][irrigation_in]"
           quantity="depth"
           value={plot.entry?.irrigation_in ?? null}
-          placeholder={fieldIrrigation[field.id] != null
-            ? "field's"
-            : pivotReaches(pivot, field)
-              ? `${short(pivot)}'s`
-              : ''}
+          placeholder={fieldHasOwn(pivot, field) ? "field's" : pivotReaches(pivot, field) ? `${short(pivot)}'s` : ''}
           error={errs[`plantings.${plot.id}.irrigation_in`]}
         />
       </td>
@@ -352,17 +399,28 @@
     </td>
     <td class="px-2 py-1.5" colspan={columns - 2}>
       <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
-        <div class="w-32">
+        <div class={unit[pivot.id] === 'percent' ? '' : 'w-32'}>
           <IrrigationAmount
             hideLabel
             name="pivots[{pivot.id}]"
-            byHours={byHours[pivot.id]}
+            unit={unit[pivot.id]}
             bind:value={pivotAmount[pivot.id]}
+            bind:circles={pivotCircles[pivot.id]}
+            kind={pivot.kind}
+            inchesAt100={pivot.inches_at_100}
             inchesLabel="Irrigation by {pivot.name}"
             hoursLabel="Run hours of {pivot.name}"
-            inchesPlaceholder={beforePlaceholder(pivot, false, short(pivot))}
-            hoursPlaceholder={beforePlaceholder(pivot, true, 'hours')}
-            errors={{ inches: errs[`pivots.${pivot.id}.inches`], run_hours: errs[`pivots.${pivot.id}.run_hours`] }}
+            percentLabel="Percent timer of {pivot.name}"
+            circlesLabel="{circleNoun(pivot.kind)}s {pivot.name} ran at that speed"
+            inchesPlaceholder={beforePlaceholder(pivot, 'inches', short(pivot))}
+            hoursPlaceholder={beforePlaceholder(pivot, 'hours', 'hours')}
+            percentPlaceholder={beforePlaceholder(pivot, 'percent', '% timer')}
+            errors={{
+              inches: errs[`pivots.${pivot.id}.inches`],
+              run_hours: errs[`pivots.${pivot.id}.run_hours`],
+              percent_timer: errs[`pivots.${pivot.id}.percent_timer`],
+              circles: errs[`pivots.${pivot.id}.circles`],
+            }}
           />
         </div>
         {#if pivotAmount[pivot.id] == null && sameAsBefore(pivot.yesterday, pivot)}
@@ -373,17 +431,15 @@
             onclick={() => sameAsYesterday(pivot)}>Same as {dayBefore}</button
           >
         {/if}
-        {#if canUseHours(pivot)}
-          <label class="flex items-center gap-1.5 py-2 text-xs">
-            <input
-              type="checkbox"
-              class="rounded"
-              checked={byHours[pivot.id]}
-              onchange={(event) => switchHours(pivot, event.currentTarget.checked)}
-            />
-            Run hours
-          </label>
-        {/if}
+        <div class="py-1">
+          <IrrigationUnitSwitch
+            name="unit-pivot-{pivot.id}"
+            label="Enter {pivot.name}'s irrigation as"
+            units={unitsFor(pivot)}
+            unit={unit[pivot.id]}
+            onchange={(next) => switchUnit(pivot, next)}
+          />
+        </div>
         {#if pivot.fields.length > 1}
           <button
             type="button"

@@ -15,7 +15,8 @@ class PivotsController < AuthenticatedController
       farm: {id: pivot.farm.id, name: pivot.farm.name},
       year:,
       irrigations: PivotIrrigationSerializer.new(irrigations).to_h,
-      # The fields an irrigation on a date can apply to (G.14 part 7: a field moved here or away)
+      # Fields' own irrigation that year, which replaces the system's (the form's per-field amounts)
+      field_amounts: field_amounts(pivot, year),
       field_seasons: pivot.field_seasons,
       **WeatherZone.page_props(Current.group, pivot.weather_cell, forecast: year == Current.today.year)
     }
@@ -73,11 +74,11 @@ class PivotsController < AuthenticatedController
 
   def pivot_params
     params.expect(pivot: [:farm_id, :name, :kind, :latitude, :longitude, :radius_ft, :arc_start_deg, :arc_end_deg,
-      :length_ft, :travel_ft, :travel_bearing_deg, :equipment, :pump_capacity_gpm, :notes, :pivot_group_id])
+      :length_ft, :travel_ft, :travel_bearing_deg, :equipment, :pump_capacity_gpm, :inches_at_100, :notes, :pivot_group_id])
   end
 
   COPIED = %w[farm_id pivot_group_id kind radius_ft arc_start_deg arc_end_deg length_ft travel_ft travel_bearing_deg
-    equipment pump_capacity_gpm].freeze
+    equipment pump_capacity_gpm inches_at_100].freeze
 
   def copy(source)
     Pivot.new(source.attributes.slice(*COPIED).merge("name" => "#{source.name} copy"))
@@ -96,6 +97,16 @@ class PivotsController < AuthenticatedController
       end,
       soil_types: ReferenceProps.soil_types
     }
+  end
+
+  # {date => {field_id => {irrigation_in, irrigation_pct}}} for the fields that are or were on the
+  # system, in the year
+  def field_amounts(pivot, year)
+    field_ids = Field.where(pivot_id: pivot.id).or(Field.where(id: pivot.plantings.select(:field_id))).select(:id)
+    FieldEntry.where(field_id: field_ids, date: Date.new(year).all_year).where.not(irrigation_in: nil)
+      .group_by(&:date).transform_values do |entries|
+        entries.to_h { |entry| [entry.field_id, entry.slice(:irrigation_in, :irrigation_pct)] }
+      end
   end
 
   # A new system's starting values: its farm, or everything copied from a duplicated one

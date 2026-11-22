@@ -19,6 +19,11 @@ class Pivot < ApplicationRecord
   MAX_RADIUS_FT = 3000
   MAX_LINEAR_LENGTH_FT = 3300
   MAX_LINEAR_TRAVEL_FT = 5280
+  # The kinds with a percent timer (docs/plans/phase-9.md §8): the end tower (a linear's drive) runs
+  # that share of each minute, so a circle or pass puts on inches_at_100 × 100 ÷ percent
+  TIMER_KINDS = %w[center linear].freeze
+  # A circle at 100% puts on a few tenths of an inch; more than 3 is a typo or another unit
+  MAX_INCHES_AT_100 = 3.0
 
   belongs_to :farm
   belongs_to :pivot_group, optional: true
@@ -45,6 +50,8 @@ class Pivot < ApplicationRecord
   validates :longitude, presence: true, numericality: {in: LONGITUDES, message: "must be in the US or Canada"}
   validates :kind, inclusion: {in: KINDS}
   validates :pump_capacity_gpm, numericality: {greater_than: 0}, allow_nil: true
+  validates :inches_at_100, numericality: {greater_than: 0, less_than_or_equal_to: MAX_INCHES_AT_100,
+                                           message: "must be more than 0 and at most 3 inches (76 mm)"}, allow_nil: true
   validates :radius_ft, numericality: {greater_than: 0}, allow_nil: true
   validates :radius_ft, numericality: {less_than_or_equal_to: MAX_RADIUS_FT,
                                        message: "is longer than any center pivot (at most 3,000 ft, 914 m)"}, allow_nil: true
@@ -74,6 +81,16 @@ class Pivot < ApplicationRecord
   after_update :move_open_plantings, if: :saved_change_to_weather_cell_id?
 
   def linear? = kind == "linear"
+
+  # Whether irrigation can be entered as the percent timer's setting: a pivot or linear whose depth at
+  # 100% is known (mirrored by canUsePercent in lib/irrigation.ts)
+  def percent_timer? = TIMER_KINDS.include?(kind) && inches_at_100.present?
+
+  # The inches a percent timer setting puts on over circles (passes, for a linear); nil without a
+  # depth at 100%
+  def inches_at_percent(percent, circles = 1)
+    inches_at_100 * 100 / percent * (circles || 1) if percent_timer? && percent&.positive?
+  end
 
   # What growers call it: "Pivot", "Traveler", "Location"
   def kind_name = KIND_NAMES.fetch(kind, "Irrigation system")
@@ -109,6 +126,7 @@ class Pivot < ApplicationRecord
   def clear_other_shape
     self.radius_ft = self.arc_start_deg = self.arc_end_deg = nil unless kind == "center"
     self.length_ft = self.travel_ft = self.travel_bearing_deg = nil unless linear?
+    self.inches_at_100 = nil unless TIMER_KINDS.include?(kind)
   end
 
   def move_open_plantings

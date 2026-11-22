@@ -76,6 +76,9 @@ export const FIELD_INFO = {
   'pivot.pump_capacity': {
     text: 'The water the system delivers while it runs. With it, you can enter irrigation as the hours it ran, and WISP works out the depth over its fields in season.',
   },
+  'pivot.inches_at_100': {
+    text: "What a circle (or a linear's pass) puts on with the panel's percent timer at 100%, its fastest, from the sprinkler chart. With it you can enter irrigation as the percent you ran at, and WISP works out the inches: depth at 100% × 100 ÷ percent.",
+  },
   'pivot.equipment': {
     text: "The machine's make, model or setup, for your records. For a traveler, use the same name at each field it waters.",
   },
