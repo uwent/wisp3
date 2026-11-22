@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { cellLabel, cellText, cellValue, depthUnitName, irrigationFrom, type DayRow } from './fieldDays'
+import { cellLabel, cellText, cellValue, depthUnitName, type DayRow } from './fieldDays'
 import { units } from './units'
 
 const imperial = units('imperial')
@@ -33,11 +33,8 @@ describe('field day cells', () => {
     expect(cellValue('canopy', 'lots', imperial).ok).toBe(false)
   })
 
-  it('are named by day and say where irrigation came from', () => {
+  it('are named by day', () => {
     expect(cellLabel(day, 'Rain')).toBe('Rain, Wed, Jul 15')
     expect(depthUnitName(metric)).toBe('millimeters')
-    expect(irrigationFrom('pivot', 'traveler')).toBe('from traveler')
-    expect(irrigationFrom('field', 'pivot')).toBe('from field')
-    expect(irrigationFrom('entered', 'pivot')).toBeNull()
   })
 })

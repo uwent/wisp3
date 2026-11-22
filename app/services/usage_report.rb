@@ -92,8 +92,7 @@ class UsageReport
         rain: [field_entries.where.not(rain_in: nil)],
         irrigation: [
           field_entries.where.not(irrigation_in: nil),
-          planting_entries.where.not(irrigation_in: nil),
-          PivotIrrigation.joins(pivot: :farm).where(created_at: season_times, farms: {group_id: groups.select(:id)})
+          planting_entries.where.not(irrigation_in: nil)
         ],
         soil_moisture: [field_entries.where.not(soil_moisture_pct: nil), planting_entries.where.not(soil_moisture_pct: nil)],
         canopy: [CanopyObservation.joins(planting: {pivot: :farm}).where(created_at: season_times, farms: {group_id: groups.select(:id)})]

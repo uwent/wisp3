@@ -1,21 +1,23 @@
 import { addDays, formatDate } from '@/lib/dates'
 import type { PivotKind } from '@/lib/geo'
-import { enteredAsHours, savedAmount } from '@/lib/irrigation'
-import { parseNumber, type ParseResult, type Units } from '@/lib/units'
+import type { Units } from '@/lib/units'
 
 // Daily entry's week view (Phase 9 §6): rain and irrigation for the seven days ending on a date, as
-// one grid per farm (props from DailyEntryWeek). Every cell starts from what's saved; only the cells
-// changed are submitted, under each day's names (days[<date>][fields][<id>][rain_in], the day page's
-// within it), so a cell left alone can't clear anything.
+// one grid per farm (props from DailyEntryWeek). A cell fills the fields under its row that day, as
+// a parent row does on the day page: rain a group's or system's, irrigation a system's (stored per
+// field, D15; the server also sets their plots that had the field's amount). Every cell starts
+// from what's saved (the fields' shared amount, blank when they vary); only the cells changed are
+// submitted, under each day's names (days[<date>][fields][<id>][rain_in], the day page's within
+// it), so a cell left alone can't clear anything.
 
-export type WeekRainDay = {
+export type WeekDay = {
   /** A field in season under the row that day */
   active: boolean
-  /** The fields' common rain, null when blank or when they differ */
+  /** The fields' common amount, null when blank or when they differ */
   value: number | null
   varies: boolean
-  /** The fields typing here fills, with their rain as saved */
-  fields: { id: number; name: string; rain_in: number | null }[]
+  /** The fields typing here fills, with their amounts as saved (irrigation's with the acres the calculator spreads run hours over) */
+  fields: { id: number; name: string; value: number | null; acres?: number | null; plot?: boolean }[]
 }
 export type WeekRainRow = {
   /** "group-3", "pivot-12" */
@@ -26,23 +28,19 @@ export type WeekRainRow = {
   systems?: number
   /** A system's kind ("Pivot") */
   kind_name?: string
-  days: WeekRainDay[]
-}
-export type WeekIrrigation = { inches: number | null; run_hours: number | null; field_ids: number[] | null }
-export type WeekIrrigationDay = {
-  active: boolean
-  irrigation: WeekIrrigation | null
-  /** The fields it was applied to, when only some of those on the system that day */
-  some_fields: string[] | null
+  days: WeekDay[]
 }
 export type WeekIrrigationRow = {
+  /** "pivot-12" */
+  key: string
   id: number
   name: string
   kind: PivotKind
   kind_name: string
-  /** Run hours can be entered (a pump capacity and the fields' areas) */
-  hours: boolean
-  days: WeekIrrigationDay[]
+  /** For the irrigation calculator */
+  pump_capacity_gpm: number | null
+  inches_at_100: number | null
+  days: WeekDay[]
 }
 export type WeekFarm = { id: number; name: string; rain_rows: WeekRainRow[]; irrigation_rows: WeekIrrigationRow[] }
 
@@ -58,44 +56,32 @@ export function weekLabel(start: string, end: string): string {
 export const weekOf = (end: string) => ({ start: addDays(end, -6), end, label: weekLabel(addDays(end, -6), end) })
 
 export const rainKey = (row: WeekRainRow, date: string) => `rain:${row.key}:${date}`
-export const irrigationKey = (row: WeekIrrigationRow, date: string) => `irrigation:${row.id}:${date}`
+export const irrigationKey = (row: WeekIrrigationRow, date: string) => `irrigation:${row.key}:${date}`
 
-/** A system's irrigation unit for the week: the way its latest entry that week was entered, else inches */
-export function defaultHours(row: WeekIrrigationRow): boolean {
-  if (!row.hours) return false
-  const latest = row.days.findLast((day) => day.irrigation !== null)
-  return enteredAsHours(latest?.irrigation)
+/**
+ * A depth as a cell shows it, always to the depth's places (units.digits: "1.00" in, "25.4" mm), as
+ * the day page's boxes do; blank for none
+ */
+export const depthText = (value: number | null, units: Units) =>
+  value === null ? '' : (units.toDisplay('depth', value) as number).toFixed(units.digits('depth'))
+
+/** A cell's text as saved */
+export const cellText = (day: WeekDay, units: Units) => depthText(day.value, units)
+
+/** What's typed, shown to the depth's places once the cell is left; as typed when it can't be read */
+export function settledText(text: string, units: Units): string {
+  const parsed = units.parse('depth', text)
+  return parsed.ok ? depthText(parsed.value, units) : text
 }
-
-/** A rain cell's text as saved */
-export const rainText = (day: WeekRainDay, units: Units) => units.input('depth', day.value)
-
-/** An irrigation cell's text as saved, in inches (the user's depth unit) or run hours */
-export function irrigationText(day: WeekIrrigationDay, byHours: boolean, units: Units): string {
-  const amount = savedAmount(day.irrigation, byHours)
-  if (amount === null) return ''
-  return byHours ? String(amount) : units.input('depth', amount)
-}
-
-/** What's typed in a cell, read: stored inches for depths, hours as typed */
-export const parseCell = (text: string, byHours: boolean, units: Units): ParseResult =>
-  byHours ? parseNumber(text) : units.parse('depth', text)
 
 /** The texts of every cell as saved, by cell key */
-export function savedTexts(
-  farms: WeekFarm[],
-  dates: string[],
-  byHours: Record<number, boolean>,
-  units: Units,
-): Record<string, string> {
+export function savedTexts(farms: WeekFarm[], dates: string[], units: Units): Record<string, string> {
   const texts: Record<string, string> = {}
   for (const farm of farms) {
     for (const row of farm.rain_rows)
-      dates.forEach((date, i) => (texts[rainKey(row, date)] = rainText(row.days[i], units)))
+      dates.forEach((date, i) => (texts[rainKey(row, date)] = cellText(row.days[i], units)))
     for (const row of farm.irrigation_rows)
-      dates.forEach(
-        (date, i) => (texts[irrigationKey(row, date)] = irrigationText(row.days[i], byHours[row.id], units)),
-      )
+      dates.forEach((date, i) => (texts[irrigationKey(row, date)] = cellText(row.days[i], units)))
   }
   return texts
 }
@@ -106,61 +92,48 @@ export type ChangedCell = { key: string; label: string; date: string; varies: bo
 const stored = (value: number | null) => (value === null ? '' : String(value))
 
 /**
- * The cells changed from what's saved, and the hidden inputs that submit them: a rain cell's value
- * for each of its fields; an irrigation cell's inches or run hours (the other blank, so saving one
- * way clears the other, and both blank removes it), with the fields a saved irrigation applies to
- * (not sent means all, PivotIrrigation.normalize_field_ids). A cell that can't be read is left out
- * (its box stops the form submitting).
+ * The cells changed from what's saved, and the hidden inputs that submit them: the cell's value for
+ * each of its fields, as rain_in or irrigation_in. A cell that can't be read is left out (its box
+ * stops the form submitting).
  */
 export function changes(
   farms: WeekFarm[],
   dates: string[],
   texts: Record<string, string>,
-  byHours: Record<number, boolean>,
   units: Units,
 ): { cells: ChangedCell[]; inputs: Input[] } {
   const cells: ChangedCell[] = []
   const inputs: Input[] = []
+  const collect = (key: string, label: string, date: string, day: WeekDay, attribute: string) => {
+    // Left as shown (a saved 0.177 shows 0.18): nothing to send
+    const text = (texts[key] ?? '').trim()
+    if (text === cellText(day, units)) return
+    const parsed = units.parse('depth', text)
+    if (!parsed.ok) return
+    // The same amount typed another way ("0.4" for "0.40") isn't a change; nor is a blank on varied amounts
+    const rounded = parsed.value === null ? null : units.parse('depth', depthText(parsed.value, units))
+    const value = rounded?.ok ? rounded.value : parsed.value
+    if (value === day.value) return
+    cells.push({ key, label, date, varies: day.varies })
+    // A field growing only plots is its plots, each saved as the plot's own (DailyEntryWeek)
+    for (const field of day.fields)
+      inputs.push({
+        name: `days[${date}][${field.plot ? 'plantings' : 'fields'}][${field.id}][${attribute}]`,
+        value: stored(value),
+      })
+  }
   for (const farm of farms) {
-    for (const row of farm.rain_rows) {
-      dates.forEach((date, i) => {
-        const day = row.days[i]
-        const key = rainKey(row, date)
-        const text = (texts[key] ?? '').trim()
-        if (text === rainText(day, units)) return
-        const parsed = parseCell(text, false, units)
-        if (!parsed.ok) return
-        cells.push({ key, label: row.name, date, varies: day.varies })
-        for (const field of day.fields)
-          inputs.push({ name: `days[${date}][fields][${field.id}][rain_in]`, value: stored(parsed.value) })
-      })
-    }
-    for (const row of farm.irrigation_rows) {
-      const hours = byHours[row.id] ?? false
-      dates.forEach((date, i) => {
-        const day = row.days[i]
-        const key = irrigationKey(row, date)
-        const text = (texts[key] ?? '').trim()
-        if (text === irrigationText(day, hours, units)) return
-        const parsed = parseCell(text, hours, units)
-        if (!parsed.ok) return
-        cells.push({ key, label: row.name, date, varies: false })
-        const name = `days[${date}][pivots][${row.id}]`
-        inputs.push({ name: `${name}[inches]`, value: hours ? '' : stored(parsed.value) })
-        inputs.push({ name: `${name}[run_hours]`, value: hours ? stored(parsed.value) : '' })
-        const fieldIds = day.irrigation?.field_ids
-        if (fieldIds && parsed.value !== null) {
-          // The blank first entry keeps the list a list (Rails can't tell an empty one from none sent)
-          inputs.push({ name: `${name}[field_ids][]`, value: '' })
-          for (const id of fieldIds) inputs.push({ name: `${name}[field_ids][]`, value: String(id) })
-        }
-      })
-    }
+    for (const row of farm.rain_rows)
+      dates.forEach((date, i) => collect(rainKey(row, date), row.name, date, row.days[i], 'rain_in'))
+    for (const row of farm.irrigation_rows)
+      dates.forEach((date, i) =>
+        collect(irrigationKey(row, date), `${row.name} irrigation`, date, row.days[i], 'irrigation_in'),
+      )
   }
   return { cells, inputs }
 }
 
-/** "East group, Thu Jul 17" for each changed rain cell whose fields had different amounts */
+/** "East group, Thu Jul 17" for each changed cell whose fields had different amounts */
 export const variedOverwrites = (cells: ChangedCell[]) =>
   cells.filter((cell) => cell.varies).map((cell) => `${cell.label}, ${formatDate(cell.date, { weekday: true })}`)
 
@@ -171,9 +144,9 @@ export function overwriteMessage(cells: ChangedCell[]): string | null {
   return `This replaces different amounts on each field for: ${list.join('; ')}. Save anyway?`
 }
 
-/** A rain cell's fields and their amounts, for its tooltip: "North 0.4 in, South 0.6 in" */
-export const fieldAmounts = (day: WeekRainDay, units: Units) =>
-  day.fields.map((field) => `${field.name} ${units.format('depth', field.rain_in)}`).join(', ')
+/** A cell's fields and their amounts, for its tooltip: "North 0.4 in, South 0.6 in" */
+export const fieldAmounts = (day: WeekDay, units: Units) =>
+  day.fields.map((field) => `${field.name} ${units.format('depth', field.value)}`).join(', ')
 
 export type Cell = { row: number; col: number }
 export type Move = 'up' | 'down' | 'left' | 'right'
@@ -217,8 +190,8 @@ export function nextCell(cells: Cell[], from: Cell, move: Move): Cell | null {
 const firstMessage = (message: string | string[] | undefined) => (Array.isArray(message) ? message[0] : message)
 
 /**
- * The save's errors (keyed days.<date>.fields.<id>.rain_in, days.<date>.pivots.<id>.inches) by the
- * cell they belong to, each with its row and day for the list above Save
+ * The save's errors (keyed days.<date>.fields.<id>.rain_in or .irrigation_in) by the cell they
+ * belong to, each with its row and day for the list above Save
  */
 export function cellErrors(
   farms: WeekFarm[],
@@ -227,23 +200,21 @@ export function cellErrors(
 ): Record<string, { label: string; date: string; message: string }> {
   const found: Record<string, { label: string; date: string; message: string }> = {}
   if (!Object.keys(errors).length) return found
+  const check = (key: string, label: string, date: string, day: WeekDay, attribute: string) => {
+    const message = day.fields
+      .map((field) =>
+        firstMessage(errors[`days.${date}.${field.plot ? 'plantings' : 'fields'}.${field.id}.${attribute}`]),
+      )
+      .find(Boolean)
+    if (message) found[key] = { label, date, message }
+  }
   for (const farm of farms) {
-    for (const row of farm.rain_rows) {
-      dates.forEach((date, i) => {
-        const message = row.days[i].fields
-          .map((field) => firstMessage(errors[`days.${date}.fields.${field.id}.rain_in`]))
-          .find(Boolean)
-        if (message) found[rainKey(row, date)] = { label: `${row.name} rain`, date, message }
-      })
-    }
-    for (const row of farm.irrigation_rows) {
-      dates.forEach((date) => {
-        const message = ['inches', 'run_hours', 'field_ids']
-          .map((attribute) => firstMessage(errors[`days.${date}.pivots.${row.id}.${attribute}`]))
-          .find(Boolean)
-        if (message) found[irrigationKey(row, date)] = { label: `${row.name} irrigation`, date, message }
-      })
-    }
+    for (const row of farm.rain_rows)
+      dates.forEach((date, i) => check(rainKey(row, date), `${row.name} rain`, date, row.days[i], 'rain_in'))
+    for (const row of farm.irrigation_rows)
+      dates.forEach((date, i) =>
+        check(irrigationKey(row, date), `${row.name} irrigation`, date, row.days[i], 'irrigation_in'),
+      )
   }
   return found
 }

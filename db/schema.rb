@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_20_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -161,21 +161,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_140000) do
     t.index ["id", "farm_id"], name: "index_pivot_groups_on_id_and_farm_id", unique: true
   end
 
-  create_table "pivot_irrigations", force: :cascade do |t|
-    t.bigint "pivot_id", null: false
-    t.date "date", null: false
-    t.float "inches"
-    t.float "run_hours"
-    t.bigint "field_ids", array: true
-    t.text "notes"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["pivot_id", "date"], name: "index_pivot_irrigations_on_pivot_id_and_date", unique: true
-    t.check_constraint "inches IS NULL OR inches >= 0::double precision", name: "pivot_irrigations_inches_nonnegative"
-    t.check_constraint "num_nonnulls(inches, run_hours) >= 1", name: "pivot_irrigations_amount"
-    t.check_constraint "run_hours IS NULL OR run_hours >= 0::double precision", name: "pivot_irrigations_run_hours_nonnegative"
-  end
-
   create_table "pivots", force: :cascade do |t|
     t.bigint "farm_id", null: false
     t.string "name", null: false
@@ -195,11 +180,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_140000) do
     t.float "travel_ft"
     t.integer "travel_bearing_deg"
     t.bigint "pivot_group_id"
+    t.float "inches_at_100"
     t.index ["farm_id"], name: "index_pivots_on_farm_id"
     t.index ["pivot_group_id"], name: "index_pivots_on_pivot_group_id"
     t.index ["weather_cell_id"], name: "index_pivots_on_weather_cell_id"
     t.check_constraint "(arc_start_deg IS NULL) = (arc_end_deg IS NULL)", name: "pivots_arc_both_or_neither"
     t.check_constraint "(kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying]::text[])) OR radius_ft IS NULL AND arc_start_deg IS NULL", name: "pivots_point_shape"
+    t.check_constraint "inches_at_100 IS NULL OR (kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying]::text[]))", name: "pivots_inches_at_100_kind"
+    t.check_constraint "inches_at_100 IS NULL OR inches_at_100 > 0::double precision", name: "pivots_inches_at_100_positive"
     t.check_constraint "kind::text <> 'linear'::text OR radius_ft IS NULL AND arc_start_deg IS NULL AND length_ft IS NOT NULL AND travel_ft IS NOT NULL AND travel_bearing_deg IS NOT NULL AND length_ft > 0::double precision AND length_ft <= 3300::double precision AND travel_ft > 0::double precision AND travel_ft <= 5280::double precision AND travel_bearing_deg >= 0 AND travel_bearing_deg <= 179", name: "pivots_linear_shape"
     t.check_constraint "kind::text = 'linear'::text OR length_ft IS NULL AND travel_ft IS NULL AND travel_bearing_deg IS NULL", name: "pivots_center_shape"
     t.check_constraint "kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying, 'traveler'::character varying, 'solid_set'::character varying, 'drip'::character varying, 'point'::character varying]::text[])", name: "pivots_kind"
@@ -443,7 +431,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_140000) do
   add_foreign_key "memberships", "users", on_delete: :cascade
   add_foreign_key "pivot_groups", "farms", on_delete: :cascade
   add_foreign_key "pivot_groups", "users", column: "created_by_id", on_delete: :nullify
-  add_foreign_key "pivot_irrigations", "pivots"
   add_foreign_key "pivots", "farms"
   add_foreign_key "pivots", "pivot_groups", column: ["pivot_group_id", "farm_id"], primary_key: ["id", "farm_id"], name: "pivots_pivot_group_same_farm"
   add_foreign_key "pivots", "weather_cells"

@@ -35,6 +35,15 @@ RSpec.describe "Daily entry's week", type: :request do
   end
 
   describe "saving" do
+    it "saves a plot's irrigation sent for a field growing only plots" do
+      plots = create(:field, pivot:, name: "Plots")
+      plot = create(:planting, field: plots, partial: true, area_acres: 1, season_start: Date.new(2026, 4, 20),
+        emergence_date: Date.new(2026, 5, 10), end_date: Date.new(2026, 9, 30))
+      save({day.iso8601 => {plantings: {plot.id => {irrigation_in: "0.6"}}}})
+      expect(plot.planting_entries.sole).to have_attributes(date: day, irrigation_in: 0.6)
+      expect(plots.field_entries).to be_empty
+    end
+
     it "fills the fields sent with rain, keeping the rest of each field's entry" do
       north.field_entries.create!(date: day, irrigation_in: 0.5, soil_moisture_pct: 20, notes: "Gauge")
       save({day.iso8601 => {fields: {north.id => {rain_in: "0.4"}, south.id => {rain_in: "0.4"}}}})
@@ -44,39 +53,43 @@ RSpec.describe "Daily entry's week", type: :request do
       expect(south.field_entries.sole).to have_attributes(date: day, rain_in: 0.4)
     end
 
-    it "creates, changes and removes irrigation on several days, keeping the fields an entry applies to" do
-      create(:pivot_irrigation, pivot:, date: day, inches: 0.6, field_ids: [north.id])
-      create(:pivot_irrigation, pivot:, date: day + 1, inches: 0.8, notes: "Night")
-      save({day.iso8601 => {pivots: {pivot.id => {inches: "0.7", run_hours: "", field_ids: ["", north.id]}}},
-            (day + 1).iso8601 => {pivots: {pivot.id => {inches: "", run_hours: ""}}},
-            (day + 2).iso8601 => {pivots: {pivot.id => {inches: "1.0", run_hours: ""}}}})
-      irrigations = pivot.pivot_irrigations.order(:date)
-      expect(irrigations.map { |i| [i.date, i.inches, i.field_ids] }).to eq([[day, 0.7, [north.id]], [day + 2, 1.0, nil]])
+    def irrigation(field) = field.field_entries.order(:date).where.not(irrigation_in: nil).map { |e| [e.date, e.irrigation_in] }
+
+    it "creates, changes and removes each field's irrigation on several days, keeping the rest of its entry" do
+      north.field_entries.create!(date: day, irrigation_in: 0.6)
+      south.field_entries.create!(date: day + 1, irrigation_in: 0.8, notes: "Night")
+      save({day.iso8601 => {fields: {north.id => {irrigation_in: "0.7"}}},
+            (day + 1).iso8601 => {fields: {south.id => {irrigation_in: ""}}},
+            (day + 2).iso8601 => {fields: {north.id => {irrigation_in: "1.0"}, south.id => {irrigation_in: "1.0"}}}})
+      expect(irrigation(north)).to eq([[day, 0.7], [day + 2, 1.0]])
+      expect(irrigation(south)).to eq([[day + 2, 1.0]])
+      expect(south.field_entries.find_by(date: day + 1)).to have_attributes(irrigation_in: nil, notes: "Night")
     end
 
-    it "takes run hours, clearing inches" do
-      pivot.update!(pump_capacity_gpm: 800)
-      create(:pivot_irrigation, pivot:, date: day, inches: 0.6)
-      save({day.iso8601 => {pivots: {pivot.id => {inches: "", run_hours: "10"}}}})
-      expect(pivot.pivot_irrigations.sole).to have_attributes(inches: nil, run_hours: 10.0)
+    it "sets a field's plots that had its irrigation" do
+      plotted = create(:field, pivot:, name: "Plots", area_acres: 2)
+      plot = create(:planting, field: plotted, partial: true, area_acres: 0.5, season_start: Date.new(2026, 4, 20),
+        emergence_date: Date.new(2026, 5, 10), end_date: Date.new(2026, 9, 30))
+      save({day.iso8601 => {fields: {plotted.id => {irrigation_in: "0.7"}}}})
+      expect(plot.planting_entries.sole).to have_attributes(date: day, irrigation_in: 0.7)
     end
 
     it "takes planned irrigation ahead of today, but not rain, and saves nothing then" do
       ahead = Date.new(2026, 7, 22)
       save({(day + 3).iso8601 => {fields: {north.id => {rain_in: "0.3"}}},
-            ahead.iso8601 => {fields: {north.id => {rain_in: "0.4"}}, pivots: {pivot.id => {inches: "1.0"}}}}, ahead + 1)
-      expect(FieldEntry.count + PivotIrrigation.count).to eq(0)
+            ahead.iso8601 => {fields: {north.id => {rain_in: "0.4"}, south.id => {irrigation_in: "1.0"}}}}, ahead + 1)
+      expect(FieldEntry.count).to eq(0)
       follow_redirect!
       expect(inertia.props[:errors].keys).to eq(["days.2026-07-22.fields.#{north.id}.rain_in"])
 
-      save({ahead.iso8601 => {pivots: {pivot.id => {inches: "1.0"}}}}, ahead + 1)
-      expect(pivot.pivot_irrigations.sole).to have_attributes(date: ahead, inches: 1.0)
+      save({ahead.iso8601 => {fields: {north.id => {irrigation_in: "1.0"}}}}, ahead + 1)
+      expect(north.field_entries.sole).to have_attributes(date: ahead, irrigation_in: 1.0)
     end
 
     it "keys each error by its day and record" do
-      save({day.iso8601 => {pivots: {pivot.id => {inches: "-1"}}}})
+      save({day.iso8601 => {fields: {north.id => {irrigation_in: "-1"}}}})
       follow_redirect!
-      expect(inertia.props[:errors]).to eq("days.2026-07-15.pivots.#{pivot.id}.inches" => ["Amount must be greater than or equal to 0"])
+      expect(inertia.props[:errors]).to eq("days.2026-07-15.fields.#{north.id}.irrigation_in" => ["Irrigation must be greater than or equal to 0"])
     end
 
     it "refuses a day outside the week" do

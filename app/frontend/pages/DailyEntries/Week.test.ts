@@ -14,8 +14,8 @@ import Week from './Week.svelte'
 
 const dates = ['2026-07-14', '2026-07-15', '2026-07-16', '2026-07-17', '2026-07-18', '2026-07-19', '2026-07-20']
 const fields = [
-  { id: 1, name: 'North', rain_in: null },
-  { id: 2, name: 'South', rain_in: null },
+  { id: 1, name: 'North', value: null },
+  { id: 2, name: 'South', value: null },
 ]
 const farms: WeekFarm[] = [
   {
@@ -34,8 +34,8 @@ const farms: WeekFarm[] = [
                 value: null,
                 varies: true,
                 fields: [
-                  { id: 1, name: 'North', rain_in: 0.4 },
-                  { id: 2, name: 'South', rain_in: 0.6 },
+                  { id: 1, name: 'North', value: 0.4 },
+                  { id: 2, name: 'South', value: 0.6 },
                 ],
               }
             : { active: date !== '2026-07-14', value: null, varies: false, fields },
@@ -44,16 +44,26 @@ const farms: WeekFarm[] = [
     ],
     irrigation_rows: [
       {
+        key: 'pivot-12',
         id: 12,
         name: 'River',
         kind: 'center',
         kind_name: 'Pivot',
-        hours: false,
-        days: dates.map((date) => ({
-          active: true,
-          irrigation: date === '2026-07-15' ? { inches: 0.6, run_hours: null, field_ids: [1] } : null,
-          some_fields: date === '2026-07-15' ? ['North'] : null,
-        })),
+        pump_capacity_gpm: null,
+        inches_at_100: null,
+        days: dates.map((date) =>
+          date === '2026-07-15'
+            ? {
+                active: true,
+                value: null,
+                varies: true,
+                fields: [
+                  { id: 1, name: 'North', value: 0.6 },
+                  { id: 2, name: 'South', value: null },
+                ],
+              }
+            : { active: true, value: null, varies: false, fields },
+        ),
       },
     ],
   },
@@ -79,14 +89,13 @@ describe('the week grid', () => {
     ])
 
     const partial = screen.getByLabelText('River irrigation, Wed, Jul 15')
-    expect(partial).toHaveValue('0.6')
-    expect(partial).toHaveAccessibleDescription('Applied to North only')
+    expect(partial).toHaveValue('')
+    expect(partial).toHaveAttribute('placeholder', 'varies')
     await fireEvent.input(partial, { target: { value: '0.7' } })
+    expect(partial).toHaveAccessibleDescription(/^Replaces different amounts: North 0.60 in, South —$/)
     expect(hidden(container).slice(3)).toEqual([
-      ['days[2026-07-15][pivots][12][inches]', '0.7'],
-      ['days[2026-07-15][pivots][12][run_hours]', ''],
-      ['days[2026-07-15][pivots][12][field_ids][]', ''],
-      ['days[2026-07-15][pivots][12][field_ids][]', '1'],
+      ['days[2026-07-15][fields][1][irrigation_in]', '0.7'],
+      ['days[2026-07-15][fields][2][irrigation_in]', '0.7'],
     ])
   })
 

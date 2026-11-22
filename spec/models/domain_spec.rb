@@ -234,26 +234,6 @@ RSpec.describe "Domain models" do
     end
   end
 
-  describe PivotIrrigation do
-    let(:pivot) { create(:pivot) }
-    let!(:field) { create(:field, pivot:) }
-
-    it "needs inches or run hours" do
-      expect(build(:pivot_irrigation, pivot:, inches: nil)).not_to be_valid
-    end
-
-    it "needs pump capacity and areas to use run hours" do
-      expect(build(:pivot_irrigation, pivot:, inches: nil, run_hours: 8)).not_to be_valid
-      pivot.update!(pump_capacity_gpm: 800)
-      expect(build(:pivot_irrigation, pivot:, inches: nil, run_hours: 8)).to be_valid
-    end
-
-    it "only applies to fields under the pivot" do
-      expect(build(:pivot_irrigation, pivot:, field_ids: [create(:field).id])).not_to be_valid
-      expect(build(:pivot_irrigation, pivot:, field_ids: [field.id])).to be_valid
-    end
-  end
-
   describe Group do
     it "reaches its plantings, and only its own" do
       planting = create(:planting)

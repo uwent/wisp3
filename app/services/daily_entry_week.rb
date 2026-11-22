@@ -3,10 +3,11 @@
 # a system in season any day of the week, then each system in season in no group, as the day page
 # orders them: farmRows in lib/dailyEntry.ts) and irrigation rows (each system in season any day).
 # Per row and day: whether it takes a value (a field in season under it that day; Field#pivot_id_on
-# places a field under the system its season ran on), for rain the fields it fills with their
-# amounts and their common value or "varies", for irrigation that day's PivotIrrigation and whether
-# it applies to only some fields. Fields, plots and canopy readings stay on the day page. Loads
-# everything in a few queries, with none per field or day.
+# places a field under the system its season ran on), and the fields typing there fills with their
+# amounts and their common value or "varies": rain for a group's or system's fields, irrigation for
+# a system's (stored per field, D15; saving a field's also sets its plots that had its amount).
+# Fields, plots and canopy readings stay on the day page. Loads everything in a few queries, with
+# none per field or day.
 class DailyEntryWeek
   DAYS = 7
 
@@ -18,7 +19,7 @@ class DailyEntryWeek
   end
 
   def farms
-    @farms ||= @group.farms.order(:name).includes(:pivot_groups, pivots: [:weather_cell, {fields: :plantings}]).to_a
+    @farms ||= @group.farms.order(:name).includes(:pivot_groups, pivots: [:weather_cell, {fields: {plantings: :plant}}]).to_a
   end
 
   def pivots = farms.flat_map(&:pivots)
@@ -40,42 +41,40 @@ class DailyEntryWeek
     ungrouped = active.reject { |pivot| groups.any? { |_, systems| systems.include?(pivot) } }
 
     rain_rows = groups.map { |pivot_group, systems|
-      rain_row("group-#{pivot_group.id}", pivot_group.name, systems).merge(kind: "group", systems: systems.size)
+      row("group-#{pivot_group.id}", pivot_group.name, systems, :rain_in).merge(kind: "group", systems: systems.size)
     } + ungrouped.map { |pivot|
-      rain_row("pivot-#{pivot.id}", pivot.name, [pivot]).merge(kind: "system", kind_name: pivot.kind_name)
+      row("pivot-#{pivot.id}", pivot.name, [pivot], :rain_in).merge(kind: "system", kind_name: pivot.kind_name)
     }
     {id: farm.id, name: farm.name, rain_rows:,
-     irrigation_rows: (groups.flat_map(&:last) + ungrouped).map { |pivot| irrigation_row(pivot) }}
+     irrigation_rows: (groups.flat_map(&:last) + ungrouped).map do |pivot|
+       row("pivot-#{pivot.id}", pivot.name, [pivot], :irrigation_in).merge(id: pivot.id, kind: pivot.kind, kind_name: pivot.kind_name,
+         # For the irrigation calculator (IrrigationCalculator)
+         pump_capacity_gpm: pivot.pump_capacity_gpm, inches_at_100: pivot.inches_at_100)
+     end}
   end
 
-  def rain_row(key, name, systems)
-    {key:, name:, days: dates.map { |date| rain_day(systems.flat_map { |pivot| growing(pivot, date) }, date) }}
+  # attribute: :rain_in or :irrigation_in; irrigation's fields carry the acres the calculator spreads
+  # run hours over (the whole-field planting's area that day, else the field's). For irrigation, a
+  # field growing only plots that day is its plots (it has nothing of its own to water, as on the day
+  # page), each saved as the plot's own (plot: true)
+  def row(key, name, systems, attribute)
+    {key:, name:, days: dates.map { |date| day(systems.flat_map { |pivot| growing(pivot, date) }, date, attribute) }}
   end
 
-  def rain_day(fields, date)
-    amounts = fields.sort_by(&:name).map do |field|
-      {id: field.id, name: field.name, rain_in: field_entries[[field.id, date]]&.rain_in}
+  def day(fields, date, attribute)
+    amounts = fields.sort_by(&:name).flat_map do |field|
+      value = field_entries[[field.id, date]]&.public_send(attribute)
+      next [{id: field.id, name: field.name, value:}] unless attribute == :irrigation_in
+      plantings = field.plantings_on(date)
+      whole = plantings.find { |planting| !planting.partial? }
+      next [{id: field.id, name: field.name, value:, acres: whole&.area_acres || field.area_acres}] if whole || plantings.empty?
+      plantings.sort_by(&:order_key).map do |plot|
+        {id: plot.id, name: "#{field.name}: #{plot.plant.name}", value: planting_entries[[plot.id, date]]&.irrigation_in,
+         acres: plot.area_acres, plot: true}
+      end
     end
-    values = amounts.map { |amount| amount[:rain_in] }.uniq
-    {active: fields.any?, value: (values.first if values.one?), varies: values.size > 1, fields: amounts}
-  end
-
-  def irrigation_row(pivot)
-    {id: pivot.id, name: pivot.name, kind: pivot.kind, kind_name: pivot.kind_name,
-     # Run hours convert through the pump capacity and the fields' areas (canUseHours in lib/irrigation.ts)
-     hours: pivot.pump_capacity_gpm.present? && pivot.fields.all?(&:area_acres),
-     days: dates.map { |date| irrigation_day(pivot, date) }}
-  end
-
-  def irrigation_day(pivot, date)
-    irrigation = irrigations[[pivot.id, date]]
-    under = on_system(pivot, date)
-    left_out = irrigation&.field_ids ? under.reject { |field| irrigation.field_ids.include?(field.id) } : []
-    applied = under.select { |field| irrigation&.covers?(field.id) }
-    {active: growing(pivot, date).any? || irrigation.present?,
-     irrigation: irrigation&.slice(:inches, :run_hours, :field_ids),
-     # Applied to only some of the fields on the system that day: their names
-     some_fields: (applied.map(&:name) if left_out.any?)}
+    values = amounts.map { |amount| amount[:value] }.uniq
+    {active: fields.any?, value: (values.first if values.size == 1), varies: values.size > 1, fields: amounts}
   end
 
   # The fields under the system on the date (its own, or those whose season there ran on it), by name
@@ -91,8 +90,9 @@ class DailyEntryWeek
 
   def fields = @fields ||= pivots.flat_map(&:fields)
 
-  def irrigations
-    @irrigations ||= PivotIrrigation.where(pivot: pivots, date: dates.first..dates.last).index_by { |irrigation| [irrigation.pivot_id, irrigation.date] }
+  def planting_entries
+    @planting_entries ||= PlantingEntry.where(planting_id: fields.flat_map(&:plantings).map(&:id), date: dates.first..dates.last)
+      .index_by { |entry| [entry.planting_id, entry.date] }
   end
 
   def field_entries

@@ -86,7 +86,7 @@ Rails and tests:
 - **Devise's test `sign_in`** takes effect on the next request; if that request raises (a 404 spec), the session isn't saved, so make a normal request first.
 - **The test environment** records jobs instead of running them (`queue_adapter = :test`), uses a memory cache cleared before each example (rate limits), and `spec/rails_helper.rb` clears `OPEN_METEO_API_KEY` and the reference data (`db:prepare` seeds it into a new test database). Rack::Attack safelists localhost.
 - **`Object#blank?` calls `empty?`** when it exists, so don't define `empty?` on a model (`DailyEntry#nothing_entered?`).
-- **Checkbox lists:** a form with every box unchecked sends nothing, which Rails can't tell from "not sent". The field checkboxes send a blank sentinel (`name="…[field_ids][]" value=""`); `PivotIrrigation.normalize_field_ids` treats `[]` as invalid and "not sent" as all fields.
+- **Checkbox lists:** a form with every box unchecked sends nothing, which Rails can't tell from "not sent". Where that matters, send a blank sentinel first (`name="…[ids][]" value=""`) and drop it with `compact_blank`, so `[]` means none checked and a missing key means not sent.
 - **Active Job logs job arguments**, so mail whose arguments are secrets (the sign-in link's token and code) is sent through `SecretMailDeliveryJob` (`self.delivery_job` in `MagicLinkMailer`).
 - **Zeitwerk:** one constant per file, error classes included (`weather/error.rb`, `transient_error.rb`, `rate_limited.rb`).
 

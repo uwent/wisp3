@@ -50,11 +50,3 @@ export const cellLabel = (day: { date: string }, what: string) => `${what}, ${fo
 
 /** The depth unit in words, for the grids' notes */
 export const depthUnitName = (units: Units) => (units.label('depth') === 'mm' ? 'millimeters' : 'inches')
-
-/** Where a day's irrigation came from, beside it: "from traveler" (its system, by kind), "from field"
- * (a plot's view of its field's), or nothing for one entered there */
-export function irrigationFrom(source: string, noun: string): string | null {
-  if (source === 'pivot') return `from ${noun}`
-  if (source === 'field') return 'from field'
-  return null
-}

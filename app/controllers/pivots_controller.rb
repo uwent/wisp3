@@ -8,17 +8,29 @@ class PivotsController < AuthenticatedController
     pivot = Current.group.pivots.includes(:farm, :weather_cell, fields: [:soil_type, {plantings: :plant}]).find(params[:id])
     year = requested_year
     WeatherCell.keep_current([pivot.weather_cell_id])
-    irrigations = PivotIrrigation.preload_areas(pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(date: :desc))
 
     render inertia: "Pivots/Show", props: {
       pivot: PivotSerializer.new(pivot).to_h,
       farm: {id: pivot.farm.id, name: pivot.farm.name},
       year:,
-      irrigations: PivotIrrigationSerializer.new(irrigations).to_h,
-      # The fields an irrigation on a date can apply to (G.14 part 7: a field moved here or away)
+      # The year's irrigation by date, newest first: each field's amount (D15: stored per field)
+      irrigations: pivot.irrigation_on(Date.new(year).all_year).reverse_each.map do |date, entries|
+        {date:, fields: entries.to_h { |field, entry| [field.id, entry.irrigation_in] }}
+      end,
       field_seasons: pivot.field_seasons,
       **WeatherZone.page_props(Current.group, pivot.weather_cell, forecast: year == Current.today.year)
     }
+  end
+
+  # The pump capacity or depth at 100% set in the irrigation calculator (IrrigationCalculator), back
+  # to the page it was on
+  def equipment
+    pivot = Current.group.pivots.find(params[:id])
+    if pivot.update(params.expect(pivot: [:pump_capacity_gpm, :inches_at_100]))
+      redirect_back_or_to pivot_path(pivot), notice: "Saved #{pivot.name}'s equipment"
+    else
+      redirect_back_or_to pivot_path(pivot), alert: "Couldn't save #{pivot.name}: #{pivot.errors.full_messages.to_sentence}"
+    end
   end
 
   # The weather CSV moved to the pivot's zone (G.12); old links follow it
@@ -73,11 +85,11 @@ class PivotsController < AuthenticatedController
 
   def pivot_params
     params.expect(pivot: [:farm_id, :name, :kind, :latitude, :longitude, :radius_ft, :arc_start_deg, :arc_end_deg,
-      :length_ft, :travel_ft, :travel_bearing_deg, :equipment, :pump_capacity_gpm, :notes, :pivot_group_id])
+      :length_ft, :travel_ft, :travel_bearing_deg, :equipment, :pump_capacity_gpm, :inches_at_100, :notes, :pivot_group_id])
   end
 
   COPIED = %w[farm_id pivot_group_id kind radius_ft arc_start_deg arc_end_deg length_ft travel_ft travel_bearing_deg
-    equipment pump_capacity_gpm].freeze
+    equipment pump_capacity_gpm inches_at_100].freeze
 
   def copy(source)
     Pivot.new(source.attributes.slice(*COPIED).merge("name" => "#{source.name} copy"))

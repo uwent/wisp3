@@ -48,6 +48,24 @@ class Field < ApplicationRecord
     plantings.select { |planting| planting.season_range.cover?(date) }
   end
 
+  # Records the field's entry for date (FieldEntry.record, values: any of DailyEntry::VALUES) and,
+  # when its irrigation changes, makes the same change on each plot in season that day that had the
+  # field's amount (D15: a plot's irrigation is its own, and one that had the field's follows it).
+  # plots_sent: plots whose own values the same save sets (daily entry's plot rows), left alone.
+  # Returns the field's entry; check its errors.
+  def record_entry(date, values, plots_sent: [])
+    values = values.to_h.symbolize_keys
+    before = field_entries.find_by(date:)&.irrigation_in
+    entry = FieldEntry.record(field_entries, date, values)
+    return entry if entry.errors.any? || !values.key?(:irrigation_in) || entry.irrigation_in == before
+
+    plantings_on(date).select { |planting| planting.partial? && plots_sent.exclude?(planting.id) }.each do |plot|
+      next unless plot.planting_entries.find_by(date:)&.irrigation_in == before
+      PlantingEntry.record(plot.planting_entries, date, irrigation_in: entry.irrigation_in)
+    end
+    entry
+  end
+
   # The irrigation system the field was on that day: its planting's (a season keeps the system it
   # ran on, G.14 part 7), else, with nothing planted, the one it's on now
   def pivot_id_on(date) = planting_on(date)&.pivot_id || pivot_id

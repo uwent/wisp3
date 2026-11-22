@@ -920,7 +920,7 @@ test("a new whole-field planting offers the system's other fields free for its d
 // Mid-season, so the demo's fields are in season whatever today's date (in November they're collapsed)
 const midSeason = `/daily?date=${new Date().getFullYear()}-07-15`
 
-test('daily entry saves rain for a field', { tag: '@phone' }, async ({ page }) => {
+test("daily entry saves an irrigation system's rain", { tag: '@phone' }, async ({ page }) => {
   // The phone project runs beside the desktop one (two workers): its own day, so the desktop tests
   // on July 15 never see its rain
   await page.goto(test.info().project.name === 'phone' ? midSeason.replace('-07-15', '-07-10') : midSeason)
@@ -928,7 +928,8 @@ test('daily entry saves rain for a field', { tag: '@phone' }, async ({ page }) =
   await rain.fill('0.3')
   await page.getByRole('button', { name: /^Save / }).click()
   await expect(page.getByText(/^Saved /)).toBeVisible()
-  await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('0.3')
+  // Depths show two places (NumberField's precision)
+  await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('0.30')
 
   await page
     .getByLabel(/^Rain on /)
@@ -943,16 +944,17 @@ test('daily entry saves rain for a field', { tag: '@phone' }, async ({ page }) =
   await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('')
 })
 
-test("daily entry fills an irrigation group's rain into its fields, and saves a plot's irrigation and a cover reading", async ({
+test("daily entry fills an irrigation group's rain into its systems, and saves a plot's irrigation and a cover reading", async ({
   page,
 }) => {
   await page.goto(midSeason)
-  const rain = (field: string) => page.getByLabel(`Rain on ${field}`, { exact: true })
-  const gauge = page.getByLabel(`Rain for all fields in ${DEMO.gauge}`)
+  // Rain is entered on group and system rows (D15); a system named as its field (hayField's traveler)
+  const rain = (row: string) => page.getByLabel(`Rain on ${row}`, { exact: true })
+  const gauge = rain(DEMO.gauge)
   await gauge.fill('0.4')
-  await expect(rain(DEMO.hayField)).toHaveValue('0.4')
-  await expect(rain(DEMO.gaugeField)).toHaveValue('0.4')
-  await rain(DEMO.gaugeField).fill('0.5')
+  await expect(rain(DEMO.hayField)).toHaveValue('0.40')
+  await expect(rain(DEMO.gaugeFieldSystem)).toHaveValue('0.40')
+  await rain(DEMO.gaugeFieldSystem).fill('0.5')
   await expect(gauge).toHaveValue('')
   await expect(gauge).toHaveAttribute('placeholder', 'varies')
 
@@ -966,9 +968,10 @@ test("daily entry fills an irrigation group's rain into its fields, and saves a 
   await cover.fill('30')
   await page.getByRole('button', { name: /^Save / }).click()
   await expect(page.getByText(/^Saved /)).toBeVisible()
-  await expect(rain(DEMO.hayField)).toHaveValue('0.4')
-  await expect(rain(DEMO.gaugeField)).toHaveValue('0.5')
-  await expect(drip).toHaveValue('0.3')
+  await expect(rain(DEMO.hayField)).toHaveValue('0.40')
+  await expect(rain(DEMO.gaugeFieldSystem)).toHaveValue('0.50')
+  await expect(gauge).toHaveAttribute('placeholder', 'varies')
+  await expect(drip).toHaveValue('0.30')
   await expect(cover).toHaveValue('30')
 
   // Collapsing the group is remembered
@@ -978,15 +981,24 @@ test("daily entry fills an irrigation group's rain into its fields, and saves a 
   await expect(rain(DEMO.hayField)).toBeHidden()
   await page.getByRole('button', { name: `Irrigation systems in ${DEMO.gauge}` }).click()
 
-  // Leave the day as it was for other tests: one value from the group, then clear it from there
-  await gauge.fill('0.4')
-  await expect(rain(DEMO.gaugeField)).toHaveValue('0.4')
+  // Typing over varied rain and clearing it again puts each system's back
+  await gauge.fill('0.7')
+  await expect(rain(DEMO.gaugeFieldSystem)).toHaveValue('0.70')
   await gauge.fill('')
+  await expect(rain(DEMO.gaugeFieldSystem)).toHaveValue('0.50')
+  await expect(rain(DEMO.hayField)).toHaveValue('0.40')
+
+  // Leave the day as it was for other tests: one value from the group, saved, then cleared from there
+  await gauge.fill('0.4')
   await drip.fill('')
   await cover.fill('')
   await page.getByRole('button', { name: /^Save / }).click()
   await expect(page.getByText(/^Saved /)).toBeVisible()
-  await expect(rain(DEMO.gaugeField)).toHaveValue('')
+  await expect(rain(DEMO.gaugeFieldSystem)).toHaveValue('0.40')
+  await gauge.fill('')
+  await page.getByRole('button', { name: /^Save / }).click()
+  await expect(page.getByText(/^Saved /)).toBeVisible()
+  await expect(rain(DEMO.gaugeFieldSystem)).toHaveValue('')
 })
 
 test("daily entry offers the day before's irrigation, filled in only when chosen", async ({ page }) => {
@@ -994,11 +1006,33 @@ test("daily entry offers the day before's irrigation, filled in only when chosen
   await page.goto(midSeason.replace('-07-15', '-07-20'))
   const amount = page.getByLabel(`Irrigation by ${DEMO.otherPivot}`, { exact: true })
   await expect(amount).toHaveValue('')
-  await expect(amount).toHaveAttribute('placeholder', '0.8 day before')
   const same = page.getByRole('button', { name: `Same as the day before for ${DEMO.otherPivot}` })
   await same.click()
-  await expect(amount).toHaveValue('0.8')
+  await expect(amount).toHaveValue('0.80')
   await expect(same).toBeHidden()
+})
+
+test("daily entry's calculator works out a system's irrigation and fills its fields", async ({ page }) => {
+  await page.goto(midSeason)
+  await page.getByRole('button', { name: `Work out ${DEMO.splitPivot}'s irrigation` }).click()
+  const dialog = page.getByRole('dialog', {
+    name: new RegExp(`^Irrigation for ${literal(DEMO.splitPivot)} on Jul 15$`),
+  })
+  // The demo's split pivot puts on 0.17 in a circle at 100%: at 20%, 0.85 in
+  await dialog.getByRole('radio', { name: '% timer' }).check({ force: true })
+  await expect(dialog.getByLabel('Depth at 100%')).toHaveAttribute('placeholder', '0.17')
+  await dialog.getByLabel('Timer', { exact: true }).fill('20')
+  await expect(dialog.getByText('0.85 in')).toBeVisible()
+  await dialog.getByRole('radio', { name: 'Specific fields' }).check()
+  await dialog.getByRole('checkbox', { name: DEMO.splitEast }).uncheck()
+  await dialog.getByRole('button', { name: 'Apply to 1 field' }).click()
+
+  await expect(page.getByLabel(`Irrigation on ${DEMO.splitWest}`, { exact: true })).toHaveValue('0.85')
+  await expect(page.getByLabel(`Irrigation on ${DEMO.splitEast}`, { exact: true })).toHaveValue('')
+  await expect(page.getByLabel(`Irrigation by ${DEMO.splitPivot}`, { exact: true })).toHaveAttribute(
+    'placeholder',
+    'varies',
+  )
 })
 
 test('daily entry asks before changing the date with unsaved values', async ({ page }) => {
@@ -1016,9 +1050,10 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
     return dialog.dismiss()
   })
   await page.getByRole('button', { name: 'Previous day' }).click()
-  expect(message).toMatch(/^You have unsaved changes:\n\n• Rain on .+: 0\.2 in\n/)
+  // Leaving the box shows it to two places
+  expect(message).toMatch(/^You have unsaved changes:\n\n• Rain on .+: 0\.20? in\n/)
   await expect(page.getByLabel('Date', { exact: true })).toHaveValue(date)
-  await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('0.2')
+  await expect(page.getByLabel(/^Rain on /).first()).toHaveValue('0.20')
 
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Previous day' }).click()
@@ -1028,7 +1063,7 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
 // Late August: a week no other test enters or reads (the desktop project only)
 const lateAugust = `/daily/week?date=${new Date().getFullYear()}-08-30`
 const weekCell = (row: string, kind: 'rain' | 'irrigation', day: string) =>
-  new RegExp(`^${literal(row)} ${kind}(?: \\(hours\\))?, \\w{3}, ${day}$`)
+  new RegExp(`^${literal(row)} ${kind}, \\w{3}, ${day}$`)
 
 test("daily entry's week saves rain for a group's fields and a system's irrigation, and asks before replacing varied rain", async ({
   page,
@@ -1042,17 +1077,17 @@ test("daily entry's week saves rain for a group's fields and a system's irrigati
   await irrigation.fill('0.5')
   await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
   await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
-  await expect(rain).toHaveValue('0.4')
-  await expect(irrigation).toHaveValue('0.5')
+  await expect(rain).toHaveValue('0.40')
+  await expect(irrigation).toHaveValue('0.50')
 
-  // The date links to the day, where the group's fields have the rain; one changed there
+  // The date links to the day, where the group's systems have the rain; one changed there
   await page
     .getByRole('link', { name: /Aug 25/ })
     .first()
     .click()
-  const field = page.getByLabel(`Rain on ${DEMO.gaugeField}`, { exact: true })
-  await expect(field).toHaveValue('0.4')
-  await field.fill('0.6')
+  const system = page.getByLabel(`Rain on ${DEMO.gaugeFieldSystem}`, { exact: true })
+  await expect(system).toHaveValue('0.40')
+  await system.fill('0.6')
   await page.getByRole('button', { name: /^Save / }).click()
   await expect(page.getByText(/^Saved /)).toBeVisible()
 
@@ -1074,13 +1109,13 @@ test("daily entry's week saves rain for a group's fields and a system's irrigati
         `^This replaces different amounts on each field for: ${literal(DEMO.gauge)}, \\w{3}, Aug 25\\. Save anyway\\?$`,
       ),
     )
-  await expect(rain).toHaveValue('0.3')
+  await expect(rain).toHaveValue('0.30')
 
   // Saved anyway, every field has it again
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
   await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
-  await expect(rain).toHaveValue('0.3')
+  await expect(rain).toHaveValue('0.30')
   await expect(rain).toHaveAttribute('placeholder', '')
 
   // Cleared for the next run (a blank box on varied rain would leave the fields' amounts as they are)
@@ -1147,7 +1182,7 @@ test('a dialog asks before dropping changes, listing them (G.13)', async ({ page
   await expect(dialog).toBeHidden()
 })
 
-test('adding a pivot irrigation on a date that has one offers to edit it instead', async ({ page }) => {
+test("adding a system's irrigation on a date that has one offers to edit it instead", async ({ page }) => {
   await page.goto(await firstPlantingPath(page))
   await page.locator('main a[href*="/pivots/"]').first().click()
 
@@ -1158,11 +1193,14 @@ test('adding a pivot irrigation on a date that has one offers to edit it instead
 
   await page.getByRole('button', { name: 'Edit that one instead' }).click()
   await expect(page.getByRole('heading', { name: /^Edit / })).toBeVisible()
-  await expect(page.getByLabel('Amount')).toHaveValue('0.4')
+  await expect(page.getByLabel('Amount')).toHaveValue('0.40')
 
+  // Deleted (the newest row, today's), the list is one day shorter
+  const rows = page.locator('main table tbody tr')
+  const before = await rows.count()
   page.once('dialog', (dialog) => dialog.accept())
-  await page.locator('main table tbody tr').first().getByRole('button', { name: 'Delete' }).click()
-  await expect(page.getByText(/No irrigation entered/)).toBeVisible()
+  await rows.first().getByRole('button', { name: 'Delete' }).click()
+  await expect(rows).toHaveCount(before - 1)
 })
 
 test('the weather charts follow the page width without overlapping', async ({ page }) => {

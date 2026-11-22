@@ -25,7 +25,7 @@ RSpec.describe SeasonReportCsv do
       pivot.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: 0.1, tmax_f: 80, tmin_f: 60, tmean_f: 70,
         model: "m", hours: 24, fetched_at: Time.current)
     end
-    pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 3), inches: 0.6)
+    [east, west].each { |field| field.field_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.6) }
     east.field_entries.create!(date: Date.new(2026, 7, 5), irrigation_in: 0.4)
     create(:planting, field: create(:field, pivot:), season_start: Date.new(2025, 5, 1), emergence_date: Date.new(2025, 5, 15),
       end_date: Date.new(2025, 9, 30)) # another season

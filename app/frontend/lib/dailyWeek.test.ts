@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import {
   cellErrors,
   changes,
-  defaultHours,
   irrigationKey,
   keyMove,
   leavesBox,
@@ -11,11 +10,11 @@ import {
   overwriteMessage,
   rainKey,
   savedTexts,
+  settledText,
   weekLabel,
+  type WeekDay,
   type WeekFarm,
-  type WeekIrrigationDay,
   type WeekIrrigationRow,
-  type WeekRainDay,
   type WeekRainRow,
 } from './dailyWeek'
 import { units } from './units'
@@ -24,21 +23,22 @@ const imperial = units('imperial')
 const metric = units('metric')
 const dates = ['2026-07-14', '2026-07-15', '2026-07-16']
 
-const rainDay = (values: Partial<WeekRainDay> = {}): WeekRainDay => ({
+const weekDay = (values: Partial<WeekDay> = {}): WeekDay => ({
   active: true,
   value: null,
   varies: false,
   fields: [
-    { id: 1, name: 'North', rain_in: null },
-    { id: 2, name: 'South', rain_in: null },
+    { id: 1, name: 'North', value: null },
+    { id: 2, name: 'South', value: null },
   ],
   ...values,
 })
-const irrigationDay = (values: Partial<WeekIrrigationDay> = {}): WeekIrrigationDay => ({
-  active: true,
-  irrigation: null,
-  some_fields: null,
-  ...values,
+const varied = weekDay({
+  varies: true,
+  fields: [
+    { id: 1, name: 'North', value: 0.4 },
+    { id: 2, name: 'South', value: 0.6 },
+  ],
 })
 
 const rainRow: WeekRainRow = {
@@ -46,35 +46,33 @@ const rainRow: WeekRainRow = {
   name: 'East',
   kind: 'group',
   systems: 2,
-  days: [
-    rainDay(),
-    rainDay({ value: 0.4, fields: [{ id: 1, name: 'North', rain_in: 0.4 }] }),
-    rainDay({
-      varies: true,
-      fields: [
-        { id: 1, name: 'North', rain_in: 0.4 },
-        { id: 2, name: 'South', rain_in: 0.6 },
-      ],
-    }),
-  ],
+  days: [weekDay(), weekDay({ value: 0.4, fields: [{ id: 1, name: 'North', value: 0.4 }] }), varied],
 }
 const irrigationRow: WeekIrrigationRow = {
+  key: 'pivot-12',
   id: 12,
   name: 'River',
   kind: 'center',
   kind_name: 'Pivot',
-  hours: true,
+  pump_capacity_gpm: null,
+  inches_at_100: null,
   days: [
-    irrigationDay({ irrigation: { inches: 0.8, run_hours: null, field_ids: null } }),
-    irrigationDay({ irrigation: { inches: 0.6, run_hours: null, field_ids: [1] }, some_fields: ['North'] }),
-    irrigationDay(),
+    weekDay({
+      value: 0.8,
+      fields: [
+        { id: 1, name: 'North', value: 0.8 },
+        { id: 2, name: 'South', value: 0.8 },
+      ],
+    }),
+    varied,
+    weekDay(),
   ],
 }
 const farms: WeekFarm[] = [{ id: 1, name: 'Home', rain_rows: [rainRow], irrigation_rows: [irrigationRow] }]
 
-function edit(edits: Record<string, string>, byHours = { 12: false }, u = imperial) {
-  const texts = { ...savedTexts(farms, dates, byHours, u), ...edits }
-  return changes(farms, dates, texts, byHours, u)
+function edit(edits: Record<string, string>, u = imperial) {
+  const texts = { ...savedTexts(farms, dates, u), ...edits }
+  return changes(farms, dates, texts, u)
 }
 
 describe('weekLabel', () => {
@@ -82,22 +80,6 @@ describe('weekLabel', () => {
     expect(weekLabel('2026-07-14', '2026-07-20')).toBe('Jul 14–20')
     expect(weekLabel('2026-06-28', '2026-07-04')).toBe('Jun 28–Jul 4')
     expect(weekLabel('2025-12-29', '2026-01-04')).toBe('Dec 29, 2025–Jan 4, 2026')
-  })
-})
-
-describe('defaultHours', () => {
-  it("takes the unit of the week's latest entry, and inches when run hours can't be used", () => {
-    const row = (hours: boolean, ...irrigations: WeekIrrigationDay['irrigation'][]) => ({
-      ...irrigationRow,
-      hours,
-      days: irrigations.map((irrigation) => irrigationDay({ irrigation })),
-    })
-    const byHours = { inches: null, run_hours: 6, field_ids: null }
-    const byInches = { inches: 0.8, run_hours: null, field_ids: null }
-    expect(defaultHours(row(true, byInches, byHours, null))).toBe(true)
-    expect(defaultHours(row(true, byHours, byInches))).toBe(false)
-    expect(defaultHours(row(true, null))).toBe(false)
-    expect(defaultHours(row(false, byHours))).toBe(false)
   })
 })
 
@@ -113,10 +95,8 @@ describe('changes', () => {
       { name: 'days[2026-07-14][fields][1][rain_in]', value: '0.5' },
       { name: 'days[2026-07-14][fields][2][rain_in]', value: '0.5' },
     ])
-    const mm = savedTexts(farms, dates, { 12: false }, metric)
-    expect(
-      changes(farms, dates, { ...mm, [rainKey(rainRow, dates[0])]: '25.4' }, { 12: false }, metric).inputs[0],
-    ).toEqual({
+    const mm = savedTexts(farms, dates, metric)
+    expect(changes(farms, dates, { ...mm, [rainKey(rainRow, dates[0])]: '25.4' }, metric).inputs[0]).toEqual({
       name: 'days[2026-07-14][fields][1][rain_in]',
       value: '1',
     })
@@ -131,30 +111,47 @@ describe('changes', () => {
     ])
   })
 
-  it('sends a new irrigation for all fields, and keeps the fields a saved one applies to', () => {
+  it("fills an irrigation cell's fields, clears them, and marks one that had different amounts", () => {
     expect(edit({ [irrigationKey(irrigationRow, dates[2])]: '1' }).inputs).toEqual([
-      { name: 'days[2026-07-16][pivots][12][inches]', value: '1' },
-      { name: 'days[2026-07-16][pivots][12][run_hours]', value: '' },
+      { name: 'days[2026-07-16][fields][1][irrigation_in]', value: '1' },
+      { name: 'days[2026-07-16][fields][2][irrigation_in]', value: '1' },
     ])
-    expect(edit({ [irrigationKey(irrigationRow, dates[1])]: '0.7' }).inputs).toEqual([
-      { name: 'days[2026-07-15][pivots][12][inches]', value: '0.7' },
-      { name: 'days[2026-07-15][pivots][12][run_hours]', value: '' },
-      { name: 'days[2026-07-15][pivots][12][field_ids][]', value: '' },
-      { name: 'days[2026-07-15][pivots][12][field_ids][]', value: '1' },
+    expect(edit({ [irrigationKey(irrigationRow, dates[0])]: '' }).inputs).toEqual([
+      { name: 'days[2026-07-14][fields][1][irrigation_in]', value: '' },
+      { name: 'days[2026-07-14][fields][2][irrigation_in]', value: '' },
+    ])
+    expect(edit({ [irrigationKey(irrigationRow, dates[1])]: '0.7' }).cells).toEqual([
+      { key: irrigationKey(irrigationRow, dates[1]), label: 'River irrigation', date: dates[1], varies: true },
     ])
   })
 
-  it('removes an irrigation cleared, and sends run hours in the hours unit', () => {
-    expect(edit({ [irrigationKey(irrigationRow, dates[0])]: '' }).inputs).toEqual([
-      { name: 'days[2026-07-14][pivots][12][inches]', value: '' },
-      { name: 'days[2026-07-14][pivots][12][run_hours]', value: '' },
-    ])
-    // In hours, a day saved in inches starts blank: left alone, it's kept
-    expect(edit({}, { 12: true }).inputs).toEqual([])
-    expect(edit({ [irrigationKey(irrigationRow, dates[0])]: '6' }, { 12: true }).inputs).toEqual([
-      { name: 'days[2026-07-14][pivots][12][inches]', value: '' },
-      { name: 'days[2026-07-14][pivots][12][run_hours]', value: '6' },
-    ])
+  it("starts a varied cell blank, so leaving it keeps each field's amount", () => {
+    expect(savedTexts(farms, dates, imperial)[irrigationKey(irrigationRow, dates[1])]).toBe('')
+    expect(savedTexts(farms, dates, imperial)[irrigationKey(irrigationRow, dates[0])]).toBe('0.80')
+  })
+
+  it('shows two decimal places, and sends nothing for the same amount typed another way', () => {
+    expect(settledText('1', imperial)).toBe('1.00')
+    expect(settledText('0.456', imperial)).toBe('0.46')
+    expect(settledText('', imperial)).toBe('')
+    expect(settledText('lots', imperial)).toBe('lots')
+    // Millimeters to one place
+    expect(settledText('25.44', metric)).toBe('25.4')
+    expect(savedTexts(farms, dates, metric)[irrigationKey(irrigationRow, dates[0])]).toBe('20.3')
+    expect(edit({ [irrigationKey(irrigationRow, dates[0])]: '0.8' }).inputs).toEqual([])
+    // Typed with more places, it's sent as shown
+    expect(edit({ [irrigationKey(irrigationRow, dates[2])]: '0.456' }).inputs[0]).toEqual({
+      name: 'days[2026-07-16][fields][1][irrigation_in]',
+      value: '0.46',
+    })
+  })
+
+  it('leaves alone a saved amount with more places than it shows', () => {
+    const precise = { ...irrigationRow, days: [weekDay({ value: 0.177 }), weekDay(), weekDay()] }
+    const week: WeekFarm[] = [{ id: 1, name: 'Home', rain_rows: [], irrigation_rows: [precise] }]
+    const texts = savedTexts(week, dates, imperial)
+    expect(texts[irrigationKey(precise, dates[0])]).toBe('0.18')
+    expect(changes(week, dates, texts, imperial).inputs).toEqual([])
   })
 
   it("leaves out a cell that can't be read", () => {
@@ -175,7 +172,7 @@ describe('cellErrors', () => {
   it("puts each error at its cell, a rain error at the row's cell", () => {
     const found = cellErrors(farms, dates, {
       'days.2026-07-15.fields.1.rain_in': ["can't be entered for a future date"],
-      'days.2026-07-16.pivots.12.run_hours': 'can be used only when…',
+      'days.2026-07-16.fields.2.irrigation_in': 'must be greater than or equal to 0',
     })
     expect(found).toEqual({
       [rainKey(rainRow, dates[1])]: {
@@ -186,7 +183,7 @@ describe('cellErrors', () => {
       [irrigationKey(irrigationRow, dates[2])]: {
         label: 'River irrigation',
         date: dates[2],
-        message: 'can be used only when…',
+        message: 'must be greater than or equal to 0',
       },
     })
   })

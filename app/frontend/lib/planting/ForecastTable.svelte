@@ -2,7 +2,7 @@
   import CollapsibleSection from '@/lib/components/CollapsibleSection.svelte'
   import EditableCell from '@/lib/components/EditableCell.svelte'
   import { formatDate } from '@/lib/dates'
-  import { cellLabel, cellText, depthUnitName, irrigationFrom, type DayColumn } from '@/lib/fieldDays'
+  import { cellLabel, cellText, depthUnitName, type DayColumn } from '@/lib/fieldDays'
   import type { Units } from '@/lib/units'
   import type { FieldDay, PlantingSummary } from '@/types/serializers'
 
@@ -109,9 +109,6 @@
                   {#if day.irrigation_source === 'none'}<span class="text-ink-muted">–</span>
                   {:else}
                     <span class="font-medium">{depth(day.irrigation)}</span>
-                    {#if day.irrigation_source !== 'entered'}<span class="block text-xs text-ink-muted"
-                        >{irrigationFrom(day.irrigation_source, noun)}</span
-                      >{/if}
                   {/if}
                 </EditableCell>
               </td>

@@ -141,15 +141,14 @@ RSpec.describe "Part-field plantings" do
       field.field_entries.create!(date: dates[0], irrigation_in: 0.5, soil_moisture_pct: 12)
       field.field_entries.create!(date: dates[1], irrigation_in: 0.5, rain_in: 0.2)
       part.planting_entries.create!(date: dates[1], irrigation_in: 0.25, soil_moisture_pct: 9)
-      pivot.pivot_irrigations.create!(date: dates[2], inches: 0.7)
     end
 
-    it "come before the field's irrigation, take the field's as :field, and the pivot's after" do
+    it "are the plot's only irrigation, never the field's (D15)" do
       [false, true].each do |preload|
         inputs = days(part, preload:)
-        expect(inputs[dates[0]]).to have_attributes(irrigation: 0.5, irrigation_source: :field)
+        expect(inputs[dates[0]]).to have_attributes(irrigation: 0.0, irrigation_source: :none)
         expect(inputs[dates[1]]).to have_attributes(irrigation: 0.25, irrigation_source: :entered, rain: 0.2)
-        expect(inputs[dates[2]]).to have_attributes(irrigation: 0.7, irrigation_source: :pivot)
+        expect(inputs[dates[2]]).to have_attributes(irrigation: 0.0, irrigation_source: :none)
       end
     end
 
@@ -161,7 +160,7 @@ RSpec.describe "Part-field plantings" do
 
     it "leave the field's other plantings and a whole-field planting as before" do
       other = plot(length: 50)
-      expect(days(other)[dates[1]]).to have_attributes(irrigation: 0.5, irrigation_source: :field)
+      expect(days(other)[dates[1]]).to have_attributes(irrigation: 0.0, irrigation_source: :none)
       whole_field = create(:field, pivot:)
       whole = create(:planting, field: whole_field, **season)
       whole_field.field_entries.create!(date: dates[0], irrigation_in: 0.5, soil_moisture_pct: 12)
@@ -181,9 +180,62 @@ RSpec.describe "Part-field plantings" do
     end
   end
 
-  it "counts a field growing only plots at its whole area for run hours" do
-    plot
-    irrigation = create(:pivot_irrigation, pivot:, date: Date.new(2026, 6, 1), inches: nil, run_hours: 10)
-    expect(irrigation.irrigated_acres).to eq(10)
+  describe "Field#record_entry (D15: a plot that had the field's irrigation follows it)" do
+    let(:date) { Date.new(2026, 6, 10) }
+    let!(:following) { plot }
+    let!(:own) { plot(length: 50) }
+
+    def irrigation(planting) = planting.planting_entries.find_by(date:)&.irrigation_in
+
+    it "sets plots with no irrigation of their own when the field had none" do
+      entry = field.record_entry(date, {irrigation_in: 0.6})
+      expect(entry).to be_persisted
+      expect([irrigation(following), irrigation(own)]).to eq([0.6, 0.6])
+    end
+
+    it "changes plots that had the field's amount, and leaves one with its own" do
+      field.record_entry(date, {irrigation_in: 0.6})
+      own.planting_entries.find_by(date:).update!(irrigation_in: 0.4)
+      field.record_entry(date, {irrigation_in: 0.8})
+      expect([irrigation(following), irrigation(own)]).to eq([0.8, 0.4])
+      field.record_entry(date, {irrigation_in: nil})
+      expect(field.field_entries.find_by(date:)).to be_nil
+      expect(following.planting_entries.find_by(date:)).to be_nil # nothing left in it
+      expect(irrigation(own)).to eq(0.4)
+    end
+
+    it "keeps a plot's other values when its irrigation follows" do
+      following.planting_entries.create!(date:, soil_moisture_pct: 11)
+      field.record_entry(date, {irrigation_in: 0.5})
+      expect(following.planting_entries.find_by(date:)).to have_attributes(irrigation_in: 0.5, soil_moisture_pct: 11)
+    end
+
+    it "leaves plots alone when the irrigation doesn't change or isn't sent" do
+      field.record_entry(date, {irrigation_in: 0.6})
+      following.planting_entries.find_by(date:).update!(irrigation_in: 0.3)
+      field.record_entry(date, {irrigation_in: 0.6, rain_in: 0.2})
+      field.record_entry(date, {rain_in: 0.4})
+      expect(irrigation(following)).to eq(0.3)
+      expect(field.field_entries.find_by(date:)).to have_attributes(irrigation_in: 0.6, rain_in: 0.4)
+    end
+
+    it "skips the plots the same save sets" do
+      field.record_entry(date, {irrigation_in: 0.6}, plots_sent: [own.id])
+      expect([irrigation(following), irrigation(own)]).to eq([0.6, nil])
+    end
+
+    it "leaves plots out of season that day untouched" do
+      later = create(:planting, field:, partial: true, area_acres: 1, season_start: Date.new(2026, 6, 20),
+        emergence_date: Date.new(2026, 6, 28), end_date: Date.new(2026, 9, 30))
+      field.record_entry(date, {irrigation_in: 0.6})
+      expect(later.planting_entries).to be_empty
+      expect(irrigation(following)).to eq(0.6)
+    end
+
+    it "returns an invalid entry without touching plots" do
+      entry = field.record_entry(date, {irrigation_in: -1})
+      expect(entry.errors).to be_present
+      expect(irrigation(following)).to be_nil
+    end
   end
 end

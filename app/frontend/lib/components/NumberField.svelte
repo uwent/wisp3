@@ -21,6 +21,9 @@
     scale = 1,
     hideLabel = false,
     optional = false,
+    trailing,
+    center = false,
+    precision,
     blankValue = null,
     submitBlankValue = false,
     after,
@@ -47,6 +50,15 @@
     hideLabel?: boolean
     /** Beside the box, after its unit (a button that fills it) */
     after?: Snippet
+    /** Inside the end of the box (a small icon button: the irrigation calculator) */
+    trailing?: Snippet
+    /** The value centered in the box, as in a table's cells */
+    center?: boolean
+    /**
+     * Decimal places always shown, in the units shown ("1" reads "1.00" once the box is left); what's
+     * typed is rounded to them, so what's saved is what's seen. Omit to show values as typed.
+     */
+    precision?: number
     /** Says "Optional" by the label */
     optional?: boolean
     /** The stored value a blank box stands for (a default), shown as its placeholder and in change lists */
@@ -57,8 +69,12 @@
   } = $props()
 
   const units = $derived(currentUnits())
-  const show = (stored: number | null) =>
-    quantity ? units.input(quantity, stored) : stored === null ? '' : String(Number((stored * scale).toFixed(6)))
+  const shown = (stored: number) => (quantity ? units.toDisplay(quantity, stored) : stored * scale) as number
+  const show = (stored: number | null) => {
+    if (precision !== undefined && stored !== null) return shown(stored).toFixed(precision)
+    return quantity ? units.input(quantity, stored) : stored === null ? '' : String(Number((stored * scale).toFixed(6)))
+  }
+  const toStored = (display: number) => (quantity ? units.toStored(quantity, display) : display / scale)
 
   let text = $state(untrack(() => show(value)))
   let localError = $state<string | null>(null)
@@ -78,11 +94,26 @@
   let box = $state<HTMLInputElement>()
   $effect(() => box?.setCustomValidity(localError ?? ''))
 
+  // Typed in since the box was last left: only then does leaving it round (a saved 0.177 shown as
+  // 0.18 stays 0.177 until it's changed)
+  let typed = false
+
   function update(input: string) {
+    typed = true
     text = input
     const parsed = quantity ? units.parse(quantity, input) : parseNumber(input)
     localError = parsed.ok ? null : parsed.error
     if (parsed.ok) value = own = parsed.value === null || quantity ? parsed.value : parsed.value / scale
+  }
+
+  // With a precision, leaving the box shows the value to it, rounded if more was typed
+  function settle() {
+    if (!typed) return
+    typed = false
+    if (precision === undefined || localError || value === null) return
+    const rounded = Number(shown(value).toFixed(precision))
+    if (rounded !== Number(shown(value).toFixed(12))) value = own = toStored(rounded)
+    text = show(value)
   }
 
   // A default shown in the blank box: its placeholder, and what lib/formChanges.ts reads for blank
@@ -94,29 +125,44 @@
   const suffix = $derived(quantity ? units.label(quantity) : unitLabel)
 </script>
 
+<!-- The unit hangs off the end of the box, outside the label's line, so an info tip at the end of
+     the label sits over the end of the box -->
 <div class={hideLabel ? '' : 'space-y-1'}>
-  <FieldLabel {label} {info} {missing} {optional} for={id} hidden={hideLabel} />
-  <div class="flex items-center gap-2">
-    <input
-      bind:this={box}
-      {id}
-      type="text"
-      inputmode="decimal"
-      class="block w-full min-w-0 rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm
-        {message ? 'border-status-irrigate' : missing ? 'border-l-4 border-l-brand-500' : ''}"
-      value={text}
-      data-unit={suffix}
-      oninput={(event) => update(event.currentTarget.value)}
-      aria-invalid={message ? 'true' : undefined}
-      aria-describedby={message ? `${id}-error` : hint ? `${id}-hint` : undefined}
-      data-blank={blankText}
-      {required}
-      placeholder={placeholder ?? blankText}
-    />
-    {#if suffix && !hideLabel}<span class="shrink-0 text-sm text-ink-muted">{suffix}</span>{/if}
+  <!-- First, so space-y's gap after the box comes only with a message below it -->
+  {#if name}<input type="hidden" {name} value={submitted} />{/if}
+  <div class="flex items-end gap-2">
+    <div class="min-w-0 flex-1 {hideLabel ? '' : 'space-y-1'}">
+      <FieldLabel {label} {info} {missing} {optional} for={id} hidden={hideLabel} />
+      <div class="relative">
+        <input
+          bind:this={box}
+          {id}
+          type="text"
+          inputmode="decimal"
+          class="block w-full min-w-0 rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm
+            {center ? 'px-1.5 text-center' : ''} {trailing ? (center ? 'px-8' : 'pr-8') : ''} {message
+            ? 'border-status-irrigate'
+            : missing
+              ? 'border-l-4 border-l-brand-500'
+              : ''}"
+          value={text}
+          data-unit={suffix}
+          oninput={(event) => update(event.currentTarget.value)}
+          onblur={settle}
+          aria-invalid={message ? 'true' : undefined}
+          aria-describedby={message ? `${id}-error` : hint ? `${id}-hint` : undefined}
+          data-blank={blankText}
+          {required}
+          placeholder={placeholder ?? blankText}
+        />
+        {#if trailing}<div class="absolute inset-y-0 right-0 flex items-center pr-1">{@render trailing()}</div>{/if}
+      </div>
+    </div>
+    {#if suffix && !hideLabel}<span class="flex h-10.5 shrink-0 items-center text-sm text-ink-muted sm:h-9.5"
+        >{suffix}</span
+      >{/if}
     {@render after?.()}
   </div>
-  {#if name}<input type="hidden" {name} value={submitted} />{/if}
   {#if message}
     <p id="{id}-error" class="text-xs text-status-irrigate-ink sm:text-sm">{message}</p>
   {:else if hint}

@@ -68,7 +68,7 @@ namespace :usage do
     end
 
     # The demo's entries as if each was made on its day or a day or two after, not all at seeding
-    [FieldEntry, PlantingEntry, PivotIrrigation, CanopyObservation].each do |model|
+    [FieldEntry, PlantingEntry, CanopyObservation].each do |model|
       model.where("date <= ?", Date.current).find_each do |entry|
         made = entry.date.in_time_zone.change(hour: 7) + random.rand(0..2).days
         entry.update_columns(created_at: [made, Time.current].min)

@@ -142,7 +142,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Irrigation system',
     matches: ['irrigation system', 'irrigation systems'],
     definition:
-      'A place watered one way: a center pivot, a linear, a traveler, a solid set or drip block, or just a location. Its location sets the weather for its fields, and irrigation entered for it applies to them. A traveler moved between fields is set up at each field it waters.',
+      'A place watered one way: a center pivot, a linear, a traveler, a solid set or drip block, or just a location. Its location sets the weather for its fields, and irrigation typed for it in Daily entry fills in their amounts. A traveler moved between fields is set up at each field it waters.',
   },
   {
     id: 'irrigation_group',
@@ -157,6 +157,13 @@ export const GLOSSARY: GlossaryEntry[] = [
     matches: ['weather zone', 'weather zones'],
     definition:
       "One cell of the weather model's grid, about 6 miles (9 km) across. Irrigation systems in the same cell share its weather; the Weather tab has each zone's forecast and season.",
+  },
+  {
+    id: 'percent_timer',
+    term: 'Percent timer',
+    matches: ['percent timer'],
+    definition:
+      "How a center pivot's or linear's panel sets its speed: the share of each minute the end tower moves. At 100% a circle (or pass) is fastest and puts on the least water, the depth at 100% from its sprinkler chart; at 40% it takes 2.5 times as long and puts on 2.5 times the depth. WISP's irrigation calculator works out the inches from the depth at 100%, once that's set on the system. It's the speed setting, not a VRI zone's nozzle rate, which puts on less water at a lower percent.",
   },
 ]
 

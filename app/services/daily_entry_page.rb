@@ -1,7 +1,9 @@
 # The props of daily entry (PLAN.md Phase 8 G.4) for one operation on one date: its farms, each
-# with its irrigation groups and systems ("pivots" in code, G.5); each pivot's irrigation that day and its fields; each field's
+# with its irrigation groups and systems ("pivots" in code, G.5), each system's fields; each field's
 # entry, the rain the model would use, and its plantings in season that day, with a part-field
 # planting's own entry and each planting's canopy reading (when one is wanted: PlantingTasks.canopy).
+# Irrigation is each field's and plot's own (D15); a system with none that day but some the day
+# before gets the day before's amounts, for "Same as yesterday".
 # Each field is under the system it was on that day (Field#pivot_id_on: a season keeps the system
 # it ran on, G.14 part 7), which for today is its own. Loads everything up front, with no query per
 # field.
@@ -39,13 +41,22 @@ class DailyEntryPage
   end
 
   def pivot_props(pivot)
-    irrigation = irrigations[pivot.id]
+    fields = fields_by_pivot.fetch(pivot.id, [])
     {id: pivot.id, name: pivot.name, kind: pivot.kind, kind_name: pivot.kind_name, pivot_group_id: pivot.pivot_group_id,
-     pump_capacity_gpm: pivot.pump_capacity_gpm,
-     irrigation: irrigation && PivotIrrigationSerializer.new(irrigation).to_h,
-     # The day before's, as entered, offered as "Same as yesterday" while nothing is entered this day
-     yesterday: (irrigations_before[pivot.id]&.slice(:inches, :run_hours, :field_ids) unless irrigation),
-     fields: fields_by_pivot.fetch(pivot.id, []).map { |field| field_props(pivot, field) }}
+     pump_capacity_gpm: pivot.pump_capacity_gpm, inches_at_100: pivot.inches_at_100,
+     yesterday: yesterday(fields),
+     fields: fields.map { |field| field_props(pivot, field) }}
+  end
+
+  # The day before's irrigation on the fields and plots ({fields: {id => inches}, plantings: {id =>
+  # inches}}), offered as "Same as yesterday" while none of them has any this day; nil for none
+  def yesterday(fields)
+    plots = fields.flat_map { |field| field.plantings_on(@date).select(&:partial?) }
+    return if fields.any? { |field| field_entries[field.id]&.irrigation_in } ||
+      plots.any? { |plot| planting_entries[plot.id]&.irrigation_in }
+    before = {fields: fields.to_h { |field| [field.id, entries_before[field.id]&.irrigation_in] }.compact,
+              plantings: plots.to_h { |plot| [plot.id, planting_entries_before[plot.id]&.irrigation_in] }.compact}
+    before if before.values.any?(&:any?)
   end
 
   def field_props(pivot, field)
@@ -84,21 +95,23 @@ class DailyEntryPage
     @fields_by_pivot ||= fields.sort_by(&:name).group_by { |field| field.pivot_id_on(@date) }
   end
 
-  def irrigations
-    @irrigations ||= PivotIrrigation.where(pivot: pivots, date: @date).index_by(&:pivot_id)
-  end
-
-  def irrigations_before
-    @irrigations_before ||= PivotIrrigation.where(pivot: pivots, date: @date - 1).index_by(&:pivot_id)
-  end
-
   def field_entries
     @field_entries ||= FieldEntry.where(field_id: fields.map(&:id), date: @date).index_by(&:field_id)
+  end
+
+  def entries_before
+    @entries_before ||= FieldEntry.where(field_id: fields.map(&:id), date: @date - 1).where.not(irrigation_in: nil)
+      .index_by(&:field_id)
   end
 
   def planting_entries
     @planting_entries ||= PlantingEntry.where(planting_id: fields.flat_map(&:plantings).map(&:id),
       date: @date).index_by(&:planting_id)
+  end
+
+  def planting_entries_before
+    @planting_entries_before ||= PlantingEntry.where(planting_id: fields.flat_map(&:plantings).map(&:id),
+      date: @date - 1).where.not(irrigation_in: nil).index_by(&:planting_id)
   end
 
   def rain

@@ -4,28 +4,34 @@
 
   import Button from '@/lib/components/Button.svelte'
   import DailyViewSwitch, { DAILY_VIEW_KEY } from '@/lib/components/DailyViewSwitch.svelte'
-  import IrrigationAmount from '@/lib/components/IrrigationAmount.svelte'
+  import IrrigationCalculator from '@/lib/components/IrrigationCalculator.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import {
-    applies,
-    appliedLabel,
-    common,
     farmRows,
+    fieldBox,
+    fieldBoxes,
     fieldHasEntry,
+    fieldRowBoxes,
     inSeason,
     pivotHasEntry,
+    plotBox,
     plots,
     rainFields,
     rainNote,
+    rainView,
+    rowAmount,
+    savedIrrigation,
+    systemBoxes,
     wholeField,
+    yesterdayBoxes,
     type DayFarm,
     type DayField,
     type DayPivot,
     type DayPlanting,
   } from '@/lib/dailyEntry'
   import { addDays, formatDate, today as todayDate } from '@/lib/dates'
-  import { KIND_NAMES, KIND_NOUNS, systemName } from '@/lib/geo'
-  import { canUseHours, enteredAsHours, sameAsBefore, savedAmount } from '@/lib/irrigation'
+  import { systemName } from '@/lib/geo'
+  import { common } from '@/lib/irrigation'
   import { cropName, plotSize } from '@/lib/plantings'
   import { readStored, writeStored } from '@/lib/storage'
   import { count } from '@/lib/text'
@@ -42,8 +48,6 @@
   let { date, farms }: { date: string; farms: DayFarm[] } = $props()
 
   const units = $derived(currentUnits())
-  /** A system in a placeholder: "pivot", "traveler", "drip" */
-  const short = (pivot: DayPivot) => KIND_NAMES[pivot.kind].toLowerCase()
   const today = todayDate()
 
   // Day | Week (Phase 9 §6): the Day switch (view=day) remembers the day view; daily entry reached
@@ -73,65 +77,85 @@
   const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
   const allFields = $derived(allPivots.flatMap((pivot) => pivot.fields))
 
-  // The values that other rows show or fill, from what's saved; reset for another date and after a
-  // save, not whenever the page's data changes (a reload for another reason keeps what's typed)
-  function saved(pivots: DayPivot[]) {
-    const fields = pivots.flatMap((pivot) => pivot.fields)
-    const hours = Object.fromEntries(pivots.map((p) => [p.id, enteredAsHours(p.irrigation)]))
-    return {
-      rain: Object.fromEntries(fields.map((f) => [f.id, f.entry?.rain_in ?? null])),
-      fieldIrrigation: Object.fromEntries(fields.map((f) => [f.id, f.entry?.irrigation_in ?? null])),
-      byHours: hours,
-      pivotAmount: Object.fromEntries(pivots.map((p) => [p.id, savedAmount(p.irrigation, hours[p.id])])),
-      applied: Object.fromEntries(pivots.map((p) => [p.id, p.irrigation?.field_ids ?? p.fields.map((f) => f.id)])),
-    }
-  }
-  const initial = untrack(() => saved(allPivots))
-  let rain = $state<Record<number, number | null>>(initial.rain)
-  let fieldIrrigation = $state<Record<number, number | null>>(initial.fieldIrrigation)
-  let pivotAmount = $state<Record<number, number | null>>(initial.pivotAmount)
-  let applied = $state<Record<number, number[]>>(initial.applied)
-  let byHours = $state<Record<number, boolean>>(initial.byHours)
+  // Each field's rain and each field's and plot's irrigation, as saved: what the rows show and
+  // fill, submitted from here. Reset for another date and after a save, not whenever the page's
+  // data changes (a reload for another reason keeps what's typed).
+  const savedRain = (fields: DayField[]) => Object.fromEntries(fields.map((f) => [f.id, f.entry?.rain_in ?? null]))
+  let rain = $state<Record<number, number | null>>(untrack(() => savedRain(allFields)))
+  let irrigation = $state<Record<string, number | null>>(untrack(() => savedIrrigation(allPivots)))
   let saves = $state(0)
+  // Only another date or a save resets them: props reloaded for anything else (the calculator saving
+  // a pump capacity) re-run effects that read the props directly, and a derived string doesn't change
+  const resetKey = $derived(`${date}:${saves}`)
   $effect(() => {
-    void [date, saves]
+    void resetKey
     untrack(() => {
-      ;({ rain, fieldIrrigation, pivotAmount, applied, byHours } = saved(allPivots))
+      rain = savedRain(allFields)
+      irrigation = savedIrrigation(allPivots)
+      varied = {}
     })
   })
 
-  function switchHours(pivot: DayPivot, hours: boolean) {
-    byHours[pivot.id] = hours
-    pivotAmount[pivot.id] = savedAmount(pivot.irrigation, hours)
+  // A parent row showing "varies" keeps its children's amounts from before the first keystroke, so
+  // typing there and then clearing the box puts them back rather than blanking every one
+  let varied: Record<string, Record<string, number | null>> = {}
+  function fillRow(
+    key: string,
+    values: Record<string | number, number | null>,
+    keys: (string | number)[],
+    value: number | null,
+  ) {
+    const before = varied[key]
+    if (value === null && before) {
+      Object.assign(values, before)
+      delete varied[key]
+    } else {
+      if (value !== null && !before && common(keys.map((k) => values[k] ?? null)).varies)
+        varied[key] = Object.fromEntries(keys.map((k) => [k, values[k] ?? null]))
+      for (const k of keys) values[k] = value
+    }
+    dirty = true
   }
 
-  // The day before's irrigation, offered as a placeholder and "Same as yesterday" (a value only when
-  // chosen) while nothing is entered for the system this day
+  function fillIrrigation(boxes: string[], value: number | null) {
+    for (const box of boxes) irrigation[box] = value
+    dirty = true
+  }
+
+  /** The calculator's fields: each with the acres its run hours spread over (its crop's area, else the field's) */
+  const calculatorFields = (fields: DayField[]) =>
+    fields.map((field) => ({
+      id: field.id,
+      name: field.name,
+      acres: wholeField(field)?.area_acres ?? field.area_acres,
+    }))
+  function applyToFields(pivot: DayPivot, inches: number, fieldIds: number[]) {
+    for (const field of pivot.fields.filter((f) => fieldIds.includes(f.id))) fillIrrigation(fieldBoxes(field), inches)
+  }
+
+  // "Same as yesterday": the day before's amounts, while nothing is entered for the system this day
   const dayBefore = $derived(date === today ? 'yesterday' : 'the day before')
-  const beforePlaceholder = (pivot: DayPivot, hours: boolean, otherwise: string) => {
-    const amount = savedAmount(pivot.yesterday, hours)
-    if (amount === null) return otherwise
-    const shown = hours ? String(amount) : units.input('depth', amount)
-    return `${shown} ${date === today ? 'yesterday' : 'day before'}`
-  }
+  const offersYesterday = (pivot: DayPivot) =>
+    pivot.yesterday !== null && systemBoxes(pivot).every((box) => irrigation[box] == null)
   function sameAsYesterday(pivot: DayPivot) {
-    const same = sameAsBefore(pivot.yesterday, pivot)
-    if (!same) return
-    byHours[pivot.id] = same.byHours
-    pivotAmount[pivot.id] = same.value
-    applied[pivot.id] = same.fieldIds
+    const boxes = yesterdayBoxes(pivot)
+    if (!boxes) return
+    Object.assign(irrigation, boxes)
     dirty = true
   }
 
-  const pivotReaches = (pivot: DayPivot, field: DayField) =>
-    pivotAmount[pivot.id] != null && applies(applied[pivot.id] ?? null, field)
-
-  /** A group's or pivot's rain: the fields' common value, or "varies" */
-  const shared = (fields: DayField[]) => common(fields.map((f) => rain[f.id] ?? null))
-  function fill(fields: DayField[], value: number | null) {
-    for (const field of fields) rain[field.id] = value
-    dirty = true
+  /** A rain box's placeholder: the fields' shared amount (modeled, when none is entered), or varies */
+  // (modeled says so under the box: in the box it crowds the amount out on a phone)
+  function rainPlaceholder(view: ReturnType<typeof rainView>) {
+    if (view.varies) return 'varies'
+    return view.shown === null ? '' : units.format('depth', view.shown, { unit: false })
   }
+  const showsModeled = (view: ReturnType<typeof rainView>) =>
+    view.value === null && view.modeled && !view.varies && view.shown !== null
+
+  /** The first error among some fields' values (rain is entered on a group's or system's row) */
+  const firstError = (errs: Record<string, string | string[]>, keys: string[]) =>
+    keys.map((key) => errs[key]).find(Boolean)
 
   // Collapsed rows. A pivot group's or pivot's choice is remembered in this browser; the rest
   // (fields with no crop, plots, pivots with nothing in season) start closed unless something was
@@ -160,10 +184,11 @@
   )
   const columns = $derived(anyCover ? 5 : 4)
 
-  // Indents for each level's name cell, with room for its expand toggle
-  const indent = ['pl-8', 'pl-13', 'pl-18', 'pl-23']
+  // Indents for each level's name cell, with room for its expand toggle; smaller steps on a phone, so
+  // the boxes stay in view
+  const indent = ['pl-6 sm:pl-8', 'pl-9 sm:pl-13', 'pl-12 sm:pl-18', 'pl-15 sm:pl-23']
   // Names stay in view while the table scrolls sideways (phones); each row sets its background
-  const nameCell = 'sticky left-0 z-10 min-w-40 py-1.5 pr-2 text-left'
+  const nameCell = 'sticky left-0 z-10 min-w-28 py-1.5 pr-2 text-left sm:min-w-40'
 </script>
 
 <svelte:head><title>Daily entry · WISP</title></svelte:head>
@@ -180,11 +205,16 @@
   </button>
 {/snippet}
 
+{#snippet modeledNote(view: ReturnType<typeof rainView>)}
+  {#if showsModeled(view)}<p class="mt-0.5 text-center text-xs text-ink-muted">modeled</p>{/if}
+{/snippet}
+
 {#snippet coverCell(planting: DayPlanting, label: string, errs: Record<string, string | string[]>)}
   {#if planting.cover}
     {@const cover = planting.cover}
     <NumberField
       hideLabel
+      center
       label="{cover.kind === 'lai' ? 'LAI' : 'Percent cover'} on {label}{cover.due ? ' (due)' : ''}"
       name="canopy[{planting.id}]"
       value={cover.value}
@@ -213,6 +243,8 @@
   {@const fieldPlots = plots(field)}
   {@const plotsKey = `plots-${field.id}`}
   {@const plotsOpen = shown(plotsKey, plotsOpenByDefault(field))}
+  {@const amount = rowAmount(fieldRowBoxes(field), irrigation)}
+  {@const rainVaries = inSeason(field) && rainView(pivot.fields.filter(inSeason), rain).varies}
   <tr class="align-top" {hidden}>
     <th scope="row" class="{nameCell} bg-surface-raised font-normal {indent[depth]}">
       <span class="flex items-start gap-1">
@@ -229,34 +261,38 @@
         </span>
       </span>
     </th>
-    <td class="w-36 px-2 py-1.5">
-      <NumberField
-        hideLabel
-        label="Rain on {field.name}"
-        name="fields[{field.id}][rain_in]"
-        quantity="depth"
-        bind:value={rain[field.id]}
-        placeholder={field.rain_model === null
-          ? ''
-          : `modeled ${units.format('depth', field.rain_model, { unit: false })}`}
-        error={errs[`fields.${field.id}.rain_in`]}
-      />
+    <td class="w-24 px-1 py-1.5 sm:w-36 sm:px-2">
+      <!-- Rain is entered on the system's row; the field's own shows here when they differ -->
+      <input type="hidden" name="fields[{field.id}][rain_in]" value={rain[field.id] ?? ''} />
+      {#if rainVaries}
+        <span class="block py-2 text-xs text-ink-muted"
+          >{rain[field.id] != null
+            ? units.format('depth', rain[field.id], { unit: false })
+            : field.rain_model != null
+              ? `${units.format('depth', field.rain_model, { unit: false })} modeled`
+              : ''}</span
+        >
+      {/if}
     </td>
-    <td class="w-36 px-2 py-1.5">
+    <td class="w-24 px-1 py-1.5 sm:w-36 sm:px-2">
+      <input type="hidden" name="fields[{field.id}][irrigation_in]" value={irrigation[fieldBox(field.id)] ?? ''} />
       <NumberField
         hideLabel
-        label="Irrigation on {field.name} (replaces the {KIND_NOUNS[pivot.kind]}'s)"
-        name="fields[{field.id}][irrigation_in]"
+        center
+        id="field-{field.id}-irrigation"
+        label="Irrigation on {field.name}"
         quantity="depth"
-        bind:value={fieldIrrigation[field.id]}
-        placeholder={pivotReaches(pivot, field) ? `${short(pivot)}'s` : ''}
+        precision={units.digits('depth')}
+        bind:value={() => amount.value, (value) => fillRow(`field-${field.id}`, irrigation, fieldBoxes(field), value)}
+        placeholder={amount.varies ? 'varies' : ''}
         error={errs[`fields.${field.id}.irrigation_in`]}
       />
     </td>
-    <td class="w-28 px-2 py-1.5">
+    <td class="w-20 px-1 py-1.5 sm:w-28 sm:px-2">
       {#if whole || !inSeason(field)}
         <NumberField
           hideLabel
+          center
           label="Soil moisture reading on {field.name}"
           name="fields[{field.id}][soil_moisture_pct]"
           value={field.entry?.soil_moisture_pct ?? null}
@@ -273,7 +309,7 @@
       {/if}
     </td>
     {#if anyCover}
-      <td class="w-28 px-2 py-1.5"
+      <td class="w-20 px-1 py-1.5 sm:w-28 sm:px-2"
         >{#if whole}{@render coverCell(whole, field.name, errs)}{/if}</td
       >
     {/if}
@@ -285,25 +321,24 @@
         <Link href={plantingRoutes.show(plot.id)} class="hover:underline">{cropName(plot)}</Link>
         <span class="block text-xs text-ink-muted">{plotSize(plot, units)}</span>
       </th>
-      <td class="px-2 py-1.5 text-xs text-ink-muted"><span class="block py-2">field's</span></td>
-      <td class="px-2 py-1.5">
+      <td class="px-1 py-1.5 sm:px-2"></td>
+      <td class="px-1 py-1.5 sm:px-2">
+        <input type="hidden" name="plantings[{plot.id}][irrigation_in]" value={irrigation[plotBox(plot.id)] ?? ''} />
         <NumberField
           hideLabel
-          label="Irrigation on {plotLabel} on {field.name} (replaces the field's)"
-          name="plantings[{plot.id}][irrigation_in]"
+          center
+          id="plot-{plot.id}-irrigation"
+          label="Irrigation on {plotLabel} on {field.name}"
           quantity="depth"
-          value={plot.entry?.irrigation_in ?? null}
-          placeholder={fieldIrrigation[field.id] != null
-            ? "field's"
-            : pivotReaches(pivot, field)
-              ? `${short(pivot)}'s`
-              : ''}
+          precision={units.digits('depth')}
+          bind:value={irrigation[plotBox(plot.id)]}
           error={errs[`plantings.${plot.id}.irrigation_in`]}
         />
       </td>
-      <td class="px-2 py-1.5">
+      <td class="px-1 py-1.5 sm:px-2">
         <NumberField
           hideLabel
+          center
           label="Soil moisture reading on {plotLabel} on {field.name}"
           name="plantings[{plot.id}][soil_moisture_pct]"
           value={plot.entry?.soil_moisture_pct ?? null}
@@ -311,7 +346,7 @@
         />
       </td>
       {#if anyCover}
-        <td class="px-2 py-1.5">{@render coverCell(plot, `${plotLabel} on ${field.name}`, errs)}</td>
+        <td class="px-1 py-1.5 sm:px-2">{@render coverCell(plot, `${plotLabel} on ${field.name}`, errs)}</td>
       {/if}
     </tr>
   {/each}
@@ -325,9 +360,8 @@
   {@const idle = pivot.fields.filter((f) => !inSeason(f))}
   {@const idleKey = `idle-${pivot.id}`}
   {@const idleOpen = shown(idleKey, idle.some(fieldHasEntry))}
-  {@const appliedKey = `applied-${pivot.id}`}
-  {@const appliedOpen = shown(appliedKey, false)}
-  {@const rainShared = shared(growing)}
+  {@const rainShared = rainView(growing, rain)}
+  {@const amount = rowAmount(systemBoxes(pivot), irrigation)}
   <tr class="border-t border-line bg-surface align-top" {hidden}>
     <th scope="row" class="{nameCell} bg-surface {indent[depth]}">
       <span class="flex items-start gap-1">
@@ -338,96 +372,72 @@
         </span>
       </span>
     </th>
-    <td class="px-2 py-1.5">
-      {#if growing.length > 1}
+    <td class="min-w-20 px-1 py-1.5 sm:px-2">
+      {#if growing.length}
         <NumberField
           hideLabel
+          center
           id="pivot-{pivot.id}-rain"
-          label="Rain for all fields on {pivot.name}"
+          label="Rain on {pivot.name}"
           quantity="depth"
-          bind:value={() => rainShared.value, (value) => fill(growing, value)}
-          placeholder={rainShared.varies ? 'varies' : 'all fields'}
+          precision={units.digits('depth')}
+          bind:value={
+            () => rainShared.value,
+            (value) =>
+              fillRow(
+                `rain-pivot-${pivot.id}`,
+                rain,
+                growing.map((f) => f.id),
+                value,
+              )
+          }
+          placeholder={rainPlaceholder(rainShared)}
+          error={firstError(
+            errs,
+            growing.map((f) => `fields.${f.id}.rain_in`),
+          )}
         />
+        {@render modeledNote(rainShared)}
       {/if}
     </td>
-    <td class="px-2 py-1.5" colspan={columns - 2}>
-      <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
-        <div class="w-32">
-          <IrrigationAmount
-            hideLabel
-            name="pivots[{pivot.id}]"
-            byHours={byHours[pivot.id]}
-            bind:value={pivotAmount[pivot.id]}
-            inchesLabel="Irrigation by {pivot.name}"
-            hoursLabel="Run hours of {pivot.name}"
-            inchesPlaceholder={beforePlaceholder(pivot, false, short(pivot))}
-            hoursPlaceholder={beforePlaceholder(pivot, true, 'hours')}
-            errors={{ inches: errs[`pivots.${pivot.id}.inches`], run_hours: errs[`pivots.${pivot.id}.run_hours`] }}
-          />
+    <td class="px-1 py-1.5 sm:px-2" colspan={columns - 2}>
+      {#if growing.length}
+        <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
+          <div class="w-24 sm:w-32">
+            <NumberField
+              hideLabel
+              center
+              id="pivot-{pivot.id}-irrigation"
+              label="Irrigation by {pivot.name}"
+              quantity="depth"
+              precision={units.digits('depth')}
+              bind:value={
+                () => amount.value, (value) => fillRow(`pivot-${pivot.id}`, irrigation, systemBoxes(pivot), value)
+              }
+              placeholder={amount.varies ? 'varies' : ''}
+            >
+              {#snippet trailing()}
+                <IrrigationCalculator
+                  system={pivot}
+                  fields={calculatorFields(growing)}
+                  {date}
+                  onapply={(inches, fieldIds) => applyToFields(pivot, inches, fieldIds)}
+                />
+              {/snippet}
+            </NumberField>
+          </div>
+          {#if offersYesterday(pivot)}
+            <button
+              type="button"
+              class="py-2 text-xs text-brand-600 hover:underline"
+              aria-label="Same as {dayBefore} for {pivot.name}"
+              onclick={() => sameAsYesterday(pivot)}>Same as {dayBefore}</button
+            >
+          {/if}
         </div>
-        {#if pivotAmount[pivot.id] == null && sameAsBefore(pivot.yesterday, pivot)}
-          <button
-            type="button"
-            class="py-2 text-xs text-brand-600 hover:underline"
-            aria-label="Same as {dayBefore} for {pivot.name}"
-            onclick={() => sameAsYesterday(pivot)}>Same as {dayBefore}</button
-          >
-        {/if}
-        {#if canUseHours(pivot)}
-          <label class="flex items-center gap-1.5 py-2 text-xs">
-            <input
-              type="checkbox"
-              class="rounded"
-              checked={byHours[pivot.id]}
-              onchange={(event) => switchHours(pivot, event.currentTarget.checked)}
-            />
-            Run hours
-          </label>
-        {/if}
-        {#if pivot.fields.length > 1}
-          <button
-            type="button"
-            class="py-2 text-xs text-brand-600 hover:underline"
-            aria-expanded={appliedOpen}
-            onclick={() => (opened[appliedKey] = !appliedOpen)}
-          >
-            Applied to: {appliedLabel(
-              (applied[pivot.id] ?? []).length === pivot.fields.length ? null : (applied[pivot.id] ?? []),
-              pivot.fields.length,
-            )}
-          </button>
-        {/if}
-      </div>
-      {#if errs[`pivots.${pivot.id}.field_ids`]}<p class="text-xs text-status-irrigate-ink">
-          {errs[`pivots.${pivot.id}.field_ids`]}
-        </p>{/if}
+      {/if}
     </td>
   </tr>
-  {#if pivot.fields.length > 1}
-    <!-- Always in the form (a hidden row still submits), so a saved choice of fields isn't lost -->
-    <tr hidden={hidden || !appliedOpen}>
-      <td colspan={columns} class="pb-2 {indent[depth + 1]}">
-        <fieldset class="space-y-1">
-          <legend class="text-xs font-medium">{pivot.name}'s irrigation applied to</legend>
-          <input type="hidden" name="pivots[{pivot.id}][field_ids][]" value="" />
-          <div class="flex flex-wrap gap-x-4 gap-y-1">
-            {#each pivot.fields as field (field.id)}
-              <label class="flex items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  class="rounded"
-                  name="pivots[{pivot.id}][field_ids][]"
-                  value={field.id}
-                  bind:group={applied[pivot.id]}
-                />
-                {field.name}
-              </label>
-            {/each}
-          </div>
-        </fieldset>
-      </td>
-    </tr>
-  {/if}
   {#each growing as field (field.id)}
     {@render fieldRows(pivot, field, depth + 1, hidden || !open, errs)}
   {/each}
@@ -513,7 +523,8 @@
             {/if}
           </div>
           <p class="text-xs text-ink-muted">
-            Rain typed for an irrigation system or group fills in its fields; change any field before saving.
+            Rain goes on an irrigation group or system and fills in its fields. Irrigation typed on a system fills in
+            its fields and plots; change any of them before saving.
           </p>
         </div>
 
@@ -529,14 +540,14 @@
                   >{/if}
               </h3>
               <div class="relative overflow-x-auto rounded-lg border border-line bg-surface-raised">
-                <table class="w-full min-w-xl text-sm">
+                <table class="w-full text-sm sm:min-w-xl">
                   <thead class="text-xs text-ink-muted">
                     <tr class="text-left">
                       <th class="sticky left-0 z-10 bg-surface-raised px-3 py-1.5 font-medium">System or field</th>
-                      <th class="px-2 py-1.5 font-medium">Rain ({units.label('depth')})</th>
-                      <th class="px-2 py-1.5 font-medium">Irrigation ({units.label('depth')})</th>
-                      <th class="px-2 py-1.5 font-medium">Soil moisture (%)</th>
-                      {#if anyCover}<th class="px-2 py-1.5 font-medium">{coverHeading}</th>{/if}
+                      <th class="px-1 py-1.5 text-center font-medium sm:px-2">Rain ({units.label('depth')})</th>
+                      <th class="px-1 py-1.5 text-center font-medium sm:px-2">Irrigation ({units.label('depth')})</th>
+                      <th class="px-1 py-1.5 text-center font-medium sm:px-2">Soil moisture (%)</th>
+                      {#if anyCover}<th class="px-1 py-1.5 text-center font-medium sm:px-2">{coverHeading}</th>{/if}
                     </tr>
                   </thead>
                   <tbody>
@@ -544,7 +555,7 @@
                       {@const key = `group-${group.id}`}
                       {@const open = isOpen(key)}
                       {@const fields = rainFields(group.pivots)}
-                      {@const rainShared = shared(fields)}
+                      {@const rainShared = rainView(fields, rain)}
                       <tr class="border-t border-line bg-brand-50 align-top">
                         <th scope="row" class="{nameCell} bg-brand-50 {indent[0]}">
                           <span class="flex items-start gap-1">
@@ -560,15 +571,27 @@
                             </span>
                           </span>
                         </th>
-                        <td class="px-2 py-1.5">
+                        <td class="min-w-20 px-1 py-1.5 sm:px-2">
                           <NumberField
                             hideLabel
+                            center
                             id="group-{group.id}-rain"
-                            label="Rain for all fields in {group.name}"
+                            label="Rain on {group.name}"
                             quantity="depth"
-                            bind:value={() => rainShared.value, (value) => fill(fields, value)}
-                            placeholder={rainShared.varies ? 'varies' : 'all fields'}
+                            precision={units.digits('depth')}
+                            bind:value={
+                              () => rainShared.value,
+                              (value) =>
+                                fillRow(
+                                  `rain-group-${group.id}`,
+                                  rain,
+                                  fields.map((f) => f.id),
+                                  value,
+                                )
+                            }
+                            placeholder={rainPlaceholder(rainShared)}
                           />
+                          {@render modeledNote(rainShared)}
                         </td>
                         <td colspan={columns - 2}></td>
                       </tr>

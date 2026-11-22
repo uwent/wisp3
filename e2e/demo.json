@@ -13,6 +13,7 @@
   "travelerLabel": "South West (traveler)",
   "gauge": "Farm center",
   "gaugeField": "North West",
+  "gaugeFieldSystem": "North linear",
   "splitPivot": "Powell pivot",
   "splitWest": "Powell West",
   "splitEast": "Powell East",

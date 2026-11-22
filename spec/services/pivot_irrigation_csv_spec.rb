@@ -1,20 +1,25 @@
 require "rails_helper"
 
 RSpec.describe PivotIrrigationCsv do
-  let(:pivot) { create(:pivot, name: "North", pump_capacity_gpm: 27_154.0 * 20 / 600) }
+  let(:pivot) { create(:pivot, name: "North", inches_at_100: 0.2) }
   let!(:east) { create(:field, pivot:, name: "East", area_acres: 10) }
   let!(:west) { create(:field, pivot:, name: "West", area_acres: 10) }
 
-  it "lists the entries with the amount applied" do
-    pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 3), inches: 0.5, notes: "-first pass")
-    pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 8), run_hours: 10, field_ids: [east.id])
-    rows = CSV.parse(described_class.new(pivot, 2026, pivot.pivot_irrigations.order(:date)).to_csv.delete_prefix(CsvExport::BOM))
+  it "lists each field's irrigation on the days the system watered it" do
+    east.field_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.5, notes: "-first pass")
+    west.field_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.5)
+    east.field_entries.create!(date: Date.new(2026, 7, 8), irrigation_in: 0.0)
+    west.field_entries.create!(date: Date.new(2026, 7, 9), rain_in: 0.4) # no irrigation
+    west.field_entries.create!(date: Date.new(2025, 7, 9), irrigation_in: 1.0) # another year
+    create(:field, name: "Elsewhere").field_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.9)
+
+    rows = CSV.parse(described_class.new(pivot, 2026).to_csv.delete_prefix(CsvExport::BOM))
     expect(rows.first).to eq(["WISP irrigation, North (pivot), 2026"])
+    expect(rows).to include(["Days: 2, 3 field entries totaling 1.00 in"])
     header = rows.index { |row| row.first == "Date" }
-    data = rows[(header + 1)..]
-    # 905 gpm × 600 min / (27,154 gal per acre-inch × 10 acres)
-    expect(data).to eq([["2026-07-03", "0.5000", nil, "0.5000", "All fields", "'-first pass"],
-      ["2026-07-08", nil, "10.0", "2.0000", "East", nil]])
-    expect(rows).to include(["Entries: 2, totaling 2.50 in applied"])
+    expect(rows[header]).to eq(["Date", "Field", "Irrigation (in)", "Notes"])
+    expect(rows[(header + 1)..]).to eq([["2026-07-03", "East", "0.5000", "'-first pass"],
+      ["2026-07-03", "West", "0.5000", nil],
+      ["2026-07-08", "East", "0.0000", nil]])
   end
 end

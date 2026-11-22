@@ -4,20 +4,19 @@
 
   import Button from '@/lib/components/Button.svelte'
   import DailyViewSwitch, { DAILY_VIEW_KEY } from '@/lib/components/DailyViewSwitch.svelte'
+  import IrrigationCalculator from '@/lib/components/IrrigationCalculator.svelte'
   import {
     cellErrors,
     changes,
-    defaultHours,
     fieldAmounts,
     irrigationKey,
     keyMove,
     leavesBox,
     nextCell,
     overwriteMessage,
-    parseCell,
     rainKey,
     savedTexts,
-    irrigationText,
+    settledText,
     weekOf,
     type Cell,
     type WeekFarm,
@@ -25,7 +24,6 @@
   } from '@/lib/dailyWeek'
   import { addDays, formatDate, today as todayDate } from '@/lib/dates'
   import { systemName } from '@/lib/geo'
-  import { savedAmount } from '@/lib/irrigation'
   import { writeStored } from '@/lib/storage'
   import { count } from '@/lib/text'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
@@ -45,23 +43,18 @@
 
   onMount(() => writeStored(DAILY_VIEW_KEY, 'week'))
 
-  const irrigationRows = $derived(farms.flatMap((farm) => farm.irrigation_rows))
-
-  // Each system's unit for the week, and what's typed in every cell; set from what's saved, again
-  // after a save, not whenever the page's data changes
-  const savedHours = (rows: WeekIrrigationRow[]) => Object.fromEntries(rows.map((row) => [row.id, defaultHours(row)]))
-  let byHours = $state<Record<number, boolean>>(untrack(() => savedHours(irrigationRows)))
-  let texts = $state<Record<string, string>>(untrack(() => savedTexts(farms, dates, byHours, units)))
+  // What's typed in every cell; set from what's saved, again after a save, not whenever the page's
+  // data changes
+  let texts = $state<Record<string, string>>(untrack(() => savedTexts(farms, dates, units)))
   let saves = $state(0)
   $effect(() => {
     void [date, saves]
     untrack(() => {
-      byHours = savedHours(irrigationRows)
-      texts = savedTexts(farms, dates, byHours, units)
+      texts = savedTexts(farms, dates, units)
     })
   })
 
-  const changed = $derived(changes(farms, dates, texts, byHours, units))
+  const changed = $derived(changes(farms, dates, texts, units))
   const changedKeys = $derived(new Set(changed.cells.map((cell) => cell.key)))
   const dirty = $derived(changed.cells.length > 0)
   confirmUnsavedChanges(
@@ -69,17 +62,32 @@
     () => document.getElementById('daily-week-form'),
   )
 
-  /** Switches a system's unit, putting its saved amounts back in that unit */
-  function switchHours(row: WeekIrrigationRow, hours: boolean) {
-    byHours[row.id] = hours
-    dates.forEach((day, i) => (texts[irrigationKey(row, day)] = irrigationText(row.days[i], hours, units)))
-  }
-
   /** A cell's own complaint while what's typed can't be read (the form won't submit) */
-  function unreadable(key: string, hours: boolean): string | null {
-    const parsed = parseCell(texts[key] ?? '', hours, units)
+  function unreadable(key: string): string | null {
+    const parsed = units.parse('depth', texts[key] ?? '')
     return parsed.ok ? null : parsed.error
   }
+  // The calculator's days for a system: those taking irrigation, each with its fields and their acres;
+  // it starts on today, else the latest of them
+  function calculatorDays(row: WeekIrrigationRow) {
+    return dates
+      .map((day, i) => ({
+        date: day,
+        active: row.days[i].active,
+        // Fields and plots (a field growing only plots) can share an id: numbered here instead
+        fields: row.days[i].fields.map((f, n) => ({ id: n, name: f.name, acres: f.acres ?? null })),
+      }))
+      .filter((day) => day.active)
+  }
+  const calculatorStart = (row: WeekIrrigationRow) => {
+    const days = calculatorDays(row)
+    return (days.find((day) => day.date === today) ?? days.findLast((day) => day.date <= today) ?? days[0])?.date
+  }
+  /** The calculator's inches, typed into the day's cell */
+  function applyCalculated(row: WeekIrrigationRow, inches: number, day: string) {
+    texts[irrigationKey(row, day)] = units.input('depth', inches)
+  }
+
   function validity(box: HTMLInputElement, message: string | null) {
     box.setCustomValidity(message ?? '')
     return { update: (next: string | null) => box.setCustomValidity(next ?? '') }
@@ -112,7 +120,7 @@
   // The first column stays in view while the grid scrolls sideways (phones)
   const nameCell = 'sticky left-0 z-10 min-w-44 bg-surface-raised py-1.5 pr-2 pl-3 text-left align-middle'
   const box =
-    'block w-full min-w-0 rounded-md px-2 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-surface disabled:shadow-none'
+    'block w-full min-w-0 rounded-md px-2 py-1.5 text-center text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-surface disabled:shadow-none'
 </script>
 
 <svelte:head><title>Daily entry: week · WISP</title></svelte:head>
@@ -178,8 +186,8 @@
           <input type="hidden" name={input.name} value={input.value} />
         {/each}
         <p class="text-xs text-ink-muted">
-          Rain typed for an irrigation group or system fills in each of its fields in season that day. Fields, plots and
-          cover readings are in the Day view: each date links to it.
+          Rain typed for an irrigation group or system, and irrigation for a system, fills in each of its fields in
+          season that day. Plots, soil moisture and cover readings are in the Day view: each date links to it.
         </p>
 
         {#each farms as farm (farm.id)}
@@ -191,6 +199,8 @@
                 <thead class="text-xs text-ink-muted">
                   <tr>
                     <th id="farm-{farm.id}" scope="col" class="{nameCell} text-sm font-medium text-ink">{farm.name}</th>
+                    <!-- The irrigation rows' calculators: their own cell, so a row's header is just its name -->
+                    <td class="w-8"></td>
                     {#each dates as day (day)}
                       <th scope="col" class="px-1 py-1.5 text-center font-medium">
                         <Link
@@ -209,7 +219,7 @@
                 </thead>
                 <tbody>
                   <tr class="border-t border-line bg-surface">
-                    <th scope="colgroup" colspan={dates.length + 1} class="px-3 py-1 text-left text-xs font-medium">
+                    <th scope="colgroup" colspan={dates.length + 2} class="px-3 py-1 text-left text-xs font-medium">
                       Rain ({units.label('depth')})
                     </th>
                   </tr>
@@ -227,6 +237,7 @@
                             : 'Irrigation system'}</span
                         >
                       </th>
+                      <td></td>
                       {#each dates as day, c (day)}
                         {@const cell = row.days[c]}
                         {@const key = rainKey(row, day)}
@@ -259,7 +270,8 @@
                                 ? 'Rain can be entered once the day has come'
                                 : undefined}
                             bind:value={texts[key]}
-                            use:validity={unreadable(key, false)}
+                            onblur={() => (texts[key] = settledText(texts[key] ?? '', units))}
+                            use:validity={unreadable(key)}
                           />
                           {#if problem || replacing}
                             <span id="{id}-note" class="sr-only"
@@ -273,67 +285,59 @@
                     </tr>
                   {/each}
                   <tr class="border-t border-line bg-surface">
-                    <th scope="colgroup" colspan={dates.length + 1} class="px-3 py-1 text-left text-xs font-medium">
-                      Irrigation
+                    <th scope="colgroup" colspan={dates.length + 2} class="px-3 py-1 text-left text-xs font-medium">
+                      Irrigation ({units.label('depth')})
                     </th>
                   </tr>
-                  {#each farm.irrigation_rows as row, i (row.id)}
-                    {@const hours = byHours[row.id] ?? false}
+                  {#each farm.irrigation_rows as row, i (row.key)}
+                    {@const start = calculatorStart(row)}
                     <tr class="border-t border-line/60">
-                      <th scope="row" class="{nameCell} font-normal">
-                        <span class="flex items-center justify-between gap-2">
-                          <span class="font-medium">{systemName(row)}</span>
-                          {#if row.hours}
-                            <select
-                              class="rounded-md py-1 pr-7 pl-2 text-xs"
-                              aria-label="Unit for {row.name}'s irrigation"
-                              value={hours ? 'hours' : 'depth'}
-                              onchange={(event) => switchHours(row, event.currentTarget.value === 'hours')}
-                            >
-                              <option value="depth">{units.label('depth')}</option>
-                              <option value="hours">hours</option>
-                            </select>
-                          {:else}
-                            <span class="text-xs text-ink-muted">{units.label('depth')}</span>
-                          {/if}
-                        </span>
-                      </th>
+                      <th scope="row" class="{nameCell} font-medium">{systemName(row)}</th>
+                      <td class="py-1 align-middle">
+                        {#if start}
+                          <IrrigationCalculator
+                            system={row}
+                            date={start}
+                            days={calculatorDays(row)}
+                            onapply={(inches, _fieldIds, day) => applyCalculated(row, inches, day)}
+                          />
+                        {/if}
+                      </td>
                       {#each dates as day, c (day)}
                         {@const cell = row.days[c]}
                         {@const key = irrigationKey(row, day)}
+                        {@const replacing = cell.varies && changedKeys.has(key)}
                         {@const problem = problems[key]}
                         {@const id = `cell-${key.replaceAll(':', '-')}`}
-                        {@const other = savedAmount(cell.irrigation, !hours)}
-                        {@const otherOnly = savedAmount(cell.irrigation, hours) === null && other !== null}
-                        <td class="relative px-1 py-1">
+                        <td class="px-1 py-1">
                           <input
                             {id}
                             type="text"
                             inputmode="decimal"
                             autocomplete="off"
-                            class="{box} {cell.some_fields ? 'pr-5' : ''} {problem ? 'border-status-irrigate' : ''}"
+                            class="{box} {problem
+                              ? 'border-status-irrigate'
+                              : replacing
+                                ? 'border-status-caution ring-2 ring-status-caution'
+                                : ''}"
                             data-row={rainRows + i}
                             data-col={c}
-                            data-unit={hours ? 'h' : units.label('depth')}
-                            aria-label="{row.name} irrigation{hours ? ' (hours)' : ''}, {dayName(day)}"
+                            data-unit={units.label('depth')}
+                            aria-label="{row.name} irrigation, {dayName(day)}"
                             aria-invalid={problem ? 'true' : undefined}
-                            aria-describedby={problem || cell.some_fields ? `${id}-note` : undefined}
+                            aria-describedby={problem || replacing ? `${id}-note` : undefined}
                             disabled={!cell.active}
-                            placeholder={otherOnly ? (hours ? units.format('depth', other) : `${other} h`) : ''}
+                            placeholder={cell.varies ? 'varies' : ''}
+                            title={cell.varies ? fieldAmounts(cell, units) : undefined}
                             bind:value={texts[key]}
-                            use:validity={unreadable(key, hours)}
+                            onblur={() => (texts[key] = settledText(texts[key] ?? '', units))}
+                            use:validity={unreadable(key)}
                           />
-                          {#if cell.some_fields}
-                            <Link
-                              href={dailyEntries.show({ query: { date: day } })}
-                              class="absolute top-1/2 right-2 -translate-y-1/2 px-0.5 text-base leading-none text-brand-600"
-                              title="Applied to {cell.some_fields.join(', ')} only: choose the fields in the Day view"
-                              aria-label="Fields for {row.name}'s irrigation, {dayName(day)}">•</Link
-                            >
-                          {/if}
-                          {#if problem || cell.some_fields}
+                          {#if problem || replacing}
                             <span id="{id}-note" class="sr-only"
-                              >{problem ? problem.message : `Applied to ${cell.some_fields?.join(', ')} only`}</span
+                              >{problem
+                                ? problem.message
+                                : `Replaces different amounts: ${fieldAmounts(cell, units)}`}</span
                             >
                           {/if}
                         </td>

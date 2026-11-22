@@ -1,9 +1,11 @@
 import type { PivotKind } from '@/lib/geo'
-import type { PivotIrrigation } from '@/types/serializers'
+import { common } from '@/lib/irrigation'
 
 // Daily entry's rows (PLAN.md Phase 8 G.4): one table per farm, its levels as indented rows
-// (irrigation group, irrigation system ("pivot" in code), field, plot). Rain fills down from a group or pivot row into its fields; irrigation
-// is inherited (the pivot's, then the field's, shown muted); readings belong to one planting.
+// (irrigation group, irrigation system ("pivot" in code), field, plot). Rain is entered on group and
+// system rows and fills their fields in season (stored per field). Irrigation is each field's and
+// plot's own (D15): a system's row fills its fields and their plots, a field's row its plots, and a
+// parent shows their shared amount or "varies". Readings belong to one planting.
 
 export type DayEntry = {
   rain_in: number | null
@@ -47,12 +49,12 @@ export type DayPivot = {
   kind_name: string
   pivot_group_id: number | null
   pump_capacity_gpm: number | null
-  irrigation: PivotIrrigation | null
-  /** The day before's irrigation as entered, while there's none this day, for "Same as yesterday" */
-  yesterday: DayIrrigation | null
+  /** The percent timer's depth at 100%, for the calculator */
+  inches_at_100: number | null
+  /** The day before's irrigation on its fields and plots, while there's none this day, for "Same as yesterday" */
+  yesterday: { fields: Record<string, number>; plantings: Record<string, number> } | null
   fields: DayField[]
 }
-export type DayIrrigation = Pick<PivotIrrigation, 'inches' | 'run_hours' | 'field_ids'>
 export type DayFarm = {
   id: number
   name: string
@@ -75,7 +77,7 @@ export const plots = (field: DayField) => field.plantings.filter((planting) => p
 export const fieldHasEntry = (field: DayField) =>
   field.entry !== null || field.plantings.some((planting) => planting.entry !== null || planting.cover?.value != null)
 
-export const pivotHasEntry = (pivot: DayPivot) => pivot.irrigation !== null || pivot.fields.some(fieldHasEntry)
+export const pivotHasEntry = (pivot: DayPivot) => pivot.fields.some(fieldHasEntry)
 
 export type FarmRows = {
   /** Pivot groups with a pivot in season, and those pivots */
@@ -110,20 +112,66 @@ export function rainNote(group: { use_model_precip: boolean | null }, farm: DayF
 export const rainFields = (pivots: DayPivot[]) => pivots.flatMap((pivot) => pivot.fields.filter(inSeason))
 
 /**
- * A parent row's rain, as a view of its fields': their value when all agree (null when all are
- * blank), or varies when they don't
+ * A group's or system's rain: the fields' entered amount when all have the same, and for the
+ * placeholder their shared amount entered or modeled (modeled: none entered), or varies
  */
-export function common(values: (number | null)[]): { value: number | null; varies: boolean } {
-  const first = values[0] ?? null
-  return values.every((value) => value === first) ? { value: first, varies: false } : { value: null, varies: true }
+export function rainView(
+  fields: DayField[],
+  rain: Record<number, number | null>,
+): { value: number | null; shown: number | null; modeled: boolean; varies: boolean } {
+  const entered = common(fields.map((field) => rain[field.id] ?? null))
+  const effective = common(fields.map((field) => rain[field.id] ?? field.rain_model))
+  return {
+    value: entered.value,
+    shown: effective.value,
+    modeled: fields.every((field) => rain[field.id] == null),
+    varies: effective.varies,
+  }
 }
 
-/** Whether a pivot's irrigation reaches a field, given the fields it's applied to (null: all) */
-export const applies = (fieldIds: number[] | null, field: DayField) => fieldIds === null || fieldIds.includes(field.id)
+// Irrigation boxes, by key: a field's ("field-3") and a plot's ("plot-12")
+export const fieldBox = (id: number) => `field-${id}`
+export const plotBox = (id: number) => `plot-${id}`
 
-/** "5 of 6 fields", "All 6 fields" */
-export function appliedLabel(fieldIds: number[] | null, total: number): string {
-  const count = fieldIds === null ? total : fieldIds.length
-  if (count === total) return total === 1 ? 'Its field' : `All ${total} fields`
-  return `${count} of ${total} ${total === 1 ? 'field' : 'fields'}`
+/** The boxes a field's row fills: the field's and its plots' */
+export const fieldBoxes = (field: DayField) => [fieldBox(field.id), ...plots(field).map((plot) => plotBox(plot.id))]
+
+/** The boxes a system's row fills: its fields in season and their plots */
+export const systemBoxes = (pivot: DayPivot) => pivot.fields.filter(inSeason).flatMap(fieldBoxes)
+
+/** Irrigation as saved, by box, for every field and plot */
+export function savedIrrigation(pivots: DayPivot[]): Record<string, number | null> {
+  const boxes: Record<string, number | null> = {}
+  for (const field of pivots.flatMap((pivot) => pivot.fields)) {
+    boxes[fieldBox(field.id)] = field.entry?.irrigation_in ?? null
+    for (const plot of plots(field)) boxes[plotBox(plot.id)] = plot.entry?.irrigation_in ?? null
+  }
+  return boxes
+}
+
+/**
+ * What a row's irrigation box shows of the boxes it fills: a system's, their shared amount or
+ * varies; a field's, its own amount, or for a field growing only plots (nothing of its own to
+ * water), its plots' shared amount
+ */
+export function rowAmount(
+  boxes: string[],
+  values: Record<string, number | null>,
+): { value: number | null; varies: boolean } {
+  return common(boxes.map((box) => values[box] ?? null))
+}
+
+export const fieldRowBoxes = (field: DayField) =>
+  wholeField(field) || !plots(field).length ? [fieldBox(field.id)] : plots(field).map((plot) => plotBox(plot.id))
+
+/** "Same as yesterday": the day before's amounts for a system's fields in season and their plots, by box */
+export function yesterdayBoxes(pivot: DayPivot): Record<string, number | null> | null {
+  if (!pivot.yesterday) return null
+  const before = pivot.yesterday
+  const boxes: Record<string, number | null> = {}
+  for (const field of pivot.fields.filter(inSeason)) {
+    boxes[fieldBox(field.id)] = before.fields[field.id] ?? null
+    for (const plot of plots(field)) boxes[plotBox(plot.id)] = before.plantings[plot.id] ?? null
+  }
+  return boxes
 }

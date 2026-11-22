@@ -180,6 +180,22 @@ test('the bar shown while signed in as someone else', { tag: '@phone' }, async (
   expect(errors).toEqual([])
 })
 
+test("daily entry's irrigation calculator", { tag: '@phone' }, async ({ page }) => {
+  await signIn(page)
+  const errors = watchErrors(page)
+  await page.goto(`/daily?date=${new Date().getFullYear()}-07-15`)
+  await page.getByRole('button', { name: `Work out ${DEMO.splitPivot}'s irrigation` }).click()
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^Irrigation for ${literal(DEMO.splitPivot)} on `) })
+  // Out of range, so its messages and the blank result are scanned too
+  await dialog.getByLabel('Hours it ran').fill('30')
+  await expect(dialog.getByText('Hours must be at most 24')).toBeVisible()
+  const { violations } = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(TAGS).analyze()
+  expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
+  await page.setViewportSize({ width: 320, height: 640 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+  expect(errors).toEqual([])
+})
+
 test("a weather zone's table of all its weather, in a dialog", { tag: '@phone' }, async ({ page }) => {
   await signIn(page)
   const errors = watchErrors(page)

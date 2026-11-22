@@ -5,9 +5,6 @@ export type Source = FieldDay['rain_source']
 // How each input's source is named in the grid, chart tooltips and badges (PLAN.md §4 provenance)
 export const SOURCE_LABELS: Record<Source, string> = {
   entered: 'entered',
-  // A part-field planting's irrigation entered for its whole field (PLAN.md Phase 8 G.11)
-  field: 'from field',
-  pivot: 'from pivot',
   model: 'modeled',
   forecast: 'forecast',
   none: 'none',

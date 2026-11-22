@@ -1,7 +1,7 @@
-# Bulk daily entry (PLAN.md §11, Phase 8 G.4): one date for the whole operation. Each pivot has one
-# irrigation (inches or run hours, for all its fields or some), each field its own rain, irrigation
-# override and soil moisture reading, each part-field planting its own irrigation and soil moisture,
-# and each planting a canopy reading (percent cover or LAI). Props: DailyEntryPage; saved by
+# Bulk daily entry (PLAN.md §11, Phase 8 G.4): one date for the whole operation. Each field its own
+# rain, irrigation and soil moisture reading, each part-field planting its own irrigation and soil
+# moisture, and each planting a canopy reading (percent cover or LAI); a system's row fills its
+# fields' boxes in the browser (D15). Props: DailyEntryPage; saved by
 # DailyEntrySave. The week view is DailyEntryWeeksController.
 class DailyEntriesController < AuthenticatedController
   def show
@@ -14,7 +14,7 @@ class DailyEntriesController < AuthenticatedController
   def update
     date = parse_date(params.expect(:date)) or raise ActionController::BadRequest, "Invalid date"
     errors = {}
-    PivotIrrigation.transaction do
+    ApplicationRecord.transaction do
       DailyEntrySave.new(Current.group, date).record(params, errors)
       raise ActiveRecord::Rollback if errors.any?
     end

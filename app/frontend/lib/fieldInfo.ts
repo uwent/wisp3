@@ -74,16 +74,19 @@ export const FIELD_INFO = {
     text: 'The compass direction the machine travels, as a whole number from 0 to 179: 0 means it travels north and south, 90 east and west. Turning it by its handle on the map fills this in.',
   },
   'pivot.pump_capacity': {
-    text: 'The water the system delivers while it runs. With it, you can enter irrigation as the hours it ran, and WISP works out the depth over its fields in season.',
+    text: "The water the system delivers while it runs. With it, the irrigation calculator works out the inches from the hours it ran, over the fields' areas.",
+  },
+  'pivot.inches_at_100': {
+    text: "What a circle (or a linear's pass) puts on with the panel's percent timer at 100%, its fastest, from the sprinkler chart. With it, the irrigation calculator works out the inches from the percent you ran at: depth at 100% × 100 ÷ percent.",
   },
   'pivot.equipment': {
     text: "The machine's make, model or setup, for your records. For a traveler, use the same name at each field it waters.",
   },
   'field.pivot': {
-    text: 'The system that waters this field. Its location gives the field its weather, and irrigation entered for the system applies to the field.',
+    text: "The system that waters this field. Its location gives the field its weather, and irrigation typed on the system's row fills in the field's.",
   },
   'field.area': {
-    text: "WISP uses it to turn a system's hours run into inches of water over its fields, and in reports. The water balance itself doesn't depend on it.",
+    text: "The irrigation calculator uses it to turn a system's hours run into inches of water over its fields, and reports show it. The water balance itself doesn't depend on it.",
   },
   'field.shape': {
     text: "The field's outline, for the map, drawn or read from a file. It offers its acreage and the soil survey's main soil, but never changes them for you.",
@@ -98,7 +101,7 @@ export const FIELD_INFO = {
   'field.wilting_point': wiltingPoint,
 
   'quick_setup.area': {
-    text: "WISP uses it to turn a system's hours run into inches of water over its fields, and in reports. You can draw the field's shape later to check it.",
+    text: "The irrigation calculator uses it to turn a system's hours run into inches of water over its fields, and reports show it. You can draw the field's shape later to check it.",
   },
 
   'planting.crop': {

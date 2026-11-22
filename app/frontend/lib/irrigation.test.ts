@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { canUseHours, enteredAsHours, fieldsOn, sameAsBefore, savedAmount } from './irrigation'
+import {
+  CALCULATOR_LIMITS,
+  calculatorMethods,
+  circleNoun,
+  common,
+  fieldsOn,
+  hoursInches,
+  outOfRange,
+  percentInches,
+} from './irrigation'
 
 describe('fieldsOn', () => {
   const stayed = { id: 1, name: 'Stayed', here: true, seasons: [{ from: '2026-04-01', to: '2026-10-01', here: true }] }
@@ -30,59 +39,67 @@ describe('fieldsOn', () => {
   })
 })
 
-describe('run hours', () => {
-  it("needs the pump capacity and every field's area", () => {
-    const field = { area_acres: 40 }
-    expect(canUseHours({ pump_capacity_gpm: 800, fields: [field, field] })).toBe(true)
-    expect(canUseHours({ pump_capacity_gpm: 800, fields: [] })).toBe(true)
-    expect(canUseHours({ pump_capacity_gpm: null, fields: [field] })).toBe(false)
-    expect(canUseHours({ pump_capacity_gpm: 800, fields: [field, { area_acres: null }] })).toBe(false)
+describe('the calculator', () => {
+  it('offers run hours for any system, and the percent timer on a pivot or linear', () => {
+    expect(calculatorMethods({ kind: 'center' })).toEqual(['hours', 'percent'])
+    expect(calculatorMethods({ kind: 'linear' })).toEqual(['hours', 'percent'])
+    expect(calculatorMethods({ kind: 'traveler' })).toEqual(['hours'])
   })
 
-  it('tells an irrigation entered as run hours by its missing inches', () => {
-    expect(enteredAsHours({ inches: null, run_hours: 6 })).toBe(true)
-    expect(enteredAsHours({ inches: 0.5, run_hours: null })).toBe(false)
-    expect(enteredAsHours(null)).toBe(false)
+  it('spreads run hours over the acres watered', () => {
+    // 1,000 gpm for 20 hours over 190.6 acres: 1,200,000 gallons, 0.23 in
+    expect(hoursInches(1000, 20, [94.7, 95.9])).toBeCloseTo(0.2319, 4)
+    expect(hoursInches(1000, 0, [100])).toBe(0)
   })
 
-  it('gives the saved amount for the box shown', () => {
-    const irrigation = { inches: 0.5, run_hours: null }
-    expect(savedAmount(irrigation, false)).toBe(0.5)
-    expect(savedAmount(irrigation, true)).toBeNull()
-    expect(savedAmount(null, false)).toBeNull()
+  it('needs hours and every area for run hours', () => {
+    expect(hoursInches(1000, null, [100])).toBeNull()
+    expect(hoursInches(1000, 10, [100, null])).toBeNull()
+    expect(hoursInches(1000, 10, [])).toBeNull()
+    expect(hoursInches(null, 10, [100])).toBeNull()
+  })
+
+  it('puts on the depth at 100% × 100 ÷ percent for each circle', () => {
+    expect(percentInches(0.2, 100)).toBeCloseTo(0.2)
+    expect(percentInches(0.2, 40)).toBeCloseTo(0.5)
+    expect(percentInches(0.2, 40, 2)).toBeCloseTo(1.0)
+    expect(percentInches(0.2, 40, 0.5)).toBeCloseTo(0.25)
+    expect(percentInches(0.2, 40, null)).toBeCloseTo(0.5)
+  })
+
+  it('reads nothing for a percent out of range, no depth at 100% or no circles', () => {
+    expect(percentInches(0.2, 0)).toBeNull()
+    expect(percentInches(0.2, 120)).toBeNull()
+    expect(percentInches(null, 40)).toBeNull()
+    expect(percentInches(0.2, null)).toBeNull()
+    expect(percentInches(0.2, 40, 0)).toBeNull()
+  })
+
+  it('checks what is typed against its range: more than 0 (or at least its minimum), at most its maximum', () => {
+    expect(outOfRange(null, CALCULATOR_LIMITS.hours)).toBeNull()
+    expect(outOfRange(0, CALCULATOR_LIMITS.hours)).toBe('low')
+    expect(outOfRange(-2, CALCULATOR_LIMITS.circles)).toBe('low')
+    expect(outOfRange(24, CALCULATOR_LIMITS.hours)).toBeNull()
+    expect(outOfRange(25, CALCULATOR_LIMITS.hours)).toBe('high')
+    expect(outOfRange(0.5, CALCULATOR_LIMITS.percent)).toBe('low')
+    expect(outOfRange(1, CALCULATOR_LIMITS.percent)).toBeNull()
+    expect(outOfRange(100, CALCULATOR_LIMITS.percent)).toBeNull()
+    expect(outOfRange(101, CALCULATOR_LIMITS.percent)).toBe('high')
+    expect(outOfRange(0.5, CALCULATOR_LIMITS.circles)).toBeNull()
+  })
+
+  it('names a circle by the kind', () => {
+    expect(circleNoun('center')).toBe('circle')
+    expect(circleNoun('linear')).toBe('pass')
   })
 })
 
-describe('sameAsBefore', () => {
-  const pivot = {
-    pump_capacity_gpm: 800,
-    fields: [
-      { id: 1, area_acres: 60 },
-      { id: 2, area_acres: 70 },
-    ],
-  }
-
-  it('offers nothing without an irrigation the day before', () => {
-    expect(sameAsBefore(null, pivot)).toBeNull()
-  })
-
-  it('offers inches, or run hours, as they were entered', () => {
-    expect(sameAsBefore({ inches: 0.8, run_hours: null, field_ids: null }, pivot)).toEqual({
-      byHours: false,
-      value: 0.8,
-      fieldIds: [1, 2],
-    })
-    expect(sameAsBefore({ inches: null, run_hours: 10, field_ids: [2] }, pivot)).toEqual({
-      byHours: true,
-      value: 10,
-      fieldIds: [2],
-    })
-  })
-
-  it("keeps only fields still on the system, and leaves out run hours it can't convert", () => {
-    expect(sameAsBefore({ inches: 0.5, run_hours: null, field_ids: [9] }, pivot)?.fieldIds).toEqual([1, 2])
-    expect(
-      sameAsBefore({ inches: null, run_hours: 10, field_ids: null }, { ...pivot, pump_capacity_gpm: null }),
-    ).toBeNull()
+describe('common', () => {
+  it('gives the shared value, blank when all are blank, or varies', () => {
+    expect(common([0.5, 0.5])).toEqual({ value: 0.5, varies: false })
+    expect(common([null, null])).toEqual({ value: null, varies: false })
+    expect(common([0.5, null])).toEqual({ value: null, varies: true })
+    expect(common([0.5, 0.6])).toEqual({ value: null, varies: true })
+    expect(common([])).toEqual({ value: null, varies: false })
   })
 })

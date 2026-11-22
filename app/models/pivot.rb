@@ -19,18 +19,23 @@ class Pivot < ApplicationRecord
   MAX_RADIUS_FT = 3000
   MAX_LINEAR_LENGTH_FT = 3300
   MAX_LINEAR_TRAVEL_FT = 5280
+  # The kinds with a percent timer (docs/plans/phase-9.md §8): the end tower (a linear's drive) runs
+  # that share of each minute, so a circle or pass puts on inches_at_100 × 100 ÷ percent (the
+  # irrigation calculator, percentInches in lib/irrigation.ts)
+  TIMER_KINDS = %w[center linear].freeze
+  # A circle at 100% puts on a few tenths of an inch; more than 3 is a typo or another unit
+  MAX_INCHES_AT_100 = 3.0
 
   belongs_to :farm
   belongs_to :pivot_group, optional: true
   belongs_to :weather_cell, optional: true
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
   has_many :fields, -> { order(:name) }, dependent: :destroy
-  has_many :pivot_irrigations, dependent: :destroy
   # The plantings whose seasons ran on this system (G.14 part 7): its fields' and, for seasons that
   # ended before their field moved to another system, theirs
   has_many :plantings, dependent: nil
   # Its own fields' plantings go with them; seasons that ran here on fields since moved elsewhere
-  # are handed to their field's system, as this one's irrigation goes too
+  # are handed to their field's system
   before_destroy :hand_over_plantings
 
   validates :name, presence: true, length: {maximum: 100}
@@ -45,6 +50,8 @@ class Pivot < ApplicationRecord
   validates :longitude, presence: true, numericality: {in: LONGITUDES, message: "must be in the US or Canada"}
   validates :kind, inclusion: {in: KINDS}
   validates :pump_capacity_gpm, numericality: {greater_than: 0}, allow_nil: true
+  validates :inches_at_100, numericality: {greater_than: 0, less_than_or_equal_to: MAX_INCHES_AT_100,
+                                           message: "must be more than 0 and at most 3 inches (76 mm)"}, allow_nil: true
   validates :radius_ft, numericality: {greater_than: 0}, allow_nil: true
   validates :radius_ft, numericality: {less_than_or_equal_to: MAX_RADIUS_FT,
                                        message: "is longer than any center pivot (at most 3,000 ft, 914 m)"}, allow_nil: true
@@ -91,6 +98,19 @@ class Pivot < ApplicationRecord
       .includes(:plantings).order(:name).select { |field| field.pivot_id_on(date) == id }
   end
 
+  # The irrigation on the fields this system watered (D15: stored per field), by date: {date =>
+  # {Field => FieldEntry}} for the days in dates with any, each field as fields_on places it
+  def irrigation_on(dates)
+    fields = Field.where(pivot_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
+      .index_by(&:id)
+    FieldEntry.where(field_id: fields.keys, date: dates).where.not(irrigation_in: nil).order(:date).group_by(&:date)
+      .filter_map do |date, entries|
+        here = entries.select { |entry| fields[entry.field_id].pivot_id_on(date) == id }
+          .sort_by { |entry| fields[entry.field_id].name }
+        [date, here.to_h { |entry| [fields[entry.field_id], entry] }] if here.any?
+      end.to_h
+  end
+
   # Every field that is or was on this system, for working out fields_on in the browser
   # (fieldsOn in lib/irrigation.ts): whether it's on it now, and its seasons in the order
   # Field#planting_on picks them, each saying whether it ran here
@@ -109,6 +129,7 @@ class Pivot < ApplicationRecord
   def clear_other_shape
     self.radius_ft = self.arc_start_deg = self.arc_end_deg = nil unless kind == "center"
     self.length_ft = self.travel_ft = self.travel_bearing_deg = nil unless linear?
+    self.inches_at_100 = nil unless TIMER_KINDS.include?(kind)
   end
 
   def move_open_plantings

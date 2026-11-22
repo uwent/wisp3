@@ -62,6 +62,8 @@ export type Units = {
     stored: number | null | undefined,
     options?: { digits?: number; unit?: boolean },
   ) => string
+  /** The decimal places a quantity is shown to (inches 2, millimeters 1): a box's precision */
+  digits: (quantity: Quantity) => number
   /** A display value for an input box: rounded, no unit, '' for null */
   input: (quantity: Quantity, stored: number | null | undefined, digits?: number) => string
   /** Text typed in display units → the stored value; blank is null (not entered), "0" is 0 */
@@ -79,6 +81,7 @@ export function units(system: UnitSystem = 'imperial'): Units {
   return {
     system,
     label: (quantity) => unit(quantity).label,
+    digits: (quantity) => unit(quantity).digits,
     toDisplay,
     toStored: (quantity, shown) => unit(quantity).toStored(shown),
     format(quantity, stored, { digits, unit: withUnit = true } = {}) {
