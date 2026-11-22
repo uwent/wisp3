@@ -213,6 +213,14 @@ RSpec.describe "Domain models" do
       expect(build(:canopy_observation, pct_cover: nil, lai: 2)).to be_valid
       expect(build(:canopy_observation, pct_cover: 140)).not_to be_valid
     end
+
+    it "isn't entered ahead of the day the pages show (Current.today)" do
+      observation = build(:canopy_observation, date: Date.new(2026, 6, 15))
+      travel_to(Date.new(2026, 6, 20)) { expect(observation.valid?(:entry)).to be(true) }
+      travel_to(Date.new(2026, 6, 10)) { expect(observation.valid?(:entry)).to be(false) }
+      Current.as_of = Date.new(2026, 6, 10)
+      travel_to(Date.new(2026, 6, 20)) { expect(observation.valid?(:entry)).to be(false) }
+    end
   end
 
   describe PivotIrrigation do
