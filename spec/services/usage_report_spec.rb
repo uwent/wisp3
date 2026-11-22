@@ -83,7 +83,8 @@ RSpec.describe UsageReport do
     planting = field.plantings.sole
     travel_to(Time.zone.local(2026, 7, 14, 9)) do
       create(:field_entry, field:, date: Date.new(2026, 7, 13), rain_in: 0.5, irrigation_in: 0.75, soil_moisture_pct: 30)
-      create(:pivot_irrigation, pivot: field.pivot, date: Date.new(2026, 7, 14))
+      plot = create(:planting, field: create(:field, pivot: field.pivot), partial: true, area_acres: 1)
+      plot.planting_entries.create!(date: Date.new(2026, 7, 14), irrigation_in: 0.5)
       create(:canopy_observation, planting:, date: Date.new(2026, 7, 14))
     end
     # Entered after the season's weeks: counted for operations entering data, not on the chart

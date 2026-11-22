@@ -118,11 +118,11 @@ RSpec.describe "Setup", type: :request do
 
     it "deletes a pivot with its fields and their irrigation" do
       field = create(:field, pivot:, soil_type: sand)
-      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 3), inches: 0.5)
+      field.field_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.5)
       delete pivot_path(pivot)
       expect(response).to redirect_to(setup_path)
       expect(flash[:notice]).to eq("Deleted North")
-      expect([Pivot.exists?(pivot.id), Field.exists?(field.id), PivotIrrigation.exists?]).to eq([false, false, false])
+      expect([Pivot.exists?(pivot.id), Field.exists?(field.id), FieldEntry.exists?(field_id: field.id)]).to eq([false, false, false])
     end
 
     describe "duplicating" do

@@ -20,7 +20,8 @@ class Pivot < ApplicationRecord
   MAX_LINEAR_LENGTH_FT = 3300
   MAX_LINEAR_TRAVEL_FT = 5280
   # The kinds with a percent timer (docs/plans/phase-9.md §8): the end tower (a linear's drive) runs
-  # that share of each minute, so a circle or pass puts on inches_at_100 × 100 ÷ percent
+  # that share of each minute, so a circle or pass puts on inches_at_100 × 100 ÷ percent (the
+  # irrigation calculator, percentInches in lib/irrigation.ts)
   TIMER_KINDS = %w[center linear].freeze
   # A circle at 100% puts on a few tenths of an inch; more than 3 is a typo or another unit
   MAX_INCHES_AT_100 = 3.0
@@ -30,12 +31,11 @@ class Pivot < ApplicationRecord
   belongs_to :weather_cell, optional: true
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
   has_many :fields, -> { order(:name) }, dependent: :destroy
-  has_many :pivot_irrigations, dependent: :destroy
   # The plantings whose seasons ran on this system (G.14 part 7): its fields' and, for seasons that
   # ended before their field moved to another system, theirs
   has_many :plantings, dependent: nil
   # Its own fields' plantings go with them; seasons that ran here on fields since moved elsewhere
-  # are handed to their field's system, as this one's irrigation goes too
+  # are handed to their field's system
   before_destroy :hand_over_plantings
 
   validates :name, presence: true, length: {maximum: 100}
@@ -82,16 +82,6 @@ class Pivot < ApplicationRecord
 
   def linear? = kind == "linear"
 
-  # Whether irrigation can be entered as the percent timer's setting: a pivot or linear whose depth at
-  # 100% is known (mirrored by canUsePercent in lib/irrigation.ts)
-  def percent_timer? = TIMER_KINDS.include?(kind) && inches_at_100.present?
-
-  # The inches a percent timer setting puts on over circles (passes, for a linear); nil without a
-  # depth at 100%
-  def inches_at_percent(percent, circles = 1)
-    inches_at_100 * 100 / percent * (circles || 1) if percent_timer? && percent&.positive?
-  end
-
   # What growers call it: "Pivot", "Traveler", "Location"
   def kind_name = KIND_NAMES.fetch(kind, "Irrigation system")
 
@@ -106,6 +96,19 @@ class Pivot < ApplicationRecord
   def fields_on(date)
     Field.where(pivot_id: id).or(Field.where(id: plantings.on(date).select(:field_id)))
       .includes(:plantings).order(:name).select { |field| field.pivot_id_on(date) == id }
+  end
+
+  # The irrigation on the fields this system watered (D15: stored per field), by date: {date =>
+  # {Field => FieldEntry}} for the days in dates with any, each field as fields_on places it
+  def irrigation_on(dates)
+    fields = Field.where(pivot_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
+      .index_by(&:id)
+    FieldEntry.where(field_id: fields.keys, date: dates).where.not(irrigation_in: nil).order(:date).group_by(&:date)
+      .filter_map do |date, entries|
+        here = entries.select { |entry| fields[entry.field_id].pivot_id_on(date) == id }
+          .sort_by { |entry| fields[entry.field_id].name }
+        [date, here.to_h { |entry| [fields[entry.field_id], entry] }] if here.any?
+      end.to_h
   end
 
   # Every field that is or was on this system, for working out fields_on in the browser

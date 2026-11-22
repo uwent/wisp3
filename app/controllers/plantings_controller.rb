@@ -98,10 +98,6 @@ class PlantingsController < AuthenticatedController
     status = FieldStatuses.status(planting, today: Current.today, as_of:, ensemble: Current.as_of ? [] : :load)
     dates = as_of ? planting.season_start..[as_of + PlantingStatus::HORIZON, planting.end_date].min : planting.season_range
     attribute = (planting.et_method == "lai") ? :lai : :pct_cover
-    # The irrigation of the system the season ran on (G.14 part 7)
-    pivot_inches = PivotIrrigation.preload_areas(PivotIrrigation.where(pivot_id: planting.pivot_id, date: dates))
-      .select { |irrigation| irrigation.covers?(field.id) }
-      .to_h { |irrigation| [irrigation.date, irrigation.applied_inches] }
     field_entries = field.field_entries.where(date: dates).index_by(&:date)
 
     day_params = {
@@ -109,7 +105,6 @@ class PlantingsController < AuthenticatedController
       entries: planting.partial? ? planting.planting_entries.where(date: dates).index_by(&:date) : field_entries,
       observations: planting.canopy_observations.select { |obs| dates.cover?(obs.date) && (!as_of || obs.date <= as_of) }
         .to_h { |obs| [obs.date, obs[attribute]] }.compact,
-      pivot_inches:,
       # A part-field planting's view of the field's irrigation, shown under its own (G.11)
       field_inches: planting.partial? ? field_entries.transform_values(&:irrigation_in).compact : {},
       canopy: status.canopy

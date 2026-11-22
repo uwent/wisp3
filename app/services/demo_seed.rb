@@ -5,7 +5,7 @@
 # under a linear and R fields under a pivot). Between them they show split pivots, a linear, a
 # traveler set up at two fields, a solid set over research plots (one plot with its own drip
 # irrigation and readings), a location-only rainfed field, double crops, alfalfa cuttings, both ET
-# methods, irrigation by pivot (inches and run hours, all fields and a subset) and by field, soil
+# methods, irrigation by system (all fields and a subset) and by field, soil
 # moisture readings, rain gauges shared by irrigation groups, and outlines for every field.
 #
 # The file holds month-day dates, placed in the year seeded. To change the layout, edit the demo
@@ -73,10 +73,15 @@ class DemoSeed
   def system(farm, data)
     pivot = farm.pivots.create!(data.slice(*DemoExport::SYSTEM_ATTRIBUTES))
     fields = data.fetch("fields").to_h { |field_data| [field_data.fetch("name").to_s, field(pivot, field_data)] }
+    # A system's irrigation (D15: stored per field) goes on each field it lists, else each on it that
+    # day, and their plots; a field's own amount that day (its entries) stays
     Array(data["irrigation"]).each do |irrigation|
-      field_ids = irrigation["fields"] && fields.fetch_values(*irrigation["fields"].map(&:to_s)).map(&:id)
-      pivot.pivot_irrigations.create!(date: date(irrigation.fetch("date")), field_ids:,
-        **irrigation.slice("inches", "run_hours", "percent_timer", "circles", "notes").symbolize_keys)
+      day = date(irrigation.fetch("date"))
+      watered = irrigation["fields"] ? fields.fetch_values(*irrigation["fields"].map(&:to_s)) : pivot.fields_on(day)
+      watered.each do |field|
+        next if field.field_entries.find_by(date: day)&.irrigation_in
+        field.record_entry(day, irrigation.slice("notes").merge(irrigation_in: irrigation.fetch("inches")))
+      end
     end
     pivot
   end

@@ -18,4 +18,42 @@ describe('NumberField', () => {
     await fireEvent.input(box, { target: { value: '14' } })
     expect(box.validity.valid).toBe(true)
   })
+
+  it('shows a precision always, and rounds what was typed to it when the box is left', async () => {
+    const { container } = render(NumberField, {
+      label: 'Rain',
+      name: 'rain',
+      quantity: 'depth',
+      precision: 2,
+      value: 1,
+    })
+    const box = screen.getByLabelText('Rain') as HTMLInputElement
+    const hidden = () => (container.querySelector('input[name="rain"]') as HTMLInputElement).value
+    expect(box).toHaveValue('1.00')
+
+    await fireEvent.input(box, { target: { value: '0.456' } })
+    expect(box).toHaveValue('0.456')
+    await fireEvent.blur(box)
+    expect(box).toHaveValue('0.46')
+    expect(hidden()).toBe('0.46')
+
+    await fireEvent.input(box, { target: { value: '' } })
+    await fireEvent.blur(box)
+    expect(box).toHaveValue('')
+  })
+
+  it("leaves a saved value with more places alone until it's typed over", async () => {
+    const { container } = render(NumberField, {
+      label: 'Rain',
+      name: 'rain',
+      quantity: 'depth',
+      precision: 2,
+      value: 0.177,
+    })
+    const box = screen.getByLabelText('Rain') as HTMLInputElement
+    expect(box).toHaveValue('0.18')
+    await fireEvent.focus(box)
+    await fireEvent.blur(box)
+    expect((container.querySelector('input[name="rain"]') as HTMLInputElement).value).toBe('0.177')
+  })
 })

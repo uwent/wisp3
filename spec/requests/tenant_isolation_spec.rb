@@ -9,7 +9,6 @@ RSpec.describe "Tenant isolation", type: :request do
   let(:their_pivot) { create(:pivot, farm: their_farm) }
   let(:their_field) { create(:field, pivot: their_pivot) }
   let(:their_planting) { create(:planting, field: their_field) }
-  let(:their_irrigation) { create(:pivot_irrigation, pivot: their_pivot) }
   let(:my_farm) { create(:farm, group: user.groups.first) }
   let(:my_pivot) { create(:pivot, farm: my_farm) }
   let(:my_field) { create(:field, pivot: my_pivot) }
@@ -42,7 +41,10 @@ RSpec.describe "Tenant isolation", type: :request do
     expect_not_found
     delete pivot_path(their_pivot)
     expect_not_found
+    patch equipment_pivot_path(their_pivot), params: {pivot: {pump_capacity_gpm: 999}}
+    expect_not_found
     expect(their_pivot.reload.name).not_to eq("Mine now")
+    expect(their_pivot.pump_capacity_gpm).not_to eq(999)
   end
 
   it "won't create a pivot on, or move one to, another group's farm" do
@@ -162,22 +164,20 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(response.body).not_to include(their_field.name)
   end
 
-  it "hides other groups' pivot irrigation" do
-    post pivot_irrigations_path(their_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1}}
+  it "hides other groups' irrigation systems' irrigation" do
+    their_field.field_entries.create!(date: Date.new(2026, 7, 2), irrigation_in: 0.75)
+    post pivot_irrigations_path(their_pivot), params: {irrigation: {date: "2026-07-02", fields: {their_field.id => "9"}}}
     expect_not_found
-    patch pivot_irrigation_path(their_pivot, their_irrigation), params: {pivot_irrigation: {inches: 9}}
+    delete pivot_irrigation_path(their_pivot, "2026-07-02")
     expect_not_found
-    patch pivot_irrigation_path(my_pivot, their_irrigation), params: {pivot_irrigation: {inches: 9}}
+    post pivot_irrigations_path(their_pivot), params: {irrigation: {date: "2026-07-03", from: "2026-07-02", fields: {their_field.id => "9"}}}
     expect_not_found
-    delete pivot_irrigation_path(my_pivot, their_irrigation)
-    expect_not_found
-    expect(their_irrigation.reload.inches).to eq(0.75)
+    expect(their_field.field_entries.sole).to have_attributes(date: Date.new(2026, 7, 2), irrigation_in: 0.75)
   end
 
-  it "ignores other groups' pivots and fields in bulk daily entry" do
-    patch daily_entry_path, params: {date: "2026-07-01", pivots: {their_pivot.id => {inches: 1}},
-                                     fields: {their_field.id => {rain_in: 1}}}
-    expect(their_pivot.pivot_irrigations).to be_empty
+  it "ignores other groups' fields in bulk daily entry" do
+    patch daily_entry_path, params: {date: "2026-07-01", fields: {their_field.id => {rain_in: 1, irrigation_in: 1}}}
+    expect(response).to redirect_to(daily_entry_path(date: "2026-07-01"))
     expect(their_field.field_entries).to be_empty
   end
 
@@ -189,27 +189,23 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(plot.canopy_observations).to be_empty
   end
 
-  it "ignores other groups' pivots and fields in daily entry's week" do
-    day = {pivots: {their_pivot.id => {inches: 1}}, fields: {their_field.id => {rain_in: 1}}}
+  it "ignores other groups' fields in daily entry's week" do
+    day = {fields: {their_field.id => {rain_in: 1, irrigation_in: 1}}}
     patch daily_entry_week_path, params: {date: "2026-07-07", days: {"2026-07-01" => day}}
     expect(response).to redirect_to(daily_entry_week_path(date: "2026-07-07"))
-    expect(their_pivot.pivot_irrigations).to be_empty
-    expect(their_field.field_entries).to be_empty
-    patch daily_entry_week_path, params: {date: "2026-07-07", days: {"2026-07-03" => {pivots: {my_pivot.id => {inches: 1, field_ids: [their_field.id]}}}}}
-    expect(my_pivot.pivot_irrigations).to be_empty
-  end
-
-  it "won't set another group's field's own amount from my pivot's irrigation" do
-    post pivot_irrigations_path(my_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1,
-                                                                       field_amounts: {their_field.id => {irrigation_in: "2"}}}}
-    expect(my_pivot.pivot_irrigations.sole.inches).to eq(1.0)
     expect(their_field.field_entries).to be_empty
   end
 
-  it "won't apply my pivot's irrigation to another group's field" do
-    post pivot_irrigations_path(my_pivot), params: {pivot_irrigation: {date: "2026-07-02", inches: 1, field_ids: [their_field.id]}}
-    patch daily_entry_path, params: {date: "2026-07-03", pivots: {my_pivot.id => {inches: 1, field_ids: [their_field.id]}}}
-    expect(my_pivot.pivot_irrigations).to be_empty
+  it "won't write another group's field through my system's irrigation (it isn't on my system)" do
+    my_field
+    post pivot_irrigations_path(my_pivot), params: {irrigation: {date: "2026-07-02", fields: {their_field.id => "2"}}}
+    expect(response).to redirect_to(pivot_path(my_pivot))
+    expect(their_field.field_entries).to be_empty
+
+    their_field.field_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.75)
+    post pivot_irrigations_path(my_pivot), params: {irrigation: {date: "2026-07-04", from: "2026-07-03", fields: {}}}
+    delete pivot_irrigation_path(my_pivot, "2026-07-03")
+    expect(their_field.field_entries.sole.irrigation_in).to eq(0.75)
   end
 
   it "won't show another group's planting on my field's page, or its own page" do

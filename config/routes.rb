@@ -54,7 +54,9 @@ Rails.application.routes.draw do
   resources :pivots, only: [:show, :new, :create, :edit, :update, :destroy] do
     # Its irrigation list (index) is a CSV; /pivots/:id/weather (the old weather CSV) redirects to its zone's
     get :weather, on: :member, defaults: {format: :csv}
-    resources :irrigations, only: [:index, :create, :update, :destroy], controller: "pivot_irrigations"
+    # The pump capacity or depth at 100%, from the irrigation calculator
+    patch :equipment, on: :member
+    resources :irrigations, only: [:index, :create, :destroy], controller: "pivot_irrigations", param: :date
   end
   resources :fields, only: [:show, :create, :update, :destroy] do
     resources :days, only: :update, controller: "field_days", param: :date

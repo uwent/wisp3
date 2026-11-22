@@ -48,9 +48,10 @@ RSpec.describe "Daily entry", type: :request do
       expect(pivots.call(date)).to eq("Lane 3" => [], "River" => ["North"])
       expect(pivots.call(Date.new(2026, 7, 18))).to eq("Lane 3" => ["North"], "River" => [])
 
-      # Its old system's irrigation that day can still name it
-      patch daily_entry_path, params: {date: date.iso8601, pivots: {pivot.id => {inches: "0.5", field_ids: ["", field.id]}}}
-      expect(pivot.pivot_irrigations.sole).to have_attributes(date:, field_ids: nil) # every field on it that day
+      # Its irrigation that day is its old system's
+      patch daily_entry_path, params: {date: date.iso8601, fields: {field.id => {irrigation_in: "0.5"}}}
+      expect(pivot.irrigation_on(date..date)).to eq(date => {field => field.field_entries.sole})
+      expect(other.irrigation_on(date..date)).to eq({})
     end
 
     it "lists a field's plots after its whole-field planting, with their own entries" do
@@ -106,6 +107,26 @@ RSpec.describe "Daily entry", type: :request do
       expect(plot.planting_entries.sole).to have_attributes(irrigation_in: 0.25, soil_moisture_pct: 18.0)
       expect(whole.canopy_observations.sole).to have_attributes(date:, pct_cover: 55.0)
       expect(plot.canopy_observations.sole.pct_cover).to eq(30.0)
+    end
+
+    it "sets a plot that had the field's irrigation with the field's, unless the plot's own is sent (D15)" do
+      plot
+      other = create(:planting, field: plot_field, plant: corn, partial: true, area_acres: 0.5,
+        season_start: Date.new(2026, 5, 1), emergence_date: Date.new(2026, 5, 10), end_date: Date.new(2026, 9, 30))
+      patch daily_entry_path, params: {date: date.iso8601, fields: {plot_field.id => {irrigation_in: "0.6"}}}
+      expect([plot, other].map { |planting| planting.planting_entries.sole.irrigation_in }).to eq([0.6, 0.6])
+
+      patch daily_entry_path, params: {date: date.iso8601, fields: {plot_field.id => {irrigation_in: "0.8"}},
+                                       plantings: {plot.id => {irrigation_in: "0.3"}}}
+      expect(plot_field.field_entries.sole.irrigation_in).to eq(0.8)
+      expect(plot.planting_entries.sole.irrigation_in).to eq(0.3) # sent: its own
+      expect(other.planting_entries.sole.irrigation_in).to eq(0.8) # followed the field
+
+      # A plot sent with only its moisture still follows the field's irrigation
+      patch daily_entry_path, params: {date: date.iso8601, fields: {plot_field.id => {irrigation_in: "0.4"}},
+                                       plantings: {other.id => {soil_moisture_pct: "15"}}}
+      expect(other.planting_entries.sole).to have_attributes(irrigation_in: 0.4, soil_moisture_pct: 15.0)
+      expect(plot.planting_entries.sole.irrigation_in).to eq(0.3)
     end
 
     it "keeps a plot's notes when its irrigation is cleared, and removes a cleared reading" do

@@ -70,10 +70,4 @@ FactoryBot.define do
     field
     date { Date.new(2026, 6, 1) }
   end
-
-  factory :pivot_irrigation do
-    pivot
-    date { Date.new(2026, 6, 1) }
-    inches { 0.75 }
-  end
 end

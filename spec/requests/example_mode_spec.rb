@@ -58,8 +58,11 @@ RSpec.describe "Example mode", type: :request do
     patch field_path(example_field), params: {field: {name: "Mine now"}}
     expect(response).to redirect_to(root_path)
     expect(flash[:alert]).to include("can only be viewed")
-    post pivot_irrigations_path(example_pivot), params: {pivot_irrigation: {date: "2026-07-01", inches: 1}}
-    expect(example_pivot.pivot_irrigations).to be_empty
+    post pivot_irrigations_path(example_pivot), params: {irrigation: {date: "2026-07-01", fields: {example_field.id => "1"}}}
+    expect(response).to redirect_to(root_path)
+    delete pivot_irrigation_path(example_pivot, "2026-07-01")
+    expect(response).to redirect_to(root_path)
+    expect(example_field.field_entries).to be_empty
     expect(example_field.reload.name).not_to eq("Mine now")
 
     [setup_path, daily_entry_path, daily_entry_week_path, alerts_path, settings_path, group_path, admin_users_path].each do |path|

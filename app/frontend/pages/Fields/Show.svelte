@@ -15,7 +15,7 @@
   import { isExample } from '@/lib/permissions'
   import { outlook } from '@/lib/outlook'
   import { cardWhen, cropName, plotSize, seasonDates, seasonLine } from '@/lib/plantings'
-  import { cellLabel, cellText, cellValue, depthUnitName as depthUnit, irrigationFrom } from '@/lib/fieldDays'
+  import { cellLabel, cellText, cellValue, depthUnitName as depthUnit } from '@/lib/fieldDays'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { rainSettingLink, rainSettingOwner } from '@/lib/rainSetting'
   import { rainOverridden } from '@/lib/provenance'
@@ -35,7 +35,7 @@
     rain_source: 'entered' | 'model' | 'forecast' | 'none' | 'missing'
     rain_model: number | null
     irrigation: number | null
-    irrigation_source: 'entered' | 'pivot' | 'none'
+    irrigation_source: 'entered' | 'none'
     notes: string | null
   }
 
@@ -204,11 +204,11 @@
       <p class="text-xs text-ink-muted">
         What's entered here is the whole field's, so it counts for every planting on it.
         {#if anyPartial}
-          A planting on part of the field can also have its own irrigation, entered on its page, which it uses instead
-          of the field's that day.
+          A planting on part of the field has its own irrigation: the field's irrigation fills it in when it had the
+          field's amount, and one entered on its page stays.
         {/if}
-        {#if !readOnly}Click a cell to enter a value, and press Enter to save and move down. Clear a cell to go back to
-          the modeled value or the {noun}'s.{/if}
+        {#if !readOnly}Click a cell to enter a value, and press Enter to save and move down. Clear a rain cell to go
+          back to the modeled value.{/if}
         Depths are in {depthUnitName}.{readOnly
           ? ''
           : ' From the keyboard, use the arrow keys to move between cells, and press Enter or start typing to edit one.'}
@@ -283,9 +283,6 @@
                       <span class="text-ink-muted">–</span>
                     {:else}
                       <span class="font-medium">{depth(day.irrigation)}</span>
-                      {#if day.irrigation_source !== 'entered'}<span class="block text-xs text-ink-muted"
-                          >{irrigationFrom(day.irrigation_source, noun)}</span
-                        >{/if}
                     {/if}
                   </EditableCell>
                 </td>
@@ -310,11 +307,11 @@
         </table>
       </div>
       <p class="text-xs text-ink-muted">
-        Rain in gray is modeled for the {noun}'s location; bold values are ones you entered. Irrigation marked “from
-        {noun}” was entered on the
+        Rain in gray is modeled for the {noun}'s location; bold values are ones you entered. Irrigation can also be
+        entered for all the {noun}'s fields at once on the
         <Link href={pivots.show(pivot.id)} class="text-brand-600 underline underline-offset-2"
           >{noun}'s irrigation page</Link
-        > or on the Daily entry page.
+        > or the Daily entry page.
       </p>
       {#if !pivot.use_model_precip}
         <p class="text-xs">

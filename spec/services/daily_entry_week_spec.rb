@@ -33,8 +33,9 @@ RSpec.describe DailyEntryWeek do
     expect(farm_props[:rain_rows].map { |row| row.values_at(:key, :name, :kind) })
       .to eq([["group-#{east.id}", "East", "group"], ["pivot-#{lane.id}", "Lane 3", "system"]])
     expect(farm_props[:rain_rows].first[:systems]).to eq(2)
-    expect(farm_props[:irrigation_rows].map { |row| row[:name] }).to eq(["North", "South", "Lane 3"])
-    expect(farm_props[:irrigation_rows].map { |row| row[:hours] }).to eq([false, true, false])
+    expect(farm_props[:irrigation_rows].map { |row| row.values_at(:key, :name, :id, :kind, :kind_name) })
+      .to eq([["pivot-#{north.id}", "North", north.id, "center", "Pivot"], ["pivot-#{south.id}", "South", south.id, "center", "Pivot"],
+        ["pivot-#{lane.id}", "Lane 3", lane.id, "center", "Pivot"]])
   end
 
   it "leaves out a farm with nothing in season" do
@@ -62,20 +63,48 @@ RSpec.describe DailyEntryWeek do
     expect(days[0]).to include(active: true, value: nil, varies: false)
     expect(days[1]).to include(value: 0.4, varies: false)
     expect(days[3]).to include(value: nil, varies: true,
-      fields: [{id: n1.id, name: "N1", rain_in: 0.4}, {id: s1.id, name: "S1", rain_in: 0.6}])
+      fields: [{id: n1.id, name: "N1", value: 0.4}, {id: s1.id, name: "S1", value: 0.6}])
   end
 
-  it "gives each day's irrigation, naming the fields when it applies to only some" do
+  it "gives each day's irrigation as its fields' common value, or varies, with each field's amount" do
     n1 = field_on(north, "N1")
-    field_on(north, "N2")
-    create(:pivot_irrigation, pivot: north, date: week[0], inches: 0.8)
-    create(:pivot_irrigation, pivot: north, date: week[2], inches: 0.6, field_ids: [n1.id])
+    n2 = field_on(north, "N2")
+    n1.field_entries.create!(date: week[0], irrigation_in: 0.8)
+    n2.field_entries.create!(date: week[0], irrigation_in: 0.8, rain_in: 0.1)
+    n1.field_entries.create!(date: week[2], irrigation_in: 0.6)
+    n2.field_entries.create!(date: week[3], rain_in: 0.3)
 
     days = farm_props[:irrigation_rows].sole[:days]
-    expect(days[0]).to include(irrigation: {"inches" => 0.8, "run_hours" => nil, "percent_timer" => nil, "circles" => nil,
-                                            "field_ids" => nil}, some_fields: nil)
-    expect(days[1]).to include(irrigation: nil, some_fields: nil)
-    expect(days[2]).to include(irrigation: include("field_ids" => [n1.id]), some_fields: ["N1"])
+    expect(days[0]).to eq(active: true, value: 0.8, varies: false,
+      fields: [{id: n1.id, name: "N1", value: 0.8, acres: 60.0}, {id: n2.id, name: "N2", value: 0.8, acres: 60.0}])
+    expect(days[1]).to include(value: nil, varies: false)
+    expect(days[2]).to include(varies: true,
+      fields: [{id: n1.id, name: "N1", value: 0.6, acres: 60.0}, {id: n2.id, name: "N2", value: nil, acres: 60.0}])
+    expect(days[3]).to include(value: nil, varies: false)
+  end
+
+  it "gives no common value on a day some fields have an amount and others none" do
+    n1 = field_on(north, "N1")
+    field_on(north, "N2")
+    n1.field_entries.create!(date: week[2], irrigation_in: 0.6)
+    expect(farm_props[:irrigation_rows].sole[:days][2]).to include(value: nil, varies: true)
+  end
+
+  it "gives a field growing only plots as its plots, for irrigation (as the day page does), and as itself for rain" do
+    plots = create(:field, pivot: north, name: "Plots")
+    season = {season_start: Date.new(2026, 4, 20), emergence_date: Date.new(2026, 5, 1), end_date: Date.new(2026, 9, 30)}
+    corn = create(:planting, field: plots, partial: true, area_acres: 1, plant: create(:plant, name: "Corn"), **season)
+    beans = create(:planting, field: plots, partial: true, area_acres: 2, plant: create(:plant, name: "Beans"), **season)
+    corn.planting_entries.create!(date: week[0], irrigation_in: 0.5)
+    beans.planting_entries.create!(date: week[0], irrigation_in: 0.5)
+
+    day = farm_props[:irrigation_rows].sole[:days][0]
+    expect(day).to include(value: 0.5, varies: false)
+    expect(day[:fields]).to contain_exactly(
+      {id: corn.id, name: "Plots: Corn", value: 0.5, acres: 1.0, plot: true},
+      {id: beans.id, name: "Plots: Beans", value: 0.5, acres: 2.0, plot: true}
+    )
+    expect(farm_props[:rain_rows].sole[:days][0][:fields]).to eq([{id: plots.id, name: "Plots", value: nil}])
   end
 
   it "places a field that moved systems mid-week under the system its season ran on each day" do
@@ -92,9 +121,10 @@ RSpec.describe DailyEntryWeek do
   end
 
   it "loads the week in a few queries, however many fields and days" do
-    create(:pivot_irrigation, pivot: north, date: week[2])
     count_for = ->(fields) {
-      fields.times { |n| field_on([north, south, lane][n % 3], "F#{fields}-#{n}").field_entries.create!(date: week[n % 7], rain_in: 0.1) }
+      fields.times do |n|
+        field_on([north, south, lane][n % 3], "F#{fields}-#{n}").field_entries.create!(date: week[n % 7], rain_in: 0.1, irrigation_in: 0.5)
+      end
       count = 0
       counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
       ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { described_class.new(group, date).props }

@@ -77,30 +77,30 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(inertia.props[:pivot]).to include(use_model_precip: false)
     end
 
-    it "shows a pivot's irrigation as from the pivot, and the pivot amount under a field's override" do
-      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 10), inches: 0.8)
+    it "shows the field's own irrigation as entered, and no system amount" do
       field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.5)
-      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 12), run_hours: 10)
+      other = create(:field, pivot:)
+      other.field_entries.create!(date: Date.new(2026, 7, 12), irrigation_in: 0.8)
 
       get planting_path(planting)
       days = inertia.props[:days].index_by { |day| day[:date] }
-      expect(days["2026-07-10"]).to include(irrigation: 0.5, irrigation_source: "entered", pivot_inches: 0.8)
-      expect(days["2026-07-12"]).to include(irrigation_source: "pivot")
-      expect(days["2026-07-12"][:irrigation]).to be_within(0.001).of(900 * 10 * 60 / (27_154.0 * 60))
+      expect(days["2026-07-10"]).to include(irrigation: 0.5, irrigation_source: "entered")
+      expect(days["2026-07-10"]).not_to have_key(:pivot_inches)
+      expect(days["2026-07-12"]).to include(irrigation: 0.0, irrigation_source: "none")
     end
 
-    it "converts run hours without queries per irrigation, on the planting and system pages" do
+    it "takes no more queries for more irrigation, on the planting and system pages" do
       queries = lambda do |path|
         count = 0
         counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
         ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { get path }
         count
       end
-      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 10), run_hours: 10)
+      field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.5)
       get planting_path(planting) # Devise's sign-in and the first visit's one-off writes
       get pivot_path(pivot)
       planting_one, pivot_one = queries.call(planting_path(planting)), queries.call(pivot_path(pivot))
-      [12, 14, 16].each { |day| pivot.pivot_irrigations.create!(date: Date.new(2026, 7, day), run_hours: 10) }
+      [12, 14, 16].each { |day| field.field_entries.create!(date: Date.new(2026, 7, day), irrigation_in: 0.5) }
       expect(queries.call(planting_path(planting))).to eq(planting_one)
       expect(queries.call(pivot_path(pivot))).to eq(pivot_one)
     end
@@ -269,7 +269,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       planting.update!(plant: create(:plant, key: "potato"))
       field.field_entries.create!(date: Date.new(2026, 7, 8), irrigation_in: 0.5, notes: "before")
       field.field_entries.create!(date: Date.new(2026, 7, 12), irrigation_in: 1.0, notes: "after")
-      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 14), inches: 0.8)
+      field.field_entries.create!(date: Date.new(2026, 7, 14), irrigation_in: 0.8)
       field.field_entries.create!(date: Date.new(2026, 7, 13), rain_in: 2.0)
       CanopyObservation.record(planting, Date.new(2026, 7, 6), 20)
       CanopyObservation.record(planting, Date.new(2026, 7, 15), 90)
@@ -280,7 +280,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(inertia.props[:days].last[:date]).to eq("2026-07-10")
       expect(days["2026-07-12"]).to include(irrigation: 1.0, irrigation_source: "entered", notes: "after")
       expect(days["2026-07-13"]).to include(rain: 2.0, rain_source: "entered")
-      expect(days["2026-07-14"]).to include(irrigation: 0.8, irrigation_source: "pivot")
+      expect(days["2026-07-14"]).to include(irrigation: 0.8, irrigation_source: "entered")
       expect(days["2026-07-06"][:canopy_entered]).to eq(20)
       expect(days["2026-07-15"]).to include(canopy_entered: nil)
       expect(days["2026-07-15"][:canopy]).to be < 90
@@ -420,37 +420,115 @@ RSpec.describe "Field status and daily entry", type: :request do
     end
   end
 
-  describe "pivot irrigation" do
+  describe "the irrigation calculator's equipment (PivotsController#equipment)" do
+    it "saves the pump capacity or depth at 100% and goes back to the page" do
+      patch equipment_pivot_path(pivot), params: {pivot: {pump_capacity_gpm: "1200"}}, headers: {"HTTP_REFERER" => daily_entry_url}
+      expect(response).to redirect_to(daily_entry_url)
+      expect(pivot.reload.pump_capacity_gpm).to eq(1200)
+      patch equipment_pivot_path(pivot), params: {pivot: {inches_at_100: "0.2"}}
+      expect(pivot.reload).to have_attributes(inches_at_100: 0.2, pump_capacity_gpm: 1200)
+    end
+
+    it "keeps the system as it was when the value can't be saved, and says why" do
+      patch equipment_pivot_path(pivot), params: {pivot: {inches_at_100: "9"}}
+      expect(pivot.reload.inches_at_100).to be_nil
+      expect(flash[:alert]).to match(/at most 3 inches/)
+    end
+
+    it "takes only those two values" do
+      patch equipment_pivot_path(pivot), params: {pivot: {name: "Renamed", pump_capacity_gpm: "800"}}
+      expect(pivot.reload).to have_attributes(name: pivot.name, pump_capacity_gpm: 800)
+    end
+  end
+
+  describe "an irrigation system's irrigation (D15: saved on each field)" do
     let!(:other_field) { create(:field, pivot:, name: "North corn", area_acres: 50) }
 
-    it "creates, replaces by date, edits and deletes" do
-      post pivot_irrigations_path(pivot), params: {pivot_irrigation: {date: "2026-07-10", inches: 0.8, field_ids: ["", field.id, other_field.id]}}
-      irrigation = pivot.pivot_irrigations.sole
-      expect(irrigation).to have_attributes(inches: 0.8, field_ids: nil) # every field: stored as all
+    def irrigation_on(date) = pivot.reload.irrigation_on(date).values.first&.to_h { |f, entry| [f.name, entry.irrigation_in] }
 
-      post pivot_irrigations_path(pivot), params: {pivot_irrigation: {date: "2026-07-10", inches: 0.7, field_ids: ["", field.id]}}
-      expect(irrigation.reload).to have_attributes(inches: 0.7, field_ids: [field.id])
+    it "saves each field's amount, replaces it, and deletes the day" do
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8", other_field.id => "0.6"}}}
+      expect(response).to redirect_to(pivot_path(pivot))
+      expect(irrigation_on(Date.new(2026, 7, 10))).to eq("North corn" => 0.6, "North potatoes" => 0.8)
 
-      patch pivot_irrigation_path(pivot, irrigation), params: {pivot_irrigation: {inches: "", run_hours: 12}}
-      expect(irrigation.reload).to have_attributes(inches: nil, run_hours: 12)
+      field.field_entries.find_by(date: Date.new(2026, 7, 10)).update!(rain_in: 0.2)
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.7", other_field.id => ""}}}
+      expect(irrigation_on(Date.new(2026, 7, 10))).to eq("North potatoes" => 0.7)
+      expect(other_field.field_entries).to be_empty
 
-      delete pivot_irrigation_path(pivot, irrigation)
-      expect(pivot.pivot_irrigations).to be_empty
+      delete pivot_irrigation_path(pivot, "2026-07-10")
+      expect(response).to redirect_to(pivot_path(pivot))
+      expect(irrigation_on(Date.new(2026, 7, 10))).to be_nil
+      expect(field.field_entries.sole).to have_attributes(rain_in: 0.2, irrigation_in: nil) # the rain stays
     end
 
-    it "refuses an irrigation applied to no fields" do
-      post pivot_irrigations_path(pivot), params: {pivot_irrigation: {date: "2026-07-10", inches: 0.8, field_ids: [""]}},
+    it "leaves fields not sent as they were" do
+      other_field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.5)
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8"}}}
+      expect(irrigation_on(Date.new(2026, 7, 10))).to eq("North corn" => 0.5, "North potatoes" => 0.8)
+    end
+
+    it "moves a day to another date, clearing the one it came from" do
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8"}}}
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-11", from: "2026-07-10", fields: {field.id => "0.8"}}}
+      expect(irrigation_on(Date.new(2026, 7, 10))).to be_nil
+      expect(irrigation_on(Date.new(2026, 7, 11))).to eq("North potatoes" => 0.8)
+    end
+
+    it "sets the field's plots that had its amount, as the field's own save does" do
+      plotted = create(:field, pivot:, name: "Plots", area_acres: 10)
+      plot = create(:planting, field: plotted, partial: true, area_acres: 1, season_start: Date.new(2026, 7, 1),
+        emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30))
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {plotted.id => "0.8"}}}
+      expect(plot.planting_entries.sole).to have_attributes(date: Date.new(2026, 7, 10), irrigation_in: 0.8)
+      delete pivot_irrigation_path(pivot, "2026-07-10")
+      expect(plot.planting_entries.reload).to be_empty
+    end
+
+    it "writes only the fields on the system that day" do
+      elsewhere = create(:field, pivot: create(:pivot, farm:))
+      moved = create(:field, pivot:, name: "Moved")
+      create(:planting, field: moved, season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1),
+        end_date: Date.new(2026, 7, 12))
+      moved.update!(pivot: elsewhere.pivot)
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-15",
+                                                                fields: {elsewhere.id => "0.8", moved.id => "0.8", field.id => "0.5"}}}
+      expect(elsewhere.field_entries).to be_empty
+      expect(moved.field_entries).to be_empty # on another system by then
+      expect(irrigation_on(Date.new(2026, 7, 15))).to eq("North potatoes" => 0.5)
+
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {moved.id => "0.4"}}}
+      expect(moved.field_entries.sole).to have_attributes(date: Date.new(2026, 7, 10), irrigation_in: 0.4) # its season ran here
+    end
+
+    it "saves nothing when an amount is invalid, keyed by field" do
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8", other_field.id => "-1"}}},
         headers: {"HTTP_REFERER" => pivot_path(pivot)}
-      expect(pivot.pivot_irrigations).to be_empty
+      expect(FieldEntry.where(field: [field, other_field])).to be_empty
       follow_redirect!
-      expect(inertia.props[:errors]).to include("field_ids")
+      expect(inertia.props[:errors]).to include("fields.#{other_field.id}.irrigation_in")
     end
 
-    it "lists a season's irrigation on the pivot page" do
-      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 10), inches: 0.8)
-      pivot.pivot_irrigations.create!(date: Date.new(2025, 7, 10), inches: 0.8)
+    it "needs a date" do
+      post pivot_irrigations_path(pivot), params: {irrigation: {date: "", fields: {field.id => "0.8"}}},
+        headers: {"HTTP_REFERER" => pivot_path(pivot)}
+      expect(field.field_entries).to be_empty
+      follow_redirect!
+      expect(inertia.props[:errors]).to include("date")
+    end
+
+    it "lists a season's irrigation on the pivot page by date, newest first, with each field's amount" do
+      field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.8)
+      other_field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.6)
+      field.field_entries.create!(date: Date.new(2026, 7, 12), irrigation_in: 0.0)
+      field.field_entries.create!(date: Date.new(2026, 7, 14), rain_in: 0.3)
+      field.field_entries.create!(date: Date.new(2025, 7, 10), irrigation_in: 0.8)
       get pivot_path(pivot)
-      expect(inertia.props[:irrigations].map { |i| i[:date] }).to eq(["2026-07-10"])
+      expect(inertia.props[:irrigations]).to eq([
+        {"date" => "2026-07-12", "fields" => {field.id.to_s => 0.0}},
+        {"date" => "2026-07-10", "fields" => {other_field.id.to_s => 0.6, field.id.to_s => 0.8}}
+      ])
+      expect(inertia.props).not_to have_key(:field_amounts)
     end
 
     it "lists the fields on the pivot with their seasons, a field moved away among them (G.14 part 7)" do
@@ -487,14 +565,13 @@ RSpec.describe "Field status and daily entry", type: :request do
     end
 
     it "shows what's already entered for the date, and the crop in season" do
-      field.field_entries.create!(date: Date.new(2026, 7, 5), rain_in: 0.3, notes: "gauge")
-      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 5), inches: 0.8, field_ids: [field.id])
+      field.field_entries.create!(date: Date.new(2026, 7, 5), rain_in: 0.3, irrigation_in: 0.8, notes: "gauge")
       get daily_entry_path(date: "2026-07-05")
       pivot_props = inertia.props[:farms].sole[:pivots].sole
-      expect(pivot_props[:irrigation]).to include(inches: 0.8, field_ids: [field.id])
+      expect(pivot_props).not_to have_key(:irrigation)
+      expect(pivot_props[:yesterday]).to be_nil
       fields = pivot_props[:fields].index_by { |f| f[:name] }
-      expect(fields["North potatoes"]).to include(entry: {"rain_in" => 0.3, "irrigation_in" => nil, "irrigation_pct" => nil,
-                                                          "soil_moisture_pct" => nil})
+      expect(fields["North potatoes"]).to include(entry: {"rain_in" => 0.3, "irrigation_in" => 0.8, "soil_moisture_pct" => nil})
       expect(fields["North potatoes"][:plantings].map { |planting| planting[:plant_name] }).to eq(["Potato"])
       expect(fields["North corn"]).to include(plantings: [], entry: nil)
     end
@@ -507,35 +584,31 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(farm_props[:pivots].sole[:fields].map { |f| f[:rain_model] }).to eq([nil, nil])
     end
 
-    it "saves pivot irrigation and field entries for the day together" do
+    it "saves each field's irrigation with its other values for the day" do
       patch daily_entry_path, params: {
         date: "2026-07-15",
-        pivots: {pivot.id => {inches: "", run_hours: 10, field_ids: ["", other_field.id]}},
-        fields: {field.id => {rain_in: 0.3, irrigation_in: "", soil_moisture_pct: ""}, other_field.id => {rain_in: "0"}}
+        fields: {field.id => {rain_in: 0.3, irrigation_in: "", soil_moisture_pct: ""}, other_field.id => {rain_in: "0", irrigation_in: "0.6"}}
       }
       expect(response).to redirect_to(daily_entry_path(date: "2026-07-15"))
-      expect(pivot.pivot_irrigations.sole).to have_attributes(run_hours: 10, field_ids: [other_field.id])
       expect(field.field_entries.sole).to have_attributes(rain_in: 0.3, irrigation_in: nil)
-      expect(other_field.field_entries.sole.rain_in).to eq(0.0)
+      expect(other_field.field_entries.sole).to have_attributes(rain_in: 0.0, irrigation_in: 0.6)
 
-      # Blank amounts remove the pivot's irrigation and empty entries
-      patch daily_entry_path, params: {date: "2026-07-15", pivots: {pivot.id => {inches: "", run_hours: ""}},
-                                       fields: {field.id => {rain_in: ""}}}
-      expect(pivot.pivot_irrigations).to be_empty
+      # Blank amounts remove empty entries
+      patch daily_entry_path, params: {date: "2026-07-15", fields: {field.id => {rain_in: ""}, other_field.id => {irrigation_in: ""}}}
       expect(field.field_entries).to be_empty
+      expect(other_field.field_entries.sole).to have_attributes(rain_in: 0.0, irrigation_in: nil)
     end
 
-    it "ignores a pivot or field sent without values" do
-      patch daily_entry_path, params: {date: "2026-07-15", pivots: {pivot.id => "1"}, fields: {field.id => "0.3"}}
+    it "ignores a field sent without values, and systems (irrigation is the fields')" do
+      patch daily_entry_path, params: {date: "2026-07-15", pivots: {pivot.id => {inches: 0.5}}, fields: {field.id => "0.3"}}
       expect(response).to redirect_to(daily_entry_path(date: "2026-07-15"))
-      expect(pivot.pivot_irrigations).to be_empty
-      expect(field.field_entries).to be_empty
+      expect(FieldEntry.where(field: [field, other_field])).to be_empty
     end
 
     it "saves nothing when any value is invalid" do
-      patch daily_entry_path, params: {date: "2026-07-15", pivots: {pivot.id => {inches: 0.5}},
-                                       fields: {field.id => {soil_moisture_pct: 140}}}
-      expect(pivot.pivot_irrigations).to be_empty
+      patch daily_entry_path, params: {date: "2026-07-15", fields: {other_field.id => {irrigation_in: 0.5},
+                                                                    field.id => {soil_moisture_pct: 140}}}
+      expect(FieldEntry.where(field: [field, other_field])).to be_empty
       follow_redirect!
       expect(inertia.props[:errors]).to include("fields.#{field.id}.soil_moisture_pct")
     end

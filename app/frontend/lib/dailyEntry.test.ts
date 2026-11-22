@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  appliedLabel,
-  common,
   farmRows,
+  fieldBox,
+  fieldBoxes,
   fieldHasEntry,
+  fieldRowBoxes,
+  plotBox,
   rainFields,
   rainNote,
+  rainView,
+  rowAmount,
+  savedIrrigation,
+  systemBoxes,
+  yesterdayBoxes,
   type DayFarm,
   type DayField,
   type DayPivot,
@@ -41,7 +48,6 @@ const pivot = (id: number, fields: DayField[], pivot_group_id: number | null = n
   pivot_group_id,
   pump_capacity_gpm: null,
   inches_at_100: null,
-  irrigation: null,
   yesterday: null,
   fields,
 })
@@ -92,19 +98,76 @@ describe('rain fill-down', () => {
     expect(rainFields([pivot(1, [growing, field(2, [])])])).toEqual([growing])
   })
 
-  it("shows the fields' value when all agree, and varies when not", () => {
-    expect(common([0.4, 0.4])).toEqual({ value: 0.4, varies: false })
-    expect(common([null, null])).toEqual({ value: null, varies: false })
-    expect(common([0.4, null])).toEqual({ value: null, varies: true })
-    expect(common([])).toEqual({ value: null, varies: false })
+  it("shows the fields' entered value when all agree, else their shared amount entered or modeled, or varies", () => {
+    const fields = [
+      { ...field(1), rain_model: 0.2 },
+      { ...field(2), rain_model: 0.2 },
+    ]
+    expect(rainView(fields, { 1: 0.4, 2: 0.4 })).toEqual({ value: 0.4, shown: 0.4, modeled: false, varies: false })
+    expect(rainView(fields, { 1: null, 2: null })).toEqual({ value: null, shown: 0.2, modeled: true, varies: false })
+    expect(rainView(fields, { 1: 0.2, 2: null })).toEqual({ value: null, shown: 0.2, modeled: false, varies: false })
+    expect(rainView(fields, { 1: 0.4, 2: null })).toEqual({ value: null, shown: null, modeled: false, varies: true })
+    const apart = [
+      { ...field(1), rain_model: 0.2 },
+      { ...field(2), rain_model: 0.3 },
+    ]
+    expect(rainView(apart, {})).toMatchObject({ value: null, modeled: true, varies: true })
   })
 })
 
-describe('appliedLabel', () => {
-  it("says how many fields a pivot's irrigation reaches", () => {
-    expect(appliedLabel(null, 6)).toBe('All 6 fields')
-    expect(appliedLabel([1, 2, 3, 4, 5], 6)).toBe('5 of 6 fields')
-    expect(appliedLabel(null, 1)).toBe('Its field')
+describe('irrigation boxes', () => {
+  const plot = (id: number, irrigation_in: number | null = null) =>
+    planting(id, { partial: true, entry: irrigation_in === null ? null : { irrigation_in, soil_moisture_pct: null } })
+  const whole = { ...field(1), entry: { rain_in: null, irrigation_in: 0.8, soil_moisture_pct: null } }
+  const withPlots = field(2, [planting(20), plot(21, 0.8), plot(22, 0.5)])
+  const plotsOnly = field(3, [plot(31, 0.6), plot(32, 0.6)])
+  const idle = field(4, [])
+  const system = pivot(1, [whole, withPlots, plotsOnly, idle])
+
+  it("fills a field's and its plots' boxes, and a system's fields in season with their plots", () => {
+    expect(fieldBoxes(withPlots)).toEqual(['field-2', 'plot-21', 'plot-22'])
+    expect(systemBoxes(system)).toEqual(['field-1', 'field-2', 'plot-21', 'plot-22', 'field-3', 'plot-31', 'plot-32'])
+  })
+
+  it('reads every field and plot as saved', () => {
+    expect(savedIrrigation([system])).toEqual({
+      'field-1': 0.8,
+      'field-2': null,
+      'plot-21': 0.8,
+      'plot-22': 0.5,
+      'field-3': null,
+      'plot-31': 0.6,
+      'plot-32': 0.6,
+      'field-4': null,
+    })
+  })
+
+  it("shows a field's own amount, or for a field of plots only, theirs", () => {
+    const values = savedIrrigation([system])
+    expect(rowAmount(fieldRowBoxes(whole), values)).toEqual({ value: 0.8, varies: false })
+    expect(rowAmount(fieldRowBoxes(withPlots), values)).toEqual({ value: null, varies: false })
+    expect(rowAmount(fieldRowBoxes(plotsOnly), values)).toEqual({ value: 0.6, varies: false })
+  })
+
+  it("shows a system's shared amount, or varies", () => {
+    const values = { ...savedIrrigation([system]) }
+    expect(rowAmount(systemBoxes(system), values).varies).toBe(true)
+    for (const box of systemBoxes(system)) values[box] = 0.7
+    expect(rowAmount(systemBoxes(system), values)).toEqual({ value: 0.7, varies: false })
+  })
+
+  it("fills the day before's amounts for Same as yesterday", () => {
+    expect(yesterdayBoxes(system)).toBeNull()
+    const before = { ...system, yesterday: { fields: { 1: 0.5 }, plantings: { 21: 0.4 } } }
+    expect(yesterdayBoxes(before)).toEqual({
+      [fieldBox(1)]: 0.5,
+      [fieldBox(2)]: null,
+      [plotBox(21)]: 0.4,
+      [plotBox(22)]: null,
+      [fieldBox(3)]: null,
+      [plotBox(31)]: null,
+      [plotBox(32)]: null,
+    })
   })
 })
 

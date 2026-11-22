@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -107,10 +107,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_120000) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.float "irrigation_pct"
     t.index ["field_id", "date"], name: "index_field_entries_on_field_id_and_date", unique: true
     t.check_constraint "irrigation_in IS NULL OR irrigation_in >= 0::double precision", name: "field_entries_irrigation_nonnegative"
-    t.check_constraint "irrigation_pct IS NULL OR irrigation_pct > 0::double precision AND irrigation_pct <= 100::double precision AND irrigation_in IS NOT NULL", name: "field_entries_irrigation_pct"
     t.check_constraint "rain_in IS NULL OR rain_in >= 0::double precision", name: "field_entries_rain_nonnegative"
     t.check_constraint "soil_moisture_pct IS NULL OR soil_moisture_pct >= 0::double precision AND soil_moisture_pct <= 100::double precision", name: "field_entries_moisture_range"
   end
@@ -161,25 +159,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_120000) do
     t.index ["created_by_id"], name: "index_pivot_groups_on_created_by_id"
     t.index ["farm_id"], name: "index_pivot_groups_on_farm_id"
     t.index ["id", "farm_id"], name: "index_pivot_groups_on_id_and_farm_id", unique: true
-  end
-
-  create_table "pivot_irrigations", force: :cascade do |t|
-    t.bigint "pivot_id", null: false
-    t.date "date", null: false
-    t.float "inches"
-    t.float "run_hours"
-    t.bigint "field_ids", array: true
-    t.text "notes"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.float "percent_timer"
-    t.float "circles"
-    t.index ["pivot_id", "date"], name: "index_pivot_irrigations_on_pivot_id_and_date", unique: true
-    t.check_constraint "circles IS NULL OR circles > 0::double precision", name: "pivot_irrigations_circles_positive"
-    t.check_constraint "inches IS NULL OR inches >= 0::double precision", name: "pivot_irrigations_inches_nonnegative"
-    t.check_constraint "num_nonnulls(inches, run_hours, percent_timer) >= 1", name: "pivot_irrigations_amount"
-    t.check_constraint "percent_timer IS NULL OR percent_timer > 0::double precision AND percent_timer <= 100::double precision", name: "pivot_irrigations_percent_timer_range"
-    t.check_constraint "run_hours IS NULL OR run_hours >= 0::double precision", name: "pivot_irrigations_run_hours_nonnegative"
   end
 
   create_table "pivots", force: :cascade do |t|
@@ -452,7 +431,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_120000) do
   add_foreign_key "memberships", "users", on_delete: :cascade
   add_foreign_key "pivot_groups", "farms", on_delete: :cascade
   add_foreign_key "pivot_groups", "users", column: "created_by_id", on_delete: :nullify
-  add_foreign_key "pivot_irrigations", "pivots"
   add_foreign_key "pivots", "farms"
   add_foreign_key "pivots", "pivot_groups", column: ["pivot_group_id", "farm_id"], primary_key: ["id", "farm_id"], name: "pivots_pivot_group_same_farm"
   add_foreign_key "pivots", "weather_cells"

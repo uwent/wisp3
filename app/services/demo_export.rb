@@ -8,7 +8,7 @@ class DemoExport
   FIELD_ATTRIBUTES = %w[area_acres field_capacity perm_wilting_pt notes].freeze
   PLANTING_ATTRIBUTES = %w[variety et_method target_ad_pct initial_moisture_pct max_root_zone_depth mad_frac
     canopy_interpolation canopy_curve_key season_days partial plot_length_ft plot_width_ft own_soil notes].freeze
-  ENTRY_VALUES = %w[rain_in irrigation_in irrigation_pct soil_moisture_pct notes].freeze
+  ENTRY_VALUES = %w[rain_in irrigation_in soil_moisture_pct notes].freeze
 
   HEADER = <<~YAML
     # The demo farms (DemoSeed, bin/rails demo:seed). Written by bin/rails demo:export from the demo
@@ -40,25 +40,30 @@ class DemoExport
 
   private
 
+  # A day the system's fields got one amount is written as the system's irrigation (DemoSeed spreads
+  # it again, with their plots) and left out of their entries; other days stay on the fields
   def system(pivot)
     fields = pivot.fields.reorder(:id).to_a
-    names = fields.to_h { |field| [field.id, field.name] }
-    irrigation = pivot.pivot_irrigations.order(:date).map do |irrigation|
-      {"date" => month_day(irrigation.date), "inches" => irrigation.inches, "run_hours" => irrigation.run_hours,
-       "percent_timer" => irrigation.percent_timer, "circles" => irrigation.circles,
-       "fields" => irrigation.field_ids&.map { |id| names.fetch(id) }, "notes" => irrigation.notes}.compact
+    @spread = {}
+    irrigation = pivot.irrigation_on(Date.new(@year).all_year).filter_map do |date, watered|
+      amounts = watered.values.map(&:irrigation_in).uniq
+      next unless amounts.one?
+      watered.each_key { |field| (@spread[field.id] ||= {})[date] = amounts.first }
+      named = (watered.keys.map(&:id).sort == pivot.fields_on(date).map(&:id).sort) ? nil : watered.keys.map(&:name)
+      {"date" => month_day(date), "inches" => amounts.first, "fields" => named}.compact
     end
     values(pivot, SYSTEM_ATTRIBUTES).merge("irrigation" => irrigation.presence, "fields" => fields.map { |field| field(field) }).compact
   end
 
   def field(field)
+    spread = @spread.fetch(field.id, {})
     {"name" => field.name, **values(field, FIELD_ATTRIBUTES), "soil" => field.soil_type.key,
      "boundary" => field.boundary&.dig("coordinates", 0),
-     "entries" => entries(field.field_entries).presence,
-     "plantings" => field.plantings.reorder(:season_start, :id).map { |planting| planting(planting) }.presence}.compact
+     "entries" => entries(field.field_entries, spread).presence,
+     "plantings" => field.plantings.reorder(:season_start, :id).map { |planting| planting(planting, spread) }.presence}.compact
   end
 
-  def planting(planting)
+  def planting(planting, spread)
     defaults = Planting.defaults_for(planting.plant, @year).transform_keys(&:to_s)
     attributes = values(planting, PLANTING_ATTRIBUTES).reject { |key, value| defaults[key] == value }
     attributes.delete("partial") unless planting.partial?
@@ -70,11 +75,16 @@ class DemoExport
        {"date" => month_day(reading.date), **values(reading, %w[pct_cover lai])}
      end.presence,
      "cuttings" => planting.canopy_cuttings.order(:date).map { |cutting| month_day(cutting.date) }.presence,
-     "entries" => entries(planting.planting_entries).presence}.compact
+     "entries" => entries(planting.planting_entries, spread).presence}.compact
   end
 
-  def entries(relation)
-    relation.order(:date).map { |entry| {"date" => month_day(entry.date), **values(entry, ENTRY_VALUES)} }
+  # spread: {date => inches} the system's irrigation puts on the field (and its plots), left out
+  def entries(relation, spread = {})
+    relation.order(:date).filter_map do |entry|
+      written = values(entry, ENTRY_VALUES)
+      written.delete("irrigation_in") if spread.key?(entry.date) && entry.irrigation_in == spread[entry.date]
+      {"date" => month_day(entry.date), **written} if written.any?
+    end
   end
 
   # The attributes set, whole numbers written without their ".0"

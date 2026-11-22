@@ -46,16 +46,18 @@ RSpec.describe PlantingTasks do
       expect(check).to be_nil
     end
 
-    it "doesn't ask when irrigation was entered on one of the days, for the field or by its system" do
+    it "doesn't ask when irrigation was entered on one of the days, even zero" do
       dry_from(Date.new(2026, 7, 18))
       expect(check).to have_attributes(date: Date.new(2026, 7, 18))
 
       entry = field.field_entries.create!(date: Date.new(2026, 7, 19), irrigation_in: 0.05)
       expect(check).to be_nil
 
-      entry.destroy!
-      create(:pivot_irrigation, pivot:, date: Date.new(2026, 7, 19), inches: 0.05)
+      entry.update!(irrigation_in: 0.0)
       expect(check).to be_nil
+
+      entry.destroy!
+      expect(check).to have_attributes(date: Date.new(2026, 7, 18))
     end
 
     it "doesn't ask once the season has ended, or time travelling" do

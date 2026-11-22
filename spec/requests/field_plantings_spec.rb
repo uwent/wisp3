@@ -28,7 +28,7 @@ RSpec.describe "Fields with several plantings", type: :request do
     it "lists the season's plantings with their status, and the field's own rain and irrigation" do
       soy, corn = plot("Soybean"), plot("Corn", length: 50)
       field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.6, rain_in: 0.3)
-      pivot.pivot_irrigations.create!(date: Date.new(2026, 7, 12), inches: 0.5)
+      soy.planting_entries.create!(date: Date.new(2026, 7, 12), irrigation_in: 0.5) # a plot's own isn't the field's
 
       get field_path(field)
       expect_inertia.to render_component("Fields/Show")
@@ -41,14 +41,19 @@ RSpec.describe "Fields with several plantings", type: :request do
       expect(props[:days].first[:date]).to eq("2026-07-20") # newest first, through today
       expect(days["2026-07-05"]).to include(rain: 0.4, rain_source: "model")
       expect(days["2026-07-10"]).to include(rain: 0.3, rain_source: "entered", irrigation: 0.6, irrigation_source: "entered")
-      expect(days["2026-07-12"]).to include(irrigation: 0.5, irrigation_source: "pivot")
+      expect(days["2026-07-12"]).to include(irrigation: 0.0, irrigation_source: "none")
     end
 
-    it "saves the field's own entry from its grid, without a planting" do
-      plot
+    it "saves the field's own entry from its grid, without a planting, setting its plots that had the field's (D15)" do
+      soy, corn = plot, plot("Corn", length: 50)
+      corn.planting_entries.create!(date: Date.new(2026, 7, 8), irrigation_in: 0.2)
       patch field_day_path(field, "2026-07-08"), params: {day: {irrigation_in: 0.7}}, headers: {"HTTP_REFERER" => field_path(field)}
       expect(field.field_entries.sole).to have_attributes(irrigation_in: 0.7)
-      expect(PlantingEntry.count).to eq(0)
+      expect(soy.planting_entries.sole).to have_attributes(date: Date.new(2026, 7, 8), irrigation_in: 0.7)
+      expect(corn.planting_entries.sole.irrigation_in).to eq(0.2)
+
+      patch field_day_path(field, "2026-07-08"), params: {day: {rain_in: 0.3}}, headers: {"HTTP_REFERER" => field_path(field)}
+      expect(soy.planting_entries.sole.irrigation_in).to eq(0.7)
     end
 
     it "shows another season by ?year=" do
@@ -61,7 +66,7 @@ RSpec.describe "Fields with several plantings", type: :request do
   end
 
   describe "a plot's page" do
-    it "shows the field's irrigation as from the field, and the field's amount under the plot's own" do
+    it "shows only the plot's own irrigation, with the field's amount alongside" do
       soy = plot
       field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.6)
       field.field_entries.create!(date: Date.new(2026, 7, 11), irrigation_in: 0.4)
@@ -72,7 +77,7 @@ RSpec.describe "Fields with several plantings", type: :request do
       expect(inertia.props[:planting]).to include(partial: true)
       expect(inertia.props[:exceeds_field_area]).to be(false)
       days = inertia.props[:days].index_by { |day| day[:date] }
-      expect(days["2026-07-10"]).to include(irrigation: 0.6, irrigation_source: "field", field_inches: 0.6)
+      expect(days["2026-07-10"]).to include(irrigation: 0.0, irrigation_source: "none", field_inches: 0.6)
       expect(days["2026-07-11"]).to include(irrigation: 0.2, irrigation_source: "entered", field_inches: 0.4)
     end
 

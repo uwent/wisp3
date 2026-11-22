@@ -65,37 +65,37 @@ RSpec.describe DailyInputs do
   describe "precedence" do
     it "prefers the field's entry, keeping the modeled rain alongside" do
       create(:field_entry, field:, date:, rain_in: 0.8, irrigation_in: 0.5, soil_moisture_pct: 14)
-      create(:pivot_irrigation, pivot:, date:, inches: 0.7)
       expect(resolve).to have_attributes(rain: 0.8, rain_source: :entered, rain_model: 0.35, irrigation: 0.5,
         irrigation_source: :entered, soil_moisture_pct: 14, moisture_source: :entered)
     end
 
     it "keeps an entered zero (C5)" do
-      create(:field_entry, field:, date:, rain_in: 0.0)
-      expect(resolve).to have_attributes(rain: 0.0, rain_source: :entered)
+      create(:field_entry, field:, date:, rain_in: 0.0, irrigation_in: 0.0)
+      expect(resolve).to have_attributes(rain: 0.0, rain_source: :entered, irrigation: 0.0, irrigation_source: :entered)
     end
 
-    it "takes pivot irrigation where the field has none of its own" do
+    it "takes no irrigation from the system or another field on it (D15)" do
+      create(:field_entry, field: other_field, date:, irrigation_in: 0.7)
       create(:field_entry, field:, date:, rain_in: 0.6)
-      create(:pivot_irrigation, pivot:, date:, inches: 0.7)
-      expect(resolve).to have_attributes(rain: 0.6, rain_source: :entered, irrigation: 0.7, irrigation_source: :pivot,
+      expect(resolve).to have_attributes(rain: 0.6, rain_source: :entered, irrigation: 0.0, irrigation_source: :none,
         soil_moisture_pct: nil, moisture_source: nil)
+      expect(described_class.new(other_field, [date]).days.first)
+        .to have_attributes(irrigation: 0.7, irrigation_source: :entered)
     end
   end
 
-  describe "pivot irrigation" do
-    it "applies only to the chosen fields" do
-      create(:pivot_irrigation, pivot:, date:, inches: 0.7, field_ids: [other_field.id])
-      expect(resolve.irrigation_source).to eq(:none)
-      expect(described_class.new(other_field, [date]).days.first.irrigation).to eq(0.7)
-    end
+  describe "a planting on part of the field" do
+    let(:field) { create(:field, pivot:, area_acres: 60) }
+    let!(:plot) { create(:planting, field:, partial: true, area_acres: 20, season_start: date - 30, end_date: date + 60) }
 
-    it "converts run hours over the irrigated acres" do
-      field
-      other_field
-      create(:pivot_irrigation, pivot:, date:, inches: nil, run_hours: 10)
-      # 900 gpm × 600 min / (27,154 gal per acre-inch × 100 acres)
-      expect(resolve.irrigation).to be_within(1e-9).of(900 * 600 / (27_154.0 * 100))
+    def resolve_plot = described_class.new(field, [date], weather:, planting: plot.reload).days.first
+
+    it "takes its own irrigation, not the field's" do
+      create(:field_entry, field:, date:, irrigation_in: 0.5)
+      expect(resolve_plot).to have_attributes(irrigation: 0.0, irrigation_source: :none)
+      plot.planting_entries.create!(date:, irrigation_in: 0.3)
+      expect(resolve_plot).to have_attributes(irrigation: 0.3, irrigation_source: :entered)
+      expect(resolve).to have_attributes(irrigation: 0.5, irrigation_source: :entered)
     end
   end
 
@@ -105,7 +105,7 @@ RSpec.describe DailyInputs do
       weather = dates.to_h { |day| [day, {et0: 0.2, precip: 0.1}] }
       create(:field_entry, field:, date: date + 1, rain_in: 0.8, soil_moisture_pct: 12)
       create(:field_entry, field:, date: date + 2, rain_in: 0.4, irrigation_in: 0.3)
-      create(:pivot_irrigation, pivot:, date: date + 3, inches: 0.7, field_ids: [other_field.id])
+      create(:field_entry, field: other_field, date: date + 3, irrigation_in: 0.7)
       create(:field_entry, field: other_field, date: date + 4, irrigation_in: 0.2)
 
       records = described_class.preload([field, other_field], dates.first..dates.last)
@@ -113,31 +113,34 @@ RSpec.describe DailyInputs do
         expect(described_class.new(each_field, dates, weather:, records: records[each_field.id]).days)
           .to eq(described_class.new(each_field, dates, weather:).days)
       end
-      expect(records[other_field.id].pivot_irrigations.size).to eq(1)
+      expect(records[other_field.id].entries.size).to eq(2)
     end
 
-    it "converts run hours without a query per irrigation" do
-      [field, other_field].each do |each_field|
-        create(:planting, field: each_field, season_start: date - 30, emergence_date: date - 20, end_date: date + 60)
-      end
+    it "takes the same queries however many days it resolves" do
+      plot = create(:planting, field:, partial: true, area_acres: 20, season_start: date - 30, emergence_date: date - 20, end_date: date + 60)
       weather = (date..date + 9).to_h { |day| [day, {et0: 0.2, precip: 0.0}] }
-      queries = lambda do |days|
+      queries = lambda do |days, planting|
         dates = (date..date + days - 1).to_a
         count = 0
         counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
         result = ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
           records = described_class.preload([field.reload], dates.first..dates.last)
-          described_class.new(field, dates, weather:, records: records[field.id]).days
+          described_class.new(field, dates, weather:, records: records[field.id], planting:).days
         end
         [count, result]
       end
 
-      (date..date + 9).each { |day| create(:pivot_irrigation, pivot:, date: day, run_hours: 10, inches: nil) }
-      few, = queries.call(2)
-      many, days = queries.call(10)
+      (date..date + 9).each do |day|
+        create(:field_entry, field:, date: day, irrigation_in: 0.5)
+        plot.planting_entries.create!(date: day, irrigation_in: 0.4)
+      end
+      plot.reload
+      queries.call(1, plot) # loads the planting's system once
+      few, = queries.call(2, plot)
+      many, days = queries.call(10, plot)
       expect(many).to eq(few)
-      # 900 gpm for 10 hours over the two fields' 100 acres
-      expect(days.first.irrigation).to be_within(1e-9).of(900.0 * 10 * 60 / (PivotIrrigation::GALLONS_PER_ACRE_INCH * 100))
+      expect(days.map(&:irrigation)).to all(eq(0.4))
+      expect(queries.call(10, nil).last.map(&:irrigation)).to all(eq(0.5))
     end
   end
 end

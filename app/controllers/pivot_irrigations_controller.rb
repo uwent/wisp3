@@ -1,7 +1,7 @@
-# Irrigation entered once for a pivot (D9). Creating one for a date that already has one replaces it.
-# The form also sets each field's own amount that day (field_amounts: {field_id => {irrigation_in,
-# irrigation_pct}}, blank for the system's), saved as the field's entry, which replaces the
-# system's for that field (DailyInputs), as daily entry's field rows do.
+# An irrigation system's irrigation on its page: one date's amounts on the fields it watered that
+# day (Pivot#fields_on), saved as each field's own (D15: irrigation is stored per field and plot;
+# Field#record_entry also sets the field's plots that had its amount). The list is the fields'
+# entries by date (PivotsController#show); the export is PivotIrrigationCsv.
 class PivotIrrigationsController < AuthenticatedController
   allow_example :index
   before_action :set_pivot
@@ -9,48 +9,25 @@ class PivotIrrigationsController < AuthenticatedController
   # The year's irrigation (?year=) as CSV
   def index
     year = requested_year
-    irrigations = PivotIrrigation.preload_areas(@pivot.pivot_irrigations.where(date: Date.new(year).all_year).order(:date))
-    csv = PivotIrrigationCsv.new(@pivot, year, irrigations, exported_by: current_user, about_url:).to_csv
+    csv = PivotIrrigationCsv.new(@pivot, year, exported_by: current_user, about_url:).to_csv
     send_csv csv, "wisp-irrigation-#{@pivot.name.parameterize}-#{year}.csv"
   end
 
+  # irrigation: {date, fields: {field_id => inches, blank for none}, from: the date being edited,
+  # when it moved}. Fields not on the system that day are ignored.
   def create
-    save(@pivot.pivot_irrigations.find_or_initialize_by(date: irrigation_params[:date]))
-  end
-
-  def update
-    save(@pivot.pivot_irrigations.find(params[:id]))
-  end
-
-  # The fields' own amounts that day go with it
-  def destroy
-    irrigation = @pivot.pivot_irrigations.find(params[:id])
-    PivotIrrigation.transaction do
-      clear_field_amounts(irrigation.date)
-      irrigation.destroy!
-    end
-    redirect_back_or_to pivot_path(@pivot), notice: "Irrigation deleted"
-  end
-
-  private
-
-  def set_pivot
-    @pivot = Current.group.pivots.includes(:fields, farm: :group).find(params[:pivot_id])
-  end
-
-  # field_ids: every field on the pivot that day, or none sent, means "all" (stored as NULL)
-  def save(irrigation)
-    values = irrigation_params
-    irrigation.assign_attributes(values.except(:field_ids))
-    irrigation.field_ids = PivotIrrigation.normalize_field_ids(@pivot, values[:field_ids], irrigation.date)
-    moved_from = irrigation.date_in_database if irrigation.persisted? && irrigation.date_changed?
+    values = params.expect(irrigation: [:date, :from, fields: {}])
+    date = parse_date(values[:date])
+    return redirect_with_errors(request.referer || pivot_path(@pivot), {date: ["is needed"]}) unless date
+    from = parse_date(values[:from])
+    amounts = values[:fields].to_h
     errors = {}
-    PivotIrrigation.transaction do
-      if irrigation.save
-        clear_field_amounts(moved_from) if moved_from
-        record_field_amounts(irrigation.date, errors)
-      else
-        errors = irrigation.errors.to_hash(true)
+    ApplicationRecord.transaction do
+      clear(from) if from && from != date
+      @pivot.fields_on(date).each do |field|
+        next unless amounts.key?(field.id.to_s)
+        entry = field.record_entry(date, {irrigation_in: amounts[field.id.to_s].presence})
+        entry.errors.to_hash(true).each { |attribute, messages| errors["fields.#{field.id}.#{attribute}"] = messages }
       end
       raise ActiveRecord::Rollback if errors.any?
     end
@@ -61,27 +38,20 @@ class PivotIrrigationsController < AuthenticatedController
     end
   end
 
-  # Each field on the system that day: its own amount, or blank for the system's (clearing one saved
-  # before). Through DailyEntrySave, so a percent becomes the inches it puts on; errors come back as
-  # fields.<id>.irrigation_in.
-  def record_field_amounts(date, errors)
-    amounts = params.dig(:pivot_irrigation, :field_amounts)
-    return unless amounts.is_a?(ActionController::Parameters)
-    allowed = @pivot.fields_on(date).map { |field| field.id.to_s }
-    # A percent not sent is kept unless the inches change (DailyEntry.record)
-    fields = amounts.to_unsafe_h.slice(*allowed).transform_values do |amount|
-      amount.slice(:irrigation_in, :irrigation_pct).transform_values(&:presence)
-    end
-    DailyEntrySave.new(Current.group, date).record(ActionController::Parameters.new(fields:), errors)
+  # Clears the irrigation on the system's fields that day (and their plots that had the same)
+  def destroy
+    date = parse_date(params[:date]) or raise ActionController::BadRequest, "Invalid date"
+    ApplicationRecord.transaction { clear(date) }
+    redirect_back_or_to pivot_path(@pivot), notice: "Irrigation deleted"
   end
 
-  def clear_field_amounts(date)
-    @pivot.fields_on(date).each do |field|
-      FieldEntry.record(field.field_entries, date, irrigation_in: nil, irrigation_pct: nil)
-    end
+  private
+
+  def set_pivot
+    @pivot = Current.group.pivots.includes(:fields, farm: :group).find(params[:pivot_id])
   end
 
-  def irrigation_params
-    params.expect(pivot_irrigation: [:date, *PivotIrrigation::AMOUNTS, :notes, field_ids: []])
+  def clear(date)
+    @pivot.fields_on(date).each { |field| field.record_entry(date, {irrigation_in: nil}) }
   end
 end

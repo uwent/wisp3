@@ -5,11 +5,9 @@
 module DailyEntry
   extend ActiveSupport::Concern
 
-  # irrigation_pct (a field's only, FieldEntry): the percent timer's setting irrigation_in came from,
-  # kept to show it as entered (docs/plans/phase-9.md §8)
-  VALUES = %i[rain_in irrigation_in irrigation_pct soil_moisture_pct notes].freeze
+  VALUES = %i[rain_in irrigation_in soil_moisture_pct notes].freeze
   # What a day ahead takes: planned irrigation and notes; rain and readings haven't happened yet
-  FUTURE_VALUES = %i[irrigation_in irrigation_pct notes].freeze
+  FUTURE_VALUES = %i[irrigation_in notes].freeze
 
   included do
     validates :date, presence: true
@@ -29,12 +27,7 @@ module DailyEntry
     # deletes the entry once nothing is left in it. Returns the entry; check errors if invalid.
     def record(scope, date, values)
       entry = scope.find_or_initialize_by(date:)
-      values = values.to_h.symbolize_keys.slice(*entry_values)
-      entry.assign_attributes(values)
-      # Inches typed some other way replace the percent they came from
-      if entry_values.include?(:irrigation_pct) && !values.key?(:irrigation_pct) && entry.irrigation_in_changed?
-        entry.irrigation_pct = nil
-      end
+      entry.assign_attributes(values.to_h.symbolize_keys.slice(*entry_values))
       if entry.nothing_entered?
         entry.destroy! if entry.persisted?
       else

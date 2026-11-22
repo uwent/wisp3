@@ -41,7 +41,3 @@ en:
         pump_capacity_gpm: Pump capacity
         arc_start_deg: Arc start
         arc_end_deg: Arc end
-      pivot_irrigation:
-        inches: Amount
-        run_hours: Run hours
-        field_ids: Fields

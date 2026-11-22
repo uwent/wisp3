@@ -130,8 +130,7 @@ class SeasonReportCsv
   end
 
   # Each field's area that year, as its whole-field plantings kept it (PLAN.md Phase 8 G.9; the
-  # larger, for a double crop), or for a field of plots only, the field's (as PivotIrrigation#irrigated_acres
-  # counts it); nil without one
+  # larger, for a double crop), or for a field of plots only, the field's; nil without one
   def field_areas
     @field_areas ||= statuses.group_by { |status| status.planting.field }.to_h do |field, field_statuses|
       whole = field_statuses.map(&:planting).reject(&:partial?)

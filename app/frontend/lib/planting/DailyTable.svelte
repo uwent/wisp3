@@ -4,7 +4,7 @@
   import CollapsibleSection from '@/lib/components/CollapsibleSection.svelte'
   import EditableCell from '@/lib/components/EditableCell.svelte'
   import { formatDate } from '@/lib/dates'
-  import { cellLabel, cellText, depthUnitName, irrigationFrom, type DayColumn } from '@/lib/fieldDays'
+  import { cellLabel, cellText, depthUnitName, type DayColumn } from '@/lib/fieldDays'
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { formatNumber, type Units } from '@/lib/units'
   import { fields, pivots } from '@/routes'
@@ -52,14 +52,13 @@
         The season up to {formatDate(asOf)}. Depths are in {depthUnitName(units)}.
       {:else}
         Click a rain, irrigation, soil moisture, {lai ? 'LAI' : 'cover'} or notes cell to enter a value, and press Enter to
-        save and move down. Clear a cell to go back to the modeled value or the {noun}'s. Depths are in {depthUnitName(
-          units,
-        )}. From the keyboard, use the arrow keys to move between cells, and press Enter or start typing to edit one.
+        save and move down. Clear a rain cell to go back to the modeled value. Depths are in {depthUnitName(units)}.
+        From the keyboard, use the arrow keys to move between cells, and press Enter or start typing to edit one.
         {#if plot}
           Rain is the whole field's, so it's the same for every planting on it; irrigation, soil moisture readings and
           notes entered here are this planting's own. Irrigation entered for the whole field (on the
-          <Link href={fields.show(fieldId)} class="text-brand-600 underline underline-offset-2">Field</Link> tab) applies
-          here unless you enter this planting's own.
+          <Link href={fields.show(fieldId)} class="text-brand-600 underline underline-offset-2">Field</Link> tab) fills it
+          in when it had the field's amount.
         {/if}
       {/if}
     </p>
@@ -141,14 +140,10 @@
                     <span class="text-ink-muted">–</span>
                   {:else}
                     <span class="font-medium">{depth(day.irrigation)}</span>
-                    {#if irrigationFrom(day.irrigation_source, noun)}<span class="block text-xs text-ink-muted"
-                        >{irrigationFrom(day.irrigation_source, noun)}</span
-                      >{/if}
-                    {#if day.irrigation_source === 'entered' && day.field_inches !== null}
-                      <span class="block text-xs text-ink-muted">field {depth(day.field_inches)}</span>
-                    {:else if day.irrigation_source === 'entered' && day.pivot_inches !== null}
-                      <span class="block text-xs text-ink-muted">{noun} {depth(day.pivot_inches)}</span>
-                    {/if}
+                  {/if}
+                  <!-- A plot's view of its field's irrigation, when it differs (the field's isn't this plot's) -->
+                  {#if day.field_inches !== null && day.field_inches !== day.irrigation}
+                    <span class="block text-xs text-ink-muted">field {depth(day.field_inches)}</span>
                   {/if}
                 </EditableCell>
               </td>
@@ -210,11 +205,12 @@
       </table>
     </div>
     <p class="text-xs text-ink-muted">
-      Rain in gray is modeled for the {noun}'s location; bold values are ones you entered.{#if plot}{' '}Irrigation
-        marked “from field” was entered for the whole field.{/if} Irrigation marked “from {noun}” was entered on the
+      Rain in gray is modeled for the {noun}'s location; bold values are ones you entered.{#if plot}{' '}Under a plot's
+        irrigation, the field's when it differs.{/if} Irrigation can also be entered for all the {noun}'s fields at once
+      on the
       <Link href={pivots.show(pivotId)} class="text-brand-600 underline underline-offset-2"
         >{noun}'s irrigation page</Link
-      > or on the Daily entry page. * Crop ET is estimated from the past week because that day's weather is missing.
+      > or the Daily entry page. * Crop ET is estimated from the past week because that day's weather is missing.
       {lai ? 'LAI' : 'Cover'} in gray is estimated: {planting?.effective_canopy_interpolation === 'curve'
         ? "the crop's typical curve, adjusted to your readings"
         : 'straight lines between your readings'}.

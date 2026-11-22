@@ -64,29 +64,31 @@ RSpec.describe "Season values on plantings" do
       expect(pivot.plantings).to eq([last_year])
     end
 
-    it "keeps the old system's irrigation on an ended season, and takes the new one's after" do
-      create(:pivot_irrigation, pivot:, date: Date.new(2025, 7, 1), inches: 0.8)
-      create(:pivot_irrigation, pivot: other, date: Date.new(2025, 7, 2), inches: 0.5)
+    it "lists irrigation under the system the field's season ran on (Pivot#irrigation_on)" do
+      neighbor = create(:field, pivot:, name: "A neighbor")
+      dates = [Date.new(2025, 7, 1), Date.new(2025, 7, 2), Date.new(2026, 7, 3), Date.new(2026, 7, 4)]
+      field.field_entries.create!(date: dates[0], irrigation_in: 0.8)
+      neighbor.field_entries.create!(date: dates[0], irrigation_in: 0.7)
+      field.field_entries.create!(date: dates[1], rain_in: 0.5) # no irrigation
       field.update!(pivot: other)
-      create(:pivot_irrigation, pivot: other, date: Date.new(2026, 7, 3), inches: 0.6)
-      create(:pivot_irrigation, pivot:, date: Date.new(2026, 7, 4), inches: 0.9)
+      field.field_entries.create!(date: dates[2], irrigation_in: 0.6)
+      neighbor.field_entries.create!(date: dates[3], irrigation_in: 0.9)
 
+      old = pivot.irrigation_on(dates)
+      expect(old.keys).to eq([dates[0], dates[3]])
+      expect(old[dates[0]].transform_values(&:irrigation_in)).to eq(neighbor => 0.7, field => 0.8)
+      expect(old[dates[0]].keys).to eq([neighbor, field]) # by name
+      expect(old[dates[3]].transform_values(&:irrigation_in)).to eq(neighbor => 0.9)
+      expect(other.irrigation_on(dates).transform_values { |fields| fields.transform_values(&:irrigation_in) })
+        .to eq(dates[2] => {field => 0.6})
+      expect(pivot.irrigation_on(dates[1]..dates[2])).to eq({})
+
+      # Each season's balance takes the field's own irrigation, whichever system it ran on
       earlier = PlantingBalance.new(last_year.reload, weather: {}).days.to_h { |day| [day.inputs.date, day.inputs] }
-      expect(earlier[Date.new(2025, 7, 1)]).to have_attributes(irrigation: 0.8, irrigation_source: :pivot)
-      expect(earlier[Date.new(2025, 7, 2)]).to have_attributes(irrigation: 0.0, irrigation_source: :none)
+      expect(earlier[dates[0]]).to have_attributes(irrigation: 0.8, irrigation_source: :entered)
+      expect(earlier[dates[1]]).to have_attributes(irrigation: 0.0, irrigation_source: :none)
       now = PlantingBalance.new(this_year.reload, weather: {}).days.to_h { |day| [day.inputs.date, day.inputs] }
-      expect(now[Date.new(2026, 7, 3)].irrigation).to eq(0.6)
-      expect(now[Date.new(2026, 7, 4)].irrigation).to eq(0.0)
-
-      # Preloaded as on the dashboard, the same
-      records = DailyInputs.preload([field.reload], Date.new(2025, 4, 1)..Date.new(2026, 9, 30))[field.id]
-      preloaded = PlantingBalance.new(last_year, weather: {}, records:).days.to_h { |day| [day.inputs.date, day.inputs] }
-      expect(preloaded[Date.new(2025, 7, 1)].irrigation).to eq(0.8)
-      expect(PlantingBalance.new(this_year, weather: {}, records:).days.find { |day| day.inputs.date == Date.new(2026, 7, 3) }
-        .inputs.irrigation).to eq(0.6)
-      # The field as a whole: each day's system
-      whole = DailyInputs.new(field, [Date.new(2025, 7, 1), Date.new(2025, 12, 1), Date.new(2026, 7, 3)]).days
-      expect(whole.map(&:irrigation)).to eq([0.8, 0.0, 0.6])
+      expect(now[dates[2]]).to have_attributes(irrigation: 0.6, irrigation_source: :entered)
     end
 
     it "lists the field under each system on the days its seasons ran there" do
@@ -95,13 +97,6 @@ RSpec.describe "Season values on plantings" do
       expect(other.fields_on(Date.new(2025, 7, 1))).to eq([])
       expect(pivot.fields_on(Date.new(2026, 7, 1))).to eq([])
       expect(other.fields_on(Date.new(2026, 7, 1))).to eq([field])
-    end
-
-    it "accepts the old system's irrigation applied to the field on an earlier date" do
-      field.update!(pivot: other)
-      create(:field, pivot:)
-      expect(build(:pivot_irrigation, pivot:, date: Date.new(2025, 7, 1), field_ids: [field.id])).to be_valid
-      expect(build(:pivot_irrigation, pivot:, date: Date.new(2026, 7, 1), field_ids: [field.id])).not_to be_valid
     end
 
     it "hands its seasons to the field's system when the old system is deleted" do
@@ -119,40 +114,5 @@ RSpec.describe "Season values on plantings" do
     expect(ended.reload.weather_cell).to eq(old_cell)
     expect(WeatherCell.active).to include(old_cell, pivot.weather_cell)
     expect(old_cell.season_start(Date.new(2026, 8, 1))).to eq(Date.new(2026, 4, 1))
-  end
-
-  describe "run hours" do
-    let(:neighbor) { create(:field, pivot:, soil_type: sand, area_acres: 60) }
-
-    def irrigation(date) = create(:pivot_irrigation, pivot:, date:, inches: nil, run_hours: 10)
-
-    it "spreads the water over the plantings in season that day, not fallow fields" do
-      neighbor # no planting
-      one = irrigation(Date.new(2026, 7, 1))
-      expect(one.irrigated_acres).to eq(60)
-      create(:planting, field: neighbor)
-      two = irrigation(Date.new(2026, 7, 2))
-      expect(two.irrigated_acres).to eq(120)
-      expect(two.applied_inches).to be_within(0.0001).of(900 * 10 * 60 / (27_154.0 * 120))
-    end
-
-    it "uses each season's area, so a field changed for a later season doesn't move earlier irrigation" do
-      earlier = irrigation(Date.new(2025, 7, 1))
-      field.update!(area_acres: 120)
-      expect(PivotIrrigation.find(earlier.id).irrigated_acres).to eq(60)
-      expect(irrigation(Date.new(2026, 7, 1)).irrigated_acres).to eq(120)
-    end
-
-    it "counts the fields' areas on a day with no planting" do
-      expect(irrigation(Date.new(2026, 3, 1)).irrigated_acres).to eq(60)
-    end
-
-    it "counts the plantings that ran on the system that day, wherever their field is now" do
-      create(:planting, field: neighbor)
-      earlier = irrigation(Date.new(2025, 7, 1))
-      field.update!(pivot: create(:pivot, farm: pivot.farm))
-      expect(PivotIrrigation.find(earlier.id).irrigated_acres).to eq(60) # last year's planting, still here
-      expect(irrigation(Date.new(2026, 7, 1)).irrigated_acres).to eq(60) # the neighbor only
-    end
   end
 end

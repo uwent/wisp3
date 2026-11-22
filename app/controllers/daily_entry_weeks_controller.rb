@@ -14,7 +14,7 @@ class DailyEntryWeeksController < AuthenticatedController
     dates = DailyEntryWeek.new(Current.group, date).dates
     days = params[:days].is_a?(ActionController::Parameters) ? params[:days] : {}
     errors = {}
-    PivotIrrigation.transaction do
+    ApplicationRecord.transaction do
       days.each_key do |key|
         day = parse_date(key)
         raise ActionController::BadRequest, "#{key} isn't in the week" unless dates.include?(day)
