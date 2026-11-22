@@ -2,6 +2,17 @@ require "rails_helper"
 
 RSpec.describe "Domain models" do
   describe Planting do
+    it "has ended, or is open, as of the day the pages show (Current.today)" do
+      planting = create(:planting, end_date: Date.new(2026, 9, 30))
+      travel_to(Date.new(2026, 11, 1)) do
+        expect(planting.ended?).to be(true)
+        expect(Planting.open).to be_empty
+        Current.as_of = Date.new(2026, 7, 20)
+        expect(planting.ended?).to be(false)
+        expect(Planting.open).to eq([planting])
+      end
+    end
+
     let(:field) { create(:field) }
     let(:first) { create(:planting, field:, season_start: Date.new(2026, 4, 1), end_date: Date.new(2026, 7, 15)) }
 

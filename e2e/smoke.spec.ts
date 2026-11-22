@@ -897,9 +897,10 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
 test("a new whole-field planting offers the system's other fields free for its dates (Phase 9 §7)", async ({
   page,
 }) => {
+  // A field sharing its system with another (firstField is alone on its pivot); nothing is saved
   await page.goto('/setup')
-  await page.getByRole('button', { name: `Add a planting to ${DEMO.firstField}` }).click()
-  const dialog = page.getByRole('dialog', { name: new RegExp(`^Add a \\d{4} planting to ${literal(DEMO.firstField)}`) })
+  await page.getByRole('button', { name: `Add a planting to ${DEMO.splitWest}` }).click()
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^Add a \\d{4} planting to ${literal(DEMO.splitWest)}`) })
   await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
   // Collapsed to a line with a count, opened to a checklist (or a line saying none is free)
   const also = dialog.locator('details').filter({ hasText: 'Also plant this on' })
@@ -1035,7 +1036,8 @@ test("daily entry's week saves rain for a group's fields and a system's irrigati
   await page.goto(lateAugust)
   await expect(page.getByText(/Aug 24–30/).first()).toBeVisible()
   const rain = page.getByLabel(weekCell(DEMO.gauge, 'rain', 'Aug 25'))
-  const irrigation = page.getByLabel(weekCell(DEMO.otherPivot, 'irrigation', 'Aug 26'))
+  // Aug 24: the system's plantings end Aug 20 and 25, and a day after them takes nothing
+  const irrigation = page.getByLabel(weekCell(DEMO.otherPivot, 'irrigation', 'Aug 24'))
   await rain.fill('0.4')
   await irrigation.fill('0.5')
   await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
@@ -1074,13 +1076,20 @@ test("daily entry's week saves rain for a group's fields and a system's irrigati
     )
   await expect(rain).toHaveValue('0.3')
 
-  // Cleared for the next run, which replaces the varied amounts too
-  await rain.fill('')
-  await irrigation.fill('')
+  // Saved anyway, every field has it again
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
   await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
+  await expect(rain).toHaveValue('0.3')
+  await expect(rain).toHaveAttribute('placeholder', '')
+
+  // Cleared for the next run (a blank box on varied rain would leave the fields' amounts as they are)
+  await rain.fill('')
+  await irrigation.fill('')
+  await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
+  await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
   await page.reload()
+  await expect(rain).toHaveValue('')
   await expect(rain).toHaveAttribute('placeholder', '')
   await expect(irrigation).toHaveValue('')
 })
