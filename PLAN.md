@@ -24,12 +24,14 @@ Read this first; rewrite it at the end of each session. (The per-feature handoff
 
 **Then (2026-11-21), on branch `phase-9-catchup`, for Ben's look:** `docs/plans/phase-9.md` sections 6 and 7's last two, built by three agents in parallel and merged: daily entry's week view (`/daily/week`), "Also plant this on" in the new-planting form, and an outline file's shapes kept for the session with the shape picker as a searchable table. RSpec, vitest, `pnpm check` and standardrb pass on the merge; `bin/ci` and `bin/e2e` not yet run. What to look at and three new decisions are in phase-9.md's handoff.
 
+**Then (2026-11-21), Ben's look at `phase-9-catchup`, merged to `main`:** the shape page's picker became a "Field import" card beside the map (Name, Area, Distance to the field's system; Expand the table for every attribute; it stays open to preview shapes; Ben's design, `docs/plans/phase-9.md`). `Current.today` replaced `Date.current` in `DailyEntry#nothing_measured_ahead`, `CanopyObservation#in_season`, `Planting#ended?` and `Planting.open` (the example farm's season no longer counts as ended after harvest), and specs reset `Current` after each example. Two of the branch's new browser tests were wrong, not the pages, and were fixed. `bin/ci` and all of `bin/e2e` pass. In the week view a blank on varied rain leaves the fields' amounts; typing 0 replaces them with zero (Ben's call: fine).
+
 **Next:**
 1. **Legacy:** commit, push and `cap production deploy` the retirement changes; take the archive `pg_dump` before it's deleted on December 31, 2027 (TODO.md).
 2. **Ben** (TODO.md): the RDS restore test; the announcement email and training session; GA's settings and the privacy wording; the wording review (C21's included) and the screen reader walkthrough.
 3. **Code during the winter beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); whatever the beta and training session turn up.
-4. **`docs/plans/phase-9.md`**: Ben's look at `phase-9-catchup` (the week grid, Also plant this on, kept shapes), then `bin/ci`, all of `bin/e2e` and the merge to `main`; then the percent timer; and Ben's decisions there.
-5. **Deploy `main`** (`bin/production deploy`) before the announcement: `et-season`'s C22–C25 and About page, the rainfall setting's migration, the admin tools (users CSV, announcements; a migration), and the review's fixes and simplifications (the job queues among them; no migrations of their own).
+4. **`docs/plans/phase-9.md`**: the percent timer next; and Ben's decisions there.
+5. **Deploy `main`** (`bin/production deploy`) before the announcement: `et-season`'s C22–C25 and About page, the rainfall setting's migration, the admin tools (users CSV, announcements; a migration), the review's fixes and simplifications (the job queues among them; no migrations of their own), and `phase-9-catchup` (the week grid, Also plant this on, kept shapes and the field import card).
 
 ---
 
