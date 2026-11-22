@@ -29,7 +29,7 @@ Read this first; rewrite it at the end of each session. (The per-feature handoff
 **Then (2026-11-22), on branch `percent-timer`, for Ben's look:** the percent timer was built as a third unit (checkpoint `a43f64e`), then reworked with Ben into D15: irrigation stored in inches per field and plot, never inherited (`pivot_irrigations` dropped, its rows moved into entries by `20261122130000_store_irrigation_per_planting`; dev data's 394 irrigated planting-days came through identical), a calculator for run hours and the percent timer, parent rows showing the shared amount or "varies", rain entered on group and system rows only. RSpec (906), vitest (533), `pnpm check` and standardrb pass; `bin/e2e` not run (some smoke tests need the new labels). `docs/plans/phase-9.md` §8 has the checklist.
 
 **Next:**
-0. **Ben's look at `percent-timer`** (§8 of `docs/plans/phase-9.md`), then the browser tests, `bin/ci`, `bin/e2e` and the merge; production needs both migrations.
+0. **Merge `percent-timer`** (looked at, reviewed, `bin/ci` and `bin/e2e` pass, `46340de`); production needs both migrations, and the second reports any irrigation it couldn't move.
 1. **Legacy:** commit, push and `cap production deploy` the retirement changes; take the archive `pg_dump` before it's deleted on December 31, 2027 (TODO.md).
 2. **Ben** (TODO.md): the RDS restore test; the announcement email and training session; GA's settings and the privacy wording; the wording review (C21's included) and the screen reader walkthrough.
 3. **Code during the winter beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); whatever the beta and training session turn up.
