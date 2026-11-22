@@ -109,7 +109,7 @@
                   {#if day.irrigation_source === 'none'}<span class="text-ink-muted">–</span>
                   {:else}
                     <span class="font-medium">{depth(day.irrigation)}</span>
-                    {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600"
+                    {#if day.irrigation_source !== 'entered'}<span class="block text-xs text-ink-muted"
                         >{irrigationFrom(day.irrigation_source, noun)}</span
                       >{/if}
                   {/if}

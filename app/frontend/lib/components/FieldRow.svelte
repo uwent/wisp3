@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Link } from '@inertiajs/svelte'
 
+  import Sparkline from '@/lib/components/Sparkline.svelte'
   import Spinner from '@/lib/components/Spinner.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate } from '@/lib/dates'
@@ -13,7 +14,7 @@
   import type { PlantingSummary } from '@/types/serializers'
 
   // A field in the dashboard's list (Phase 9): its name, crop, status and the outlook's headline,
-  // with readings due as "2 due"; the row links as its card does (FieldCard). A field of plots is
+  // with readings due as "2 due", and from a tablet's width up the card's sparkline; the row links as its card does (FieldCard). A field of plots is
   // its name, linking to the field, over a row per planting linking to its own page. context: its
   // system (and farm) when the list isn't under them ("Needs water first").
   let {
@@ -62,7 +63,20 @@
       <span class="block text-sm {look.urgent ? 'font-medium text-status-irrigate-ink' : ''}">{look.headline}</span>
     {/if}
   </span>
-  <span class="flex shrink-0 flex-col items-end gap-1">
+  {#if summary?.phase === 'active' && !summary.weather_pending}
+    <span class="hidden w-40 shrink-0 sm:block">
+      <Sparkline
+        values={summary.recent.map((day) => day.ad)}
+        projected={summary.projection.map((day) => day.ad)}
+        max={summary.ad_max}
+        min={summary.ad_pwp}
+        label="Allowable depletion over the last {summary.recent.length} days{summary.projection.length
+          ? `, and the ${summary.projection.length} days ahead`
+          : ''}"
+      />
+    </span>
+  {/if}
+  <span class="flex w-28 shrink-0 flex-col items-end gap-1">
     {#if summary?.phase === 'active'}
       <StatusBadge status={summary.status} size="sm" />
     {:else if summary?.phase === 'ended'}

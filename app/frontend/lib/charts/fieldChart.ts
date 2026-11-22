@@ -30,6 +30,8 @@ export type FieldChartInput = {
   cuttings?: string[]
   /** The days in view (indexes into days then forecastDays), for the running totals; default the opening view */
   view?: ChartView
+  /** A phone's width: the thresholds' names go inside the plot, over their lines' right ends, rather than past them */
+  narrow?: boolean
 }
 
 /** The modeled rain the balance didn't use: replaced by an entry, or left out on a field using only entered rain */
@@ -71,6 +73,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
     canopy = 'cover',
     vineKill,
     cuttings = [],
+    narrow = false,
   } = input
   const base = baseOption(palette)
   const all = [...days, ...forecastDays]
@@ -191,6 +194,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
       ]
     : undefined
 
+  // Room at the right for the thresholds' names, unless they're inside the plot
+  const right = narrow ? 16 : 112
   const axisLabel = { ...base.axisLabel, formatter: (iso: string) => formatDate(iso) }
   const yName = mode === 'ad' ? `AD (${units.label('depth')})` : 'Soil moisture (%)'
   const balanceName = mode === 'ad' ? 'Allowable depletion' : 'Soil moisture'
@@ -229,11 +234,11 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
     // (crop ET; grid 4, drawn above the canopy so the dates stay on the canopy's axis at the bottom),
     // and the canopy
     grid: [
-      { left: 48, right: 112, top: 56, height: '31%' },
-      { left: 48, right: 112, top: '42%', height: '10%' },
-      { left: 48, right: 112, top: '56%', height: '7%' },
-      { left: 48, right: 112, top: '82%', bottom: 56 },
-      { left: 48, right: 112, top: '68%', height: '9%' },
+      { left: 48, right, top: 56, height: '31%' },
+      { left: 48, right, top: '42%', height: '10%' },
+      { left: 48, right, top: '56%', height: '7%' },
+      { left: 48, right, top: '82%', bottom: 56 },
+      { left: 48, right, top: '68%', height: '9%' },
     ],
     xAxis: [
       ...[0, 1, 2, 3, 4].map((gridIndex) =>
@@ -258,7 +263,8 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         nameTextStyle: { color: palette.inkMuted, align: 'left' },
         axisLabel: base.axisLabel,
         splitLine: base.splitLine,
-        min: (extent: { min: number }) => Math.min(extent.min, wiltingLine),
+        // Down to a round number below the wilting point, which ECharts would otherwise label as it is (-2.475)
+        min: (extent: { min: number }) => roundDown(Math.min(extent.min, wiltingLine)),
         // Field capacity at the top, unless deep drainage stacked on it reaches higher
         max: (extent: { max: number }) => (extent.max > lines[0].value + 1e-9 ? roundUp(extent.max) : lines[0].value),
       },
@@ -341,7 +347,12 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
               yAxis: line.value,
               name: line.name,
               lineStyle: { color: line.color, type: line.dashed ? 'dashed' : 'solid', width: 1 },
-              label: { formatter: line.name, position: 'end', color: palette.inkMuted, fontSize: 11 },
+              label: {
+                formatter: line.name,
+                position: narrow ? 'insideEndTop' : 'end',
+                color: palette.inkMuted,
+                fontSize: 11,
+              },
             })),
             ...(forecastDays.length
               ? [
@@ -653,6 +664,13 @@ export function roundUp(value: number): number {
   if (value <= 0) return value
   const step = 10 ** Math.floor(Math.log10(value)) / 2
   return Number((Math.ceil(value / step) * step).toFixed(6))
+}
+/** A round number at or below value for an axis' bottom, in roundUp's steps: -2.475 → -2.5, 12.3 → 10 */
+export function roundDown(value: number): number {
+  if (value < 0) return -roundUp(-value)
+  if (value === 0) return 0
+  const step = 10 ** Math.floor(Math.log10(value)) / 2
+  return Number((Math.floor(value / step) * step).toFixed(6))
 }
 const SLIDER = 'Slider outline'
 const CROP_ET = 'Crop ET'

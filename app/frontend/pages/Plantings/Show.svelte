@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Link, page, router } from '@inertiajs/svelte'
   import { tick } from 'svelte'
+  import { MediaQuery } from 'svelte/reactivity'
 
   import Chart from '@/lib/charts/Chart.svelte'
   import { fieldChartOption, type FieldChartMode } from '@/lib/charts/fieldChart'
@@ -166,6 +167,8 @@
     writeStored(GUIDANCE_KEY, open)
   }
   let chartMode = $state<FieldChartMode>('ad')
+  // A phone's width: the soil water chart names its thresholds inside the plot
+  const narrowChart = new MediaQuery('max-width: 639px')
   // The season summary: open, like every section, until closed; links in the summary open it
   let summaryOpen = $state(true)
 
@@ -597,6 +600,7 @@
             vineKill: planting!.vine_kill_date,
             cuttings: planting!.cuttings.map((cutting) => cutting.date),
             view,
+            narrow: narrowChart.current,
           })}
       />
       <p class="text-xs text-ink-muted">

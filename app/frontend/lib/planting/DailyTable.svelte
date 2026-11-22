@@ -42,6 +42,7 @@
   const rows = $derived([...days].reverse())
   const inputText = (day: FieldDay, column: DayColumn) => cellText(day, column, units)
   const saveCell = (day: FieldDay, column: DayColumn, text: string) => onsave(day, column, text)
+  const head = 'sticky top-0 z-20 bg-surface-raised shadow-[inset_0_-1px_0_var(--color-line)]'
 </script>
 
 <CollapsibleSection title="Daily values" storageKey="daily">
@@ -70,26 +71,35 @@
       aria-label={readOnly ? 'Daily values' : undefined}
     >
       <table class="w-full text-sm">
-        <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
+        <!-- The headings stick, not the thead: a collapsed table's borders don't move with a sticky row, so
+             each heading draws its rule as a shadow (DataTable does the same). The Date column stays at the
+             left as the rest scroll under it. -->
+        <thead class="text-xs text-ink-muted">
           <tr class="text-right">
-            <th class="px-3 py-2 text-left font-medium">Date</th>
-            <th class="px-2 py-2 font-medium">Reference ET</th>
-            <th class="px-2 py-2 font-medium">Crop ET</th>
-            <th class="px-2 py-2 font-medium">Rain</th>
-            <th class="px-2 py-2 font-medium">Irrigation</th>
-            <th class="px-2 py-2 font-medium">Soil moisture reading (%)</th>
-            <th class="px-2 py-2 font-medium">{lai ? 'LAI' : 'Cover (%)'}</th>
-            <th class="px-2 py-2 font-medium">AD</th>
-            <th class="px-2 py-2 font-medium">Soil moisture (%)</th>
-            <th class="px-2 py-2 font-medium">Drainage</th>
-            <th class="px-2 py-2 text-left font-medium">Notes</th>
+            <th class="{head} left-0 z-30 px-3 py-2 text-left font-medium shadow-[inset_-1px_-1px_0_var(--color-line)]"
+              >Date</th
+            >
+            <th class="{head} px-2 py-2 font-medium">Reference ET</th>
+            <th class="{head} px-2 py-2 font-medium">Crop ET</th>
+            <th class="{head} px-2 py-2 font-medium">Rain</th>
+            <th class="{head} px-2 py-2 font-medium">Irrigation</th>
+            <th class="{head} px-2 py-2 font-medium">Soil moisture reading (%)</th>
+            <th class="{head} px-2 py-2 font-medium">{lai ? 'LAI' : 'Cover (%)'}</th>
+            <th class="{head} px-2 py-2 font-medium">AD</th>
+            <th class="{head} px-2 py-2 font-medium">Soil moisture (%)</th>
+            <th class="{head} px-2 py-2 font-medium">Drainage</th>
+            <th class="{head} px-2 py-2 text-left font-medium">Notes</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-line">
           {#each rows as day, row (day.date)}
             <tr class="text-right {day.ad <= 0 ? 'bg-status-irrigate/5' : ''}">
-              <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap"
-                >{formatDate(day.date, { weekday: true })}</th
+              <th
+                scope="row"
+                class="sticky left-0 z-10 px-3 py-1 text-left font-normal whitespace-nowrap shadow-[inset_-1px_0_0_var(--color-line)] {day.ad <=
+                0
+                  ? 'bg-[color-mix(in_oklab,var(--color-status-irrigate)_5%,var(--color-surface-raised))]'
+                  : 'bg-surface-raised'}">{formatDate(day.date, { weekday: true })}</th
               >
               <td class="px-2 py-1 tabular-nums {day.et0_source === 'missing' ? 'text-ink-muted' : ''}"
                 >{depth(day.et0)}</td
@@ -131,7 +141,7 @@
                     <span class="text-ink-muted">–</span>
                   {:else}
                     <span class="font-medium">{depth(day.irrigation)}</span>
-                    {#if irrigationFrom(day.irrigation_source, noun)}<span class="ml-1 text-xs text-brand-600"
+                    {#if irrigationFrom(day.irrigation_source, noun)}<span class="block text-xs text-ink-muted"
                         >{irrigationFrom(day.irrigation_source, noun)}</span
                       >{/if}
                     {#if day.irrigation_source === 'entered' && day.field_inches !== null}

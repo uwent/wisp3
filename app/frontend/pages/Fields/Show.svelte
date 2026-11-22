@@ -223,12 +223,24 @@
         aria-label={readOnly ? 'Rain and irrigation by day' : undefined}
       >
         <table class="w-full text-sm">
-          <thead class="sticky top-0 z-10 border-b border-line bg-surface-raised text-xs text-ink-muted">
+          <thead class="text-xs text-ink-muted">
             <tr class="text-right">
-              <th class="w-px px-3 py-2 text-left font-medium whitespace-nowrap">Date</th>
-              <th class="w-px px-2 py-2 font-medium whitespace-nowrap">Rain</th>
-              <th class="w-px px-2 py-2 font-medium whitespace-nowrap">Irrigation</th>
-              <th class="px-2 py-2 text-left font-medium">Notes</th>
+              <th
+                class="sticky top-0 z-20 w-px bg-surface-raised px-3 py-2 text-left font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
+                >Date</th
+              >
+              <th
+                class="sticky top-0 z-20 w-px bg-surface-raised px-2 py-2 font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
+                >Rain</th
+              >
+              <th
+                class="sticky top-0 z-20 w-px bg-surface-raised px-2 py-2 font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
+                >Irrigation</th
+              >
+              <th
+                class="sticky top-0 z-20 bg-surface-raised px-2 py-2 text-left font-medium shadow-[inset_0_-1px_0_var(--color-line)]"
+                >Notes</th
+              >
             </tr>
           </thead>
           <tbody class="divide-y divide-line">
@@ -271,7 +283,7 @@
                       <span class="text-ink-muted">–</span>
                     {:else}
                       <span class="font-medium">{depth(day.irrigation)}</span>
-                      {#if day.irrigation_source !== 'entered'}<span class="ml-1 text-xs text-brand-600"
+                      {#if day.irrigation_source !== 'entered'}<span class="block text-xs text-ink-muted"
                           >{irrigationFrom(day.irrigation_source, noun)}</span
                         >{/if}
                     {/if}

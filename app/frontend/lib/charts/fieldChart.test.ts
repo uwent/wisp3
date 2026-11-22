@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { FieldDay, PlantingSummary } from '@/types/serializers'
 
 import { units } from '../units'
-import { fieldChartOption, roundUp, thresholds } from './fieldChart'
+import { fieldChartOption, roundDown, roundUp, thresholds } from './fieldChart'
 import type { EChartsCoreOption } from './echarts'
 import type { Palette } from './palette'
 
@@ -297,6 +297,27 @@ describe('field chart', () => {
     expect((without.series as { name: string }[]).map((s) => s.name)).not.toContain('If no rain falls')
   })
 
+  it("puts the thresholds' names inside the plot at a phone's width, so the plot keeps its width", () => {
+    const days = [day('2026-07-01', { ad: 0.3 }), day('2026-07-02', { ad: 0.2 })]
+    const build = (narrow: boolean) => {
+      const option = fieldChartOption({
+        days,
+        summary,
+        rootZoneDepth: 16,
+        units: units('imperial'),
+        mode: 'ad',
+        palette,
+        narrow,
+      })
+      const slider = (option.series as { id: string; markLine: { data: { label: { position: string } }[] } }[]).find(
+        (s) => s.id === 'slider',
+      )!
+      return { right: (option.grid as { right: number }[])[0].right, position: slider.markLine.data[0].label.position }
+    }
+    expect(build(false)).toEqual({ right: 112, position: 'end' })
+    expect(build(true)).toEqual({ right: 16, position: 'insideEndTop' })
+  })
+
   it('groups the legend by measure, and keeps the thresholds, today and the forecast shading out of it', () => {
     const days = [day('2026-07-01', { ad: 0.3 }), day('2026-07-02', { ad: 0.2 })]
     const forecastDays = [day('2026-07-03', { ad: 0.1, irrigation: 0.5, irrigation_source: 'entered' })]
@@ -392,8 +413,11 @@ describe('field chart', () => {
     expect((dry.series as { id: string }[]).map((s) => s.id)).not.toContain('drainage')
   })
 
-  it('rounds an axis top up to a round number', () => {
+  it('rounds an axis top up and its bottom down to round numbers', () => {
     expect([roundUp(1.764), roundUp(45), roundUp(12.3), roundUp(0.48), roundUp(2)]).toEqual([2, 45, 15, 0.5, 2])
+    expect([roundDown(-2.475), roundDown(12.3), roundDown(0), roundDown(-0.48), roundDown(2)]).toEqual([
+      -2.5, 10, 0, -0.5, 2,
+    ])
   })
 
   it('leaves the forecast out when there is none', () => {
