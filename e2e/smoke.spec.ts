@@ -1379,16 +1379,27 @@ test('a field shape is drawn corner by corner, or picked from a file of several 
 
   // A shapefile with two fields asks which one (a file of one is read in the test above)
   await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
+  await expect(page.getByRole('heading', { name: 'Field import', exact: true })).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: `Shapes from clu_utm.zip: pick one for ${DEMO.shapeField}`, exact: true }),
+    page.getByText(/^Loaded 2 shapes from clu_utm\.zip\. Sort or search to find your field\.$/),
   ).toBeVisible()
-  const shapes = page.getByRole('table', { name: 'Shapes from clu_utm.zip' })
-  await expect(shapes.getByRole('columnheader', { name: 'FIELD_NAME' })).toBeVisible()
+  const shapes = page.getByRole('table', { name: 'Shapes from clu_utm.zip', exact: true })
+  await expect(shapes.getByRole('columnheader', { name: 'Distance' })).toBeVisible()
   await shapes.getByRole('button', { name: 'Home South' }).click()
   await expect(page.getByText(/^Field as drawn: 10\d\.\d\d ac/)).toBeVisible()
-  // Picked, the list folds away, to open again for another
+  // Picked, it stays open to try another, the shape on the map marked
+  await expect(shapes.getByRole('button', { name: 'Home South' })).toHaveAttribute('aria-current', 'true')
+  // Expanded, every attribute is a column
+  await page.getByRole('button', { name: 'Expand the table' }).click()
+  const all = page.getByRole('table', { name: 'All of the shapes from clu_utm.zip' })
+  await expect(all.getByRole('columnheader', { name: 'Notes' })).toBeVisible()
+  await all.getByRole('button', { name: 'Home North' }).click()
+  await expect(all).toBeHidden()
+  await expect(shapes.getByRole('button', { name: 'Home North' })).toHaveAttribute('aria-current', 'true')
+  // Closed, Import from a file opens the same shapes again
+  await page.getByRole('button', { name: 'Close the field import' }).click()
   await expect(shapes).toBeHidden()
-  await page.getByRole('button', { name: 'Show the shapes' }).click()
+  await page.getByRole('button', { name: 'Import from a file' }).click()
   await expect(shapes).toBeVisible()
 
   // Leaving asks first; nothing is saved
@@ -1456,7 +1467,7 @@ test('field shapes are imported from a shapefile, matched to fields or new ones 
   // Two shapes, named from FIELD_NAME, matching no field: near Arlington's systems, each is offered
   // as a new field on the nearest
   await expect(page.getByText(/^2 shapes\./)).toBeVisible()
-  await expect(page.getByLabel('Names from')).toHaveValue('FIELD_NAME')
+  await expect(page.getByLabel('Names from', { exact: true })).toHaveValue('FIELD_NAME')
   const first = page.locator('#shape-0')
   const second = page.locator('#shape-1')
   await expect(first.getByRole('button', { name: '1. Home North' })).toBeVisible()

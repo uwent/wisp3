@@ -10,7 +10,9 @@ import {
   type PickerShape,
   pickerRows,
   rowNotes,
+  rowTag,
   sameBoundary,
+  shapeDistances,
   unusableSummary,
 } from './picker'
 
@@ -64,23 +66,38 @@ describe('picking a field shape', () => {
     expect(sameBoundary(a, fewer)).toBe(false)
   })
 
-  it("orders the field's name first, then shapes under its system, then the rest as in the file; those that can't be saved last", () => {
+  it("orders the field's name first, then the nearest its system; those that can't be saved last", () => {
     const shapes = [
       shape('Far', squareAt(-88, 43)),
       shape('Too big', null, ['is larger than a field (at most 1,500 acres)']),
       shape('Under', squareAt(-89.505, 44.095)),
       shape('home  south', squareAt(-88.5, 43.5)),
-      shape('Also far', squareAt(-88.2, 43.2)),
+      shape('Nearer', squareAt(-88.2, 43.2)),
     ]
     const rows = pickerRows(shapes, 'NAME', context)
     expect(rows.map((row) => [row.name, row.match, row.usable])).toEqual([
       ['home  south', 'name', true],
-      ['Under', 'system', true],
+      ['Under', null, true],
+      ['Nearer', null, true],
       ['Far', null, true],
-      ['Also far', null, true],
       ['Too big', null, false],
     ])
-    expect(rows.map((row) => row.index)).toEqual([3, 2, 0, 4, 1])
+    expect(rows.map((row) => row.index)).toEqual([3, 2, 4, 0, 1])
+  })
+
+  it("measures from each shape's nearest edge to the system, 0 overlapping it", () => {
+    // 0.01° of latitude (1,112 m) south of the pivot's edge, a quarter mile (402 m) from its center
+    const south = squareAt(-89.505, 44.1 - 402 / 111_320 - 0.01 - 1112 / 111_320)
+    const [under, away, none] = shapeDistances(
+      [shape('Under', squareAt(-89.505, 44.095)), shape('South', south), shape('Too big', null, ['is too big'])],
+      context.system,
+    )
+    expect(under).toBe(0)
+    expect(away).toBeCloseTo(1112, -1)
+    expect(none).toBeNull()
+    // Worked out once, and taken as given
+    const rows = pickerRows([shape('A', squareAt(-88, 43))], 'NAME', context, [42])
+    expect(rows[0].meters).toBe(42)
   })
 
   it('names by the chosen attribute', () => {
@@ -97,26 +114,24 @@ describe('picking a field shape', () => {
       { ...context, field: { ...context.field, boundary: own } },
     )
     expect(rows.map((row) => row.usedBy)).toEqual(['East 40', 'this field', null])
-    expect(rowNotes(rows[0], 'Pivot 1 (center pivot)')).toEqual(['Used for East 40'])
-    expect(rowNotes(rows[1], 'Pivot 1 (center pivot)')).toEqual(["This field's shape now"])
+    expect(rowNotes(rows[0])).toEqual(['Used for East 40'])
+    expect(rowNotes(rows[1])).toEqual(["This field's shape now"])
+    expect(rows.map(rowTag)).toEqual(['Used for East 40', "This field's shape now", null])
   })
 
   it("says why a shape is offered first, what reading it changed, and why one can't be used", () => {
     const rows = pickerRows(
       [
-        { ...shape('Under', squareAt(-89.505, 44.095)), notes: ['kept the largest of 3 parts'] },
+        { ...shape('Home South', squareAt(-89.505, 44.095)), notes: ['kept the largest of 3 parts'] },
         shape('Too big', null, ['is larger than a field (at most 1,500 acres)']),
       ],
       'NAME',
       context,
     )
-    expect(rowNotes(rows[0], 'Pivot 1 (center pivot)')).toEqual([
-      'Best match: under Pivot 1 (center pivot)',
-      'Kept the largest of 3 parts',
-    ])
-    expect(rowNotes(rows[1], 'Pivot 1 (center pivot)')).toEqual([
-      'This shape is larger than a field (at most 1,500 acres)',
-    ])
+    expect(rowNotes(rows[0])).toEqual(['Best match: same name', 'Kept the largest of 3 parts'])
+    expect(rowTag(rows[0])).toBeNull()
+    expect(rowNotes(rows[1])).toEqual(['This shape is larger than a field (at most 1,500 acres)'])
+    expect(rowTag(rows[1])).toBe('This shape is larger than a field (at most 1,500 acres)')
   })
 
   it('lists every attribute, and shows each as text or a number', () => {

@@ -23,6 +23,9 @@
     nowrap = false,
     maxHeight,
     limit,
+    actions,
+    searchAlso,
+    selected,
   }: {
     rows: T[]
     columns: Column<T>[]
@@ -40,6 +43,12 @@
     maxHeight?: string
     /** At most this many rows are drawn */
     limit?: number
+    /** Beside the search (a button to expand the table) */
+    actions?: Snippet
+    /** More of a row's text for the search to find, beyond its searchable columns (ones not shown) */
+    searchAlso?: (row: T) => string[]
+    /** The row to highlight (the one chosen), across its pinned cells too */
+    selected?: (row: T) => boolean
   } = $props()
 
   let query = $state('')
@@ -48,10 +57,7 @@
   const filtered = $derived(
     query.trim()
       ? rows.filter((row) =>
-          matchesQuery(
-            query,
-            searchable.map((column) => cellText(column, row)),
-          ),
+          matchesQuery(query, [...searchable.map((column) => cellText(column, row)), ...(searchAlso?.(row) ?? [])]),
         )
       : rows,
   )
@@ -90,10 +96,12 @@
     }
     return total
   }
-  function pinClass(column: Column<T>): string {
-    if (column.pin === 'right') return 'sticky right-0 z-10 bg-surface-raised shadow-[inset_1px_0_0_var(--color-line)]'
+  // A pinned cell has its own background, to hide the cells scrolling under it: the row's, if chosen
+  function pinClass(column: Column<T>, chosen = false): string {
+    const bg = chosen ? 'bg-brand-50' : 'bg-surface-raised'
+    if (column.pin === 'right') return `sticky right-0 z-10 ${bg} shadow-[inset_1px_0_0_var(--color-line)]`
     if (column.pin !== 'left') return ''
-    return `sticky z-10 bg-surface-raised ${column.key === lastLeft ? 'shadow-[inset_-1px_0_0_var(--color-line)]' : ''}`
+    return `sticky z-10 ${bg} ${column.key === lastLeft ? 'shadow-[inset_-1px_0_0_var(--color-line)]' : ''}`
   }
   // In a box that scrolls down, the headings stay at its top, over the pinned cells, with a rule below
   function headClass(column: Column<T>): string {
@@ -119,7 +127,7 @@
 
 <div class="space-y-2">
   <div class="flex flex-wrap items-center justify-between gap-2">
-    {#if searchable.length}
+    {#if searchable.length || searchAlso}
       <input
         type="search"
         bind:value={query}
@@ -129,6 +137,7 @@
       />
     {/if}
     <span class="text-xs text-ink-muted" role="status">{status}</span>
+    {#if actions}<div class="ml-auto">{@render actions()}</div>{/if}
   </div>
 
   <div
@@ -174,11 +183,13 @@
       </thead>
       <tbody class="divide-y divide-line">
         {#each shown as row (rowKey(row))}
-          <tr class={rowClass?.(row) ?? ''}>
+          {@const chosen = selected?.(row) ?? false}
+          <tr class="{chosen ? 'bg-brand-50' : ''} {rowClass?.(row) ?? ''}">
             {#each columns as column (column.key)}
               <td
                 class="px-3 py-2 {alignClass[column.align ?? 'left']} {nowrap ? 'whitespace-nowrap' : ''} {pinClass(
                   column,
+                  chosen,
                 )}"
                 style={pinStyle(column)}
               >

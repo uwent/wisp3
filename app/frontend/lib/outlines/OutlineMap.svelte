@@ -43,6 +43,7 @@
     soilTypes,
     ready = $bindable(false),
     height = '32rem',
+    fill = false,
   }: {
     boundary: Boundary | null
     mode: DrawMode
@@ -57,6 +58,8 @@
     /** Set once the map and drawing tools are ready */
     ready?: boolean
     height?: string
+    /** Fill the box it's in (which sets the height), the map taking what the soil legend leaves */
+    fill?: boolean
   } = $props()
 
   type Hex = `#${string}`
@@ -432,8 +435,11 @@
   })
 </script>
 
-<div class="space-y-2">
-  <div class="relative overflow-hidden rounded-lg border border-line" style:height>
+<div class={fill ? 'flex h-full flex-col gap-2' : 'space-y-2'}>
+  <div
+    class="relative overflow-hidden rounded-lg border border-line {fill ? 'min-h-0 flex-1' : ''}"
+    style:height={fill ? undefined : height}
+  >
     <div
       bind:this={container}
       class="h-full w-full"

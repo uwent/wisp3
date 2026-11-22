@@ -321,7 +321,7 @@
           value={nameKey ?? ''}
           options={[{ value: '', label: 'No names' }, ...keys.map((key) => ({ value: key, label: key }))]}
           onchange={(event) => changeNameKey((event.currentTarget as HTMLSelectElement).value)}
-          hint="The file's attribute that holds each field's name"
+          info="field.shape_names"
         />
       </div>
     {/if}

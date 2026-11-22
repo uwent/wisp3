@@ -183,13 +183,23 @@
     choicesOpen = true
   }
 
-  // A shape picked: the list folds away, to open again for another
+  // Shapes kept from earlier open again; otherwise a file is chosen
+  function importFromFile() {
+    if (choices && !choicesOpen) choicesOpen = true
+    else fileInput?.click()
+  }
+
+  // A shape picked shows on the map, the list staying open to try another. Below the card on a small
+  // screen, the map is brought into view.
+  let mapBox = $state<HTMLElement>()
   function useShape(shape: PickerShape) {
     if (!shape.boundary) return
     boundary = shape.boundary
-    choicesOpen = false
     mode = 'view'
     fileNote = shapeNotes(shape) || null
+    if (matchMedia('(min-width: 64rem)').matches) return
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches
+    mapBox?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
   }
 
   function forgetShapes() {
@@ -226,30 +236,6 @@
 </div>
 
 <div class="space-y-3">
-  {#if choices}
-    {#key choices}
-      <ShapePicker
-        shapes={choices.shapes}
-        fileName={choices.fileName}
-        bind:nameKey={choices.nameKey}
-        savedAt={choices.savedAt}
-        skipped={choices.skipped}
-        context={pickerContext}
-        systemLabel={systemName(pivot)}
-        bind:open={choicesOpen}
-        onpick={useShape}
-        onforget={forgetShapes}
-      >
-        <p class="text-xs text-ink-muted">
-          To give several fields their shapes at once, use <Link
-            href={newOutlineImport()}
-            class="text-brand-600 underline underline-offset-2">Import field shapes in Setup</Link
-          >.
-        </p>
-      </ShapePicker>
-    {/key}
-  {/if}
-
   <!-- The tools wait for the map, and for the shape being drawn or edited to be saved or canceled on it -->
   <fieldset class="flex flex-wrap items-center gap-2" disabled={!ready || mode !== 'view'} aria-label="Shape tools">
     {#if !boundary}
@@ -258,7 +244,7 @@
       <Button type="button" variant="secondary" onclick={() => (mode = 'edit')}>Edit corners</Button>
       <Button type="button" variant="secondary" onclick={startDraw}>Draw a new one</Button>
     {/if}
-    <Button type="button" variant="ghost" disabled={reading} onclick={() => fileInput?.click()}
+    <Button type="button" variant="ghost" disabled={reading} onclick={importFromFile}
       >{reading ? 'Reading…' : 'Import from a file'}</Button
     >
     {#if boundary}
@@ -282,16 +268,45 @@
   {#if fileError}
     <p class="text-sm text-status-irrigate-ink" role="alert">{fileError}</p>
   {/if}
-  <OutlineMap
-    bind:this={map}
-    bind:boundary
-    bind:mode
-    bind:ready
-    saved={field.boundary}
-    {references}
-    {arrow}
-    soilTypes={soil_types}
-  />
+  <!-- A file's shapes in a card beside the map (stacked on small screens), the map as tall as the card -->
+  <div class="grid gap-4 {choices && choicesOpen ? 'lg:grid-cols-2' : ''}">
+    {#if choices && choicesOpen}
+      {#key choices}
+        <ShapePicker
+          shapes={choices.shapes}
+          fileName={choices.fileName}
+          bind:nameKey={choices.nameKey}
+          savedAt={choices.savedAt}
+          skipped={choices.skipped}
+          context={pickerContext}
+          systemLabel={systemName(pivot)}
+          current={boundary}
+          onpick={useShape}
+          onclose={() => (choicesOpen = false)}
+          onchoose={() => fileInput?.click()}
+          onforget={forgetShapes}
+        >
+          To give several fields their shapes at once, use <Link
+            href={newOutlineImport()}
+            class="text-brand-600 underline underline-offset-2">Import field shapes in Setup</Link
+          >.
+        </ShapePicker>
+      {/key}
+    {/if}
+    <div bind:this={mapBox} class="h-[32rem] scroll-mt-4 {choices && choicesOpen ? 'lg:h-auto lg:min-h-[32rem]' : ''}">
+      <OutlineMap
+        bind:this={map}
+        bind:boundary
+        bind:mode
+        bind:ready
+        saved={field.boundary}
+        {references}
+        {arrow}
+        soilTypes={soil_types}
+        fill
+      />
+    </div>
+  </div>
 </div>
 
 <Form

@@ -1,11 +1,13 @@
 import { type Boundary, boundaryRing } from '@/lib/boundary'
 
 import type { KeptShape } from './kept'
-import { type ImportSystem, matchField, suggestSystem } from './matching'
+import { type ImportSystem, matchField } from './matching'
+import { systemDistanceM } from './problems'
 import { shapeName, shapeNotes } from './read'
 
 // Picking one field's shape from a file's (PLAN.md Phase 8 G.10), kept pure for testing: the
-// shapes that match the field come first, and those already used for another field say so
+// shape named as the field comes first, then the nearest its system; those already used for another
+// field say so
 
 /** A shape on offer: one just read (ImportedShape) or kept (one that can't be saved has no outline) */
 export type PickerShape = KeptShape
@@ -17,8 +19,10 @@ export type PickerRow = {
   /** Its name under the chosen attribute, or '' */
   name: string
   usable: boolean
-  /** Why it's offered first: its name is the field's, or it's under the field's system */
-  match: 'name' | 'system' | null
+  /** Its name is the field's, so it's offered first */
+  match: 'name' | null
+  /** Meters from the shape to the field's system (0 overlapping it), or null for one that can't be saved */
+  meters: number | null
   /** The other field whose shape it already is, or null; 'this field' for the field's own */
   usedBy: string | null
 }
@@ -38,47 +42,69 @@ export function sameBoundary(a: Boundary, b: Boundary, tolerance = 1e-6): boolea
   )
 }
 
+const usableBoundary = (shape: PickerShape) => (shape.problems.length ? null : shape.boundary)
+
+/**
+ * Meters from each shape to the field's system: from the nearest point of its edge, 0 where they
+ * overlap (systemDistanceM); null for one that can't be saved. Worked out once for a file's shapes,
+ * not again when the names come from another attribute.
+ */
+export function shapeDistances(shapes: PickerShape[], system: ImportSystem): (number | null)[] {
+  return shapes.map((shape) => {
+    const boundary = usableBoundary(shape)
+    return boundary ? systemDistanceM(boundary, system) : null
+  })
+}
+
 /**
  * The shapes as rows for the picker: those that can be saved first, the field's name match, then
- * those under its system, then the rest in the file's order; then those that can't be saved
+ * the nearest its system (in the file's order for the same distance); then those that can't be saved
  */
-export function pickerRows(shapes: PickerShape[], nameKey: string | null, context: PickerContext): PickerRow[] {
+export function pickerRows(
+  shapes: PickerShape[],
+  nameKey: string | null,
+  context: PickerContext,
+  distances: (number | null)[] = shapeDistances(shapes, context.system),
+): PickerRow[] {
   const { field, system, otherFields } = context
   const asField = [{ id: field.id, name: field.name, pivot_id: field.pivot_id }]
   const rows = shapes.map((shape, index): PickerRow => {
     const name = shapeName(shape, nameKey)
-    const boundary = shape.problems.length ? null : shape.boundary
-    if (!boundary) return { index, shape, name, usable: false, match: null, usedBy: null }
-    const match =
-      matchField(name, asField, system.id) !== null
-        ? 'name'
-        : suggestSystem(boundary, [system]) !== null
-          ? 'system'
-          : null
+    const boundary = usableBoundary(shape)
+    if (!boundary) return { index, shape, name, usable: false, match: null, meters: null, usedBy: null }
+    const match = matchField(name, asField, system.id) !== null ? 'name' : null
     const usedBy =
       field.boundary && sameBoundary(boundary, field.boundary)
         ? 'this field'
         : (otherFields.find((other) => sameBoundary(boundary, other.boundary))?.name ?? null)
-    return { index, shape, name, usable: true, match, usedBy }
+    return { index, shape, name, usable: true, match, meters: distances[index], usedBy }
   })
-  const rank = (row: PickerRow) => (!row.usable ? 3 : row.match === 'name' ? 0 : row.match === 'system' ? 1 : 2)
-  return rows.toSorted((a, b) => rank(a) - rank(b) || a.index - b.index)
+  const rank = (row: PickerRow) => (!row.usable ? 2 : row.match === 'name' ? 0 : 1)
+  return rows.toSorted((a, b) => rank(a) - rank(b) || (a.meters ?? 0) - (b.meters ?? 0) || a.index - b.index)
 }
 
+/** Whose shape it already is ("Used for East 40"), or null */
+const usedNote = (row: PickerRow) =>
+  row.usedBy === 'this field' ? "This field's shape now" : row.usedBy ? `Used for ${row.usedBy}` : null
+
 /**
- * What the picker says of a shape: why it can't be saved; or why it's first, whose shape it already
- * is, and what reading it changed
+ * What the expanded picker's Notes say of a shape: why it can't be saved; or that its name is the
+ * field's, whose shape it already is, and what reading it changed
  */
-export function rowNotes(row: PickerRow, systemLabel: string): string[] {
+export function rowNotes(row: PickerRow): string[] {
   if (!row.usable) return [`This shape ${row.shape.problems.join('; ')}`]
   const notes: string[] = []
   if (row.match === 'name') notes.push('Best match: same name')
-  if (row.match === 'system') notes.push(`Best match: under ${systemLabel}`)
-  if (row.usedBy === 'this field') notes.push("This field's shape now")
-  else if (row.usedBy) notes.push(`Used for ${row.usedBy}`)
+  const used = usedNote(row)
+  if (used) notes.push(used)
   const changed = shapeNotes(row.shape)
   if (changed) notes.push(changed)
   return notes
+}
+
+/** The compact picker's line under a shape's name: why it can't be saved, or whose shape it already is */
+export function rowTag(row: PickerRow): string | null {
+  return row.usable ? usedNote(row) : rowNotes(row)[0]
 }
 
 /** Every attribute in the shapes, in the order first seen */

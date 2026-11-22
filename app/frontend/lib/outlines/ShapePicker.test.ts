@@ -62,7 +62,7 @@ const context: PickerContext = {
   otherFields: [],
 }
 
-const renderPicker = (onpick = vi.fn()) =>
+const renderPicker = (props: Record<string, unknown> = {}) =>
   render(ShapePicker, {
     props: {
       shapes: [usable('Home North', '12', -88), county, usable('Home South', '13', -88.1)],
@@ -70,26 +70,41 @@ const renderPicker = (onpick = vi.fn()) =>
       nameKey: 'FIELD_NAME',
       context,
       systemLabel: 'Pivot 1 (center pivot)',
-      onpick,
+      onpick: vi.fn(),
+      onclose: vi.fn(),
+      onchoose: vi.fn(),
       onforget: vi.fn(),
+      ...props,
     },
   })
 
 const table = () => screen.getByRole('table', { name: 'Shapes from Fields.zip' })
-const nameButtons = () =>
-  within(table())
+const expandedTable = () => screen.getByRole('table', { name: 'All of the shapes from Fields.zip' })
+const nameButtons = (within_ = table()) =>
+  within(within_)
     .queryAllByRole('button')
     .filter((button) => !button.closest('th'))
     .map((button) => button.textContent)
+const headings = (within_: HTMLElement) =>
+  within(within_)
+    .getAllByRole('columnheader')
+    .map((th) => th.textContent?.replace(/[▴▾]/g, '').trim())
 
 describe('ShapePicker', () => {
-  it("lists the shapes that can be saved, the field's name first, and picks one", async () => {
+  it("lists the shapes that can be saved by name, area and distance, the field's name first, and picks one", async () => {
     const onpick = vi.fn()
-    renderPicker(onpick)
-    expect(screen.getByRole('heading', { name: 'Shapes from Fields.zip: pick one for Home South' })).toBeInTheDocument()
+    renderPicker({ onpick })
+    expect(screen.getByRole('heading', { name: 'Field import' })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        "Loaded 3 shapes from Fields.zip. 1 can't be used for a field. Sort or search to find your field.",
+      ),
+    ).toBeInTheDocument()
+    expect(headings(table())).toEqual(['Name', 'Area', 'Distance'])
     expect(nameButtons()).toEqual(['Home South', 'Home North'])
-    expect(within(table()).getByText('Best match: same name')).toBeInTheDocument()
     expect(within(table()).queryByText('Dane')).toBeNull()
+    // About 113 km from the pivot, as miles
+    expect(within(table()).getAllByText(/^\d+\.\d mi$/)).toHaveLength(2)
 
     await fireEvent.click(within(table()).getByRole('button', { name: 'Home South' }))
     expect(onpick).toHaveBeenCalledWith(
@@ -97,19 +112,51 @@ describe('ShapePicker', () => {
     )
   })
 
-  it("shows those that can't be used when asked, with why, not to be picked", async () => {
+  it("searches the attributes it doesn't show", async () => {
     renderPicker()
+    await fireEvent.input(screen.getByRole('searchbox', { name: 'Search the shapes' }), { target: { value: '12' } })
+    expect(nameButtons()).toEqual(['Home North'])
+  })
+
+  it('marks the shape on the map now', () => {
+    renderPicker({ current: usable('Home North', '12', -88).boundary })
+    expect(within(table()).getByRole('button', { name: 'Home North' })).toHaveAttribute('aria-current', 'true')
+    expect(within(table()).getByRole('button', { name: 'Home South' })).not.toHaveAttribute('aria-current')
+  })
+
+  it("expands to every attribute and the notes, with those that can't be used when asked, not to be picked", async () => {
+    const onpick = vi.fn()
+    renderPicker({ onpick })
+    await fireEvent.click(screen.getByRole('button', { name: 'Expand the table' }))
+    expect(headings(expandedTable())).toEqual(['Name', 'Area', 'Distance', 'Notes', 'CLU'])
+    expect(within(expandedTable()).getByText('Best match: same name')).toBeInTheDocument()
+
     await fireEvent.click(screen.getByLabelText("Show the 1 that can't be used"))
-    expect(within(table()).getByText('Dane')).toBeInTheDocument()
-    expect(within(table()).queryByRole('button', { name: 'Dane' })).toBeNull()
-    expect(within(table()).getByText('This shape is larger than a field (at most 1,500 acres)')).toBeInTheDocument()
+    expect(within(expandedTable()).getByText('Dane')).toBeInTheDocument()
+    expect(within(expandedTable()).queryByRole('button', { name: 'Dane' })).toBeNull()
+    expect(
+      within(expandedTable()).getByText('This shape is larger than a field (at most 1,500 acres)'),
+    ).toBeInTheDocument()
+
+    await fireEvent.click(within(expandedTable()).getByRole('button', { name: 'Home North' }))
+    expect(onpick).toHaveBeenCalledWith(
+      expect.objectContaining({ properties: { FIELD_NAME: 'Home North', CLU: '12' } }),
+    )
   })
 
   it('names the shapes from another attribute', async () => {
     renderPicker()
-    await fireEvent.change(screen.getByLabelText('Names from'), { target: { value: 'CLU' } })
-    expect(nameButtons()).toEqual(['12', '13'])
-    expect(within(table()).getByRole('columnheader', { name: /^CLU/ })).toBeInTheDocument()
-    expect(within(table()).getByRole('columnheader', { name: /^FIELD_NAME/ })).toBeInTheDocument()
+    await fireEvent.change(screen.getByLabelText('Names from', { exact: true }), { target: { value: 'CLU' } })
+    // No name is the field's now, so the nearest its system comes first
+    expect(nameButtons()).toEqual(['13', '12'])
+  })
+
+  it('closes, reads another file, or forgets the shapes', async () => {
+    const [onclose, onchoose, onforget] = [vi.fn(), vi.fn(), vi.fn()]
+    renderPicker({ onclose, onchoose, onforget })
+    await fireEvent.click(screen.getByRole('button', { name: 'Close the field import' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Choose another file' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Forget these shapes' }))
+    expect([onclose, onchoose, onforget].map((fn) => fn.mock.calls.length)).toEqual([1, 1, 1])
   })
 })
