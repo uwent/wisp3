@@ -16,6 +16,7 @@
     cropName,
     dateProblems,
     formatArea,
+    freeFields,
     plotAcres,
     seasonDates,
     typicalEnd,
@@ -32,6 +33,8 @@
   // field's. A planting covers the whole field or part of it (G.11): length × width or acres, on the
   // field's soil or its own. A new whole-field planting overlapping another can replace it (ending
   // it the day before). template: a new planting's dates and size ("Add the next planting").
+  // A new whole-field planting can also go on the system's other fields free for its dates (Phase 9
+  // §7, "Also plant this on"): one save makes an independent planting on each, or none.
   //
   // Laid out for a first pass (G.13 part 3): a new planting shows only the crop until one is chosen,
   // then its season and size, filled in from the crop; the rest (root zone, MAD, canopy, targets) is
@@ -45,6 +48,7 @@
     soilTypes = [],
     genericCurves = [],
     template,
+    systemFields = [],
     ondone,
     ondelete,
   }: {
@@ -56,6 +60,8 @@
     /** Curves a crop without its own can follow (G.3) */
     genericCurves?: GenericCurve[]
     template?: Partial<Planting>
+    /** The fields on this one's irrigation system, with their plantings, for "Also plant this on" */
+    systemFields?: Field[]
     ondone: () => void
     /** Deletes the planting (asking first); left out for a new one */
     ondelete?: () => void
@@ -94,6 +100,26 @@
     !planting && clashing.length > 0 && clashing.every((other) => canReplace(other, seasonStart)),
   )
   let replace = $state(false)
+
+  // Also plant this on: the system's other fields with nothing on them for these dates, for a new
+  // whole-field planting. A field checked stays checked if the dates take it out of the list and
+  // back, but is sent only while it's listed.
+  const otherFields = $derived(systemFields.filter((other) => other.id !== field.id))
+  const offerOthers = $derived(!planting && !partial && otherFields.length > 0)
+  const free = $derived(freeFields({ season_start: seasonStart, end_date: endDate }, otherFields))
+  let alsoIds = $state<number[]>([])
+  let alsoOpen = $state(false)
+  const alsoChosen = $derived(free.filter((other) => alsoIds.includes(other.id)))
+  const alsoSummary = $derived(
+    alsoChosen.length
+      ? `${alsoChosen.length} of ${free.length} chosen`
+      : free.length
+        ? `${free.length} other ${free.length === 1 ? 'field' : 'fields'} free`
+        : 'None free for these dates',
+  )
+  function toggleAlso(id: number, checked: boolean) {
+    alsoIds = checked ? [...alsoIds, id] : alsoIds.filter((other) => other !== id)
+  }
 
   // A plot follows the field's soil unless it has its own
   let ownSoil = $state(untrack(() => planting?.own_soil ?? false))
@@ -243,12 +269,19 @@
     }
     return keys
   })
+  // The other fields' errors (also.<field id>.<attribute>, naming the field), shown with their list
+  const isAlso = (key: string) => key.startsWith('also.')
+  const shown = (key: string) => shownErrorKeys.includes(key) || (offerOthers && Boolean(plant) && isAlso(key))
   const firstError = (error: string | string[] | undefined) => (Array.isArray(error) ? error[0] : error)
   function otherErrors(errors: Record<string, string | string[] | undefined>): string[] {
     return Object.entries(errors)
-      .filter(([key, error]) => error && !shownErrorKeys.includes(key))
+      .filter(([key, error]) => error && !shown(key))
       .map(([, error]) => firstError(error)!)
   }
+  const alsoErrors = (errors: Record<string, string | string[] | undefined>): string[] =>
+    Object.entries(errors)
+      .filter(([key, error]) => error && isAlso(key))
+      .map(([, error]) => firstError(error)!)
 </script>
 
 <Form
@@ -262,6 +295,7 @@
   }}
   onError={(errors) => {
     if (Object.keys(errors).some((key) => SETTINGS.includes(key))) settingsOpen = true
+    if (Object.keys(errors).some(isAlso)) alsoOpen = true
   }}
 >
   {#snippet children({ errors, processing })}
@@ -558,6 +592,51 @@
             </div>
           {/if}
         </fieldset>
+        {#if offerOthers}
+          {@const messages = alsoErrors(errors)}
+          <details bind:open={alsoOpen} class="rounded-md border border-line">
+            <summary class="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm">
+              <span class="font-medium">Also plant this on</span>
+              <span class="text-ink-muted">{alsoSummary}</span>
+            </summary>
+            <div class="border-t border-line p-3">
+              {#if free.length}
+                <fieldset class="space-y-2">
+                  <legend class="mb-2 text-sm text-ink-muted">
+                    Fields on this irrigation system with nothing planted on these dates. Each gets its own planting
+                    with these dates and settings, on its own soil and area.
+                  </legend>
+                  <div class="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+                    {#each free as other (other.id)}
+                      <label class="flex items-start gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          id="planting-also-{other.id}"
+                          class="mt-0.5"
+                          name="also_field_ids[]"
+                          value={other.id}
+                          checked={alsoIds.includes(other.id)}
+                          onchange={(event) => toggleAlso(other.id, event.currentTarget.checked)}
+                        />
+                        <span
+                          >{other.name}
+                          <span class="text-ink-muted">{`(${formatArea(units, other.area_acres)})`}</span></span
+                        >
+                      </label>
+                    {/each}
+                  </div>
+                </fieldset>
+              {:else}
+                <p class="text-sm text-ink-muted">
+                  The other fields on this irrigation system all have a planting on these dates.
+                </p>
+              {/if}
+              {#each messages as message, i (i)}
+                <p class="mt-2 text-sm text-status-irrigate-ink">{message}</p>
+              {/each}
+            </div>
+          </details>
+        {/if}
       </section>
 
       <!-- Kept mounted while closed, so its values are submitted -->

@@ -39,6 +39,8 @@ RSpec.configure do |config|
 
   # Rate limits and Rack::Attack counters live in the cache
   config.before { Rails.cache.clear }
+  # Per-request state set directly in a spec (Current.as_of) mustn't reach the next one
+  config.after { Current.reset }
 
   # Specs create the plants and soil types they need. db:prepare seeds the reference data into a
   # freshly created test database (as on CI), so start every run without it.

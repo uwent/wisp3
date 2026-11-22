@@ -14,6 +14,7 @@ import {
   plotSize,
   seasonLine,
   endedSeasonStats,
+  freeFields,
   typicalEnd,
 } from './plantings'
 
@@ -57,6 +58,32 @@ describe('clashes', () => {
   it('leaves out the planting itself and ones in other dates', () => {
     expect(clashes(whole, [whole])).toEqual([])
     expect(clashes({ season_start: '2026-10-01', end_date: '2026-11-30', partial: false }, [whole])).toEqual([])
+  })
+})
+
+describe('freeFields', () => {
+  const east = {
+    name: 'East 40',
+    plantings: [{ id: 1, season_start: '2026-04-01', end_date: '2026-09-30', partial: false }],
+  }
+  const west = {
+    name: 'West 40',
+    plantings: [{ id: 2, season_start: '2026-05-01', end_date: '2026-06-30', partial: true }],
+  }
+  const bare = { name: 'Bare', plantings: [] }
+
+  it('keeps the fields with nothing on them for the dates, a plot counting too', () => {
+    expect(freeFields({ season_start: '2026-06-01', end_date: '2026-10-31' }, [east, west, bare])).toEqual([bare])
+    expect(freeFields({ season_start: '2026-07-01', end_date: '2026-10-31' }, [east, west, bare])).toEqual([west, bare])
+  })
+
+  it('frees a field once the dates move past its planting, the last day counting', () => {
+    expect(freeFields({ season_start: '2026-09-30', end_date: '2026-11-30' }, [east])).toEqual([])
+    expect(freeFields({ season_start: '2026-10-01', end_date: '2026-11-30' }, [east])).toEqual([east])
+  })
+
+  it('offers none without both dates', () => {
+    expect(freeFields({ season_start: '', end_date: '2026-11-30' }, [bare])).toEqual([])
   })
 })
 

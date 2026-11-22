@@ -894,6 +894,29 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   await expect(dialog.getByText('This overlaps a planting covering the whole field')).toBeVisible()
 })
 
+test("a new whole-field planting offers the system's other fields free for its dates (Phase 9 §7)", async ({
+  page,
+}) => {
+  // A field sharing its system with another (firstField is alone on its pivot); nothing is saved
+  await page.goto('/setup')
+  await page.getByRole('button', { name: `Add a planting to ${DEMO.splitWest}` }).click()
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^Add a \\d{4} planting to ${literal(DEMO.splitWest)}`) })
+  await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
+  // Collapsed to a line with a count, opened to a checklist (or a line saying none is free)
+  const also = dialog.locator('details').filter({ hasText: 'Also plant this on' })
+  await expect(also.locator('summary')).toContainText(/other fields? free|None free for these dates/)
+  await also.locator('summary').click()
+  await expect(
+    also.getByText(/Fields on this irrigation system with nothing planted|all have a planting on these dates/),
+  ).toBeVisible()
+  // Not for part of the field
+  await dialog
+    .locator('label')
+    .filter({ hasText: /^\s*Part of the field\s*$/ })
+    .click()
+  await expect(also).toHaveCount(0)
+})
+
 // Mid-season, so the demo's fields are in season whatever today's date (in November they're collapsed)
 const midSeason = `/daily?date=${new Date().getFullYear()}-07-15`
 
@@ -1000,6 +1023,92 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Previous day' }).click()
   await expect(page.getByLabel('Date', { exact: true })).not.toHaveValue(date)
+})
+
+// Late August: a week no other test enters or reads (the desktop project only)
+const lateAugust = `/daily/week?date=${new Date().getFullYear()}-08-30`
+const weekCell = (row: string, kind: 'rain' | 'irrigation', day: string) =>
+  new RegExp(`^${literal(row)} ${kind}(?: \\(hours\\))?, \\w{3}, ${day}$`)
+
+test("daily entry's week saves rain for a group's fields and a system's irrigation, and asks before replacing varied rain", async ({
+  page,
+}) => {
+  await page.goto(lateAugust)
+  await expect(page.getByText(/Aug 24–30/).first()).toBeVisible()
+  const rain = page.getByLabel(weekCell(DEMO.gauge, 'rain', 'Aug 25'))
+  // Aug 24: the system's plantings end Aug 20 and 25, and a day after them takes nothing
+  const irrigation = page.getByLabel(weekCell(DEMO.otherPivot, 'irrigation', 'Aug 24'))
+  await rain.fill('0.4')
+  await irrigation.fill('0.5')
+  await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
+  await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
+  await expect(rain).toHaveValue('0.4')
+  await expect(irrigation).toHaveValue('0.5')
+
+  // The date links to the day, where the group's fields have the rain; one changed there
+  await page
+    .getByRole('link', { name: /Aug 25/ })
+    .first()
+    .click()
+  const field = page.getByLabel(`Rain on ${DEMO.gaugeField}`, { exact: true })
+  await expect(field).toHaveValue('0.4')
+  await field.fill('0.6')
+  await page.getByRole('button', { name: /^Save / }).click()
+  await expect(page.getByText(/^Saved /)).toBeVisible()
+
+  // Back in the week, the group's rain varies, and replacing it asks first
+  await page.goto(lateAugust)
+  await expect(rain).toHaveValue('')
+  await expect(rain).toHaveAttribute('placeholder', 'varies')
+  await rain.fill('0.3')
+  let message = ''
+  page.once('dialog', (dialog) => {
+    message = dialog.message()
+    return dialog.dismiss()
+  })
+  await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
+  await expect
+    .poll(() => message)
+    .toMatch(
+      new RegExp(
+        `^This replaces different amounts on each field for: ${literal(DEMO.gauge)}, \\w{3}, Aug 25\\. Save anyway\\?$`,
+      ),
+    )
+  await expect(rain).toHaveValue('0.3')
+
+  // Saved anyway, every field has it again
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
+  await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
+  await expect(rain).toHaveValue('0.3')
+  await expect(rain).toHaveAttribute('placeholder', '')
+
+  // Cleared for the next run (a blank box on varied rain would leave the fields' amounts as they are)
+  await rain.fill('')
+  await irrigation.fill('')
+  await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
+  await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
+  await page.reload()
+  await expect(rain).toHaveValue('')
+  await expect(rain).toHaveAttribute('placeholder', '')
+  await expect(irrigation).toHaveValue('')
+})
+
+test('daily entry remembers the week view, and the Day switch goes back to the day', async ({ page }) => {
+  await page.goto(midSeason)
+  await page.getByRole('link', { name: 'Week', exact: true }).click()
+  await expect(page).toHaveURL(/\/daily\/week\?date=\d{4}-07-15$/)
+  await expect(page.getByText(/Jul 9–15/).first()).toBeVisible()
+
+  // The nav's Daily entry now opens the week
+  await page.getByRole('link', { name: 'Daily entry', exact: true }).click()
+  await expect(page).toHaveURL(/\/daily\/week$/)
+
+  await page.getByRole('link', { name: 'Day', exact: true }).click()
+  await expect(page.getByLabel('Date', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Daily entry', exact: true }).click()
+  await expect(page).toHaveURL(/\/daily$/)
+  await expect(page.getByLabel('Date', { exact: true })).toBeVisible()
 })
 
 test("Setup's Duplicate starts a new irrigation system from another, to be placed on the map", async ({ page }) => {
@@ -1279,14 +1388,39 @@ test('a field shape is drawn corner by corner, or picked from a file of several 
 
   // A shapefile with two fields asks which one (a file of one is read in the test above)
   await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
-  await expect(page.getByText(`This file has 2 shapes. Which is ${DEMO.shapeField}?`)).toBeVisible()
-  await page.getByRole('button', { name: 'Home South' }).click()
+  await expect(page.getByRole('heading', { name: 'Field import', exact: true })).toBeVisible()
+  await expect(
+    page.getByText(/^Loaded 2 shapes from clu_utm\.zip\. Sort or search to find your field\.$/),
+  ).toBeVisible()
+  const shapes = page.getByRole('table', { name: 'Shapes from clu_utm.zip', exact: true })
+  await expect(shapes.getByRole('columnheader', { name: 'Distance' })).toBeVisible()
+  await shapes.getByRole('button', { name: 'Home South' }).click()
   await expect(page.getByText(/^Field as drawn: 10\d\.\d\d ac/)).toBeVisible()
+  // Picked, it stays open to try another, the shape on the map marked
+  await expect(shapes.getByRole('button', { name: 'Home South' })).toHaveAttribute('aria-current', 'true')
+  // Expanded, every attribute is a column
+  await page.getByRole('button', { name: 'Expand the table' }).click()
+  const all = page.getByRole('table', { name: 'All of the shapes from clu_utm.zip' })
+  await expect(all.getByRole('columnheader', { name: 'Notes' })).toBeVisible()
+  await all.getByRole('button', { name: 'Home North' }).click()
+  await expect(all).toBeHidden()
+  await expect(shapes.getByRole('button', { name: 'Home North' })).toHaveAttribute('aria-current', 'true')
+  // Closed, Import from a file opens the same shapes again
+  await page.getByRole('button', { name: 'Close the field import' }).click()
+  await expect(shapes).toBeHidden()
+  await page.getByRole('button', { name: 'Import from a file' }).click()
+  await expect(shapes).toBeVisible()
 
   // Leaving asks first; nothing is saved
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('link', { name: 'Cancel' }).click()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
+
+  // The file's shapes are kept for the session: Setup's import offers them without reading it again
+  await page.getByRole('link', { name: 'Import field shapes' }).click()
+  await expect(page.getByText(/^The 2 shapes from clu_utm\.zip \(read at .*\) are still here\.$/)).toBeVisible()
+  await page.getByRole('button', { name: 'Use these shapes' }).click()
+  await expect(page.getByText(/^2 shapes\./)).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -1342,7 +1476,7 @@ test('field shapes are imported from a shapefile, matched to fields or new ones 
   // Two shapes, named from FIELD_NAME, matching no field: near Arlington's systems, each is offered
   // as a new field on the nearest
   await expect(page.getByText(/^2 shapes\./)).toBeVisible()
-  await expect(page.getByLabel('Names from')).toHaveValue('FIELD_NAME')
+  await expect(page.getByLabel('Names from', { exact: true })).toHaveValue('FIELD_NAME')
   const first = page.locator('#shape-0')
   const second = page.locator('#shape-1')
   await expect(first.getByRole('button', { name: '1. Home North' })).toBeVisible()

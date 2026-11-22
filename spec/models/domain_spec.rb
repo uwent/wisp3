@@ -2,6 +2,17 @@ require "rails_helper"
 
 RSpec.describe "Domain models" do
   describe Planting do
+    it "has ended, or is open, as of the day the pages show (Current.today)" do
+      planting = create(:planting, end_date: Date.new(2026, 9, 30))
+      travel_to(Date.new(2026, 11, 1)) do
+        expect(planting.ended?).to be(true)
+        expect(Planting.open).to be_empty
+        Current.as_of = Date.new(2026, 7, 20)
+        expect(planting.ended?).to be(false)
+        expect(Planting.open).to eq([planting])
+      end
+    end
+
     let(:field) { create(:field) }
     let(:first) { create(:planting, field:, season_start: Date.new(2026, 4, 1), end_date: Date.new(2026, 7, 15)) }
 
@@ -212,6 +223,14 @@ RSpec.describe "Domain models" do
       expect(build(:canopy_observation, pct_cover: 40, lai: 2)).not_to be_valid
       expect(build(:canopy_observation, pct_cover: nil, lai: 2)).to be_valid
       expect(build(:canopy_observation, pct_cover: 140)).not_to be_valid
+    end
+
+    it "isn't entered ahead of the day the pages show (Current.today)" do
+      observation = build(:canopy_observation, date: Date.new(2026, 6, 15))
+      travel_to(Date.new(2026, 6, 20)) { expect(observation.valid?(:entry)).to be(true) }
+      travel_to(Date.new(2026, 6, 10)) { expect(observation.valid?(:entry)).to be(false) }
+      Current.as_of = Date.new(2026, 6, 10)
+      travel_to(Date.new(2026, 6, 20)) { expect(observation.valid?(:entry)).to be(false) }
     end
   end
 

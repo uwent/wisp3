@@ -74,6 +74,15 @@ describe('outlines to check', () => {
     expect(formatReach(50, 'imperial')).toBe('164 ft')
     expect(formatReach(500, 'metric')).toBe('500 m')
   })
+
+  it('gives feet below 1,000, then miles; meters below 1,000, then kilometers', () => {
+    expect(formatReach(250, 'imperial')).toBe('820 ft')
+    expect(formatReach(304.7, 'imperial')).toBe('0.2 mi')
+    expect(formatReach(3218.7, 'imperial')).toBe('2.0 mi')
+    expect(formatReach(3_000_000, 'imperial')).toBe('1,864.1 mi')
+    expect(formatReach(999.4, 'metric')).toBe('999 m')
+    expect(formatReach(999.6, 'metric')).toBe('1.0 km')
+  })
 })
 
 describe('a shape away from its system (G.14 part 7)', () => {

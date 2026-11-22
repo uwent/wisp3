@@ -6,7 +6,9 @@
   // A table that sorts by any column (click a heading; again to reverse) and filters rows by a
   // search box over the searchable columns. Cells show cellText unless a `cell` snippet renders them.
   // Too wide for its box, it scrolls sideways with its pinned columns (Column.pin) kept in view. A
-  // heading's label can break onto two lines at a newline.
+  // heading's label can break onto two lines at a newline. With a maxHeight its box scrolls down too,
+  // the headings kept in view; with a limit only that many of the matching rows are drawn (a file's
+  // thousands of shapes), the status saying how many more a search would narrow.
 
   let {
     rows,
@@ -19,6 +21,11 @@
     rowClass,
     empty = 'Nothing to show yet.',
     nowrap = false,
+    maxHeight,
+    limit,
+    actions,
+    searchAlso,
+    selected,
   }: {
     rows: T[]
     columns: Column<T>[]
@@ -32,6 +39,16 @@
     empty?: string
     /** Cells keep to one line, so rows stay one line high and the table scrolls sideways instead */
     nowrap?: boolean
+    /** A max height for the table's box (a CSS length), which then scrolls down with its headings in view */
+    maxHeight?: string
+    /** At most this many rows are drawn */
+    limit?: number
+    /** Beside the search (a button to expand the table) */
+    actions?: Snippet
+    /** More of a row's text for the search to find, beyond its searchable columns (ones not shown) */
+    searchAlso?: (row: T) => string[]
+    /** The row to highlight (the one chosen), across its pinned cells too */
+    selected?: (row: T) => boolean
   } = $props()
 
   let query = $state('')
@@ -40,15 +57,21 @@
   const filtered = $derived(
     query.trim()
       ? rows.filter((row) =>
-          matchesQuery(
-            query,
-            searchable.map((column) => cellText(column, row)),
-          ),
+          matchesQuery(query, [...searchable.map((column) => cellText(column, row)), ...(searchAlso?.(row) ?? [])]),
         )
       : rows,
   )
   const sortColumn = $derived(sort && columns.find((column) => column.key === sort!.key))
-  const shown = $derived(sortColumn && sort ? sortRows(filtered, sortColumn.value, sort.direction) : filtered)
+  const ordered = $derived(sortColumn && sort ? sortRows(filtered, sortColumn.value, sort.direction) : filtered)
+  const shown = $derived(limit !== undefined && ordered.length > limit ? ordered.slice(0, limit) : ordered)
+  const count = (n: number) => n.toLocaleString('en-US')
+  const status = $derived(
+    shown.length < ordered.length
+      ? `Showing ${count(shown.length)} of ${count(ordered.length)}${query.trim() ? ` matching (${count(rows.length)} in all)` : ''}: search to narrow`
+      : query.trim()
+        ? `${count(shown.length)} of ${count(rows.length)} shown`
+        : '',
+  )
 
   function toggle(column: Column<T>) {
     const first = column.firstDirection ?? 'asc'
@@ -73,10 +96,23 @@
     }
     return total
   }
-  function pinClass(column: Column<T>): string {
-    if (column.pin === 'right') return 'sticky right-0 z-10 bg-surface-raised shadow-[inset_1px_0_0_var(--color-line)]'
+  // A pinned cell has its own background, to hide the cells scrolling under it: the row's, if chosen
+  function pinClass(column: Column<T>, chosen = false): string {
+    const bg = chosen ? 'bg-brand-50' : 'bg-surface-raised'
+    if (column.pin === 'right') return `sticky right-0 z-10 ${bg} shadow-[inset_1px_0_0_var(--color-line)]`
     if (column.pin !== 'left') return ''
-    return `sticky z-10 bg-surface-raised ${column.key === lastLeft ? 'shadow-[inset_-1px_0_0_var(--color-line)]' : ''}`
+    return `sticky z-10 ${bg} ${column.key === lastLeft ? 'shadow-[inset_-1px_0_0_var(--color-line)]' : ''}`
+  }
+  // In a box that scrolls down, the headings stay at its top, over the pinned cells, with a rule below
+  function headClass(column: Column<T>): string {
+    if (!maxHeight) return pinClass(column)
+    const rule =
+      column.pin === 'right'
+        ? 'right-0 shadow-[inset_1px_-1px_0_var(--color-line)]'
+        : column.key === lastLeft
+          ? 'shadow-[inset_-1px_-1px_0_var(--color-line)]'
+          : 'shadow-[inset_0_-1px_0_var(--color-line)]'
+    return `sticky top-0 bg-surface-raised ${column.pin ? 'z-30' : 'z-20'} ${rule}`
   }
   const pinStyle = (column: Column<T>) => (column.pin === 'left' ? `left: ${offset(column)}px` : undefined)
   const ariaSort = (column: Column<T>) =>
@@ -91,7 +127,7 @@
 
 <div class="space-y-2">
   <div class="flex flex-wrap items-center justify-between gap-2">
-    {#if searchable.length}
+    {#if searchable.length || searchAlso}
       <input
         type="search"
         bind:value={query}
@@ -100,12 +136,14 @@
         class="w-full max-w-xs rounded-md border-line bg-surface-raised shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
       />
     {/if}
-    <span class="text-xs text-ink-muted" role="status"
-      >{query.trim() ? `${shown.length} of ${rows.length} shown` : ''}</span
-    >
+    <span class="text-xs text-ink-muted" role="status">{status}</span>
+    {#if actions}<div class="ml-auto">{@render actions()}</div>{/if}
   </div>
 
-  <div class="overflow-x-auto rounded-lg border border-line bg-surface-raised">
+  <div
+    class="rounded-lg border border-line bg-surface-raised {maxHeight ? 'overflow-auto' : 'overflow-x-auto'}"
+    style={maxHeight ? `max-height: ${maxHeight}` : undefined}
+  >
     <table class="w-full text-sm" aria-label={label}>
       <thead class="border-b border-line text-xs text-ink-muted">
         <tr>
@@ -115,7 +153,7 @@
               scope="col"
               class="px-3 py-2 align-bottom font-medium whitespace-nowrap {alignClass[
                 column.align ?? 'left'
-              ]} {pinClass(column)}"
+              ]} {headClass(column)}"
               style={pinStyle(column)}
               aria-sort={ariaSort(column)}
               bind:offsetWidth={widths[column.key]}
@@ -145,11 +183,13 @@
       </thead>
       <tbody class="divide-y divide-line">
         {#each shown as row (rowKey(row))}
-          <tr class={rowClass?.(row) ?? ''}>
+          {@const chosen = selected?.(row) ?? false}
+          <tr class="{chosen ? 'bg-brand-50' : ''} {rowClass?.(row) ?? ''}">
             {#each columns as column (column.key)}
               <td
                 class="px-3 py-2 {alignClass[column.align ?? 'left']} {nowrap ? 'whitespace-nowrap' : ''} {pinClass(
                   column,
+                  chosen,
                 )}"
                 style={pinStyle(column)}
               >

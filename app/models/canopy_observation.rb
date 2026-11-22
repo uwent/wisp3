@@ -31,7 +31,7 @@ class CanopyObservation < ApplicationRecord
     return unless date && planting
     if !planting.season_range.cover?(date)
       errors.add(:base, "is outside this planting's season")
-    elsif date > Date.current
+    elsif date > Current.today
       errors.add(:base, "can't be entered for a future date")
     end
   end

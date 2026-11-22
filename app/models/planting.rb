@@ -72,7 +72,7 @@ class Planting < ApplicationRecord
   before_create :copy_from_field
 
   # Plantings whose season hasn't ended: they follow edits to their field and pivot
-  scope :open, ->(today = Date.current) { where(end_date: today..) }
+  scope :open, ->(today = Current.today) { where(end_date: today..) }
   # Plantings whose season includes date
   scope :on, ->(date) { where(season_start: ..date, end_date: date..) }
 
@@ -191,7 +191,7 @@ class Planting < ApplicationRecord
   # Whether days without entered rain take the model's: its system's setting (Q7, Pivot#use_model_precip?)
   def use_model_precip? = system.use_model_precip?
 
-  def ended?(today = Date.current) = end_date < today
+  def ended?(today = Current.today) = end_date < today
 
   # Whether part-field plantings in season on some day of this one's add up to more than the field
   # (a warning, not an error: the field's area may be out of date)

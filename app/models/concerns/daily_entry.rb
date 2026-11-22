@@ -41,9 +41,10 @@ module DailyEntry
 
   private
 
-  # Checked as values change, for every way a grower enters them (the field grid, daily entry)
+  # Checked as values change, for every way a grower enters them (the field grid, daily entry);
+  # ahead of the day the pages show (Current.today), as the forms offer
   def nothing_measured_ahead
-    return unless date && date > Date.current
+    return unless date && date > Current.today
     (self.class.entry_values - FUTURE_VALUES).each do |attribute|
       next if self[attribute].nil? || !will_save_change_to_attribute?(attribute)
       errors.add(attribute, "can't be entered for a future date; only planned irrigation and notes can")

@@ -140,6 +140,19 @@ export function clashes<T extends Dated>(planting: Dated, others: T[]): T[] {
 }
 
 /**
+ * The fields a new whole-field planting could also go on for these dates (Phase 9 §7, "Also plant
+ * this on"): those with no planting sharing a day of its season, whole field or part, as
+ * Planting#no_overlap holds a whole-field one. Fields in the order given.
+ */
+export function freeFields<F extends { plantings: Dated[] }>(
+  season: { season_start: string; end_date: string },
+  fields: F[],
+): F[] {
+  if (!season.season_start || !season.end_date) return []
+  return fields.filter((field) => clashes({ ...season, partial: false }, field.plantings).length === 0)
+}
+
+/**
  * The next planting's dates after one ends: it starts the day after, emerges a week later and runs to
  * Nov 30 (or a month, when it starts in November or later)
  */

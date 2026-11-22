@@ -46,6 +46,30 @@ test('a grid is one tab stop: arrows move inside it, Tab moves past it', async (
   expect(await page.evaluate(() => document.activeElement?.getAttribute('data-grid'))).not.toBe('days')
 })
 
+test("daily entry's week moves between cells with the arrow keys and Enter (Phase 9 §6)", async ({ page }) => {
+  await page.goto(`/daily/week?date=${new Date().getFullYear()}-07-15`)
+  // The farm with the irrigation group of five systems: a rain row, then a row per system
+  const table = page
+    .locator('main table')
+    .filter({ has: page.getByRole('rowheader', { name: new RegExp(`^${literal(DEMO.gauge)}`) }) })
+  const start = table.getByLabel(new RegExp(`^${literal(DEMO.gauge)} rain, \\w{3}, Jul 10$`))
+  const row = Number(await start.getAttribute('data-row'))
+  const col = Number(await start.getAttribute('data-col'))
+  const cell = (r: number, c: number) => table.locator(`input[data-row="${r}"][data-col="${c}"]`)
+  await start.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(cell(row, col + 1)).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(cell(row + 1, col + 1)).toBeFocused()
+  // Enter moves down rather than saving
+  await page.keyboard.press('Enter')
+  await expect(cell(row + 2, col + 1)).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await page.keyboard.press('ArrowLeft')
+  await expect(cell(row + 1, col)).toBeFocused()
+  await expect(page.getByText(/^Saved /)).toHaveCount(0)
+})
+
 test('selecting a pivot from the keyboard moves to its panel, and Escape comes back', async ({ page }) => {
   await page.goto('/map')
   const show = page.getByRole('button', { name: /on the map$/ }).first()

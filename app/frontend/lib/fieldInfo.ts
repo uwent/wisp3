@@ -91,6 +91,9 @@ export const FIELD_INFO = {
   'field.soil': {
     text: "The soil sets how much water the crop's roots can hold onto between rains. Pick the main soil where the crop grows; the soil survey suggests one.",
   },
+  'field.shape_names': {
+    text: "Which attribute from the file to assign as the field's name.",
+  },
   'field.field_capacity': fieldCapacity,
   'field.wilting_point': wiltingPoint,
 

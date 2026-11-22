@@ -11,13 +11,21 @@
 
   // Adding or editing a planting on a field (Setup, the field page): the form, and for an existing
   // planting, "Add the next planting" (a season starting the day after it ends, the same size) and
-  // delete. Open it with open(field, planting?).
+  // delete. Open it with open(field, planting?). systemFields: the fields on a field's irrigation
+  // system, with their plantings, where the page has them, for "Also plant this on" (Phase 9 §7).
   let {
     year,
     plants,
     soilTypes,
     genericCurves,
-  }: { year: number; plants: Plant[]; soilTypes: SoilType[]; genericCurves: GenericCurve[] } = $props()
+    systemFields,
+  }: {
+    year: number
+    plants: Plant[]
+    soilTypes: SoilType[]
+    genericCurves: GenericCurve[]
+    systemFields?: (field: Field) => Field[]
+  } = $props()
 
   let isOpen = $state(false)
   let field = $state<Field | null>(null)
@@ -97,6 +105,7 @@
         {soilTypes}
         {genericCurves}
         {template}
+        systemFields={systemFields?.(field)}
         ondone={close}
         ondelete={planting && mayDelete(planting, page.props.auth) ? destroy : undefined}
       />

@@ -130,11 +130,15 @@ export function systemsNear<T extends PivotShape>(boundary: Boundary, systems: T
     .sort((a, b) => a.meters - b.meters)
 }
 
-/** "2.1 mi", "900 ft"; "3.4 km", "270 m" */
+/** "2.1 mi", "900 ft" (feet below 1,000); "3.4 km", "270 m" (meters below 1,000) */
 export function formatReach(meters: number, system: UnitSystem): string {
-  if (system === 'metric') return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`
-  const miles = meters / 1609.344
-  return miles >= 0.1 ? `${miles.toFixed(1)} mi` : `${Math.round(meters * FEET_PER_METER)} ft`
+  if (system === 'metric') {
+    if (Math.round(meters) < 1000) return `${Math.round(meters)} m`
+    return `${(meters / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`
+  }
+  const feet = Math.round(meters * FEET_PER_METER)
+  if (feet < 1000) return `${feet} ft`
+  return `${(meters / 1609.344).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mi`
 }
 
 /** How far a system is from a field's shape: "0.5 mi away", "overlaps this field" (a pivot or linear) or "in this field" (a point kind) */
