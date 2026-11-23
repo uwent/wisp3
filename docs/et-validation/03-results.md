@@ -66,4 +66,4 @@ A wider window, June 20 – August 8 (257 days), gives the same picture (closure
 
 - ~~With the crop dates and canopy cover from Desai's group: the whole season.~~ Done in 06.
 - WISP 3's own weather at the towers: Open-Meteo's historical forecasts with WISP's corrections, against the towers' ET0, for the seasons it covers (2022 and 2023 at least).
-- Corn: US-CC1 (about 38 days) at full cover, as a rough check against 1.20.
+- ~~Corn: US-CC1 (about 38 days) at full cover, as a rough check against 1.20.~~ Done in 05: US-CC2 agrees, US-CC1 can't be closure-corrected.

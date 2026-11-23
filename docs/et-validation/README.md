@@ -8,7 +8,7 @@ Notes, in order:
 - `02-data.md`: the AmeriFlux sites and files, what each season measured, energy balance closure, what's missing, and Desai's group's crop dates, irrigation logs and canopy cover: what's usable and what isn't.
 - `03-results.md`: potato at full cover (July, six seasons) on the towers' own weather: the coefficient the towers imply, closure and how much it matters, WISP 3 and legacy's two equations against them, and net longwave.
 - `04-weather.md`: the same with the weather each model really uses: WISP 3's corrected Open-Meteo weather, and AgWeather's gridded ET, classic and adjusted.
-- `05-corn.md`: the two short corn records (inconclusive).
+- `05-corn.md`: the two short corn records: dryland field corn, full canopy found from the towers' own CO2 uptake and NDVI, moist-soil days only; US-CC2 agrees with Field Corn's coefficient, US-CC1 can't be closure-corrected.
 - `06-season.md`: the whole potato season (2018–2021, with Desai's group's crop dates and canopy cover) through WISP 3's own canopy and `CropEt`, by phase, by cover, and after vine kill, with the changes it suggests.
 
 Still to do: Ben's decision on 06's suggested changes (soil evaporation at low cover and after vine kill, the early August decline, canopy timing), then the About page's summary.
