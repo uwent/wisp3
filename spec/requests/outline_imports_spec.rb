@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Field outlines for many fields from one file (PLAN.md Phase 8 G.10)
+# Field outlines for many fields from one file
 RSpec.describe "Outline imports", type: :request do
   let(:user) { create(:user) }
   let(:group) { user.groups.first }

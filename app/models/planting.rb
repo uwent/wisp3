@@ -1,23 +1,22 @@
 # One crop on one field for one season. A planting covers the whole field (the usual case) or part
-# of it (partial, PLAN.md Phase 8 G.11: a plot of plot_length_ft × plot_width_ft, or just its acres;
-# it has no place in the field, G.14). A whole-field planting can't overlap another planting on its field, which
+# of it (partial: a plot of plot_length_ft × plot_width_ft, or just its acres;
+# it has no place in the field). A whole-field planting can't overlap another planting on its field, which
 # allows double cropping (legacy picked the crop with the latest emergence, C10); part-field ones may
 # overlap each other (a research field or market garden growing several crops at once). A
 # part-field planting can have its own irrigation, soil moisture readings and notes
 # (PlantingEntry), which come before the field's for its balance (DailyInputs), and its own soil
 # (own_soil), which edits to the field's soil leave alone.
 #
-# A planting keeps the values its balance runs on (PLAN.md Phase 8 G.9): the field's soil type and
+# A planting keeps the values its balance runs on: the field's soil type and
 # its own field capacity and wilting point (NULL follows the soil type, as on fields), the field's
-# area, its irrigation system (G.14 part 7: a system's irrigation applies to the plantings that were
-# on it, DailyInputs) and that system's weather cell. They're copied when the
+# area, its irrigation system (the one it ran on, for the season's records) and that system's weather cell. They're copied when the
 # planting is created; editing the field, moving it to another system or moving the system changes
 # them on plantings that haven't ended (Field, Pivot), so earlier seasons keep what they ran with.
 class Planting < ApplicationRecord
   ET_METHODS = %w[pct_cover lai].freeze
   CANOPY_INTERPOLATIONS = %w[linear curve].freeze
   DEFAULT_MAD_FRAC = 0.5
-  # A planting's own season length, days from emergence to harvest (G.7; check constraint too)
+  # A planting's own season length, days from emergence to harvest (check constraint too)
   SEASON_DAYS = (20..250)
 
   belongs_to :field
@@ -26,11 +25,11 @@ class Planting < ApplicationRecord
   # The irrigation system the season ran on: its field's, kept when an ended season's field moves
   belongs_to :pivot
   belongs_to :weather_cell, optional: true
-  # Who added it, who may delete it as well as the owners (G.15); NULL for those made before
+  # Who added it, who may delete it as well as the owners; NULL for those made before
   belongs_to :created_by, class_name: "User", optional: true
   has_many :canopy_observations, -> { order(:date) }, dependent: :destroy
   has_many :planting_entries, dependent: :delete_all
-  # A perennial's cuttings, each restarting its canopy (G.3)
+  # A perennial's cuttings, each restarting its canopy
   has_many :canopy_cuttings, -> { order(:date) }, dependent: :delete_all
 
   validates :season_start, :emergence_date, :end_date, presence: true
@@ -107,7 +106,7 @@ class Planting < ApplicationRecord
 
   # A new planting on field from the form's values (given: attributes, blank ones left out), the
   # crop's defaults for year filling the rest; without a harvest date, the crop's typical one after
-  # the emergence given (G.2)
+  # the emergence given
   def self.build_for(field, given, year:, created_by: nil)
     plant = Plant.find_by(id: given[:plant_id])
     defaults = plant ? defaults_for(plant, year) : {}
@@ -124,7 +123,7 @@ class Planting < ApplicationRecord
 
   # The suggested harvest date for plant emerging on emergence: its season's length later (the
   # planting's own, season_days, else the crop's typical CanopyCurve#season_days), but no later than
-  # Nov 30; Nov 30 for a crop without one (PLAN.md Phase 8 G.2, G.7). lib/plantings.ts (typicalEnd)
+  # Nov 30; Nov 30 for a crop without one. lib/plantings.ts (typicalEnd)
   # mirrors it.
   def self.typical_end(plant, emergence, canopy_curve_key = nil, season_days = nil)
     latest = Date.new(emergence.year, *LATEST_END)
@@ -133,11 +132,11 @@ class Planting < ApplicationRecord
     days ? [emergence + days, latest].min : latest
   end
 
-  # The percent cover curve this planting follows (PLAN.md Phase 8 G.3): its crop's own, or for a
+  # The percent cover curve this planting follows: its crop's own, or for a
   # crop without one the generic curve chosen (canopy_curve_key) or its default; nil for readings only
   def cover_curve = plant && CanopyCurve.effective(plant.key, canopy_curve_key)
 
-  # On the perennial regrowth curve by percent cover, so it can be cut (G.3); a planting whose crop
+  # On the perennial regrowth curve by percent cover, so it can be cut; a planting whose crop
   # changed keeps its cuttings, which count again only if it goes back
   def takes_cuttings? = cover_curve&.key == CanopyCutting::CURVE && et_method == "pct_cover"
 
@@ -153,8 +152,8 @@ class Planting < ApplicationRecord
   # The season's length: the planting's own (season_days), else its crop's typical one; nil without one
   def effective_season_days = typical_season_days && (season_days || typical_season_days)
 
-  # How much slower than typical its crop's canopy curve runs, from the planting's own season length
-  # (G.7): 1 without one. Canopy stretches the curve's whole timeline by it (growth, decline), and
+  # How much slower than typical its crop's canopy curve runs, from the planting's own season length:
+  # 1 without one. Canopy stretches the curve's whole timeline by it (growth, decline), and
   # CanopyFit fits readings around it.
   def time_stretch = (season_days && typical_season_days) ? season_days.to_f / typical_season_days : 1.0
 
@@ -171,7 +170,7 @@ class Planting < ApplicationRecord
   # Whether the crop takes a vine kill date (potato; canopy_curves.yml)
   def vine_kill_crop? = plant.present? && CanopyCurve.for(plant.key)&.vine_kill? || false
 
-  # Whether its canopy curve can run in degree days (PLAN.md §9 C23): a percent cover curve with
+  # Whether its canopy curve can run in degree days (C23): a percent cover curve with
   # thermal parameters (Canopy.for; at a cell without normals yet it still runs by calendar days)
   def thermal_curve? = et_method != "lai" && cover_curve&.thermal.present?
 
@@ -277,7 +276,7 @@ class Planting < ApplicationRecord
     self.soil_type, self.field_capacity, self.perm_wilting_pt = field.soil_type, field.field_capacity, field.perm_wilting_pt
   end
 
-  # Part of a field can't be larger than the field (G.11); plots together can (a warning,
+  # Part of a field can't be larger than the field; plots together can (a warning,
   # exceeds_field_area?), since the field's area may be out of date
   def within_field_area
     return unless area_acres && field&.area_acres && area_acres > field.area_acres + 1e-6
@@ -308,7 +307,7 @@ class Planting < ApplicationRecord
     end
   end
 
-  # LAI is offered only for crops with an LAI growth curve (PLAN.md Phase 6.7): deriving LAI from
+  # LAI is offered only for crops with an LAI growth curve: deriving LAI from
   # percent cover gave 20–40% less ET than the percent cover method (docs/canopy/03-crop-curves.md)
   def lai_needs_curve
     return unless et_method == "lai" && plant && plant.canopy_model.nil?
@@ -323,7 +322,7 @@ class Planting < ApplicationRecord
     # start and after emergence, and within a year of the start (MAX_SEASON_DAYS). Emergence may be the
     # season's first day (a transplant), or up to a year before it (a perennial, or a crop already up
     # when its tracking starts). lib/plantings.ts (dateProblems)
-    # checks the same as the dates are typed. Checked when a date changes (G.13 part 3), so a planting
+    # checks the same as the dates are typed. Checked when a date changes, so a planting
     # saved under the looser rules before stays editable.
     unless new_record? || will_save_change_to_season_start? || will_save_change_to_emergence_date? ||
         will_save_change_to_end_date?

@@ -17,7 +17,7 @@
   import { currentUnits } from '@/lib/units'
   import { pivots } from '@/routes'
 
-  // The irrigation calculator (D15, docs/plans/phase-9.md §8): irrigation is entered in
+  // The irrigation calculator (D15): irrigation is entered in
   // inches, and this works them out from the run hours (gallons a minute × hours, over the acres of
   // the fields watered) or, on a pivot or linear, the percent timer (the depth at 100% × 100 ÷
   // percent, for each circle), laid out as a sum with its result beside it. The pump capacity and

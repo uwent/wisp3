@@ -1,5 +1,5 @@
 namespace :weather do
-  desc "Compare AgWeather with Open-Meteo models (PLAN.md §8.4) and write docs/weather-comparison.md. " \
+  desc "Compare AgWeather with Open-Meteo models and write docs/weather-comparison.md. " \
     "POINTS=file.csv (name,lat,lng; default: Wisconsin irrigated areas), YEARS=2025,2026"
   task compare: :environment do
     points = if ENV["POINTS"]
@@ -20,7 +20,7 @@ namespace :weather do
     WeatherCell.active.each { |cell| WeatherBackfillJob.perform_now(cell.id) }
     puts "Refreshed #{WeatherCell.active.count} cells"
   end
-  desc "Fetch temperature normals (PLAN.md §9 C23) for every cell with a pivot that has none; NOW=yes " \
+  desc "Fetch temperature normals (C23) for every cell with a pivot that has none; NOW=yes " \
     "fetches them here instead of queueing a job per cell"
   task normals: :environment do
     cells = WeatherCell.without_normals(WeatherCell.with_pivots.select(:id)).order(:id).to_a
@@ -33,7 +33,7 @@ namespace :weather do
     end
   end
 
-  desc "Refetch stored weather through the current corrections (PLAN.md Phase 8 E): counts the days and " \
+  desc "Refetch stored weather through the current corrections: counts the days and " \
     "Open-Meteo calls; CONFIRM=yes queues a job per cell with a pivot"
   task recorrect: :environment do
     fetcher = Weather::Fetcher.new

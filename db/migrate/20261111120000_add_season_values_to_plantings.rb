@@ -1,4 +1,4 @@
-# PLAN.md Phase 8 G.9: a planting keeps the field's soil and area and its pivot's weather cell, so
+# A planting keeps the field's soil and area and its pivot's weather cell, so
 # editing a field or moving a pivot for a new season leaves earlier seasons as they ran. Filled
 # from each planting's field and pivot as they are now.
 class AddSeasonValuesToPlantings < ActiveRecord::Migration[8.1]

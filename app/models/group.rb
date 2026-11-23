@@ -14,7 +14,7 @@ class Group < ApplicationRecord
 
   validates :name, presence: true, length: {maximum: 100}
 
-  # The public example farm (PLAN.md G.8): at most one group, with no members, shown read-only to
+  # The public example farm: at most one group, with no members, shown read-only to
   # anyone (example mode, ExampleMode) as of its example_as_of; rebuilt by bin/rails demo:example
   scope :examples, -> { where.not(example_as_of: nil) }
 

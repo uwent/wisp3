@@ -11,7 +11,7 @@
   import { weatherZone } from '@/lib/weatherZones'
   import type { ForecastDay, WeatherZone } from '@/types/serializers'
 
-  // The operation's weather zones (G.12), each with its irrigation systems and the week ahead beside
+  // The operation's weather zones, each with its irrigation systems and the week ahead beside
   // them (below them on narrow screens). One zone goes straight to it (the controller).
   let {
     zones,
@@ -57,7 +57,7 @@
               >{zone.coordinates}</Link
             >
           </h2>
-          <!-- Its systems and their fields, each a link to its page (G.6) -->
+          <!-- Its systems and their fields, each a link to its page -->
           {#if zone.pivots.length}
             <p class="text-sm">
               <span class="text-ink-muted">Systems:</span>

@@ -1,4 +1,4 @@
-# Pivot groups (PLAN.md Phase 8 G.4), managed in Setup: a name, which of the farm's pivots share
+# Pivot groups, managed in Setup: a name, which of the farm's pivots share
 # the group's rain gauge, and which rain their balances use (Q7; blank follows the operation). A pivot joining a group leaves any other; deleting a group ungroups its
 # pivots.
 class PivotGroupsController < AuthenticatedController

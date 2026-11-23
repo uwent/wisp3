@@ -1,6 +1,6 @@
 module Weather
-  # A cell's daily temperature normals (WeatherNormal), for canopy curves in thermal time (PLAN.md
-  # §9 C23): the mean high and low on each day of the year over the last YEARS complete years of
+  # A cell's daily temperature normals (WeatherNormal), for canopy curves in thermal time
+  # (C23): the mean high and low on each day of the year over the last YEARS complete years of
   # Open-Meteo's historical archive (ERA5, with ERA5-Land's 0.1° grid where it has it), smoothed
   # with a WINDOW-day moving average so one odd year doesn't put a step in the curve. One request
   # per cell, fetched once (WeatherNormalsJob).

@@ -20,7 +20,7 @@ export type MapPrefs = {
   overlays: string[]
   /** Overlay opacity by id, where the user changed it */
   opacity: Record<string, number>
-  /** Draw the irrigation systems' shapes (off to see outlined fields alone, G.10) */
+  /** Draw the irrigation systems' shapes (off to see outlined fields alone) */
   systems: boolean
 }
 

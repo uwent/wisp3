@@ -25,7 +25,7 @@
     optional?: boolean
   } = $props()
 
-  // Required and still empty: marked until it has a value (G.13 part 3)
+  // Required and still empty: marked until it has a value
   const missing = $derived(Boolean(rest.required) && !String(value ?? '').trim())
 
   const message = $derived(Array.isArray(error) ? error[0] : error)

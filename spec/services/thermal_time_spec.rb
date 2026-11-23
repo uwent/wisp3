@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Canopy curves in growing degree days (PLAN.md §9 C23): the temperatures behind them
+# Canopy curves in growing degree days (C23): the temperatures behind them
 # (CellTemperatures, ThermalTime), the curves (CanopyCurve), a planting's canopy (Canopy.for) and
 # pages running many plantings (FieldStatuses).
 RSpec.describe ThermalTime do

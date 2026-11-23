@@ -29,14 +29,14 @@
 
   // One planting on a field for one season. Dates default to Apr 1 – Nov 30 with emergence May 1,
   // and the root zone depth to the crop's (as in legacy WISP). A season that has ended keeps its own
-  // soil and area (PLAN.md Phase 8 G.9), which can be corrected here; one still running follows its
-  // field's. A planting covers the whole field or part of it (G.11): length × width or acres, on the
+  // soil and area, which can be corrected here; one still running follows its
+  // field's. A planting covers the whole field or part of it: length × width or acres, on the
   // field's soil or its own. A new whole-field planting overlapping another can replace it (ending
   // it the day before). template: a new planting's dates and size ("Add the next planting").
-  // A new whole-field planting can also go on the system's other fields free for its dates (Phase 9
-  // §7, "Also plant this on"): one save makes an independent planting on each, or none.
+  // A new whole-field planting can also go on the system's other fields free for its dates
+  // ("Also plant this on"): one save makes an independent planting on each, or none.
   //
-  // Laid out for a first pass (G.13 part 3): a new planting shows only the crop until one is chosen,
+  // Laid out for a first pass: a new planting shows only the crop until one is chosen,
   // then its season and size, filled in from the crop; the rest (root zone, MAD, canopy, targets) is
   // under Settings, collapsed to a line saying what's in effect, and opened when one has an error.
   // Dates are checked as they're typed (dateProblems). Defaults show as placeholders in blank boxes.
@@ -57,7 +57,7 @@
     year: number
     plants: Plant[]
     soilTypes?: SoilType[]
-    /** Curves a crop without its own can follow (G.3) */
+    /** Curves a crop without its own can follow */
     genericCurves?: GenericCurve[]
     template?: Partial<Planting>
     /** The fields on this one's irrigation system, with their plantings, for "Also plant this on" */
@@ -125,7 +125,7 @@
   let ownSoil = $state(untrack(() => planting?.own_soil ?? false))
   let plotSoilId = $state(untrack(() => String(planting?.own_soil ? planting.soil_type_id : field.soil_type_id)))
   const plotSoil = $derived(soilTypes.find((s) => String(s.id) === plotSoilId))
-  // On a field with an outline, the soils in it first, with their share (G.11 item 10, G.10): read
+  // On a field with an outline, the soils in it first, with their share: read
   // from the soil survey once the plot is given its own soil
   let fieldShares = $state<Map<string, number> | null>(null)
   $effect(() => {
@@ -164,7 +164,7 @@
   const plant = $derived(plants.find((p) => String(p.id) === plantId))
   // Whether the crop has a canopy curve for the chosen method (Planting#canopy_curve?)
   // A crop without its own percent cover curve follows a generic one, its default unless another is
-  // picked, or none (readings only) (PLAN.md Phase 8 G.3)
+  // picked, or none (readings only)
   const NONE = 'none'
   const generic = $derived(plant !== undefined && !plant.has_cover_curve && etMethod === 'pct_cover')
   let curveChoice = $state(untrack(() => planting?.canopy_curve_key ?? ''))
@@ -175,7 +175,7 @@
   )
   // The typical season: the crop's own, or its generic curve's
   const typicalDays = $derived(plant?.has_cover_curve ? plant.season_days : (genericCurve?.season_days ?? null))
-  // The planting's own season length (G.7), stretching the crop's curve; blank for the typical one
+  // The planting's own season length, stretching the crop's curve; blank for the typical one
   let ownDays = $state<number | null>(untrack(() => planting?.season_days ?? null))
   const seasonDays = $derived(typicalDays ? (ownDays ?? typicalDays) : null)
   // Potatoes are vine killed some weeks before harvest, and irrigated until it
@@ -193,7 +193,7 @@
     suggestEnd()
   }
 
-  // A new planting's harvest follows the crop's typical season from emergence (PLAN.md Phase 8 G.2)
+  // A new planting's harvest follows the crop's typical season from emergence
   // until a date is typed; an existing one keeps its own
   let endChosen = untrack(() => planting !== undefined)
   function suggestEnd() {
@@ -201,7 +201,7 @@
   }
 
   // Out of order dates, as they're typed (the server checks the same). A saved planting's dates
-  // are held to the looser rules they were saved under until one of them changes (G.13 part 3)
+  // are held to the looser rules they were saved under until one of them changes
   const loose = $derived(
     planting !== undefined &&
       seasonStart === planting.season_start &&

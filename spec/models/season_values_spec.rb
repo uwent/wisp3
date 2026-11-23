@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# PLAN.md Phase 8 G.9: a planting keeps its field's soil and area, its system (G.14 part 7) and that
+# A planting keeps its field's soil and area, its system and that
 # system's weather cell, so setup edits for a new season leave earlier seasons as they ran.
 RSpec.describe "Season values on plantings" do
   let(:sand) { create(:soil_type, name: "Sand", field_capacity: 0.10, perm_wilting_pt: 0.04) }
@@ -53,7 +53,7 @@ RSpec.describe "Season values on plantings" do
     expect(last_year.reload.weather_cell).to eq(old_cell)
   end
 
-  describe "a field moved to another system (G.14 part 7)" do
+  describe "a field moved to another system" do
     let(:other) { create(:pivot, farm: pivot.farm, latitude: 45.6, longitude: -91.2) }
 
     it "moves freely with earlier seasons, which keep their system and weather" do

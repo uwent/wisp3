@@ -1,7 +1,7 @@
 require "rails_helper"
 
-# WISP's corrected hours against AgWeather v2's for the same Open-Meteo responses (PLAN.md Phase 8 E,
-# step 6): three June 2025 days at the O1280 cell over Stillwater, OK, NBM then best_match. v2's values
+# WISP's corrected hours against AgWeather v2's for the same Open-Meteo responses:
+# three June 2025 days at the O1280 cell over Stillwater, OK, NBM then best_match. v2's values
 # come from docs/weather-corrections/v2_expected.py; rerun it when a table or the method changes.
 RSpec.describe "Weather corrections against AgWeather v2" do
   let(:expected) { JSON.parse(file_fixture("weather_corrections/v2_expected.json").read) }

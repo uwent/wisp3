@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# The admin Usage page (UsageReport, PLAN.md H.3); access for everyone else is in access_spec.rb
+# The admin Usage page (UsageReport); access for everyone else is in access_spec.rb
 RSpec.describe "Admin usage", type: :request do
   it "shows the season asked for, or the current one" do
     sign_in create(:user, admin: true)

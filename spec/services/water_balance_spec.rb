@@ -15,7 +15,7 @@ RSpec.describe WaterBalance do
   def run(days, **options) = described_class.run(params, days, **options)
 
   describe "Params" do
-    it "derives the static quantities (§5.1)" do
+    it "derives the static quantities" do
       expect(params.taw).to be_within(1e-12).of(2.4)
       expect(params.ad_max).to be_within(1e-12).of(1.2)
       expect(params.ad_pwp).to be_within(1e-12).of(-1.2)
@@ -43,7 +43,7 @@ RSpec.describe WaterBalance do
     end
   end
 
-  describe "the daily step (§5.2)" do
+  describe "the daily step" do
     it "subtracts crop ET and adds rain and irrigation" do
       results = run([day(0, et0: 0.3), day(1, et0: 0.2, rain: 0.1, irrigation: 0.05)])
       expect(results.map(&:ad)).to eq([0.9, 0.85])
@@ -81,7 +81,7 @@ RSpec.describe WaterBalance do
     end
   end
 
-  describe "gap fill (§5.4)" do
+  describe "gap fill" do
     it "fills missing et0 with the mean of the top 3 adjusted ETs of the previous 7 days" do
       ets = [0.10, 0.25, 0.20, 0.15, 0.30, 0.05, 0.12, 0.01]
       days = ets.each_with_index.map { |et0, i| day(i, et0:) } + [day(8, et0: nil)]
@@ -104,7 +104,7 @@ RSpec.describe WaterBalance do
     end
   end
 
-  describe ".status (§5.5)" do
+  describe ".status" do
     it "classifies today's AD" do
       expect(described_class.status(params, 1.1)).to eq(:full)
       expect(described_class.status(params, 0.5)).to eq(:ok)

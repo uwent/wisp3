@@ -4,8 +4,8 @@ import type { PlantingSummary } from '@/types/serializers'
 // get them, and how the map orders and picks them
 
 /**
- * A field and its plantings in season today, or the nearest this year (several on a field of plots,
- * PLAN.md Phase 8 G.11); empty without a planting this year
+ * A field and its plantings in season today, or the nearest this year (several on a field of plots);
+ * empty without a planting this year
  */
 export type FieldCard = { id: number; name: string; plantings: PlantingSummary[] }
 /** An irrigation system with its field cards. weather_updating: a weather update for its cell is queued or running */
@@ -85,7 +85,7 @@ export function pivotStatus(fields: FieldCard[]): Status | null {
 
 export type SortOrder = 'urgent' | 'north'
 
-// The map's list (PLAN.md Phase 8 G.14): the operation as a tree of cards, farm › irrigation group
+// The map's list: the operation as a tree of cards, farm › irrigation group
 // › system › field, as on the dashboard and Setup (a system in no group sits under its farm).
 
 /** What's selected on the map page: one card in the list, and its system or field on the map */
@@ -203,7 +203,7 @@ export const treeSystems = <P>(node: FarmNode<P> | GroupNode<P> | SystemNode<P>)
 export const treeFields = <P>(tree: FarmNode<P>[]): FieldCard[] =>
   tree.flatMap(treeSystems).flatMap((node) => node.fields)
 
-// The dashboard's choices (Phase 9): its fields by farm and system or most urgent first, and a
+// The dashboard's choices: its fields by farm and system or most urgent first, and a
 // status count clicked to show only the fields at that status
 
 /** A status count to filter by: a status in season, or the season ended */

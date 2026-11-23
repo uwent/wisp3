@@ -4,7 +4,7 @@
   import Introduction from '@/lib/docs/Introduction.svelte'
   import { about, example, newUserRegistration, newUserSession } from '@/routes'
 
-  // The landing page for signed-out visitors (PLAN.md Phase 6.5); signed in, / is the dashboard
+  // The landing page for signed-out visitors; signed in, / is the dashboard
 
   const steps = [
     {

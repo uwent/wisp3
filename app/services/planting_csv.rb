@@ -10,7 +10,7 @@ class PlantingCsv
 
   def to_csv
     planting, params = @status.planting, @status.params
-    # The system the season ran on, which a field moved since doesn't change (G.14 part 7)
+    # The system the season ran on, which a field moved since doesn't change
     field, system = planting.field, planting.system
     canopy = (planting.et_method == "lai") ? "Leaf area index" : "Percent cover"
 

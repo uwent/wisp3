@@ -20,11 +20,11 @@ class Field < ApplicationRecord
 
   normalizes :notes, with: ->(text) { text.strip.presence }
 
-  # Plantings that haven't ended follow the field's soil, area and system (PLAN.md Phase 8 G.9, G.14
-  # part 7); ended ones keep what their season ran with, so a field can move at any time
+  # Plantings that haven't ended follow the field's soil, area and system;
+  # ended ones keep what their season ran with, so a field can move at any time
   after_update :update_open_plantings
 
-  # The outline (G.10, G.14): a GeoJSON Polygon with one ring, or nil. A JSON string is parsed and
+  # The outline: a GeoJSON Polygon with one ring, or nil. A JSON string is parsed and
   # blank clears it; positions are rounded (FieldBoundary.normalize).
   def boundary=(value)
     super(value.blank? ? nil : FieldBoundary.normalize(value))
@@ -38,7 +38,7 @@ class Field < ApplicationRecord
   def effective_perm_wilting_pt = perm_wilting_pt || soil_type.perm_wilting_pt
 
   # The planting whose season includes date, if any: the whole-field one, else the first part-field
-  # one (a field can have several of those at once, G.11; plantings_on gives them all)
+  # one (a field can have several of those at once; plantings_on gives them all)
   def planting_on(date)
     plantings_on(date).min_by(&:order_key)
   end
@@ -67,10 +67,10 @@ class Field < ApplicationRecord
   end
 
   # The irrigation system the field was on that day: its planting's (a season keeps the system it
-  # ran on, G.14 part 7), else, with nothing planted, the one it's on now
+  # ran on), else, with nothing planted, the one it's on now
   def pivot_id_on(date) = planting_on(date)&.pivot_id || pivot_id
 
-  # Saves the field, moved to system if given (G.14 part 7): one of its operation's, or a new Location
+  # Saves the field, moved to system if given: one of its operation's, or a new Location
   # (unsaved), added in the same transaction. Its open plantings follow (update_open_plantings);
   # ended ones keep the system they ran on. False with errors on the field when either can't be saved.
   def save_moving_to(system)
@@ -95,10 +95,10 @@ class Field < ApplicationRecord
       values[:weather_cell_id] = pivot.weather_cell_id
     end
     soil = values.slice(:soil_type_id, :field_capacity, :perm_wilting_pt)
-    # Plots on their own soil keep it (G.11)
+    # Plots on their own soil keep it
     plantings.open.where(own_soil: false).update_all(soil) if soil.any?
     plantings.open.update_all(values.slice(:pivot_id, :weather_cell_id)) if values.key?(:pivot_id)
-    # Part-field plantings keep their own area (G.11)
+    # Part-field plantings keep their own area
     plantings.open.where(partial: false).update_all(area_acres:) if values.key?(:area_acres)
   end
 

@@ -20,8 +20,8 @@
   import type { Units } from '@/lib/units'
   import type { PlantingSummary } from '@/types/serializers'
 
-  // A field's plantings for one season as bars across it (PLAN.md Phase 8 G.11), like a Gantt chart,
-  // each named by its crop and when it is (G.14):
+  // A field's plantings for one season as bars across it, like a Gantt chart,
+  // each named by its crop and when it is:
   // plots in season together in rows of their own, successions along one row. Each bar opens its
   // planting: href (its page), onselect (its form), or with both a small menu offering each (Setup's
   // bars: the page or the form). status colors a bar's dot by its planting's status today; current

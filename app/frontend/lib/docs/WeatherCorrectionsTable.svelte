@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  // A correction WISP applies to Open-Meteo's weather (PLAN.md D12, §8.5), from
+  // A correction WISP applies to Open-Meteo's weather (D12), from
   // db/reference/weather_corrections/corrections.yml (Weather::Corrections.summaries)
   export type WeatherCorrection = {
     id: string

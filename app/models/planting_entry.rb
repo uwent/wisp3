@@ -1,4 +1,4 @@
-# A part-field planting's own entries for a day (PLAN.md Phase 8 G.11): irrigation applied to it
+# A part-field planting's own entries for a day: irrigation applied to it
 # alone (a drip zone, a plot watered by hand), a soil moisture reading from a sensor in it, and
 # notes. They come before the field's entries for its balance (DailyInputs); rain stays on the
 # field. Only plantings on part of a field have them: a whole-field planting is the field.

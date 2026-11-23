@@ -116,7 +116,7 @@ test("the About page's canopy curve dialog", { tag: '@phone' }, async ({ page })
   expect(errors).toEqual([])
 })
 
-test('the example farm, signed out (G.8)', { tag: '@phone' }, async ({ page }) => {
+test('the example farm, signed out', { tag: '@phone' }, async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/example')
   await expect(page.getByRole('status').filter({ hasText: "You're viewing an example farm" })).toBeVisible()
@@ -233,7 +233,7 @@ test("a weather zone's table of all its weather, in a dialog", { tag: '@phone' }
   expect(errors).toEqual([])
 })
 
-test("Setup's field dialog, with its shape (G.14)", { tag: '@phone' }, async ({ page }) => {
+test("Setup's field dialog, with its shape", { tag: '@phone' }, async ({ page }) => {
   await signIn(page)
   const errors = watchErrors(page)
   await page.goto('/setup')
@@ -242,7 +242,7 @@ test("Setup's field dialog, with its shape (G.14)", { tag: '@phone' }, async ({ 
   await expect(dialog.getByLabel('Field area', { exact: true })).toBeVisible()
   const { violations } = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(TAGS).analyze()
   expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
-  // An open info tip (G.13), portalled outside the dialog
+  // An open info tip, portalled outside the dialog
   await dialog.getByRole('button', { name: 'About Irrigation system' }).click()
   await expect(page.getByRole('tooltip')).toBeVisible()
   const tip = await new AxeBuilder({ page })
@@ -253,7 +253,7 @@ test("Setup's field dialog, with its shape (G.14)", { tag: '@phone' }, async ({ 
   expect(tip.violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
   await page.keyboard.press('Escape')
   await expect(page.getByRole('tooltip')).toBeHidden()
-  // Its prompt before dropping a change (G.13)
+  // Its prompt before dropping a change
   await dialog.getByLabel('Field area', { exact: true }).fill('12.5')
   await page.keyboard.press('Escape')
   await expect(dialog.getByRole('heading', { name: 'Save your changes?' })).toBeVisible()
@@ -267,41 +267,37 @@ test("Setup's field dialog, with its shape (G.14)", { tag: '@phone' }, async ({ 
   expect(errors).toEqual([])
 })
 
-test(
-  "Setup's planting dialog in sections, and a planting bar's menu (G.13 part 3)",
-  { tag: '@phone' },
-  async ({ page }) => {
-    await signIn(page)
-    const errors = watchErrors(page)
-    await page.goto('/setup')
-    const axe = async () => {
-      const { violations } = await new AxeBuilder({ page })
-        .include('[role="dialog"], [role="menu"]')
-        .withTags(TAGS)
-        .analyze()
-      expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
-    }
-    // A new planting: only the crop (required, still empty) until one is chosen
-    await page.getByRole('button', { name: `Add a planting to ${DEMO.firstField}` }).click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog.getByText('Choose a crop')).toHaveCount(2) // the option and the hint
-    await axe()
-    // Its sections, with Settings open
-    await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Onion' })
-    await dialog.locator('summary').click()
-    await expect(dialog.getByRole('group', { name: 'Canopy curve' })).toBeVisible()
-    await axe()
-    await page.keyboard.press('Escape')
-    await dialog.getByRole('button', { name: 'Discard' }).click()
-    await expect(dialog).toBeHidden()
-    // A bar's menu: view or edit
-    await page
-      .getByRole('list', { name: new RegExp(`^Plantings on ${literal(DEMO.researchField)}`) })
-      .getByRole('button')
-      .first()
-      .click()
-    await expect(page.getByRole('menu')).toBeVisible()
-    await axe()
-    expect(errors).toEqual([])
-  },
-)
+test("Setup's planting dialog in sections, and a planting bar's menu", { tag: '@phone' }, async ({ page }) => {
+  await signIn(page)
+  const errors = watchErrors(page)
+  await page.goto('/setup')
+  const axe = async () => {
+    const { violations } = await new AxeBuilder({ page })
+      .include('[role="dialog"], [role="menu"]')
+      .withTags(TAGS)
+      .analyze()
+    expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])
+  }
+  // A new planting: only the crop (required, still empty) until one is chosen
+  await page.getByRole('button', { name: `Add a planting to ${DEMO.firstField}` }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Choose a crop')).toHaveCount(2) // the option and the hint
+  await axe()
+  // Its sections, with Settings open
+  await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Onion' })
+  await dialog.locator('summary').click()
+  await expect(dialog.getByRole('group', { name: 'Canopy curve' })).toBeVisible()
+  await axe()
+  await page.keyboard.press('Escape')
+  await dialog.getByRole('button', { name: 'Discard' }).click()
+  await expect(dialog).toBeHidden()
+  // A bar's menu: view or edit
+  await page
+    .getByRole('list', { name: new RegExp(`^Plantings on ${literal(DEMO.researchField)}`) })
+    .getByRole('button')
+    .first()
+    .click()
+  await expect(page.getByRole('menu')).toBeVisible()
+  await axe()
+  expect(errors).toEqual([])
+})

@@ -2,7 +2,7 @@ import { formatDate } from '../dates'
 import type { EChartsCoreOption } from './echarts'
 import { baseOption, type Palette } from './palette'
 
-// The admin Usage page's charts (UsageReport, PLAN.md H.3): accounts active each week of the
+// The admin Usage page's charts (UsageReport): accounts active each week of the
 // season, with last season's line for comparison, and the entries made each week by kind
 
 export type EntryKind = 'rain' | 'irrigation' | 'soil_moisture' | 'canopy'

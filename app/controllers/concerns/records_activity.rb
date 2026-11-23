@@ -1,4 +1,4 @@
-# Records the day and the part of WISP each signed-in request used (ActivityDay, PLAN.md H.2). The
+# Records the day and the part of WISP each signed-in request used (ActivityDay). The
 # session remembers what's been recorded today, so the table is written once per area per day,
 # not on every request. Admins, an admin signed in as someone else and the example farm aren't
 # recorded. The real date, not Current.today: time travel is an admin's tool.

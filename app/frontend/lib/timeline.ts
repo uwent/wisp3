@@ -1,6 +1,6 @@
 import { addDays, daysBetween, parseDate } from '@/lib/dates'
 
-// A field's season timeline (PLAN.md Phase 8 G.11): its plantings as bars across the season, like a
+// A field's season timeline: its plantings as bars across the season, like a
 // Gantt chart. Plantings in season together (plots side by side) get rows of their own; one after
 // another (successions) share a row.
 

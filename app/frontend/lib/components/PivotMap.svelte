@@ -46,7 +46,7 @@
 
   type Outline = PivotShape & { id: number; name: string }
 
-  // The pivot location picker (PLAN.md §4): click the map to place the pivot's center, drag the
+  // The pivot location picker: click the map to place the pivot's center, drag the
   // center or the handles to adjust it. A center pivot has a handle on its edge for the radius and,
   // for a partial circle, one at each end of the arc; a linear has handles on two opposite
   // corners (its front left and back right, facing its direction of travel) and one past its front
@@ -55,7 +55,7 @@
   // the map (it doesn't place the pivot), and an arrow at the edge points back to the pivot when
   // it's out of view. A saved system's map starts locked (`locked`), so a stray click or drag
   // can't move it: Edit on the map unlocks it, Done editing keeps the changes (the form's Save saves
-  // them) and Cancel puts back the shape from before, as on the field shape page (G.14).
+  // them) and Cancel puts back the shape from before, as on the field shape page.
   let {
     shape = $bindable(),
     others = [],
@@ -434,7 +434,7 @@
     updatePointer()
   })
 
-  // Soil types around the pivot (PLAN.md Phase 7 F): the survey's map units colored and labeled by
+  // Soil types around the pivot: the survey's map units colored and labeled by
   // the WISP soil type their surface texture suggests, loaded for an area around the pivot (or the
   // view, zoomed in, before it's placed) and again when the pivot moves out of it
   function soilArea(): Bounds | null {

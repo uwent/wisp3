@@ -2,7 +2,7 @@ import type { FieldDay } from '@/types/serializers'
 
 import { daysBetween } from './dates'
 
-// A field's season in numbers, for the season details on its page (PLAN.md Phase 6.6): the rain
+// A field's season in numbers, for the season details on its page: the rain
 // entered and modeled, how the gauge compares with the model day by day, irrigation and deep
 // drainage. From the balance's days through today; depths in inches.
 

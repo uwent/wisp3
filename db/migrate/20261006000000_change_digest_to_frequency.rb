@@ -1,4 +1,4 @@
-# Phase 6: the digest's on/off switch becomes how often it's sent (never, daily during the season,
+# The digest's on/off switch becomes how often it's sent (never, daily during the season,
 # or only on days a field needs irrigation soon), and a test email can be sent from the Alerts page
 # once per cooldown.
 class ChangeDigestToFrequency < ActiveRecord::Migration[8.1]

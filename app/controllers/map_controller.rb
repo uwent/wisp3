@@ -1,6 +1,6 @@
-# The map (PLAN.md Phase 7): the dashboard's farms, pivots and field cards, with each pivot's
+# The map: the dashboard's farms, pivots and field cards, with each pivot's
 # location and its weather zone's rain and ET over the last 7 days and the next 7, and its fields'
-# outlines (G.10), for a season (?year=, G.14; this year by default).
+# outlines, for a season (?year=; this year by default).
 class MapController < AuthenticatedController
   allow_example :show
 

@@ -17,7 +17,7 @@ import {
 } from './boundary'
 import { areaWkt } from './soils'
 
-// A field's outline (PLAN.md Phase 8 G.10; one ring since G.14). The polygons and areas match
+// A field's outline (one ring, no holes or parts). The polygons and areas match
 // spec/services/field_boundary_spec.rb, so the browser and the server agree.
 const outer: LngLat[] = [
   [-89.35, 43.3],

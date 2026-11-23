@@ -1,7 +1,7 @@
 require "rails_helper"
 
 # Every route that takes a group-owned record's ID must 404 for another group's record and leave it
-# unchanged (PLAN.md §9 S1, the legacy app's worst bug)
+# unchanged (S1, the legacy app's worst bug)
 RSpec.describe "Tenant isolation", type: :request do
   let(:user) { create(:user) }
   let(:outsider) { create(:user) }
@@ -82,14 +82,14 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_planting.canopy_observations).to be_empty
   end
 
-  it "won't record another group's part-field planting's own entries through my field (G.11)" do
+  it "won't record another group's part-field planting's own entries through my field" do
     their_plot = create(:planting, field: create(:field, pivot: their_pivot), partial: true, area_acres: 1)
     patch field_day_path(my_field, "2026-07-01"), params: {day: {irrigation_in: 0.5}, planting_id: their_plot.id}
     expect_not_found
     expect(their_plot.planting_entries).to be_empty
   end
 
-  it "hides other groups' field outlines (G.10)" do
+  it "hides other groups' field outlines" do
     square = {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.31], [-89.35, 43.3]]]}
     get field_outline_path(their_field)
     expect_not_found
@@ -98,7 +98,7 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_field.reload.boundary).to be_nil
   end
 
-  it "won't import outlines onto another group's fields or systems (G.10)" do
+  it "won't import outlines onto another group's fields or systems" do
     square = {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.3]]]}.to_json
     post outline_import_path, params: {outline_import: {rows: [{boundary: square, field_id: their_field.id}]}}
     expect_not_found
@@ -113,14 +113,14 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(inertia.props[:fields]).to be_empty
   end
 
-  it "won't move a field to another group's system from its shape page (G.14 part 7)" do
+  it "won't move a field to another group's system from its shape page" do
     square = {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.31], [-89.35, 43.3]]]}
     patch field_outline_path(my_field), params: {outline: {boundary: square.to_json, pivot_id: their_pivot.id}}
     expect_not_found
     expect(my_field.reload).to have_attributes(pivot: my_pivot, boundary: nil)
   end
 
-  it "shows only my group's other fields and systems on a field's outline page (G.10)" do
+  it "shows only my group's other fields and systems on a field's outline page" do
     their_field.update!(boundary: {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.3]]]})
     their_pivot
     get field_outline_path(my_field)
@@ -140,14 +140,14 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_planting.reload.variety).not_to eq("Mine now")
   end
 
-  it "hides other groups' weather zones and irrigation exports (G.12)" do
+  it "hides other groups' weather zones and irrigation exports" do
     get weather_pivot_path(their_pivot)
     expect_not_found
     get "/weather/#{their_pivot.weather_cell_id}"
     expect_not_found
     get "/weather/#{their_pivot.weather_cell_id}/export"
     expect_not_found
-    # By location, their cell is a place this operation has no zone (G.6)
+    # By location, their cell is a place this operation has no zone
     get weather_zone_path(their_pivot.weather_cell.location)
     expect(response).to redirect_to(weather_zones_path)
     get export_weather_zone_path(their_pivot.weather_cell.location)
@@ -217,7 +217,7 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
-  it "won't add or remove cuttings on another group's planting (G.3)" do
+  it "won't add or remove cuttings on another group's planting" do
     their_planting.update!(plant: create(:plant, key: "alfalfa"), canopy_curve_key: nil)
     cutting = their_planting.canopy_cuttings.create!(date: their_planting.emergence_date + 30)
     get root_path

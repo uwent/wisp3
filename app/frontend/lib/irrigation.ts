@@ -1,7 +1,7 @@
 // Irrigation is stored in inches, per field and per plot (D15). A system's row fills its fields'
 // boxes; the calculator works the inches out from run hours or the percent timer.
 
-// The fields a system's irrigation can apply to on a date (G.14 part 7), mirroring Pivot#fields_on:
+// The fields a system's irrigation can apply to on a date, mirroring Pivot#fields_on:
 // a field whose season that day ran on the system, or one of its fields with nothing planted then.
 // A season keeps the system it ran on, so a field moved away is still on it for its earlier
 // seasons, and a field moved here isn't for seasons that ran elsewhere.

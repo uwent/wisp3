@@ -1,4 +1,4 @@
-# A planting's to-do list while its season is on (PLAN.md Phase 6.7), for the field page, the
+# A planting's to-do list while its season is on, for the field page, the
 # dashboard cards and the daily email: the readings that keep the model on track, as the legacy
 # user guide advised (soil moisture about weekly; percent cover about weekly from emergence until
 # the canopy covers about 80%), and canopy readings to check when they disagree with the crop's
@@ -28,7 +28,7 @@ class PlantingTasks
   end
 
   # In season, every reading with whether it's due, and the canopy check; once the season has ended,
-  # the readings with their last dates only (the planting page lists them, G.6), none of them due
+  # the readings with their last dates only (the planting page lists them), none of them due
   def all
     case @status.phase
     when :active then [irrigation_check, soil_moisture, canopy, canopy_check].compact

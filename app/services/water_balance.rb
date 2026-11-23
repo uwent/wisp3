@@ -1,4 +1,4 @@
-# The checkbook water balance for one planting (PLAN.md §5). Plain Ruby, no ActiveRecord: give it
+# The checkbook water balance for one planting (docs/engine.md). Plain Ruby, no ActiveRecord: give it
 # the planting's parameters and its resolved days, get back one result per day. Depths are inches.
 #
 # AD (allowable depletion) is the water above the MAD trigger point: AD_max at field capacity,
@@ -58,7 +58,7 @@ module WaterBalance
       super
     end
 
-    # The planting's own soil values (its season's, PLAN.md Phase 8 G.9). temperatures: as Crop.for
+    # The planting's own soil values (its season's). temperatures: as Crop.for
     def self.for(planting, temperatures: nil)
       new(field_capacity: planting.effective_field_capacity, perm_wilting_pt: planting.effective_perm_wilting_pt,
         max_root_zone_depth: planting.max_root_zone_depth, mad_frac: planting.mad_frac,
@@ -167,7 +167,7 @@ module WaterBalance
     [(kcb + step.ke) * et0, step.state]
   end
 
-  # Today's status from AD (PLAN.md §5.5); projections add "caution" for a coming crossing
+  # Today's status from AD (docs/engine.md); projections add "caution" for a coming crossing
   def status(params, ad)
     if ad >= 0.9 * params.ad_max then :full
     elsif ad >= (params.target_in || 0.5 * params.ad_max) then :ok

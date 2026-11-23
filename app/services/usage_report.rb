@@ -1,4 +1,4 @@
-# How growers use WISP in a season (PLAN.md H.3), for the admin Usage page: accounts, the onboarding
+# How growers use WISP in a season, for the admin Usage page: accounts, the onboarding
 # funnel, weekly activity (ActivityDay) and entries, the parts of WISP used, and how operations are
 # set up. Admins, the example farm and example.com addresses (the demo account) are left out. A
 # season is a calendar year; its weeks run March through November. Entries count from their

@@ -5,7 +5,7 @@ import { type Boundary, boundaryBounds, boundaryCenter } from '@/lib/boundary'
 import { readPalette } from '@/lib/charts/palette'
 import { LABEL_FONT, labelPaint } from '@/lib/map/basemaps'
 
-// What the outline pages draw for reference (PLAN.md Phase 8 G.10): irrigation systems (an outline,
+// What the outline pages draw for reference: irrigation systems (an outline,
 // or a point kind's dot) and fields' outlines, each named, the first one ("own") more strongly
 
 export type Reference = { name: string; boundary?: Boundary | null; shape?: PivotShape }

@@ -6,7 +6,7 @@
 #
 # DIR defaults to tmp/ameriflux. ET0 is WISP's hourly chain (app/services/weather/fao56.rb, ported
 # below function for function): FAO-56 Rev.1's eq. 2.5a/2.5b each hour (rs 50 s/m while Rn >= 0,
-# 200 s/m while Rn < 0; until 2026-11-19 the 1998 eq. 53's 70 s/m, PLAN.md §9 C24), G = 0.1 Rn by
+# 200 s/m while Rn < 0; until 2026-11-19 the 1998 eq. 53's 70 s/m, C24), G = 0.1 Rn by
 # day and 0.5 Rn at night, net
 # longwave from Rs/Rso carried from the last hour with the sun above 17.2°. The towers' half-hours
 # (local standard time, UTC−6) are averaged to hours. Wind is taken to 2 m by FAO-56 eq. 47 from the

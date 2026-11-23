@@ -25,15 +25,15 @@ import { glyphProperties, type GlyphProperties } from './systemLayers'
 
 // The map page's irrigation systems (MapController): the dashboard's pivot with its location and
 // its weather zone's rain and ET, drawn as GeoJSON. Pivots and linears are their outline and a point
-// for their glyph (drawn when they're too small to see, G.14); the other kinds (a traveler, drip, a
+// for their glyph (drawn when they're too small to see); the other kinds (a traveler, drip, a
 // location) are a point for their glyph. Each irrigation group is a light outline around its
-// systems and their fields. Fields with an outline are drawn in their status (G.10), named along
-// their top, with a badge per planting at their center (G.14).
+// systems and their fields. Fields with an outline are drawn in their status, named along
+// their top, with a badge per planting at their center.
 
 export type WeatherTotals = { days: number; precip: number | null; et0: number | null }
 export type PivotWeather = { past: WeatherTotals | null; ahead: WeatherTotals | null }
 
-/** A field's outline (G.10) */
+/** A field's outline */
 export type MapOutline = { field_id: number; boundary: Boundary }
 
 export type MapPivot = OverviewSystem & PivotShape & { weather: PivotWeather | null; outlines: MapOutline[] }
@@ -74,7 +74,7 @@ export const POINT_OUTLINE_MARGIN_M = 50 / FEET_PER_METER
 
 /**
  * A system's outline on the map: a pivot's or linear's shape, or for a point kind whose fields have
- * outlines, the area around them and its own location (G.14), so the dot at the place it was put is
+ * outlines, the area around them and its own location, so the dot at the place it was put is
  * always inside, even off its fields; null for a point kind without
  */
 export function systemOutline(pivot: MapPivot): LngLat[] | null {
@@ -178,7 +178,7 @@ export const STATUS_LABELS: Record<Status, string> = {
 /** A badge: a status, or a gray dot when there's none, and what it is, a line each, for the hover label */
 export type Badge = { key: number; status: Status | null; lines: string[] }
 
-/** A planting in the hover label (G.14): "Planting: Potato (Russet Burbank, May 15, 65 days)" */
+/** A planting in the hover label: "Planting: Potato (Russet Burbank, May 15, 65 days)" */
 const plantingLine = (summary: PlantingSummary, today: string) => `Planting: ${plantingLabel(summary, today)}`
 
 /** A field's badge on its system's marker: its most urgent planting, named with the field */
@@ -191,7 +191,7 @@ export function fieldBadge(card: FieldCard, today: string): Badge {
   }
 }
 
-/** An outlined field's plantings as badges at its center (G.14) */
+/** An outlined field's plantings as badges at its center */
 export type FieldBadges = {
   field_id: number
   pivot_id: number
@@ -259,7 +259,7 @@ export function pivotBounds(pivots: MapPivot[]): [LngLat, LngLat] | null {
 }
 
 /**
- * How a marker's badges are packed (G.14): rows of at most ⌈√n⌉, the longer rows first, so 2 sit
+ * How a marker's badges are packed: rows of at most ⌈√n⌉, the longer rows first, so 2 sit
  * side by side, 3 make a triangle, 4 a square, 5 three over two and 7 three, two and two
  */
 export function badgeRows(count: number): number[] {

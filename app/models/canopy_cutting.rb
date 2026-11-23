@@ -1,5 +1,5 @@
-# A cutting of a perennial planting (alfalfa, mint; one on the perennial regrowth curve, PLAN.md
-# Phase 8 G.3): the canopy drops to stubble that day and regrows (CutCanopy), so the season is a
+# A cutting of a perennial planting (alfalfa, mint; one on the perennial regrowth curve):
+# the canopy drops to stubble that day and regrows (CutCanopy), so the season is a
 # sawtooth rather than one curve.
 class CanopyCutting < ApplicationRecord
   belongs_to :planting

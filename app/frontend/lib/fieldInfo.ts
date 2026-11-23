@@ -1,7 +1,7 @@
 import { glossaryEntry, type GlossaryEntry } from './glossary'
 import type { Units } from './units'
 
-// The info tips on form inputs (G.13), one per form and input: `planting.root_zone` says what the
+// The info tips on form inputs, one per form and input: `planting.root_zone` says what the
 // root zone input is for in the planting form, not what a root zone is. Tips are plain words, at
 // most two sentences (fieldInfo.test.ts), for what the input does here and when to change it; a
 // hint that must be read before typing stays under the box instead. Where the input's label is a

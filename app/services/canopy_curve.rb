@@ -1,9 +1,9 @@
-# A crop's default percent cover curve (PLAN.md Phase 6.7), from db/reference/canopy_curves.yml:
+# A crop's default percent cover curve, from db/reference/canopy_curves.yml:
 # FAO AquaCrop's canopy growth since emergence, then an AquaCrop decline or a calendar rule (potato's
 # late-summer decline). The file documents the equations and each crop's sources; Canopy combines a
 # curve with the readings a grower enters.
 #
-# Time since emergence is growing degree days (PLAN.md §9 C23) when the curve has thermal
+# Time since emergence is growing degree days (C23) when the curve has thermal
 # parameters and is given a clock (ThermalTime, for the planting's weather cell), else calendar
 # days. The thermal parameters reproduce the calendar curve in a typical Central Wisconsin season
 # for the crop's typical emergence date, so a warm spring runs the canopy ahead of the calendar and a
@@ -18,7 +18,7 @@ class CanopyCurve
     "fao56" => "Derived from FAO-56 stage lengths; not yet checked in Wisconsin",
     "generic" => "Generic shape for crops without their own curve; readings correct it"
   }.freeze
-  # A planting's choice of no curve at all: readings only (PLAN.md Phase 8 G.3)
+  # A planting's choice of no curve at all: readings only
   NONE = "none"
   # The canopy counts as full (for a decline rule's start) at this share of its maximum
   FULL = 0.98
@@ -32,9 +32,9 @@ class CanopyCurve
   end
 
   attr_reader :key, :cc0, :ccx, :cgc, :decline, :basis, :confidence, :sources, :notes
-  # Typical days from emergence to harvest, and how they were worked out (PLAN.md Phase 8 G.2)
+  # Typical days from emergence to harvest, and how they were worked out
   attr_reader :season_days, :season_basis
-  # A generic curve's name ("Vegetable, medium") and the crops that follow it by default (G.3)
+  # A generic curve's name ("Vegetable, medium") and the crops that follow it by default
   attr_reader :name, :default_for
   # Its Thermal parameters, or nil if it runs only by calendar days
   attr_reader :thermal
@@ -54,7 +54,7 @@ class CanopyCurve
 
     def all = @all ||= load("crops")
 
-    # The generic curves (G.3), in the file's order
+    # The generic curves, in the file's order
     def generic = @generic ||= load("generic")
 
     # The generic curve a crop without its own follows unless its planting picks another, or nil

@@ -1,8 +1,8 @@
 require "rails_helper"
 
-# PLAN.md Phase 8 G.7: the crops added (dry bean, corn silage, oats, sugar beet, sorghum), and a
+# The crops added for the 2027 beta (dry bean, corn silage, oats, sugar beet, sorghum), and a
 # planting's own season length, which stretches its crop's canopy curve in time.
-RSpec.describe "Season length and the G.7 crops" do
+RSpec.describe "Season length and the crops added for the beta" do
   let(:emergence) { Date.new(2026, 5, 15) }
   let(:field) { create(:field) }
 

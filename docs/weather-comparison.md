@@ -1,6 +1,6 @@
 # AgWeather vs Open-Meteo
 
-Generated 2026-11-19 by `bin/rails weather:compare` (PLAN.md §8.4, §8.5). 12 points × 2025, 2026 seasons (Apr 1 – Sep 30), daily values from AgWeather (legacy WISP's source) and from Open-Meteo's historical-forecast API at each point's O1280 cell. Points: Hancock, Plainfield, Coloma, Almond, Bancroft, Plover, Wautoma, Grand Marsh, Arena, Spring Green, Antigo, Janesville.
+Generated 2026-11-19 by `bin/rails weather:compare` (docs/plans/design.md §8.4, §8.5). 12 points × 2025, 2026 seasons (Apr 1 – Sep 30), daily values from AgWeather (legacy WISP's source) and from Open-Meteo's historical-forecast API at each point's O1280 cell. Points: Hancock, Plainfield, Coloma, Almond, Bancroft, Plover, Wautoma, Grand Marsh, Arena, Spring Green, Antigo, Janesville.
 
 Sources: each Open-Meteo model alone with Open-Meteo's own ET0; **WISP 2026**, NBM then best_match hour by hour with Open-Meteo's ET0 (what WISP used through the 2026 season); and **WISP corrected**, the same hours with the shortwave and humidity corrections and WISP's FAO-56 ET0 (D12, what WISP uses from 2027). Precipitation isn't corrected, so the two WISP rows share it.
 

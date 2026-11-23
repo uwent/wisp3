@@ -1,4 +1,4 @@
-// Display units (PLAN.md Q3). WISP stores US units (water depths in inches); this module is the only
+// Display units (Q3). WISP stores US units (water depths in inches); this module is the only
 // place values are converted, at the display and input edge. Every displayed or entered quantity
 // goes through format() or parse().
 

@@ -1,6 +1,6 @@
 # Degree days between dates at a weather cell, for a crop's base and upper temperatures
 # (Weather::DegreeDays.aquacrop), from CellTemperatures: the clock a canopy curve in thermal time
-# runs on (CanopyCurve#from, PLAN.md §9 C23). Sums are kept as running totals from the first date
+# runs on (CanopyCurve#from, C23). Sums are kept as running totals from the first date
 # asked, so each lookup is constant time once the days around it have been added up.
 class ThermalTime
   def initialize(temperatures, base_c:, upper_c:)

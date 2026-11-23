@@ -2,7 +2,7 @@ import { addDays, formatDate } from '@/lib/dates'
 import type { PivotKind } from '@/lib/geo'
 import type { Units } from '@/lib/units'
 
-// Daily entry's week view (Phase 9 §6): rain and irrigation for the seven days ending on a date, as
+// Daily entry's week view: rain and irrigation for the seven days ending on a date, as
 // one grid per farm (props from DailyEntryWeek). A cell fills the fields under its row that day, as
 // a parent row does on the day page: rain a group's or system's, irrigation a system's (stored per
 // field, D15; the server also sets their plots that had the field's amount). Every cell starts

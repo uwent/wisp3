@@ -13,7 +13,7 @@
       | { type: 'rule'; date: string; days: number; floor: number }
       | null
     days_to: { 50: number | null; 80: number | null }
-    /** The curve in growing degree days (°C days), which plantings run on (PLAN.md §9 C23) */
+    /** The curve in growing degree days (°C days), which plantings run on (C23) */
     thermal: {
       base_c: number
       upper_c: number
@@ -22,7 +22,7 @@
       cdc: number | null
       basis: string
     } | null
-    /** Typical days from emergence to harvest (PLAN.md Phase 8 G.2) */
+    /** Typical days from emergence to harvest */
     season: { days: number; basis: string } | null
     covers: number[]
     sources: { citation: string; url: string }[]

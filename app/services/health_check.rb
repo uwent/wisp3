@@ -1,4 +1,4 @@
-# What needs an admin's attention (PLAN.md Phase 8 B): background jobs that failed since the last
+# What needs an admin's attention: background jobs that failed since the last
 # check, and weather that's missing for the cells in use. It reports the state of the data, which
 # clears itself once the data arrives, rather than every failure along the way. HealthCheckJob runs
 # it each morning and stores the result, which the admin weather page and /up show.

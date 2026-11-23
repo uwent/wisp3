@@ -4,7 +4,7 @@ import { type Change, ChangeTracker, describeChanges } from '@/lib/formChanges'
 
 export const UNSAVED_MESSAGE = 'You have unsaved changes. Leave this page without saving them?'
 
-/** The confirm's text: the changes listed (G.13) when the form's are known, else the plain question */
+/** The confirm's text: the changes listed when the form's are known, else the plain question */
 export function unsavedMessage(tracker?: ChangeTracker): string {
   return changesMessage(tracker ? tracker.changes() : []) ?? UNSAVED_MESSAGE
 }

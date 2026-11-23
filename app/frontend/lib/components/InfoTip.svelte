@@ -6,7 +6,7 @@
   // An (i) button with an explanation: shown while a mouse hovers it, and toggled by click, tap,
   // Enter or Space (a click pins a hovered one); Escape or a click elsewhere closes it. The popup is
   // portalled, so a scrolling dialog doesn't clip it, never takes focus, and describes the button
-  // while it's open. A form's tip (G.13) may add a glossary term's definition below its own text.
+  // while it's open. A form's tip may add a glossary term's definition below its own text.
   let { text, term, label = 'About this' }: { text: string; term?: GlossaryEntry; label?: string } = $props()
 
   const uid = $props.id()

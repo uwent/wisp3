@@ -23,8 +23,8 @@
   import { lastSoil, rememberSoil } from './lastChoices'
 
   // Create a field under a pivot, or edit one (including moving it to another pivot, which its
-  // seasons that haven't ended follow; ended ones keep theirs, PLAN.md Phase 8 G.9, G.14 part 7).
-  // Its shape (the outline, G.10) is shown small and edited on its own page (G.14).
+  // seasons that haven't ended follow; ended ones keep theirs).
+  // Its shape (the outline) is shown small and edited on its own page.
   let {
     field,
     pivotId,
@@ -66,7 +66,7 @@
   const soil = $derived(soilTypes.find((s) => String(s.id) === soilTypeId))
 
   // The soil survey reads the field's shape, or for a new field its pivot's, whose suggestion it
-  // takes until the user picks a soil (G.6)
+  // takes until the user picks a soil
   let pivotChoice = $state(untrack(() => String(field?.pivot_id ?? pivotId)))
   const pivot = $derived(pivots.find((p) => String(p.id) === pivotChoice))
   const system = $derived(
@@ -97,7 +97,7 @@
   let area = $state(untrack(() => field?.area_acres ?? null))
 
   // Field capacity and wilting point: the soil's unless measured, collapsed to a line saying what's in
-  // effect (as the planting form's Settings, G.13 part 3) and opened by an error in either
+  // effect (as the planting form's Settings) and opened by an error in either
   let fieldCapacity = $state(untrack(() => field?.field_capacity ?? null))
   let wiltingPoint = $state(untrack(() => field?.perm_wilting_pt ?? null))
   let soilWaterOpen = $state(false)

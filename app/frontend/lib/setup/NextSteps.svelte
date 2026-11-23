@@ -6,7 +6,7 @@
   import { root, newOutlineImport, pivots as pivotRoutes, setup } from '@/routes'
   import type { Farm, Field, Pivot } from '@/types/serializers'
 
-  // Quick setup's next steps on Setup (PLAN.md G.6), for what it just made: an irrigation system for a
+  // Quick setup's next steps on Setup, for what it just made: an irrigation system for a
   // farm saved alone; fields for a system without them; then a planting on each field this season.
   // Worked out from Setup's own data, so each step done moves it on.
   let {

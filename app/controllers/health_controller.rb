@@ -1,4 +1,4 @@
-# /up: whether WISP is up, for uptime monitors and deploys (PLAN.md Phase 8 B). Public, so it gives
+# /up: whether WISP is up, for uptime monitors and deploys. Public, so it gives
 # only states and counts: no cells, errors or users. 200 while the app and its database answer (the
 # body's status is "degraded" when the last health check found problems or the morning run was
 # missed), 503 when the database doesn't.

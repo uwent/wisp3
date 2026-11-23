@@ -81,7 +81,7 @@ class SeasonReportCsv
     csv << ["Weather by zone (the weather grid cell its irrigation systems share)"]
     csv << ["Zone", "Latitude", "Longitude", "Irrigation systems", "From", "Through", "Days with weather", "Precipitation (in)",
       "Reference ET (in)", "GDD (50/86 °F)", "Mean temperature (°F)", "Highest (°F)", "Lowest (°F)"]
-    # The weather each planting ran on (where its pivot was that season, G.9)
+    # The weather each planting ran on (where its pivot was that season)
     zones = statuses.group_by { |status| status.planting.weather_cell }.except(nil)
     weather = weather_by_cell(zones.keys)
     zones.each_with_index do |(cell, cell_statuses), i|
@@ -129,7 +129,7 @@ class SeasonReportCsv
     end
   end
 
-  # Each field's area that year, as its whole-field plantings kept it (PLAN.md Phase 8 G.9; the
+  # Each field's area that year, as its whole-field plantings kept it (the
   # larger, for a double crop), or for a field of plots only, the field's; nil without one
   def field_areas
     @field_areas ||= statuses.group_by { |status| status.planting.field }.to_h do |field, field_statuses|

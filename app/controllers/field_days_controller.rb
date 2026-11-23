@@ -1,6 +1,6 @@
 # Saves one day of a field's grid: the field entry (rain, irrigation, soil moisture, notes) and,
 # with planting_id, that planting's canopy reading (percent cover or LAI, by its ET method). For a
-# planting on part of the field (PLAN.md Phase 8 G.11), its irrigation, soil moisture and notes go
+# planting on part of the field, its irrigation, soil moisture and notes go
 # to its own entry (PlantingEntry) and rain to the field's; the field's irrigation also sets its plots
 # that had the field's amount (Field#record_entry, D15). Only the values sent change; a blank
 # value clears it. A future day takes only planned irrigation and notes (DailyEntry and

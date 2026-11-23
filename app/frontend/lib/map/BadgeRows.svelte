@@ -3,7 +3,7 @@
 
   import { type Badge, packRows } from './pivots'
 
-  // Badges packed in rows of about √n (G.14: three make a triangle, four a square), on a dark
+  // Badges packed in rows of about √n (three make a triangle, four a square), on a dark
   // backing. Each carries its hover label's lines (data-hover, read by OverviewMap under the
   // pointer) and names itself to screen readers.
   let { badges, selected = false }: { badges: Badge[]; selected?: boolean } = $props()

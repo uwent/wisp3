@@ -1,4 +1,4 @@
-# Pivots on one farm that share a rain gauge (PLAN.md Phase 8 G.4): daily entry fills a group's rain
+# Pivots on one farm that share a rain gauge: daily entry fills a group's rain
 # into its pivots' fields. A pivot is in at most one group, on its own farm.
 class CreatePivotGroups < ActiveRecord::Migration[8.1]
   def change

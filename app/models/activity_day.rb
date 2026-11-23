@@ -1,5 +1,5 @@
-# A day an account used WISP, the parts of it they used and whether any of it was on a phone
-# (PLAN.md H.2), for the admin Usage page (UsageReport). No times, addresses, URLs or records
+# A day an account used WISP, the parts of it they used and whether any of it was on a phone,
+# for the admin Usage page (UsageReport). No times, addresses, URLs or records
 # viewed. Written by RecordsActivity, at most once per area per day.
 class ActivityDay < ApplicationRecord
   belongs_to :user

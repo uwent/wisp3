@@ -5,8 +5,8 @@
   import type { SoilType } from '@/types/serializers'
 
   // What the soil survey (SSURGO) says is under an irrigation system (its outline, or a small circle
-  // around a point kind's location) or a field's outline (G.10), and the soil type it suggests
-  // (PLAN.md Phase 7 F). Looked up when the area is placed or changes; it never holds up the form,
+  // around a point kind's location) or a field's outline, and the soil type it suggests.
+  // Looked up when the area is placed or changes; it never holds up the form,
   // and a failure just says so.
   let {
     shape = null,

@@ -1,6 +1,6 @@
 module Admin
-  # Weather status (PLAN.md §12): API mode and usage, and each cell's coverage, forecast and errors,
-  # below the last health check's result (HealthCheck, PLAN.md Phase 8 B)
+  # Weather status: API mode and usage, and each cell's coverage, forecast and errors,
+  # below the last health check's result (HealthCheck)
   class WeatherController < BaseController
     def show
       client = Weather::OpenMeteo.new

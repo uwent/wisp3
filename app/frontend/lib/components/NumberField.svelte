@@ -120,7 +120,7 @@
   const blankText = $derived(blankValue === null ? undefined : show(blankValue))
   const submitted = $derived(value ?? (submitBlankValue ? blankValue : null) ?? '')
   const message = $derived(localError ?? (Array.isArray(error) ? error[0] : error))
-  // Required and still empty: marked until it has a value (G.13 part 3)
+  // Required and still empty: marked until it has a value
   const missing = $derived(required && !text.trim())
   const suffix = $derived(quantity ? units.label(quantity) : unitLabel)
 </script>

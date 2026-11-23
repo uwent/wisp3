@@ -18,7 +18,7 @@
 
   export type ShapeOnMap = { boundary: Boundary; label: string; state: 'skip' | 'field' | 'new' }
 
-  // The shapes from an outline file (PLAN.md Phase 8 G.10), numbered as in the list below the map
+  // The shapes from an outline file, numbered as in the list below the map
   // and colored by where each goes (an existing field, a new one, or skipped), over the operation's
   // systems and outlined fields, with a legend of the colors below. Clicking a shape picks its row.
   let {

@@ -11,7 +11,7 @@ class ApplicationController < ActionController::Base
     super
   end
 
-  # The admin signed in as current_user for support (PLAN.md Phase 8 B), or nil. The session keys
+  # The admin signed in as current_user for support, or nil. The session keys
   # count only while they name the signed-in user and an admin, so a stale pair (the impersonated
   # session timed out and remember-me signed the admin back in) never shows the bar; it's cleared.
   def impersonator

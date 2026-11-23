@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe "Weather zones (G.12)", type: :request do
+RSpec.describe "Weather zones", type: :request do
   let(:user) { create(:user) }
   let(:group) { user.groups.first }
   let(:farm) { create(:farm, group:, name: "Hancock") }
@@ -12,13 +12,13 @@ RSpec.describe "Weather zones (G.12)", type: :request do
 
   around { |example| travel_to(Time.zone.local(2026, 7, 20, 9)) { example.run } }
 
-  it "lists a lone zone too, rather than going straight to it (G.6)" do
+  it "lists a lone zone too, rather than going straight to it" do
     get weather_zones_path
     expect_inertia.to render_component("WeatherZones/Index")
     expect(inertia.props[:zones].sole).to include(id: cell.id, location: cell.location)
   end
 
-  describe "addresses by location (G.6)" do
+  describe "addresses by location" do
     it "is the cell's center to 2 decimals, and any point in the cell finds it" do
       expect(cell.location).to eq(format("%.2f,%.2f", cell.latitude, cell.longitude))
       expect(weather_zone_path(cell.location)).to eq("/weather/#{cell.location}")
@@ -64,7 +64,7 @@ RSpec.describe "Weather zones (G.12)", type: :request do
     zones = inertia.props[:zones]
     expect(zones.map { |zone| zone[:name] }).to eq(["Away", "North and River"])
     expect(zones.last[:pivots].map { |pivot| pivot[:name] }).to eq(%w[North River])
-    expect(zones.last[:fields].map { |field| field[:name] }).to eq(%w[apple Bend Creek]) # by name, any case (G.6)
+    expect(zones.last[:fields].map { |field| field[:name] }).to eq(%w[apple Bend Creek]) # by name, any case
     expect(zones.last[:fields].first).to include(pivot_id: river.id, pivot: "River")
     expect(zones.last[:forecast].map { |day| day[:tmax_f] }).to eq([90])
     expect(zones.first).to include(id: away.weather_cell_id, forecast: [])

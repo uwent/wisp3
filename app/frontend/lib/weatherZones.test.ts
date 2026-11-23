@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { fileLocation, weatherZone, weatherZoneExport } from './weatherZones'
 
-describe('weather zone addresses (G.6)', () => {
+describe('weather zone addresses', () => {
   it('keeps the comma between latitude and longitude readable', () => {
     expect(weatherZone('44.12,-89.54').url).toBe('/weather/44.12,-89.54')
     expect(weatherZone('44.12,-89.54', { query: { year: 2025 } }).url).toBe('/weather/44.12,-89.54?year=2025')

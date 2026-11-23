@@ -1,5 +1,5 @@
 # Exports the percent cover readings growers entered in legacy WISP, anonymised, for fitting
-# canopy curves (PLAN.md Phase 6.7, A.2). Read-only. Run on the legacy production server:
+# canopy curves (docs/plans/phase-6.7.md, A.2). Read-only. Run on the legacy production server:
 #
 #   cd ~/wisp/current && RAILS_ENV=production bundle exec rails runner \
 #     /path/to/legacy_canopy_export.rb ~/legacy_canopy_readings.csv

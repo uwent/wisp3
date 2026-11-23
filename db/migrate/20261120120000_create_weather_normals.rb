@@ -1,5 +1,5 @@
-# Daily temperature normals per weather cell, for crop canopy curves in thermal time (PLAN.md §9
-# C23): the mean high and low for each day of the year over about 20 recent years of Open-Meteo's
+# Daily temperature normals per weather cell, for crop canopy curves in thermal time
+# (C23): the mean high and low for each day of the year over about 20 recent years of Open-Meteo's
 # historical archive (ERA5), fetched once per cell (WeatherNormalsJob). day_of_year counts as in a
 # leap year (Feb 29 is 60, Mar 1 always 61).
 class CreateWeatherNormals < ActiveRecord::Migration[8.1]

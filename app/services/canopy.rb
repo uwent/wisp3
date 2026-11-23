@@ -1,4 +1,4 @@
-# A planting's canopy (percent cover, or LAI) on each day (PLAN.md §5.3, Phase 6.7).
+# A planting's canopy (percent cover, or LAI) on each day (docs/architecture.md, Canopy and soils).
 #
 # Before emergence and after end_date the canopy is 0. With no readings it follows the crop's curve
 # (CanopyCurve for percent cover, CanopyModel for LAI), or is 0 if the crop has none. Readings
@@ -72,12 +72,12 @@ class Canopy
   end
 
   # For a Planting, from its canopy observations (percent cover or LAI, by its ET method). through:
-  # leaves out readings after that date (time travel on the field page, PLAN.md Phase 8 F).
+  # leaves out readings after that date (time travel on the field page).
   # temperatures: its weather cell's CellTemperatures over at least ThermalTime.dates_for(planting)
   # (pages with many plantings preload them; loaded if not given), for a percent cover curve in
   # degree days (C23). Without normals for the cell, the curve runs by calendar days.
   def self.for(planting, through: nil, temperatures: nil)
-    # A perennial cut during the season regrows from each cutting (G.3)
+    # A perennial cut during the season regrows from each cutting
     cuttings = planting.cutting_dates.select { |date| through.nil? || date <= through }
     return CutCanopy.for(planting, cuttings, through:, temperatures:) if cuttings.any?
 
@@ -87,14 +87,14 @@ class Canopy
       [obs.date, obs[attribute]] if obs[attribute] && (through.nil? || obs.date <= through)
     end
     emergence = planting.emergence_date
-    # The planting's own season length stretches the curve's timeline (G.7); readings are fitted around it
+    # The planting's own season length stretches the curve's timeline; readings are fitted around it
     base = planting.time_stretch
     if lai
       key = planting.plant.canopy_model
       fit_curve = ->(stretch: 1.0, **fit) { CanopyModel.from(key, emergence, stretch: stretch * base, **fit) } if key
       fit_key = ["lai", key, CanopyModel::VERSION, emergence, base]
     else
-      # The crop's own curve, or the generic one it follows (G.3), in degree days where it can be
+      # The crop's own curve, or the generic one it follows, in degree days where it can be
       crop_curve = planting.cover_curve
       clock = thermal_clock(crop_curve, planting, temperatures)
       fit_curve = ->(stretch: 1.0, **fit) { crop_curve.from(emergence, stretch: stretch * base, clock:, **fit) } if crop_curve

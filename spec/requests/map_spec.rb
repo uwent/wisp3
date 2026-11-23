@@ -35,7 +35,7 @@ RSpec.describe "Map", type: :request do
     expect(card[:plantings].sole).to include(phase: "active")
   end
 
-  it "gives each pivot its fields' outlines (G.10)" do
+  it "gives each pivot its fields' outlines" do
     outline = {"type" => "Polygon", "coordinates" => [[[-89.53, 44.13], [-89.52, 44.13], [-89.52, 44.14], [-89.53, 44.13]]]}
     field.update!(boundary: outline)
     create(:field, pivot:, name: "No outline")
@@ -44,7 +44,7 @@ RSpec.describe "Map", type: :request do
     expect(shown[:outlines]).to eq([{"field_id" => field.id, "boundary" => outline}])
   end
 
-  it "shows another season's plantings, and offers the seasons there are (G.14)" do
+  it "shows another season's plantings, and offers the seasons there are" do
     create(:planting, field:, season_start: Date.new(2025, 5, 1), emergence_date: Date.new(2025, 5, 20),
       end_date: Date.new(2025, 9, 15))
     get map_path

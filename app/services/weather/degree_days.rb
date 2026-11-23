@@ -4,7 +4,7 @@ module Weather
   # daily: the standard corn method shown to growers (modified GDD, °F): daily max and min capped
   # at 86 °F and floored at 50 °F, then their mean minus 50.
   #
-  # aquacrop: thermal time for canopy curves (ThermalTime, PLAN.md §9 C23), in °C days, by FAO
+  # aquacrop: thermal time for canopy curves (ThermalTime, C23), in °C days, by FAO
   # AquaCrop's method 3, the one AquaCrop-OSPy's crop files use (GDDmethod 3,
   # aquacrop/solution/growing_degree_day.py; AquaCrop reference manual, ch. 3, "Growing degree
   # days"): the max is held between the crop's base and upper temperatures, the min only below the

@@ -1,7 +1,7 @@
 import { firstPlantingPath, GROWER_EMAIL, impersonateGrower } from './session'
 import { expect, test } from './test'
 
-// An admin signed in as a grower for support (PLAN.md Phase 8 B): the bar on every page, and back
+// An admin signed in as a grower for support: the bar on every page, and back
 
 test('an admin signs in as a grower, sees the bar on every page, and returns to admin', async ({ page }) => {
   await impersonateGrower(page)

@@ -1,14 +1,14 @@
 class PlantSerializer < ApplicationSerializer
   attributes :id, :key, :name, :default_max_root_zone_depth
 
-  # Whether the crop has an LAI curve (only those can use LAI) and a percent cover curve (PLAN.md Phase 6.7)
+  # Whether the crop has an LAI curve (only those can use LAI) and a percent cover curve
   attribute(:has_lai_curve) { |plant| !plant.canopy_model.nil? }
   attribute(:has_cover_curve) { |plant| CanopyCurve.for(plant.key).present? }
   # Whether its plantings take a vine kill date (potato)
   attribute(:has_vine_kill) { |plant| CanopyCurve.for(plant.key)&.vine_kill? || false }
-  # Typical days from emergence to harvest, which suggests a harvest date (PLAN.md Phase 8 G.2)
+  # Typical days from emergence to harvest, which suggests a harvest date
   attribute(:season_days) { |plant| CanopyCurve.effective(plant.key)&.season_days }
-  # For a crop without its own curve, the generic one it follows unless a planting picks another (G.3)
+  # For a crop without its own curve, the generic one it follows unless a planting picks another
   attribute(:default_generic_curve) { |plant| CanopyCurve.for(plant.key) ? nil : CanopyCurve.default_generic(plant.key)&.key }
   typelize has_lai_curve: :boolean, has_cover_curve: :boolean, has_vine_kill: :boolean, season_days: "number | null",
     default_generic_curve: "string | null"

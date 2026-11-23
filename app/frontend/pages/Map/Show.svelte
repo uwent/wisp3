@@ -21,11 +21,11 @@
   import { currentUnits } from '@/lib/units'
   import { map as mapRoute, newQuickSetup } from '@/routes'
 
-  // Every pivot on a map with its fields' status, beside a list of the operation as a tree of cards
-  // (PLAN.md Phase 7, G.14). One selection, at any level, is shared by the list, the map and the
+  // Every pivot on a map with its fields' status, beside a list of the operation as a tree of cards.
+  // One selection, at any level, is shared by the list, the map and the
   // panel: a farm or irrigation group zooms the map to its systems; a system or field opens its
   // system's panel and is marked on the map. A click on the map selects the system or field there.
-  // A season (?year=, G.14) shows that year's plantings; this year's can be narrowed to those
+  // A season (?year=) shows that year's plantings; this year's can be narrowed to those
   // growing now.
   let { today, year, years, farms }: { today: string; year: number; years: number[]; farms: FarmGroup<MapPivot>[] } =
     $props()

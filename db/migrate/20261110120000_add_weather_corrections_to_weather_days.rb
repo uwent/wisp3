@@ -1,4 +1,4 @@
-# Weather corrections (PLAN.md D12, §8.5): et0_in becomes WISP's FAO-56 ET0 from corrected
+# Weather corrections (D12): et0_in becomes WISP's FAO-56 ET0 from corrected
 # shortwave, dew_point_f and rh_*_pct the corrected humidity; the values before are kept beside
 # them, and each day lists the corrections it went through. Days stored before this have none
 # listed until they're refetched (weather:recorrect).

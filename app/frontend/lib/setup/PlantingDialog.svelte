@@ -12,7 +12,7 @@
   // Adding or editing a planting on a field (Setup, the field page): the form, and for an existing
   // planting, "Add the next planting" (a season starting the day after it ends, the same size) and
   // delete. Open it with open(field, planting?). systemFields: the fields on a field's irrigation
-  // system, with their plantings, where the page has them, for "Also plant this on" (Phase 9 §7).
+  // system, with their plantings, where the page has them, for "Also plant this on".
   let {
     year,
     plants,
@@ -59,7 +59,7 @@
 
   const close = () => (isOpen = false)
 
-  // Leaving for the planting's page drops what's typed: ask first, listing it (G.13)
+  // Leaving for the planting's page drops what's typed: ask first, listing it
   let dialog: Dialog | undefined = $state()
   function leave() {
     const message = changesMessage(dialog?.changes() ?? [], 'this form')

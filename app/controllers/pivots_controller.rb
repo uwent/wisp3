@@ -1,5 +1,5 @@
 # Pivots are created and edited on the map picker. A pivot's page lists its irrigation by season,
-# with its weather zone's week ahead and a link to the zone (G.12).
+# with its weather zone's week ahead and a link to the zone.
 class PivotsController < AuthenticatedController
   before_action :require_owner, only: :destroy
   allow_example :show, :weather
@@ -33,7 +33,7 @@ class PivotsController < AuthenticatedController
     end
   end
 
-  # The weather CSV moved to the pivot's zone (G.12); old links follow it
+  # The weather CSV moved to the pivot's zone; old links follow it
   def weather
     pivot = Current.group.pivots.find(params[:id])
     return head :not_found unless pivot.weather_cell

@@ -3,7 +3,7 @@
 
   import { example, newQuickSetup, setup } from '@/routes'
 
-  // The dashboard's checklist until the operation has any planting (PLAN.md G.6): what's set up so far
+  // The dashboard's checklist until the operation has any planting: what's set up so far
   // and a link to the next step, so a step left for later in quick setup isn't lost.
   let { progress, year }: { progress: { farms: number; systems: number; fields: number }; year: number } = $props()
 

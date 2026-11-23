@@ -1,7 +1,7 @@
 import type { PivotKind } from '@/lib/geo'
 import { segmentDistance } from '@/lib/planar'
 
-// Each kind of irrigation system's glyph (PLAN.md Phase 8 G.14): the shape it's drawn as on the map
+// Each kind of irrigation system's glyph: the shape it's drawn as on the map
 // when it's a point (a traveler, a block, a location) or too small to see at its true size (a pivot,
 // a linear), and in the list and legend (KindIcon). Each is a polygon in a 24 × 24 box centered on
 // (12, 12), so a glyph drawn around a marker's badges stays centered on them; the SVG paths and the

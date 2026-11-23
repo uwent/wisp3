@@ -1,4 +1,4 @@
-# The corrections WISP applies to Open-Meteo's hourly weather (PLAN.md D12, §8.5), in the order
+# The corrections WISP applies to Open-Meteo's hourly weather (D12), in the order
 # they're applied. Weather::Corrections reads this file; the About page and the admin weather page
 # list it. A correction with a table takes its version and fitted date from the table's JSON, so a
 # refit copied in from AgWeather v2 bumps the label each stored day records ("openmeteo-shortwave v1").

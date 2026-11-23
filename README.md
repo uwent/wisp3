@@ -55,8 +55,10 @@ Where to read next:
 |---|---|
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Setting up, commands, tests, secrets, troubleshooting |
 | [CLAUDE.md](CLAUDE.md) | Conventions for working in the code: tenancy, units, the engine, forms, gotchas (read by Claude Code, and useful to people) |
-| [docs/architecture.md](docs/architecture.md) | How each area works and where its code is |
-| [PLAN.md](PLAN.md) | The design, decisions and phased plan; its handoff at the top says where work stands |
+| [docs/architecture.md](docs/architecture.md) | How each area works and where its code is; [docs/engine.md](docs/engine.md) the water balance |
+| [docs/decisions.md](docs/decisions.md) | Why it's built this way: the recorded decisions and settled questions; [docs/legacy-audit.md](docs/legacy-audit.md) legacy WISP's bugs and the fixes |
+| [PLAN.md](PLAN.md) | Where work stands, what's next and the backlog |
+| [docs/plans/](docs/plans/) | The build's record: the original design and each phase's plan |
 | [docs/deployment.md](docs/deployment.md) | Staging (Capistrano) and production (Docker on AWS) |
 | [docs/](docs/) | The accessibility audit, and the research behind the canopy curves and weather corrections |
 

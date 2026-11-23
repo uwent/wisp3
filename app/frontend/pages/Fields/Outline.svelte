@@ -29,9 +29,9 @@
 
   type System = PivotShape & { id: number; name: string; kind_name: string; weather_cell_id: number | null }
 
-  // A field's outline (PLAN.md Phase 8 G.10), called its shape on the page (G.6): drawn or read from a
+  // A field's outline, called its shape on the page: drawn or read from a
   // file; its acres are offered for the field's area and the soil survey under it labels the soil
-  // menu, with the field dialog's own inputs (G.14 part 5). For the map and suggestions only: the
+  // menu, with the field dialog's own inputs. For the map and suggestions only: the
   // balance doesn't use it.
   let {
     field,
@@ -67,7 +67,7 @@
   let area = $state<number | null>(untrack(() => field.area_acres))
   let soilTypeId = $state(untrack(() => String(field.soil_type_id)))
 
-  // A shape away from its system (G.14 part 7): kept there (a traveler's location is often rough),
+  // A shape away from its system: kept there (a traveler's location is often rough),
   // or the field moved with the save to another system within half a mile, or to a new Location at
   // it. All of it reads the shape as it was when the map last left drawing or editing: a shape being
   // drawn or edited changes with every move of the pointer, so the distances and the soil survey are

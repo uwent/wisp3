@@ -28,7 +28,7 @@ module Admin
       }
     end
 
-    # What the daily digest would send this user today (PLAN.md Phase 6), without sending it
+    # What the daily digest would send this user today, without sending it
     def digest
       user = User.find(params[:id])
       render inertia: "Admin/Users/Digest", props: {

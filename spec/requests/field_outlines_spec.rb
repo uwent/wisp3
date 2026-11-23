@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# A field's outline page (PLAN.md Phase 8 G.10)
+# A field's outline page
 RSpec.describe "Field outlines", type: :request do
   let(:user) { create(:user) }
   let(:group) { user.groups.first }
@@ -52,7 +52,7 @@ RSpec.describe "Field outlines", type: :request do
   end
 
   it "keeps an outline saved under older limits while the field's other values change, but not a new one" do
-    # 150 corners: allowed before G.14 part 7 lowered the limit to 100
+    # 150 corners: allowed before the limit was lowered to 100
     # (rounded as stored, so the page sending it back unchanged isn't a change)
     circle = (0...150).map do |i|
       angle = 2 * Math::PI * i / 150
@@ -83,7 +83,7 @@ RSpec.describe "Field outlines", type: :request do
     expect(field.reload).to have_attributes(boundary: nil, area_acres: 200)
   end
 
-  describe "a shape away from its system (G.14 part 7)" do
+  describe "a shape away from its system" do
     let!(:open_season) { create(:planting, field:, end_date: Date.current + 30) }
     let!(:ended) do
       create(:planting, field:, season_start: Date.current.prev_year.beginning_of_year + 90,

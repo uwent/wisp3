@@ -10,7 +10,7 @@
   import { fieldOutline, fields, planting as plantingRoute, pivots } from '@/routes'
   import type { Field } from '@/types/serializers'
 
-  // The top of the field page and its plantings' pages (PLAN.md Phase 8 G.11): where the field is,
+  // The top of the field page and its plantings' pages: where the field is,
   // its area and soil, and tabs for the field and each planting of the season shown. Other seasons
   // are a year select, which opens the field page for that year. current: 'field', or the id of the
   // planting whose page this is. actions: buttons at the right of the title row.
@@ -38,7 +38,7 @@
       .toSorted((a, b) => Number(a.partial) - Number(b.partial) || a.season_start.localeCompare(b.season_start)),
   )
   const years = $derived([...new Set([...field.plantings.map((p) => p.year), year])].sort((a, b) => b - a))
-  // A tab's second line: when the planting is, as plantings are named (G.14)
+  // A tab's second line: when the planting is, as plantings are named
   const today = todayDate()
   const detail = (p: Field['plantings'][number]) => plantingWhen(p, today)
   const tab = (active: boolean) =>

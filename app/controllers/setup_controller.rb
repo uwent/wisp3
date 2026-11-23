@@ -1,4 +1,4 @@
-# Setup (PLAN.md §11): the group's farms, pivots, fields and plantings, shown for one season. The
+# Setup: the group's farms, pivots, fields and plantings, shown for one season. The
 # group's own settings (its name) are on its page (GroupsController).
 class SetupController < AuthenticatedController
   def show
@@ -17,7 +17,7 @@ class SetupController < AuthenticatedController
 
   private
 
-  # What quick setup just made, for the next steps box (PLAN.md G.6): a system, or a farm saved alone
+  # What quick setup just made, for the next steps box: a system, or a farm saved alone
   def started
     if (pivot = Current.group.pivots.find_by(id: params[:started_pivot]))
       {farm_id: pivot.farm_id, pivot_id: pivot.id}

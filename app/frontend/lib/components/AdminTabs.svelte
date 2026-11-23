@@ -5,7 +5,7 @@
 
   // The admin pages' pills under the nav's one Admin tab: Users (with each user's pages), Weather
   // data (fetches, health check and corrections; the growers' Weather tab is their zones) and Usage
-  // (how growers use WISP, PLAN.md H.3) and Announcements (emails to accounts)
+  // (how growers use WISP) and Announcements (emails to accounts)
   const tabs = [
     { label: 'Users', href: adminUsers.index().url, prefix: '/admin/users' },
     { label: 'Weather data', href: adminWeather.show().url, prefix: '/admin/weather' },

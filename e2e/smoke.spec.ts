@@ -22,7 +22,7 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   await expect(page.getByRole('heading', { name: /^Farm: / }).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
-  // Rain ahead (Phase 9): closed to start, its title saying when rain comes; open, a week per zone
+  // Rain ahead: closed to start, its title saying when rain comes; open, a week per zone
   const rain = page.getByRole('button', { name: /^Rain ahead · (Rain (likely|possible)|No rain expected)/ })
   await expect(rain).toHaveAttribute('aria-expanded', 'false')
   await rain.click()
@@ -34,7 +34,7 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   ).toHaveCount(7)
   await page.getByRole('button', { name: 'Rain ahead', exact: true }).click()
 
-  // The list (Phase 9): a row per field without the cards' moisture lines, remembered in this browser
+  // The list: a row per field without the cards' moisture lines, remembered in this browser
   await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'List' }).click()
   await expect(page.getByRole('button', { name: 'List' })).toHaveAttribute('aria-pressed', 'true')
   const rows = page.locator('[data-field-row]')
@@ -66,7 +66,7 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   await page.getByRole('button', { name: 'Cards' }).click()
   await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
-  // A pivot's name links to its page: its irrigation, and its weather zone's week ahead (G.12)
+  // A pivot's name links to its page: its irrigation, and its weather zone's week ahead
   const pivot = page.getByRole('heading', { name: /^Irrigation system: / }).first()
   const name = (await pivot.textContent())!.replace('Irrigation system:', '').trim()
   await expect(page.getByRole('link', { name: `View ${name}`, exact: true })).toBeVisible()
@@ -78,7 +78,7 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   await expect(page.getByRole('heading', { name: 'Weather charts', level: 2 })).toBeVisible()
 })
 
-test('the Weather tab has the week ahead and a season of weather per zone (G.12)', async ({ page }) => {
+test('the Weather tab has the week ahead and a season of weather per zone', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/')
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Weather', exact: true }).click()
@@ -89,7 +89,7 @@ test('the Weather tab has the week ahead and a season of weather per zone (G.12)
   await expect(week.getByText('Thunderstorms')).toBeVisible()
   await expect(week).toContainText('%')
   await page.locator('main h2 a').first().click()
-  // A zone's address is its location (G.6)
+  // A zone's address is its location
   await expect(page).toHaveURL(/\/weather\/-?\d+\.\d{2},-?\d+\.\d{2}$/)
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Weather:')
   await expect(page.getByRole('heading', { name: 'The week ahead' })).toBeVisible()
@@ -212,7 +212,7 @@ test('the map lists the fields and selects a pivot from the list', async ({ page
   expect(errors).toEqual([])
 })
 
-test("the map's list is the operation as a tree, selected at any level (G.14)", { tag: '@phone' }, async ({ page }) => {
+test("the map's list is the operation as a tree, selected at any level", { tag: '@phone' }, async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/map')
   await expect(page.locator('.maplibregl-canvas')).toBeVisible()
@@ -399,14 +399,14 @@ test('quick setup suggests the soil from the soil survey under the pivot', { tag
   await expect(soil.locator('option').nth(1)).toHaveText('Loamy Sand, 45% of the pivot')
   await expect(page.getByText('From the soil survey')).toBeVisible()
 
-  // A soil the survey doesn't find there is noted, with the main one offered (G.6)
+  // A soil the survey doesn't find there is noted, with the main one offered
   await soil.selectOption({ label: 'Muck' })
   await expect(page.getByText("The soil survey finds no muck under the pivot; it's mostly sand.")).toBeVisible()
   await page.getByRole('button', { name: 'Use Sand' }).click()
   await expect(soil.locator('option:checked')).toHaveText('Sand, 55% of the pivot')
 })
 
-test("quick setup makes fields without crops, then Setup's next steps add each planting (G.6)", async ({ page }) => {
+test("quick setup makes fields without crops, then Setup's next steps add each planting", async ({ page }) => {
   await page.goto('/setup/start')
   await page.getByLabel('Farm', { exact: true }).selectOption({ label: 'A new farm…' })
   // The save waits for what the server needs, saying what's missing
@@ -437,7 +437,7 @@ test("quick setup makes fields without crops, then Setup's next steps add each p
   await expect(page.getByRole('heading', { name: 'Farm: Zz Start Farm' })).toHaveCount(0)
 })
 
-test('quick setup can save a farm alone, leaving the rest for later (G.6)', async ({ page }) => {
+test('quick setup can save a farm alone, leaving the rest for later', async ({ page }) => {
   await page.goto('/setup/start')
   await page.getByLabel('Farm', { exact: true }).selectOption({ label: 'A new farm…' })
   await page.getByLabel('Farm name').fill('Zz Later Farm')
@@ -643,7 +643,7 @@ test('planned irrigation updates the projection', async ({ page }) => {
   const started = await page.evaluate(() => performance.now())
   await page.keyboard.press('Enter')
   const elapsed = Math.round(((await (await changed).jsonValue()) as number) - started)
-  // PLAN.md's Phase 5 target is 300 ms; CI machines are slower, so this only catches regressions
+  // The target is 300 ms; CI machines are slower, so this only catches regressions
   console.log(`projection updated in ${elapsed} ms`)
   expect(elapsed).toBeLessThan(1000)
 
@@ -726,7 +726,7 @@ test('time travel shows a field on an earlier day, read-only, and returns to tod
 test('an irrigation group switches to entered rain only and back', async ({ page }) => {
   const planting = await firstPlantingPath(page)
   await page.goto(planting)
-  // The section starts open, like the page's others (G.6)
+  // The section starts open, like the page's others
   const summary = page.locator('#season-summary')
   await expect(page.getByRole('button', { name: 'Season summary' })).toHaveAttribute('aria-expanded', 'true')
   await expect(summary).toContainText('Your gauge and the model')
@@ -765,7 +765,7 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
     .filter({ has: page.getByRole('heading', { name: `Field: ${DEMO.researchField}` }) })
   const plantings = card.getByRole('list', { name: `Plantings on ${DEMO.researchField}` })
   await expect(plantings.getByRole('listitem')).toHaveCount(4)
-  // Each named by its crop, with its dates below (G.14)
+  // Each named by its crop, with its dates below
   await expect(plantings.getByText('Soybean', { exact: true })).toBeVisible()
   await expect(plantings.getByText(/^Apr 1 – /).first()).toBeVisible()
 
@@ -815,7 +815,7 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   })
   await dialog.getByRole('button', { name: 'Add the next planting' }).click()
   const next = page.getByRole('dialog', { name: `Add the next planting on ${DEMO.researchField}` })
-  // Its season and size show once a crop is chosen (G.13 part 3)
+  // Its season and size show once a crop is chosen
   await next.getByLabel('Crop', { exact: true }).selectOption({ label: 'Wheat' })
   await expect(next.getByLabel('Length', { exact: true })).toHaveValue('300')
 })
@@ -828,7 +828,7 @@ test("a new planting's harvest follows the crop, emergence and season length unt
   const harvest = dialog.getByLabel('Harvest or kill', { exact: true })
   await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
   await expect(harvest).toHaveValue(`${year}-08-30`) // May 1 + 121 days
-  // The crop's typical season shows in the blank season length (G.7)
+  // The crop's typical season shows in the blank season length
   const season = dialog.getByLabel('Season length', { exact: true })
   await expect(season).toHaveAttribute('placeholder', '121')
   await dialog.getByLabel('Emergence', { exact: true }).fill(`${year}-05-20`)
@@ -849,7 +849,7 @@ test('a crop without its own canopy curve follows a generic one, or readings onl
   await page.getByRole('button', { name: `Add a planting to ${DEMO.firstField}` }).click()
   const dialog = page.getByRole('dialog', { name: new RegExp(`^Add a \\d{4} planting to ${literal(DEMO.firstField)}`) })
   await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Onion' })
-  // The canopy choices are under Settings, collapsed to a line saying what's in effect (G.13 part 3)
+  // The canopy choices are under Settings, collapsed to a line saying what's in effect
   const settings = dialog.locator('summary')
   await expect(settings).toContainText('percent cover, following the slow, partial cover curve')
   await settings.click()
@@ -886,7 +886,7 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   await page.goto('/setup')
   await page.getByRole('button', { name: `Add a planting to ${DEMO.firstField}` }).click()
   const dialog = page.getByRole('dialog', { name: new RegExp(`^Add a \\d{4} planting to ${literal(DEMO.firstField)}`) })
-  // No scroll lock (G.1): the page keeps its scrollbar, so nothing shifts
+  // No scroll lock: the page keeps its scrollbar, so nothing shifts
   await expect(dialog).toBeVisible()
   expect(
     await page.evaluate(() => [getComputedStyle(document.body).overflow, document.body.style.paddingRight]),
@@ -906,9 +906,7 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   await expect(dialog.getByText('This overlaps a planting covering the whole field')).toBeVisible()
 })
 
-test("a new whole-field planting offers the system's other fields free for its dates (Phase 9 §7)", async ({
-  page,
-}) => {
+test("a new whole-field planting offers the system's other fields free for its dates", async ({ page }) => {
   // A field sharing its system with another (firstField is alone on its pivot); nothing is saved
   await page.goto('/setup')
   await page.getByRole('button', { name: `Add a planting to ${DEMO.splitWest}` }).click()
@@ -1055,7 +1053,7 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
     .first()
     .fill('0.2')
 
-  // The confirm lists the change (G.13)
+  // The confirm lists the change
   let message = ''
   page.once('dialog', (dialog) => {
     message = dialog.message()
@@ -1167,7 +1165,7 @@ test("Setup's Duplicate starts a new irrigation system from another, to be place
   await expect(page.getByText(`It joins the group ${DEMO.firstFieldGroup}`)).toBeVisible()
 })
 
-test('a dialog asks before dropping changes, listing them (G.13)', async ({ page }) => {
+test('a dialog asks before dropping changes, listing them', async ({ page }) => {
   await page.goto('/setup')
   await page.getByRole('button', { name: `Edit ${DEMO.researchField}` }).click()
   const dialog = page.getByRole('dialog')
@@ -1393,7 +1391,7 @@ test('glossary terms explain themselves on hover or tap', { tag: '@phone' }, asy
   await expect(page.getByText('The water left in the root zone that the crop can use without stress.')).toBeHidden()
 })
 
-test('a field shape is read from a file, its area offered, and saved (G.10, G.6)', async ({ page }) => {
+test('a field shape is read from a file, its area offered, and saved', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto(await researchFieldPath(page))
   await page.getByRole('link', { name: /^(Draw\/import field shape|Edit field shape)$/ }).click()
@@ -1421,7 +1419,7 @@ test('a field shape is read from a file, its area offered, and saved (G.10, G.6)
   await expect(page.getByText(`Saved the shape of ${DEMO.researchField}`)).toBeVisible()
   await expect(page.getByRole('heading', { name: `${DEMO.researchField}`, level: 1 })).toBeVisible()
   await page.goto('/setup')
-  // The area entered, and the shape's beside it (G.14)
+  // The area entered, and the shape's beside it
   await expect(page.getByText(new RegExp(`${Number(before).toFixed(1)} ac · Mapped as 111\\.\\d ac`))).toBeVisible()
   // The field's dialog shows the shape
   await page.getByRole('button', { name: `Edit ${DEMO.researchField}` }).click()
@@ -1432,7 +1430,7 @@ test('a field shape is read from a file, its area offered, and saved (G.10, G.6)
   expect(errors).toEqual([])
 })
 
-test('a field shape is drawn corner by corner, or picked from a file of several (G.10)', async ({ page }) => {
+test('a field shape is drawn corner by corner, or picked from a file of several', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/setup')
   await page.getByRole('button', { name: `Edit ${DEMO.shapeField}` }).click()
@@ -1454,7 +1452,7 @@ test('a field shape is drawn corner by corner, or picked from a file of several 
     await page.mouse.click(x, y)
     await page.waitForTimeout(150)
   }
-  // Finished, it's selected to adjust until Done editing (G.14 part 7)
+  // Finished, it's selected to adjust until Done editing
   const shapeBar = page.getByRole('group', { name: 'The shape on the map' })
   await shapeBar.getByRole('button', { name: 'Done editing' }).click()
   const drawn = page.getByText(/^Field as drawn: [\d.]+ (ac|ha)/)
@@ -1525,7 +1523,7 @@ test('a field shape is drawn corner by corner, or picked from a file of several 
   expect(errors).toEqual([])
 })
 
-test('a field shape away from its system can move the field to a new Location (G.14 part 7)', async ({ page }) => {
+test('a field shape away from its system can move the field to a new Location', async ({ page }) => {
   const errors = watchErrors(page)
   // A field on a traveler a kilometer or more west of the KML's field
   const [name, system] = [DEMO.awayField, DEMO.awaySystem]
@@ -1567,7 +1565,7 @@ test('a field shape away from its system can move the field to a new Location (G
   expect(errors).toEqual([])
 })
 
-test('field shapes are imported from a shapefile, matched to fields or new ones (G.10)', async ({ page }) => {
+test('field shapes are imported from a shapefile, matched to fields or new ones', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/setup')
   await page.getByRole('link', { name: 'Import field shapes' }).click()
@@ -1609,9 +1607,7 @@ test('field shapes are imported from a shapefile, matched to fields or new ones 
   expect(errors).toEqual([])
 })
 
-test('the map shades outlined fields and badges them at their center, and marks the selected one (G.10, G.14)', async ({
-  page,
-}) => {
+test('the map shades outlined fields and badges them at their center, and marks the selected one', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/map')
   await expect(page.locator('.maplibregl-canvas')).toBeVisible()
@@ -1631,7 +1627,7 @@ test('the map shades outlined fields and badges them at their center, and marks 
   await expect(badges).toHaveAttribute('aria-pressed', 'true')
   await expect(dot).toBeHidden()
 
-  // A click in a field's outline selects that field, not the system drawn over it (G.14). The map
+  // A click in a field's outline selects that field, not the system drawn over it. The map
   // flies the pivot to 170 px left of center beside the panel (wide screens), at zoom 13.5 or more,
   // where its 1,300 ft radius is over 80 px: splitEast is its east half.
   const box = (await page.locator('.maplibregl-canvas').boundingBox())!

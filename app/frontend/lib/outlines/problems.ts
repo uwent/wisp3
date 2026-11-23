@@ -12,10 +12,10 @@ import { type Boundary, boundaryRing, inBoundary } from '@/lib/boundary'
 import { nearestT, segmentsCross } from '@/lib/planar'
 import type { UnitSystem } from '@/lib/units'
 
-// Outlines to check (PLAN.md Phase 8 G.10): an irrigation system doesn't move with its field (that
+// Outlines to check: an irrigation system doesn't move with its field (that
 // would change its weather), so a field whose outline isn't under its pivot or linear, or is more
 // than a quarter mile from a point kind (a traveler, drip), is listed on Setup to fix by hand. The
-// shape page (G.14 part 7) warns of the same, offers the other systems within half a mile, and draws
+// shape page warns of the same, offers the other systems within half a mile, and draws
 // a line to the system chosen (reachLine).
 
 /** How far a point kind may be from its field's outline: a quarter mile */

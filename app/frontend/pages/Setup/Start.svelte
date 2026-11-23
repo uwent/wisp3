@@ -16,7 +16,7 @@
   import { quickSetups } from '@/routes'
   import type { SoilType } from '@/types/serializers'
 
-  // The guided first-run setup (PLAN.md G.6): a farm, an irrigation system and the fields it waters.
+  // The guided first-run setup: a farm, an irrigation system and the fields it waters.
   // The system and the fields can each be left for later; plantings come next, in Setup.
   let {
     seasons = null,
@@ -24,7 +24,7 @@
     soil_types,
     default_soil_type_id,
   }: {
-    /** This season and next, from November on (G.8): which one the plantings that follow are for */
+    /** This season and next, from November on: which one the plantings that follow are for */
     seasons?: [number, number] | null
     farms: { id: number; name: string }[]
     soil_types: SoilType[]
@@ -44,7 +44,7 @@
 
   // A field's soil follows the soil survey's suggestion until the user picks one
   let suggestedSoilId = $state<number | null>(null)
-  // Each soil type's share under the system, once the survey answers (G.6)
+  // Each soil type's share under the system, once the survey answers
   let surveyShares = $state<Map<string, number> | null>(null)
   const shares = $derived(shape.latitude !== null ? surveyShares : null)
   const surveyed = $derived(isPoint(shape.kind) ? `the area around the ${noun}` : `the ${noun}`)

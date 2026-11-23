@@ -32,7 +32,7 @@
   let { children }: { children: Snippet } = $props()
 
   const auth = $derived(page.props.auth)
-  // Viewing the example farm (PLAN.md G.8): its pages only, with a bar saying so
+  // Viewing the example farm: its pages only, with a bar saying so
   const example = $derived(page.props.example)
   // Wider screens have the operation switcher beside the account menu; narrower ones put it in
   // the menu. Left out rather than hidden, as the menu's arrow keys would stop on hidden items.
@@ -142,7 +142,7 @@
     >Skip to main content</a
   >
   {#if auth.impersonator && auth.user}
-    <!-- Signed in as someone else for support: stays at the top as the page scrolls (PLAN.md Phase 8 B) -->
+    <!-- Signed in as someone else for support: stays at the top as the page scrolls -->
     <div
       role="status"
       class="sticky top-0 z-50 bg-impersonation text-on-impersonation"
@@ -168,7 +168,7 @@
     </div>
   {/if}
   {#if example}
-    <!-- Viewing the example farm: stays at the top as the page scrolls (PLAN.md G.8) -->
+    <!-- Viewing the example farm: stays at the top as the page scrolls -->
     <div role="status" class="sticky top-0 z-50 bg-example text-on-example" {@attach stickyHeight('--app-bar-h')}>
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 text-sm">
         <p>

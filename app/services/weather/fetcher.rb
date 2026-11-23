@@ -1,5 +1,5 @@
 module Weather
-  # Fetches weather for cells and stores it (PLAN.md §8.3): past days as WeatherDay rows
+  # Fetches weather for cells and stores it: past days as WeatherDay rows
   # (provisional until finalized; final days are never overwritten), today onward as a
   # WeatherForecast. Errors are recorded on the cells for the admin status page, then re-raised
   # for the job to retry.
@@ -48,8 +48,8 @@ module Weather
       end
     end
 
-    # Refetches a cell's stored days that haven't been through the current corrections (PLAN.md
-    # Phase 8 E, step 10), final days included, from the historical-forecast API, so every season is
+    # Refetches a cell's stored days that haven't been through the current corrections,
+    # final days included, from the historical-forecast API, so every season is
     # on one method. Days in the refresh window are left to the next refresh. Returns the days stored.
     def recorrect(cell)
       recorrect_runs(cell).sum do |run|

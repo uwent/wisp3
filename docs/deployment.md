@@ -294,7 +294,7 @@ WISP3_DATABASE_PASSWORD='…'        # the wisp3 password from step 2
 DB_HOST='wisp-prod.chjgrhbg1z6x.us-east-1.rds.amazonaws.com'
 APP_HOST='wisp.cals.wisc.edu'      # the public hostname (step 3)
 OPEN_METEO_API_KEY='…'             # optional; without it the free API is used
-GA_MEASUREMENT_ID='G-…'            # optional, production only: Google Analytics on the public pages (PLAN.md H.1)
+GA_MEASUREMENT_ID='G-…'            # optional, production only: Google Analytics on the public pages (docs/plans/phase-8.md H.1)
 # Mail through Amazon SES (step 7); until SMTP_ADDRESS is set, production can't send mail
 SMTP_ADDRESS='email-smtp.us-east-1.amazonaws.com'
 SMTP_PORT='587'

@@ -13,7 +13,7 @@ import { segmentDistance } from '@/lib/planar'
 
 import { type Glyph, GLYPH_CORNERS, GLYPH_INRADIUS, KIND_GLYPHS } from './glyphs'
 
-// The irrigation systems on the overview map (PLAN.md Phase 8 G.14), in the system color (never a
+// The irrigation systems on the overview map, in the system color (never a
 // status: that's the outlined fields' fill and the markers' badges). One threshold, FAR_ZOOM, where
 // the markers turn to dots too (OverviewMap's data-far):
 // - closer in, a pivot is its circle and a linear its rectangle at their true size, badges on top
@@ -329,7 +329,7 @@ export function systemHit(map: MapLibreMap, point: PointLike): SystemHit | null 
 }
 
 /**
- * What's under the pointer, down the stack (G.14): the irrigation groups, the systems and the
+ * What's under the pointer, down the stack: the irrigation groups, the systems and the
  * fields, each a line ("System: Home pivot", "Field: North potatoes"), all that are there: glyphs
  * drawn larger than their systems overlap where the systems don't
  */

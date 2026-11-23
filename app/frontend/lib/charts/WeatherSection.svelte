@@ -23,7 +23,7 @@
   import { about } from '@/routes'
   import type { WeatherPanelDay } from '@/types/serializers'
 
-  // A weather zone's panels (the weather page, G.12), a section under an h2. panels builds them in
+  // A weather zone's panels (the weather page), a section under an h2. panels builds them in
   // some units: the user's for the charts, imperial (as stored) for each chart's CSV. exports: the
   // zone's location ("44.12, -89.54", which names its CSVs) and systems, the CSVs' file name, and the
   // link to the zone's whole weather CSV, which "all of this zone's weather" offers beside its table.

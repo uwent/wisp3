@@ -1,6 +1,6 @@
 import { editLink } from '@/lib/setup/links'
 
-// Which rain a balance uses (PLAN.md Q7): set for a farm, and for an irrigation group (the systems
+// Which rain a balance uses (Q7): set for a farm, and for an irrigation group (the systems
 // sharing a rain gauge) that doesn't follow its farm's (Pivot#use_model_precip?)
 
 /** Where the setting a system follows is changed: its group's dialog in Setup, else its farm's */

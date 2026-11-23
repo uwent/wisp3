@@ -11,7 +11,7 @@ python3 -I docs/et-validation/scripts/corn.py
 | US-CC1 | Jul 10 – Aug 31 | 16 | 0.82 | 0.88 | 0.93 | 0.88 (G measured) | 0.93 |
 | US-CC2 | Aug 14 – Aug 31 | 14 | 0.93 | 0.75 | 1.23 | 0.84 | 1.11 |
 
-2026-11-19, with FAO-56 Rev.1's hourly ET0 (PLAN.md §9 C24): the daytime hours keep their sign of Rn, so ET0 changes little here: US-CC1 0.81 / corrected 0.91, US-CC2 0.92 / 1.22 (1.10 with G = 0.1 Rn).
+2026-11-19, with FAO-56 Rev.1's hourly ET0 (C24): the daytime hours keep their sign of Rn, so ET0 changes little here: US-CC1 0.81 / corrected 0.91, US-CC2 0.92 / 1.22 (1.10 with G = 0.1 Rn).
 
 FAO-56's Kc mid is 1.20 for field corn (1.15 for sweet corn), which WISP adjusts to about 1.17 in a humid Central Sands summer.
 

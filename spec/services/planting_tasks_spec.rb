@@ -164,7 +164,7 @@ RSpec.describe PlantingTasks do
     expect(tasks).to eq([])
   end
 
-  it "lists the readings with their last dates once the season has ended, none due (G.6)" do
+  it "lists the readings with their last dates once the season has ended, none due" do
     planting.update!(end_date: Date.new(2026, 7, 15))
     create(:canopy_observation, planting:, date: Date.new(2026, 7, 5), pct_cover: 85)
     expect(tasks.map { |task| [task.kind, task.due, task.note, task.todo, task.last_date] }).to eq([

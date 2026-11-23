@@ -1,4 +1,4 @@
-# Admin announcements by email (PLAN.md Phase 9): a draft composed in Markdown, sent to an audience
+# Admin announcements by email: a draft composed in Markdown, sent to an audience
 # of accounts; each recipient's delivery recorded, so a resumed send reaches only those it missed.
 # users.announcements is the account's own unsubscribe, separate from the daily digest's setting.
 class CreateAnnouncements < ActiveRecord::Migration[8.1]

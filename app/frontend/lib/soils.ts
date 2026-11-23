@@ -1,7 +1,7 @@
 import { type LngLat } from './geo'
 import { type Boundary, boundaryRing } from './boundary'
 
-// The soil survey under a pivot (PLAN.md Phase 7 F): USDA NRCS Soil Data Access (SSURGO), queried
+// The soil survey under a pivot: USDA NRCS Soil Data Access (SSURGO), queried
 // from the browser. For each map unit under the pivot's circle or arc: its share of the area, and
 // its main component's surface texture, which suggests one of WISP's soil types (soil_types.yml).
 // A suggestion only; the user picks the soil.
@@ -60,7 +60,7 @@ export function soilKeyFor(texture: string | null): string | null {
   return TEXTURES[plain.replace(MODIFIERS, '').replace(/\s+/g, ' ').trim()] ?? null
 }
 
-/** An area the survey is read in: one closed ring, or a field's outline (G.10) */
+/** An area the survey is read in: one closed ring, or a field's outline */
 export type SurveyArea = LngLat[] | Boundary
 
 /** The area as a well-known text POLYGON */
@@ -141,7 +141,7 @@ export function soilShares(units: MapUnit[]): Map<string, number> {
 
 /**
  * Soil types for a menu, those in the area first by their share of it ("Silt loam, 72% of the
- * field"), then the rest as given (G.11's plot soil, on a field's outline)
+ * field"), then the rest as given (a plot's soil, on a field's outline)
  */
 export function soilOptionsByShare<T extends { id: number; key: string; name: string }>(
   soilTypes: T[],
@@ -163,7 +163,7 @@ export function soilOptionsByShare<T extends { id: number; key: string; name: st
 }
 
 /**
- * How a chosen soil fits the survey of the area (G.6): null when it's the main soil there, or the
+ * How a chosen soil fits the survey of the area: null when it's the main soil there, or the
  * survey has no main soil and finds some of it; otherwise a note ("The soil survey finds no muck
  * under the pivot; it's mostly sand.") and the main soil to offer instead. `near` places the area
  * ("under the pivot", "around the traveler").

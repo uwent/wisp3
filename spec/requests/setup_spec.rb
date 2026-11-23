@@ -212,7 +212,7 @@ RSpec.describe "Setup", type: :request do
       expect(field.reload.perm_wilting_pt).to be_nil
     end
 
-    it "moves a field with an ended season, which keeps its system (G.14 part 7)" do
+    it "moves a field with an ended season, which keeps its system" do
       field = create(:field, pivot:, soil_type: sand)
       ended = create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
         end_date: Date.new(2025, 9, 30))
@@ -237,7 +237,7 @@ RSpec.describe "Setup", type: :request do
       post plantings_path(year: 2027), params: {planting: {field_id: other.id, plant_id: alfalfa.id, emergence_date: "2027-05-20"}}
       expect(other.plantings.sole.end_date).to eq(Date.new(2027, 11, 30))
 
-      # A crop without its own curve takes its generic curve's season, or the one picked (G.3)
+      # A crop without its own curve takes its generic curve's season, or the one picked
       onion = create(:plant, key: "onion", name: "Onion")
       third = create(:field, pivot:, soil_type: sand)
       post plantings_path(year: 2027), params: {planting: {field_id: third.id, plant_id: onion.id, emergence_date: "2027-05-20",
@@ -245,13 +245,13 @@ RSpec.describe "Setup", type: :request do
       expect(third.plantings.sole).to have_attributes(canopy_curve_key: "leafy_fast", end_date: Date.new(2027, 7, 19))
     end
 
-    it "suggests the harvest from the crop's typical season, no later than Nov 30 (G.2)" do
+    it "suggests the harvest from the crop's typical season, no later than Nov 30" do
       expect(Planting.typical_end(potato, Date.new(2026, 5, 20))).to eq(Date.new(2026, 9, 2))
       expect(Planting.typical_end(potato, Date.new(2026, 9, 1))).to eq(Date.new(2026, 11, 30))
       expect(Planting.defaults_for(potato, 2026)[:end_date]).to eq(Date.new(2026, 8, 14)) # May 1 + 105
     end
 
-    it "takes a planting's own season length, suggesting the harvest from it (G.7)" do
+    it "takes a planting's own season length, suggesting the harvest from it" do
       post plantings_path(year: 2027), params: {planting: {field_id: field.id, plant_id: potato.id, emergence_date: "2027-05-20",
                                                            season_days: 90}}
       expect(field.plantings.sole).to have_attributes(season_days: 90, end_date: Date.new(2027, 8, 18))
@@ -268,7 +268,7 @@ RSpec.describe "Setup", type: :request do
       expect(field.plantings.count).to eq(1)
     end
 
-    it "corrects an ended season's own soil and area, leaving the field's (G.9)" do
+    it "corrects an ended season's own soil and area, leaving the field's" do
       loam = create(:soil_type, key: "loam", name: "Loam", field_capacity: 0.30, perm_wilting_pt: 0.12)
       planting = create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1),
         emergence_date: Date.new(2025, 5, 1), end_date: Date.new(2025, 9, 30))
@@ -370,7 +370,7 @@ RSpec.describe "Setup", type: :request do
       expect(inertia.props[:started]).to eq("farm_id" => pivot.farm_id, "pivot_id" => pivot.id)
     end
 
-    it "asks which season from November, next year's by default, and opens Setup on it (G.8)" do
+    it "asks which season from November, next year's by default, and opens Setup on it" do
       travel_to Date.new(2026, 10, 31)
       get new_quick_setup_path
       expect(inertia.props[:seasons]).to be_nil

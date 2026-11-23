@@ -7,7 +7,7 @@ import { boundaryRing, vertexCount } from '@/lib/boundary'
 
 import { nameKey, OutlineFileError, readOutlineFile, shapeName, shapeNotes, shapesFrom } from './read'
 
-// Field outlines from files (PLAN.md Phase 8 G.10); fixtures in spec/fixtures/files/outlines
+// Field outlines from files; fixtures in spec/fixtures/files/outlines
 const fixture = (name: string) => new File([readFileSync(`spec/fixtures/files/outlines/${name}`)], name)
 
 describe('reading outline files', () => {

@@ -31,7 +31,7 @@ export const KIND_NOUNS: Record<PivotKind, string> = {
 }
 
 /**
- * How a system is named to growers (G.14, Pivot#label): "East gun (traveler)", or the name alone
+ * How a system is named to growers (Pivot#label): "East gun (traveler)", or the name alone
  * when it already says its kind ("Home pivot"). Pages put "Irrigation system:" (or "System:" where
  * space is short) before it, never the kind.
  */

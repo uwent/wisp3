@@ -1,4 +1,4 @@
-# The daily digest (PLAN.md Phase 6), sent by DailyDigestJob, and as a test from the Alerts page.
+# The daily digest, sent by DailyDigestJob, and as a test from the Alerts page.
 # Takes a DailyDigest, which the job and the previews build first to check there's something to send.
 class DigestMailer < ApplicationMailer
   helper :digest

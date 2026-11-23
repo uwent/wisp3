@@ -1,6 +1,6 @@
 # 07. Canopy curves in thermal time (2026-11-20)
 
-PLAN.md §9 C23. Scripts: `scripts/thermal_curves.rb` (the conversion), `scripts/thermal_towers.rb`
+C23. Scripts: `scripts/thermal_curves.rb` (the conversion), `scripts/thermal_towers.rb`
 (the four Central Sands tower seasons), `scripts/thermal_backtest.rb` (the 2026 grower readings), with
 `scripts/thermal_common.rb`. All run with `bin/rails runner` through WISP's own `CanopyCurve`, `Canopy`,
 `CanopyFit` and `CropEt`, and need the network once for Open-Meteo's archive (cached in `tmp/thermal`).

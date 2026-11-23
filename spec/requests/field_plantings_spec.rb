@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# PLAN.md Phase 8 G.11's pages: the field page (the land, its plantings and its own entries), each
+# The field page (the land, its plantings and its own entries), each
 # planting's page, cards per planting, the planting form's replace and size limit, and the digest.
 RSpec.describe "Fields with several plantings", type: :request do
   let(:user) { create(:user) }

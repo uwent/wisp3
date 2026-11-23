@@ -1,4 +1,4 @@
-# A weather zone's weather as CSV (WeatherZone, G.12): frontmatter (CsvExport), then every variable WISP stores for its weather
+# A weather zone's weather as CSV (WeatherZone): frontmatter (CsvExport), then every variable WISP stores for its weather
 # grid cell, one row per day (WeatherPanel's days: the stored ones, then the latest forecast's,
 # marked), with growing degree days, Open-Meteo's values before the corrections, and the corrections
 # each day went through. Values as stored.

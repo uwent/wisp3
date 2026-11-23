@@ -49,13 +49,13 @@
     plants: Plant[]
     soil_types: SoilType[]
     generic_curves: GenericCurve[]
-    /** What quick setup just made, for its next steps (PLAN.md G.6) */
+    /** What quick setup just made, for its next steps */
     started: { farm_id: number; pivot_id: number | null } | null
   } = $props()
 
   const units = $derived(currentUnits())
   const group = $derived(page.props.auth.group!)
-  // Only owners delete farms, pivots and fields (Q8); plantings and groups also their creator (G.15)
+  // Only owners delete farms, pivots and fields (Q8); plantings and groups also their creator
   const owner = $derived(page.props.auth.owner)
   const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
   // A system's shape in its row: "Radius 600 ft · Arc 0–270° · Area 80 ac"
@@ -82,7 +82,7 @@
   const seasonPlantings = (field: Field) => field.plantings.filter((planting) => planting.year === year)
   // A field listed for the season: it has a crop in it or the season before (to plan from), or no
   // crop at all yet. Fields used only in other seasons (rotated out, or set up for a later one) are
-  // collapsed below the rest (PLAN.md Phase 8 G.9).
+  // collapsed below the rest.
   const inSeason = (field: Field) =>
     field.plantings.length === 0 ||
     field.plantings.some((planting) => planting.year === year || planting.year === year - 1)
@@ -100,7 +100,7 @@
     allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
   )
 
-  // Fields whose outline isn't with their irrigation system (G.10), to fix by hand
+  // Fields whose outline isn't with their irrigation system, to fix by hand
   const outlineIssues = $derived(
     allPivots.flatMap((pivot) => outlineProblems(pivot, pivot.fields, page.props.auth.user?.unit_system ?? 'imperial')),
   )
@@ -213,7 +213,7 @@
         onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button
       >
     </div>
-    <!-- The season's plantings on a timeline, each opening its form (PLAN.md Phase 8 G.11) -->
+    <!-- The season's plantings on a timeline, each opening its form -->
     <div class="w-full">
       {#if seasonPlantings(field).length}
         <SeasonTimeline

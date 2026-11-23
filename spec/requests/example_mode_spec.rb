@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# The public example farm (PLAN.md G.8, ExampleMode): anyone may view it, read-only, as of its day;
+# The public example farm (ExampleMode): anyone may view it, read-only, as of its day;
 # it never reaches another group's records and never writes
 RSpec.describe "Example mode", type: :request do
   let(:example) { create(:group, name: "Example farm", example_as_of: Date.new(2026, 7, 20)) }

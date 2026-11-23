@@ -6,9 +6,9 @@
   import BadgeRows from './BadgeRows.svelte'
   import { fieldBadge, type MapPivot, STATUS_LABELS as LABELS } from './pivots'
 
-  // What sits at an irrigation system's center (or point) on the map (PLAN.md Phase 7): a badge per
+  // What sits at an irrigation system's center (or point) on the map: a badge per
   // field without an outline (an outlined field has its own, FieldMarker), packed in rows of about
-  // √n (G.14), inside the system's glyph (sized to hold them, systemLayers.ts), and its name when
+  // √n, inside the system's glyph (sized to hold them, systemLayers.ts), and its name when
   // zoomed in. Zoomed out (the map sets data-far), it's one dot in the most urgent status of all its
   // fields, outlined or not. Badges and name carry their hover label's lines (data-hover).
   let {

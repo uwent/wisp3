@@ -14,7 +14,7 @@
   import { fileLocation, weatherZone, weatherZoneExport } from '@/lib/weatherZones'
   import type { ForecastDay, WeatherPanelDay, WeatherZone } from '@/types/serializers'
 
-  // A weather zone (G.12): its systems, the week ahead, and the season's weather panels (?year=).
+  // A weather zone: its systems, the week ahead, and the season's weather panels (?year=).
   let {
     zone,
     zones,
@@ -48,7 +48,7 @@
   )
 
   // Growing degree days add up since January 1 and since the first day in view, and (picked under
-  // the chart) since a planting date, the year's plantings that day named together (G.6)
+  // the chart) since a planting date, the year's plantings that day named together
   const starts = $derived(plantingStarts(plantings))
   // The date picked, while it's one of this page's: Inertia keeps the component across a visit to
   // another zone or year, and the picked date stays behind
@@ -84,13 +84,13 @@
       <span class="font-normal text-ink-muted">Weather:</span>
       {zone.coordinates}
     </h1>
-    <!-- The coordinates name the place; the systems in it follow (G.6) -->
+    <!-- The coordinates name the place; the systems in it follow -->
     <p class="text-sm text-ink-muted">
       <Term id="weather_zone">Weather zone</Term>{zone.elevation_ft === null
         ? ''
         : `, elevation ${units.format('distance', zone.elevation_ft)}`}
     </p>
-    <!-- Its systems, then their fields in the same order, each a link to its page (G.6) -->
+    <!-- Its systems, then their fields in the same order, each a link to its page -->
     {#if zone.pivots.length}
       <p class="text-sm">
         <span class="text-ink-muted">{zone.pivots.length === 1 ? 'Irrigation system' : 'Irrigation systems'}:</span>

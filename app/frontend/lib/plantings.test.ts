@@ -109,7 +109,7 @@ describe('typicalEnd', () => {
   })
 })
 
-describe('an ended season on its card (G.6)', () => {
+describe('an ended season on its card', () => {
   const imperial = units('imperial')
   const totals = {
     rain: 11.8,
@@ -153,7 +153,7 @@ describe('an ended season on its card (G.6)', () => {
   })
 })
 
-describe('dateProblems (G.13 part 3)', () => {
+describe('dateProblems', () => {
   const dates = { seasonStart: '2026-04-01', emergence: '2026-05-01', end: '2026-09-30' }
 
   it('accepts a season in order, a transplant emerging on its first day, and a crop up before it', () => {
@@ -199,7 +199,7 @@ describe('dateProblems (G.13 part 3)', () => {
   })
 
   it('holds a saved planting whose dates are unchanged to the rules it was saved under', () => {
-    // Harvest on emergence day was allowed before G.13: still editable, as on the server
+    // Harvest on emergence day was allowed before the dates were checked as typed: still editable, as on the server
     const old = { ...dates, end: '2026-05-01' }
     expect(dateProblems(old, 'Harvest', { loose: true })).toEqual({})
     expect(dateProblems({ ...old, end: '2026-04-30' }, 'Harvest', { loose: true }).end).toBe(

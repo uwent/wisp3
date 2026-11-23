@@ -1,4 +1,4 @@
-"""AgWeather v2's corrected hours for WISP's port to match (PLAN.md Phase 8 E, step 6).
+"""AgWeather v2's corrected hours for WISP's port to match (docs/plans/phase-8.md E, step 6).
 
 Runs v2's own pipeline (`agdata.sources.openmeteo.fetch`, then `correct`) on v2's recorded Open-Meteo
 responses (three June 2025 days at the O1280 cell over Stillwater, OK: NBM then best_match from the
@@ -7,7 +7,7 @@ shortwave, dew point, RH and ET0 to WISP's spec fixtures. spec/services/weather/
 same responses through Weather::Hours and checks every hour.
 
 v2 computes the hourly ET0 with FAO-56's 1998 surface resistance (70 s/m every hour); WISP follows the second
-edition's (Pereira and others 2025, eq. 2.5a/2.5b: 50 s/m while Rn >= 0, 200 s/m while Rn < 0; PLAN.md §9 C24).
+edition's (Pereira and others 2025, eq. 2.5a/2.5b: 50 s/m while Rn >= 0, 200 s/m while Rn < 0; C24).
 So the ET0 written is v2's `agmodels.weather.et0_hourly_series` on those corrected hours with Rev.1's form
 swapped into its `et0_hourly_mm`, until v2 adopts it.
 

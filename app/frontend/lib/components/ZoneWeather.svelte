@@ -7,10 +7,10 @@
   import { weatherZone } from '@/lib/weatherZones'
   import type { ForecastDay } from '@/types/serializers'
 
-  // A page's weather (G.12): the week ahead in its weather zone, and a link to the zone's season of
+  // A page's weather: the week ahead in its weather zone, and a link to the zone's season of
   // weather. query goes on the link (?year=). Without a forecast (another year, time travel) only the
   // link. A compact strip with the link under it, in a section that opens and closes like the page's
-  // others (G.6).
+  // others.
   let {
     zone,
     forecast,

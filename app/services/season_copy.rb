@@ -1,4 +1,4 @@
-# "Copy last season" (PLAN.md §11): for each of a group's fields with plantings last year and none
+# "Copy last season": for each of a group's fields with plantings last year and none
 # this year, the same crops and settings with every date a year later. Canopy readings and daily
 # entries belong to the old season and aren't copied.
 class SeasonCopy
@@ -27,7 +27,7 @@ class SeasonCopy
     attributes = planting.attributes.slice(*%w[field_id plant_id variety max_root_zone_depth mad_frac et_method
       canopy_interpolation canopy_curve_key season_days target_ad_pct initial_moisture_pct notes partial plot_length_ft
       plot_width_ft])
-    # A plot keeps its size; a whole-field planting takes the field's area as it is now (G.9). A plot
+    # A plot keeps its size; a whole-field planting takes the field's area as it is now. A plot
     # on its own soil keeps that too; the rest take the field's soil as it is now.
     attributes["area_acres"] = planting.area_acres if planting.partial?
     if planting.own_soil?

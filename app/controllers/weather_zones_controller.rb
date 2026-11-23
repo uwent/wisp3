@@ -1,6 +1,6 @@
-# The operation's weather by zone (G.12; WeatherZone): /weather lists the zones with the week ahead,
+# The operation's weather by zone (WeatherZone): /weather lists the zones with the week ahead,
 # /weather/44.12,-89.54 has a zone's season of weather panels (?year=), and export its CSV. A zone's
-# address is its cell's center (G.6); any point in one of the group's cells finds it, and a point
+# address is its cell's center; any point in one of the group's cells finds it, and a point
 # outside them goes back to the list. Cells are reached only through the group's pivots and plantings.
 class WeatherZonesController < AuthenticatedController
   before_action :find_zone, only: [:show, :export]
@@ -78,7 +78,7 @@ class WeatherZonesController < AuthenticatedController
     export ? export_weather_zone_path(zone, query) : weather_zone_path(zone, query)
   end
 
-  # The group's plantings whose seasons ran on the zone's cell (G.9)
+  # The group's plantings whose seasons ran on the zone's cell
   def zone_plantings(zone)
     Current.group.plantings.includes(:plant, :field).where(weather_cell_id: zone.id).to_a
   end

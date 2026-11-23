@@ -23,7 +23,7 @@
 
 ## Where WISP 3 stands
 
-At full canopy, against FAO-56 ET0 from Wisconet stations' own measurements (PLAN.md §8.5; AgWeather v2's `docs/validation/legacy/v1.md`):
+At full canopy, against FAO-56 ET0 from Wisconet stations' own measurements (docs/plans/design.md §8.5; AgWeather v2's `docs/validation/legacy/v1.md`):
 
 | | Full-cover potato ET, × station ET0 |
 |---|---|
@@ -37,7 +37,7 @@ Two sources disagree: FAO-56 Table 12's Kc mid of 1.15 for potato (lysimeters, w
 
 ## How the decision was made
 
-Looking back (2026-11-19): WISP 3's reference ET became FAO-56 Penman-Monteith as a side effect of moving to Open-Meteo (D6, PLAN.md §8.4), and deliberately with D12, when WISP started computing it from corrected shortwave. Potato's full-cover water use was then set by C21 from FAO-56 Table 12 and the irrigation counts against AgWeather. Neither step drew on the Central Sands tower research, the only measured ET for irrigated potato in Wisconsin, though the percent-cover refit planned after launch listed it. This work fills that gap: the towers are the independent check on D12 and C21 (results in 03 and 04, recorded as D14).
+Looking back (2026-11-19): WISP 3's reference ET became FAO-56 Penman-Monteith as a side effect of moving to Open-Meteo (D6, docs/plans/design.md §8.4), and deliberately with D12, when WISP started computing it from corrected shortwave. Potato's full-cover water use was then set by C21 from FAO-56 Table 12 and the irrigation counts against AgWeather. Neither step drew on the Central Sands tower research, the only measured ET for irrigated potato in Wisconsin, though the percent-cover refit planned after launch listed it. This work fills that gap: the towers are the independent check on D12 and C21 (results in 03 and 04, recorded as D14).
 
 ## The question
 
@@ -48,4 +48,4 @@ Looking back (2026-11-19): WISP 3's reference ET became FAO-56 Penman-Monteith a
 5. Check FAO-56's net longwave against the towers' four-component radiometers, as the paper did for Idso's.
 6. Then, separately, WISP 3's actual inputs (Open-Meteo, corrected) at the towers for the seasons Open-Meteo's historical forecasts cover, to see what the weather source adds.
 
-The outcome is either evidence for C21's 1.15 or a revised potato (and corn) coefficient, recorded as a D# in PLAN.md with this as its evidence, and a summary on the About page crediting the research and its funding.
+The outcome is either evidence for C21's 1.15 or a revised potato (and corn) coefficient, recorded as a D# in docs/decisions.md with this as its evidence, and a summary on the About page crediting the research and its funding.

@@ -5,10 +5,10 @@
   import WeatherIcon from './WeatherIcon.svelte'
   import type { ForecastDay } from '@/types/serializers'
 
-  // The week ahead for a weather zone (ForecastDays, G.12): each day's sky, high and low,
+  // The week ahead for a weather zone (ForecastDays): each day's sky, high and low,
   // precipitation with its chance, and reference ET. Seven across when there's room, else four to a
   // row. label names the list for screen readers. compact: a line or two a day (field, planting and
-  // system pages, G.6): the sky as an icon (its name for screen readers), high and low, precipitation.
+  // system pages): the sky as an icon (its name for screen readers), high and low, precipitation.
   let {
     days,
     units,

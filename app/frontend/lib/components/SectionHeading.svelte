@@ -6,7 +6,7 @@
   import { fieldInfo, type FieldInfoKey } from '@/lib/fieldInfo'
   import { units } from '@/lib/units'
 
-  // A section's heading inside a long form (G.13 part 3), ruled off from what's above it as the
+  // A section's heading inside a long form, ruled off from what's above it as the
   // planting form's Season and Size are: an info tip, or `children` (a button), at the far end.
   let {
     label,

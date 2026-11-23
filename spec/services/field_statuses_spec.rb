@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe FieldStatuses do
-  # The example farm (Current.as_of, PLAN.md G.8): each planting as time travel sees it, from the records
+  # The example farm (Current.as_of): each planting as time travel sees it, from the records
   # FieldStatuses loaded for every field rather than its own
   describe "as of a day" do
     let(:as_of) { Date.new(2026, 7, 20) }

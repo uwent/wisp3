@@ -1,17 +1,17 @@
 # A planting's season as the UI shows it: the balance for each day from season start through today
 # (or the season's end), today's status, the latest rain and irrigation, and season totals, with
 # entered rain set against the modeled rain for the same days (Q7). While the season is on, also
-# the projection (PLAN.md §6): the same balance through the forecast, with planned irrigation (entries
+# the projection (docs/engine.md): the same balance through the forecast, with planned irrigation (entries
 # on future dates), the ensemble's range around it, and when the field reaches its threshold. A field
 # that uses only entered rain also gets a projection with no rain at all (Q7), beside the forecast's.
 #
-# as_of: time travel (PLAN.md Phase 8 F): the season as it stood on that day (entries as they are
+# as_of: time travel: the season as it stood on that day (entries as they are
 # now; edits keep no history). The projection is what happened in the days that followed: their
 # stored weather instead of a forecast, with no ensemble, and the rain, irrigation and soil moisture
 # entered for them. Canopy readings after the date are left out, since they'd refit the curve
 # before it too.
 class PlantingStatus
-  # The season so far: amounts, and (G.6, for an ended season's card) the days with irrigation, rain
+  # The season so far: amounts, and (for an ended season's card) the days with irrigation, rain
   # and deep drainage and the days below the irrigation point (AD under 0)
   Totals = Data.define(:rain, :irrigation, :adj_et, :deep_drainage, :rain_model, :entered_rain_days,
     :entered_rain, :entered_rain_model, :irrigation_days, :rain_days, :drainage_days, :stress_days)
@@ -21,7 +21,7 @@ class PlantingStatus
 
   # Days projected after today: the forecast's 16 days include today
   HORIZON = Weather::Fetcher::FORECAST_DAYS - 1
-  # A field OK today but projected to reach its threshold within this many days is "caution" (§5.5)
+  # A field OK today but projected to reach its threshold within this many days is "caution"
   LEAD_DAYS = 3
 
   attr_reader :planting, :today, :as_of
@@ -73,7 +73,7 @@ class PlantingStatus
   def current = days.last
 
   # Today's status; caution when it's fine today but the projection reaches the threshold soon;
-  # needs_canopy when nothing says how much the crop covers (G.3)
+  # needs_canopy when nothing says how much the crop covers
   def status
     return unless current
     return :needs_canopy if needs_canopy?
@@ -90,7 +90,7 @@ class PlantingStatus
     @crossing = first_crossing(([current] + forecast_days).compact.map(&:result))
   end
 
-  # In season and emerged, set to readings only (no canopy curve, PLAN.md Phase 8 G.3), with no reading
+  # In season and emerged, set to readings only (no canopy curve), with no reading
   # yet: crop ET is bare soil's, so the balance can't say when to irrigate
   def needs_canopy?
     return false unless phase == :active && today >= planting.emergence_date && planting.canopy_curve_key == CanopyCurve::NONE

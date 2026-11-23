@@ -1,7 +1,7 @@
 <script lang="ts">
   import { type Boundary, boundaryRing } from '@/lib/boundary'
 
-  // A field's outline drawn small (PLAN.md Phase 8 G.14, the field dialog's Shape): longitude
+  // A field's outline drawn small (the field dialog's Shape): longitude
   // scaled by cos(latitude) so it keeps its proportions, north up
   let { boundary, size = 64, label }: { boundary: Boundary; size?: number; label: string } = $props()
 

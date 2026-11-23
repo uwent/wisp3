@@ -2,7 +2,7 @@ import type { FieldDay } from '@/types/serializers'
 
 export type Source = FieldDay['rain_source']
 
-// How each input's source is named in the grid, chart tooltips and badges (PLAN.md §4 provenance)
+// How each input's source is named in the grid, chart tooltips and badges
 export const SOURCE_LABELS: Record<Source, string> = {
   entered: 'entered',
   model: 'modeled',

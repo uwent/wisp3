@@ -46,7 +46,7 @@ Rails.application.routes.draw do
   resource :setup, only: :show, controller: "setup"
   resource :quick_setup, only: [:new, :create], path: "setup/start", path_names: {new: ""}
   resource :season_copy, only: :create, path: "setup/copy_season"
-  # Field outlines for many fields from one file (G.10)
+  # Field outlines for many fields from one file
   resource :outline_import, only: [:new, :create], path: "setup/outlines", path_names: {new: "import"}
   # The operation's season as one CSV (?year=): its fields' totals, irrigation by pivot, weather by zone
   resource :season_report, only: :show, path: "setup/report", defaults: {format: :csv}
@@ -60,7 +60,7 @@ Rails.application.routes.draw do
   end
   resources :fields, only: [:show, :create, :update, :destroy] do
     resources :days, only: :update, controller: "field_days", param: :date
-    # Its outline, drawn, copied from its irrigation system or read from a file, and its plots' pins (G.10)
+    # Its outline, drawn, copied from its irrigation system or read from a file, and its plots' pins
     resource :outline, only: [:show, :update], controller: "field_outlines"
   end
   resources :plantings, only: [:show, :create, :update, :destroy] do
@@ -69,12 +69,12 @@ Rails.application.routes.draw do
   end
   resources :pivot_groups, only: [:create, :update, :destroy]
   resource :daily_entry, only: [:show, :update], path: "daily"
-  # Its week view (Phase 9 §6): rain and irrigation for the seven days ending on ?date=
+  # Its week view: rain and irrigation for the seven days ending on ?date=
   resource :daily_entry_week, only: [:show, :update], path: "daily/week"
   # Every pivot on a map with its fields' status, and optional weather and drought layers
   resource :map, only: :show, controller: "map"
-  # Weather by zone (G.12): the operation's zones with the week ahead, a zone's season of weather
-  # (?year=) and that as CSV. A zone's address is its cell's center, /weather/44.12,-89.54 (G.6);
+  # Weather by zone: the operation's zones with the week ahead, a zone's season of weather
+  # (?year=) and that as CSV. A zone's address is its cell's center, /weather/44.12,-89.54;
   # the old ids (/weather/1) redirect there.
   resources :weather_zones, path: "weather", only: [:index, :show], param: :location,
     constraints: {location: /-?\d+(\.\d+)?,-?\d+(\.\d+)?/} do
@@ -119,7 +119,7 @@ Rails.application.routes.draw do
   resources :groups, only: :create, path: "operations"
   resources :memberships, only: [:create, :update, :destroy], path: "operation/members"
 
-  # The public example farm, read-only on the app's own pages (ExampleMode, PLAN.md G.8)
+  # The public example farm, read-only on the app's own pages (ExampleMode)
   resource :example, only: [:show, :destroy]
 
   # Signed in, or viewing the example farm, / is the dashboard; signed out, the landing page. The

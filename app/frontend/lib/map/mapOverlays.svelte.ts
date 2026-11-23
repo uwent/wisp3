@@ -46,7 +46,7 @@ const ERRORS_TO_FAIL = 3
 const NOTICE_MS = 7000
 
 /**
- * The map's optional overlays (PLAN.md Phase 7 E): shows and hides them under the pivots, reloads
+ * The map's optional overlays: shows and hides them under the pivots, reloads
  * them on their schedule, and when a provider fails marks the overlay unavailable with a short
  * notice (once per overlay per visit) while the rest of the map carries on. Switching an overlay off
  * and on again retries it.

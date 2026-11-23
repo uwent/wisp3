@@ -6,7 +6,7 @@
   // Tab saves and moves along the row, Escape cancels; arrow keys move between cells of the same
   // grid. A grid is one tab stop (the cell last focused, else its first), so Tab moves past it.
   // onsave gets the typed text and resolves with an error message, or null once saved. readOnly
-  // shows the content as plain text, out of the grid and the tab order (time travel, Phase 8 F).
+  // shows the content as plain text, out of the grid and the tab order (time travel).
   let {
     text,
     label,

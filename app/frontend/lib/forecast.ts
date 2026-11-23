@@ -1,4 +1,4 @@
-// The week ahead in brief (ForecastStrip, G.12): each day's sky in words and as an icon, from the
+// The week ahead in brief (ForecastStrip): each day's sky in words and as an icon, from the
 // day's most severe WMO weather code (Open-Meteo's weather_code, stored per day as its highest
 // hour), with what's stored to fall back on when a day has no code.
 

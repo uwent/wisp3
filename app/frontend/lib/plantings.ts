@@ -2,7 +2,7 @@ import { addDays, daysBetween, formatDate } from '@/lib/dates'
 import { count } from '@/lib/text'
 import type { Units } from '@/lib/units'
 
-// How a planting is named and sized in the interface (PLAN.md Phase 8 G.11): a planting covers the
+// How a planting is named and sized in the interface: a planting covers the
 // whole field or part of it (a plot of length × width, or just its acres)
 
 export type Sized = {
@@ -35,7 +35,7 @@ export const seasonDates = (planting: { season_start: string; end_date: string }
   `${formatDate(planting.season_start)} – ${formatDate(planting.end_date)}`
 
 /**
- * When a planting is, the way plantings are named (G.14): in season, its start and the days since
+ * When a planting is, the way plantings are named: in season, its start and the days since
  * ("May 15, 65 days"); otherwise its season ("Apr 1 – Sep 15")
  */
 export function plantingWhen(planting: { season_start: string; end_date: string }, today: string): string {
@@ -47,7 +47,7 @@ export function plantingWhen(planting: { season_start: string; end_date: string 
 
 /**
  * When a planting is, on a status card: as plantingWhen, with an ended season's length
- * ("May 20 – Sep 15 (118 days)", G.6)
+ * ("May 20 – Sep 15 (118 days)")
  */
 export function cardWhen(planting: { season_start: string; end_date: string }, today: string): string {
   if (today <= planting.end_date) return plantingWhen(planting, today)
@@ -68,7 +68,7 @@ type SeasonTotals = {
 const times = (n: number) => (n === 1 ? 'once' : `${n} times`)
 
 /**
- * An ended season in four stats, for its card (G.6): irrigation, rain, deep drainage, and the days
+ * An ended season in four stats, for its card: irrigation, rain, deep drainage, and the days
  * spent below the irrigation point
  */
 export function endedSeasonStats(totals: SeasonTotals, units: Units): { label: string; value: string }[] {
@@ -140,7 +140,7 @@ export function clashes<T extends Dated>(planting: Dated, others: T[]): T[] {
 }
 
 /**
- * The fields a new whole-field planting could also go on for these dates (Phase 9 §7, "Also plant
+ * The fields a new whole-field planting could also go on for these dates ("Also plant
  * this on"): those with no planting sharing a day of its season, whole field or part, as
  * Planting#no_overlap holds a whole-field one. Fields in the order given.
  */
@@ -202,13 +202,13 @@ export const MAX_SEASON_DAYS = 366
 export type SeasonDates = { seasonStart: string; emergence: string; end: string; vineKill?: string | null }
 
 /**
- * What's out of order in a planting's dates, by the date to fix, checked as they're typed (G.13
- * part 3): harvest after the season start and after emergence (a season is at least a day long)
+ * What's out of order in a planting's dates, by the date to fix, checked as they're typed:
+ * harvest after the season start and after emergence (a season is at least a day long)
  * and within a year of the start (MAX_SEASON_DAYS), and vine kill from emergence to harvest.
  * Emergence may be on or up to a year before the season start (a transplant; a perennial, or a crop
  * already up when tracking starts). Planting#dates_in_order
  * checks the same on save. Blank dates aren't checked (the inputs are required). loose: a saved
- * planting whose dates aren't changing, held to the rules before G.13 (harvest on or after the
+ * planting whose dates aren't changing, held to the older rules (harvest on or after the
  * season start and emergence), as the server holds it, so it stays editable.
  */
 export function dateProblems(

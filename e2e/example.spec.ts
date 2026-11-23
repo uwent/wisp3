@@ -1,10 +1,10 @@
 import { watchErrors } from './session'
 import { expect, test } from './test'
 
-// The public example farm (PLAN.md G.8, ExampleMode), signed out: the landing page's link, its bar,
+// The public example farm (ExampleMode), signed out: the landing page's link, its bar,
 // its pages read-only, and leaving it
 
-test('anyone can look around the example farm, read-only, as of July 20 (G.8)', { tag: '@phone' }, async ({ page }) => {
+test('anyone can look around the example farm, read-only, as of July 20', { tag: '@phone' }, async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/')
   await page.getByRole('link', { name: 'See an example farm' }).click()

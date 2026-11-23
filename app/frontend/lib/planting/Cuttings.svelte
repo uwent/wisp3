@@ -6,12 +6,12 @@
   import { plantingCutting, plantingCuttings } from '@/routes'
   import type { Planting } from '@/types/serializers'
 
-  // A perennial's cuttings on its page (PLAN.md Phase 8 G.3): each restarts its canopy. readOnly:
+  // A perennial's cuttings on its page: each restarts its canopy. readOnly:
   // time travelling, nothing added or removed
   let { planting, readOnly }: { planting: Planting; readOnly: boolean } = $props()
 </script>
 
-<!-- A perennial's cuttings: each restarts its canopy (PLAN.md Phase 8 G.3) -->
+<!-- A perennial's cuttings: each restarts its canopy -->
 <section class="space-y-3 rounded-lg border border-line bg-surface-raised p-4" aria-labelledby="cuttings-heading">
   <div>
     <h2 id="cuttings-heading" class="font-medium">Cuttings</h2>

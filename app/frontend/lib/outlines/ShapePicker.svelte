@@ -25,7 +25,7 @@
   } from './picker'
   import { formatReach } from './problems'
 
-  // One field's shape from a file's (PLAN.md Phase 8 G.10): a file just read, or the shapes kept from
+  // One field's shape from a file's: a file just read, or the shapes kept from
   // the last one. A card beside the map with a compact table (name, area, distance to the field's
   // system), the field's likely ones first, staying open so each shape picked can be looked at on
   // the map before saving; expanded, a dialog with every attribute as a column to sort and search

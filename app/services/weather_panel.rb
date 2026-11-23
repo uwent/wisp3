@@ -1,6 +1,6 @@
 # Weather for a field's page: the cell's stored days over a date range, then the latest forecast for
 # the days after them, with growing degree days since emergence (0 before it), and the corrections
-# each day went through (PLAN.md §8.5). RAW_COLUMNS, Open-Meteo's values before the corrections, are
+# each day went through. RAW_COLUMNS, Open-Meteo's values before the corrections, are
 # for the CSV (WeatherCsv), not the page.
 class WeatherPanel
   COLUMNS = %i[

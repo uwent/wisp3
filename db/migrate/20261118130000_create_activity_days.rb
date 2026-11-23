@@ -1,4 +1,4 @@
-# The days each account used WISP and which parts of it (PLAN.md H.2), for the admin Usage page
+# The days each account used WISP and which parts of it, for the admin Usage page
 class CreateActivityDays < ActiveRecord::Migration[8.1]
   def change
     create_table :activity_days do |t|

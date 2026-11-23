@@ -1,11 +1,11 @@
-# Content Security Policy (PLAN.md Phase 8 C, the code audit). Scripts come only from WISP itself,
+# Content Security Policy (the code audit). Scripts come only from WISP itself,
 # so injected markup can't run code; the one inline script (the theme, in the layout) carries this
 # request's nonce. The map's tiles and data and the soil survey come from many public services,
 # loaded by the browser (lib/map/overlays.ts, basemaps.ts, lib/soils.ts), so images and connections
 # allow any https source rather than a list that a new layer would quietly break. Svelte, MapLibre
 # and ECharts set inline styles, hence 'unsafe-inline' for styles only. The smoke tests fail on any
 # console error, a violation included. With GA_MEASUREMENT_ID set (production), Google Analytics'
-# script host is allowed too (PLAN.md H.1); its hits go to https hosts, which connections allow.
+# script host is allowed too; its hits go to https hosts, which connections allow.
 Rails.application.configure do
   google_analytics = ENV["GA_MEASUREMENT_ID"].present? ? ["https://www.googletagmanager.com"] : []
 

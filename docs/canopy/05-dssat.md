@@ -1,6 +1,6 @@
 # 05. LAI curves from DSSAT (2026-10-21)
 
-Phase 6.7, follow-up to the LAI decision (PLAN.md, "LAI only for crops with an LAI curve"): can
+Phase 6.7, follow-up to the LAI decision (docs/decisions.md Q2, "LAI only for crops with an LAI curve"): can
 DSSAT supply LAI curves for more crops, and how does it compare with the WIS field corn curve in
 `CanopyModel`? Script: `scripts/dssat_lai.py`.
 
@@ -141,5 +141,5 @@ Over the first 60 days that is about 14 Kc-days, roughly **2.5 inches more crop 
   covering field corn, sweet corn and potato (two to three field-seasons each) with planting dates. Compare both field corn curves with them
   directly, and refit the DSSAT sweet corn curve if it holds up.
 - **If the field corn curve changes,** it's a deliberate change from legacy: it gets a fix ID in
-  PLAN.md §9 and a switch in `LegacyEngine`, and the About page's crop card and `CanopyModel` cite
+  docs/legacy-audit.md and a switch in `LegacyEngine`, and the About page's crop card and `CanopyModel` cite
   this note. No curve is changed by this note.

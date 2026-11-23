@@ -1,4 +1,4 @@
-# How a planting's canopy readings combine with its crop's curve (PLAN.md Phase 6.7): "curve"
+# How a planting's canopy readings combine with its crop's curve: "curve"
 # follows it between and after readings, "linear" draws straight lines; NULL follows the crop's
 # default (the curve where there is one).
 class AddCanopyInterpolationToPlantings < ActiveRecord::Migration[8.1]

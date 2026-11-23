@@ -5,7 +5,7 @@
   import type { FieldInfoKey } from '@/lib/fieldInfo'
   import { currentUnits } from '@/lib/units'
 
-  // A field's area (PLAN.md Phase 8 G.14 part 7): the area saved beside the box, and the shape's area
+  // A field's area: the area saved beside the box, and the shape's area
   // under them, how far apart said (in the caution color when it's far). The same in the field dialog
   // and on the shape page. A change to the shape (drawn, edited, imported) copies its area into the
   // box; the area a field already has is left as it is until then, and one typed in afterwards

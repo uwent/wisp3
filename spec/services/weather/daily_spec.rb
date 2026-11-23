@@ -26,7 +26,7 @@ RSpec.describe Weather::Daily do
     expect(days[Date.new(2026, 7, 2)]["hours"]).to eq(1)
   end
 
-  it "keeps the day's most severe weather code (G.12)" do
+  it "keeps the day's most severe weather code" do
     days = from_hourly(hourly(times, {"weather_code" => [3.0] * 10 + [95.0] + [61.0] * 13 + [0.0]}))
     expect(days[Date.new(2026, 7, 1)]["weather_code"]).to eq(95)
   end

@@ -10,18 +10,18 @@
 #     schedule: at 5am every day
 
 production: &production
-  # Weather (PLAN.md §8.3); times are US Central
+  # Weather; times are US Central
   weather_refresh:
     class: WeatherRefreshJob
     schedule: at 5am, 11am and 5pm America/Chicago
   weather_finalize:
     class: WeatherFinalizeJob
     schedule: at 3am every day America/Chicago
-  # After the 5am refresh (PLAN.md Phase 6)
+  # After the 5am refresh
   daily_digest:
     class: DailyDigestJob
     schedule: at 6am every day America/Chicago
-  # After the digest (PLAN.md Phase 8 B): emails the admins failed jobs and missing weather
+  # After the digest: emails the admins failed jobs and missing weather
   health_check:
     class: HealthCheckJob
     schedule: at 7am every day America/Chicago

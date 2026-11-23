@@ -1,8 +1,8 @@
-# A field's outline page (PLAN.md Phase 8 G.10): the outline drawn on the map, copied from its
+# A field's outline page: the outline drawn on the map, copied from its
 # irrigation system's shape or read from a file in the browser, with its acres offered for the
 # field's area and the soil survey's dominant soil offered for its soil.
 # The outline is for the map and suggestions only; the balance never reads it. A shape that doesn't
-# touch its system (G.14 part 7) can move the field to a system it does touch, or to a new Location
+# touch its system can move the field to a system it does touch, or to a new Location
 # at the shape, with the save.
 class FieldOutlinesController < AuthenticatedController
   SYSTEM = [:id, :name, :kind_name, :weather_cell_id, *PivotSerializer::SHAPE].freeze

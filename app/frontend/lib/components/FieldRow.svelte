@@ -13,7 +13,7 @@
   import { fields, planting as plantingRoute } from '@/routes'
   import type { PlantingSummary } from '@/types/serializers'
 
-  // A field in the dashboard's list (Phase 9): its name, crop, status and the outlook's headline,
+  // A field in the dashboard's list: its name, crop, status and the outlook's headline,
   // with readings due as "2 due", and from a tablet's width up the card's sparkline; the row links as its card does (FieldCard). A field of plots is
   // its name, linking to the field, over a row per planting linking to its own page. context: its
   // system (and farm) when the list isn't under them ("Needs water first").

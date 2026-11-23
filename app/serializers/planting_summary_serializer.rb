@@ -12,7 +12,7 @@ class PlantingSummarySerializer < ApplicationSerializer
   attribute(:plant_name) { |status| status.planting.plant.name }
   attribute(:variety) { |status| status.planting.variety }
   attribute(:season_start) { |status| status.planting.season_start }
-  # Part of the field (G.11): its size, for labels ("Soybean, 100 × 20 ft")
+  # Part of the field: its size, for labels ("Soybean, 100 × 20 ft")
   attribute(:partial) { |status| status.planting.partial? }
   attribute(:area_acres) { |status| status.planting.area_acres }
   attribute(:plot_length_ft) { |status| status.planting.plot_length_ft }

@@ -1,4 +1,4 @@
-# Irrigation systems other than pivots (PLAN.md Phase 8 G.5): travelers, solid set, drip and a
+# Irrigation systems other than pivots: travelers, solid set, drip and a
 # location only, each a point with no dimensions (its area comes from its fields).
 class AddPointKindsToPivots < ActiveRecord::Migration[8.1]
   LINEAR = "radius_ft IS NULL AND arc_start_deg IS NULL AND length_ft IS NOT NULL AND travel_ft IS NOT NULL " \

@@ -30,7 +30,7 @@
     optional?: boolean
   } = $props()
 
-  // Required and nothing chosen: marked until it has a value (G.13 part 3)
+  // Required and nothing chosen: marked until it has a value
   const missing = $derived(Boolean(rest.required) && (value === undefined || value === null || value === ''))
 
   const message = $derived(Array.isArray(error) ? error[0] : error)

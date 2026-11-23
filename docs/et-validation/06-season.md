@@ -117,7 +117,7 @@ Corrected ET / ET0 from vine kill to harvest, split into wet days (rain or irrig
 
 ## What could change in WISP 3 (as proposed; 1 and 2 were made as C22, below)
 
-Each would be a deliberate change to the balance: a fix ID in PLAN.md §9, a `LegacyEngine` switch, and the About page's wording.
+Each would be a deliberate change to the balance: a fix ID in docs/legacy-audit.md, a `LegacyEngine` switch, and the About page's wording.
 
 1. **Count soil evaporation at low cover and after vine kill.** The simplest option is a floor on the crop coefficient near FAO-56's Kc ini for potato. A floor of 0.4 alone brings vine kill to harvest from −49% to −7% (curve), but leaves development with measured cover at −15%, because the table is also low at 10–30% cover. The fuller option is FAO-56's dual coefficient (Kcb plus an evaporation term Ke that rises after rain or irrigation and decays as the surface dries), which matches the wet/dry pattern above. It's also more machinery, and its inputs (wetted fraction, readily evaporable water for each soil) are more for growers to get wrong.
 2. **Reduce ET in early August**, either by letting the decline count below full Kc (the 80% saturation in `CropEt` hides the rule's first weeks) or by a gentler Kc mid to Kc end slope as in FAO-56 (potato Kc end 0.75). One season of observed decline is thin evidence, so this needs care.
@@ -128,7 +128,7 @@ Until one of these is decided, WISP 3's season total is right and its timing is 
 
 ## After the change: FAO-56's dual crop coefficient (C22)
 
-2026-11-19. Ben chose the fuller option for points 1 and 2: crop ET is now FAO-56's dual crop coefficient (chapter 7), (Kcb + Ke) × ET0, for every planting with a crop (PLAN.md §9 C22, `CropEt`, `SoilEvaporation`, `WaterBalance`):
+2026-11-19. Ben chose the fuller option for points 1 and 2: crop ET is now FAO-56's dual crop coefficient (chapter 7), (Kcb + Ke) × ET0, for every planting with a crop (C22, `CropEt`, `SoilEvaporation`, `WaterBalance`):
 
 - **Kcb** (transpiration, with the surface dry) comes from the canopy by FAO-56 eq. 98: Kc min 0.15 plus the share of full cover's Kcb that the canopy's effective shade gives, Kd = min(1, 2·fc, fc^(1/(1+h))). Bare ground is 0. Potato's full-cover Kcb is Table 17's 1.10, adjusted for wind and minimum RH (eq. 70) like Kc mid before it. From the curve's decline start (potato: July 25, or full cover if later) it falls in a straight line to Table 17's Kcb end, 0.65, at harvest.
 - **Ke** (soil evaporation) runs day by day: a 0.10 m surface layer holds TEW = (θFC − 0.5 θWP) × Ze (eq. 73, from the planting's own soil), evaporating at Kc max − Kcb while it has lost less than REW (Table 19's middle: sand 4.5 mm, loamy sand 6 mm), then in proportion to what's left. Rain and irrigation refill it. Its share of the surface is what the canopy leaves exposed (1 − fc) and the water wetted (all of it for rain and sprinklers, 35% for drip).

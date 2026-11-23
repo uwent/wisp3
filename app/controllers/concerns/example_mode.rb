@@ -1,4 +1,4 @@
-# The public example farm (PLAN.md G.8): /example puts this browser's session in example mode, which
+# The public example farm: /example puts this browser's session in example mode, which
 # shows the example group (Group.example) read-only on the app's own pages, as of its example_as_of
 # (Current.as_of), to anyone, signed in or not. Leaving it (DELETE /example) or signing in ends it.
 # AuthenticatedController lets example mode reach only the actions a controller allows with
