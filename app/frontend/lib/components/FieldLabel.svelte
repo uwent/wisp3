@@ -5,12 +5,12 @@
   import { fieldInfo, type FieldInfoKey } from '@/lib/fieldInfo'
   import { units } from '@/lib/units'
 
-  // A form control's label with its info tip (G.13) at the far end of the line. The tip sits outside
+  // A form control's label with its info tip at the far end of the line. The tip sits outside
   // the <label> (a button inside one would focus the control) and outside the text a legend's
   // fieldset is named by (`labelId`), so neither the control's name nor the changes prompt
   // (lib/formChanges.ts) picks up its "About …".
   //
-  // Required and optional (G.13 part 3): a required control that's still empty gets a dot before its
+  // Required and optional: a required control that's still empty gets a dot before its
   // label (`missing`), gone once it has a value; an optional one says "Optional" after it. Both sit
   // outside the label text, so the control's accessible name stays its label (the control's own
   // `required` tells screen readers).

@@ -1,4 +1,4 @@
-# A field's outline is one polygon with one ring (PLAN.md Phase 8 G.14): an outline stored as a
+# A field's outline is one polygon with one ring: an outline stored as a
 # MultiPolygon, or with holes, keeps its largest part's outer ring. Only demo, test and staging data
 # had outlines by then. Not reversible: the dropped parts and holes are gone.
 class ReduceFieldBoundariesToOneRing < ActiveRecord::Migration[8.1]

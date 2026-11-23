@@ -83,7 +83,7 @@
   const noun = $derived(KIND_NOUNS[shape.kind])
   const units = $derived(currentUnits())
 
-  // The percent timer (docs/plans/phase-9.md §8): the depth a circle (a linear's pass) puts on at
+  // The percent timer: the depth a circle (a linear's pass) puts on at
   // 100%, from the sprinkler chart, or worked out from the hours one takes at 100%, the pump
   // capacity and the system's own area on the map
   let pumpGpm = $state<number | null>(untrack(() => pivot.pump_capacity_gpm ?? null))

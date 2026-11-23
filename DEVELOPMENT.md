@@ -5,7 +5,9 @@ How to set up a machine to work on WISP 3, the day-to-day commands, and how depl
 Other documents:
 - [CLAUDE.md](CLAUDE.md): the conventions for writing code here (tenancy, units, the engine, forms, gotchas), for people and for Claude Code alike.
 - [docs/architecture.md](docs/architecture.md): how each area of the app works and where its code is.
-- [PLAN.md](PLAN.md): the design, decisions and roadmap; its handoff at the top says where work stands.
+- [docs/engine.md](docs/engine.md): the water balance and projection.
+- [docs/decisions.md](docs/decisions.md) and [docs/legacy-audit.md](docs/legacy-audit.md): why it's built this way, and legacy's bugs and the fixes.
+- [PLAN.md](PLAN.md): where work stands, what's next and the backlog; [docs/plans/](docs/plans/) the build's record.
 - [docs/deployment.md](docs/deployment.md): staging and production, first-time setup and routine deploys.
 - [docs/accessibility.md](docs/accessibility.md), [docs/canopy/](docs/canopy/), [docs/weather-corrections/](docs/weather-corrections/), [docs/weather-comparison.md](docs/weather-comparison.md): the accessibility audit, and the research behind the canopy curves and weather corrections.
 

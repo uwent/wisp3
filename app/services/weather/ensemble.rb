@@ -5,7 +5,7 @@ module Weather
   # are missing.
   #
   # The members' ET0 is Open-Meteo's, so `corrected` scales it by the deterministic forecast's
-  # corrected/raw ratio for the same day (PLAN.md Q10: not computed per member, which would triple
+  # corrected/raw ratio for the same day (Q10: not computed per member, which would triple
   # the ensemble's API calls; to be checked against a season of the forecast archive).
   module Ensemble
     SERIES = {"et0_in" => "et0_fao_evapotranspiration", "precip_in" => "precipitation"}.freeze

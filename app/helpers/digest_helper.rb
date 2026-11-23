@@ -22,7 +22,7 @@ module DigestHelper
   # The pivots of a weather zone in this email: "North 160, South 80"
   def digest_zone_pivots(zone) = zone.pivots.map { |section| section.pivot.label }.join(", ")
 
-  # "9.5% soil moisture · AD 0.45 in of 1.20 in", or short "9.5% soil moisture · AD 0.45 in" (G.6)
+  # "9.5% soil moisture · AD 0.45 in of 1.20 in", or short "9.5% soil moisture · AD 0.45 in"
   def digest_ad(entry, digest, short: false)
     result = entry.status.current.result
     moisture = "#{format("%.1f", result.pct_moisture)}% soil moisture · AD #{digest.depth(result.ad)}"

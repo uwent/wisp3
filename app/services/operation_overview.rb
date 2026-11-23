@@ -1,13 +1,13 @@
-# A group's farms, pivots and fields with each field's status today, for the dashboard and the map
-# (PLAN.md §11, Phase 7): farms and pivots by name, one card per field with a summary for each of its
-# plantings in season (several on a field of plots, G.11; or the nearest this year).
+# A group's farms, pivots and fields with each field's status today, for the dashboard and the map:
+# farms and pivots by name, one card per field with a summary for each of its
+# plantings in season (several on a field of plots; or the nearest this year).
 # Pivots without fields are listed too, so the hierarchy matches setup. weather_updating marks a pivot
 # whose cell has a WeatherUpdateJob queued or running; the pages reload until it clears.
 class OperationOverview
   attr_reader :today, :year, :farms
 
-  # year: the season shown (the map's, G.14); this year by default. Today is the example farm's day
-  # there (Current.today, PLAN.md G.8), whose weather stays as stored.
+  # year: the season shown (the map's); this year by default. Today is the example farm's day
+  # there (Current.today), whose weather stays as stored.
   def initialize(group, today: Current.today, year: today.year)
     @today = today
     @year = year

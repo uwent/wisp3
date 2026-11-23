@@ -1,7 +1,7 @@
 import { formatDate } from '@/lib/dates'
 
 // What the user changed in a form, worded as they see it ("Area: 40 ac → 30 ac"), for the prompts
-// that ask before dropping changes (PLAN.md G.13): a dialog's own prompt and a page's confirm. Read
+// that ask before dropping changes: a dialog's own prompt and a page's confirm. Read
 // from the form's visible, labelled controls, so a form needs no list of its own.
 //
 // Only controls the user changed are listed: by typing or picking in them (an input or change event;

@@ -1,6 +1,6 @@
 # LAI growth curves by days since emergence, for plantings on the LAI method (only crops with one
-# can use it); Canopy combines them with entered readings. Only field corn has one (PLAN.md §5.3,
-# Q2); legacy applied it to every crop (C4) and gave sweet corn a placeholder that produced negative
+# can use it); Canopy combines them with entered readings. Only field corn has one
+# (Q2); legacy applied it to every crop (C4) and gave sweet corn a placeholder that produced negative
 # ET (C18).
 module CanopyModel
   # Raise when a curve changes, so fits to it are redone (CanopyFit.fetch)

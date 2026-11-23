@@ -1,11 +1,11 @@
 class PlantingsController < AuthenticatedController
   allow_example :show, :export
 
-  # A planting's page (PLAN.md §11; its own URL since G.11): its season with the summary, daily grid,
-  # chart and the week ahead (its zone's panels are on the weather page, G.12). ?as_of= travels back
-  # to a day of the season before today (PLAN.md Phase 8 F): the page shows the season as it stood
+  # A planting's page: its season with the summary, daily grid,
+  # chart and the week ahead (its zone's panels are on the weather page). ?as_of= travels back
+  # to a day of the season before today: the page shows the season as it stood
   # then, read-only. A date outside the season, ahead or malformed redirects without it. The example
-  # farm (PLAN.md G.8) shows its day that way when the season covers it, with no other day to pick.
+  # farm shows its day that way when the season covers it, with no other day to pick.
   def show
     field_id = Current.group.plantings.where(id: params[:id]).pick(:field_id) or raise ActiveRecord::RecordNotFound
     field = Current.group.fields.with_season_tree.find(field_id)
@@ -26,8 +26,8 @@ class PlantingsController < AuthenticatedController
       planting: PlantingSerializer.new(planting).to_h,
       # Part-field plantings on the field at once add up to more than its area (a warning)
       exceeds_field_area: planting.exceeds_field_area?,
-      # The zone the season ran on (G.9), and its week ahead for this year's plantings, ended ones
-      # too, as on the field page (G.6), but not while time travelling
+      # The zone the season ran on, and its week ahead for this year's plantings, ended ones
+      # too, as on the field page, but not while time travelling
       **WeatherZone.page_props(Current.group, planting.weather_cell,
         forecast: (Current.as_of.present? || !as_of) && planting.season_year == Current.today.year),
       **season_props(field, planting, as_of)
@@ -35,7 +35,7 @@ class PlantingsController < AuthenticatedController
   end
 
   # replace: end the plantings this one overlaps the day before it starts ("Replace" on the form),
-  # in the same transaction. also_field_ids: other fields to plant the same on (Phase 9 §7, a new
+  # in the same transaction. also_field_ids: other fields to plant the same on (a new
   # whole-field planting only), each an independent planting on its own field's soil and area,
   # saved with this one or not at all; replace applies only to this one.
   def create
@@ -101,11 +101,11 @@ class PlantingsController < AuthenticatedController
     field_entries = field.field_entries.where(date: dates).index_by(&:date)
 
     day_params = {
-      # Notes: a part-field planting's own (G.11), else the field's
+      # Notes: a part-field planting's own, else the field's
       entries: planting.partial? ? planting.planting_entries.where(date: dates).index_by(&:date) : field_entries,
       observations: planting.canopy_observations.select { |obs| dates.cover?(obs.date) && (!as_of || obs.date <= as_of) }
         .to_h { |obs| [obs.date, obs[attribute]] }.compact,
-      # A part-field planting's view of the field's irrigation, shown under its own (G.11)
+      # A part-field planting's view of the field's irrigation, shown under its own
       field_inches: planting.partial? ? field_entries.transform_values(&:irrigation_in).compact : {},
       canopy: status.canopy
     }

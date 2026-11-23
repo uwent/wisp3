@@ -7,7 +7,7 @@
   import { formatDate } from '@/lib/dates'
   import { count } from '@/lib/text'
 
-  // The irrigation calculator (D15, docs/plans/phase-9.md §8), on an irrigation system's row: a
+  // The irrigation calculator (D15), on an irrigation system's row: a
   // button opening the calculator (IrrigationCalculator) in a dialog, with the fields to apply it to.
   // Apply hands the inches to the page (saving equipment typed there, if asked), which
   // fills the boxes of the fields chosen. The week view gives it its days to choose from, each with

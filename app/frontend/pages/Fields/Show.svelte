@@ -25,7 +25,7 @@
   import { fieldDays, pivots, planting as plantingRoute } from '@/routes'
   import type { Field, ForecastDay, GenericCurve, Plant, PlantingSummary, SoilType } from '@/types/serializers'
 
-  // The field page (PLAN.md Phase 8 G.11): the land, not one crop on it. The season's plantings on
+  // The field page: the land, not one crop on it. The season's plantings on
   // a timeline and with their status today, the field's own rain and irrigation (which every
   // planting on it shares; each planting's balance is on its own page). Which rain counts is its
   // irrigation group's setting, or its farm's (lib/rainSetting.ts).
@@ -112,7 +112,7 @@
     )
   }
 
-  // The example farm (PLAN.md G.8) is only viewed
+  // The example farm is only viewed
   const readOnly = $derived(isExample(page.props))
 </script>
 
@@ -168,7 +168,7 @@
                 ? cardWhen(summary, today)
                 : seasonDates(summary)}
             </p>
-            <!-- The outlook leads, with moisture and AD beneath it; an ended season in a line (G.6) -->
+            <!-- The outlook leads, with moisture and AD beneath it; an ended season in a line -->
             {#if look}<p class="text-sm font-medium {look.urgent ? 'text-status-irrigate-ink' : ''}">
                 {look.headline}
               </p>{/if}

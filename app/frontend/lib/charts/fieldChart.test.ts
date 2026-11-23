@@ -202,7 +202,7 @@ describe('field chart', () => {
     expect(canopySeries(null).markLine).toBeUndefined()
   })
 
-  it("marks a perennial's cuttings on the canopy grid (G.3)", () => {
+  it("marks a perennial's cuttings on the canopy grid", () => {
     const days = [day('2026-06-01'), day('2026-06-02'), day('2026-06-03')]
     const option = fieldChartOption({
       days,
@@ -346,7 +346,7 @@ describe('field chart', () => {
     }[]
     const group = (name: string) => series.filter((s) => s.name === name).map((s) => s.id)
     expect(group('Allowable depletion')).toEqual(['balance', 'range-low', 'range', 'forecast'])
-    // Crop ET on its own grid under the water in, the forecast's lighter (G.12)
+    // Crop ET on its own grid under the water in, the forecast's lighter
     const cropEt = series.find((s) => s.id === 'crop-et') as unknown as { xAxisIndex: number; data: unknown[] }
     expect(cropEt.xAxisIndex).toBe(4)
     expect(group('Rain')).toEqual(['rain', 'modeled-rain', 'total-rain'])

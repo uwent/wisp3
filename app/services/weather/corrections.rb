@@ -1,5 +1,5 @@
 module Weather
-  # The corrections to Open-Meteo's hourly weather (PLAN.md D12, §8.5), from the tables in
+  # The corrections to Open-Meteo's hourly weather (D12), from the tables in
   # db/reference/weather_corrections (copied from AgWeather v2; its README says from where).
   # `shortwave` and `dew_point` correct one point's hours; `all` describes each correction for the
   # About page and the admin weather page; `label` is what a stored day records it went through.
@@ -33,8 +33,8 @@ module Weather
     # Each hour's shortwave (mean W/m² over the hour ending at hour_ends[k]) scaled by the factor for
     # its clearness, Rs over FAO-56's clear-sky Rso: linear between the table's bins and held at its
     # ends. An hour whose Rso is 1 W/m² or less (the sun down) takes clearness 0, so a dark hour's 0
-    # stays 0 and a twilight hour's few W/m² take the darkest bin's factor (v2's code, not §8.5's
-    # words). Missing stays nil, and the result is never negative.
+    # stays 0 and a twilight hour's few W/m² take the darkest bin's factor (as v2's code
+    # does). Missing stays nil, and the result is never negative.
     def shortwave(hour_ends:, latitude:, longitude:, shortwave_w_m2:, pressure_kpa:)
       bins = table(SHORTWAVE)
       hour_ends.each_with_index.map do |time, k|

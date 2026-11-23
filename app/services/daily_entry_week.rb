@@ -1,4 +1,4 @@
-# The props of daily entry's week view (Phase 9 §6): rain and irrigation for the seven days ending on
+# The props of daily entry's week view: rain and irrigation for the seven days ending on
 # a date, for a grower entering several days at once. Per farm, rain rows (each irrigation group with
 # a system in season any day of the week, then each system in season in no group, as the day page
 # orders them: farmRows in lib/dailyEntry.ts) and irrigation rows (each system in season any day).

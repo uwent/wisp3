@@ -12,7 +12,7 @@
   import { FULL_COVER_PCT, READING_EVERY } from '@/lib/guidance'
   import { currentUnits } from '@/lib/units'
 
-  // The About page (PLAN.md Phase 6.5): WISP's documentation, replacing the legacy PDF user guide.
+  // The About page: WISP's documentation, replacing the legacy PDF user guide.
   // Public; the crop table comes from the plants table, the soil table from soil_types (with each
   // value's basis from db/reference/soil_types.yml), the glossary from lib/glossary.ts and the
   // reading advice from lib/guidance.ts, and the weather corrections from
@@ -27,7 +27,7 @@
     kcb_end: number
     lai_curve: boolean
     cover_curve: boolean
-    /** The generic curve a crop without its own follows by default (G.3) */
+    /** The generic curve a crop without its own follows by default */
     generic_curve: string | null
   }
   type GenericCurve = { key: string; name: string; basis: string; season: string | null; crops: string[] }

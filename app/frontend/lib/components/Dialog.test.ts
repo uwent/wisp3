@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import Dialog from './Dialog.svelte'
 
-// A guarded dialog asks before dropping a form's changes (PLAN.md G.13)
+// A guarded dialog asks before dropping a form's changes
 const children = createRawSnippet(() => ({
   render: () => '<form><label for="area">Area</label><input id="area" type="text" value="40" data-unit="ac"></form>',
 }))

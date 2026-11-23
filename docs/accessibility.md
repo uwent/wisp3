@@ -1,6 +1,6 @@
 # Accessibility
 
-WISP 3 aims at WCAG 2.1 AA (PLAN.md, Phase 8 A). This file records the audit: what was checked, what was found, and how it was fixed.
+WISP 3 aims at WCAG 2.1 AA (docs/plans/7-launch.md, Accessibility). This file records the audit: what was checked, what was found, and how it was fixed.
 
 ## Automated checks
 
@@ -28,7 +28,7 @@ Later (2026-11-21): the intermittent contrast finding on the shape page (about o
 
 ## Manual checks
 
-In this order (PLAN.md Phase 8 A). Each finding is recorded with the page, the WCAG criterion and the fix.
+In this order (docs/plans/7-launch.md, Accessibility). Each finding is recorded with the page, the WCAG criterion and the fix.
 
 ### Keyboard (2026-10-22)
 

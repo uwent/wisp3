@@ -1,5 +1,5 @@
 module Admin
-  # Signing in as a user for support (PLAN.md Phase 8 B). The admin's id stays in the session so
+  # Signing in as a user for support. The admin's id stays in the session so
   # ImpersonationsController#destroy can sign them back in; neither sign-in touches the user's
   # trackable sign-in count and times. Not for yourself or another admin.
   class ImpersonationsController < BaseController

@@ -3,7 +3,7 @@ import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import { LABEL_FONT, labelPaint } from '@/lib/map/basemaps'
 import { type Bounds, fetchSoilAreas, SOIL_COLORS, type SoilAreas } from '@/lib/soils'
 
-// The Soil types layer (PLAN.md Phase 7 F; the pivot picker and the field shape page): the soil
+// The Soil types layer (the pivot picker and the field shape page): the soil
 // survey's map units colored and labeled by the WISP soil type their surface texture suggests,
 // loaded for an area the map gives (around its pivot, or the view zoomed in) and again when the area
 // moves out of what's loaded. Its source is 'soil-types' (keep it across basemap switches).

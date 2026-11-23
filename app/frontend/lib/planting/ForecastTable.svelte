@@ -6,7 +6,7 @@
   import type { Units } from '@/lib/units'
   import type { FieldDay, PlantingSummary } from '@/types/serializers'
 
-  // The planting page's projection (PLAN.md Phase 5): the days ahead, run through the balance with the
+  // The planting page's projection: the days ahead, run through the balance with the
   // forecast, planned irrigation entered in its cells; time travelling (asOf), the days that followed,
   // read-only (replay: their weather was observed)
   let {

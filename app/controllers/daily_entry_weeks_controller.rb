@@ -1,4 +1,4 @@
-# Daily entry's week view (Phase 9 §6): rain and irrigation for the seven days ending on ?date=
+# Daily entry's week view: rain and irrigation for the seven days ending on ?date=
 # (daily entry's day without one), for a grower back after a few days away or entering once a week.
 # Props: DailyEntryWeek. The save sends only the cells changed, as each day's values under
 # days[<date>] (the day page's names), saved by DailyEntrySave for every day in one transaction.

@@ -132,7 +132,7 @@
     }
   }
 
-  // The example farm (PLAN.md G.8) is only viewed
+  // The example farm is only viewed
   const readOnly = $derived(isExample(page.props))
 </script>
 

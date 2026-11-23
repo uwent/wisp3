@@ -20,7 +20,7 @@
   // (links), in its list without. weather: whether the pivot's weather is being fetched (the page
   // reloads until it lands) or the page gave up waiting.
   //
-  // A field growing several plantings at once (plots, PLAN.md Phase 8 G.11) lists each, linking to
+  // A field growing several plantings at once (plots) lists each, linking to
   // its page, with the field's name linking to the field: in full up to MANY of them, then as a
   // compact list of one line each (research fields with many plots).
   let {
@@ -54,7 +54,7 @@
   const single = $derived(card.plantings[0] ?? null)
   const href = $derived(single && !several ? plantingRoute(single.planting_id) : fields.show(card.id))
 
-  // "9.2% soil moisture · AD 0.31 in of 0.48 in", under the outlook (G.6)
+  // "9.2% soil moisture · AD 0.31 in of 0.48 in", under the outlook
   const moistureLine = (summary: PlantingSummary) =>
     `${summary.pct_moisture === null ? '' : `${summary.pct_moisture.toFixed(1)}% soil moisture · `}AD ${units.format('depth', summary.ad)} of ${units.format('depth', summary.ad_max)}`
 
@@ -104,7 +104,7 @@
   {:else if summary.phase === 'upcoming'}
     <p class="text-sm text-ink-muted">The season starts {formatDate(summary.season_start)}.</p>
   {:else if summary.phase === 'ended'}
-    <!-- An ended season in brief (G.6): what it took, in place of AD and the outlook -->
+    <!-- An ended season in brief: what it took, in place of AD and the outlook -->
     {#if small}
       <p class="text-xs text-ink-muted">{seasonLine(summary.totals, units)}</p>
     {:else}
@@ -118,7 +118,7 @@
       </dl>
     {/if}
   {:else}
-    <!-- The outlook leads (G.6), with moisture and AD beneath it -->
+    <!-- The outlook leads, with moisture and AD beneath it -->
     {#if look}
       <p
         class="{small ? 'text-sm font-medium' : 'text-base font-semibold'} {look.urgent

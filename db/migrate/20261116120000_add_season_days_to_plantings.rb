@@ -1,4 +1,4 @@
-# A planting's own season length (PLAN.md Phase 8 G.7): days from emergence to harvest, stretching its
+# A planting's own season length: days from emergence to harvest, stretching its
 # crop's canopy curve in time. NULL follows the crop's typical season.
 class AddSeasonDaysToPlantings < ActiveRecord::Migration[8.1]
   def change

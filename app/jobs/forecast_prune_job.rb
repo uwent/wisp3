@@ -1,5 +1,5 @@
 # Weekly: keep each cell's latest WeatherForecast::KEEP forecasts of each kind, and for good, the daily
-# archive (PLAN.md Phase 8 E): each cell's first corrected issue of each kind on each local day,
+# archive: each cell's first corrected issue of each kind on each local day,
 # for forecast accuracy tracking and time travel's replay. Only corrected issues are archived
 # (the deterministic days list their corrections; the ensemble's payload has "corrections"), so the
 # archive starts on one method.

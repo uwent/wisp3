@@ -22,7 +22,7 @@ class WeatherCell < ApplicationRecord
   end
 
   # Cells with a planting this season (or one still running), and cells whose weather a daily
-  # digest shows out of season. A planting's cell is its pivot's, or where its pivot was (G.9).
+  # digest shows out of season. A planting's cell is its pivot's, or where its pivot was.
   def self.active(today = Date.current)
     planted = Planting.where("end_date >= ? OR season_start >= ?", today, today.beginning_of_year)
       .where.not(weather_cell_id: nil).select(:weather_cell_id)
@@ -46,7 +46,7 @@ class WeatherCell < ApplicationRecord
       SQL
   end
 
-  # The cell's address on the weather page, its center to 2 decimals: "44.12,-89.54" (G.6). Cells are
+  # The cell's address on the weather page, its center to 2 decimals: "44.12,-89.54". Cells are
   # about 9 km across, so it always falls back in the same cell (WeatherZone.at).
   def location = format("%.2f,%.2f", latitude, longitude)
 
@@ -63,7 +63,7 @@ class WeatherCell < ApplicationRecord
   # before they have a planting. Only an incomplete cell's update is shown on the pages ("Updating
   # weather…", reloading until it lands); a complete one's is quiet, and the next visit gets it.
   def self.keep_current(ids)
-    # The example farm's pages (Current.as_of, PLAN.md G.8) show weather as stored
+    # The example farm's pages (Current.as_of) show weather as stored
     return if Current.as_of
 
     due = ids.compact.uniq.select do |id|
@@ -102,7 +102,7 @@ class WeatherCell < ApplicationRecord
     from <= to && weather_days.where(date: from..to).count < (to - from).to_i + 1
   end
 
-  # Backfills start on January 1, so a weather zone's page has the whole year (G.12), or at the
+  # Backfills start on January 1, so a weather zone's page has the whole year, or at the
   # earliest season start this year if it began the year before
   def backfill_start = [season_start, today.beginning_of_year].compact.min
 

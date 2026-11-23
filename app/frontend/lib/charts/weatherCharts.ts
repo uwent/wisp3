@@ -11,7 +11,7 @@ import { runningTotal } from './totals'
 
 export { runningTotal }
 
-// A weather zone's panels (the weather page, G.12): small multiples, one measure each, sharing the
+// A weather zone's panels (the weather page): small multiples, one measure each, sharing the
 // date axis, with the forecast days shaded
 
 type Series = {
@@ -87,7 +87,7 @@ function otherPrecip(day: WeatherPanelDay): number | null {
 export const PLANTING_START_LENGTH = 60
 
 /**
- * The degree days menu's choices (G.6): one per planting date, naming every planting that went in
+ * The degree days menu's choices: one per planting date, naming every planting that went in
  * that day, "Apr 1 – Home North Potato, River Sweet Corn", cut to PLANTING_START_LENGTH
  */
 export function plantingStarts(plantings: { label: string; planted: string }[]): { date: string; label: string }[] {

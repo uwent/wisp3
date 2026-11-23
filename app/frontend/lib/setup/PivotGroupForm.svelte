@@ -9,7 +9,7 @@
   import { pivotGroups } from '@/routes'
   import type { Farm, PivotGroup } from '@/types/serializers'
 
-  // Add an irrigation group on a farm, or edit one (PLAN.md Phase 8 G.4; Setup's dialog): its name,
+  // Add an irrigation group on a farm, or edit one (Setup's dialog): its name,
   // which of the farm's systems share its rain gauge, and which rain their balances use (Q7). A
   // system is in one group at most.
   let {

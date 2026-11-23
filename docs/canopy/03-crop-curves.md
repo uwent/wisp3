@@ -112,7 +112,7 @@ cover is the method to recommend for every crop but field corn.
 Step A.4: backtest how readings scale these curves (scale factor, the band for breaking to
 straight lines, whether to fit a time shift too), on the Wisconsin 2026 series.
 
-## Onion, again (2026-11-16, PLAN.md Phase 8 G.7)
+## Onion, again (2026-11-16, docs/plans/4-crop-and-weather-science.md, Crops to add)
 
 G.7 tried FAO-56's stage lengths with Wisconsin dates: onions seeded mid-April and harvested late
 August (early types, 90–100 days) to mid or late September (110–120 days; Michigan State E1307,

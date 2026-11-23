@@ -274,7 +274,7 @@
       "expected": null
     },
     {
-      "name": "says it can't estimate water use without canopy data (no curve, no reading; G.3)",
+      "name": "says it can't estimate water use without canopy data (no curve, no reading)",
       "units": "imperial",
       "summary": {
         "status": "needs_canopy",

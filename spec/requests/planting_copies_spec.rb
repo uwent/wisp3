@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Phase 9 §7: the same crop on several fields. A new whole-field planting's form can also plant it on
+# The same crop on several fields. A new whole-field planting's form can also plant it on
 # the system's other fields (also_field_ids), each an independent planting on its own field's soil,
 # area and weather cell, all saved or none.
 RSpec.describe "Planting the same crop on several fields", type: :request do

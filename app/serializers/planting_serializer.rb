@@ -1,17 +1,17 @@
 class PlantingSerializer < ApplicationSerializer
   attributes :id, :field_id, :plant_id, :variety, :season_start, :emergence_date, :end_date, :vine_kill_date,
     :max_root_zone_depth, :mad_frac, :et_method, :canopy_interpolation, :target_ad_pct, :initial_moisture_pct, :notes,
-    # The values the season runs on, copied from the field (PLAN.md Phase 8 G.9)
+    # The values the season runs on, copied from the field
     :soil_type_id, :field_capacity, :perm_wilting_pt, :area_acres,
-    # Whole field, or part of it: a plot (length × width, ft) or acres (G.11)
+    # Whole field, or part of it: a plot (length × width, ft) or acres
     :partial, :plot_length_ft, :plot_width_ft,
     # A plot on its own soil, which the field's soil edits leave alone
     :own_soil,
-    # A crop without its own curve: the generic one picked, or none (readings only); null its default (G.3)
+    # A crop without its own curve: the generic one picked, or none (readings only); null its default
     :canopy_curve_key,
-    # Its own season length in days (G.7), or null for the crop's typical one
+    # Its own season length in days, or null for the crop's typical one
     :season_days,
-    # Who added it: they may delete it as well as the owners (G.15)
+    # Who added it: they may delete it as well as the owners
     :created_by_id
 
   attribute :plant_name do |planting|
@@ -22,7 +22,7 @@ class PlantingSerializer < ApplicationSerializer
     planting.plant.key
   end
 
-  # On the perennial regrowth curve, so it can be cut; and its cuttings (G.3)
+  # On the perennial regrowth curve, so it can be cut; and its cuttings
   attribute(:takes_cuttings) { |planting| planting.takes_cuttings? }
   attribute(:cuttings) { |planting| planting.canopy_cuttings.map { |cutting| {id: cutting.id, date: cutting.date} } }
   typelize takes_cuttings: :boolean, cuttings: "{ id: number; date: string }[]"
@@ -35,7 +35,7 @@ class PlantingSerializer < ApplicationSerializer
   attribute(:canopy_curve, &:canopy_curve?)
   attribute(:effective_canopy_interpolation, &:effective_canopy_interpolation)
   # The crop's typical days from emergence to harvest, and the season's (its own, else the typical),
-  # for the form and "End the season" (PLAN.md Phase 8 G.2, G.7)
+  # for the form and "End the season"
   attribute(:typical_season_days, &:typical_season_days)
   attribute(:effective_season_days, &:effective_season_days)
   # Whether the crop takes a vine kill date (potato)

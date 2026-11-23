@@ -1,7 +1,7 @@
 require "net/http"
 
 module Weather
-  # Open-Meteo client (PLAN.md §8). Requests hourly values in metric units with timezone=auto, so
+  # Open-Meteo client. Requests hourly values in metric units with timezone=auto, so
   # the dates asked for are each location's local days, and times as unix seconds, read as UTC
   # `Time`s (each the end of its hour): the corrections need UTC, and the local day comes from the
   # zone (Weather::Hours#dates), right across a DST change. Weather::Daily turns them into days. With an API key (OPEN_METEO_API_KEY, or credentials open_meteo.api_key) it uses the
@@ -16,10 +16,10 @@ module Weather
 
     # Atmospheric variables come from the primary models; soil variables from ECMWF IFS, the only
     # model with them over North America (best_match, GFS and NBM return none).
-    # Shortwave and surface pressure feed WISP's own ET0 (D12, §8.5); RH and the vapor pressure
+    # Shortwave and surface pressure feed WISP's own ET0 (D12); RH and the vapor pressure
     # deficit are derived from temperature and the corrected dew point (Weather::Hours), so
     # Open-Meteo's aren't asked for. et0_fao_evapotranspiration is kept as the raw value.
-    # weather_code (WMO) gives the forecast its sky: thunder, fog, freezing rain (G.12).
+    # weather_code (WMO) gives the forecast its sky: thunder, fog, freezing rain.
     VARIABLES = %w[
       temperature_2m dew_point_2m et0_fao_evapotranspiration precipitation rain snowfall snow_depth
       pressure_msl surface_pressure shortwave_radiation wind_speed_10m wind_gusts_10m
@@ -31,7 +31,7 @@ module Weather
       soil_moisture_28_to_100cm soil_moisture_100_to_255cm
     ].freeze
     SOIL_MODEL = "ecmwf_ifs"
-    # The ensemble for the projection's uncertainty (PLAN.md §6): GFS, 31 members (the control and
+    # The ensemble for the projection's uncertainty: GFS, 31 members (the control and
     # 30 perturbed) over the full 16 days. ECMWF's 51 members stop at 15 days. Each member has its
     # own et0 and precipitation.
     ENSEMBLE_MODEL = "gfs_seamless"

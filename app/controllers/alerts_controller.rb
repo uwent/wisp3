@@ -1,4 +1,4 @@
-# The daily digest's settings (PLAN.md Phase 6): how often it's sent, which fields it covers and
+# The daily digest's settings: how often it's sent, which fields it covers and
 # which of those it lists,
 # with a preview of today's email (loaded on request) and a test send, once per cooldown
 class AlertsController < AuthenticatedController

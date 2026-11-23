@@ -24,7 +24,7 @@
     widest?: boolean
     /**
      * For a dialog holding a form: Escape, a click outside or ✕ with changes made asks first, in the
-     * dialog (Save changes, Discard, Keep editing; PLAN.md G.13). Closing it from code (after a save,
+     * dialog (Save changes, Discard, Keep editing). Closing it from code (after a save,
      * a delete) never asks.
      */
     guard?: boolean
@@ -86,7 +86,7 @@
 <Dialog.Root bind:open>
   <Dialog.Portal>
     <Dialog.Overlay class="fixed inset-0 z-40 bg-black/40" />
-    <!-- No scroll lock: hiding the page's scrollbar shifted and shook the page (PLAN.md G.1), so the
+    <!-- No scroll lock: hiding the page's scrollbar shifted and shook the page, so the
          page behind still scrolls, and the dialog scrolls on its own without dragging it -->
     <Dialog.Content
       preventScroll={false}

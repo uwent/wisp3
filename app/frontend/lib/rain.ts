@@ -1,5 +1,5 @@
-// The week's rain in words (RainAhead on the dashboard, and the log irrigation dialog;
-// docs/plans/phase-9.md §9). A day's chance is the share of the forecast ensemble's members with
+// The week's rain in words (RainAhead on the dashboard, and the log irrigation dialog).
+// A day's chance is the share of the forecast ensemble's members with
 // 0.1 in or more (ForecastDays::WET_IN): likely at 50% or more, possible at 20% or more. Without a
 // chance (the example farm's stored days, or no ensemble yet) a day with 0.1 in or more is likely.
 

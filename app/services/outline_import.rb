@@ -1,4 +1,4 @@
-# Field outlines for many fields at once (PLAN.md Phase 8 G.10): each row's shape goes on one of the
+# Field outlines for many fields at once: each row's shape goes on one of the
 # group's fields (field_id), or makes a new field under one of its systems (pivot_id, name,
 # soil_type_id, area_acres). One save, in a transaction: every row saves, or none does. use_area
 # also sets existing fields' area from their outlines. Ids outside the group raise RecordNotFound.

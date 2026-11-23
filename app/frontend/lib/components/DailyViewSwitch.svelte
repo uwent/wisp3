@@ -8,7 +8,7 @@
 
   import { dailyEntries, dailyEntryWeeks } from '@/routes'
 
-  // Daily entry's Day | Week switch (Phase 9 §6), keeping the date: the day shown, or the week's last
+  // Daily entry's Day | Week switch, keeping the date: the day shown, or the week's last
   // day. The Day link says view=day, which the day page remembers (and never sends on to the week).
   let { view, date }: { view: 'day' | 'week'; date: string } = $props()
 

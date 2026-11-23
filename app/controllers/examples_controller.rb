@@ -1,4 +1,4 @@
-# The public example farm (PLAN.md G.8, ExampleMode): /example starts viewing it, read-only, from its
+# The public example farm (ExampleMode): /example starts viewing it, read-only, from its
 # dashboard; DELETE /example (the bar's Leave) goes back to the landing page, or the user's own
 # operation.
 class ExamplesController < InertiaController

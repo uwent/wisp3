@@ -1,6 +1,5 @@
 # Resolves what went into a field on each day, from the grower's entries and weather, with where
-# each value came from (PLAN.md §4 "Precedence"; field groups, a source between the field's entries
-# and the model, were retired in Phase 8 G.4):
+# each value came from (docs/engine.md, A day):
 #
 #   rain       = field entry ?? (its irrigation group, or farm, uses model rain ? weather : 0.0)
 #   irrigation = field entry ?? 0.0 (stored per field and plot, never inherited from the system: D15)
@@ -8,7 +7,7 @@
 #   moisture   = field entry
 #   wind, rh_min = weather (they adjust the crop coefficient, CropEt.kc_mid; nil → FAO-56's standard)
 #
-# For a planting on part of a field (planting:, PLAN.md Phase 8 G.11), its own entries take the
+# For a planting on part of a field (planting:), its own entries take the
 # field's place for irrigation and moisture:
 #
 #   irrigation = planting entry ?? 0.0 (saving the field's also sets its plots that had the field's)

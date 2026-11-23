@@ -9,7 +9,7 @@
 
   import type { MapPivot } from './pivots'
 
-  // The map's list (PLAN.md Phase 8 G.14): farm › irrigation group › system › field as nested
+  // The map's list: farm › irrigation group › system › field as nested
   // cards, each inset in its parent, as on the dashboard and Setup. Every card selects its item: a
   // farm or group zooms the map to its systems, a system or field opens its panel. Each card carries
   // data-node="{level}-{id}" for the page to scroll the selection into view.

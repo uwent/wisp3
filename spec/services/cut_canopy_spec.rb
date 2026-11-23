@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# PLAN.md Phase 8 G.3: a perennial's cuttings restart its canopy, a sawtooth rather than one curve
+# A perennial's cuttings restart its canopy, a sawtooth rather than one curve
 RSpec.describe CutCanopy do
   let(:alfalfa) { create(:plant, key: "alfalfa", name: "Alfalfa") }
   let(:planting) do

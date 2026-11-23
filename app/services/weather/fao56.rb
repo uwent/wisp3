@@ -1,11 +1,11 @@
 module Weather
   # Weather physics from FAO Irrigation and Drainage Paper 56 (Allen, Pereira, Raes and Smith, 1998,
   # https://www.fao.org/4/x0490e/x0490e00.htm): humidity, the sun's geometry, clear-sky radiation and
-  # the hourly Penman-Monteith grass reference ET0 (PLAN.md §8.5, D12). Ported from AgWeather v2's
+  # the hourly Penman-Monteith grass reference ET0 (D12). Ported from AgWeather v2's
   # `agmodels.weather` (at bbb0a6d), whose results WISP's corrected weather must match
   # (spec/services/weather/fao56_spec.rb, weather_corrections_spec.rb), except the hourly ET0's
   # surface resistance, which follows FAO-56's second edition (Pereira and others, 2025,
-  # doi:10.4060/cd6621en; PLAN.md §9 C24).
+  # doi:10.4060/cd6621en; C24).
   #
   # Plain functions on numbers; a nil input gives nil. Times are UTC `Time`s, and an hourly value
   # stamped t covers the hour ending at t. Units are SI unless the name says otherwise: °C, kPa, m/s,

@@ -1,7 +1,7 @@
 # Crop (adjusted) ET from reference ET (et0, in/day) and the canopy, by percent cover or LAI.
-# Ported from legacy ETCalculator with fixes C8 (PLAN.md §5.4).
+# Ported from legacy ETCalculator with fixes C8.
 #
-# C21 (PLAN.md §9, Q11): the percent cover table was fitted to AgWeather's ET, which ran about 1.1–1.2
+# C21 (docs/legacy-audit.md, Q11): the percent cover table was fitted to AgWeather's ET, which ran about 1.1–1.2
 # times FAO-56 grass reference ET, so its "full cover = reference ET" meant a crop coefficient near
 # FAO-56's mid-season values. Against WISP's corrected FAO-56 ET0 (D12) the table is scaled by a factor
 # rising with cover, from 1 on bare soil to the crop's Kc mid at 80% cover and above, and the LAI
@@ -9,7 +9,7 @@
 # (C25; db/reference/plants.yml), adjusted for the day's wind and humidity (eq. 62, kc_mid). kc: nil keeps
 # the table as it was (legacy).
 #
-# C22 (PLAN.md §9): for a planting with a crop, FAO-56's dual crop coefficient (chapter 7) replaces
+# C22 (docs/legacy-audit.md): for a planting with a crop, FAO-56's dual crop coefficient (chapter 7) replaces
 # the table: crop ET = (Kcb + Ke) × ET0, Kcb the basal coefficient (transpiration, with the surface
 # dry) from the canopy (basal), Ke soil evaporation (SoilEvaporation, run day by day in
 # WaterBalance). The table stays for a planting without a crop's coefficients, and in LegacyEngine.

@@ -1,11 +1,11 @@
-# The props of daily entry (PLAN.md Phase 8 G.4) for one operation on one date: its farms, each
-# with its irrigation groups and systems ("pivots" in code, G.5), each system's fields; each field's
+# The props of daily entry for one operation on one date: its farms, each
+# with its irrigation groups and systems ("pivots" in code), each system's fields; each field's
 # entry, the rain the model would use, and its plantings in season that day, with a part-field
 # planting's own entry and each planting's canopy reading (when one is wanted: PlantingTasks.canopy).
 # Irrigation is each field's and plot's own (D15); a system with none that day but some the day
 # before gets the day before's amounts, for "Same as yesterday".
 # Each field is under the system it was on that day (Field#pivot_id_on: a season keeps the system
-# it ran on, G.14 part 7), which for today is its own. Loads everything up front, with no query per
+# it ran on), which for today is its own. Loads everything up front, with no query per
 # field.
 class DailyEntryPage
   # The day daily entry opens on, and the day its week view ends on, without a date: rain gauges

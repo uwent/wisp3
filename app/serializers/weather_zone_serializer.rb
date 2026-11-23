@@ -7,7 +7,7 @@ class WeatherZoneSerializer < ApplicationSerializer
     zone.pivots.map { |pivot| {id: pivot.id, name: pivot.name, kind_name: pivot.kind_name, farm: pivot.farm.name} }
   end
 
-  # The fields on its systems, by name, for links (G.6), with the system each is on
+  # The fields on its systems, by name, for links, with the system each is on
   attribute(:fields) do |zone|
     names = zone.pivots.to_h { |pivot| [pivot.id, pivot.name] }
     zone.fields.map { |field| {id: field.id, name: field.name, pivot_id: field.pivot_id, pivot: names[field.pivot_id]} }

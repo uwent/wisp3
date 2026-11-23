@@ -15,10 +15,10 @@ export type Palette = {
   warm: string
   sun: string
   snow: string
-  /** Irrigation systems on the map (G.14), and the casing that keeps them visible */
+  /** Irrigation systems on the map, and the casing that keeps them visible */
   system: string
   systemCasing: string
-  /** Outlined fields on the map (G.14): one color, not a status (their badges carry that) */
+  /** Outlined fields on the map: one color, not a status (their badges carry that) */
   field: string
   fieldCasing: string
   depths: [string, string, string, string]

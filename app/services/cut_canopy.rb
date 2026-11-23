@@ -1,4 +1,4 @@
-# A perennial planting's canopy with cuttings (PLAN.md Phase 8 G.3): the season splits at each
+# A perennial planting's canopy with cuttings: the season splits at each
 # cutting, and every piece follows the regrowth curve from its start (the first from emergence, i.e.
 # green-up), fitted to the readings within it only. So the canopy drops to stubble at a cutting and
 # regrows, a sawtooth, instead of one curve smoothed across the cuts. A reading on a cutting's date

@@ -16,7 +16,7 @@
   import { pivotIrrigations } from '@/routes'
   import type { ForecastDay } from '@/types/serializers'
 
-  // Log a system's irrigation from the dashboard (docs/plans/phase-9.md §9), for the common case of
+  // Log a system's irrigation from the dashboard, for the common case of
   // one system that ran: a day (yesterday or today, or another within dates), an amount (with the
   // calculator) on the fields chosen, or an amount each. Saved through PivotIrrigationsController
   // (D15: each field's own inches; fields not sent are left as they are). It says when the system

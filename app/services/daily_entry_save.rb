@@ -1,5 +1,5 @@
-# Saves what daily entry submits for one date (PLAN.md Phase 8 G.4), for the day page and for each
-# day of the week view (Phase 9 §6): each field's entry, each part-field planting's own entry and
+# Saves what daily entry submits for one date, for the day page and for each
+# day of the week view: each field's entry, each part-field planting's own entry and
 # each planting's canopy reading, checked in the models' :entry validation context. Irrigation is
 # stored per field and plot (D15): a field's saved here also sets its plots that had the field's
 # amount, unless the same save sends the plot's own (the day page's plot rows). Only the values sent

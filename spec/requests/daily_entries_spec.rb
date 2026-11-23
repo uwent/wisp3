@@ -37,7 +37,7 @@ RSpec.describe "Daily entry", type: :request do
       expect(field_props[:plantings].sole).to include(id: whole.id, plant_name: "Corn", partial: false, entry: nil)
     end
 
-    it "lists a moved field under the system its season ran on (G.14 part 7)" do
+    it "lists a moved field under the system its season ran on" do
       whole.update!(end_date: Date.new(2026, 7, 16))
       other = create(:pivot, farm:, name: "Lane 3")
       field.update!(pivot: other)

@@ -1,8 +1,8 @@
 # The guided first-run setup: a farm, an irrigation system on the map and its fields in one form
 # (QuickSetup), each after the first optional. Its save goes to Setup, whose next steps (`started`)
-# carry on from what was made: a system, fields, then each field's planting (PLAN.md G.6). From
-# November through December it asks which season the plantings are for, next year's by default
-# (G.8), and Setup opens on it.
+# carry on from what was made: a system, fields, then each field's planting. From
+# November through December it asks which season the plantings are for, next year's by default,
+# and Setup opens on it.
 class QuickSetupsController < AuthenticatedController
   # The month from which quick setup asks for a season (Ben, 2026-11-17: November 1 on)
   NEXT_SEASON_FROM_MONTH = 11

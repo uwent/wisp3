@@ -1,4 +1,4 @@
-// The dashboard's log irrigation dialog (LogIrrigationDialog, docs/plans/phase-9.md §9): which of a
+// The dashboard's log irrigation dialog (LogIrrigationDialog): which of a
 // system's fields are in season on a day, its last irrigation, and the amounts saving would replace.
 
 import { formatDate, relativeDay } from './dates'

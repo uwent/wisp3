@@ -1,4 +1,4 @@
-# LAI is now offered only for crops with an LAI growth curve (PLAN.md Phase 6.7). Plantings of
+# LAI is now offered only for crops with an LAI growth curve. Plantings of
 # other crops on LAI switch to percent cover; their LAI readings are kept (unused) in case a curve
 # for the crop is added later.
 class SwitchLaiPlantingsWithoutCurveToPctCover < ActiveRecord::Migration[8.1]

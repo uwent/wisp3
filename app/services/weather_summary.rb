@@ -9,7 +9,7 @@ class WeatherSummary
 
   # {cell_id => {past: Span, ahead: Span}} for several cells in two queries; either is nil
   # without weather for those days
-  # observed: the stored days after today in place of the forecast (the example farm, PLAN.md G.8)
+  # observed: the stored days after today in place of the forecast (the example farm)
   def self.by_cell(cell_ids, today:, observed: Current.as_of.present?)
     columns = %i[precip_in et0_in tmax_f tmin_f]
     stored = ->(dates) {

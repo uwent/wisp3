@@ -194,7 +194,7 @@ RSpec.describe "Weather jobs" do
   end
 
   describe WeatherBackfillJob do
-    it "fills from January 1 (G.12), or from a season that began the year before" do
+    it "fills from January 1, or from a season that began the year before" do
       fetcher = instance_double(Weather::Fetcher, backfill: 0)
       allow(Weather::Fetcher).to receive(:new).and_return(fetcher)
       described_class.perform_now(cell.id)

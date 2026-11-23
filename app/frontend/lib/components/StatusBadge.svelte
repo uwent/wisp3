@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PlantingSummary } from '@/types/serializers'
 
-  // A field's water status (PLAN.md §5.5), always with an icon and label, never color alone. The
+  // A field's water status (docs/engine.md), always with an icon and label, never color alone. The
   // icon size (map markers) shows the label only to screen readers and as a tooltip.
   let {
     status,
@@ -21,7 +21,7 @@
     ok: { label: 'OK', icon: '✓', class: 'bg-status-ok text-white' },
     caution: { label: 'Caution', icon: '!', class: 'bg-status-caution text-on-caution' },
     irrigate: { label: 'Irrigate', icon: '▲', class: 'bg-status-irrigate text-white' },
-    // No curve and no reading (G.3): outlined, so it doesn't read as a water status
+    // No curve and no reading: outlined, so it doesn't read as a water status
     needs_canopy: {
       label: 'No canopy data',
       icon: '?',

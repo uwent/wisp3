@@ -1,4 +1,4 @@
-# Phase 6: the daily digest email. On by default; digest_sent_on keeps a rerun of the job from
+# The daily digest email. On by default; digest_sent_on keeps a rerun of the job from
 # sending twice. Every field in a user's operations is included unless excluded here, by operation,
 # farm or field, so new fields join the digest unless their farm or operation is left out.
 class CreateDigestSettings < ActiveRecord::Migration[8.1]

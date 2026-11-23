@@ -1,7 +1,7 @@
 <script lang="ts">
   import Term from '@/lib/components/Term.svelte'
 
-  // What WISP is, for the landing page and the top of the About page (PLAN.md Phase 6.5)
+  // What WISP is, for the landing page and the top of the About page
 </script>
 
 <p>

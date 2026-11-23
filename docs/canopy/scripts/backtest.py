@@ -1,4 +1,4 @@
-# Backtests ways of combining percent cover readings with a crop's canopy curve (PLAN.md Phase 6.7,
+# Backtests ways of combining percent cover readings with a crop's canopy curve (docs/plans/4-crop-and-weather-science.md, Crop canopy curves,
 # A.4; docs/canopy/04-backtest.md). Python 3, standard library only.
 #
 #   python3 -I docs/canopy/scripts/backtest.py [CSV]

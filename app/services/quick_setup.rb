@@ -1,4 +1,4 @@
-# The guided first-run setup (PLAN.md §13, G.6): a farm (new, or one of the group's), an irrigation
+# The guided first-run setup: a farm (new, or one of the group's), an irrigation
 # system and the fields it waters, from one form. Everything is saved or nothing is. The system and
 # the fields can each be left for later (no `pivot` params: the farm alone; no rows, or blank ones:
 # the system alone). Plantings aren't made here: Setup's next steps add them, one per field.

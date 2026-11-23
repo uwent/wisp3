@@ -1,5 +1,5 @@
 # Converts each canopy curve's calendar parameters to degree days (docs/canopy/07-thermal-time.md,
-# PLAN.md §9 C23), and prints the `thermal:` line for db/reference/canopy_curves.yml.
+# C23), and prints the `thermal:` line for db/reference/canopy_curves.yml.
 #
 #   bin/rails runner docs/canopy/scripts/thermal_curves.rb
 #

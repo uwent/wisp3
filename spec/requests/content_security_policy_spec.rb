@@ -10,7 +10,7 @@ RSpec.describe "Content Security Policy", type: :request do
     expect(response.body).to include(%(<script nonce="#{nonce}">))
   end
 
-  # Google Analytics (PLAN.md H.1): the measurement ID's meta tag, which lib/analytics.ts starts from,
+  # Google Analytics: the measurement ID's meta tag, which lib/analytics.ts starts from,
   # only when GA_MEASUREMENT_ID is set (production); the script host is allowed then too, at boot
   it "names the Google Analytics measurement ID only when it's configured" do
     get root_path

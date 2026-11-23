@@ -34,7 +34,7 @@ first_field = JSON.parse(File.read(File.join(__dir__, "demo.json"))).fetch("firs
 demo.fields.find_by!(name: first_field).plantings.each do |planting|
   planting.update!(end_date: [planting.end_date, today + 30].max)
 end
-# The public example farm (PLAN.md G.8), as of July 20 of a season the weather below covers: this
+# The public example farm, as of July 20 of a season the weather below covers: this
 # year's once it's past, else last year's
 example_year = (today >= Date.new(today.year, 7, 20) + PlantingStatus::HORIZON) ? today.year : today.year - 1
 DemoSeed.example!(year: example_year)

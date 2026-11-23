@@ -10,9 +10,9 @@
 
   import type { MapPivot, WeatherTotals } from './pivots'
 
-  // The selected pivot's details over the map (PLAN.md Phase 7): its farm and irrigation group,
+  // The selected pivot's details over the map: its farm and irrigation group,
   // which select themselves as in the list (ScopePanel), its View and Edit links, its fields' cards,
-  // each selecting its field like the list's (G.14) with View and Edit links, its weather zone's rain
+  // each selecting its field like the list's with View and Edit links, its weather zone's rain
   // and ET, and extra lines from the overlays (the drought category there). A floating panel on wide
   // screens, a sheet along the bottom on phones.
   let {
@@ -33,7 +33,7 @@
     today: string
     units: Units
     notes?: { label: string; value: string; swatch?: string }[]
-    /** The field selected on the map (G.10), marked among the cards */
+    /** The field selected on the map, marked among the cards */
     fieldId?: number | null
     onselectfield: (fieldId: number) => void
     /** Selects the farm or group */

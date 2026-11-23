@@ -11,10 +11,10 @@ import {
   vertexCount,
 } from '@/lib/boundary'
 
-// Field outlines from a file (PLAN.md Phase 8 G.10), read in the browser so nothing is uploaded
+// Field outlines from a file, read in the browser so nothing is uploaded
 // but the result: a zipped shapefile (FSA Common Land Units, John Deere and Climate FieldView
 // exports; shpjs reprojects with its .prj), GeoJSON, or KML and KMZ (Google Earth). Each feature
-// with a polygon becomes a shape: a field's outline is one ring (G.14), so a feature's largest part
+// with a polygon becomes a shape: a field's outline is one ring, so a feature's largest part
 // is kept, without its holes, then simplified to the corner limit; points and lines are counted and
 // left out. The parsers load only when a file is read.
 

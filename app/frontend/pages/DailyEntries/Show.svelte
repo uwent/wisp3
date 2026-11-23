@@ -50,7 +50,7 @@
   const units = $derived(currentUnits())
   const today = todayDate()
 
-  // Day | Week (Phase 9 §6): the Day switch (view=day) remembers the day view; daily entry reached
+  // Day | Week: the Day switch (view=day) remembers the day view; daily entry reached
   // with no date or view (the nav's link) goes on to the week when that was the last chosen
   onMount(() => {
     const query = new URLSearchParams(location.search)

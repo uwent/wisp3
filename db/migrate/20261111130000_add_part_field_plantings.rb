@@ -1,4 +1,4 @@
-# PLAN.md Phase 8 G.11: a field is the land, a planting what grows on it. A planting covers the
+# A field is the land, a planting what grows on it. A planting covers the
 # whole field (as before) or part of it (partial: a plot of length × width, or acres, with an
 # optional pin). Part-field plantings may overlap each other in time; a whole-field one overlaps
 # nothing. A part-field planting can have its own irrigation, soil moisture readings and notes

@@ -1,5 +1,5 @@
 # The status of many fields at once (the dashboard, the map, the daily digest): each field's
-# plantings in season today (several on a field of plots, PLAN.md Phase 8 G.11), or with none, the
+# plantings in season today (several on a field of plots), or with none, the
 # nearest one this year, with entries, weather and ensembles for every field loaded in a few
 # queries, not several per field, through the projection's days. Fields need their pivot and
 # plantings (with plant and canopy observations) and soil type loaded.
@@ -7,9 +7,9 @@ class FieldStatuses
   RANK = {irrigate: 0, caution: 1, needs_canopy: 2, ok: 3, full: 4}.freeze
 
   # {field_id => [PlantingStatus, …]}, whole-field planting first, then by season start; empty for a
-  # field with no planting this year. Another year (the map's season, G.14) gives every planting
+  # field with no planting this year. Another year (the map's season) gives every planting
   # that started in it, as they ended (or stand, or will start). as_of: the example farm's day
-  # (Current.as_of, PLAN.md G.8), today for every planting (status).
+  # (Current.as_of), today for every planting (status).
   def self.for(fields, today: Current.today, year: today.year, as_of: Current.as_of)
     plantings = fields.to_h { |field| [field.id, plantings_for(field, today, year)] }
 
@@ -18,7 +18,7 @@ class FieldStatuses
     last = [[today, as_of].compact.max + PlantingStatus::HORIZON, current.map(&:end_date).max].compact.min
     dates = current.any? ? current.map(&:season_start).min..last : today..today
     records = DailyInputs.preload(fields, dates)
-    # Each planting's weather cell: its pivot's, or where the pivot was in an ended season (G.9)
+    # Each planting's weather cell: its pivot's, or where the pivot was in an ended season
     cell_ids = current.map(&:weather_cell_id).uniq
     weather = WeatherDay.balance_inputs_by_cell(cell_ids, dates)
     ensembles = as_of ? {} : WeatherForecast.ensemble.latest_by_cell(cell_ids).transform_values(&:members)

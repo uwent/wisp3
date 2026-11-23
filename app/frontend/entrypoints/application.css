@@ -23,7 +23,7 @@
   --color-brand-600: oklch(52% 0.13 238);
   --color-brand-700: oklch(45% 0.12 240);
 
-  /* Field water status (see plan §5.5). Fills take white text, except caution, which takes
+  /* Field water status (docs/engine.md, Status). Fills take white text, except caution, which takes
      on-caution in both modes. As text on a surface, irrigate and caution use their -ink colors,
      which are lighter in dark mode (WCAG AA, 4.5:1) */
   --color-status-full: oklch(55% 0.15 245);
@@ -53,7 +53,7 @@
   --color-impersonation: oklch(45% 0.2 300);
   --color-on-impersonation: oklch(100% 0 0);
 
-  /* The bar shown while viewing the example farm (PLAN.md G.8), in a teal no status uses */
+  /* The bar shown while viewing the example farm, in a teal no status uses */
   --color-example: oklch(42% 0.08 195);
   --color-on-example: oklch(100% 0 0);
 
@@ -83,7 +83,7 @@
   --color-chart-depth-3: #1c5cab;
   --color-chart-depth-4: #0d366b;
   --color-chart-snow: #c3c8cf;
-  /* Irrigation systems on the map (G.14): never a status, which is the fields' fill. A light cyan,
+  /* Irrigation systems on the map: never a status, which is the fields' fill. A light cyan,
      at least ΔE 21 (OKLab) from every status color with normal vision and simulated protan, deutan
      and tritan; 4.6:1 on imagery, and on the light streets basemap it's carried by its dark casing
      (12:1 there, 6.9:1 against the cyan). On the page's own surfaces (Setup's shape thumbnails,
@@ -91,7 +91,7 @@
   --color-map-system: #2ec4f0;
   --color-map-system-casing: #0c2d48;
   --color-map-system-ink: #127aa6;
-  /* Outlined fields on the map (G.14): white, not a status (the plantings' badges carry that), a
+  /* Outlined fields on the map: white, not a status (the plantings' badges carry that), a
      thin black edge keeping the line visible on the light streets basemap */
   --color-map-field: #ffffff;
   --color-map-field-casing: #000000;

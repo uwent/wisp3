@@ -26,7 +26,7 @@ export type FieldChartInput = {
   canopy?: 'cover' | 'lai'
   /** The planting's vine kill date (potato), marked on the canopy grid, where the canopy starts to ramp down */
   vineKill?: string | null
-  /** A perennial's cutting dates, marked on the canopy panel (G.3) */
+  /** A perennial's cutting dates, marked on the canopy panel */
   cuttings?: string[]
   /** The days in view (indexes into days then forecastDays), for the running totals; default the opening view */
   view?: ChartView
@@ -77,7 +77,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   } = input
   const base = baseOption(palette)
   const all = [...days, ...forecastDays]
-  // Dashed lines on the canopy panel: vine kill, and each cutting of a perennial (G.3), within the days shown
+  // Dashed lines on the canopy panel: vine kill, and each cutting of a perennial, within the days shown
   const markers: [string, string][] = [
     ...(vineKill ? [[vineKill, 'Vine kill'] as [string, string]] : []),
     ...cuttings.map((date) => [date, 'Cut'] as [string, string]),
@@ -175,7 +175,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
     axisOffset: 5,
     palette,
   })
-  // Time travelling (PLAN.md Phase 8 F), the projection is the weather that followed the day in view
+  // Time travelling, the projection is the weather that followed the day in view
   const replay = summary.projection_source === 'observed'
   const forecastLabel = forecastDays.length
     ? [
@@ -568,7 +568,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
         itemStyle: { color: total.color },
       })),
       // Water out: the crop's ET (the balance's, the projection's in the forecast, lighter), under the
-      // reference ET it's adjusted from, the planting's own part of the weather (G.12)
+      // reference ET it's adjusted from, the planting's own part of the weather
       {
         id: 'crop-et',
         name: CROP_ET,

@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# PLAN.md Phase 8 G.11: a field is the land, a planting what grows on it, on the whole field or on
+# A field is the land, a planting what grows on it, on the whole field or on
 # part of it, with part-field plantings' own irrigation and readings first in their balance.
 RSpec.describe "Part-field plantings" do
   let(:pivot) { create(:pivot, pump_capacity_gpm: 900) }

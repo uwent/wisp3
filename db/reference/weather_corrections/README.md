@@ -1,6 +1,6 @@
 # Weather corrections
 
-Tables for the corrections WISP applies to Open-Meteo's hourly weather (PLAN.md D12, §8.5),
+Tables for the corrections WISP applies to Open-Meteo's hourly weather (D12),
 described in `corrections.yml` and applied by `Weather::Corrections` as hours are aggregated to days.
 
 | File | Label | Fitted | Source |

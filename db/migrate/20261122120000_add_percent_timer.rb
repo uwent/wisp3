@@ -1,4 +1,4 @@
-# A center pivot's or linear's percent timer (docs/plans/phase-9.md §8): the depth a circle (or pass)
+# A center pivot's or linear's percent timer: the depth a circle (or pass)
 # puts on at 100%, on the system, for the irrigation calculator's percent (depth at 100% × 100 ÷
 # percent × circles). Irrigation itself is stored in inches only (D15).
 class AddPercentTimer < ActiveRecord::Migration[8.1]

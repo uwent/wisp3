@@ -3,7 +3,7 @@
 
   import Button from './Button.svelte'
 
-  // An edit form's last row (PLAN.md Phase 8 G.14): Delete at the left, when there's something to
+  // An edit form's last row: Delete at the left, when there's something to
   // delete and the user may (owners, Q8), and Save at the right, so the two are far apart
   let {
     ondelete,

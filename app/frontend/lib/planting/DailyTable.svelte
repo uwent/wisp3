@@ -10,9 +10,9 @@
   import { fields, pivots } from '@/routes'
   import type { FieldDay, Planting } from '@/types/serializers'
 
-  // The planting page's daily values (PLAN.md §11): the season's days, latest first, its entries
+  // The planting page's daily values: the season's days, latest first, its entries
   // edited in their cells (EditableCell, one grid); read-only while time travelling (asOf). plot: a
-  // planting on part of the field (G.11), its size, whose rain is the field's
+  // planting on part of the field, its size, whose rain is the field's
   let {
     days,
     planting,

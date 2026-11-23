@@ -8,7 +8,7 @@
   import { soilFit, soilOptionsByShare } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
 
-  // A field's soil (PLAN.md Phase 8 G.14 part 7): the soil saved beside the menu (labeled with each soil's
+  // A field's soil: the soil saved beside the menu (labeled with each soil's
   // share once the soil survey answers) and the survey itself, read under the field's shape or else
   // its system. The same in the field dialog and on the shape page.
   let {

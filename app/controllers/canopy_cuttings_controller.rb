@@ -1,4 +1,4 @@
-# Adds and removes a perennial planting's cuttings (PLAN.md Phase 8 G.3), from its page
+# Adds and removes a perennial planting's cuttings, from its page
 class CanopyCuttingsController < AuthenticatedController
   def create
     planting = Current.group.plantings.find(params[:planting_id])

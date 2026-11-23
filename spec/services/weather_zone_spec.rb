@@ -25,7 +25,7 @@ RSpec.describe WeatherZone do
     field = create(:field, pivot:)
     create(:planting, field:)
     old_cell = pivot.weather_cell_id
-    pivot.update_columns(weather_cell_id: create(:pivot, latitude: 45.5).weather_cell_id) # moved (G.9 keeps the planting's)
+    pivot.update_columns(weather_cell_id: create(:pivot, latitude: 45.5).weather_cell_id) # moved (the planting keeps its own)
     expect(described_class.find(group, old_cell).name).to eq("Mover")
     other = create(:pivot, latitude: 46.2, longitude: -91.0) # another group's
     expect { described_class.find(group, other.weather_cell_id) }.to raise_error(ActiveRecord::RecordNotFound)

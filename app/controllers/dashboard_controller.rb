@@ -1,4 +1,4 @@
-# Every field's water status today (PLAN.md §11), by farm and pivot: one card per field with this
+# Every field's water status today, by farm and pivot: one card per field with this
 # season's planting.
 class DashboardController < AuthenticatedController
   allow_example :show
@@ -19,7 +19,7 @@ class DashboardController < AuthenticatedController
   LOG_BACK = 13
   LOG_AHEAD = 7
 
-  # What the log irrigation dialog needs of a system (docs/plans/phase-9.md §9): the calculator's
+  # What the log irrigation dialog needs of a system: the calculator's
   # kind, pump capacity and depth at 100%; its fields now by name, each with its acres and its seasons
   # in Field#planting_on's order, each saying whether it ran here (FieldSeasons: on a day a season ran
   # elsewhere the field isn't this system's, as PivotIrrigationsController#create has it); and
@@ -46,8 +46,8 @@ class DashboardController < AuthenticatedController
       .group_by(&:first).transform_values { |rows| rows.map { |_, date, inches| [date, inches] } }
   end
 
-  # The week's rain in each weather zone of the operation's systems, north to south (RainAhead,
-  # docs/plans/phase-9.md §9), with its systems (named, and for the farm filter): [{id, name,
+  # The week's rain in each weather zone of the operation's systems, north to south (RainAhead),
+  # with its systems (named, and for the farm filter): [{id, name,
   # coordinates, location, systems, pivot_ids, days}]
   def rain(overview)
     zones = overview.pivots.select(&:weather_cell).group_by(&:weather_cell)
@@ -63,7 +63,7 @@ class DashboardController < AuthenticatedController
     end
   end
 
-  # Until the operation has any planting, what's set up so far, for the checklist (PLAN.md G.6)
+  # Until the operation has any planting, what's set up so far, for the checklist
   def getting_started(overview)
     fields = overview.pivots.flat_map(&:fields)
     return if fields.any? { |field| field.plantings.any? }

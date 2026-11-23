@@ -1,6 +1,6 @@
 class CreateFarmsPivotsFields < ActiveRecord::Migration[8.1]
   def change
-    # Replaces the legacy precip_use_agwx flag, which was inverted (PLAN.md C1)
+    # Replaces the legacy precip_use_agwx flag, which was inverted (C1)
     add_column :groups, :use_model_precip, :boolean, null: false, default: true
 
     create_table :farms do |t|

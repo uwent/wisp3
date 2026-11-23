@@ -3,8 +3,8 @@
 class InertiaController < ApplicationController
   inertia_share do
     {
-      # The date the balance runs to, so the browser's "today" agrees with it (G.15); the example
-      # farm's day there (Current.today, PLAN.md G.8)
+      # The date the balance runs to, so the browser's "today" agrees with it; the example
+      # farm's day there (Current.today)
       today: Current.today.iso8601,
       # Viewing the example farm (ExampleMode): its day, for the bar across the top and read-only pages
       example: example_group && {as_of: example_group.example_as_of.iso8601},

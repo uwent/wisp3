@@ -1,6 +1,6 @@
 # Runs the water balance for a planting over its season, from the database and weather:
 # Canopy + DailyInputs + WaterBalance::Params → WaterBalance.run. Weather defaults to the stored
-# days for the planting's weather cell (its pivot's, kept for the season, G.9); pass weather: {date => {et0:, precip:}} to override, and
+# days for the planting's weather cell (its pivot's, kept for the season); pass weather: {date => {et0:, precip:}} to override, and
 # records: (DailyInputs.preload) to skip querying the field's entries. today: where the projection
 # starts (DailyInputs). canopy_through: leaves out canopy readings after that date (Canopy.for).
 # temperatures: the cell's CellTemperatures for a canopy curve in degree days (Canopy.for; loaded

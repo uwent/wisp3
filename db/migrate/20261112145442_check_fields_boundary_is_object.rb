@@ -1,4 +1,4 @@
-# A field's outline (PLAN.md Phase 8 G.10) is a GeoJSON geometry object or NULL; FieldBoundary
+# A field's outline is a GeoJSON geometry object or NULL; FieldBoundary
 # checks the rest (the column has been there, unused, since the first migration)
 class CheckFieldsBoundaryIsObject < ActiveRecord::Migration[8.1]
   def change

@@ -52,7 +52,7 @@ RSpec.describe PlantingStatus do
     expect(totals.adj_et).to be > 0
   end
 
-  it "counts an ended season's days of irrigation, rain, deep drainage and stress (G.6)" do
+  it "counts an ended season's days of irrigation, rain, deep drainage and stress" do
     planting.canopy_observations.create!(date: Date.new(2026, 7, 1), pct_cover: 80) # adjusted ET = et0
     field.field_entries.create!(date: Date.new(2026, 7, 6), irrigation_in: 1.5)
     # AD 0.7 on Jul 5; 1.5 in fills it past 1.2, draining the rest. Then 0.2 a day: 0 on Jul 12,

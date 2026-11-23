@@ -1,6 +1,6 @@
 module Weather
-  # One location's hourly values, merged across models hour by hour and corrected (PLAN.md §8.5,
-  # D12), before Weather::Daily aggregates them to local days. As AgWeather v2 does it
+  # One location's hourly values, merged across models hour by hour and corrected
+  # (D12), before Weather::Daily aggregates them to local days. As AgWeather v2 does it
   # (`agdata.sources.openmeteo.fetch` and `correct`):
   #
   # 1. merge: each variable's hour comes from the first response that has it (NBM, then best_match,

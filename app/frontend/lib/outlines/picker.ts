@@ -5,7 +5,7 @@ import { type ImportSystem, matchField } from './matching'
 import { systemDistanceM } from './problems'
 import { shapeName, shapeNotes } from './read'
 
-// Picking one field's shape from a file's (PLAN.md Phase 8 G.10), kept pure for testing: the
+// Picking one field's shape from a file's, kept pure for testing: the
 // shape named as the field comes first, then the nearest its system; those already used for another
 // field say so
 

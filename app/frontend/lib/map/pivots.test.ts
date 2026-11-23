@@ -229,7 +229,7 @@ describe('pivotBounds', () => {
   })
 })
 
-describe('fields with outlines and pinned plots (G.10)', () => {
+describe('fields with outlines and pinned plots', () => {
   const card = (id: number, name: string, plantings: Partial<PlantingSummary>[]): FieldCard => ({
     id,
     name,

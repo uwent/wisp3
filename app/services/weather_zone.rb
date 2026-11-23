@@ -1,6 +1,6 @@
 # A weather zone: one weather grid cell (Weather::Grid) and the operation's irrigation systems in it,
-# named from them ("North 160 and River", G.12). Pages reach a cell only through the group's pivots
-# and plantings: a planting keeps the cell its season ran on (G.9), so a moved pivot's old zone
+# named from them ("North 160 and River"). Pages reach a cell only through the group's pivots
+# and plantings: a planting keeps the cell its season ran on, so a moved pivot's old zone
 # stays reachable from its ended seasons.
 class WeatherZone
   # Names past this many systems end "and 3 more"

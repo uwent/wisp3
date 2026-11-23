@@ -4,7 +4,7 @@ class Pivot < ApplicationRecord
   LATITUDES = 18.0..84.0
   LONGITUDES = -180.0..-52.0
 
-  # A pivot in code is any irrigation system (PLAN.md Phase 8 G.5); growers see its kind's name.
+  # A pivot in code is any irrigation system; growers see its kind's name.
   # A center pivot is a circle (or an arc of one) around its location; a linear is a machine
   # length_ft long traveling travel_ft along travel_bearing_deg (whole degrees from north, 0–179, as
   # it runs both ways), a rectangle centered on its location. The other kinds are a point with no
@@ -19,7 +19,7 @@ class Pivot < ApplicationRecord
   MAX_RADIUS_FT = 3000
   MAX_LINEAR_LENGTH_FT = 3300
   MAX_LINEAR_TRAVEL_FT = 5280
-  # The kinds with a percent timer (docs/plans/phase-9.md §8): the end tower (a linear's drive) runs
+  # The kinds with a percent timer: the end tower (a linear's drive) runs
   # that share of each minute, so a circle or pass puts on inches_at_100 × 100 ÷ percent (the
   # irrigation calculator, percentInches in lib/irrigation.ts)
   TIMER_KINDS = %w[center linear].freeze
@@ -31,7 +31,7 @@ class Pivot < ApplicationRecord
   belongs_to :weather_cell, optional: true
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
   has_many :fields, -> { order(:name) }, dependent: :destroy
-  # The plantings whose seasons ran on this system (G.14 part 7): its fields' and, for seasons that
+  # The plantings whose seasons ran on this system: its fields' and, for seasons that
   # ended before their field moved to another system, theirs
   has_many :plantings, dependent: nil
   # Its own fields' plantings go with them; seasons that ran here on fields since moved elsewhere
@@ -77,7 +77,7 @@ class Pivot < ApplicationRecord
 
   before_save :assign_weather_cell, if: -> { will_save_change_to_latitude? || will_save_change_to_longitude? }
   after_commit :update_weather, if: -> { saved_change_to_weather_cell_id? && weather_cell_id }
-  # Plantings that haven't ended move with the pivot; ended ones keep the weather they ran on (G.9)
+  # Plantings that haven't ended move with the pivot; ended ones keep the weather they ran on
   after_update :move_open_plantings, if: :saved_change_to_weather_cell_id?
 
   def linear? = kind == "linear"
@@ -85,7 +85,7 @@ class Pivot < ApplicationRecord
   # What growers call it: "Pivot", "Traveler", "Location"
   def kind_name = KIND_NAMES.fetch(kind, "Irrigation system")
 
-  # How a system is named to growers (G.14): "East gun (traveler)", or the name alone when it
+  # How a system is named to growers: "East gun (traveler)", or the name alone when it
   # already says its kind ("Home pivot"). Mirrored by systemName in lib/geo.ts; pages put
   # "Irrigation system:" (or "System:" where space is short) before it, never the kind.
   def label = name.downcase.include?(kind_name.downcase) ? name : "#{name} (#{kind_name.downcase})"

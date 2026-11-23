@@ -1,7 +1,7 @@
 # A cell's weather for one local day, built from hourly model values (Weather::Daily). Provisional
 # days are refreshed as the model revises them; final days (WeatherFinalizeJob) are not.
 #
-# Corrected (PLAN.md D12, §8.5): et0_in is WISP's FAO-56 ET0 from the corrected shortwave, and
+# Corrected (D12): et0_in is WISP's FAO-56 ET0 from the corrected shortwave, and
 # dew_point_f, rh_*_pct and vpd_max_kpa follow the corrected dew point. Open-Meteo's values are kept
 # in the *_raw_* columns and et0_openmeteo_in; `corrections` lists the labels the day went through
 # (Weather::Corrections), empty for a day stored before them.

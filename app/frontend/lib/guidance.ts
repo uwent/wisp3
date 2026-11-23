@@ -6,7 +6,7 @@ import type { Units } from './units'
 // How a planting's water use is modeled, and which readings keep it on track, in words for its
 // field page. The advice follows the legacy WISP user guide (rev. 8/26/14): soil moisture weekly,
 // percent cover from emergence until about 80%, sensors at 25% and 75% of the root zone. The
-// model's behavior is Canopy, CanopyCurve and CanopyModel's (PLAN.md §5.3, Phase 6.7); change them
+// model's behavior is Canopy, CanopyCurve and CanopyModel's (docs/architecture.md, Canopy and soils); change them
 // together. Which readings are due, and the canopy and irrigation checks, come from PlantingTasks (summary.tasks).
 
 /** How often a reading should be entered, in days (PlantingTasks::READING_EVERY) */
@@ -28,7 +28,7 @@ export type Reading = {
 
 export type Guidance = {
   title: string
-  /** Two sentences shown first (G.6): how the crop is modeled, and what to enter */
+  /** Two sentences shown first: how the crop is modeled, and what to enter */
   summary: string
   /** The rest, under "More about how … is modeled" */
   more: string
@@ -119,7 +119,7 @@ function vineKillText(planting: GuidedPlanting): string {
   return `Vine kill is ${formatDate(planting.vine_kill_date)}: the canopy ramps down to nothing by ${formatDate(addDays(planting.vine_kill_date, VINE_KILL_DAYS))}, and WISP keeps the water balance going until harvest on ${formatDate(planting.end_date)}. A canopy reading after vine kill is used as entered.`
 }
 
-/** The planting's own season length (G.7), stretching its curve: a sentence, or '' without one */
+/** The planting's own season length, stretching its curve: a sentence, or '' without one */
 function seasonText(planting: GuidedPlanting): string {
   const own = planting.season_days
   const typical = planting.typical_season_days
@@ -176,7 +176,7 @@ function summaryText(planting: GuidedPlanting): string {
   return `WISP estimates ${crop} water use from how much of the ground its canopy covers, ${follows}. Enter percent cover about weekly until the canopy closes, and a soil moisture reading about once a week to correct any drift.`
 }
 
-/** How a percent cover curve keeps time (PLAN.md §9 C23): a sentence, or '' without a curve */
+/** How a percent cover curve keeps time (C23): a sentence, or '' without a curve */
 function timingText(planting: GuidedPlanting, thermal: boolean | null): string {
   if (!planting.canopy_curve || thermal === null) return ''
   if (thermal === false) {

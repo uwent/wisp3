@@ -69,7 +69,7 @@ RSpec.describe "Domain models" do
         .to raise_error(ActiveRecord::StatementInvalid, /plantings_vine_kill_order/)
     end
 
-    it "ends after the season start and after emergence: at least a day long (G.13 part 3)" do
+    it "ends after the season start and after emergence: at least a day long" do
       planting = build(:planting, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 3, 1),
         end_date: Date.new(2026, 4, 1))
       expect(planting).not_to be_valid
@@ -113,7 +113,7 @@ RSpec.describe "Domain models" do
       expect(build(:planting, plant: corn, et_method: "lai")).to have_attributes(canopy_curve?: true,
         effective_canopy_interpolation: "curve")
       expect(build(:planting, plant: create(:plant, key: "soybean"), et_method: "lai").canopy_curve?).to be(false)
-      # A crop without its own follows its generic curve, another picked, or none (G.3)
+      # A crop without its own follows its generic curve, another picked, or none
       onion = create(:plant, key: "onion")
       expect(build(:planting, plant: onion)).to have_attributes(canopy_curve?: true, generic_curve_crop?: true)
       expect(build(:planting, plant: onion).cover_curve.key).to eq("slow_partial")
@@ -122,7 +122,7 @@ RSpec.describe "Domain models" do
         effective_canopy_interpolation: "linear", cover_curve: nil)
     end
 
-    it "takes a curve choice only for a crop without its own, and only one WISP has (G.3)" do
+    it "takes a curve choice only for a crop without its own, and only one WISP has" do
       potato = create(:plant, key: "potato")
       onion = create(:plant, key: "onion")
       expect(build(:planting, plant: potato, canopy_curve_key: "leafy_fast")).not_to be_valid

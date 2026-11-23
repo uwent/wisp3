@@ -22,7 +22,7 @@ RSpec.describe "Field status and daily entry", type: :request do
   around { |example| travel_to(Time.zone.local(2026, 7, 20, 9)) { example.run } }
 
   describe "the field page" do
-    it "shows the season's balance, summary, and its zone's week ahead (G.12)" do
+    it "shows the season's balance, summary, and its zone's week ahead" do
       pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: [{date: "2026-07-20", tmax_f: 90, tmin_f: 70}, {date: "2026-07-21", tmax_f: 88, tmin_f: 66}]})
 
@@ -38,13 +38,13 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(props[:weather_zone]).to eq({"id" => pivot.weather_cell_id, "name" => pivot.name, "location" => pivot.weather_cell.location})
       expect(props[:forecast].map { |day| [day[:date], day[:tmax_f]] }).to eq([["2026-07-20", 90], ["2026-07-21", 88]])
 
-      # An ended season still shows the location's week ahead (G.6)
+      # An ended season still shows the location's week ahead
       planting.update!(end_date: Date.new(2026, 7, 15))
       get planting_path(planting)
       expect(inertia.props[:forecast].size).to eq(2)
     end
 
-    it "gives the crop's canopy curve each day, and flags readings that run ahead of it (Phase 6.7)" do
+    it "gives the crop's canopy curve each day, and flags readings that run ahead of it" do
       planting.update!(plant: create(:plant, key: "potato"))
       get planting_path(planting)
       expect(inertia.props[:planting]).to include(canopy_curve: true, effective_canopy_interpolation: "curve")
@@ -231,7 +231,7 @@ RSpec.describe "Field status and daily entry", type: :request do
     end
   end
 
-  describe "time travel (Phase 8 F)" do
+  describe "time travel" do
     before do
       # An ensemble that would give the projection a band today
       dates = Date.new(2026, 7, 20)..Date.new(2026, 8, 4)
@@ -314,7 +314,7 @@ RSpec.describe "Field status and daily entry", type: :request do
   describe "editing a day" do
     let(:url) { field_day_path(field, "2026-07-08") }
 
-    it "gives a part-field planting its own irrigation, readings and notes, and the field the rain (G.11)" do
+    it "gives a part-field planting its own irrigation, readings and notes, and the field the rain" do
       plot_field = create(:field, pivot:, name: "Arlington 525", area_acres: 4)
       plot = create(:planting, field: plot_field, partial: true, plot_length_ft: 100, plot_width_ft: 20,
         season_start: Date.new(2026, 5, 1), emergence_date: Date.new(2026, 5, 20), end_date: Date.new(2026, 9, 30))
@@ -400,7 +400,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(cards["Bare"][:plantings]).to eq([])
     end
 
-    # Dashboard/Show shows the getting started checklist until there's a planting (G.6); the counts
+    # Dashboard/Show shows the getting started checklist until there's a planting; the counts
     # are all the server decides
     it "gives a new account's dashboard no farms and the checklist's counts" do
       newcomer = create(:user)
@@ -419,7 +419,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(inertia.props[:getting_started]).to be_nil
     end
 
-    # The log irrigation dialog (docs/plans/phase-9.md §9): the calculator's equipment, the fields
+    # The log irrigation dialog: the calculator's equipment, the fields
     # with their seasons here, and the recent irrigation it warns before replacing
     it "gives each system what logging its irrigation needs" do
       field.record_entry(Date.new(2026, 7, 19), {irrigation_in: 0.8})
@@ -575,7 +575,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(inertia.props).not_to have_key(:field_amounts)
     end
 
-    it "lists the fields on the pivot with their seasons, a field moved away among them (G.14 part 7)" do
+    it "lists the fields on the pivot with their seasons, a field moved away among them" do
       planting.update!(end_date: Date.new(2026, 7, 15))
       field.update!(pivot: create(:pivot, farm:))
       get pivot_path(pivot)
@@ -586,7 +586,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       ])
     end
 
-    it "shows the week ahead in the pivot's weather zone, linking to it (G.12)" do
+    it "shows the week ahead in the pivot's weather zone, linking to it" do
       pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: [{date: "2026-07-19", tmax_f: 80}, {date: "2026-07-20", tmax_f: 90, tmin_f: 70}]})
       get pivot_path(pivot)

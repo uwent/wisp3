@@ -1,4 +1,4 @@
-# Plots no longer have a place in their field (G.14): the map shows a field's plantings as badges
+# Plots no longer have a place in their field: the map shows a field's plantings as badges
 # at its center. Rolling back brings the columns back empty.
 class RemovePinsFromPlantings < ActiveRecord::Migration[8.1]
   def change

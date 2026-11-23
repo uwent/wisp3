@@ -15,7 +15,7 @@ describe('outlook', () => {
     })
   }
 
-  // Time travel (PLAN.md Phase 8 F): the field page only, so not in the shared cases
+  // Time travel: the field page only, so not in the shared cases
   describe('on the weather that followed', () => {
     const base = { ...outlookCases.base, projection_source: 'observed', ensemble_size: 0 }
     const crossing = { date: '2026-07-13', days: 3, ad: 0.1, refill: 0.7 }

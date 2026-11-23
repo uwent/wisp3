@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Who may delete what (Q8, G.15): owners anything; a member only the plantings and irrigation
+# Who may delete what (Q8): owners anything; a member only the plantings and irrigation
 # groups they added, never a farm, system or field, whose deletes reach everyone's records
 RSpec.describe "Deleting as a member", type: :request do
   let(:owner) { create(:user) }

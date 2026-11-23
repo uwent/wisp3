@@ -60,7 +60,7 @@
     pivot: { id: number; name: string; kind: PivotKind; kind_name: string; pump_capacity_gpm: number | null }
     farm: { id: number; name: string }
     weather_updating: boolean
-    /** Time travel (PLAN.md Phase 8 F): the earlier day the page shows, read-only; null for today */
+    /** Time travel: the earlier day the page shows, read-only; null for today */
     as_of: string | null
     /** The season's days before today, which time travel can pick; null if none */
     travel_dates: { from: string; to: string } | null
@@ -79,7 +79,7 @@
   // "pivot", "drip block"
   const noun = $derived(KIND_NOUNS[pivot.kind])
   // Time travelling, nothing on the page edits, and the projection is the weather that followed
-  // Time travel, or the example farm (PLAN.md G.8), whose day is as_of when the season covers it
+  // Time travel, or the example farm, whose day is as_of when the season covers it
   // and which has no other day to travel to
   const example = $derived(isExample(page.props))
   const travelling = $derived(as_of !== null && !example)
@@ -126,11 +126,11 @@
   // A field using only entered rain also has a projection with no rain (Q7)
   const hasDry = $derived(summary?.projection.some((day) => day.dry_ad !== null) ?? false)
   const stats = $derived(days.length ? seasonStats(days) : null)
-  // Part of the field (G.11): rain is the field's; irrigation, readings and notes are this planting's
+  // Part of the field: rain is the field's; irrigation, readings and notes are this planting's
   const plot = $derived(planting.partial ? plotSize(planting, units) : null)
 
   // Past the crop's typical season and still running (often the Nov 30 default): offer to end it
-  // today (PLAN.md Phase 8 G.2)
+  // today
   const overdue = $derived(
     !readOnly &&
       summary.phase === 'active' &&
@@ -159,7 +159,7 @@
         summary?.canopy_thermal ?? null,
       ),
   )
-  // Whether "More about how … is modeled" is open: closed until opened, then remembered in this browser (G.6)
+  // Whether "More about how … is modeled" is open: closed until opened, then remembered in this browser
   const GUIDANCE_KEY = 'wisp:planting-guidance-more'
   let guidanceOpen = $state(readStored(GUIDANCE_KEY) === true)
   function toggleGuidance(open: boolean) {
@@ -183,7 +183,7 @@
     summary
       ? summary.pct_at_ad_zero + ((summary.field_capacity_pct - summary.pct_at_ad_zero) * ad) / summary.ad_max
       : null
-  // An ended season's day counts beside its totals (G.6): "24 days"
+  // An ended season's day counts beside its totals: "24 days"
   const counted = (n: number) => (summary?.phase === 'ended' ? ` (${count(n, 'day')})` : '')
 
   async function saveCell(day: FieldDay, column: DayColumn, text: string): Promise<string | null> {
@@ -297,7 +297,7 @@
 </FieldHeader>
 
 {#if travelling}
-  <!-- Time travel (PLAN.md Phase 8 F): this card explains it, and once it scrolls away a slim bar
+  <!-- Time travel: this card explains it, and once it scrolls away a slim bar
        across the top of the window keeps the date and the way back in view -->
   <div role="status" class="rounded-lg border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm" {@attach watchCard}>
     <p>
@@ -388,7 +388,7 @@
     {#if summary.phase === 'upcoming'}
       <p class="text-sm">The season starts {formatDate(summary.season_start, { year: true })}.</p>
     {:else}
-      <!-- The outlook leads (G.6), then where the soil is -->
+      <!-- The outlook leads, then where the soil is -->
       {#if outlook}
         <div
           class="rounded-md border px-3 py-2 text-sm {outlook.urgent
@@ -505,7 +505,7 @@
   </div>
 
   {#if guidance && (guidance.readings.length || guidance.warning || guidance.irrigationCheck)}
-    <!-- The readings that keep the model on track, each with when it was last entered; due ones marked (G.6) -->
+    <!-- The readings that keep the model on track, each with when it was last entered; due ones marked -->
     <div class="space-y-2 border-t border-line pt-3 text-sm lg:col-span-3">
       <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h3 class="font-medium">Data entry</h3>
@@ -543,7 +543,7 @@
     </div>
   {/if}
   {#if guidance}
-    <!-- Two sentences first, the rest on request (G.6), the card's full width -->
+    <!-- Two sentences first, the rest on request, the card's full width -->
     <div class="border-t border-line pt-3 text-sm lg:col-span-3">
       <h3 class="font-medium">{guidance.title}</h3>
       <div class="mt-1 text-ink-muted">

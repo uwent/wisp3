@@ -1,4 +1,4 @@
-# The range of outcomes ahead (PLAN.md §6): the water balance run once per ensemble member from
+# The range of outcomes ahead (docs/engine.md): the water balance run once per ensemble member from
 # today's AD, through the deterministic projection's days. Each member brings its own et0 and, where
 # the day's rain is modeled, its own rain; entered values (planned irrigation) are kept. Plain Ruby.
 module EnsembleProjection

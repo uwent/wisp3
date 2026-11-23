@@ -1,7 +1,7 @@
 require "net/http"
 
 module Weather
-  # The AgWeather → Open-Meteo comparison (PLAN.md §8.4, §8.5): daily reference ET and
+  # The AgWeather → Open-Meteo comparison: daily reference ET and
   # precipitation from AgWeather (legacy WISP's source) against Open-Meteo at the same points, and
   # what the difference does to a standard field's water balance. bin/rails weather:compare writes
   # the report. Uses the historical-forecast API, as the backfill does. Sources:
@@ -153,7 +153,7 @@ module Weather
       Series.new(et0:, precip:)
     end
 
-    # Variables for WISP's own ET0 (§8.5) besides Open-Meteo's
+    # Variables for WISP's own ET0 besides Open-Meteo's
     OPEN_METEO_VARIABLES = %w[
       et0_fao_evapotranspiration precipitation temperature_2m dew_point_2m wind_speed_10m surface_pressure shortwave_radiation
     ].freeze

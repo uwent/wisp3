@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# PLAN.md Phase 8 G.3: crops without their own canopy curve follow a generic one, which readings
+# Crops without their own canopy curve follow a generic one, which readings
 # correct; "none" is readings only, and until the first reading the planting needs canopy data.
 RSpec.describe "Generic canopy curves" do
   let(:onion) { create(:plant, key: "onion", name: "Onion") }

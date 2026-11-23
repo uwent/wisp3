@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# The days each account used WISP and which parts (ActivityDay, RecordsActivity, PLAN.md H.2)
+# The days each account used WISP and which parts (ActivityDay, RecordsActivity)
 RSpec.describe "Activity days", type: :request do
   let(:user) { create(:user) }
   let(:phone) { {"User-Agent" => "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148"} }

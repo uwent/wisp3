@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe "Canopy cuttings (G.3)", type: :request do
+RSpec.describe "Canopy cuttings", type: :request do
   let(:user) { create(:user) }
   let(:field) { create(:field, pivot: create(:pivot, farm: create(:farm, group: user.groups.first))) }
   let(:planting) do

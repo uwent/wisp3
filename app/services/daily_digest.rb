@@ -1,9 +1,9 @@
-# The daily digest email's contents (PLAN.md Phase 6): the fields the user includes, by operation,
+# The daily digest email's contents: the fields the user includes, by operation,
 # farm, weather zone (the weather grid cell its pivots share, with a summary of its weather), pivot
 # and field. users.digest_scope chooses which included fields are listed: all of them, those with a
 # crop in season, those needing irrigation or a reading, or only those needing irrigation. Fields
 # needing attention (irrigate, or caution) are also listed first, soonest crossing first. A field
-# growing several plantings at once (plots, PLAN.md Phase 8 G.11) has a line for each.
+# growing several plantings at once (plots) has a line for each.
 class DailyDigest
   # One line: a planting's PlantingStatus this year, or nil for a field without a planting
   Entry = Data.define(:field, :status, :outlook) do

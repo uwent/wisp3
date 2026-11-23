@@ -1,4 +1,4 @@
-# Evaporation from the soil surface (PLAN.md §9 C22): FAO-56 chapter 7's evaporation coefficient Ke
+# Evaporation from the soil surface (C22): FAO-56 chapter 7's evaporation coefficient Ke
 # (eqs. 71–77, Allen et al. 1998, https://www.fao.org/4/x0490e/x0490e0c.htm), the half of the dual
 # crop coefficient that CropEt's basal coefficient Kcb leaves out. Plain Ruby; depths in inches.
 #

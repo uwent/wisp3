@@ -1,5 +1,5 @@
 # A realistic demo account for development, staging, the beta and the example farm (bin/rails
-# demo:seed; PLAN.md Phase 8 G.8), built from db/demo/farms.yml: three farms on real fields seen on
+# demo:seed), built from db/demo/farms.yml: three farms on real fields seen on
 # the imagery (Arlington's silt loams, mostly rainfed; Coloma's pivot-scale potatoes and processing
 # vegetables on sand, outlines from a field map; Hancock Agricultural Research Station's K fields
 # under a linear and R fields under a pivot). Between them they show split pivots, a linear, a
@@ -13,12 +13,12 @@
 # The file holds month-day dates, placed in the year seeded. To change the layout, edit the demo
 # account in the app (move systems, redraw outlines, rename) and write it back with bin/rails
 # demo:export (DemoExport), or edit the file. Rebuilds the demo group from scratch each run.
-# Weather comes from Phase 3's fetch.
+# Weather comes from the usual fetch (Weather::Fetcher).
 class DemoSeed
   GROUP_NAME = "Demo farms"
   FILE = Rails.root.join("db/demo/farms.yml")
 
-  # The public example farm (PLAN.md G.8): the same farms in a group of their own, with no members,
+  # The public example farm: the same farms in a group of their own, with no members,
   # shown as of July 20 of the season seeded
   EXAMPLE_NAME = "Example farm"
   EXAMPLE_DAY = [7, 20].freeze

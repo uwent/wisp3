@@ -2,7 +2,7 @@ class FieldsController < AuthenticatedController
   before_action :require_owner, only: :destroy
   allow_example :show
 
-  # The field page (PLAN.md Phase 8 G.11): the land rather than one crop on it. Its season's
+  # The field page: the land rather than one crop on it. Its season's
   # plantings on a timeline, a status card for each, and the field's own rain and irrigation, which
   # every planting on it shares (no balance: that's each planting's page). ?year= picks the season.
   # ?planting_id= (links from before plantings had their own pages) goes to that planting's page.

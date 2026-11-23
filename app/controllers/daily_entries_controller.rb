@@ -1,4 +1,4 @@
-# Bulk daily entry (PLAN.md §11, Phase 8 G.4): one date for the whole operation. Each field its own
+# Bulk daily entry: one date for the whole operation. Each field its own
 # rain, irrigation and soil moisture reading, each part-field planting its own irrigation and soil
 # moisture, and each planting a canopy reading (percent cover or LAI); a system's row fills its
 # fields' boxes in the browser (D15). Props: DailyEntryPage; saved by

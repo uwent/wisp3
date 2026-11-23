@@ -1,7 +1,7 @@
 import type { PivotKind } from '@/lib/geo'
 import { common } from '@/lib/irrigation'
 
-// Daily entry's rows (PLAN.md Phase 8 G.4): one table per farm, its levels as indented rows
+// Daily entry's rows: one table per farm, its levels as indented rows
 // (irrigation group, irrigation system ("pivot" in code), field, plot). Rain is entered on group and
 // system rows and fills their fields in season (stored per field). Irrigation is each field's and
 // plot's own (D15): a system's row fills its fields and their plots, a field's row its plots, and a

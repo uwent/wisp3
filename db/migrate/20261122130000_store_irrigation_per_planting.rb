@@ -1,4 +1,4 @@
-# D15 (PLAN.md, 2026-11-22): irrigation is stored per field and per plot, in inches, never inherited
+# D15 (2026-11-22): irrigation is stored per field and per plot, in inches, never inherited
 # from the irrigation system. Each planting keeps the irrigation the old precedence gave it
 # (DailyInputs before D15):
 #

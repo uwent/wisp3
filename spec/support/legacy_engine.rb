@@ -2,10 +2,10 @@
 # ETCalculator#adj_et_pct_cover / #adj_et_lai_for_nonclumping, FieldDailyWeather#old_update_balances,
 # Field#do_balances and RingBuffer#mean_top_3. Missing reference ET is 0.0, as legacy stored it.
 #
-# Each PLAN.md §9 fix that changes the balance can be switched on. With every fix on it must match
+# Each fix in docs/legacy-audit.md that changes the balance can be switched on. With every fix on it must match
 # WaterBalance, and without them every differing day must trace to a fix
-# (spec/services/legacy_engine_spec.rb). It was checked against 30 legacy production fields in
-# Phase 2 (golden tests, since retired; see PLAN.md §14). C3/C4 change the canopy series rather
+# (spec/services/legacy_engine_spec.rb). It was checked against 30 legacy production fields
+# while it was built (golden tests, since retired). C3/C4 change the canopy series rather
 # than the balance, so callers pass the canopy they want.
 module LegacyEngine
   FIXES = {

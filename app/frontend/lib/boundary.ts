@@ -3,7 +3,7 @@ import { segmentDistance, segmentsCross } from './planar'
 
 const rad = (deg: number) => (deg * Math.PI) / 180
 
-// A field's outline (PLAN.md Phase 8 G.10, G.14; FieldBoundary on the server): a GeoJSON Polygon
+// A field's outline (FieldBoundary on the server): a GeoJSON Polygon
 // with one ring (no holes, no parts) in longitude and latitude, for the map and the suggested area only
 
 export type Boundary = { type: 'Polygon'; coordinates: [LngLat[]] }
@@ -154,7 +154,7 @@ export function simplifyBoundary(boundary: Boundary, maxVertices = MAX_BOUNDARY_
 export const boundaryBounds = (boundary: Boundary): [LngLat, LngLat] => boundsOf(boundaryRing(boundary))!
 
 /**
- * Where a field's name goes (G.14): on the outline's top edge, above its center (boundaryCenter),
+ * Where a field's name goes: on the outline's top edge, above its center (boundaryCenter),
  * so it stays clear of the badges there
  */
 export function boundaryTop(boundary: Boundary): LngLat {

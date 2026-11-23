@@ -1,6 +1,6 @@
 import { router } from '@inertiajs/svelte'
 
-// Google Analytics on the public pages only (PLAN.md H.1). The layout names the measurement ID in a
+// Google Analytics on the public pages only. The layout names the measurement ID in a
 // meta tag when GA_MEASUREMENT_ID is set (production); without it nothing here runs. gtag.js loads
 // the first time a tracked page is shown, so a grower who arrives signed in never loads it. Signed
 // in, or on any page not listed, GA's own opt-out flag is set, so nothing is sent. Page views are

@@ -46,7 +46,7 @@ test('a grid is one tab stop: arrows move inside it, Tab moves past it', async (
   expect(await page.evaluate(() => document.activeElement?.getAttribute('data-grid'))).not.toBe('days')
 })
 
-test("daily entry's week moves between cells with the arrow keys and Enter (Phase 9 §6)", async ({ page }) => {
+test("daily entry's week moves between cells with the arrow keys and Enter", async ({ page }) => {
   await page.goto(`/daily/week?date=${new Date().getFullYear()}-07-15`)
   // The farm with the irrigation group of five systems: a rain row, then a row per system
   const table = page
@@ -85,7 +85,7 @@ test('selecting a pivot from the keyboard moves to its panel, and Escape comes b
   await expect(show).toBeFocused()
 })
 
-test("the map list's cards select from the keyboard, and Escape clears the selection (G.14)", async ({ page }) => {
+test("the map list's cards select from the keyboard, and Escape clears the selection", async ({ page }) => {
   await page.goto('/map')
   const farm = page.getByRole('button', { name: /^Zoom the map to the farm / }).first()
   await farm.focus()
@@ -122,7 +122,7 @@ test('setup dialogs and the account menu work from the keyboard', async ({ page 
   await expect(dialog).toBeHidden()
   await expect(edit).toBeFocused()
 
-  // With a change, Escape moves focus into the prompt (G.13); Keep editing returns it to the change
+  // With a change, Escape moves focus into the prompt; Keep editing returns it to the change
   await page.keyboard.press('Enter')
   const name = dialog.getByRole('textbox').first()
   await name.focus()
@@ -149,7 +149,7 @@ test('setup dialogs and the account menu work from the keyboard', async ({ page 
   await expect(account).toBeFocused()
 })
 
-test("a planting bar's menu works from the keyboard (G.13 part 3)", async ({ page }) => {
+test("a planting bar's menu works from the keyboard", async ({ page }) => {
   await page.goto('/setup')
   const bar = page
     .getByRole('list', { name: new RegExp(`^Plantings on ${literal(DEMO.researchField)}`) })
@@ -186,9 +186,7 @@ test('a glossary term opens from the keyboard, and describes itself by its defin
   await expect(term).toBeFocused()
 })
 
-test("a form's info tip opens from the keyboard, and Escape closes it before the dialog's prompt (G.13)", async ({
-  page,
-}) => {
+test("a form's info tip opens from the keyboard, and Escape closes it before the dialog's prompt", async ({ page }) => {
   await page.goto('/setup')
   await page.getByRole('button', { name: `Edit ${DEMO.researchField}` }).click()
   const dialog = page.getByRole('dialog')

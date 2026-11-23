@@ -1,5 +1,5 @@
 // Terms WISP uses, explained where they appear (Term.svelte, GlossaryText.svelte) and, later, on
-// the reference page. Definitions follow the water balance (PLAN.md §5) and the legacy user guide.
+// the reference page. Definitions follow the water balance (docs/engine.md) and the legacy user guide.
 
 export type GlossaryEntry = {
   id: string

@@ -1,4 +1,4 @@
-# The daily digest (PLAN.md Phase 6): "daily_all_year" sends every morning even with nothing in
+# The daily digest: "daily_all_year" sends every morning even with nothing in
 # season (weather for the included pivots); digest_scope chooses which included fields it lists.
 class AddDigestScopeAndAllYear < ActiveRecord::Migration[8.1]
   def up

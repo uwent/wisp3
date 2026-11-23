@@ -2,7 +2,7 @@ import { type LngLat, pointInPolygon } from '@/lib/geo'
 
 import { reflectivityAt } from './radar'
 
-// Optional public layers for the map (PLAN.md Phase 7 E), loaded by the browser from their
+// Optional public layers for the map, loaded by the browser from their
 // providers, never by our server. Each can fail or be slow; the map marks a failing one
 // unavailable and carries on. valueAt says what a layer has at a point, for the tooltip.
 

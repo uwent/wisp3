@@ -284,7 +284,7 @@ describe('weather charts', () => {
     expect((option.xAxis as { data: string[] }).data).toHaveLength(days.length)
   })
 
-  it('offers each planting date once in the degree days menu, naming its plantings (G.6)', () => {
+  it('offers each planting date once in the degree days menu, naming its plantings', () => {
     expect(
       plantingStarts([
         { label: 'River Sweet Corn', planted: '2026-05-10' },

@@ -25,7 +25,7 @@
   // values, for the pivot form and the guided setup. A point kind (a traveler, solid set, drip, a
   // location only) has only its location. Inputs are named `${prefix}[attribute]`. `children` (the
   // setup's pump capacity) ends the coordinates' row; the soil survey comes last. In sections, each
-  // under a heading (G.13 part 3): the kind, the location and size, and the soil survey; a saved
+  // under a heading: the kind, the location and size, and the soil survey; a saved
   // system's kind, rarely changed, is one line until Change shows the choices.
   let {
     shape = $bindable(),

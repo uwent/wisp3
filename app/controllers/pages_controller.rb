@@ -1,4 +1,4 @@
-# Public pages (PLAN.md Phase 6.5): the landing page for signed-out visitors and the About page,
+# Public pages: the landing page for signed-out visitors and the About page,
 # which anyone can read. Signed in, the About page shows the app's nav, so the current operation
 # is set as on every other page.
 class PagesController < AuthenticatedController
@@ -22,7 +22,7 @@ class PagesController < AuthenticatedController
          lai_curve: plant.canopy_model.present?, cover_curve: CanopyCurve.for(plant.key).present?,
          generic_curve: CanopyCurve.for(plant.key) ? nil : CanopyCurve.default_generic(plant.key)&.name}
       end,
-      # The generic curves crops without their own follow (G.3), with the crops that do by default
+      # The generic curves crops without their own follow, with the crops that do by default
       generic_curves: CanopyCurve.generic.values.map do |curve|
         {key: curve.key, name: curve.name, basis: curve.basis, season: curve.season_basis,
          crops: Plant.where(key: curve.default_for).order(:name).pluck(:name)}
@@ -48,7 +48,7 @@ class PagesController < AuthenticatedController
 
   private
 
-  # Each crop's percent cover curve for the About page (PLAN.md Phase 6.7): its parameters, sources and
+  # Each crop's percent cover curve for the About page: its parameters, sources and
   # confidence from db/reference/canopy_curves.yml, and its cover by day for a May 15 emergence, by the
   # calendar curve (in the field it runs by growing degree days, C23, matching this in a typical season)
   def canopy_curves

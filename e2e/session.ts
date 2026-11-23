@@ -52,7 +52,7 @@ export async function firstPlantingPath(page: Page): Promise<string> {
   return new URL(href!, page.url()).pathname
 }
 
-/** The demo's research field, with four plots side by side (PLAN.md Phase 8 G.11) */
+/** The demo's research field, with four plots side by side */
 export async function researchFieldPath(page: Page): Promise<string> {
   await page.goto('/')
   const card = page
@@ -61,7 +61,7 @@ export async function researchFieldPath(page: Page): Promise<string> {
   return new URL((await card.getByRole('link').first().getAttribute('href'))!, page.url()).pathname
 }
 
-/** The first planting's weather zone (G.12), from its page's "View detailed weather charts" link */
+/** The first planting's weather zone, from its page's "View detailed weather charts" link */
 export async function firstZonePath(page: Page): Promise<string> {
   return firstLinkPath(page, await firstPlantingPath(page), 'a[href*="/weather/"]')
 }
@@ -72,7 +72,7 @@ export async function firstLinkPath(page: Page, from: string, selector: string):
   return new URL((await page.locator(`main ${selector}`).first().getAttribute('href'))!, page.url()).pathname
 }
 
-/** Signs in as the admin, then as the demo grower from her admin page (PLAN.md Phase 8 B) */
+/** Signs in as the admin, then as the demo grower from her admin page */
 export async function impersonateGrower(page: Page) {
   await signIn(page)
   await page.goto('/admin/users')
@@ -105,7 +105,7 @@ export async function signedInPages(page: Page): Promise<string[]> {
   const zone = await firstLinkPath(page, planting, 'a[href*="/weather/"]')
   const research = await researchFieldPath(page)
   const plot = await firstLinkPath(page, research, 'nav a[href*="/plantings/"]')
-  // A perennial with cuttings (G.3)
+  // A perennial with cuttings
   await page.goto('/')
   const hayCard = page
     .locator('main li')
@@ -115,7 +115,7 @@ export async function signedInPages(page: Page): Promise<string[]> {
   await page.goto('/admin/announcements')
   const announcementLink = page.getByRole('link', { name: ANNOUNCEMENT, exact: true })
   const announcement = new URL((await announcementLink.getAttribute('href'))!, page.url()).pathname
-  // A traveler, a point with no shape (G.5)
+  // A traveler, a point with no shape
   await page.goto('/setup')
   const travelerLink = page.locator(`a[href*="/pivots/"][aria-label="View ${DEMO.traveler}"]`)
   const traveler = new URL((await travelerLink.getAttribute('href'))!, page.url()).pathname
@@ -125,18 +125,18 @@ export async function signedInPages(page: Page): Promise<string[]> {
     planting,
     field,
     research,
-    // The field outline page (G.10), with the research field's plots to pin
+    // The field outline page, with the research field's plots to pin
     `${research}/outline`,
     plot,
     hay,
     '/setup',
-    // Quick setup's next steps box (G.6), for a system whose fields all have plantings
+    // Quick setup's next steps box, for a system whose fields all have plantings
     `/setup?started_pivot=${pivot.split('/').pop()}`,
     '/setup/start',
     '/setup/outlines/import',
     // Mid-season, so its rows are open (in November nothing is in season and they're collapsed)
     `/daily?date=${new Date().getFullYear()}-07-15`,
-    // Its week view (Phase 9 §6)
+    // Its week view
     `/daily/week?date=${new Date().getFullYear()}-07-15`,
     pivot,
     `${pivot}/edit`,

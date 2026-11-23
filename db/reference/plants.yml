@@ -3,13 +3,13 @@
 # (http://www.nrcs.usda.gov/Internet/FSE_DOCUMENTS/nrcs141p2_017640.pdf); mint from FAO-56
 # (http://www.fao.org/docrep/x0490e/x0490e0e.htm).
 # canopy_model: the LAI growth curve used when a planting uses the LAI method without entered
-# readings (CanopyModel). Only crops with one can use the LAI method (PLAN.md Phase 6.7); so far
+# readings (CanopyModel). Only crops with one can use the LAI method; so far
 # that's field corn (and corn silage, on the same curve).
-# Added in PLAN.md Phase 8 G.7: dry bean (2.5–3 ft) and sugar beet (3 ft) from University of Nebraska
+# Added for the 2027 beta: dry bean (2.5–3 ft) and sugar beet (3 ft) from University of Nebraska
 # EC3015's table of root zone depths (citing NRCS); sorghum as field corn, both 3–4 ft effective
 # rooting in UNL NebGuide G2245; corn silage as field corn; oats as barley and wheat.
 
-# Crop coefficients and heights (PLAN.md §9 C21, C22, C25) are from FAO-56's second edition: Pereira,
+# Crop coefficients and heights (C21, C22, C25) are from FAO-56's second edition: Pereira,
 # L. S., Allen, R. G., Paredes, P., López-Urrea, R., Raes, D., Smith, M., Kilic, A. & Salman, M.
 # (2025), Crop evapotranspiration: Guidelines for computing crop water requirements, FAO Irrigation
 # and Drainage Paper 56 Rev.1, Rome, FAO, https://doi.org/10.4060/cd6621en (CC BY 4.0). They replace

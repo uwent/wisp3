@@ -1,4 +1,4 @@
-# The public example farm (PLAN.md G.8): one group, shown read-only to anyone as of this day
+# The public example farm: one group, shown read-only to anyone as of this day
 class AddExampleAsOfToGroups < ActiveRecord::Migration[8.1]
   def change
     add_column :groups, :example_as_of, :date

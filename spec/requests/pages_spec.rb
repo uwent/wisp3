@@ -16,7 +16,7 @@ RSpec.describe "Public pages", type: :request do
     create(:plant, key: "potato", name: "Potato")
     create(:plant, key: "onion", name: "Onion")
     get about_path
-    # Onion has no curve of its own: a generic one (G.3)
+    # Onion has no curve of its own: a generic one
     expect(inertia.props[:plants].find { |plant| plant[:key] == "onion" }).to include(generic_curve: "Slow, partial cover")
     expect(inertia.props[:generic_curves].find { |curve| curve[:key] == "slow_partial" }).to include(crops: ["Onion"])
     curves = inertia.props[:canopy_curves]

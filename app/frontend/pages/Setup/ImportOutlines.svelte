@@ -22,7 +22,7 @@
   type System = PivotShape & { id: number; name: string; kind_name: string; farm: string }
   type ExistingField = { id: number; name: string; pivot_id: number; area_acres: number | null; outlined: boolean }
 
-  // Field outlines for many fields from one file (PLAN.md Phase 8 G.10): read in the browser, each
+  // Field outlines for many fields from one file: read in the browser, each
   // shape matched to a field of the same name or made a new field under the system it sits under,
   // the grower adjusting either, then saved together. New fields take their outline's acres and the
   // soil survey's main soil.

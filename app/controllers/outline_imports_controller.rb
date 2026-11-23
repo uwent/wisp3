@@ -1,4 +1,4 @@
-# Field outlines for many fields at once (PLAN.md Phase 8 G.10): a file of shapes is read in the
+# Field outlines for many fields at once: a file of shapes is read in the
 # browser (a zipped shapefile, GeoJSON or KML), and each shape is matched to one of the operation's
 # fields or makes a new field under an irrigation system (OutlineImport). Only the outlines and the
 # new fields' values are sent.

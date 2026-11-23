@@ -1,4 +1,4 @@
-# Field groups are retired (PLAN.md Phase 8 G.4): pivot groups and daily entry's rain fill-down
+# Field groups are retired: pivot groups and daily entry's rain fill-down
 # replace them. Their entries first become their member fields' own, wherever the field had none, so
 # every balance reads as before: rain and soil moisture where the field entered none (a group's
 # came next), irrigation only where the pivot didn't irrigate the field that day either (a pivot's

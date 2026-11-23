@@ -33,7 +33,7 @@ const task = (kind: Task['kind'], label: string, last_date: string | null, due: 
 const today = '2026-07-20'
 
 describe('guidance', () => {
-  it('opens with two sentences: the method and what to enter (G.6)', () => {
+  it('opens with two sentences: the method and what to enter', () => {
     const lai = guidance(corn, units('imperial'), [], today)
     expect(lai.summary).toBe(
       'WISP estimates field corn water use from its leaf area index (LAI), following a field corn growth curve from ' +
@@ -72,7 +72,7 @@ describe('guidance', () => {
     ])
   })
 
-  it('lists the readings with their dates once the season has ended (G.6)', () => {
+  it('lists the readings with their dates once the season has ended', () => {
     const tasks = [
       task('soil_moisture', 'Soil moisture', '2026-09-20', false),
       task('canopy', 'Percent cover', '2026-08-01', false, { note: 'canopy closed' }),
@@ -151,7 +151,7 @@ describe('guidance', () => {
     )
     expect(none.paragraphs[0]).toContain('This planting follows no canopy curve (readings only)')
     expect(none.paragraphs[0]).toContain('Between readings WISP draws a straight line')
-    // A crop without its own curve on a generic one (G.3)
+    // A crop without its own curve on a generic one
     const generic = guidance(
       { ...potato, plant_name: 'Onion', generic_curve_name: 'Slow, partial cover' },
       units('imperial'),
@@ -188,7 +188,7 @@ describe('guidance', () => {
     expect(guidance(potato, units('imperial'), [], today).irrigationCheck).toBeNull()
   })
 
-  it("says when a planting's own season length stretches its curve (G.7)", () => {
+  it("says when a planting's own season length stretches its curve", () => {
     const text = (extra: object) => guidance({ ...potato, ...extra }, units('imperial'), [], today).paragraphs[0]
     expect(text({ season_days: 126, typical_season_days: 105 })).toContain(
       "This planting's season is set to 126 days from emergence to harvest instead of the typical 105, so the curve runs 20% slower, its growth and decline alike.",

@@ -9,7 +9,7 @@ bin/rails runner docs/et-validation/scripts/weather_at_towers.rb    # tmp/amerif
 python3 -I docs/et-validation/scripts/compare_weather.py
 ```
 
-**Before 2025, Open-Meteo's historical forecasts have no NBM**, so for these seasons (2018–2023) WISP's chain runs on `best_match` alone. WISP uses NBM first, then `best_match`, and the shortwave correction was fitted to that merge; `best_match`'s shortwave reads higher than NBM's (1.20 against 1.15 × the Wisconet stations, PLAN.md §8.5), so these results are probably a few percent high for WISP as it runs today.
+**Before 2025, Open-Meteo's historical forecasts have no NBM**, so for these seasons (2018–2023) WISP's chain runs on `best_match` alone. WISP uses NBM first, then `best_match`, and the shortwave correction was fitted to that merge; `best_match`'s shortwave reads higher than NBM's (1.20 against 1.15 × the Wisconet stations, docs/plans/design.md §8.5), so these results are probably a few percent high for WISP as it runs today.
 
 AgWeather's adjusted ET is asked for with `method=adjusted` (the point endpoint; the grid's parameter is `et_method`).
 
@@ -44,7 +44,7 @@ July, the same 172 days as 03; bias against the towers' measured ET as recorded 
 | US-CS8 | 31 | 3.50 | 0.85 | +39% / +18% | +66% / +42% | +49% / +27% | +11% / −5% |
 | **All** | 172 | 3.78 | 0.80 | +29% / +3% | +37% / +9% | +42% / +13% | +7% / −15% |
 
-**2026-11-19: FAO-56 Rev.1's hourly ET0 (PLAN.md §9 C24).** Both the towers' ET0 (`et0.py`) and WISP's (`Weather::Fao56`, `weather_at_towers.rb` rerun) now use the second edition's surface resistance. Tower ET0 over these 672 days rises from 3.47 to 3.66 mm/d, and WISP's moves with it: WISP 3 against the towers stays 1.05 (by month and by site unchanged within 0.01, US-CS8 1.16). The sources computed another way fall against the higher reference: Open-Meteo's own ET0 1.18 → 1.12, AgWeather classic 1.16 → 1.10, adjusted 0.84 → 0.79. Crop ET at full cover (Kc mid 1.15, as in the table): WISP 3 on the towers' weather +36% / +8%, on its own +44% / +14% (+29% / +3% and +37% / +9% before); AgWeather's columns don't change.
+**2026-11-19: FAO-56 Rev.1's hourly ET0 (C24).** Both the towers' ET0 (`et0.py`) and WISP's (`Weather::Fao56`, `weather_at_towers.rb` rerun) now use the second edition's surface resistance. Tower ET0 over these 672 days rises from 3.47 to 3.66 mm/d, and WISP's moves with it: WISP 3 against the towers stays 1.05 (by month and by site unchanged within 0.01, US-CS8 1.16). The sources computed another way fall against the higher reference: Open-Meteo's own ET0 1.18 → 1.12, AgWeather classic 1.16 → 1.10, adjusted 0.84 → 0.79. Crop ET at full cover (Kc mid 1.15, as in the table): WISP 3 on the towers' weather +36% / +8%, on its own +44% / +14% (+29% / +3% and +37% / +9% before); AgWeather's columns don't change.
 
 - **WISP 3 on its own weather: +9% against the closure-corrected towers**, +3% without 2023 (the four Heartland seasons: −1% to +12%). Some of that is `best_match` standing in for NBM.
 - **On their real inputs, Talib et al.'s numbers reappear:** AgWeather classic +42% against the uncorrected towers (the paper: +20–35% over whole seasons, with canopy conversion), adjusted +7% (the paper: −10% at training sites, +1% at validation sites).
@@ -52,4 +52,4 @@ July, the same 172 days as 03; bias against the towers' measured ET as recorded 
 
 ## AgWeather v2
 
-AgWeather v2 (`../agweather2`) is being built to serve several gridded weather sources, each chosen for the best match to Wisconsin stations and corrected, falling back to Open-Meteo with the same corrections outside them. Once it's deployed, WISP may switch to it as its weather provider (PLAN.md D6). `weather_at_towers.rb` and `compare_weather.py` are the check for that switch: run the towers with v2's ET0 beside WISP's, and keep whichever matches them better.
+AgWeather v2 (`../agweather2`) is being built to serve several gridded weather sources, each chosen for the best match to Wisconsin stations and corrected, falling back to Open-Meteo with the same corrections outside them. Once it's deployed, WISP may switch to it as its weather provider (docs/decisions.md D6). `weather_at_towers.rb` and `compare_weather.py` are the check for that switch: run the towers with v2's ET0 beside WISP's, and keep whichever matches them better.

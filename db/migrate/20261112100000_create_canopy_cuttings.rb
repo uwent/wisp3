@@ -1,4 +1,4 @@
-# A perennial planting's cuttings (alfalfa, mint): each restarts its canopy (PLAN.md Phase 8 G.3)
+# A perennial planting's cuttings (alfalfa, mint): each restarts its canopy
 class CreateCanopyCuttings < ActiveRecord::Migration[8.1]
   def change
     create_table :canopy_cuttings do |t|

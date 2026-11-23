@@ -1,4 +1,4 @@
-# An email from WISP's admins to an audience of accounts (PLAN.md Phase 9), composed in Markdown with
+# An email from WISP's admins to an audience of accounts, composed in Markdown with
 # placeholders for each recipient ({{first_name}}, {{name|there}}), sent in WISP's email layout
 # (AnnouncementMailer). A draft is edited and test-sent; sending freezes its recipients as
 # deliveries (AnnouncementDelivery) and AnnouncementJob sends them, so resuming reaches only those

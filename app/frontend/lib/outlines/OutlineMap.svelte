@@ -25,14 +25,14 @@
 
   import { addReferenceLayers, FIRST_REFERENCE_LAYER, type Reference, referenceBounds } from './references'
 
-  // A field's outline on the map (PLAN.md Phase 8 G.10, G.14: one polygon), drawn in white as fields
+  // A field's outline on the map (one polygon), drawn in white as fields
   // are on the overview map, its system in the system color. terra-draw holds it: shown as it is
   // ('view'), a new one clicked corner by corner ('draw'; the old one stays until the new one is
   // finished, which replaces it), or selected to drag it whole or by its corners, add one from a
   // midpoint or remove one ('edit'). Drawing and editing end with the map's own Done editing or Cancel (the
   // shape as it was), which don't submit the page. Corners go anywhere: a shape whose edges cross
   // turns orange, and can't be kept. The saved shape stays dashed under one that's changed. A shape
-  // away from its system has a dashed arrow back to it (G.14 part 7), on the ground, so it leads
+  // away from its system has a dashed arrow back to it, on the ground, so it leads
   // there from off the screen too.
   let {
     boundary = $bindable(),

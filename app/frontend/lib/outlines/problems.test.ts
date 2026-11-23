@@ -85,7 +85,7 @@ describe('outlines to check', () => {
   })
 })
 
-describe('a shape away from its system (G.14 part 7)', () => {
+describe('a shape away from its system', () => {
   it('finds the nearest point of a segment, at its end past it', () => {
     const near = nearestOnSegment([-89.4, 44.101], [-89.401, 44.1], [-89.399, 44.1])
     expect(near.point[0]).toBeCloseTo(-89.4, 6)

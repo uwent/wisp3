@@ -4,7 +4,7 @@ import { formatDate, relativeDay } from './dates'
 import type { Units } from './units'
 
 // What the projection means for a field, in words, for its page and its dashboard card. Time
-// travelling on the field page (projection_source 'observed', PLAN.md Phase 8 F), the projection is
+// travelling on the field page (projection_source 'observed'), the projection is
 // what happened next (the weather and what was entered), so the words look back at it; the
 // digest's Outlook never time travels, so only this side has that case.
 
@@ -27,7 +27,7 @@ export const LEAD_DAYS = 3
 
 export function outlook(summary: PlantingSummary, units: Units): Outlook | null {
   if (summary.phase !== 'active' || !summary.date) return null
-  // No curve and no reading (PLAN.md Phase 8 G.3): the balance can't say when to irrigate
+  // No curve and no reading: the balance can't say when to irrigate
   if (summary.status === 'needs_canopy') {
     return {
       urgent: false,

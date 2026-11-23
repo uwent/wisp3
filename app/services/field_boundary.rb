@@ -1,4 +1,4 @@
-# A field's outline (PLAN.md Phase 8 G.10, G.14): a GeoJSON Polygon with one ring (no holes, no
+# A field's outline: a GeoJSON Polygon with one ring (no holes, no
 # parts) in WGS84 longitude and latitude, for the map and the suggested area only (the balance never
 # reads it). Drawn on the field's outline page or imported from a file in the browser, which keeps a
 # shape's largest part without its holes and simplifies it to MAX_VERTICES. Limits and area are

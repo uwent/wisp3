@@ -1,4 +1,4 @@
-# A weather cell's daily highs and lows for canopy curves in thermal time (ThermalTime, PLAN.md §9
+# A weather cell's daily highs and lows for canopy curves in thermal time (ThermalTime,
 # C23): stored days (WeatherDay) for the past, the latest forecast for today and the days ahead,
 # and the cell's normals (WeatherNormal) for every other day, after the forecast or missing in the
 # past. Without normals the cell has no thermal time, and curves run by calendar days.

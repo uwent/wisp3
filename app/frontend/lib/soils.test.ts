@@ -141,7 +141,7 @@ describe('soil types around a pivot', () => {
   })
 })
 
-describe("a plot's soil menu on a field with an outline (G.11, G.10)", () => {
+describe("a plot's soil menu on a field with an outline", () => {
   it('lists the soils in the field first, by their share, then the rest', () => {
     const units = [
       { mukey: '1', share: 0.6, name: 'Plano silt loam', component: 'Plano', texture: 'Silt loam' },
@@ -164,7 +164,7 @@ describe("a plot's soil menu on a field with an outline (G.11, G.10)", () => {
   })
 })
 
-describe("a field's chosen soil against the survey under its pivot (G.6)", () => {
+describe("a field's chosen soil against the survey under its pivot", () => {
   const soils = [
     { key: 'sand', name: 'Sand' },
     { key: 'loamy_sand', name: 'Loamy Sand' },

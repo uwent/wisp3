@@ -1,4 +1,4 @@
-# What the field and planting pages share (PLAN.md Phase 8 G.11): the field with every planting
+# What the field and planting pages share: the field with every planting
 # (for the tabs), its pivot and farm. The field needs its plantings, soil type and pivot with its
 # farm and group loaded.
 module FieldHeaderProps

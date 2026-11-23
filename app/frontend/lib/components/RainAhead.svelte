@@ -10,7 +10,7 @@
   import { weatherZone } from '@/lib/weatherZones'
   import type { ForecastDay } from '@/types/serializers'
 
-  // The week's rain in each weather zone (the dashboard, docs/plans/phase-9.md §9): a row of days
+  // The week's rain in each weather zone (the dashboard): a row of days
   // per zone (north to south, from the server), each with its chance and rain, likely and possible
   // days filled (lib/rain.ts). Closed to start, then as last left in this browser; closed, its
   // title says when rain comes, to which fields and how much.

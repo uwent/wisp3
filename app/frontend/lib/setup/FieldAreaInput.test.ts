@@ -5,7 +5,7 @@ vi.mock('@inertiajs/svelte', () => import('@/test/page.svelte'))
 
 import FieldAreaInput from './FieldAreaInput.svelte'
 
-// A field's area in the dialog and on the shape page (PLAN.md Phase 8 G.14 part 7)
+// A field's area in the dialog and on the shape page
 describe('FieldAreaInput', () => {
   const box = () => screen.getByRole('textbox') as HTMLInputElement
   const stored = (container: HTMLElement) => (container.querySelector('input[type=hidden]') as HTMLInputElement).value

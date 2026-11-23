@@ -46,10 +46,10 @@
     systemHit,
   } from './systemLayers'
 
-  // The operation's irrigation systems on a map (PLAN.md Phase 7, G.14): each drawn in the system
+  // The operation's irrigation systems on a map: each drawn in the system
   // color, a pivot or linear to scale and a point kind as its glyph (systemLayers.ts), with a marker
   // of its fields' badges at the center, and each irrigation group lightly outlined around its
-  // systems. Fields with an outline (G.10) are filled in their status, and its marker shows only the
+  // systems. Fields with an outline are filled in their status, and its marker shows only the
   // fields without one; each outlined field has a badge per planting at its center (FieldMarker) and
   // its name along its top. Clicking a system selects it, and clicking a field or its badges selects
   // its system with that field; the page shows its details in the panel (children) and adds its own
@@ -81,7 +81,7 @@
     /** For the plantings' days in the hover label */
     today: string
     selectedId: number | null
-    /** The field selected with its system (G.10), highlighted on the map */
+    /** The field selected with its system, highlighted on the map */
     selectedFieldId?: number | null
     /** The pivots the list's filters keep (others are muted), or null when nothing's filtered */
     highlighted: Set<number> | null
@@ -207,8 +207,8 @@
       paint: { 'text-color': palette.system, 'text-halo-color': palette.systemCasing, 'text-halo-width': 1.5 },
     })
 
-    // Fields with an outline, under the systems (G.10): a white line with a thin black edge around a
-    // faint white fill (their plantings' badges carry the status, G.14)
+    // Fields with an outline, under the systems: a white line with a thin black edge around a
+    // faint white fill (their plantings' badges carry the status)
     m.addSource('fields', { type: 'geojson', data: fields() as never })
     const OUTLINES: ExpressionSpecification = ['==', ['get', 'kind'], 'outline']
     m.addLayer({

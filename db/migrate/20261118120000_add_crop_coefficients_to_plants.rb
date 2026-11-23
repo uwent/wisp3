@@ -1,4 +1,4 @@
-# Each crop's FAO-56 mid-season crop coefficient and height (PLAN.md §9 C21, Q11), filled from
+# Each crop's FAO-56 mid-season crop coefficient and height (C21, Q11), filled from
 # db/reference/plants.yml by ReferenceData on db:seed (which every deploy runs after migrating)
 class AddCropCoefficientsToPlants < ActiveRecord::Migration[8.1]
   def change

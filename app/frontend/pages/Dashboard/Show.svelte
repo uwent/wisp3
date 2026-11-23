@@ -35,7 +35,7 @@
     today: string
     /** Each system with what logging its irrigation needs (DashboardController#log_props) */
     farms: FarmGroup<OverviewSystem & LogSystemProps>[]
-    /** Until the operation has any planting: what's set up so far (PLAN.md G.6) */
+    /** Until the operation has any planting: what's set up so far */
     getting_started: { farms: number; systems: number; fields: number } | null
     /** The week's rain in each weather zone of the operation's systems */
     rain: RainZone[]
@@ -100,7 +100,7 @@
     const systemIds = new Set(shown.flatMap((farm) => farm.pivots.map((pivot) => pivot.id)))
     return rain.filter((zone) => zone.pivot_ids.some((id) => systemIds.has(id)))
   })
-  // Log irrigation (docs/plans/phase-9.md §9): one dialog, for the system (and field) it was opened
+  // Log irrigation: one dialog, for the system (and field) it was opened
   // for, found in the unfiltered farms so it has all the system's fields
   let logOpen = $state(false)
   let logging = $state<{ systemId: number; fieldId: number | null } | null>(null)
