@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe SeasonCopy do
   let(:group) { create(:group) }
-  let(:field) { create(:field, pivot: create(:pivot, farm: create(:farm, group:))) }
+  let(:field) { create(:field, system: create(:system, farm: create(:farm, group:))) }
 
   def planting(start, emergence, finish, **attributes)
     create(:planting, field:, season_start: start, emergence_date: emergence, end_date: finish, **attributes)

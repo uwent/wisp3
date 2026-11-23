@@ -17,7 +17,7 @@
   import DailyTable from '@/lib/planting/DailyTable.svelte'
   import ForecastTable from '@/lib/planting/ForecastTable.svelte'
   import { addDays, currentYear, formatDate, relativeDay } from '@/lib/dates'
-  import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
+  import { KIND_NOUNS, type SystemKind } from '@/lib/geo'
   import { isExample } from '@/lib/permissions'
   import { guidance as guidanceFor } from '@/lib/guidance'
   import { outlook as outlookFor, waterUsePct } from '@/lib/outlook'
@@ -43,7 +43,7 @@
 
   let {
     field,
-    pivot,
+    system,
     farm,
     weather_updating,
     as_of,
@@ -57,7 +57,7 @@
     forecast,
   }: {
     field: Field
-    pivot: { id: number; name: string; kind: PivotKind; kind_name: string; pump_capacity_gpm: number | null }
+    system: { id: number; name: string; kind: SystemKind; kind_name: string; pump_capacity_gpm: number | null }
     farm: { id: number; name: string }
     weather_updating: boolean
     /** Time travel: the earlier day the page shows, read-only; null for today */
@@ -76,8 +76,8 @@
   } = $props()
 
   const units = $derived(currentUnits())
-  // "pivot", "drip block"
-  const noun = $derived(KIND_NOUNS[pivot.kind])
+  // "system", "drip block"
+  const noun = $derived(KIND_NOUNS[system.kind])
   // Time travelling, nothing on the page edits, and the projection is the weather that followed
   // Time travel, or the example farm, whose day is as_of when the season covers it
   // and which has no other day to travel to
@@ -118,8 +118,8 @@
     router.get(plantingRoute(planting.id).url, { as_of: date })
   }
 
-  // While the pivot's weather is being fetched, reload the season until it lands
-  const weatherWait = pollWeather(() => (weather_updating ? [pivot.id] : []))
+  // While the system's weather is being fetched, reload the season until it lands
+  const weatherWait = pollWeather(() => (weather_updating ? [system.id] : []))
   const weatherState = $derived(weatherWait.state(weather_updating))
   const lai = $derived(planting?.et_method === 'lai')
   const outlook = $derived(summary && outlookFor(summary, units))
@@ -209,7 +209,7 @@
   ></svelte:head
 >
 
-<FieldHeader {field} {pivot} {farm} {units} year={planting.year} current={planting.id}>
+<FieldHeader {field} {system} {farm} {units} year={planting.year} current={planting.id}>
   {#snippet actions()}
     {#if !readOnly}
       <a
@@ -650,7 +650,7 @@
     {days}
     {planting}
     fieldId={field.id}
-    pivotId={pivot.id}
+    systemId={system.id}
     {units}
     {noun}
     {plot}

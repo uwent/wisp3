@@ -2,11 +2,11 @@ require "rails_helper"
 
 RSpec.describe DailyDigestJob do
   let(:user) { create(:user, digest_frequency: "daily") }
-  let(:pivot) { create(:pivot, farm: create(:farm, group: user.groups.first)) }
+  let(:system) { create(:system, farm: create(:farm, group: user.groups.first)) }
 
   before do
-    digest_weather(pivot)
-    digest_field(pivot, "North", 12)
+    digest_weather(system)
+    digest_field(system, "North", 12)
   end
 
   around { |example| travel_to(digest_today) { example.run } }
@@ -31,7 +31,7 @@ RSpec.describe DailyDigestJob do
     expect { described_class.perform_now }.to change { ActionMailer::Base.deliveries.size }.by(1)
 
     travel 1.day
-    pivot.fields.sole.field_entries.create!(date: Date.new(2026, 7, 20), irrigation_in: 1.5)
+    system.fields.sole.field_entries.create!(date: Date.new(2026, 7, 20), irrigation_in: 1.5)
     expect { described_class.perform_now }.not_to change { ActionMailer::Base.deliveries.size }
     expect(user.reload.digest_sent_on).to eq(Date.new(2026, 7, 20))
   end

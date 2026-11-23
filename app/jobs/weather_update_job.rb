@@ -1,7 +1,7 @@
 # Brings one cell up to date without waiting for the scheduled refresh: the last week and a new
 # forecast if its forecast is stale (WeatherForecast::STALE_AFTER), a new ensemble likewise, then
-# any gaps since its season start, and the cell's temperature normals if it has none (WeatherNormalsJob). Queued when a pivot gets a new cell and when someone opens a page showing the cell's
-# pivots (WeatherCell.keep_current); active or not, since a new pivot has no planting yet.
+# any gaps since its season start, and the cell's temperature normals if it has none (WeatherNormalsJob). Queued when a system gets a new cell and when someone opens a page showing the cell's
+# systems (WeatherCell.keep_current); active or not, since a new system has no planting yet.
 #
 # While one is queued or running, its cell is marked as updating (WeatherCell.updating_ids), so pages
 # showing the cell reload until the weather lands, unless it's quiet (a refresh of a cell whose

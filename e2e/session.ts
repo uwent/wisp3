@@ -97,10 +97,10 @@ export function watchErrors(page: Page): string[] {
   return errors
 }
 
-/** Every signed-in page, with the demo account's first field, pivot, traveler and user */
+/** Every signed-in page, with the demo account's first field, system, traveler and user */
 export async function signedInPages(page: Page): Promise<string[]> {
   const planting = await firstPlantingPath(page)
-  const pivot = await firstLinkPath(page, planting, 'a[href*="/pivots/"]')
+  const system = await firstLinkPath(page, planting, 'a[href*="/systems/"]')
   const field = await firstLinkPath(page, planting, 'a[href*="/fields/"]')
   const zone = await firstLinkPath(page, planting, 'a[href*="/weather/"]')
   const research = await researchFieldPath(page)
@@ -117,7 +117,7 @@ export async function signedInPages(page: Page): Promise<string[]> {
   const announcement = new URL((await announcementLink.getAttribute('href'))!, page.url()).pathname
   // A traveler, a point with no shape
   await page.goto('/setup')
-  const travelerLink = page.locator(`a[href*="/pivots/"][aria-label="View ${DEMO.traveler}"]`)
+  const travelerLink = page.locator(`a[href*="/systems/"][aria-label="View ${DEMO.traveler}"]`)
   const traveler = new URL((await travelerLink.getAttribute('href'))!, page.url()).pathname
   return [
     '/',
@@ -131,18 +131,18 @@ export async function signedInPages(page: Page): Promise<string[]> {
     hay,
     '/setup',
     // Quick setup's next steps box, for a system whose fields all have plantings
-    `/setup?started_pivot=${pivot.split('/').pop()}`,
+    `/setup?started_system=${system.split('/').pop()}`,
     '/setup/start',
     '/setup/outlines/import',
     // Mid-season, so its rows are open (in November nothing is in season and they're collapsed)
     `/daily?date=${new Date().getFullYear()}-07-15`,
     // Its week view
     `/daily/week?date=${new Date().getFullYear()}-07-15`,
-    pivot,
-    `${pivot}/edit`,
+    system,
+    `${system}/edit`,
     traveler,
     `${traveler}/edit`,
-    '/pivots/new',
+    '/systems/new',
     '/weather',
     zone,
     '/settings',

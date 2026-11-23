@@ -6,7 +6,7 @@ import type { Boundary } from '@/lib/boundary'
 // The symbology the setup maps share (Setup's import, the irrigation system map): what's from an
 // outline file is filled, in the color of where it goes; what's saved in WISP is only outlined,
 // fields in the map's field color (dashed where a shape will update one) and systems in their cyan
-// (references.ts), the only blue but the system being placed on the pivot picker. Each map adds its layers bottom to top by what matters most:
+// (references.ts), the only blue but the system being placed on the system picker. Each map adds its layers bottom to top by what matters most:
 // skipped or not yet imported shapes, saved fields, shapes updating a field, new fields, systems,
 // names. MapLibre has no z-index: layers draw in the order they're added.
 

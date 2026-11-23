@@ -44,7 +44,7 @@ const farms: WeekFarm[] = [
     ],
     irrigation_rows: [
       {
-        key: 'pivot-12',
+        key: 'system-12',
         id: 12,
         name: 'River',
         kind: 'center',

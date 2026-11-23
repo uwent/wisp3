@@ -124,8 +124,8 @@ test('the example farm, signed out', { tag: '@phone' }, async ({ page }) => {
   const planting = (await link('a[href*="/plantings/"]'))!
   await page.goto(planting)
   const field = (await link('a[href*="/fields/"]'))!
-  const pivot = (await link('a[href*="/pivots/"]'))!
-  for (const path of ['/', '/map', planting, field, pivot, '/weather']) {
+  const system = (await link('a[href*="/systems/"]'))!
+  for (const path of ['/', '/map', planting, field, system, '/weather']) {
     await scan(page, path)
   }
   expect(errors).toEqual([])
@@ -185,8 +185,8 @@ test("daily entry's irrigation calculator", { tag: '@phone' }, async ({ page }) 
   await signIn(page)
   const errors = watchErrors(page)
   await page.goto(`/daily?date=${new Date().getFullYear()}-07-15`)
-  await page.getByRole('button', { name: `Work out ${DEMO.splitPivot}'s irrigation` }).click()
-  const dialog = page.getByRole('dialog', { name: new RegExp(`^Irrigation for ${literal(DEMO.splitPivot)} on `) })
+  await page.getByRole('button', { name: `Work out ${DEMO.splitSystem}'s irrigation` }).click()
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^Irrigation for ${literal(DEMO.splitSystem)} on `) })
   // Out of range, so its messages and the blank result are scanned too
   await dialog.getByLabel('Hours it ran').fill('30')
   await expect(dialog.getByText('Hours must be at most 24')).toBeVisible()
@@ -201,10 +201,10 @@ test("the dashboard's log irrigation dialog", { tag: '@phone' }, async ({ page }
   await signIn(page)
   const errors = watchErrors(page)
   await page.goto('/')
-  await page.getByRole('button', { name: `Log irrigation on ${DEMO.otherPivot}`, exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: `Log irrigation on ${DEMO.otherPivot}` })
+  await page.getByRole('button', { name: `Log irrigation on ${DEMO.otherSystem}`, exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: `Log irrigation on ${DEMO.otherSystem}` })
   // The calculator's workings, then each field's box, so they're scanned too
-  await dialog.getByRole('button', { name: `Work out ${DEMO.otherPivot}'s irrigation` }).click()
+  await dialog.getByRole('button', { name: `Work out ${DEMO.otherSystem}'s irrigation` }).click()
   await dialog.getByLabel('Hours it ran').fill('30')
   const { violations: working } = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(TAGS).analyze()
   expect(working.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([])

@@ -2,7 +2,7 @@ import type { Map as MapLibreMap, MapMouseEvent, MapSourceDataEvent, RasterTileS
 
 import { type LngLat, pointInPolygon } from '@/lib/geo'
 
-import { FIELD_LAYER, PIVOT_LAYER, systemHit } from './systemLayers'
+import { FIELD_LAYER, SYSTEM_LAYER, systemHit } from './systemLayers'
 import { ZONE_LAYER } from './zones'
 import {
   type Bounds,
@@ -47,7 +47,7 @@ const ERRORS_TO_FAIL = 3
 const NOTICE_MS = 7000
 
 /**
- * The map's optional overlays: shows and hides them under the pivots, reloads
+ * The map's optional overlays: shows and hides them under the systems, reloads
  * them on their schedule, and when a provider fails marks the overlay unavailable with a short
  * notice (once per overlay per visit) while the rest of the map carries on. Switching an overlay off
  * and on again retries it.
@@ -57,7 +57,7 @@ export class MapOverlays {
   /** When each overlay's data is for ("Radar at 3:20 PM"), where its provider says */
   times: Partial<Record<OverlayId, string | null>> = $state({})
   notice: string | null = $state(null)
-  /** The Drought Monitor's polygons around the pivots, once loaded */
+  /** The Drought Monitor's polygons around the systems, once loaded */
   drought: DroughtData | null = $state(null)
   /** What the shown layers have under the pointer or a tap, or null */
   probe: Probe | null = $state(null)
@@ -84,7 +84,7 @@ export class MapOverlays {
       const id = overlayOf(event.sourceId)
       if (id && event.tile) this.#loaded(id)
     })
-    // Values under the mouse when it rests (on devices that hover), and where a tap lands off the pivots
+    // Values under the mouse when it rests (on devices that hover), and where a tap lands off the systems
     if (matchMedia('(hover: hover)').matches) {
       map.on('mousemove', (event) => {
         clearTimeout(this.#hoverTimer)
@@ -183,12 +183,12 @@ export class MapOverlays {
     return this.#opacity[id] ?? OVERLAYS.find((overlay) => overlay.id === id)!.opacity
   }
 
-  /** The layer to insert under: the next overlay up that's shown, or the weather zones, fields and pivots */
+  /** The layer to insert under: the next overlay up that's shown, or the weather zones, fields and systems */
   #before(map: MapLibreMap, id: OverlayId) {
     const above = OVERLAY_ORDER.slice(OVERLAY_ORDER.indexOf(id) + 1).map(sourceId)
     return (
       above.find((layer) => map.getLayer(layer)) ??
-      [ZONE_LAYER, FIELD_LAYER, PIVOT_LAYER].find((layer) => map.getLayer(layer))
+      [ZONE_LAYER, FIELD_LAYER, SYSTEM_LAYER].find((layer) => map.getLayer(layer))
     )
   }
 

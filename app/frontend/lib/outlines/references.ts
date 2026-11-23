@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 
-import { boundsOf, type LngLat, type PivotShape, pivotOutline } from '@/lib/geo'
+import { boundsOf, type LngLat, type SystemShape, shapeOutline } from '@/lib/geo'
 import { type Boundary, boundaryBounds, boundaryCenter } from '@/lib/boundary'
 import { readPalette } from '@/lib/charts/palette'
 import { LABEL_FONT, labelPaint } from '@/lib/map/basemaps'
@@ -9,13 +9,13 @@ import { LABEL_FONT, labelPaint } from '@/lib/map/basemaps'
 // or a point kind's dot) and fields' outlines, each named, the first one ("own") more strongly
 // unless ownFirst is false
 
-export type Reference = { name: string; boundary?: Boundary | null; shape?: PivotShape }
+export type Reference = { name: string; boundary?: Boundary | null; shape?: SystemShape }
 
 /** [[west, south], [east, north]] around a reference (a small box around a point kind) */
 export function referenceBounds(reference: Reference): [LngLat, LngLat] | null {
   if (reference.boundary) return boundaryBounds(reference.boundary)
   if (!reference.shape) return null
-  const ring = pivotOutline(reference.shape)
+  const ring = shapeOutline(reference.shape)
   if (!ring) {
     const { longitude: lng, latitude: lat } = reference.shape
     return [
@@ -47,7 +47,7 @@ export function referenceData(references: Reference[], { ownFirst = true } = {})
       ]
     }
     const shape = reference.shape!
-    const ring = pivotOutline(shape)
+    const ring = shapeOutline(shape)
     const at: LngLat = [shape.longitude, shape.latitude]
     return [
       ring

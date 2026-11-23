@@ -37,10 +37,10 @@ describe("an import card's choices", () => {
 
   it('offers the fields it overlaps first, then the rest by distance, from the system without an outline', () => {
     const fields = [
-      { id: 10, pivot_id: 1, boundary: square(-89.52, 44.099) }, // about 1.5 km
-      { id: 11, pivot_id: 2, boundary: null }, // its traveler, about 4 km
-      { id: 12, pivot_id: 1, boundary: square(-89.5005, 44.099) }, // overlapping three quarters
-      { id: 13, pivot_id: 1, boundary: null }, // its pivot's center, about 100 m
+      { id: 10, system_id: 1, boundary: square(-89.52, 44.099) }, // about 1.5 km
+      { id: 11, system_id: 2, boundary: null }, // its traveler, about 4 km
+      { id: 12, system_id: 1, boundary: square(-89.5005, 44.099) }, // overlapping three quarters
+      { id: 13, system_id: 1, boundary: null }, // its system's center, about 100 m
     ]
     const candidates = fieldCandidates(shape, fields, systems)
     expect(candidates.map(({ id }) => id)).toEqual([12, 13, 10, 11])

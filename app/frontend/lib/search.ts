@@ -4,11 +4,11 @@
 
 type Crop = { plant_name: string; variety: string | null }
 type SearchField = { name: string; plantings: Crop[] }
-type SearchSystem<F extends SearchField> = { name: string; pivot_group_id: number | null; fields: F[] }
+type SearchSystem<F extends SearchField> = { name: string; irrigation_group_id: number | null; fields: F[] }
 type SearchFarm<F extends SearchField, S extends SearchSystem<F>> = {
   name: string
-  pivot_groups: { id: number; name: string }[]
-  pivots: S[]
+  irrigation_groups: { id: number; name: string }[]
+  systems: S[]
 }
 
 /** The query as matched: trimmed and lower case; '' matches everything */
@@ -42,17 +42,18 @@ export function searchFarms<F extends SearchField, S extends SearchSystem<F>, R 
   if (!text) return farms
   return farms.flatMap((farm) => {
     if (has(farm.name, text)) return [farm]
-    const groups = new Set(farm.pivot_groups.filter((group) => has(group.name, text)).map((group) => group.id))
-    const pivots = farm.pivots.flatMap((pivot) => {
-      if (has(pivot.name, text) || (pivot.pivot_group_id !== null && groups.has(pivot.pivot_group_id))) return [pivot]
-      const fields = pivot.fields.filter((field) => fieldMatches(field, text, crops))
-      return fields.length ? [{ ...pivot, fields }] : []
+    const groups = new Set(farm.irrigation_groups.filter((group) => has(group.name, text)).map((group) => group.id))
+    const systems = farm.systems.flatMap((system) => {
+      if (has(system.name, text) || (system.irrigation_group_id !== null && groups.has(system.irrigation_group_id)))
+        return [system]
+      const fields = system.fields.filter((field) => fieldMatches(field, text, crops))
+      return fields.length ? [{ ...system, fields }] : []
     })
-    if (!pivots.length) return []
+    if (!systems.length) return []
     // The groups left with a system, or matching themselves
-    const kept = farm.pivot_groups.filter(
-      (group) => groups.has(group.id) || pivots.some((pivot) => pivot.pivot_group_id === group.id),
+    const kept = farm.irrigation_groups.filter(
+      (group) => groups.has(group.id) || systems.some((system) => system.irrigation_group_id === group.id),
     )
-    return [{ ...farm, pivots, pivot_groups: kept }]
+    return [{ ...farm, systems, irrigation_groups: kept }]
   })
 }

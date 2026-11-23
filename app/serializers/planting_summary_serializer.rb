@@ -47,7 +47,7 @@ class PlantingSummarySerializer < ApplicationSerializer
   attribute(:threshold) { |status| status.threshold.round(WaterBalance::PRECISION) }
   attribute(:crossing) { |status| status.crossing&.to_h }
   attribute(:use_model_precip, &:use_model_precip?)
-  attribute(:rain_group_id) { |status| status.planting.system.pivot_group_id }
+  attribute(:rain_group_id) { |status| status.planting.system.irrigation_group_id }
   attribute(:rain_farm_id) { |status| status.planting.system.farm_id }
   attribute(:dry_crossing) { |status| status.dry_crossing&.to_h }
   attribute(:ensemble_size, &:ensemble_size)

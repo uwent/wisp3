@@ -68,11 +68,11 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   await page.getByRole('button', { name: 'Cards' }).click()
   await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
-  // A pivot's name links to its page: its irrigation, and its weather zone's week ahead
-  const pivot = page.getByRole('heading', { name: /^Irrigation system: / }).first()
-  const name = (await pivot.textContent())!.replace('Irrigation system:', '').trim()
+  // A system's name links to its page: its irrigation, and its weather zone's week ahead
+  const system = page.getByRole('heading', { name: /^Irrigation system: / }).first()
+  const name = (await system.textContent())!.replace('Irrigation system:', '').trim()
   await expect(page.getByRole('link', { name: `View ${name}`, exact: true })).toBeVisible()
-  await pivot.getByRole('link', { name }).click()
+  await system.getByRole('link', { name }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Irrigation system: ${name}`)
   await expect(page.getByRole('heading', { name: /^Weather/, level: 2 })).toBeVisible()
   await page.getByRole('link', { name: 'View detailed weather charts for this location →' }).click()
@@ -157,24 +157,24 @@ test('the Admin tab switches between Users, Weather data and Usage', async ({ pa
   )
 })
 
-test('the map lists the fields and selects a pivot from the list', async ({ page }) => {
+test('the map lists the fields and selects a system from the list', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/map')
   await expect(page.getByRole('heading', { name: 'Map', level: 1 })).toBeVisible()
   const list = page.getByRole('complementary', { name: 'Fields' })
   await expect(list.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
-  // Selecting a field opens its pivot's panel over the map and marks the card
+  // Selecting a field opens its system's panel over the map and marks the card
   const select = list.getByRole('button', { name: /on the map$/ }).first()
   await select.click()
   await expect(select).toHaveAttribute('aria-pressed', 'true')
   const panel = page.getByRole('region', { name: /^System: / })
   await expect(panel).toBeVisible()
   // The system's View and Edit, and each field's; the list's cards only select
-  await expect(panel.locator('header').getByRole('link', { name: /^View / })).toHaveAttribute('href', /\/pivots\/\d+$/)
+  await expect(panel.locator('header').getByRole('link', { name: /^View / })).toHaveAttribute('href', /\/systems\/\d+$/)
   await expect(panel.locator('header').getByRole('link', { name: /^Edit / })).toHaveAttribute(
     'href',
-    /\/pivots\/\d+\/edit$/,
+    /\/systems\/\d+\/edit$/,
   )
   await expect(
     panel
@@ -223,7 +223,7 @@ test("the map outlines the systems' weather zones, with their weather on hover a
   // nothing else there
   await page
     .getByRole('complementary', { name: 'Fields' })
-    .getByRole('button', { name: `Show system ${DEMO.splitPivot} on the map` })
+    .getByRole('button', { name: `Show system ${DEMO.splitSystem} on the map` })
     .click()
   const box = (await page.locator('.maplibregl-canvas').boundingBox())!
   const [x, y] = [box.x + box.width / 2 - 170, box.y + box.height / 2]
@@ -289,17 +289,17 @@ test("the map's list is the operation as a tree, selected at any level", { tag: 
   await expect(panel).toHaveCount(1) // the group's, in place of the farm's
 
   // A system opens its panel, naming its farm, which selects it
-  const system = list.getByRole('button', { name: `Show system ${DEMO.splitPivot} on the map` })
+  const system = list.getByRole('button', { name: `Show system ${DEMO.splitSystem} on the map` })
   await system.click()
   await expect(system).toHaveAttribute('aria-pressed', 'true')
-  const pivot = page.getByRole('region', { name: `System: ${DEMO.splitPivot}` })
-  await expect(pivot).toBeVisible()
-  await expect(pivot.locator('li[aria-current="true"]')).toHaveCount(0)
+  const systemPanel = page.getByRole('region', { name: `System: ${DEMO.splitSystem}` })
+  await expect(systemPanel).toBeVisible()
+  await expect(systemPanel.locator('li[aria-current="true"]')).toHaveCount(0)
 
   // A card in the panel selects its field, there and in the list; View opens the field
   const east = new RegExp(`${literal(DEMO.splitEast)}.*on the map$`)
-  await pivot.getByRole('button', { name: east }).click()
-  await expect(pivot.locator('li[aria-current="true"]')).toContainText(DEMO.splitEast)
+  await systemPanel.getByRole('button', { name: east }).click()
+  await expect(systemPanel.locator('li[aria-current="true"]')).toContainText(DEMO.splitEast)
   await expect(list.getByRole('button', { name: east })).toHaveAttribute('aria-pressed', 'true')
   await expect(system).toHaveAttribute('aria-pressed', 'false')
 
@@ -309,7 +309,7 @@ test("the map's list is the operation as a tree, selected at any level", { tag: 
   await expect(list.getByRole('button', { name: /^Zoom the map to the farm / })).toHaveCount(1)
   await expect(list.getByText(/^1 farm · 1 system · 1 field · \d+ plantings?$/)).toBeVisible()
 
-  await pivot.getByRole('link', { name: `View ${DEMO.splitEast}` }).click()
+  await systemPanel.getByRole('link', { name: `View ${DEMO.splitEast}` }).click()
   await expect(page).toHaveURL(/\/(fields|plantings)\/\d+/)
   expect(errors).toEqual([])
 })
@@ -341,7 +341,7 @@ test('a map layer that fails says so, and the rest of the map carries on', async
   await expect(page.getByRole('status').filter({ hasText: "Radar now isn't loading" })).toBeVisible()
   await expect(layers.getByText('Unavailable', { exact: true })).toBeVisible()
 
-  // Pivots still select
+  // Systems still select
   await page
     .getByRole('complementary', { name: 'Fields' })
     .getByRole('button', { name: /on the map$/ })
@@ -351,7 +351,7 @@ test('a map layer that fails says so, and the rest of the map carries on', async
   expect(errors).toEqual([])
 })
 
-test('the Drought Monitor layer gives the category at the selected pivot', async ({ page }) => {
+test('the Drought Monitor layer gives the category at the selected system', async ({ page }) => {
   // A moderate drought over all of Wisconsin, so the test doesn't depend on this week's map
   const wisconsin = [
     [-93, 42],
@@ -402,7 +402,7 @@ test("tapping the map gives the rain layer's value there", { tag: '@phone' }, as
   await layers.getByRole('radio', { name: /last 24 hours/ }).check()
   await page.getByRole('button', { name: 'Close map layers' }).click()
 
-  // A tap away from the pivots (the map's lower left corner)
+  // A tap away from the systems (the map's lower left corner)
   const map = page.getByRole('application', { name: /Map of the operation/ })
   const box = (await map.boundingBox())!
   await map.click({ position: { x: 30, y: box.height - 60 } })
@@ -428,7 +428,7 @@ test('the radar layer gives the reflectivity under a tap', async ({ page }) => {
   await expect(page.getByRole('status').filter({ hasText: 'Radar now' })).toContainText('Light rain (20 dBZ)')
 })
 
-test('quick setup suggests the soil from the soil survey under the pivot', { tag: '@phone' }, async ({ page }) => {
+test('quick setup suggests the soil from the soil survey under the system', { tag: '@phone' }, async ({ page }) => {
   // The survey's answer for a Central Sands pivot: mostly Plainfield sand, some Coloma loamy sand
   await page.route('**/Tabular/post.rest', (route) =>
     route.fulfill({
@@ -470,7 +470,7 @@ test("quick setup makes fields without crops, then Setup's next steps add each p
   await page.getByLabel('Farm name').fill('Zz Start Farm')
   await page.getByLabel('Name', { exact: true }).fill('Zz Pivot')
   await expect(page.getByText('Still needed: its location (click the map).')).toBeVisible()
-  await placePivot(page)
+  await placeSystem(page)
   await expect(save).toBeEnabled()
   await expect(page.getByLabel('Crop', { exact: true })).toHaveCount(0)
   await page.getByLabel('Field name').fill('Zz North')
@@ -509,8 +509,8 @@ test('quick setup can save a farm alone, leaving the rest for later', async ({ p
 })
 
 /** Drags a map handle (a marker, found by its title) by dx, dy pixels, once the map has settled */
-/** Clicks the pivot picker's map once MapLibre is ready for it */
-async function placePivot(page: Page) {
+/** Clicks the system picker's map once MapLibre is ready for it */
+async function placeSystem(page: Page) {
   const map = page.getByRole('application', { name: /click to place the / })
   await expect(map.locator('canvas')).toBeVisible()
   await map.click()
@@ -538,10 +538,10 @@ async function dragHandle(page: Page, title: string, dx: number, dy: number) {
 
 test('a linear is sized by dragging a corner and turned by its handle', async ({ page }) => {
   const name = `Ditch linear ${Date.now()}`
-  await page.goto('/pivots/new')
+  await page.goto('/systems/new')
   await page.getByLabel('Name', { exact: true }).fill(name)
   await page.getByRole('radio', { name: /Linear/ }).check()
-  await placePivot(page)
+  await placeSystem(page)
   const travel = page.getByRole('textbox', { name: 'Travel distance' })
   const before = await travel.inputValue()
   await dragHandle(page, 'Drag to resize the linear', 0, 20)
@@ -555,7 +555,7 @@ test('a linear is sized by dragging a corner and turned by its handle', async ({
   // Dragging a corner by pixels can nudge the length a few feet as well as the travel
   await expect(row).toContainText(/1,[23]\d\d ft long, travels [\d,]+ ft at \d+° from north/)
 
-  // Delete it again (from its edit page): a new pivot sorts first on the dashboard, and its weather
+  // Delete it again (from its edit page): a new system sorts first on the dashboard, and its weather
   // cell has no seeded weather, so leaving it would change what later tests open
   await row.getByRole('link', { name: `Edit ${name}` }).click()
   // A saved system's kind is one line until Change shows the choices, the current one focused
@@ -581,7 +581,7 @@ test('a linear is sized by dragging a corner and turned by its handle', async ({
 
 test('a traveler is placed with a click and keeps no shape', async ({ page }) => {
   const name = `Lane ${Date.now()}`
-  await page.goto('/pivots/new')
+  await page.goto('/systems/new')
   await page.getByLabel('Name', { exact: true }).fill(name)
   await page.getByRole('radio', { name: /^Traveler/ }).check()
   await expect(page.getByRole('textbox', { name: 'Radius' })).toHaveCount(0)
@@ -605,8 +605,8 @@ test('a traveler is placed with a click and keeps no shape', async ({ page }) =>
 })
 
 test("a partial circle's arc is set by dragging its ends", async ({ page }) => {
-  await page.goto('/pivots/new')
-  await placePivot(page)
+  await page.goto('/systems/new')
+  await placeSystem(page)
   await page.getByText('Partial circle', { exact: true }).click()
   await expect(page.getByRole('radio', { name: 'Partial circle' })).toBeChecked()
   const arcEnd = page.getByRole('textbox', { name: 'Arc ends at' })
@@ -961,7 +961,7 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
 })
 
 test("a new whole-field planting offers the system's other fields free for its dates", async ({ page }) => {
-  // A field sharing its system with another (firstField is alone on its pivot); nothing is saved
+  // A field sharing its system with another (firstField is alone on its system); nothing is saved
   await page.goto('/setup')
   await page.getByRole('button', { name: `Add a planting to ${DEMO.splitWest}` }).click()
   const dialog = page.getByRole('dialog', { name: new RegExp(`^Add a \\d{4} planting to ${literal(DEMO.splitWest)}`) })
@@ -1066,11 +1066,11 @@ test("daily entry fills an irrigation group's rain into its systems, and saves a
 })
 
 test("daily entry offers the day before's irrigation, filled in only when chosen", async ({ page }) => {
-  // The demo's pivot ran on July 18 and has nothing on the 19th
+  // The demo's system ran on July 18 and has nothing on the 19th
   await page.goto(midSeason.replace('-07-15', '-07-19'))
-  const amount = page.getByLabel(`Irrigation by ${DEMO.otherPivot}`, { exact: true })
+  const amount = page.getByLabel(`Irrigation by ${DEMO.otherSystem}`, { exact: true })
   await expect(amount).toHaveValue('')
-  const same = page.getByRole('button', { name: `Same as the day before for ${DEMO.otherPivot}` })
+  const same = page.getByRole('button', { name: `Same as the day before for ${DEMO.otherSystem}` })
   await same.click()
   await expect(amount).toHaveValue('0.40')
   await expect(same).toBeHidden()
@@ -1078,11 +1078,11 @@ test("daily entry offers the day before's irrigation, filled in only when chosen
 
 test("daily entry's calculator works out a system's irrigation and fills its fields", async ({ page }) => {
   await page.goto(midSeason)
-  await page.getByRole('button', { name: `Work out ${DEMO.splitPivot}'s irrigation` }).click()
+  await page.getByRole('button', { name: `Work out ${DEMO.splitSystem}'s irrigation` }).click()
   const dialog = page.getByRole('dialog', {
-    name: new RegExp(`^Irrigation for ${literal(DEMO.splitPivot)} on Jul 15$`),
+    name: new RegExp(`^Irrigation for ${literal(DEMO.splitSystem)} on Jul 15$`),
   })
-  // The demo's split pivot puts on 0.21 in a circle at 100%: at 20%, 1.05 in
+  // The demo's split system puts on 0.21 in a circle at 100%: at 20%, 1.05 in
   await dialog.getByRole('radio', { name: '% timer' }).check({ force: true })
   await expect(dialog.getByLabel('Depth at 100%')).toHaveAttribute('placeholder', '0.21')
   await dialog.getByLabel('Timer', { exact: true }).fill('20')
@@ -1093,7 +1093,7 @@ test("daily entry's calculator works out a system's irrigation and fills its fie
 
   await expect(page.getByLabel(`Irrigation on ${DEMO.splitWest}`, { exact: true })).toHaveValue('1.05')
   await expect(page.getByLabel(`Irrigation on ${DEMO.splitEast}`, { exact: true })).toHaveValue('')
-  await expect(page.getByLabel(`Irrigation by ${DEMO.splitPivot}`, { exact: true })).toHaveAttribute(
+  await expect(page.getByLabel(`Irrigation by ${DEMO.splitSystem}`, { exact: true })).toHaveAttribute(
     'placeholder',
     'varies',
   )
@@ -1136,7 +1136,7 @@ test("daily entry's week saves rain for a group's fields and a system's irrigati
   await expect(page.getByText(/Aug 24–30/).first()).toBeVisible()
   const rain = page.getByLabel(weekCell(DEMO.gauge, 'rain', 'Aug 25'))
   // Aug 24: the system's plantings end Aug 20 and 25, and a day after them takes nothing
-  const irrigation = page.getByLabel(weekCell(DEMO.otherPivot, 'irrigation', 'Aug 24'))
+  const irrigation = page.getByLabel(weekCell(DEMO.otherSystem, 'irrigation', 'Aug 24'))
   await rain.fill('0.4')
   await irrigation.fill('0.5')
   await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
@@ -1216,9 +1216,9 @@ test('daily entry switches between day and week, keeping the date', async ({ pag
 
 test("Setup's Duplicate starts a new irrigation system from another, to be placed on the map", async ({ page }) => {
   await page.goto('/setup')
-  await page.getByRole('link', { name: `Duplicate ${DEMO.otherPivot}`, exact: true }).click()
-  await expect(page.getByRole('heading', { name: `Duplicate ${DEMO.otherPivot}` })).toBeVisible()
-  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(`${DEMO.otherPivot} copy`)
+  await page.getByRole('link', { name: `Duplicate ${DEMO.otherSystem}`, exact: true }).click()
+  await expect(page.getByRole('heading', { name: `Duplicate ${DEMO.otherSystem}` })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(`${DEMO.otherSystem} copy`)
   await expect(page.getByRole('textbox', { name: 'Pump capacity' })).toHaveValue(/^1,?000$/)
   await expect(page.getByText(`It joins the group ${DEMO.firstFieldGroup}`)).toBeVisible()
 })
@@ -1252,7 +1252,7 @@ test('a dialog asks before dropping changes, listing them', async ({ page }) => 
 
 test("adding a system's irrigation on a date that has one offers to edit it instead", async ({ page }) => {
   await page.goto(await firstPlantingPath(page))
-  await page.locator('main a[href*="/pivots/"]').first().click()
+  await page.locator('main a[href*="/systems/"]').first().click()
 
   // Add one for today; the form resets to today, which now has an irrigation
   await page.getByLabel('Amount').fill('0.4')
@@ -1272,8 +1272,8 @@ test("adding a system's irrigation on a date that has one offers to edit it inst
 })
 
 test('logging irrigation from the dashboard, an amount on each field', async ({ page }) => {
-  // otherPivot's fields, yesterday (the system page's test above writes the first field's system today)
-  const system = DEMO.otherPivot
+  // otherSystem's fields, yesterday (the system page's test above writes the first field's system today)
+  const system = DEMO.otherSystem
   const [west, east] = ['Home West', 'Home East']
   await page.goto('/')
   await page.getByRole('button', { name: `Log irrigation on ${system}`, exact: true }).click()
@@ -1679,7 +1679,7 @@ test('field shapes are imported from a shapefile, matched to fields or new ones'
   await expect(page.getByRole('dialog').getByRole('img', { name: `The shape of ${DEMO.shapeField}` })).toBeVisible()
   await page.keyboard.press('Escape')
 
-  // That shape is near Arlington, nowhere near the field's pivot at Coloma: Setup says so
+  // That shape is near Arlington, nowhere near the field's system at Coloma: Setup says so
   const issues = page.getByRole('region', { name: 'Field shapes to check' })
   await expect(issues).toContainText(
     new RegExp(`${literal(DEMO.shapeField)}'s shape isn't under ${literal(DEMO.shapeFieldSystem)}, \\d+\\.\\d mi away`),
@@ -1817,15 +1817,15 @@ test('the map shades outlined fields and badges them at their center, and marks 
   const errors = watchErrors(page)
   await page.goto('/map')
   await expect(page.locator('.maplibregl-canvas')).toBeVisible()
-  // Zoomed out, every system is a dot, the split pivot too, though its two fields have outlines
-  const dot = page.getByRole('button', { name: new RegExp(`^${literal(DEMO.splitPivot)}: `) })
-  await expect(page.getByRole('button', { name: new RegExp(`^${literal(DEMO.otherPivot)}: `) })).toBeVisible()
+  // Zoomed out, every system is a dot, the split system too, though its two fields have outlines
+  const dot = page.getByRole('button', { name: new RegExp(`^${literal(DEMO.splitSystem)}: `) })
+  await expect(page.getByRole('button', { name: new RegExp(`^${literal(DEMO.otherSystem)}: `) })).toBeVisible()
   await expect(dot).toBeVisible()
 
   // A field picked from the list (as a click in its outline does) is marked in its system's panel
   const list = page.getByRole('complementary', { name: 'Fields' })
   await list.getByRole('button', { name: new RegExp(`${literal(DEMO.splitWest)}.*on the map$`) }).click()
-  const panel = page.getByRole('region', { name: `System: ${DEMO.splitPivot}` })
+  const panel = page.getByRole('region', { name: `System: ${DEMO.splitSystem}` })
   await expect(panel.locator('li[aria-current="true"]')).toContainText(DEMO.splitWest)
   // Closer in, the outlined fields carry their plantings' badges, and the system's marker goes
   const badges = page.getByRole('button', { name: new RegExp(`^Field: ${literal(DEMO.splitWest)}, Planting: `) })
@@ -1834,7 +1834,7 @@ test('the map shades outlined fields and badges them at their center, and marks 
   await expect(dot).toBeHidden()
 
   // A click in a field's outline selects that field, not the system drawn over it. The map
-  // flies the pivot to 170 px left of center beside the panel (wide screens), at zoom 13.5 or more,
+  // flies the system to 170 px left of center beside the panel (wide screens), at zoom 13.5 or more,
   // where its 1,300 ft radius is over 80 px: splitEast is its east half.
   const box = (await page.locator('.maplibregl-canvas').boundingBox())!
   // Clicked again until the flight has ended there

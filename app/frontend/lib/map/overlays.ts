@@ -304,7 +304,7 @@ export const DROUGHT_OVERLAY: VectorOverlay = {
 
 export const OVERLAYS: Overlay[] = [...RAIN_OVERLAYS, DROUGHT_OVERLAY]
 
-/** Bottom to top; each overlay is drawn under the ones after it, and all under the pivots */
+/** Bottom to top; each overlay is drawn under the ones after it, and all under the systems */
 export const OVERLAY_ORDER: OverlayId[] = ['drought', 'radar', 'rain24', 'rain72', 'qpf1', 'qpf3', 'qpf7']
 
 /** [west, south, east, north] */
@@ -327,7 +327,7 @@ export function droughtUrl([west, south, east, north]: Bounds): string {
   return `${USDM_QUERY}?${params}`
 }
 
-/** The area to load drought polygons for: around the pivots, wide enough to zoom out a little */
+/** The area to load drought polygons for: around the systems, wide enough to zoom out a little */
 export function droughtBounds(points: LngLat[], margin = 3): Bounds {
   if (!points.length) return [-93, 42.4, -86.7, 47.1] // Wisconsin
   const lngs = points.map(([lng]) => lng)

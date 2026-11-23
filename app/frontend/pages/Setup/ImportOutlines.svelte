@@ -10,7 +10,7 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { type Boundary, boundaryCenter } from '@/lib/boundary'
-  import type { PivotShape } from '@/lib/geo'
+  import type { SystemShape } from '@/lib/geo'
   import { type FieldCandidate, fieldCandidates, systemCandidates } from '@/lib/outlines/candidates'
   import ImportMap from '@/lib/outlines/ImportMap.svelte'
   import { ImportRow } from '@/lib/outlines/importRow.svelte'
@@ -26,14 +26,14 @@
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { currentUnits } from '@/lib/units'
   import type { Column } from '@/lib/table'
-  import { outlineImport, pivots as pivotRoutes, setup } from '@/routes'
+  import { outlineImport, systems as systemRoutes, setup } from '@/routes'
   import type { SoilType } from '@/types/serializers'
 
-  type System = PivotShape & { id: number; name: string; kind_name: string; farm: string }
+  type System = SystemShape & { id: number; name: string; kind_name: string; farm: string }
   type ExistingField = {
     id: number
     name: string
-    pivot_id: number
+    system_id: number
     area_acres: number | null
     boundary: Boundary | null
   }
@@ -45,12 +45,12 @@
   // their outline's acres and the soil survey's main soil. Only the shapes going somewhere get a card; the rest (a county file's
   // thousands) start as Skip in one searchable list, from which the grower adds any that are theirs.
   let {
-    pivots,
+    systems,
     fields,
     soil_types,
     default_soil_type_id,
   }: {
-    pivots: System[]
+    systems: System[]
     fields: ExistingField[]
     soil_types: SoilType[]
     default_soil_type_id: number | null
@@ -89,7 +89,7 @@
 
   const systemLabel = (system: System) => `${system.farm} › ${systemName(system)}`
   const fieldsById = $derived(new Map(fields.map((field) => [field.id, field])))
-  const systemsById = $derived(new Map(pivots.map((system) => [system.id, system])))
+  const systemsById = $derived(new Map(systems.map((system) => [system.id, system])))
 
   // Where a shape goes, in the map's colors
   const CHOICES: { kind: Choice['kind']; label: string; color: string }[] = [
@@ -101,12 +101,12 @@
   // Each shape's fields and systems, nearest first, worked out once per shape (lib/outlines/candidates.ts)
   const fieldsNear = new WeakMap<object, FieldCandidate[]>()
   function fieldsFor(shape: ImportedShape) {
-    if (!fieldsNear.has(shape)) fieldsNear.set(shape, fieldCandidates(shape.boundary, fields, pivots))
+    if (!fieldsNear.has(shape)) fieldsNear.set(shape, fieldCandidates(shape.boundary, fields, systems))
     return fieldsNear.get(shape)!
   }
   const systemsNear = new WeakMap<object, { id: number; meters: number }[]>()
   function systemsFor(shape: ImportedShape) {
-    if (!systemsNear.has(shape)) systemsNear.set(shape, systemCandidates(shape.boundary, pivots))
+    if (!systemsNear.has(shape)) systemsNear.set(shape, systemCandidates(shape.boundary, systems))
     return systemsNear.get(shape)!
   }
   const SHOWN_SHARE = 0.01
@@ -114,7 +114,7 @@
   const fieldOptionsFor = (shape: ImportedShape) =>
     fieldsFor(shape).map(({ id, share, meters }) => {
       const field = fieldsById.get(id)!
-      const system = systemsById.get(field.pivot_id)
+      const system = systemsById.get(field.system_id)
       const where = share >= SHOWN_SHARE ? `overlaps ${sharePercent(share)}` : reach(meters)
       return {
         value: String(id),
@@ -157,7 +157,7 @@
     )
   })
 
-  const references = $derived<Reference[]>(pivots.map((system) => ({ name: system.name, shape: system })))
+  const references = $derived<Reference[]>(systems.map((system) => ({ name: system.name, shape: system })))
 
   // The last file read here or on a field's shape page is kept in the browser (lib/outlines/kept.ts),
   // to finish here what was started there, or the other way round: it's matched as the page opens
@@ -255,7 +255,7 @@
   }
 
   function startRows(shapes: ImportedShape[]) {
-    const suggest = systemSuggester(pivots)
+    const suggest = systemSuggester(systems)
     const named = shapes.map((shape) => ({
       shape,
       name: shapeName(shape, nameKey),
@@ -364,7 +364,7 @@
   const nearest = new WeakMap<object, number | null>()
   function nearestM(shape: ImportedShape) {
     if (!nearest.has(shape)) {
-      nearest.set(shape, nearestSystemM(shape.boundary, pivots))
+      nearest.set(shape, nearestSystemM(shape.boundary, systems))
     }
     return nearest.get(shape) ?? null
   }
@@ -668,7 +668,7 @@
           {#if row.choice.kind === 'field'}
             <input type="hidden" name="outline_import[rows][{position}][field_id]" value={row.choice.fieldId} />
           {:else}
-            <input type="hidden" name="outline_import[rows][{position}][pivot_id]" value={row.systemId ?? ''} />
+            <input type="hidden" name="outline_import[rows][{position}][system_id]" value={row.systemId ?? ''} />
             <input type="hidden" name="outline_import[rows][{position}][name]" value={row.name} />
             <input type="hidden" name="outline_import[rows][{position}][soil_type_id]" value={row.soilTypeId} />
             <input
@@ -779,7 +779,7 @@
                       }}
                       error={row.systemId === null
                         ? 'Choose the system that waters it'
-                        : rowError(errors, index, 'pivot')}
+                        : rowError(errors, index, 'system')}
                     />
                     <SelectField
                       label="Soil"
@@ -824,7 +824,7 @@
             <!-- Shapes under no system need one first: the system map shows this file's shapes when it's kept -->
             <p class="text-sm text-ink-muted">
               {`To import ${others.length - sameCount === 1 ? 'the shape' : 'shapes'} with no irrigation system under ${others.length - sameCount === 1 ? 'it' : 'them'}, set up ${others.length - sameCount === 1 ? 'its system' : 'their systems'} first: `}<Link
-                href={pivotRoutes.new()}
+                href={systemRoutes.new()}
                 class="text-brand-600 underline">add an irrigation system</Link
               >{fileKept
                 ? `, and this file's shapes are on its map to place it on. Then come back here: the file is kept in this browser for a week.`

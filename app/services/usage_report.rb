@@ -58,11 +58,11 @@ class UsageReport
 
   def farms = Farm.where(group_id: groups.select(:id))
 
-  def pivots = Pivot.where(farm_id: farms.select(:id))
+  def systems = IrrigationSystem.where(farm_id: farms.select(:id))
 
-  def fields = Field.where(pivot_id: pivots.select(:id))
+  def fields = Field.where(system_id: systems.select(:id))
 
-  def plantings = Planting.where(pivot_id: pivots.select(:id))
+  def plantings = Planting.where(system_id: systems.select(:id))
 
   def season_plantings = plantings.where(season_start: season)
 
@@ -86,8 +86,8 @@ class UsageReport
   # Each kind of entry made in the season, joined to its farm: {kind => [scope, condition]}
   def entry_scopes
     @entry_scopes ||= begin
-      field_entries = FieldEntry.joins(field: {pivot: :farm}).where(created_at: season_times, farms: {group_id: groups.select(:id)})
-      planting_entries = PlantingEntry.joins(planting: {pivot: :farm}).where(created_at: season_times, farms: {group_id: groups.select(:id)})
+      field_entries = FieldEntry.joins(field: {system: :farm}).where(created_at: season_times, farms: {group_id: groups.select(:id)})
+      planting_entries = PlantingEntry.joins(planting: {system: :farm}).where(created_at: season_times, farms: {group_id: groups.select(:id)})
       {
         rain: [field_entries.where.not(rain_in: nil)],
         irrigation: [
@@ -95,7 +95,7 @@ class UsageReport
           planting_entries.where.not(irrigation_in: nil)
         ],
         soil_moisture: [field_entries.where.not(soil_moisture_pct: nil), planting_entries.where.not(soil_moisture_pct: nil)],
-        canopy: [CanopyObservation.joins(planting: {pivot: :farm}).where(created_at: season_times, farms: {group_id: groups.select(:id)})]
+        canopy: [CanopyObservation.joins(planting: {system: :farm}).where(created_at: season_times, farms: {group_id: groups.select(:id)})]
       }
     end
   end
@@ -106,7 +106,7 @@ class UsageReport
     ids = signed_up.pluck(:id)
     confirmed = signed_up.where.not(confirmed_at: nil).pluck(:id)
     with_farm = member_ids(farms.distinct.pluck(:group_id), ids)
-    with_planting = member_ids(Farm.joins(:pivots).where(pivots: {id: season_plantings.select(:pivot_id)}).distinct.pluck(:group_id), ids)
+    with_planting = member_ids(Farm.joins(:systems).where(irrigation_systems: {id: season_plantings.select(:system_id)}).distinct.pluck(:group_id), ids)
     with_entry = member_ids(entry_group_ids, ids)
     regular = ActivityDay.where(user_id: ids, date: season).group(:user_id).having("count(*) >= ?", REGULAR_DAYS).count.keys
     # Each step counts only accounts that made the steps before it
@@ -175,7 +175,7 @@ class UsageReport
       operations: member_counts.size,
       shared_operations: member_counts.count { |_, count| count > 1 },
       farms: farms.count,
-      systems: pivots.group(:kind).count.map { |kind, count| {name: Pivot::KIND_NAMES.fetch(kind, kind), count:} }
+      systems: systems.group(:kind).count.map { |kind, count| {name: IrrigationSystem::KIND_NAMES.fetch(kind, kind), count:} }
         .sort_by { |row| -row[:count] },
       fields: fields.count,
       outlined_fields: fields.where.not(boundary: nil).count,

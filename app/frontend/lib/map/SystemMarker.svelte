@@ -1,10 +1,10 @@
 <script lang="ts">
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { systemName } from '@/lib/geo'
-  import { type FieldCard, pivotStatus } from '@/lib/overview'
+  import { type FieldCard, systemStatus } from '@/lib/overview'
 
   import BadgeRows from './BadgeRows.svelte'
-  import { fieldBadge, type MapPivot, STATUS_LABELS as LABELS } from './pivots'
+  import { fieldBadge, type MapSystem, STATUS_LABELS as LABELS } from './systems'
 
   // What sits at an irrigation system's center (or point) on the map: a badge per
   // field without an outline (an outlined field has its own, FieldMarker), packed in rows of about
@@ -12,14 +12,14 @@
   // zoomed in. Zoomed out (the map sets data-far), it's one dot in the most urgent status of all its
   // fields, outlined or not. Badges and name carry their hover label's lines (data-hover).
   let {
-    pivot,
+    system,
     fields,
     today,
     selected,
     dimmed,
     onselect,
   }: {
-    pivot: MapPivot
+    system: MapSystem
     /** Its fields without an outline */
     fields: FieldCard[]
     today: string
@@ -28,15 +28,15 @@
     onselect: () => void
   } = $props()
 
-  const status = $derived(pivotStatus(pivot.fields))
+  const status = $derived(systemStatus(system.fields))
   const badges = $derived(fields.map((card) => fieldBadge(card, today)))
-  const name = $derived(systemName(pivot))
+  const name = $derived(systemName(system))
   const label = $derived(
-    `${name}: ${pivot.fields.length} field${pivot.fields.length === 1 ? '' : 's'}` +
+    `${name}: ${system.fields.length} field${system.fields.length === 1 ? '' : 's'}` +
       (status ? `, most urgent ${LABELS[status]}` : ', none in season'),
   )
   // Every field outlined: nothing to show here until zoomed out
-  const farOnly = $derived(pivot.fields.length > 0 && fields.length === 0)
+  const farOnly = $derived(system.fields.length > 0 && fields.length === 0)
 </script>
 
 <button
@@ -68,7 +68,7 @@
     data-hover="System: {name}"
   >
     {#if status}
-      <StatusBadge {status} size="icon" title="{pivot.name}: {LABELS[status]}" tooltip={false} />
+      <StatusBadge {status} size="icon" title="{system.name}: {LABELS[status]}" tooltip={false} />
     {:else}
       <span class="block size-3.5 rounded-full bg-gray-400 ring-2 ring-white"></span>
     {/if}
@@ -76,6 +76,6 @@
   <span
     class="max-w-40 truncate text-xs font-semibold text-white [text-shadow:0_0_3px_#000,0_0_2px_#000]
       group-data-far/map:hidden group-data-mid/map:hidden"
-    data-hover="System: {name}">{pivot.name}</span
+    data-hover="System: {name}">{system.name}</span
   >
 </button>

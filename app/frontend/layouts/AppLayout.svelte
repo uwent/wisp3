@@ -44,15 +44,15 @@
   const nav = $derived(
     example
       ? [
-          { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields|plantings)\/\d+(\?|$)/] },
+          { label: 'Dashboard', route: dashboard.show(), also: [/^\/(systems|fields|plantings)\/\d+(\?|$)/] },
           { label: 'Map', route: map.show() },
           { label: 'Weather', route: weatherZones.index(), also: ['/weather/'] },
           { label: 'About', route: about() },
         ]
       : auth.user
         ? [
-            // A pivot's, a field's and a planting's pages are reached from the dashboard; creating and editing them is setup
-            { label: 'Dashboard', route: dashboard.show(), also: [/^\/(pivots|fields|plantings)\/\d+(\?|$)/] },
+            // A system's, a field's and a planting's pages are reached from the dashboard; creating and editing them is setup
+            { label: 'Dashboard', route: dashboard.show(), also: [/^\/(systems|fields|plantings)\/\d+(\?|$)/] },
             { label: 'Map', route: map.show() },
             { label: 'Daily entry', route: dailyEntries.show() },
             { label: 'Weather', route: weatherZones.index(), also: ['/weather/'] },
@@ -60,7 +60,7 @@
             {
               label: 'Setup',
               route: setup.show(),
-              also: [/^\/pivots\/(new|\d+\/edit)/, '/setup'],
+              also: [/^\/systems\/(new|\d+\/edit)/, '/setup'],
             },
             { label: 'About', route: about() },
             // Users and Weather data, switched between by AdminTabs

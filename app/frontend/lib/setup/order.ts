@@ -12,11 +12,11 @@ export const SETUP_ORDERS: { value: SetupOrder; label: string }[] = [
 ]
 
 type OrderField = { name: string; boundary: Boundary | null }
-type OrderPivot = { name: string; latitude: number; pivot_group_id: number | null; fields: OrderField[] }
+type OrderSystem = { name: string; latitude: number; irrigation_group_id: number | null; fields: OrderField[] }
 type OrderGroup = { id: number; name: string }
-type OrderFarm = { name: string; pivots: OrderPivot[]; pivot_groups: OrderGroup[] }
+type OrderFarm = { name: string; systems: OrderSystem[]; irrigation_groups: OrderGroup[] }
 
-export type SetupChild<P, G> = { kind: 'group'; group: G; pivots: P[] } | { kind: 'system'; pivot: P }
+export type SetupChild<P, G> = { kind: 'group'; group: G; systems: P[] } | { kind: 'system'; system: P }
 
 const byName = (a: { name: string }, b: { name: string }) =>
   a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
@@ -30,45 +30,45 @@ function sorted<T extends { name: string }>(items: T[], order: SetupOrder, north
 }
 
 /** A system's fields in order */
-export function orderFields<F extends OrderField>(pivot: { latitude: number; fields: F[] }, order: SetupOrder): F[] {
-  return sorted(pivot.fields, order, (field) => (field.boundary ? boundaryCenter(field.boundary)[1] : pivot.latitude))
+export function orderFields<F extends OrderField>(system: { latitude: number; fields: F[] }, order: SetupOrder): F[] {
+  return sorted(system.fields, order, (field) => (field.boundary ? boundaryCenter(field.boundary)[1] : system.latitude))
 }
 
-const pivotNorth = (pivot: OrderPivot) =>
+const systemNorth = (system: OrderSystem) =>
   Math.max(
-    pivot.latitude,
-    ...pivot.fields.flatMap((field) => (field.boundary ? [boundaryCenter(field.boundary)[1]] : [])),
+    system.latitude,
+    ...system.fields.flatMap((field) => (field.boundary ? [boundaryCenter(field.boundary)[1]] : [])),
   )
 
 /** A farm's irrigation groups (with their systems) and its systems in none, in order */
-export function farmChildren<P extends OrderPivot, G extends OrderGroup>(
-  farm: { pivots: P[]; pivot_groups: G[] },
+export function farmChildren<P extends OrderSystem, G extends OrderGroup>(
+  farm: { systems: P[]; irrigation_groups: G[] },
   order: SetupOrder,
 ): SetupChild<P, G>[] {
-  const groups = farm.pivot_groups.map((group) => ({
+  const groups = farm.irrigation_groups.map((group) => ({
     kind: 'group' as const,
     group,
     name: group.name,
-    pivots: sorted(
-      farm.pivots.filter((pivot) => pivot.pivot_group_id === group.id),
+    systems: sorted(
+      farm.systems.filter((system) => system.irrigation_group_id === group.id),
       order,
-      pivotNorth,
+      systemNorth,
     ),
   }))
-  const grouped = new Set(groups.flatMap((child) => child.pivots))
-  const systems = farm.pivots
-    .filter((pivot) => !grouped.has(pivot))
-    .map((pivot) => ({ kind: 'system' as const, pivot, name: pivot.name }))
+  const grouped = new Set(groups.flatMap((child) => child.systems))
+  const systems = farm.systems
+    .filter((system) => !grouped.has(system))
+    .map((system) => ({ kind: 'system' as const, system, name: system.name }))
   return sorted<(typeof groups)[number] | (typeof systems)[number]>([...groups, ...systems], order, (child) =>
-    child.kind === 'group' ? Math.max(...child.pivots.map(pivotNorth), -Infinity) : pivotNorth(child.pivot),
+    child.kind === 'group' ? Math.max(...child.systems.map(systemNorth), -Infinity) : systemNorth(child.system),
   ).map((child) =>
     child.kind === 'group'
-      ? { kind: 'group', group: child.group, pivots: child.pivots }
-      : { kind: 'system', pivot: child.pivot },
+      ? { kind: 'group', group: child.group, systems: child.systems }
+      : { kind: 'system', system: child.system },
   )
 }
 
 /** The farms in order */
 export function orderFarms<F extends OrderFarm>(farms: F[], order: SetupOrder): F[] {
-  return sorted(farms, order, (farm) => Math.max(...farm.pivots.map(pivotNorth), -Infinity))
+  return sorted(farms, order, (farm) => Math.max(...farm.systems.map(systemNorth), -Infinity))
 }

@@ -3,9 +3,9 @@ require "rails_helper"
 RSpec.describe "Daily entry", type: :request do
   let(:user) { create(:user) }
   let(:farm) { create(:farm, group: user.groups.first, name: "Home") }
-  let(:pivot_group) { create(:pivot_group, farm:, name: "Home gauge") }
-  let(:pivot) { create(:pivot, farm:, pivot_group:, name: "River") }
-  let(:field) { create(:field, pivot:, name: "North", area_acres: 40) }
+  let(:irrigation_group) { create(:irrigation_group, farm:, name: "Home gauge") }
+  let(:system) { create(:system, farm:, irrigation_group:, name: "River") }
+  let(:field) { create(:field, system:, name: "North", area_acres: 40) }
   let(:corn) { create(:plant, key: "corn", name: "Corn") }
   let!(:whole) do
     create(:planting, field:, plant: corn, season_start: Date.new(2026, 4, 20), emergence_date: Date.new(2026, 5, 10),
@@ -27,30 +27,30 @@ RSpec.describe "Daily entry", type: :request do
       expect(inertia.props[:date]).to eq("2026-07-20")
     end
 
-    it "lists farms with their pivot groups, pivots, fields and plantings in season" do
+    it "lists farms with their system groups, systems, fields and plantings in season" do
       get daily_entry_path(date:)
       farm_props = inertia.props[:farms].sole
-      expect(farm_props[:pivot_groups]).to eq([{"id" => pivot_group.id, "name" => "Home gauge", "use_model_precip" => nil}])
-      pivot_props = farm_props[:pivots].sole
-      expect(pivot_props).to include(name: "River", pivot_group_id: pivot_group.id)
-      field_props = pivot_props[:fields].sole
+      expect(farm_props[:irrigation_groups]).to eq([{"id" => irrigation_group.id, "name" => "Home gauge", "use_model_precip" => nil}])
+      system_props = farm_props[:systems].sole
+      expect(system_props).to include(name: "River", irrigation_group_id: irrigation_group.id)
+      field_props = system_props[:fields].sole
       expect(field_props[:plantings].sole).to include(id: whole.id, plant_name: "Corn", partial: false, entry: nil)
     end
 
     it "lists a moved field under the system its season ran on" do
       whole.update!(end_date: Date.new(2026, 7, 16))
-      other = create(:pivot, farm:, name: "Lane 3")
-      field.update!(pivot: other)
-      pivots = ->(on) {
+      other = create(:system, farm:, name: "Lane 3")
+      field.update!(system: other)
+      systems = ->(on) {
         get daily_entry_path(date: on)
-        inertia.props[:farms].sole[:pivots].to_h { |props| [props[:name], props[:fields].map { |f| f[:name] }] }
+        inertia.props[:farms].sole[:systems].to_h { |props| [props[:name], props[:fields].map { |f| f[:name] }] }
       }
-      expect(pivots.call(date)).to eq("Lane 3" => [], "River" => ["North"])
-      expect(pivots.call(Date.new(2026, 7, 18))).to eq("Lane 3" => ["North"], "River" => [])
+      expect(systems.call(date)).to eq("Lane 3" => [], "River" => ["North"])
+      expect(systems.call(Date.new(2026, 7, 18))).to eq("Lane 3" => ["North"], "River" => [])
 
       # Its irrigation that day is its old system's
       patch daily_entry_path, params: {date: date.iso8601, fields: {field.id => {irrigation_in: "0.5"}}}
-      expect(pivot.irrigation_on(date..date)).to eq(date => {field => field.field_entries.sole})
+      expect(system.irrigation_on(date..date)).to eq(date => {field => field.field_entries.sole})
       expect(other.irrigation_on(date..date)).to eq({})
     end
 
@@ -61,7 +61,7 @@ RSpec.describe "Daily entry", type: :request do
         season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 5), end_date: Date.new(2026, 9, 30))
       plot.planting_entries.create!(date:, irrigation_in: 0.3)
       get daily_entry_path(date:)
-      plantings = inertia.props[:farms].sole[:pivots].sole[:fields].sole[:plantings]
+      plantings = inertia.props[:farms].sole[:systems].sole[:fields].sole[:plantings]
       expect(plantings.sole).to include(id: plot.id, partial: true, plot_length_ft: 100.0,
         entry: {"irrigation_in" => 0.3, "soil_moisture_pct" => nil})
     end
@@ -87,11 +87,11 @@ RSpec.describe "Daily entry", type: :request do
       expect(planting_props[:cover]).to include("value" => 90.0)
     end
 
-    def planting_props = inertia.props[:farms].sole[:pivots].sole[:fields].sole[:plantings].sole
+    def planting_props = inertia.props[:farms].sole[:systems].sole[:fields].sole[:plantings].sole
   end
 
   describe "saving" do
-    let(:plot_field) { create(:field, pivot:, name: "Plots", area_acres: 2) }
+    let(:plot_field) { create(:field, system:, name: "Plots", area_acres: 2) }
     let(:plot) do
       create(:planting, field: plot_field, plant: corn, partial: true, area_acres: 0.5,
         season_start: Date.new(2026, 5, 1), emergence_date: Date.new(2026, 5, 10), end_date: Date.new(2026, 9, 30))

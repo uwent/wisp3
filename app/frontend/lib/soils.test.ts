@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { pivotRing } from './geo'
+import { systemRing } from './geo'
 import {
   parseSoilAreas,
   parseSoilTable,
@@ -14,7 +14,7 @@ import {
   wktPolygons,
 } from './soils'
 
-// Soil Data Access's answer for the demo's North 160 pivot (44.1335, −89.5213, 1300 ft), 2026-10-17
+// Soil Data Access's answer for the demo's North 160 system (44.1335, −89.5213, 1300 ft), 2026-10-17
 const NORTH_160 = {
   Table: [
     ['mukey', 'share', 'muname', 'compname', 'comppct_r', 'texdesc'],
@@ -60,15 +60,15 @@ describe('soilKeyFor', () => {
   })
 })
 
-describe('the soil survey under a pivot', () => {
+describe('the soil survey under a system', () => {
   it('asks for the map units under the polygon, with their shares and surface textures', () => {
-    const query = soilQuery(pivotRing([-89.5213, 44.1335], 1300))
+    const query = soilQuery(systemRing([-89.5213, 44.1335], 1300))
     expect(query).toContain("STGeomFromText('POLYGON((-89.5213")
     expect(query).toContain('mupolygongeo.STIntersection')
     expect(query).toContain("c.taxorder = 'Histosols'") // past a mineral soil's thin organic layer
   })
 
-  it('reads the table and suggests the soil covering the most of the pivot', () => {
+  it('reads the table and suggests the soil covering the most of the system', () => {
     const units = parseSoilTable(NORTH_160)
     expect(units).toHaveLength(9)
     expect(units[0]).toEqual({
@@ -83,7 +83,7 @@ describe('the soil survey under a pivot', () => {
     expect(suggestion.share).toBeCloseTo(0.536, 3)
   })
 
-  it('suggests nothing when little of the pivot matches a soil type', () => {
+  it('suggests nothing when little of the system matches a soil type', () => {
     const lake = { mukey: '1', share: 0.8, name: 'Water', component: 'Water', texture: null }
     const shore = { mukey: '2', share: 0.2, name: 'Plainfield sand', component: 'Plainfield', texture: 'Sand' }
     expect(suggestSoil([lake, shore]).key).toBeNull()
@@ -95,7 +95,7 @@ describe('the soil survey under a pivot', () => {
   })
 })
 
-describe('soil types around a pivot', () => {
+describe('soil types around a system', () => {
   it('reads polygons from WKT, leaving out lines and points', () => {
     expect(wktPolygons('POLYGON ((0 0, 1 0, 1 1, 0 0))')).toEqual([
       [
@@ -164,7 +164,7 @@ describe("a plot's soil menu on a field with an outline", () => {
   })
 })
 
-describe("a field's chosen soil against the survey under its pivot", () => {
+describe("a field's chosen soil against the survey under its system", () => {
   const soils = [
     { key: 'sand', name: 'Sand' },
     { key: 'loamy_sand', name: 'Loamy Sand' },
@@ -182,7 +182,7 @@ describe("a field's chosen soil against the survey under its pivot", () => {
 
   it('notes a soil the survey finds none of, offering the main one', () => {
     expect(soilFit(muck, shares, soils)).toEqual({
-      note: "The soil survey finds no muck under the pivot; it's mostly sand.",
+      note: "The soil survey finds no muck under the system; it's mostly sand.",
       main: sand,
       absent: true,
     })
@@ -199,7 +199,7 @@ describe("a field's chosen soil against the survey under its pivot", () => {
     const mixed = new Map([['sand', 0.3]])
     expect(soilFit(sand, mixed, soils)).toBeNull()
     expect(soilFit(muck, mixed, soils)).toEqual({
-      note: 'The soil survey finds no muck under the pivot.',
+      note: 'The soil survey finds no muck under the system.',
       main: null,
       absent: true,
     })

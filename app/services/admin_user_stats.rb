@@ -4,10 +4,10 @@
 # (ActivityDay). A few grouped queries for every account at once, not one per user. A group shared by
 # several users counts for each of them.
 class AdminUserStats
-  Stats = Struct.new(:groups, :owned_groups, :farms, :pivots, :fields, :plantings_season, :plantings,
+  Stats = Struct.new(:groups, :owned_groups, :farms, :systems, :fields, :plantings_season, :plantings,
     :south, :west, :north, :east, :last_active_on, :days_active_season)
 
-  EMPTY = {groups: 0, owned_groups: 0, farms: 0, pivots: 0, fields: 0, plantings_season: 0, plantings: 0}.freeze
+  EMPTY = {groups: 0, owned_groups: 0, farms: 0, systems: 0, fields: 0, plantings_season: 0, plantings: 0}.freeze
 
   attr_reader :year
 
@@ -26,7 +26,7 @@ class AdminUserStats
         totals = all[user_id] ||= Stats.new(**EMPTY)
         totals.groups += 1
         totals.owned_groups += 1 if owner
-        %i[farms pivots fields plantings_season plantings].each do |kind|
+        %i[farms systems fields plantings_season plantings].each do |kind|
           totals[kind] += counts[kind].fetch(group_id, 0)
         end
         extend_bounds(totals, bounds[group_id])
@@ -43,21 +43,21 @@ class AdminUserStats
   def counts
     @counts ||= {
       farms: Farm.group(:group_id).count,
-      pivots: pivots.count,
-      fields: Field.joins(pivot: :farm).group("farms.group_id").count,
+      systems: systems.count,
+      fields: Field.joins(system: :farm).group("farms.group_id").count,
       plantings: plantings.count,
       plantings_season: plantings.where(season_start: Date.new(year, 1, 1)..Date.new(year, 12, 31)).count
     }
   end
 
-  def pivots = Pivot.joins(:farm).group("farms.group_id")
+  def systems = IrrigationSystem.joins(:farm).group("farms.group_id")
 
-  def plantings = Planting.joins(pivot: :farm).group("farms.group_id")
+  def plantings = Planting.joins(system: :farm).group("farms.group_id")
 
   # {group_id => [south, west, north, east]} of its systems' locations
   def bounds
-    @bounds ||= pivots.pluck("farms.group_id", Arel.sql("MIN(pivots.latitude)"), Arel.sql("MIN(pivots.longitude)"),
-      Arel.sql("MAX(pivots.latitude)"), Arel.sql("MAX(pivots.longitude)"))
+    @bounds ||= systems.pluck("farms.group_id", Arel.sql("MIN(irrigation_systems.latitude)"), Arel.sql("MIN(irrigation_systems.longitude)"),
+      Arel.sql("MAX(irrigation_systems.latitude)"), Arel.sql("MAX(irrigation_systems.longitude)"))
       .to_h { |group_id, *box| [group_id, box] }
   end
 

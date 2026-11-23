@@ -7,7 +7,7 @@
   import Spinner from '@/lib/components/Spinner.svelte'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { currentUnits } from '@/lib/units'
-  import { fields, pivots, setup } from '@/routes'
+  import { fields, systems, setup } from '@/routes'
   import { weatherZone } from '@/lib/weatherZones'
   import type { ForecastDay, WeatherZone } from '@/types/serializers'
 
@@ -15,17 +15,17 @@
   // them (below them on narrow screens). One zone goes straight to it (the controller).
   let {
     zones,
-    updating_pivot_ids,
+    updating_system_ids,
   }: {
     zones: (WeatherZone & { forecast: ForecastDay[] })[]
-    updating_pivot_ids: number[]
+    updating_system_ids: number[]
   } = $props()
 
   const units = $derived(currentUnits())
 
-  const weatherWait = pollWeather(() => updating_pivot_ids)
-  const weatherState = $derived(weatherWait.state(updating_pivot_ids.length > 0))
-  const updating = (zone: WeatherZone) => zone.pivots.some((pivot) => updating_pivot_ids.includes(pivot.id))
+  const weatherWait = pollWeather(() => updating_system_ids)
+  const weatherState = $derived(weatherWait.state(updating_system_ids.length > 0))
+  const updating = (zone: WeatherZone) => zone.systems.some((system) => updating_system_ids.includes(system.id))
 </script>
 
 <svelte:head><title>Weather · WISP</title></svelte:head>
@@ -58,12 +58,12 @@
             >
           </h2>
           <!-- Its systems and their fields, each a link to its page -->
-          {#if zone.pivots.length}
+          {#if zone.systems.length}
             <p class="text-sm">
               <span class="text-ink-muted">Systems:</span>
-              {#each zone.pivots as pivot, i (pivot.id)}{i ? ', ' : ''}<Link
-                  href={pivots.show(pivot.id)}
-                  class="text-brand-600 underline underline-offset-2">{systemName(pivot)}</Link
+              {#each zone.systems as system, i (system.id)}{i ? ', ' : ''}<Link
+                  href={systems.show(system.id)}
+                  class="text-brand-600 underline underline-offset-2">{systemName(system)}</Link
                 >{/each}
             </p>
           {/if}

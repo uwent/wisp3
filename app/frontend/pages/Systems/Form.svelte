@@ -6,7 +6,7 @@
   import FormFooter from '@/lib/components/FormFooter.svelte'
   import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
-  import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
+  import SystemShapeFields from '@/lib/components/SystemShapeFields.svelte'
   import SectionHeading from '@/lib/components/SectionHeading.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
@@ -16,8 +16,8 @@
     KIND_NAMES,
     KIND_NOUNS,
     type LngLat,
-    type PivotKind,
-    type PivotShape,
+    type SystemKind,
+    type SystemShape,
     shapeAcres,
     shapeDraft,
     systemName,
@@ -26,34 +26,34 @@
   import { circleNoun, hasTimer } from '@/lib/irrigation'
   import { currentUnits } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
-  import { pivots, setup } from '@/routes'
+  import { systems, setup } from '@/routes'
   import type { FileShapes } from '@/lib/outlines/fileShapes'
   import { type Boundary } from '@/lib/boundary'
   import { unimportedShapes } from '@/lib/outlines/fileShapes'
   import { readKept } from '@/lib/outlines/kept'
-  import type { Pivot, SoilType } from '@/types/serializers'
+  import type { IrrigationSystem, SoilType } from '@/types/serializers'
 
-  type Outline = PivotShape &
-    Pick<Pivot, 'id' | 'name' | 'farm_id'> & {
+  type Outline = SystemShape &
+    Pick<IrrigationSystem, 'id' | 'name' | 'farm_id'> & {
       /** Its fields' outlines' extent, [[west, south], [east, north]] */
       fields_extent: [LngLat, LngLat] | null
     }
 
   let {
-    pivot,
+    system,
     farms,
-    other_pivots,
+    other_systems,
     soil_types,
-    pivot_group = null,
+    irrigation_group = null,
     copy_of = null,
     field_outlines = [],
   }: {
-    pivot: Partial<Omit<Pivot, 'fields'>>
+    system: Partial<Omit<IrrigationSystem, 'fields'>>
     farms: { id: number; name: string }[]
-    other_pivots: Outline[]
+    other_systems: Outline[]
     soil_types: SoilType[]
     /** The group a duplicated system's copy joins */
-    pivot_group?: { id: number; name: string; farm_id: number } | null
+    irrigation_group?: { id: number; name: string; farm_id: number } | null
     /** The system being duplicated (Setup's Duplicate, ?copy_of=): everything but its location is copied */
     copy_of?: { id: number; name: string } | null
     /** The operation's field outlines, on the map */
@@ -72,29 +72,31 @@
     )
   })
 
-  const editing = $derived(pivot.id !== undefined)
-  let farmId = $state(untrack(() => String(pivot.farm_id ?? farms[0]?.id ?? '')))
-  const joinsGroup = $derived(!editing && pivot_group && String(pivot_group.farm_id) === farmId ? pivot_group : null)
+  const editing = $derived(system.id !== undefined)
+  let farmId = $state(untrack(() => String(system.farm_id ?? farms[0]?.id ?? '')))
+  const joinsGroup = $derived(
+    !editing && irrigation_group && String(irrigation_group.farm_id) === farmId ? irrigation_group : null,
+  )
   // The map opens on the chosen farm's systems and their fields (all of the operation's when it has none)
-  const frame = $derived(systemsFrame(other_pivots.filter((other) => String(other.farm_id) === farmId)))
+  const frame = $derived(systemsFrame(other_systems.filter((other) => String(other.farm_id) === farmId)))
 
   // The map and the inputs edit the same values
-  let shape = $state(untrack(() => shapeDraft(pivot)))
+  let shape = $state(untrack(() => shapeDraft(system)))
 
-  // Unsaved changes: anything typed in the form, or the pivot moved or resized on the map
+  // Unsaved changes: anything typed in the form, or the system moved or resized on the map
   const initial = untrack(() => JSON.stringify(draftShape(shape)))
   let edited = $state(false)
   let saved = $state(false)
   const moved = $derived(JSON.stringify(draftShape(shape)) !== initial)
   confirmUnsavedChanges(
     () => !saved && (edited || moved),
-    () => document.getElementById('pivot-form'),
+    () => document.getElementById('system-form'),
   )
 
   // The kind as saved, for the title; the kind being chosen, for the words below it
   const title = $derived(
     editing
-      ? `Edit ${systemName({ name: pivot.name ?? '', kind_name: KIND_NAMES[pivot.kind ?? 'center'] })}`
+      ? `Edit ${systemName({ name: system.name ?? '', kind_name: KIND_NAMES[system.kind ?? 'center'] })}`
       : copy_of
         ? `Duplicate ${copy_of.name}`
         : 'Add an irrigation system',
@@ -105,8 +107,8 @@
   // The percent timer: the depth a circle (a linear's pass) puts on at
   // 100%, from the sprinkler chart, or worked out from the hours one takes at 100%, the pump
   // capacity and the system's own area on the map
-  let pumpGpm = $state<number | null>(untrack(() => pivot.pump_capacity_gpm ?? null))
-  let inchesAt100 = $state<number | null>(untrack(() => pivot.inches_at_100 ?? null))
+  let pumpGpm = $state<number | null>(untrack(() => system.pump_capacity_gpm ?? null))
+  let inchesAt100 = $state<number | null>(untrack(() => system.inches_at_100 ?? null))
   let fromHours = $state(false)
   let circleHours = $state<number | null>(null)
   const circle = $derived(circleNoun(shape.kind))
@@ -121,13 +123,13 @@
 
   // Only owners delete (Q8); the system's fields and their seasons go with it
   function destroy() {
-    const name = systemName({ name: pivot.name ?? '', kind_name: KIND_NAMES[pivot.kind ?? 'center'] })
+    const name = systemName({ name: system.name ?? '', kind_name: KIND_NAMES[system.kind ?? 'center'] })
     if (!confirm(`Delete ${name} and its fields? This can't be undone.`)) return
     // Leaving without asking; if the delete is refused and this page stays, the guard comes back
     saved = true
-    router.delete(pivots.destroy(pivot.id!).url, { onFinish: () => (saved = false) })
+    router.delete(systems.destroy(system.id!).url, { onFinish: () => (saved = false) })
   }
-  const EQUIPMENT_EXAMPLES: Record<PivotKind, string> = {
+  const EQUIPMENT_EXAMPLES: Record<SystemKind, string> = {
     center: 'e.g. Valley 8000, end gun',
     linear: 'e.g. Zimmatic 9500L, hose drag',
     traveler: 'e.g. Hard hose reel #2',
@@ -152,34 +154,34 @@
 </div>
 
 <Form
-  id="pivot-form"
-  action={editing ? pivots.update(pivot.id!) : pivots.create()}
+  id="system-form"
+  action={editing ? systems.update(system.id!) : systems.create()}
   class="space-y-6"
   onSuccess={() => (saved = true)}
 >
   {#snippet children({ errors, processing })}
     <div class="space-y-6" oninput={() => (edited = true)} onchange={() => (edited = true)}>
       {#if copy_of}<input type="hidden" name="copy_of" value={copy_of.id} />{/if}
-      {#if joinsGroup}<input type="hidden" name="pivot[pivot_group_id]" value={joinsGroup.id} />{/if}
+      {#if joinsGroup}<input type="hidden" name="system[irrigation_group_id]" value={joinsGroup.id} />{/if}
       <section class="space-y-4 rounded-lg border border-line bg-surface-raised p-6">
         <div class="grid gap-4 sm:grid-cols-2">
-          <TextField label="Name" name="pivot[name]" value={pivot.name ?? ''} error={errors.name} required />
+          <TextField label="Name" name="system[name]" value={system.name ?? ''} error={errors.name} required />
           <SelectField
             label="Farm"
-            name="pivot[farm_id]"
+            name="system[farm_id]"
             bind:value={farmId}
             options={farms.map((farm) => ({ value: String(farm.id), label: farm.name }))}
-            info="pivot.farm"
+            info="system.farm"
             hint={joinsGroup ? `It joins the group ${joinsGroup.name}` : undefined}
             error={errors.farm}
             required
           />
         </div>
-        <PivotShapeFields
+        <SystemShapeFields
           bind:shape
-          prefix="pivot"
+          prefix="system"
           error={(attribute) => errors[attribute]}
-          others={other_pivots}
+          others={other_systems}
           {frame}
           soilTypes={soil_types}
           headingLevel="h2"
@@ -188,17 +190,17 @@
           fields={field_outlines}
         />
 
-        <section class="space-y-4" aria-labelledby="pivot-equipment">
-          <SectionHeading label="Equipment and notes" id="pivot-equipment" level="h2" />
+        <section class="space-y-4" aria-labelledby="system-equipment">
+          <SectionHeading label="Equipment and notes" id="system-equipment" level="h2" />
           <div
             class="grid items-start gap-4 sm:grid-cols-2 {hasTimer(shape.kind) ? 'sm:grid-rows-[auto_1fr_auto]' : ''}"
           >
             <NumberField
               label={isPoint(shape.kind) ? 'Flow' : 'Pump capacity'}
-              name="pivot[pump_capacity_gpm]"
+              name="system[pump_capacity_gpm]"
               quantity="flow"
               bind:value={pumpGpm}
-              info="pivot.pump_capacity"
+              info="system.pump_capacity"
               error={errors.pump_capacity_gpm}
               optional
             />
@@ -207,10 +209,10 @@
               <div class="space-y-2 sm:row-span-2">
                 <NumberField
                   label="Depth at 100%"
-                  name="pivot[inches_at_100]"
+                  name="system[inches_at_100]"
                   quantity="depth"
                   bind:value={inchesAt100}
-                  info="pivot.inches_at_100"
+                  info="system.inches_at_100"
                   error={errors.inches_at_100}
                   hint="What a {circle} puts on at full speed, from its sprinkler chart. With it you can enter irrigation as the percent timer's setting."
                   optional
@@ -219,7 +221,7 @@
                   <div class="space-y-2 rounded-md border border-line p-3">
                     <NumberField
                       label="Hours for a {circle} at 100%"
-                      id="pivot-circle-hours"
+                      id="system-circle-hours"
                       unitLabel="h"
                       bind:value={circleHours}
                     />
@@ -253,17 +255,17 @@
             {/if}
             <TextField
               label="Equipment"
-              name="pivot[equipment]"
-              value={pivot.equipment ?? ''}
+              name="system[equipment]"
+              value={system.equipment ?? ''}
               placeholder={EQUIPMENT_EXAMPLES[shape.kind]}
-              info="pivot.equipment"
+              info="system.equipment"
               optional
               hint={shape.kind === 'traveler' ? 'The machine, named the same at each field it waters' : undefined}
             />
             <div class="space-y-1 sm:col-span-2">
-              <FieldLabel label="Notes" for="pivot-notes" optional />
-              <textarea id="pivot-notes" name="pivot[notes]" rows="2" class="block w-full rounded-md text-sm"
-                >{pivot.notes ?? ''}</textarea
+              <FieldLabel label="Notes" for="system-notes" optional />
+              <textarea id="system-notes" name="system[notes]" rows="2" class="block w-full rounded-md text-sm"
+                >{system.notes ?? ''}</textarea
               >
             </div>
           </div>
@@ -272,7 +274,7 @@
 
       <FormFooter
         ondelete={editing && page.props.auth.owner ? destroy : undefined}
-        deleteLabel="Delete this {KIND_NOUNS[pivot.kind ?? 'center']}"
+        deleteLabel="Delete this {KIND_NOUNS[system.kind ?? 'center']}"
       >
         <Button type="submit" disabled={processing}>{editing ? 'Save' : 'Add irrigation system'}</Button>
       </FormFooter>

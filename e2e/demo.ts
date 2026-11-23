@@ -8,7 +8,7 @@ import names from './demo.json' with { type: 'json' }
 // (firstPlantingPath), its system in the irrigation group firstFieldGroup. researchField: plots side by side on researchSystem, one of them namedPlot
 // (named by its variety). hayField: alfalfa with cuttings, on traveler. gauge: an irrigation group,
 // its fields including hayField (on its own traveler, also named hayField) and gaugeField (on
-// gaugeFieldSystem). splitPivot: a pivot split into two outlined
+// gaugeFieldSystem). splitSystem: a system split into two outlined
 // halves, splitWest and splitEast. shapeField: a field whose shape the tests replace, away from
 // the KML and shapefile fixtures (near Arlington). awayField: a field on a traveler more than a
 // kilometer from the KML fixture's field. coveredField: an outlined field the shapefile fixture's

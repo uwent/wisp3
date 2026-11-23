@@ -15,14 +15,14 @@ class FieldsController < AuthenticatedController
     today = Current.today
     year = requested_year
     plantings = field.plantings.select { |p| p.season_year == year }
-    weather_updating = WeatherCell.keep_current_updating_ids([field.pivot.weather_cell_id]).any?
+    weather_updating = WeatherCell.keep_current_updating_ids([field.system.weather_cell_id]).any?
 
     render inertia: "Fields/Show", props: {
       **FieldHeaderProps.for(field),
       year:,
       years: (field.plantings.map(&:season_year) + [today.year, year]).uniq.sort,
       weather_updating:,
-      **WeatherZone.page_props(Current.group, field.pivot.weather_cell, forecast: year == today.year),
+      **WeatherZone.page_props(Current.group, field.system.weather_cell, forecast: year == today.year),
       plantings: summaries(field, plantings, today),
       days: field_days(field, year, plantings, today),
       **ReferenceProps.planting_form
@@ -30,7 +30,7 @@ class FieldsController < AuthenticatedController
   end
 
   def create
-    field = Current.group.pivots.find(field_params[:pivot_id]).fields.build(field_params)
+    field = Current.group.systems.find(field_params[:system_id]).fields.build(field_params)
     # Back to Setup as it was (its season, or quick setup's next steps)
     if field.save
       redirect_back_or_to setup_path, notice: "Added #{field.name}"
@@ -41,8 +41,8 @@ class FieldsController < AuthenticatedController
 
   def update
     field = Current.group.fields.find(params[:id])
-    field.pivot = Current.group.pivots.find(field_params[:pivot_id]) if field_params[:pivot_id]
-    if field.update(field_params.except(:pivot_id))
+    field.system = Current.group.systems.find(field_params[:system_id]) if field_params[:system_id]
+    if field.update(field_params.except(:system_id))
       redirect_back_or_to setup_path, notice: "Saved #{field.name}"
     else
       redirect_with_errors(request.referer || setup_path, field)
@@ -58,7 +58,7 @@ class FieldsController < AuthenticatedController
   private
 
   def field_params
-    params.expect(field: [:pivot_id, :name, :area_acres, :soil_type_id, :field_capacity, :perm_wilting_pt, :notes, :boundary])
+    params.expect(field: [:system_id, :name, :area_acres, :soil_type_id, :field_capacity, :perm_wilting_pt, :notes, :boundary])
   end
 
   # Each planting of the season with its status today (PlantingSummarySerializer), sharing the
@@ -84,7 +84,7 @@ class FieldsController < AuthenticatedController
     to = [plantings.map(&:end_date).max || Date.new(year, 11, 30), today].min
     return [] if to < from
     dates = (from..to).to_a
-    inputs = DailyInputs.new(field, dates, weather: WeatherDay.balance_inputs(field.pivot.weather_cell, dates)).days
+    inputs = DailyInputs.new(field, dates, weather: WeatherDay.balance_inputs(field.system.weather_cell, dates)).days
     entries = field.field_entries.where(date: from..to).index_by(&:date)
     inputs.reverse.map do |day|
       {date: day.date, rain: day.rain, rain_source: day.rain_source, rain_model: day.rain_model,

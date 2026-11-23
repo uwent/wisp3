@@ -4,9 +4,9 @@ RSpec.describe SeasonReportCsv do
   let(:user) { create(:user, first_name: "Jane", last_name: "Grower") }
   let(:group) { user.groups.first }
   let(:farm) { create(:farm, group:, name: "Hancock") }
-  let(:pivot) { create(:pivot, farm:, name: "North", equipment: "=Well 12") }
-  let(:east) { create(:field, pivot:, name: "East", area_acres: 30) }
-  let(:west) { create(:field, pivot:, name: "West", area_acres: 90) }
+  let(:system) { create(:system, farm:, name: "North", equipment: "=Well 12") }
+  let(:east) { create(:field, system:, name: "East", area_acres: 30) }
+  let(:west) { create(:field, system:, name: "West", area_acres: 90) }
   let(:today) { Date.new(2026, 7, 10) }
   let(:rows) { CSV.parse(described_class.new(group, 2026, exported_by: user, about_url: "https://wisp.test/about", today:).to_csv.delete_prefix(CsvExport::BOM)) }
 
@@ -22,12 +22,12 @@ RSpec.describe SeasonReportCsv do
         end_date: Date.new(2026, 9, 30))
     end
     (Date.new(2026, 7, 1)..today).each do |date|
-      pivot.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: 0.1, tmax_f: 80, tmin_f: 60, tmean_f: 70,
+      system.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: 0.1, tmax_f: 80, tmin_f: 60, tmean_f: 70,
         model: "m", hours: 24, fetched_at: Time.current)
     end
     [east, west].each { |field| field.field_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.6) }
     east.field_entries.create!(date: Date.new(2026, 7, 5), irrigation_in: 0.4)
-    create(:planting, field: create(:field, pivot:), season_start: Date.new(2025, 5, 1), emergence_date: Date.new(2025, 5, 15),
+    create(:planting, field: create(:field, system:), season_start: Date.new(2025, 5, 1), emergence_date: Date.new(2025, 5, 15),
       end_date: Date.new(2025, 9, 30)) # another season
   end
 
@@ -36,7 +36,7 @@ RSpec.describe SeasonReportCsv do
       expect(rows.first).to eq(["WISP season report, 2026"])
       frontmatter = rows[1..].take_while(&:any?).map(&:sole)
       expect(frontmatter).to include("Operation: #{group.name}", "Season: 2026, counted through 2026-07-10",
-        "Fields: 2 fields on 1 pivot across 1 farm, 120.0 acres", "Irrigation: 0.60 to 1.00 in by field, 0.80 in on average",
+        "Fields: 2 fields on 1 system across 1 farm, 120.0 acres", "Irrigation: 0.60 to 1.00 in by field, 0.80 in on average",
         "Exported by: Jane Grower (#{user.email})", "Exported: 2026-07-10 14:30 CDT", "Details: https://wisp.test/about")
     end
   end
@@ -47,9 +47,9 @@ RSpec.describe SeasonReportCsv do
     expect(fields.first).to include("Irrigation system" => "North", "Kind" => "Pivot", "Part of the field" => "Whole field", "Equipment" => "'=Well 12", "Days counted" => "10",
       "Irrigation (in)" => "1.0000", "Days irrigated" => "2", "Rainfall (in)" => "1.0000", "Season start" => "2026-07-01")
 
-    pivot_row = section("Irrigation by irrigation system").sole
+    system_row = section("Irrigation by irrigation system").sole
     # (30 × 1.0 + 90 × 0.6) / 120 acres
-    expect(pivot_row).to include("Fields" => "2", "Area (acres)" => "120.0", "Days irrigated" => "2", "Irrigation (in)" => "0.7000")
+    expect(system_row).to include("Fields" => "2", "Area (acres)" => "120.0", "Days irrigated" => "2", "Irrigation (in)" => "0.7000")
 
     zone = section("Weather by zone").sole
     expect(zone).to include("Zone" => "1", "Irrigation systems" => "North (pivot)", "From" => "2026-07-01", "Through" => "2026-07-10",
@@ -59,8 +59,8 @@ RSpec.describe SeasonReportCsv do
 
   it "averages a system's irrigation by field when a field has no area" do
     west.plantings.update_all(area_acres: nil)
-    expect(rows).to include(["Fields: 2 fields on 1 pivot across 1 farm, 30.0 acres (1 field without an area)"])
-    # The pivot's area is unknown, so (1.0 + 0.6) / 2 fields rather than weighted by area
+    expect(rows).to include(["Fields: 2 fields on 1 system across 1 farm, 30.0 acres (1 field without an area)"])
+    # The system's area is unknown, so (1.0 + 0.6) / 2 fields rather than weighted by area
     expect(section("Irrigation by irrigation system").sole).to include("Area (acres)" => nil, "Irrigation (in)" => "0.8000")
   end
 
@@ -68,12 +68,12 @@ RSpec.describe SeasonReportCsv do
     west.plantings.sole.update!(partial: true, area_acres: 5)
     create(:planting, field: west, partial: true, area_acres: 8, season_start: Date.new(2026, 7, 1),
       emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30))
-    expect(rows).to include(["Fields: 2 fields on 1 pivot across 1 farm, 120.0 acres"])
+    expect(rows).to include(["Fields: 2 fields on 1 system across 1 farm, 120.0 acres"])
     expect(section("Irrigation by irrigation system").sole).to include("Area (acres)" => "120.0")
   end
 
   it "leaves a field whose season hasn't started blank, not zero" do
-    later = create(:field, pivot:, name: "Later", area_acres: 10)
+    later = create(:field, system:, name: "Later", area_acres: 10)
     create(:planting, field: later, season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 1),
       end_date: Date.new(2026, 10, 30))
     row = section("Fields").find { |r| r["Field"] == "Later" }
@@ -88,14 +88,14 @@ RSpec.describe SeasonReportCsv do
 
   it "files a season under the system it ran on, after its field moves to another" do
     east.plantings.sole.update!(end_date: Date.new(2026, 7, 8))
-    south = create(:pivot, farm:, name: "South", latitude: 45.3, longitude: -90.1)
-    east.update!(pivot: south)
-    expect(east.plantings.sole.pivot).to eq(pivot)
+    south = create(:system, farm:, name: "South", latitude: 45.3, longitude: -90.1)
+    east.update!(system: south)
+    expect(east.plantings.sole.system).to eq(system)
 
     expect(section("Fields").map { |row| [row["Field"], row["Irrigation system"]] }).to eq([["East", "North"], ["West", "North"]])
-    expect(rows).to include(["Fields: 2 fields on 1 pivot across 1 farm, 120.0 acres"])
-    pivot_row = section("Irrigation by irrigation system").sole
-    expect(pivot_row).to include("Irrigation system" => "North", "Fields" => "2")
+    expect(rows).to include(["Fields: 2 fields on 1 system across 1 farm, 120.0 acres"])
+    system_row = section("Irrigation by irrigation system").sole
+    expect(system_row).to include("Irrigation system" => "North", "Fields" => "2")
     expect(section("Weather by zone").sole).to include("Irrigation systems" => "North (pivot)")
   end
 
@@ -106,7 +106,7 @@ RSpec.describe SeasonReportCsv do
   end
 
   it "leaves rainfed plantings that weren't irrigated out of irrigation's spread and averages" do
-    dry = create(:field, pivot:, name: "Dry", area_acres: 40)
+    dry = create(:field, system:, name: "Dry", area_acres: 40)
     create(:planting, field: dry, rainfed: true, season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1),
       end_date: Date.new(2026, 9, 30))
     frontmatter = rows[1..].take_while(&:any?).map(&:sole)

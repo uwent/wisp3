@@ -22,7 +22,7 @@ module Admin
 
     def refresh
       WeatherRefreshJob.perform_later(all: true)
-      redirect_to admin_weather_path, notice: "Weather refresh queued for every cell with a pivot", status: :see_other
+      redirect_to admin_weather_path, notice: "Weather refresh queued for every cell with a system", status: :see_other
     end
 
     private

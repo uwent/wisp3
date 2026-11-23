@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe PlantingStatus do
   let(:group) { create(:group) }
-  let(:field) { create(:field, pivot: create(:pivot, farm: create(:farm, group:))) }
+  let(:field) { create(:field, system: create(:system, farm: create(:farm, group:))) }
   let(:planting) do
     create(:planting, field:, season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1),
       end_date: Date.new(2026, 7, 31))
@@ -90,7 +90,7 @@ RSpec.describe PlantingStatus do
 end
 
 RSpec.describe PlantingStatus, "projection" do
-  let(:field) { create(:field, pivot: create(:pivot)) }
+  let(:field) { create(:field, system: create(:system)) }
   # FC 0.15, PWP 0.05, MRZD 24 in, MAD 0.5: AD_max 1.2 in, AD 0 at the trigger. 80% cover from
   # emergence, so adjusted ET = et0.
   let(:planting) do
@@ -173,9 +173,9 @@ RSpec.describe PlantingStatus, "projection" do
       end
     end
 
-    let(:pivot_group) { create(:pivot_group, farm: field.pivot.farm, pivots: [field.pivot]) }
+    let(:irrigation_group) { create(:irrigation_group, farm: field.system.farm, systems: [field.system]) }
 
-    before { pivot_group.update!(use_model_precip: false) }
+    before { irrigation_group.update!(use_model_precip: false) }
 
     it "projects with the forecast's rain, and also with none" do
       projection = status
@@ -195,7 +195,7 @@ RSpec.describe PlantingStatus, "projection" do
     end
 
     it "has no dry case on a field using modeled rain" do
-      pivot_group.update!(use_model_precip: nil)
+      irrigation_group.update!(use_model_precip: nil)
       expect([status.dry_projection, status.dry_crossing]).to eq([[], nil])
     end
   end
@@ -245,7 +245,7 @@ RSpec.describe PlantingStatus, "projection" do
   end
 
   it "takes today's weather from the forecast when the cell has one" do
-    cell = field.pivot.weather_cell || field.pivot.tap(&:save!).weather_cell
+    cell = field.system.weather_cell || field.system.tap(&:save!).weather_cell
     cell.weather_forecasts.create!(issued_at: Time.current, model: "best_match",
       payload: {days: (today..today + 15).map { |date| {date: date.iso8601, et0_in: 0.15, precip_in: 0.0} }})
     (Date.new(2026, 7, 1)...today).each do |date|

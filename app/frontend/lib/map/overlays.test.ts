@@ -108,7 +108,7 @@ describe('drought', () => {
     expect(droughtDate(data)?.toISOString()).toBe('2026-10-13T00:00:00.000Z')
   })
 
-  it('loads the area around the pivots, or Wisconsin without any', () => {
+  it('loads the area around the systems, or Wisconsin without any', () => {
     expect(droughtBounds([[-89.5, 44.1]], 2)).toEqual([-91.5, 42.1, -87.5, 46.1])
     expect(droughtBounds([])).toEqual([-93, 42.4, -86.7, 47.1])
     const url = new URL(droughtUrl([-91.5, 42.1, -87.5, 46.1]))

@@ -36,20 +36,20 @@ FactoryBot.define do
     sequence(:name) { |n| "Farm #{n}" }
   end
 
-  factory :pivot do
+  factory :system, class: "IrrigationSystem" do
     farm
     sequence(:name) { |n| "Pivot #{n}" }
     latitude { 44.12 }
     longitude { -89.53 }
   end
 
-  factory :pivot_group do
+  factory :irrigation_group do
     farm
     sequence(:name) { |n| "Gauge #{n}" }
   end
 
   factory :field do
-    pivot
+    system
     soil_type
     sequence(:name) { |n| "Field #{n}" }
     area_acres { 60.0 }

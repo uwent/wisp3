@@ -11,7 +11,7 @@ RSpec.describe UsageReport do
   def operation_for(user, planting: true)
     group = create(:group)
     create(:membership, user:, group:, owner: true)
-    field = create(:field, pivot: create(:pivot, farm: create(:farm, group:), kind: "center"))
+    field = create(:field, system: create(:system, farm: create(:farm, group:), kind: "center"))
     create(:planting, field:) if planting
     field
   end
@@ -29,7 +29,7 @@ RSpec.describe UsageReport do
     planted = grower("planted@farm.test")
     operation_for(planted)
     farm_only = grower("farm@farm.test")
-    operation_for(farm_only).pivot.plantings.destroy_all
+    operation_for(farm_only).system.plantings.destroy_all
     grower("unconfirmed@farm.test", confirmed: false)
     # Active often but never set anything up: not a regular in the funnel
     idle = grower("idle@farm.test")
@@ -83,7 +83,7 @@ RSpec.describe UsageReport do
     planting = field.plantings.sole
     travel_to(Time.zone.local(2026, 7, 14, 9)) do
       create(:field_entry, field:, date: Date.new(2026, 7, 13), rain_in: 0.5, irrigation_in: 0.75, soil_moisture_pct: 30)
-      plot = create(:planting, field: create(:field, pivot: field.pivot), partial: true, area_acres: 1)
+      plot = create(:planting, field: create(:field, system: field.system), partial: true, area_acres: 1)
       plot.planting_entries.create!(date: Date.new(2026, 7, 14), irrigation_in: 0.5)
       create(:canopy_observation, planting:, date: Date.new(2026, 7, 14))
     end
@@ -101,7 +101,7 @@ RSpec.describe UsageReport do
     a = grower("a@farm.test", unit_system: "metric", digest_frequency: "daily")
     b = grower("b@farm.test")
     field = operation_for(a)
-    create(:membership, user: b, group: field.pivot.farm.group)
+    create(:membership, user: b, group: field.system.farm.group)
     field.update!(boundary: {type: "Polygon", coordinates: [[[-89.53, 44.12], [-89.52, 44.12], [-89.52, 44.13], [-89.53, 44.12]]]})
 
     expect(report[:setup]).to include(operations: 1, shared_operations: 1, farms: 1, fields: 1, outlined_fields: 1,

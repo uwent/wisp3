@@ -8,20 +8,20 @@ RSpec.describe "Constants mirrored in the frontend" do
     value.include?(".") ? value.to_f : value.to_i
   end
 
-  it "has the pivot size limits of Pivot in lib/geo.ts" do
+  it "has the system size limits of IrrigationSystem in lib/geo.ts" do
     %i[MAX_RADIUS_FT MAX_LINEAR_LENGTH_FT MAX_LINEAR_TRAVEL_FT].each do |name|
-      expect(frontend_constant("geo.ts", name)).to eq(Pivot.const_get(name)), name.to_s
+      expect(frontend_constant("geo.ts", name)).to eq(IrrigationSystem.const_get(name)), name.to_s
     end
   end
 
-  it "has FieldBoundary's limits and Pivot's latitudes and longitudes in lib/boundary.ts" do
+  it "has FieldBoundary's limits and IrrigationSystem's latitudes and longitudes in lib/boundary.ts" do
     expect(frontend_constant("boundary.ts", "MAX_BOUNDARY_VERTICES")).to eq(FieldBoundary::MAX_VERTICES)
     expect(frontend_constant("boundary.ts", "MAX_FIELD_ACRES")).to eq(FieldBoundary::MAX_ACRES)
     expect(frontend_constant("boundary.ts", "MIN_FIELD_ACRES")).to eq(FieldBoundary::MIN_ACRES)
     expect([frontend_constant("boundary.ts", "MIN_LATITUDE"), frontend_constant("boundary.ts", "MAX_LATITUDE")])
-      .to eq([Pivot::LATITUDES.begin, Pivot::LATITUDES.end])
+      .to eq([IrrigationSystem::LATITUDES.begin, IrrigationSystem::LATITUDES.end])
     expect([frontend_constant("boundary.ts", "MIN_LONGITUDE"), frontend_constant("boundary.ts", "MAX_LONGITUDE")])
-      .to eq([Pivot::LONGITUDES.begin, Pivot::LONGITUDES.end])
+      .to eq([IrrigationSystem::LONGITUDES.begin, IrrigationSystem::LONGITUDES.end])
   end
 
   it "has Planting's longest season in lib/plantings.ts" do

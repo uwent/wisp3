@@ -7,7 +7,7 @@ import NumberField from './NumberField.svelte'
 
 describe('NumberField', () => {
   it("won't let the form submit what it can't read (the last number read stays in the hidden input)", async () => {
-    render(NumberField, { label: 'Radius', name: 'pivot[radius_ft]', value: 12 })
+    render(NumberField, { label: 'Radius', name: 'system[radius_ft]', value: 12 })
     const box = screen.getByLabelText('Radius') as HTMLInputElement
     expect(box.validity.valid).toBe(true)
 

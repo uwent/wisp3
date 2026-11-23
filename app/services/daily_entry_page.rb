@@ -1,10 +1,10 @@
 # The props of daily entry for one operation on one date: its farms, each
-# with its irrigation groups and systems ("pivots" in code), each system's fields; each field's
+# with its irrigation groups and systems ("systems" in code), each system's fields; each field's
 # entry, the rain the model would use, and its plantings in season that day, with a part-field
 # planting's own entry and each planting's canopy reading (when one is wanted: PlantingTasks.canopy).
 # Irrigation is each field's and plot's own (D15); a system with none that day but some the day
 # before gets the day before's amounts, for "Same as yesterday".
-# Each field is under the system it was on that day (Field#pivot_id_on: a season keeps the system
+# Each field is under the system it was on that day (Field#system_id_on: a season keeps the system
 # it ran on), which for today is its own. Loads everything up front, with no query per
 # field.
 class DailyEntryPage
@@ -20,13 +20,13 @@ class DailyEntryPage
   end
 
   def farms
-    @farms ||= @group.farms.order(:name).includes(:pivot_groups,
-      pivots: [:weather_cell, :pivot_group, {fields: {plantings: [:plant, :canopy_observations, :canopy_cuttings]}}]).to_a
+    @farms ||= @group.farms.order(:name).includes(:irrigation_groups,
+      systems: [:weather_cell, :irrigation_group, {fields: {plantings: [:plant, :canopy_observations, :canopy_cuttings]}}]).to_a
   end
 
-  def pivots = farms.flat_map(&:pivots)
+  def systems = farms.flat_map(&:systems)
 
-  def fields = pivots.flat_map(&:fields)
+  def fields = systems.flat_map(&:fields)
 
   def props
     {date: @date, farms: farms.map { |farm| farm_props(farm) }}
@@ -36,16 +36,16 @@ class DailyEntryPage
 
   def farm_props(farm)
     {id: farm.id, name: farm.name, use_model_precip: farm.use_model_precip,
-     pivot_groups: farm.pivot_groups.map { |pivot_group| pivot_group.slice(:id, :name, :use_model_precip) },
-     pivots: farm.pivots.map { |pivot| pivot_props(pivot) }}
+     irrigation_groups: farm.irrigation_groups.map { |irrigation_group| irrigation_group.slice(:id, :name, :use_model_precip) },
+     systems: farm.systems.map { |system| system_props(system) }}
   end
 
-  def pivot_props(pivot)
-    fields = fields_by_pivot.fetch(pivot.id, [])
-    {id: pivot.id, name: pivot.name, kind: pivot.kind, kind_name: pivot.kind_name, pivot_group_id: pivot.pivot_group_id,
-     pump_capacity_gpm: pivot.pump_capacity_gpm, inches_at_100: pivot.inches_at_100,
+  def system_props(system)
+    fields = fields_by_system.fetch(system.id, [])
+    {id: system.id, name: system.name, kind: system.kind, kind_name: system.kind_name, irrigation_group_id: system.irrigation_group_id,
+     pump_capacity_gpm: system.pump_capacity_gpm, inches_at_100: system.inches_at_100,
      yesterday: yesterday(fields),
-     fields: fields.map { |field| field_props(pivot, field) }}
+     fields: fields.map { |field| field_props(system, field) }}
   end
 
   # The day before's irrigation on the fields and plots ({fields: {id => inches}, plantings: {id =>
@@ -59,10 +59,10 @@ class DailyEntryPage
     before if before.values.any?(&:any?)
   end
 
-  def field_props(pivot, field)
+  def field_props(system, field)
     {id: field.id, name: field.name, area_acres: field.area_acres,
      # Only as a hint where the balance would use it (Q7: not on a field using entered rain, through today)
-     rain_model: (pivot.use_model_precip? || @date > Current.today) ? rain[pivot.weather_cell_id] : nil,
+     rain_model: (system.use_model_precip? || @date > Current.today) ? rain[system.weather_cell_id] : nil,
      entry: field_entries[field.id]&.slice(:rain_in, :irrigation_in, :soil_moisture_pct),
      plantings: field.plantings_on(@date).sort_by(&:order_key)
        .map { |planting| planting_props(planting) }}
@@ -92,8 +92,8 @@ class DailyEntryPage
      last_date: (task&.last_date unless task&.last_date == @date)}
   end
 
-  def fields_by_pivot
-    @fields_by_pivot ||= fields.sort_by(&:name).group_by { |field| field.pivot_id_on(@date) }
+  def fields_by_system
+    @fields_by_system ||= fields.sort_by(&:name).group_by { |field| field.system_id_on(@date) }
   end
 
   def field_entries
@@ -116,7 +116,7 @@ class DailyEntryPage
   end
 
   def rain
-    @rain ||= WeatherDay.where(weather_cell_id: pivots.map(&:weather_cell_id), date: @date)
+    @rain ||= WeatherDay.where(weather_cell_id: systems.map(&:weather_cell_id), date: @date)
       .pluck(:weather_cell_id, :precip_in).to_h
   end
 end

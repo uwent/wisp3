@@ -1,7 +1,7 @@
 # The status of many fields at once (the dashboard, the map, the daily digest): each field's
 # plantings in season today (several on a field of plots), or with none, the
 # nearest one this year, with entries, weather and ensembles for every field loaded in a few
-# queries, not several per field, through the projection's days. Fields need their pivot and
+# queries, not several per field, through the projection's days. Fields need their system and
 # plantings (with plant and canopy observations) and soil type loaded.
 class FieldStatuses
   # Irrigated crops by what they need, then rainfed ones by their stress (nothing to do for them)
@@ -19,7 +19,7 @@ class FieldStatuses
     last = [[today, as_of].compact.max + PlantingStatus::HORIZON, current.map(&:end_date).max].compact.min
     dates = current.any? ? current.map(&:season_start).min..last : today..today
     records = DailyInputs.preload(fields, dates)
-    # Each planting's weather cell: its pivot's, or where the pivot was in an ended season
+    # Each planting's weather cell: its system's, or where the system was in an ended season
     cell_ids = current.map(&:weather_cell_id).uniq
     weather = WeatherDay.balance_inputs_by_cell(cell_ids, dates)
     ensembles = as_of ? {} : WeatherForecast.ensemble.latest_by_cell(cell_ids).transform_values(&:members)

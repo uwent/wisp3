@@ -1,4 +1,12 @@
-import { boundsOf, bufferedHull, EARTH_RADIUS_M, type LngLat, pointInPolygon, type PivotShape, surveyRing } from './geo'
+import {
+  boundsOf,
+  bufferedHull,
+  EARTH_RADIUS_M,
+  type LngLat,
+  pointInPolygon,
+  type SystemShape,
+  surveyRing,
+} from './geo'
 import { segmentDistance, segmentsCross } from './planar'
 
 const rad = (deg: number) => (deg * Math.PI) / 180
@@ -13,7 +21,7 @@ export type Boundary = { type: 'Polygon'; coordinates: [LngLat[]] }
 export const MAX_BOUNDARY_VERTICES = 100
 export const MAX_FIELD_ACRES = 1500
 export const MIN_FIELD_ACRES = 0.01
-// Where WISP works (Pivot::LATITUDES and LONGITUDES): the US and Canada
+// Where WISP works (IrrigationSystem::LATITUDES and LONGITUDES): the US and Canada
 export const MIN_LATITUDE = 18
 export const MAX_LATITUDE = 84
 export const MIN_LONGITUDE = -180
@@ -221,7 +229,7 @@ export const GROUP_MARGIN_M = 120
  * their outlines (a point kind's small circle) with a margin, so even a group of one shows around
  * its system
  */
-export function groupOutline(shapes: PivotShape[], boundaries: Boundary[] = []): LngLat[] {
+export function groupOutline(shapes: SystemShape[], boundaries: Boundary[] = []): LngLat[] {
   return bufferedHull(
     [...shapes.flatMap((shape) => surveyRing(shape, 24)), ...boundaries.flatMap(boundaryRing)],
     GROUP_MARGIN_M,

@@ -18,7 +18,7 @@ const square = (lat: number): Boundary => ({
 
 describe('Setup order', () => {
   const field = (name: string, lat: number | null) => ({ name, boundary: lat === null ? null : square(lat) })
-  const pivot = (
+  const system = (
     name: string,
     latitude: number,
     group: number | null = null,
@@ -26,7 +26,7 @@ describe('Setup order', () => {
   ) => ({
     name,
     latitude,
-    pivot_group_id: group,
+    irrigation_group_id: group,
     fields,
   })
 
@@ -38,14 +38,14 @@ describe('Setup order', () => {
 
   it("lists a farm's groups among its other systems, a group at its northernmost", () => {
     const farm = {
-      pivots: [pivot('South', 43.9), pivot('A', 44.0, 1), pivot('B', 44.3, 1), pivot('Middle', 44.1)],
-      pivot_groups: [{ id: 1, name: 'Gauge' }],
+      systems: [system('South', 43.9), system('A', 44.0, 1), system('B', 44.3, 1), system('Middle', 44.1)],
+      irrigation_groups: [{ id: 1, name: 'Gauge' }],
     }
     const names = (order: 'north' | 'name') =>
       farmChildren(farm, order).map((child) =>
         child.kind === 'group'
-          ? `${child.group.name}: ${child.pivots.map((p) => p.name).join(', ')}`
-          : child.pivot.name,
+          ? `${child.group.name}: ${child.systems.map((p) => p.name).join(', ')}`
+          : child.system.name,
       )
     expect(names('north')).toEqual(['Gauge: B, A', 'Middle', 'South'])
     expect(names('name')).toEqual(['Gauge: A, B', 'Middle', 'South'])
@@ -53,9 +53,9 @@ describe('Setup order', () => {
 
   it('orders farms by their northernmost system, a field shape counting', () => {
     const farms = [
-      { name: 'Arlington', pivots: [pivot('North', 43.3)], pivot_groups: [] },
-      { name: 'Coloma', pivots: [pivot('Shop', 44.0, null, [field('Far north', 44.5)])], pivot_groups: [] },
-      { name: 'Empty', pivots: [], pivot_groups: [] },
+      { name: 'Arlington', systems: [system('North', 43.3)], irrigation_groups: [] },
+      { name: 'Coloma', systems: [system('Shop', 44.0, null, [field('Far north', 44.5)])], irrigation_groups: [] },
+      { name: 'Empty', systems: [], irrigation_groups: [] },
     ]
     expect(orderFarms(farms, 'north').map((f) => f.name)).toEqual(['Coloma', 'Arlington', 'Empty'])
     expect(orderFarms(farms, 'name').map((f) => f.name)).toEqual(['Arlington', 'Coloma', 'Empty'])

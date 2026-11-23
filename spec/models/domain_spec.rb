@@ -147,25 +147,25 @@ RSpec.describe "Domain models" do
     end
   end
 
-  describe Pivot do
+  describe IrrigationSystem do
     it "needs a location in the US or Canada" do
-      expect(build(:pivot, latitude: nil)).not_to be_valid
-      expect(build(:pivot, longitude: 89.5)).not_to be_valid # sign dropped
-      expect(build(:pivot, latitude: -89.5, longitude: 44.5)).not_to be_valid # swapped
-      expect(build(:pivot, latitude: 44.5, longitude: -89.5)).to be_valid # Wisconsin
-      expect(build(:pivot, latitude: 36.7, longitude: -119.8)).to be_valid # California
-      expect(build(:pivot, latitude: 50.4, longitude: -104.6)).to be_valid # Saskatchewan
+      expect(build(:system, latitude: nil)).not_to be_valid
+      expect(build(:system, longitude: 89.5)).not_to be_valid # sign dropped
+      expect(build(:system, latitude: -89.5, longitude: 44.5)).not_to be_valid # swapped
+      expect(build(:system, latitude: 44.5, longitude: -89.5)).to be_valid # Wisconsin
+      expect(build(:system, latitude: 36.7, longitude: -119.8)).to be_valid # California
+      expect(build(:system, latitude: 50.4, longitude: -104.6)).to be_valid # Saskatchewan
     end
 
     it "is no larger than the longest center pivots" do
-      expect(build(:pivot, radius_ft: 3000)).to be_valid
-      pivot = build(:pivot, radius_ft: 3001)
-      expect(pivot).not_to be_valid
-      expect(pivot.errors[:radius_ft].sole).to include("longer than any center pivot")
+      expect(build(:system, radius_ft: 3000)).to be_valid
+      system = build(:system, radius_ft: 3001)
+      expect(system).not_to be_valid
+      expect(system.errors[:radius_ft].sole).to include("longer than any center pivot")
     end
 
     it "is a linear with its length, travel and direction, within a machine's size" do
-      linear = ->(**shape) { build(:pivot, kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 0, **shape) }
+      linear = ->(**shape) { build(:system, kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 0, **shape) }
       expect(linear.call).to be_valid
       expect(linear.call(length_ft: 3300, travel_ft: 5280, travel_bearing_deg: 179)).to be_valid
       expect(linear.call(travel_ft: nil)).not_to be_valid
@@ -174,46 +174,46 @@ RSpec.describe "Domain models" do
       expect(linear.call(travel_ft: 6000).tap(&:validate).errors.attribute_names).to eq([:travel_ft])
       expect(linear.call(travel_bearing_deg: 180)).not_to be_valid # the same line as 0
       expect(linear.call(travel_bearing_deg: "30.5")).not_to be_valid # whole degrees
-      expect(build(:pivot, kind: "lateral")).not_to be_valid
+      expect(build(:system, kind: "lateral")).not_to be_valid
     end
 
     it "needs both ends of an arc" do
-      expect(build(:pivot, arc_start_deg: 30, arc_end_deg: nil).tap(&:validate).errors.attribute_names).to eq([:arc_end_deg])
-      expect(build(:pivot, arc_start_deg: nil, arc_end_deg: 300).tap(&:validate).errors.attribute_names).to eq([:arc_start_deg])
-      expect(build(:pivot, arc_start_deg: 30, arc_end_deg: 300)).to be_valid
+      expect(build(:system, arc_start_deg: 30, arc_end_deg: nil).tap(&:validate).errors.attribute_names).to eq([:arc_end_deg])
+      expect(build(:system, arc_start_deg: nil, arc_end_deg: 300).tap(&:validate).errors.attribute_names).to eq([:arc_start_deg])
+      expect(build(:system, arc_start_deg: 30, arc_end_deg: 300)).to be_valid
     end
 
     it "keeps only its own kind's dimensions" do
-      pivot = create(:pivot, radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300)
-      pivot.update!(kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30)
-      expect(pivot.reload).to have_attributes(radius_ft: nil, arc_start_deg: nil, arc_end_deg: nil)
-      pivot.update!(kind: "center", radius_ft: 1300)
-      expect(pivot.reload).to have_attributes(length_ft: nil, travel_ft: nil, travel_bearing_deg: nil)
+      system = create(:system, radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300)
+      system.update!(kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30)
+      expect(system.reload).to have_attributes(radius_ft: nil, arc_start_deg: nil, arc_end_deg: nil)
+      system.update!(kind: "center", radius_ft: 1300)
+      expect(system.reload).to have_attributes(length_ft: nil, travel_ft: nil, travel_bearing_deg: nil)
     end
 
     it "is held to its shape in the database too" do
-      pivot = create(:pivot)
-      write = ->(changes) { Pivot.transaction(requires_new: true) { pivot.update_columns(changes) } }
-      expect { write.call(radius_ft: 5000) }.to raise_error(ActiveRecord::StatementInvalid, /pivots_radius_max/)
-      expect { write.call(kind: "linear") }.to raise_error(ActiveRecord::StatementInvalid, /pivots_linear_shape/)
-      expect { write.call(kind: "drip", radius_ft: 1300) }.to raise_error(ActiveRecord::StatementInvalid, /pivots_point_shape/)
-      expect { write.call(kind: "boom") }.to raise_error(ActiveRecord::StatementInvalid, /pivots_kind/)
+      system = create(:system)
+      write = ->(changes) { IrrigationSystem.transaction(requires_new: true) { system.update_columns(changes) } }
+      expect { write.call(radius_ft: 5000) }.to raise_error(ActiveRecord::StatementInvalid, /systems_radius_max/)
+      expect { write.call(kind: "linear") }.to raise_error(ActiveRecord::StatementInvalid, /systems_linear_shape/)
+      expect { write.call(kind: "drip", radius_ft: 1300) }.to raise_error(ActiveRecord::StatementInvalid, /systems_point_shape/)
+      expect { write.call(kind: "boom") }.to raise_error(ActiveRecord::StatementInvalid, /systems_kind/)
     end
 
     it "is a traveler, solid set, drip block or location: a point with no dimensions" do
-      Pivot::POINT_KINDS.each do |kind|
-        pivot = create(:pivot, kind:, radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300, length_ft: 1300)
-        expect(pivot.reload).to have_attributes(kind:, radius_ft: nil, arc_start_deg: nil, length_ft: nil)
+      IrrigationSystem::POINT_KINDS.each do |kind|
+        system = create(:system, kind:, radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300, length_ft: 1300)
+        expect(system.reload).to have_attributes(kind:, radius_ft: nil, arc_start_deg: nil, length_ft: nil)
       end
     end
 
     it "names its kind as growers know it" do
-      expect(build(:pivot, name: "North 160").label).to eq("North 160 (pivot)")
-      expect(build(:pivot, kind: "traveler", name: "Lane 3").label).to eq("Lane 3 (traveler)")
+      expect(build(:system, name: "North 160").label).to eq("North 160 (pivot)")
+      expect(build(:system, kind: "traveler", name: "Lane 3").label).to eq("Lane 3 (traveler)")
       # The kind isn't repeated when the name says it, in any case
-      expect(build(:pivot, name: "Home PIVOT").label).to eq("Home PIVOT")
-      expect(build(:pivot, kind: "drip", name: "Drip block 2").label).to eq("Drip block 2")
-      expect(Pivot::KINDS.map { |kind| build(:pivot, kind:).kind_name })
+      expect(build(:system, name: "Home PIVOT").label).to eq("Home PIVOT")
+      expect(build(:system, kind: "drip", name: "Drip block 2").label).to eq("Drip block 2")
+      expect(IrrigationSystem::KINDS.map { |kind| build(:system, kind:).kind_name })
         .to eq(["Pivot", "Linear", "Traveler", "Solid set", "Drip", "Location"])
     end
   end

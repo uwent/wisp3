@@ -18,7 +18,7 @@
     KIND_NOUNS,
     MAX_RADIUS_FT,
     MIN_SIZE_FT,
-    pivotOutline,
+    shapeOutline,
     linearCorners,
     linearOf,
     offset,
@@ -28,7 +28,7 @@
     sweep,
     travelArrow,
     type LngLat,
-    type PivotShape,
+    type SystemShape,
     type ShapeDraft,
   } from '@/lib/geo'
   import { BasemapSwitch, LABEL_FONT, labelPaint, type Basemap } from '@/lib/map/basemaps'
@@ -64,15 +64,15 @@
   import SoilTypesOption from '@/lib/map/SoilTypesOption.svelte'
   import type { Bounds } from '@/lib/soils'
 
-  type Outline = PivotShape & { id: number; name: string }
+  type Outline = SystemShape & { id: number; name: string }
 
-  // The pivot location picker: click the map to place the pivot's center, drag the
+  // The system location picker: click the map to place the system's center, drag the
   // center or the handles to adjust it. A center pivot has a handle on its edge for the radius and,
   // for a partial circle, one at each end of the arc; a linear has handles on two opposite
   // corners (its front left and back right, facing its direction of travel) and one past its front
   // end that turns it. A point kind (a traveler, drip, a location) is just the pin. The group's
   // other irrigation systems are drawn for reference. A place search moves
-  // the map (it doesn't place the pivot), and an arrow at the edge points back to the pivot when
+  // the map (it doesn't place the system), and an arrow at the edge points back to the system when
   // it's out of view. The map shares the setup maps' symbology (lib/outlines/layers.ts), with a
   // legend: bottom to top, a kept outline file's shapes not yet imported (fileShapes, a layer on to
   // start with, gray and named, a guide to place systems on), the operation's saved fields, its other
@@ -104,18 +104,18 @@
     fields?: SavedField[]
   } = $props()
 
-  // Wisconsin's Central Sands, where most WISP pivots are
-  const PIVOT_ZOOM = 14
+  // Wisconsin's Central Sands, where most WISP systems are
+  const SYSTEM_ZOOM = 14
   // The least an arc can sweep with its handles
   const MIN_SWEEP_DEG = 5
 
   // Our sources, carried over when the basemap changes
-  const OWN_SOURCES = ['file-shapes', SAVED_FIELD_SOURCE, 'reference', 'pivot', SOIL_SOURCE]
+  const OWN_SOURCES = ['file-shapes', SAVED_FIELD_SOURCE, 'reference', 'system', SOIL_SOURCE]
   const FILE_SHAPE_LAYERS = [...shapeTierLayers('file-shapes', 'skip'), 'file-shapes-label']
   // This system, in a stronger blue than the others' cyan
   const THIS_SYSTEM = '#3987e5'
   let fileShapesOn = $state(true)
-  // Soil types are shown around the pivot, or in the view once zoomed in this far without one
+  // Soil types are shown around the system, or in the view once zoomed in this far without one
   const SOIL_ZOOM = 13
   const SOIL_MARGIN_M = 900
 
@@ -164,12 +164,12 @@
     const key = JSON.stringify(frame)
     if (!map || !frame || center || key === framed) return
     framed = key
-    map.fitBounds(frame, { padding: 60, maxZoom: PIVOT_ZOOM, duration: 600 })
+    map.fitBounds(frame, { padding: 60, maxZoom: SYSTEM_ZOOM, duration: 600 })
   })
 
   const linear = $derived(shape.kind === 'linear')
   const point = $derived(isPoint(shape.kind))
-  // "pivot", "drip block"
+  // "system", "drip block"
   const noun = $derived(KIND_NOUNS[shape.kind])
   const outline = $derived(draftShape(shape))
   const center = $derived<LngLat | null>(outline && [outline.longitude, outline.latitude])
@@ -177,7 +177,7 @@
   const machine = $derived(
     linearOf({ length_ft: shape.lengthFt, travel_ft: shape.travelFt, travel_bearing_deg: shape.travelBearing }),
   )
-  // How far the pivot reaches from its center
+  // How far the system reaches from its center
   const reachM = $derived(
     point
       ? POINT_SURVEY_RADIUS_FT / FEET_PER_METER
@@ -251,25 +251,25 @@
       others.map((other) => ({ name: other.name, shape: other })),
       { ownFirst: false },
     )
-    m.addSource('pivot', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+    m.addSource('system', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
     m.addLayer({
-      id: 'pivot-fill',
+      id: 'system-fill',
       type: 'fill',
-      source: 'pivot',
+      source: 'system',
       paint: { 'fill-color': THIS_SYSTEM, 'fill-opacity': 0.25 },
     })
     m.addLayer({
-      id: 'pivot-line',
+      id: 'system-line',
       type: 'line',
-      source: 'pivot',
+      source: 'system',
       paint: { 'line-color': THIS_SYSTEM, 'line-width': ['match', ['get', 'role'], 'arrow', 2, 2.5] },
       layout: { 'line-cap': 'round', 'line-join': 'round' },
     })
-    drawPivot()
+    drawSystem()
   }
 
-  function drawPivot() {
-    const source = map?.getSource<GeoJSONSource>('pivot')
+  function drawSystem() {
+    const source = map?.getSource<GeoJSONSource>('system')
     if (!map || !source) return
     const line = (coordinates: LngLat[], role: string) => ({
       type: 'Feature' as const,
@@ -293,7 +293,7 @@
         : []
     source.setData({
       type: 'FeatureCollection',
-      features: outline && !point ? [feature(pivotOutline(outline)!), ...extras] : [],
+      features: outline && !point ? [feature(shapeOutline(outline)!), ...extras] : [],
     })
   }
 
@@ -362,7 +362,7 @@
   function followPointer(element: HTMLElement, name: Handle) {
     // A corner is dragged against the opposite one, where it was when the drag began
     let fixedCorner: LngLat | null = null
-    // Keep the map from panning, or placing the pivot on the click that ends a drag
+    // Keep the map from panning, or placing the system on the click that ends a drag
     const keep = (event: Event) => event.stopPropagation()
     element.addEventListener('mousedown', keep)
     element.addEventListener('touchstart', keep, { passive: true })
@@ -441,7 +441,7 @@
     handleSet = set
   }
 
-  // An arrow at the map's edge when the pivot is placed but scrolled out of view
+  // An arrow at the map's edge when the system is placed but scrolled out of view
   function updatePointer() {
     if (!map || !center) return (pointer = null)
     const point = map.project(center)
@@ -451,14 +451,14 @@
   // Redraw when the shape changes, whether from the map or the form's inputs
   $effect(() => {
     void [outline, handleBearing, rotatePosition, editing]
-    drawPivot()
+    drawSystem()
     placeMarkers()
     updatePointer()
   })
 
-  // Soil types around the pivot: the survey's map units colored and labeled by
-  // the WISP soil type their surface texture suggests, loaded for an area around the pivot (or the
-  // view, zoomed in, before it's placed) and again when the pivot moves out of it
+  // Soil types around the system: the survey's map units colored and labeled by
+  // the WISP soil type their surface texture suggests, loaded for an area around the system (or the
+  // view, zoomed in, before it's placed) and again when the system moves out of it
   function soilArea(): Bounds | null {
     if (center) {
       const margin = reachM + SOIL_MARGIN_M
@@ -481,7 +481,7 @@
       if (!m || !file || file === framedFile || center) return
       framedFile = file
       const corners = file.shapes.flatMap((fileShape) => boundaryBounds(fileShape.boundary))
-      m.fitBounds(boundsOf([...corners, ...(frame ?? [])])!, { padding: 60, maxZoom: PIVOT_ZOOM, duration: 600 })
+      m.fitBounds(boundsOf([...corners, ...(frame ?? [])])!, { padding: 60, maxZoom: SYSTEM_ZOOM, duration: 600 })
     })
   })
   $effect(() => {
@@ -507,7 +507,7 @@
     ],
   ])
 
-  // Load again when the pivot moves out of the loaded area
+  // Load again when the system moves out of the loaded area
   $effect(() => {
     void [center, reachM]
     soilLayer.load()
@@ -519,12 +519,12 @@
       map: () => map,
       isOwn: (id) => OWN_SOURCES.includes(id),
       show: (to) => (basemap = to),
-      after: () => drawPivot(),
+      after: () => drawSystem(),
     },
   )
 
-  function showPivot() {
-    if (center) map?.flyTo({ center, zoom: Math.max(map.getZoom(), PIVOT_ZOOM - 1) })
+  function showSystem() {
+    if (center) map?.flyTo({ center, zoom: Math.max(map.getZoom(), SYSTEM_ZOOM - 1) })
   }
 
   // Beside the pointer: this system, the others, the saved fields and the file's shapes under it,
@@ -534,7 +534,7 @@
     (m, at) => {
       const named = [
         ...new Set([
-          ...propertiesAt(m, at, ['pivot-fill']).map(() => `This ${noun}`),
+          ...propertiesAt(m, at, ['system-fill']).map(() => `This ${noun}`),
           ...propertiesAt(m, at, SYSTEM_HOVER_LAYERS).map((properties) => `System: ${properties.hoverName}`),
           ...propertiesAt(m, at, ['saved-fields-hit']).map((properties) => String(properties.hover)),
           ...propertiesAt(m, at, [FILE_SHAPE_LAYERS[0]]).map(
@@ -567,14 +567,14 @@
         'top-right',
       )
       if (center) {
-        m.jumpTo({ center, zoom: PIVOT_ZOOM })
+        m.jumpTo({ center, zoom: SYSTEM_ZOOM })
       } else if (frame) {
-        m.fitBounds(frame, { padding: 60, maxZoom: PIVOT_ZOOM, duration: 0 })
+        m.fitBounds(frame, { padding: 60, maxZoom: SYSTEM_ZOOM, duration: 0 })
         framed = JSON.stringify(frame)
       } else if (others.length) {
         const bounds = new LngLatBounds()
         others.forEach((other) => bounds.extend([other.longitude, other.latitude]))
-        m.fitBounds(bounds, { padding: 80, maxZoom: PIVOT_ZOOM - 1, duration: 0 })
+        m.fitBounds(bounds, { padding: 80, maxZoom: SYSTEM_ZOOM - 1, duration: 0 })
       }
       m.on('load', () => {
         addLayers(m)
@@ -588,17 +588,17 @@
       m.on('click', (event) => {
         placeSearch?.close()
         if (!editing) return
-        // A click away from the pivot moves it; clicks on the markers are drags. Placing it zooms in
+        // A click away from the system moves it; clicks on the markers are drags. Placing it zooms in
         // to fit it, handles and all, so they're apart and in view.
         const point: LngLat = [event.lngLat.lng, event.lngLat.lat]
         if (!center) {
           setCenter(point)
           const bounds = new LngLatBounds()
-          const ring = pivotOutline(draftShape(shape)!) ?? [point]
+          const ring = shapeOutline(draftShape(shape)!) ?? [point]
           for (const corner of [...ring, ...Object.values(handlePositions())]) {
             bounds.extend(corner)
           }
-          if (m.getZoom() < PIVOT_ZOOM - 1) m.fitBounds(bounds, { padding: 40, maxZoom: PIVOT_ZOOM, duration: 600 })
+          if (m.getZoom() < SYSTEM_ZOOM - 1) m.fitBounds(bounds, { padding: 40, maxZoom: SYSTEM_ZOOM, duration: 600 })
         } else if (distanceM(center, point) > reachM * MOVE_SHARE) {
           setCenter(point)
         }
@@ -649,7 +649,7 @@
       <div class="pointer-events-auto flex gap-2">
         <BasemapToggle value={basemap} onchange={(to) => basemapSwitch.change(to)} />
         <MapLayersButton
-          id="pivot-map-layers"
+          id="system-map-layers"
           {basemap}
           count={(soilLayer.on ? 1 : 0) + (fileShapes && fileShapesOn ? 1 : 0)}
         >
@@ -669,7 +669,7 @@
       </div>
       {#if editing}
         <div class="pointer-events-auto w-full">
-          <PlaceSearch bind:this={placeSearch} {map} maxZoom={PIVOT_ZOOM - 1} />
+          <PlaceSearch bind:this={placeSearch} {map} maxZoom={SYSTEM_ZOOM - 1} />
         </div>
       {/if}
       <!-- A saved system's lock: Edit on the map, then keep or undo what the map changed, as on the
@@ -707,7 +707,7 @@
         style:top="{pointer.y}px"
         aria-label="The {noun} is off the map: show it"
         title="Show the {noun}"
-        onclick={showPivot}
+        onclick={showSystem}
       >
         <svg
           viewBox="0 0 24 24"

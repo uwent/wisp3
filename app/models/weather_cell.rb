@@ -1,4 +1,4 @@
-# An O1280 grid cell (Weather::Grid). Pivots in a cell share its daily weather and forecasts.
+# An O1280 grid cell (Weather::Grid). Systems in a cell share its daily weather and forecasts.
 class WeatherCell < ApplicationRecord
   # Pages ask for an update at most this often per cell
   UPDATE_THROTTLE = 15.minutes
@@ -6,7 +6,7 @@ class WeatherCell < ApplicationRecord
   # (a forecast newer than this but past WeatherForecast::STALE_AFTER is refreshed quietly)
   INCOMPLETE_AFTER = 1.day
 
-  has_many :pivots, dependent: :nullify
+  has_many :systems, class_name: "IrrigationSystem", dependent: :nullify
   has_many :plantings, dependent: :nullify
   has_many :weather_days, dependent: :delete_all
   has_many :weather_forecasts, dependent: :delete_all
@@ -22,26 +22,26 @@ class WeatherCell < ApplicationRecord
   end
 
   # Cells with a planting this season (or one still running), and cells whose weather a daily
-  # digest shows out of season. A planting's cell is its pivot's, or where its pivot was.
+  # digest shows out of season. A planting's cell is its system's, or where its system was.
   def self.active(today = Date.current)
     planted = Planting.where("end_date >= ? OR season_start >= ?", today, today.beginning_of_year)
       .where.not(weather_cell_id: nil).select(:weather_cell_id)
     where(id: planted).or(where(id: digest_cell_ids))
   end
 
-  # Cells of the pivots in digests that list fields out of season too (every included field, or
+  # Cells of the systems in digests that list fields out of season too (every included field, or
   # every morning all year), as User#digest_fields picks them, in one query however many users
   def self.digest_cell_ids
     users = User.where.not(digest_frequency: "never").where.not(confirmed_at: nil)
       .where("digest_scope = 'all' OR digest_frequency = 'daily_all_year'")
-    Pivot.joins(:farm, :fields).where.not(weather_cell_id: nil)
+    IrrigationSystem.joins(:farm, :fields).where.not(weather_cell_id: nil)
       .joins("JOIN memberships ON memberships.group_id = farms.group_id")
       .where(memberships: {user_id: users.select(:id)})
       .where(<<~SQL).distinct.pluck(:weather_cell_id)
         NOT EXISTS (SELECT 1 FROM digest_exclusions excluded WHERE excluded.user_id = memberships.user_id AND (
           (excluded.subject_type = 'Group' AND excluded.subject_id = farms.group_id) OR
           (excluded.subject_type = 'Farm' AND excluded.subject_id = farms.id) OR
-          (excluded.subject_type = 'Pivot' AND excluded.subject_id = pivots.id) OR
+          (excluded.subject_type = 'IrrigationSystem' AND excluded.subject_id = irrigation_systems.id) OR
           (excluded.subject_type = 'Field' AND excluded.subject_id = fields.id)))
       SQL
   end
@@ -55,11 +55,11 @@ class WeatherCell < ApplicationRecord
     format("%.2f%s-%.2f%s", latitude.abs, (latitude >= 0) ? "N" : "S", longitude.abs, (longitude >= 0) ? "E" : "W")
   end
 
-  # Cells with a pivot (inactive ones too), for a refresh asked for by hand
-  def self.with_pivots = where(id: Pivot.select(:weather_cell_id))
+  # Cells with a system (inactive ones too), for a refresh asked for by hand
+  def self.with_systems = where(id: IrrigationSystem.select(:weather_cell_id))
 
   # Queues a WeatherUpdateJob for each cell, at most once per UPDATE_THROTTLE. Pages showing
-  # pivots call this, so the cells people look at stay current between scheduled refreshes, even
+  # systems call this, so the cells people look at stay current between scheduled refreshes, even
   # before they have a planting. Only an incomplete cell's update is shown on the pages ("Updating
   # weather…", reloading until it lands); a complete one's is quiet, and the next visit gets it.
   def self.keep_current(ids)

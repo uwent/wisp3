@@ -20,7 +20,7 @@
     coordinates: string
     location: string
     systems: string[]
-    pivot_ids: number[]
+    system_ids: number[]
     days: ForecastDay[]
   }
   let { zones, units, today = todayDate() }: { zones: RainZone[]; units: Units; today?: string } = $props()

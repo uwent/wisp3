@@ -16,7 +16,7 @@
   import { outlineProblems } from '@/lib/outlines/problems'
   import FarmForm from '@/lib/setup/FarmForm.svelte'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
-  import PivotGroupForm from '@/lib/setup/PivotGroupForm.svelte'
+  import IrrigationGroupForm from '@/lib/setup/IrrigationGroupForm.svelte'
   import NextSteps from '@/lib/setup/NextSteps.svelte'
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import { takeSetupRequest } from '@/lib/setup/links'
@@ -28,14 +28,22 @@
     groups as groupRoutes,
     newOutlineImport,
     newQuickSetup,
-    pivotGroups,
-    pivots,
+    irrigationGroups,
+    systems,
     planting as plantingRoute,
     seasonCopies,
     seasonReport,
     setup,
   } from '@/routes'
-  import type { Farm, Field, GenericCurve, Pivot, PivotGroup, Plant, SoilType } from '@/types/serializers'
+  import type {
+    Farm,
+    Field,
+    GenericCurve,
+    IrrigationSystem,
+    IrrigationGroup,
+    Plant,
+    SoilType,
+  } from '@/types/serializers'
 
   let {
     year,
@@ -53,22 +61,24 @@
     soil_types: SoilType[]
     generic_curves: GenericCurve[]
     /** What quick setup just made, for its next steps */
-    started: { farm_id: number; pivot_id: number | null } | null
+    started: { farm_id: number; system_id: number | null } | null
   } = $props()
 
   const units = $derived(currentUnits())
   const group = $derived(page.props.auth.group!)
-  // Only owners delete farms, pivots and fields (Q8); plantings and groups also their creator
+  // Only owners delete farms, systems and fields (Q8); plantings and groups also their creator
   const owner = $derived(page.props.auth.owner)
-  const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
+  const allSystems = $derived(farms.flatMap((farm) => farm.systems))
   // A system's shape in its row: "Radius 600 ft · Arc 0–270° · Area 80 ac"
-  const pivotSize = (pivot: (typeof allPivots)[number]) => {
-    const acres = shapeAcres(pivot)
+  const systemSize = (system: (typeof allSystems)[number]) => {
+    const acres = shapeAcres(system)
     return [
-      pivot.kind === 'linear' && pivot.length_ft && pivot.travel_ft
-        ? `${units.format('distance', pivot.length_ft)} long, travels ${units.format('distance', pivot.travel_ft)} at ${pivot.travel_bearing_deg}° from north`
-        : pivot.radius_ft && `Radius ${units.format('distance', pivot.radius_ft)}`,
-      pivot.arc_start_deg !== null && pivot.arc_end_deg !== null && `Arc ${pivot.arc_start_deg}–${pivot.arc_end_deg}°`,
+      system.kind === 'linear' && system.length_ft && system.travel_ft
+        ? `${units.format('distance', system.length_ft)} long, travels ${units.format('distance', system.travel_ft)} at ${system.travel_bearing_deg}° from north`
+        : system.radius_ft && `Radius ${units.format('distance', system.radius_ft)}`,
+      system.arc_start_deg !== null &&
+        system.arc_end_deg !== null &&
+        `Arc ${system.arc_start_deg}–${system.arc_end_deg}°`,
       acres !== null && `Area ${units.format('area', acres)}`,
     ]
       .filter(Boolean)
@@ -101,22 +111,22 @@
   const orderedFarms = $derived(orderFarms(searchFarms(farms, query, seasonPlantings), order))
   // A farm as saved, whatever the search shows: a group's form lists (and saves) all its systems
   const unfiltered = (farm: Farm) => farms.find((saved) => saved.id === farm.id) ?? farm
-  const used = (pivot: Pivot) => orderFields(pivot, order).filter(inSeason)
-  const unused = (pivot: Pivot) => orderFields(pivot, order).filter((field) => !inSeason(field))
-  const hasSeason = $derived(allPivots.some((p) => p.fields.some((f) => seasonPlantings(f).length)))
+  const used = (system: IrrigationSystem) => orderFields(system, order).filter(inSeason)
+  const unused = (system: IrrigationSystem) => orderFields(system, order).filter((field) => !inSeason(field))
+  const hasSeason = $derived(allSystems.some((p) => p.fields.some((f) => seasonPlantings(f).length)))
   const hasLastSeason = $derived(
-    allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
+    allSystems.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
   )
 
   // Fields whose outline isn't with their irrigation system, and fields whose outlines overlap (a
   // duplicate, or one drawn over its neighbor), to fix by hand
   const outlineIssues = $derived([
-    ...allPivots.flatMap((pivot) =>
-      outlineProblems(pivot, pivot.fields, page.props.auth.user?.unit_system ?? 'imperial'),
+    ...allSystems.flatMap((system) =>
+      outlineProblems(system, system.fields, page.props.auth.user?.unit_system ?? 'imperial'),
     ),
     ...overlappingPairs(
-      allPivots.flatMap((pivot) =>
-        pivot.fields.flatMap((field) => (field.boundary ? [{ ...field, boundary: field.boundary }] : [])),
+      allSystems.flatMap((system) =>
+        system.fields.flatMap((field) => (field.boundary ? [{ ...field, boundary: field.boundary }] : [])),
       ),
     ).map(({ a, b, share }) => ({
       fieldId: a.id,
@@ -126,13 +136,13 @@
 
   type DialogState =
     | { kind: 'farm'; farm?: Farm }
-    | { kind: 'field'; pivot: Pivot; field?: Field }
-    | { kind: 'pivotGroup'; farm: Farm; group?: PivotGroup }
+    | { kind: 'field'; system: IrrigationSystem; field?: Field }
+    | { kind: 'irrigationGroup'; farm: Farm; group?: IrrigationGroup }
   // Plantings have their own dialog (also on the field page)
   let plantingDialog: PlantingDialog | undefined = $state()
   const today = todayDate()
 
-  // ?planting=, ?field=, ?farm= or ?pivot_group= (Edit links on the planting page and the map,
+  // ?planting=, ?field=, ?farm= or ?irrigation_group= (Edit links on the planting page and the map,
   // lib/setup/links.ts): scroll to it and open its form, once
   $effect(() => {
     if (!plantingDialog) return
@@ -152,10 +162,10 @@
         open({ kind: 'farm', farm })
         return
       }
-      const pivotGroup = farm.pivot_groups.find((g) => g.id === id)
+      const irrigationGroup = farm.irrigation_groups.find((g) => g.id === id)
       if (kind === 'planting' || kind === 'field') {
-        for (const pivot of farm.pivots)
-          for (const field of pivot.fields) {
+        for (const system of farm.systems)
+          for (const field of system.fields) {
             const found = field.plantings.find((planting) => planting.id === id)
             if (kind === 'planting' && found) {
               show(`setup-field-${field.id}`)
@@ -164,13 +174,13 @@
             }
             if (kind === 'field' && field.id === id) {
               show(`setup-field-${field.id}`)
-              open({ kind: 'field', pivot, field })
+              open({ kind: 'field', system, field })
               return
             }
           }
-      } else if (kind === 'group' && pivotGroup) {
-        show(`setup-group-${pivotGroup.id}`)
-        open({ kind: 'pivotGroup', farm, group: pivotGroup })
+      } else if (kind === 'group' && irrigationGroup) {
+        show(`setup-group-${irrigationGroup.id}`)
+        open({ kind: 'irrigationGroup', farm, group: irrigationGroup })
         return
       }
     }
@@ -193,15 +203,15 @@
   const dialogTitle = $derived.by(() => {
     if (!dialog) return ''
     if (dialog.kind === 'farm') return dialog.farm ? `Edit ${dialog.farm.name}` : 'Add a farm'
-    if (dialog.kind === 'pivotGroup')
+    if (dialog.kind === 'irrigationGroup')
       return dialog.group ? `Edit ${dialog.group.name}` : `Group irrigation systems on ${dialog.farm.name}`
-    return dialog.field ? `Edit ${dialog.field.name}` : `Add a field to ${dialog.pivot.name}`
+    return dialog.field ? `Edit ${dialog.field.name}` : `Add a field to ${dialog.system.name}`
   })
 </script>
 
 <svelte:head><title>Setup · WISP</title></svelte:head>
 
-{#snippet fieldRow(pivot: Pivot, field: Field)}
+{#snippet fieldRow(system: IrrigationSystem, field: Field)}
   <li id="setup-field-{field.id}" class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
     <div class="min-w-40 flex-1">
       <p>
@@ -229,7 +239,7 @@
         variant="ghost"
         class="px-2 py-1 text-xs"
         aria-label="Edit {field.name}"
-        onclick={() => open({ kind: 'field', pivot, field })}>Edit</Button
+        onclick={() => open({ kind: 'field', system, field })}>Edit</Button
       >
     </div>
     <!-- The season's plantings on a timeline, each opening its form -->
@@ -251,67 +261,67 @@
   </li>
 {/snippet}
 
-{#snippet pivotCard(pivot: Pivot)}
+{#snippet systemCard(system: IrrigationSystem)}
   <div class="rounded-md border border-line">
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2">
       <div>
         <h3 class="font-medium">
           <span class="font-normal text-ink-muted">Irrigation system:</span>
-          <span data-search-text>{systemName(pivot)}</span>
+          <span data-search-text>{systemName(system)}</span>
         </h3>
         <p class="text-xs text-ink-muted">
-          {pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}
-          {#if pivotSize(pivot)}
-            · {pivotSize(pivot)}{/if}
-          {#if pivot.pump_capacity_gpm}
-            · {isPoint(pivot.kind) ? 'Flow' : 'Pump'} {units.format('flow', pivot.pump_capacity_gpm)}{/if}
-          {#if pivot.equipment}
-            · {pivot.equipment}{/if}
+          {system.latitude.toFixed(4)}, {system.longitude.toFixed(4)}
+          {#if systemSize(system)}
+            · {systemSize(system)}{/if}
+          {#if system.pump_capacity_gpm}
+            · {isPoint(system.kind) ? 'Flow' : 'Pump'} {units.format('flow', system.pump_capacity_gpm)}{/if}
+          {#if system.equipment}
+            · {system.equipment}{/if}
         </p>
       </div>
       <div class="flex flex-wrap gap-1 text-sm">
         <Link
-          href={pivots.show(pivot.id)}
+          href={systems.show(system.id)}
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
-          aria-label="View {pivot.name}">View</Link
+          aria-label="View {system.name}">View</Link
         >
         <Button
           variant="ghost"
           class="px-3 py-1.5"
-          aria-label="Add field to {pivot.name}"
-          onclick={() => open({ kind: 'field', pivot })}>Add field</Button
+          aria-label="Add field to {system.name}"
+          onclick={() => open({ kind: 'field', system })}>Add field</Button
         >
         <Link
-          href={pivots.edit(pivot.id)}
+          href={systems.edit(system.id)}
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
-          aria-label="Edit {pivot.name}">Edit</Link
+          aria-label="Edit {system.name}">Edit</Link
         >
         <Link
-          href={pivots.new({ query: { copy_of: pivot.id } })}
+          href={systems.new({ query: { copy_of: system.id } })}
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
-          aria-label="Duplicate {pivot.name}">Duplicate</Link
+          aria-label="Duplicate {system.name}">Duplicate</Link
         >
       </div>
     </div>
-    {#if pivot.fields.length === 0}
-      <p class="px-3 py-3 text-sm text-ink-muted">No fields on this {KIND_NOUNS[pivot.kind]} yet.</p>
+    {#if system.fields.length === 0}
+      <p class="px-3 py-3 text-sm text-ink-muted">No fields on this {KIND_NOUNS[system.kind]} yet.</p>
     {/if}
-    {#if used(pivot).length}
+    {#if used(system).length}
       <ul class="divide-y divide-line">
-        {#each used(pivot) as field (field.id)}
-          {@render fieldRow(pivot, field)}
+        {#each used(system) as field (field.id)}
+          {@render fieldRow(system, field)}
         {/each}
       </ul>
     {/if}
-    {#if unused(pivot).length}
+    {#if unused(system).length}
       <!-- Fields used only in other seasons (rotated out, or set up for a later one) -->
       <details class="border-t border-line first:border-t-0" open={searching || undefined}>
         <summary class="cursor-pointer px-3 py-2 text-xs text-ink-muted hover:text-ink">
-          {count(unused(pivot).length, 'field')} not used in {year - 1} or {year}
+          {count(unused(system).length, 'field')} not used in {year - 1} or {year}
         </summary>
         <ul class="divide-y divide-line border-t border-line">
-          {#each unused(pivot) as field (field.id)}
-            {@render fieldRow(pivot, field)}
+          {#each unused(system) as field (field.id)}
+            {@render fieldRow(system, field)}
           {/each}
         </ul>
       </details>
@@ -349,7 +359,7 @@
     {started}
     {farms}
     {year}
-    onaddfield={(pivot) => open({ kind: 'field', pivot })}
+    onaddfield={(system) => open({ kind: 'field', system })}
     onaddplanting={(field) => plantingDialog?.open(field)}
   />
 {/if}
@@ -404,16 +414,16 @@
       </div>
       <div class="flex flex-wrap gap-1 text-sm">
         <Link
-          href={pivots.new({ query: { farm_id: farm.id } })}
+          href={systems.new({ query: { farm_id: farm.id } })}
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
           aria-label="Add irrigation system to {farm.name}">Add irrigation system</Link
         >
-        {#if unfiltered(farm).pivots.length > 1}
+        {#if unfiltered(farm).systems.length > 1}
           <Button
             variant="ghost"
             class="px-3 py-1.5"
             aria-label="Group systems on {farm.name}"
-            onclick={() => open({ kind: 'pivotGroup', farm: unfiltered(farm) })}>Group systems</Button
+            onclick={() => open({ kind: 'irrigationGroup', farm: unfiltered(farm) })}>Group systems</Button
           >
         {/if}
         <Button
@@ -425,25 +435,26 @@
       </div>
     </div>
 
-    {#if farm.pivots.length === 0}
+    {#if farm.systems.length === 0}
       <p class="text-sm text-ink-muted">No irrigation systems on this farm yet.</p>
     {/if}
 
-    {#each farmChildren(farm, order) as child (child.kind === 'group' ? `group-${child.group.id}` : `system-${child.pivot.id}`)}
+    {#each farmChildren(farm, order) as child (child.kind === 'group' ? `group-${child.group.id}` : `system-${child.system.id}`)}
       {#if child.kind === 'group'}
-        {@const pivotGroup = child.group}
+        {@const irrigationGroup = child.group}
         <!-- An irrigation group: systems organized together, sharing a rain gauge in daily entry -->
-        <div id="setup-group-{pivotGroup.id}" class="space-y-3 rounded-md border border-dashed border-line p-3">
+        <div id="setup-group-{irrigationGroup.id}" class="space-y-3 rounded-md border border-dashed border-line p-3">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 class="font-medium">
                 <span class="font-normal text-ink-muted">Irrigation group:</span>
-                <span data-search-text>{pivotGroup.name}</span>
+                <span data-search-text>{irrigationGroup.name}</span>
               </h3>
               <p class="text-xs text-ink-muted">
-                Rain entered for the group on Daily entry fills into all its fields{pivotGroup.use_model_precip === null
+                Rain entered for the group on Daily entry fills into all its fields{irrigationGroup.use_model_precip ===
+                null
                   ? ''
-                  : pivotGroup.use_model_precip
+                  : irrigationGroup.use_model_precip
                     ? ' · modeled rain'
                     : ' · only the rain you enter'}
               </p>
@@ -452,19 +463,20 @@
               <Button
                 variant="ghost"
                 class="px-3 py-1.5"
-                aria-label="Edit {pivotGroup.name}"
-                onclick={() => open({ kind: 'pivotGroup', farm: unfiltered(farm), group: pivotGroup })}>Edit</Button
+                aria-label="Edit {irrigationGroup.name}"
+                onclick={() => open({ kind: 'irrigationGroup', farm: unfiltered(farm), group: irrigationGroup })}
+                >Edit</Button
               >
             </div>
           </div>
-          {#each child.pivots as pivot (pivot.id)}
-            {@render pivotCard(pivot)}
+          {#each child.systems as system (system.id)}
+            {@render systemCard(system)}
           {:else}
             <p class="text-sm text-ink-muted">No irrigation systems in this group.</p>
           {/each}
         </div>
       {:else}
-        {@render pivotCard(child.pivot)}
+        {@render systemCard(child.system)}
       {/if}
     {/each}
   </section>
@@ -490,7 +502,7 @@
   >
     Operation settings and members
   </Link>
-  {#if farms.some((farm) => farm.pivots.length)}
+  {#if farms.some((farm) => farm.systems.length)}
     <Link
       href={newOutlineImport()}
       class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
@@ -516,7 +528,7 @@
   {plants}
   soilTypes={soil_types}
   genericCurves={generic_curves}
-  systemFields={(field) => allPivots.find((pivot) => pivot.id === field.pivot_id)?.fields ?? []}
+  systemFields={(field) => allSystems.find((system) => system.id === field.system_id)?.fields ?? []}
 />
 
 <Dialog bind:open={dialogOpen} title={dialogTitle} guard>
@@ -529,22 +541,25 @@
         ? () => destroy(farmRoutes.destroy(farm.id), `${farm.name} and all its irrigation systems and fields`)
         : undefined}
     />
-  {:else if dialog?.kind === 'pivotGroup'}
+  {:else if dialog?.kind === 'irrigationGroup'}
     {@const { farm, group } = dialog}
-    <PivotGroupForm
+    <IrrigationGroupForm
       {farm}
       {group}
       ondone={close}
       ondelete={group && mayDelete(group, page.props.auth)
         ? () =>
-            destroy(pivotGroups.destroy(group.id), `the group ${group.name} (its irrigation systems stay, ungrouped)`)
+            destroy(
+              irrigationGroups.destroy(group.id),
+              `the group ${group.name} (its irrigation systems stay, ungrouped)`,
+            )
         : undefined}
     />
   {:else if dialog?.kind === 'field'}
     <FieldForm
       field={dialog.field}
-      pivotId={dialog.pivot.id}
-      pivots={allPivots}
+      systemId={dialog.system.id}
+      systems={allSystems}
       soilTypes={soil_types}
       ondone={close}
       ondelete={dialog.field && owner

@@ -9,7 +9,7 @@ export type UnitSystem = 'imperial' | 'metric'
 export type Quantity =
   | 'depth' // water: rain, irrigation, ET, AD (in ↔ mm)
   | 'rootDepth' // root zone depth (in ↔ cm)
-  | 'distance' // pivot radius (ft ↔ m)
+  | 'distance' // system radius (ft ↔ m)
   | 'area' // field area (ac ↔ ha)
   | 'flow' // pump capacity (gpm ↔ L/s)
   | 'temperature' // °F ↔ °C

@@ -3,12 +3,12 @@ require "rails_helper"
 RSpec.describe "Admin users", type: :request do
   let(:admin) { create(:user, admin: true, email: "staff@example.com") }
 
-  it "lists every account with its farm, pivot and field counts over its groups" do
+  it "lists every account with its farm, system and field counts over its groups" do
     grower = create(:user, email: "grower@example.com")
     shared = create(:group)
     create(:membership, user: grower, group: shared)
-    create(:field, pivot: create(:pivot, farm: create(:farm, group: grower.groups.first)))
-    create_list(:field, 2, pivot: create(:pivot, farm: create(:farm, group: shared)))
+    create(:field, system: create(:system, farm: create(:farm, group: grower.groups.first)))
+    create_list(:field, 2, system: create(:system, farm: create(:farm, group: shared)))
     create(:user, :unconfirmed, email: "new@example.com")
 
     sign_in admin
@@ -16,7 +16,7 @@ RSpec.describe "Admin users", type: :request do
     expect_inertia.to render_component("Admin/Users/Index")
     users = inertia.props[:users].index_by { |user| user[:email] }
     expect(users.keys).to contain_exactly("staff@example.com", "grower@example.com", "new@example.com")
-    expect(users["grower@example.com"]).to include(confirmed: true, farms_count: 2, pivots_count: 2, fields_count: 3,
+    expect(users["grower@example.com"]).to include(confirmed: true, farms_count: 2, systems_count: 2, fields_count: 3,
       plantings_season_count: 0, last_active_on: nil)
     expect(users["new@example.com"]).to include(confirmed: false, farms_count: 0, current_sign_in_at: nil)
   end
@@ -26,10 +26,10 @@ RSpec.describe "Admin users", type: :request do
     grower = create(:user, email: "grower@example.com", first_name: "=Jane", digest_frequency: "daily")
     shared = create(:group)
     create(:membership, user: grower, group: shared)
-    north = create(:pivot, latitude: 44.5, longitude: -89.9, farm: create(:farm, group: grower.groups.first))
-    south = create(:pivot, latitude: 43.25, longitude: -89.1, farm: create(:farm, group: shared))
-    create(:planting, field: create(:field, pivot: north))
-    create(:planting, field: create(:field, pivot: south), season_start: Date.new(2025, 4, 1),
+    north = create(:system, latitude: 44.5, longitude: -89.9, farm: create(:farm, group: grower.groups.first))
+    south = create(:system, latitude: 43.25, longitude: -89.1, farm: create(:farm, group: shared))
+    create(:planting, field: create(:field, system: north))
+    create(:planting, field: create(:field, system: south), season_start: Date.new(2025, 4, 1),
       emergence_date: Date.new(2025, 5, 15), end_date: Date.new(2025, 9, 30))
     [Date.new(2025, 8, 1), Date.new(2026, 6, 1), Date.new(2026, 7, 2)].each do |date|
       ActivityDay.record(grower, date:, area: "dashboard")
@@ -58,7 +58,7 @@ RSpec.describe "Admin users", type: :request do
   it "shows an account's details and farm structure, without its secrets" do
     grower = create(:user, email: "grower@example.com")
     planting = create(:planting, field: create(:field, name: "North",
-      pivot: create(:pivot, name: "Home", farm: create(:farm, name: "Hancock", group: grower.groups.first))))
+      system: create(:system, name: "Home", farm: create(:farm, name: "Hancock", group: grower.groups.first))))
 
     sign_in admin
     get admin_user_path(grower)
@@ -71,16 +71,16 @@ RSpec.describe "Admin users", type: :request do
     expect(group[:members]).to eq([{"id" => grower.id, "email" => "grower@example.com", "owner" => true}])
     farm = group[:farms].sole
     expect(farm[:name]).to eq("Hancock")
-    expect(farm[:pivots].sole[:fields].sole).to include(name: "North")
-    expect(farm[:pivots].sole[:fields].sole[:plantings].sole).to include(id: planting.id, plant_name: "Potato")
+    expect(farm[:systems].sole[:fields].sole).to include(name: "North")
+    expect(farm[:systems].sole[:fields].sole[:plantings].sole).to include(id: planting.id, plant_name: "Potato")
   end
 
   it "shows an account's farms without queries per farm, field or planting" do
     grower = create(:user)
     add_farm = lambda do
       farm = create(:farm, group: grower.groups.first)
-      create(:pivot_group, farm:, pivots: [create(:pivot, farm:)])
-      create(:planting, field: create(:field, pivot: farm.pivots.first))
+      create(:irrigation_group, farm:, systems: [create(:system, farm:)])
+      create(:planting, field: create(:field, system: farm.systems.first))
     end
     queries = lambda do
       count = 0
@@ -99,7 +99,7 @@ RSpec.describe "Admin users", type: :request do
   it "deletes an account with the groups only it belongs to, keeping shared groups" do
     grower = create(:user)
     own = grower.groups.first
-    create(:field, pivot: create(:pivot, farm: create(:farm, group: own)))
+    create(:field, system: create(:system, farm: create(:farm, group: own)))
     shared = create(:group)
     create(:membership, user: grower, group: shared)
     create(:membership, user: create(:user), group: shared)

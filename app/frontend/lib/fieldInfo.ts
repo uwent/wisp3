@@ -38,51 +38,51 @@ export const FIELD_INFO = {
     text: "Where the water balance gets each day's rain on this farm's systems. Modeled rain needs no gauge but can miss a storm's edge; only the rain you enter is exact, but needs a reading every day it rains.",
   },
 
-  'pivot_group.name': {
+  'irrigation_group.name': {
     text: 'Group systems that share a rain gauge, usually ones close together. On Daily entry, rain typed for the group fills in every field of its systems.',
   },
-  'pivot_group.rainfall': {
+  'irrigation_group.rainfall': {
     text: "Where the balance gets each day's rain for the fields on these systems. Leave it on the farm's setting unless this group's gauge is read differently from the rest of the farm.",
     term: 'entered_rain_only',
   },
 
-  'pivot.farm': {
+  'system.farm': {
     text: 'The farm this system is listed under. Moving it to another farm takes its fields along and takes it out of its group.',
   },
-  'pivot.kind': {
+  'system.kind': {
     text: 'How this system waters. A center pivot or linear is drawn to its size on the map; the others are a single point, their area the total of their fields.',
     term: 'irrigation_system',
   },
-  'pivot.coordinates': {
+  'system.coordinates': {
     text: "Where the system sits (a center pivot's pivot point, the middle of a linear or a block), which is where WISP gets its weather; placing it on the map fills this in. You can paste them from Google Maps (right-click the spot) or two spreadsheet cells, or type the latitude then the longitude, in decimal degrees or degrees, minutes and seconds.",
   },
-  'pivot.radius': {
+  'system.radius': {
     text: "From the pivot point to the edge of the area it waters, including an end gun's reach. It draws the circle on the map; each field's area is set on the field.",
   },
-  'pivot.sweep': {
+  'system.sweep': {
     text: 'Partial circle for a pivot that waters only part of a circle, such as one stopped by a road, a building or trees.',
   },
-  'pivot.arc_start': arc,
-  'pivot.arc_end': arc,
-  'pivot.length': {
+  'system.arc_start': arc,
+  'system.arc_end': arc,
+  'system.length': {
     text: "The machine's length from end to end: the width of the strip it waters as it travels.",
   },
-  'pivot.travel': {
+  'system.travel': {
     text: "How far the machine travels from one end of its run to the other. With the machine's length, it draws the rectangle on the map.",
   },
-  'pivot.bearing': {
+  'system.bearing': {
     text: 'The compass direction the machine travels, as a whole number from 0 to 179: 0 means it travels north and south, 90 east and west. Turning it by its handle on the map fills this in.',
   },
-  'pivot.pump_capacity': {
+  'system.pump_capacity': {
     text: "The water the system delivers while it runs. With it, the irrigation calculator works out the inches from the hours it ran, over the fields' areas.",
   },
-  'pivot.inches_at_100': {
+  'system.inches_at_100': {
     text: "What a circle (or a linear's pass) puts on with the panel's percent timer at 100%, its fastest, from the sprinkler chart. With it, the irrigation calculator works out the inches from the percent you ran at: depth at 100% × 100 ÷ percent.",
   },
-  'pivot.equipment': {
+  'system.equipment': {
     text: "The machine's make, model or setup, for your records. For a traveler, use the same name at each field it waters.",
   },
-  'field.pivot': {
+  'field.system': {
     text: "The system that waters this field. Its location gives the field its weather, and irrigation typed on the system's row fills in the field's.",
   },
   'field.area': {

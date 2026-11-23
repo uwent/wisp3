@@ -47,7 +47,7 @@ RSpec.describe "Activity days", type: :request do
     expect(ActivityDay.count).to eq(0)
 
     sign_out admin
-    create(:planting, field: create(:field, pivot: create(:pivot, farm: create(:farm,
+    create(:planting, field: create(:field, system: create(:system, farm: create(:farm,
       group: create(:group, example_as_of: Date.new(2026, 7, 20))))))
     get example_path
     get root_path

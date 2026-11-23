@@ -344,7 +344,7 @@
         <strong>Irrigation system:</strong> a place watered one way, placed on the map. Its location sets its weather,
         so put it where it really is. It's one of these:
         <ul>
-          <li><strong>Pivot</strong> (center pivot): a circle, or part of one.</li>
+          <li><strong>IrrigationSystem</strong> (center pivot): a circle, or part of one.</li>
           <li><strong>Linear</strong>: the rectangle the machine travels along.</li>
           <li>
             <strong>Traveler:</strong> a hard hose reel or big gun moved between fields. Set up a traveler at each field (or
@@ -358,7 +358,7 @@
           <li><strong>Location:</strong> just where the field is, for anything else.</li>
         </ul>
         Only a pivot and a linear have a shape; the others are a point, and their area is their fields'. With a flow rate
-        (a pivot's pump capacity), any of them can take irrigation as hours run.
+        (a system's pump capacity), any of them can take irrigation as hours run.
       </li>
       <li>
         <strong>Irrigation group</strong> (optional): systems on one farm that you want together, such as those near one rain

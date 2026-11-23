@@ -9,7 +9,7 @@
   import MapPanel from './MapPanel.svelte'
   import WeatherLines from './WeatherLines.svelte'
 
-  // A weather zone selected on the map, in the pivot panel's place: its last week and the week
+  // A weather zone selected on the map, in the system panel's place: its last week and the week
   // ahead in brief (weatherLines), the week ahead day by day (ForecastStrip) and a link to its
   // season of weather.
   let { zone, today, units, onclose }: { zone: MapZone; today: string; units: Units; onclose: () => void } = $props()

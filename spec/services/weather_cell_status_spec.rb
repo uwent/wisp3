@@ -2,9 +2,9 @@ require "rails_helper"
 
 RSpec.describe WeatherCellStatus do
   def add_cell(latitude)
-    field = create(:field, pivot: create(:pivot, latitude:, longitude: -89.53))
+    field = create(:field, system: create(:system, latitude:, longitude: -89.53))
     create(:planting, field:, season_start: Date.new(2026, 7, 10), end_date: Date.new(2026, 9, 30))
-    cell = field.pivot.reload.weather_cell
+    cell = field.system.reload.weather_cell
     (Date.new(2026, 7, 10)..Date.new(2026, 7, 17)).each do |date|
       cell.weather_days.create!(date:, model: "best_match", hours: 24, fetched_at: Time.current)
     end

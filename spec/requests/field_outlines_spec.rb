@@ -4,10 +4,10 @@ require "rails_helper"
 RSpec.describe "Field outlines", type: :request do
   let(:user) { create(:user) }
   let(:group) { user.groups.first }
-  let(:pivot) { create(:pivot, farm: create(:farm, group:), radius_ft: 1300) }
+  let(:system) { create(:system, farm: create(:farm, group:), radius_ft: 1300) }
   let(:sand) { create(:soil_type, name: "Sand") }
   let(:loam) { create(:soil_type, name: "Loam", field_capacity: 0.3, perm_wilting_pt: 0.12) }
-  let(:field) { create(:field, pivot:, soil_type: sand, area_acres: 200) }
+  let(:field) { create(:field, system:, soil_type: sand, area_acres: 200) }
   # 222.34 acres
   let(:square) do
     {"type" => "Polygon", "coordinates" => [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.31], [-89.35, 43.3]]]}
@@ -16,13 +16,13 @@ RSpec.describe "Field outlines", type: :request do
   before { sign_in user }
 
   it "shows the field with its system, the group's other systems and outlined fields, and soil types" do
-    other = create(:field, pivot: create(:pivot, farm: pivot.farm, name: "River"), boundary: square)
-    create(:field, pivot: other.pivot) # no outline, not drawn
+    other = create(:field, system: create(:system, farm: system.farm, name: "River"), boundary: square)
+    create(:field, system: other.system) # no outline, not drawn
     get field_outline_path(field, from: "setup")
     expect_inertia.to render_component("Fields/Outline")
     expect(inertia.props[:field]).to include(id: field.id, boundary: nil, boundary_acres: nil)
-    expect(inertia.props[:pivot]).to include("id" => pivot.id, "kind" => "center", "kind_name" => "Pivot", "radius_ft" => 1300)
-    expect(inertia.props[:other_pivots].map { |p| p["name"] }).to eq(["River"])
+    expect(inertia.props[:system]).to include("id" => system.id, "kind" => "center", "kind_name" => "Pivot", "radius_ft" => 1300)
+    expect(inertia.props[:other_systems].map { |p| p["name"] }).to eq(["River"])
     expect(inertia.props[:other_fields]).to eq([{"id" => other.id, "name" => other.name, "boundary" => square}])
     expect(inertia.props[:from]).to eq("setup")
   end
@@ -91,48 +91,48 @@ RSpec.describe "Field outlines", type: :request do
     end
 
     it "sends the systems with their weather cells, the cell's edges and the open seasons' years" do
-      other = create(:pivot, farm: pivot.farm, name: "Lane 3", kind: "traveler")
+      other = create(:system, farm: system.farm, name: "Lane 3", kind: "traveler")
       get field_outline_path(field)
-      expect(inertia.props[:pivot]).to include("weather_cell_id" => pivot.weather_cell_id)
-      expect(inertia.props[:other_pivots].sole).to include("id" => other.id, "kind_name" => "Traveler",
+      expect(inertia.props[:system]).to include("weather_cell_id" => system.weather_cell_id)
+      expect(inertia.props[:other_systems].sole).to include("id" => other.id, "kind_name" => "Traveler",
         "weather_cell_id" => other.weather_cell_id)
-      expect(inertia.props[:cell]["south"]).to be < pivot.latitude
-      expect(inertia.props[:cell]["north"]).to be >= pivot.latitude
+      expect(inertia.props[:cell]["south"]).to be < system.latitude
+      expect(inertia.props[:cell]["north"]).to be >= system.latitude
       expect(inertia.props[:open_years]).to eq([open_season.season_year])
     end
 
     it "moves the field to another system with the shape, its open season following" do
-      other = create(:pivot, farm: pivot.farm, name: "Lane 3", kind: "traveler", latitude: 43.305, longitude: -89.345)
-      patch field_outline_path(field), params: {outline: {boundary: square.to_json, pivot_id: other.id}}
+      other = create(:system, farm: system.farm, name: "Lane 3", kind: "traveler", latitude: 43.305, longitude: -89.345)
+      patch field_outline_path(field), params: {outline: {boundary: square.to_json, system_id: other.id}}
       expect(flash[:notice]).to eq("Saved the shape of #{field.name} and moved it to Lane 3 (traveler)")
-      expect(field.reload).to have_attributes(pivot: other, boundary: square)
-      expect(open_season.reload).to have_attributes(pivot: other, weather_cell: other.weather_cell)
-      expect(ended.reload.pivot).to eq(pivot)
+      expect(field.reload).to have_attributes(system: other, boundary: square)
+      expect(open_season.reload).to have_attributes(system: other, weather_cell: other.weather_cell)
+      expect(ended.reload.system).to eq(system)
     end
 
     it "keeps the field on its system when that's the one sent" do
-      patch field_outline_path(field), params: {outline: {boundary: square.to_json, pivot_id: pivot.id}}
+      patch field_outline_path(field), params: {outline: {boundary: square.to_json, system_id: system.id}}
       expect(flash[:notice]).to eq("Saved the shape of #{field.name}")
-      expect(field.reload.pivot).to eq(pivot)
+      expect(field.reload.system).to eq(system)
     end
 
     it "makes a Location at the shape, named after the field, and moves the field to it" do
       patch field_outline_path(field), params: {outline: {boundary: square.to_json, new_location: "1",
                                                           latitude: "43.305", longitude: "-89.345"}}
-      location = field.reload.pivot
-      expect(location).to have_attributes(kind: "point", name: field.name, farm: pivot.farm, latitude: 43.305, longitude: -89.345)
+      location = field.reload.system
+      expect(location).to have_attributes(kind: "point", name: field.name, farm: system.farm, latitude: 43.305, longitude: -89.345)
       expect(flash[:notice]).to eq("Saved the shape of #{field.name} and moved it to #{field.name} (location)")
-      expect(open_season.reload).to have_attributes(pivot: location, weather_cell: location.weather_cell)
-      expect(ended.reload.pivot).to eq(pivot)
+      expect(open_season.reload).to have_attributes(system: location, weather_cell: location.weather_cell)
+      expect(ended.reload.system).to eq(system)
     end
 
     it "saves nothing when the Location can't be made" do
       patch field_outline_path(field), params: {outline: {boundary: square.to_json, new_location: "1", latitude: "", longitude: ""}},
         headers: {"HTTP_REFERER" => field_outline_url(field)}
-      expect(field.reload).to have_attributes(pivot:, boundary: nil)
-      expect(Pivot.where(kind: "point")).to be_empty
+      expect(field.reload).to have_attributes(system:, boundary: nil)
+      expect(IrrigationSystem.where(kind: "point")).to be_empty
       follow_redirect!
-      expect(inertia.props[:errors][:pivot_id].first).to start_with("couldn't be added as a Location")
+      expect(inertia.props[:errors][:system_id].first).to start_with("couldn't be added as a Location")
     end
   end
 end

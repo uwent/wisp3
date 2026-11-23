@@ -2,7 +2,7 @@
 
 How WISP 3 works out a planting's soil water, today and ahead. It's the checkbook method legacy WISP used, ported with fixes and given FAO-56's crop coefficients; the reasons are in [decisions.md](decisions.md) (D14 above all) and the deliberate changes from legacy in [legacy-audit.md](legacy-audit.md) (C IDs). The canopy that drives crop ET is in [architecture.md](architecture.md) (Canopy and soils), and the weather it runs on in the same doc (Weather).
 
-The rules in [CLAUDE.md](../CLAUDE.md) hold here: the balance is recalculated on read and never stored; depths are inches; missing data is `nil`, never 0; it reads the planting's own soil, area and weather cell (copied from its field and system for the season), never the field's or pivot's.
+The rules in [CLAUDE.md](../CLAUDE.md) hold here: the balance is recalculated on read and never stored; depths are inches; missing data is `nil`, never 0; it reads the planting's own soil, area and weather cell (copied from its field and system for the season), never the field's or system's.
 
 ## The pieces
 

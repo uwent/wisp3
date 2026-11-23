@@ -25,7 +25,7 @@
   import { readStored, writeStored } from '@/lib/storage'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { currentUnits } from '@/lib/units'
-  import { dailyEntries, pivots, setup } from '@/routes'
+  import { dailyEntries, systems, setup } from '@/routes'
 
   let {
     today,
@@ -68,11 +68,11 @@
     writeStored(VIEW_KEY, next)
   }
 
-  // While a pivot's weather is on its way, reload the cards until it lands
+  // While a system's weather is on its way, reload the cards until it lands
   const weatherWait = pollWeather(() => updatingIds(farms), ['farms', 'rain'])
-  const weatherFor = (pivot: { weather_updating: boolean }) => weatherWait.state(pivot.weather_updating)
+  const weatherFor = (system: { weather_updating: boolean }) => weatherWait.state(system.weather_updating)
 
-  // Fields whose season has ended go after the rest, and so do pivots and farms with only ended fields
+  // Fields whose season has ended go after the rest, and so do systems and farms with only ended fields
   // (the sort is stable, so names stay in order otherwise)
   const ended = (card: Card) =>
     card.plantings.length > 0 && card.plantings.every((summary) => summary.phase === 'ended')
@@ -83,12 +83,12 @@
     endedLast(
       farms.map((farm) => ({
         ...farm,
-        pivots: endedLast(
-          farm.pivots.map((pivot) => ({ ...pivot, fields: endedLast(pivot.fields, ended) })),
-          (pivot) => allEnded(pivot.fields),
+        systems: endedLast(
+          farm.systems.map((system) => ({ ...system, fields: endedLast(system.fields, ended) })),
+          (system) => allEnded(system.fields),
         ),
       })),
-      (farm) => allEnded(farm.pivots.flatMap((pivot) => pivot.fields)),
+      (farm) => allEnded(farm.systems.flatMap((system) => system.fields)),
     ),
   )
 
@@ -98,27 +98,27 @@
       query,
     ),
   )
-  const cards = $derived(shown.flatMap((farm) => farm.pivots.flatMap((pivot) => pivot.fields)))
+  const cards = $derived(shown.flatMap((farm) => farm.systems.flatMap((system) => system.fields)))
   const filtered = $derived(filterByStatus(shown, statusFilter))
   const flat = $derived(order === 'urgent' ? needsWaterFirst(filtered) : [])
   // Where a field is, when the list isn't under its farm and system
-  const place = (pivot: OverviewSystem, farm: FarmGroup) =>
-    farms.length > 1 && farmId === 'all' ? `${systemName(pivot)} · ${farm.name}` : systemName(pivot)
+  const place = (system: OverviewSystem, farm: FarmGroup) =>
+    farms.length > 1 && farmId === 'all' ? `${systemName(system)} · ${farm.name}` : systemName(system)
   // The zones of the farm chosen's systems (whatever the search)
   const rainZones = $derived.by(() => {
     const systemIds = new Set(
-      sorted.filter((farm) => farmId === 'all' || farm.id === farmId).flatMap((farm) => farm.pivots.map((p) => p.id)),
+      sorted.filter((farm) => farmId === 'all' || farm.id === farmId).flatMap((farm) => farm.systems.map((p) => p.id)),
     )
-    return rain.filter((zone) => zone.pivot_ids.some((id) => systemIds.has(id)))
+    return rain.filter((zone) => zone.system_ids.some((id) => systemIds.has(id)))
   })
   // Log irrigation: one dialog, for the system (and field) it was opened
   // for, found in the unfiltered farms so it has all the system's fields
   let logOpen = $state(false)
   let logging = $state<{ systemId: number; fieldId: number | null } | null>(null)
   const logSystem = $derived(
-    logging && farms.flatMap((farm) => farm.pivots).find((pivot) => pivot.id === logging!.systemId),
+    logging && farms.flatMap((farm) => farm.systems).find((system) => system.id === logging!.systemId),
   )
-  const logRain = $derived((logging && rain.find((zone) => zone.pivot_ids.includes(logging!.systemId))?.days) ?? [])
+  const logRain = $derived((logging && rain.find((zone) => zone.system_ids.includes(logging!.systemId))?.days) ?? [])
   function logIrrigation(systemId: number, fieldId: number | null = null) {
     logging = { systemId, fieldId }
     logOpen = true
@@ -131,7 +131,7 @@
         summary.phase === 'active' && summary.tasks.some((task) => task.kind === 'irrigation_check' && task.due),
     )
 
-  const anyFields = $derived(farms.some((farm) => farm.pivots.some((pivot) => pivot.fields.length)))
+  const anyFields = $derived(farms.some((farm) => farm.systems.some((system) => system.fields.length)))
 </script>
 
 <svelte:head><title>Dashboard · WISP</title></svelte:head>
@@ -187,15 +187,15 @@
 {#if getting_started}
   <GettingStarted progress={getting_started} year={Number(today.slice(0, 4))} />
 {/if}
-{#snippet systemHeading(pivot: OverviewSystem)}
+{#snippet systemHeading(system: OverviewSystem)}
   <!-- The links wrap under the name rather than squeezing it (a phone) -->
   <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-    <h3 id="pivot-{pivot.id}" class="min-w-0 flex-1 basis-56 truncate font-medium">
+    <h3 id="system-{system.id}" class="min-w-0 flex-1 basis-56 truncate font-medium">
       <span class="font-normal text-ink-muted">Irrigation system:</span>
       <Link
-        href={pivots.show(pivot.id)}
+        href={systems.show(system.id)}
         class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current"
-        data-search-text>{systemName(pivot)}</Link
+        data-search-text>{systemName(system)}</Link
       >
     </h3>
     <div class="flex shrink-0 items-center gap-2 text-sm">
@@ -203,17 +203,17 @@
         <button
           type="button"
           class="text-brand-600 hover:underline"
-          aria-label="Log irrigation on {pivot.name}"
-          onclick={() => logIrrigation(pivot.id)}>Log irrigation</button
+          aria-label="Log irrigation on {system.name}"
+          onclick={() => logIrrigation(system.id)}>Log irrigation</button
         >
         <span class="text-ink-muted" aria-hidden="true">·</span>
       {/if}
-      <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline" aria-label="View {pivot.name}"
+      <Link href={systems.show(system.id)} class="text-brand-600 hover:underline" aria-label="View {system.name}"
         >View</Link
       >
       {#if !readOnly}
         <span class="text-ink-muted" aria-hidden="true">·</span>
-        <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
+        <Link href={systems.edit(system.id)} class="text-brand-600 hover:underline" aria-label="Edit {system.name}"
           >Edit</Link
         >
       {/if}
@@ -222,14 +222,14 @@
 {/snippet}
 
 <!-- Needs water first has no system headings: a field asked "Irrigated since …?" offers the dialog under it -->
-{#snippet logFromCard(card: Card, pivot: OverviewSystem, padding: string)}
+{#snippet logFromCard(card: Card, system: OverviewSystem, padding: string)}
   {#if !readOnly && irrigationDue(card)}
     <p class="text-xs {padding}">
       <button
         type="button"
         class="text-brand-600 underline underline-offset-2"
-        aria-label="Log irrigation on {systemName(pivot)} for {card.name}"
-        onclick={() => logIrrigation(pivot.id, card.id)}>Log irrigation on {systemName(pivot)}</button
+        aria-label="Log irrigation on {systemName(system)} for {card.name}"
+        onclick={() => logIrrigation(system.id, card.id)}>Log irrigation on {systemName(system)}</button
       >
     </p>
   {/if}
@@ -261,19 +261,19 @@
     <section aria-label="Fields, most urgent first">
       {#if view === 'list'}
         <ul class="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface-raised">
-          {#each flat as { card, pivot, farm } (card.id)}
+          {#each flat as { card, system, farm } (card.id)}
             <li>
-              <FieldRow {card} {today} {units} weather={weatherFor(pivot)} context={place(pivot, farm)} />
-              {@render logFromCard(card, pivot, 'px-3 pb-2')}
+              <FieldRow {card} {today} {units} weather={weatherFor(system)} context={place(system, farm)} />
+              {@render logFromCard(card, system, 'px-3 pb-2')}
             </li>
           {/each}
         </ul>
       {:else}
         <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {#each flat as { card, pivot, farm } (card.id)}
+          {#each flat as { card, system, farm } (card.id)}
             <li class="space-y-1">
-              <FieldCard {card} {today} {units} weather={weatherFor(pivot)} context={place(pivot, farm)} />
-              {@render logFromCard(card, pivot, 'px-1')}
+              <FieldCard {card} {today} {units} weather={weatherFor(system)} context={place(system, farm)} />
+              {@render logFromCard(card, system, 'px-1')}
             </li>
           {/each}
         </ul>
@@ -286,17 +286,17 @@
           <span class="font-normal text-ink-muted">Farm:</span>
           <span data-search-text>{farm.name}</span>
         </h2>
-        {#each farm.pivots as pivot (pivot.id)}
+        {#each farm.systems as system (system.id)}
           {#if view === 'list'}
             <!-- The list: systems as plain headings over their rows -->
-            <section class="space-y-2" aria-labelledby="pivot-{pivot.id}">
-              {@render systemHeading(pivot)}
-              {#if pivot.fields.length === 0}
+            <section class="space-y-2" aria-labelledby="system-{system.id}">
+              {@render systemHeading(system)}
+              {#if system.fields.length === 0}
                 {@render noFields()}
               {:else}
                 <ul class="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface-raised">
-                  {#each pivot.fields as card (card.id)}
-                    <li><FieldRow {card} {today} {units} weather={weatherFor(pivot)} /></li>
+                  {#each system.fields as card (card.id)}
+                    <li><FieldRow {card} {today} {units} weather={weatherFor(system)} /></li>
                   {/each}
                 </ul>
               {/if}
@@ -304,22 +304,22 @@
           {:else}
             <section
               class="space-y-3 rounded-lg border border-line bg-surface p-3 sm:p-4"
-              aria-labelledby="pivot-{pivot.id}"
+              aria-labelledby="system-{system.id}"
             >
-              {@render systemHeading(pivot)}
-              {#if pivot.fields.length === 0}
+              {@render systemHeading(system)}
+              {#if system.fields.length === 0}
                 {@render noFields()}
               {:else}
                 <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {#each pivot.fields as card (card.id)}
-                    <li><FieldCard {card} {today} {units} weather={weatherFor(pivot)} /></li>
+                  {#each system.fields as card (card.id)}
+                    <li><FieldCard {card} {today} {units} weather={weatherFor(system)} /></li>
                   {/each}
                 </ul>
               {/if}
             </section>
           {/if}
         {/each}
-        {#if farm.pivots.length === 0}
+        {#if farm.systems.length === 0}
           <p class="text-sm text-ink-muted">
             No irrigation systems yet. <Link href={setup.show()} class="text-brand-600 underline underline-offset-2"
               >Add one in setup</Link

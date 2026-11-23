@@ -1,8 +1,8 @@
 import { type LngLat } from './geo'
 import { type Boundary, boundaryRing } from './boundary'
 
-// The soil survey under a pivot: USDA NRCS Soil Data Access (SSURGO), queried
-// from the browser. For each map unit under the pivot's circle or arc: its share of the area, and
+// The soil survey under a system: USDA NRCS Soil Data Access (SSURGO), queried
+// from the browser. For each map unit under the system's circle or arc: its share of the area, and
 // its main component's surface texture, which suggests one of WISP's soil types (soil_types.yml).
 // A suggestion only; the user picks the soil.
 
@@ -21,7 +21,7 @@ const SURFACE_TEXTURE =
 
 export type MapUnit = {
   mukey: string
-  /** Share of the pivot's area, 0–1 */
+  /** Share of the system's area, 0–1 */
   share: number
   /** "Plainfield sand, 2 to 6 percent slopes" */
   name: string
@@ -122,9 +122,9 @@ export async function fetchSoilSurvey(area: SurveyArea, signal?: AbortSignal): P
 }
 
 export type SoilSuggestion = {
-  /** The soil type key covering the most of the pivot, or null if the survey doesn't suggest one */
+  /** The soil type key covering the most of the system, or null if the survey doesn't suggest one */
   key: string | null
-  /** Its share of the pivot's area */
+  /** Its share of the system's area */
   share: number
   units: MapUnit[]
 }
@@ -165,14 +165,14 @@ export function soilOptionsByShare<T extends { id: number; key: string; name: st
 /**
  * How a chosen soil fits the survey of the area: null when it's the main soil there, or the
  * survey has no main soil and finds some of it; otherwise a note ("The soil survey finds no muck
- * under the pivot; it's mostly sand.") and the main soil to offer instead. `near` places the area
- * ("under the pivot", "around the traveler").
+ * under the system; it's mostly sand.") and the main soil to offer instead. `near` places the area
+ * ("under the system", "around the traveler").
  */
 export function soilFit<T extends { key: string; name: string }>(
   chosen: T,
   shares: Map<string, number>,
   soilTypes: T[],
-  near = 'under the pivot',
+  near = 'under the system',
 ): { note: string; main: T | null; absent: boolean } | null {
   const share = shares.get(chosen.key) ?? 0
   const matched = [...shares.values()].reduce((sum, value) => sum + value, 0)
@@ -187,7 +187,7 @@ export function soilFit<T extends { key: string; name: string }>(
 }
 
 /**
- * The soil type covering the most of the pivot (adding up map units of the same type), if the map
+ * The soil type covering the most of the system (adding up map units of the same type), if the map
  * units we can match cover at least half of it (not mostly water, peat or unsurveyed)
  */
 export function suggestSoil(units: MapUnit[]): SoilSuggestion {
@@ -197,7 +197,7 @@ export function suggestSoil(units: MapUnit[]): SoilSuggestion {
   return best && matched >= 0.5 ? { key: best[0], share: best[1], units } : { key: null, share: 0, units }
 }
 
-// The soil types around a pivot, for the picker's map: each map unit's polygons in an area, colored
+// The soil types around a system, for the picker's map: each map unit's polygons in an area, colored
 // by the soil type its main component's surface texture suggests
 
 /** Coarse to fine (pale yellow to dark brown), muck near black */

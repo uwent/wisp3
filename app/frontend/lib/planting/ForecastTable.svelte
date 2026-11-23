@@ -22,7 +22,7 @@
     days: FieldDay[]
     summary: PlantingSummary
     units: Units
-    /** "pivot", "drip block" */
+    /** "system", "drip block" */
     noun: string
     asOf: string | null
     replay: boolean

@@ -16,7 +16,7 @@ class PlantingsController < AuthenticatedController
     # An ?as_of= that can't be used leaves the URL, so it doesn't look like time travel
     return redirect_to planting_path(planting, request.query_parameters.except("as_of")) if params.key?(:as_of) && !as_of
 
-    weather_updating = !as_of && WeatherCell.keep_current_updating_ids([field.pivot.weather_cell_id]).any?
+    weather_updating = !as_of && WeatherCell.keep_current_updating_ids([field.system.weather_cell_id]).any?
 
     render inertia: "Plantings/Show", props: {
       **FieldHeaderProps.for(field),
@@ -78,7 +78,7 @@ class PlantingsController < AuthenticatedController
 
   # The season's daily balance as CSV (the legacy export's columns, plus where each value came from)
   def export
-    planting = Current.group.plantings.includes(:plant, pivot: {farm: :group}, field: [:soil_type, {pivot: [:pivot_group, {farm: :group}]}]).find(params[:id])
+    planting = Current.group.plantings.includes(:plant, system: {farm: :group}, field: [:soil_type, {system: [:irrigation_group, {farm: :group}]}]).find(params[:id])
     filename = "wisp-#{planting.field.name.parameterize}-#{planting.season_year}.csv"
     csv = PlantingCsv.new(PlantingStatus.new(planting), exported_by: current_user, about_url:).to_csv
     send_csv csv, filename
@@ -130,7 +130,7 @@ class PlantingsController < AuthenticatedController
     ids = ids.values if ids.is_a?(ActionController::Parameters) # indexed: also_field_ids[0]
     ids = Array(ids).compact_blank.map { |id| id.to_s.to_i }.uniq - [planting.field_id]
     return [] if ids.empty? || planting.partial?
-    fields = Current.group.fields.where(id: ids).includes(plantings: :plant, pivot: :weather_cell).to_a
+    fields = Current.group.fields.where(id: ids).includes(plantings: :plant, system: :weather_cell).to_a
     return unless fields.size == ids.size
 
     values = planting.attributes.slice(*COPIED).symbolize_keys

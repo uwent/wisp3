@@ -4,7 +4,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
-  import PivotShapeFields from '@/lib/components/PivotShapeFields.svelte'
+  import SystemShapeFields from '@/lib/components/SystemShapeFields.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { isPoint, KIND_NOUNS, MAX_LINEAR_LENGTH_FT, MAX_LINEAR_TRAVEL_FT, MAX_RADIUS_FT, shapeDraft } from '@/lib/geo'
@@ -53,7 +53,7 @@
   let season = $state(untrack(() => seasons?.[1] ?? null))
   let farmId = $state<string>(untrack(() => (farms[0] ? String(farms[0].id) : '')))
   let shape = $state(shapeDraft())
-  // "pivot", "drip block"
+  // "system", "drip block"
   const noun = $derived(KIND_NOUNS[shape.kind])
   // Steps left for later: their inputs aren't sent. Only a new farm can be saved alone.
   let systemChosenLater = $state(false)
@@ -102,7 +102,7 @@
   )
 
   // What the server would reject, checked here so the save waits until it's all in (the server
-  // still checks everything). Ranges mirror Pivot's, through lib/geo.ts.
+  // still checks everything). Ranges mirror IrrigationSystem's, through lib/geo.ts.
   const units = $derived(currentUnits())
   let farmName = $state('')
   let systemName = $state('')
@@ -245,16 +245,16 @@
           {/if}
           <TextField
             label="Name"
-            name="setup[pivot][name]"
+            name="setup[system][name]"
             bind:value={systemName}
             placeholder={shape.kind === 'center' ? 'e.g. North 160' : 'e.g. Home garden'}
-            error={e['pivot.name']}
+            error={e['system.name']}
             required
           />
-          <PivotShapeFields
+          <SystemShapeFields
             bind:shape
-            prefix="setup[pivot]"
-            error={(attribute) => e[`pivot.${attribute}`]}
+            prefix="setup[system]"
+            error={(attribute) => e[`system.${attribute}`]}
             soilTypes={soil_types}
             onsuggest={suggestSoil}
             {fileShapes}
@@ -263,14 +263,14 @@
           >
             <NumberField
               label={isPoint(shape.kind) ? 'Flow' : 'Pump capacity'}
-              name="setup[pivot][pump_capacity_gpm]"
+              name="setup[system][pump_capacity_gpm]"
               quantity="flow"
               value={null}
-              info="pivot.pump_capacity"
+              info="system.pump_capacity"
               optional
-              error={e['pivot.pump_capacity_gpm']}
+              error={e['system.pump_capacity_gpm']}
             />
-          </PivotShapeFields>
+          </SystemShapeFields>
         {/if}
       </section>
 

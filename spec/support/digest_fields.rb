@@ -4,8 +4,8 @@
 module DigestFields
   def digest_today = Time.zone.local(2026, 7, 20, 6)
 
-  def digest_weather(pivot)
-    cell = pivot.weather_cell
+  def digest_weather(system)
+    cell = system.weather_cell
     (Date.new(2026, 7, 1)..Date.new(2026, 7, 19)).each do |date|
       cell.weather_days.create!(date:, et0_in: 0.2, precip_in: 0.0, tmax_f: 85, tmin_f: 60, model: "ncep_nbm_conus",
         hours: 24, fetched_at: Time.current)
@@ -15,8 +15,8 @@ module DigestFields
       payload: {days: dates.map { |date| {date: date.iso8601, et0_in: 0.2, precip_in: 0.0, tmax_f: 88, tmin_f: 62} }})
   end
 
-  def digest_field(pivot, name, moisture_pct)
-    field = create(:field, pivot:, name:)
+  def digest_field(system, name, moisture_pct)
+    field = create(:field, system:, name:)
     planting = create(:planting, field:, season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1),
       end_date: Date.new(2026, 9, 30))
     create(:canopy_observation, planting:, date: Date.new(2026, 7, 1), pct_cover: 90)

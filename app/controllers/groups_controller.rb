@@ -9,7 +9,7 @@ class GroupsController < AuthenticatedController
     render inertia: "Groups/Show", props: {
       members: MemberSerializer.new(group.memberships.includes(:user).order(:created_at, :id)).to_h,
       membership_id: Current.membership.id,
-      counts: {farms: group.farms.count, pivots: group.pivots.count, fields: group.fields.count},
+      counts: {farms: group.farms.count, systems: group.systems.count, fields: group.fields.count},
       operations: operations.map do |membership|
         {id: membership.group_id, name: membership.group.name, owner: membership.owner, members: membership.group.memberships.size}
       end

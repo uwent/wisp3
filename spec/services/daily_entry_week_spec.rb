@@ -3,18 +3,18 @@ require "rails_helper"
 RSpec.describe DailyEntryWeek do
   let(:group) { create(:group) }
   let(:farm) { create(:farm, group:, name: "Home") }
-  let(:east) { create(:pivot_group, farm:, name: "East") }
-  let(:north) { create(:pivot, farm:, pivot_group: east, name: "North") }
-  let(:south) { create(:pivot, farm:, pivot_group: east, name: "South", pump_capacity_gpm: 800) }
-  let(:lane) { create(:pivot, farm:, name: "Lane 3") }
-  let(:idle) { create(:pivot, farm:, name: "Idle") }
+  let(:east) { create(:irrigation_group, farm:, name: "East") }
+  let(:north) { create(:system, farm:, irrigation_group: east, name: "North") }
+  let(:south) { create(:system, farm:, irrigation_group: east, name: "South", pump_capacity_gpm: 800) }
+  let(:lane) { create(:system, farm:, name: "Lane 3") }
+  let(:idle) { create(:system, farm:, name: "Idle") }
   let(:date) { Date.new(2026, 7, 20) }
   let(:week) { (Date.new(2026, 7, 14)..date).to_a }
 
   around { |example| travel_to(date) { example.run } }
 
-  def field_on(pivot, name, from: Date.new(2026, 4, 20), to: Date.new(2026, 9, 30))
-    field = create(:field, pivot:, name:)
+  def field_on(system, name, from: Date.new(2026, 4, 20), to: Date.new(2026, 9, 30))
+    field = create(:field, system:, name:)
     create(:planting, field:, season_start: from, emergence_date: from + 10, end_date: to) if from
     field
   end
@@ -31,11 +31,11 @@ RSpec.describe DailyEntryWeek do
 
     expect(props).to include(date:, start: week.first, dates: week)
     expect(farm_props[:rain_rows].map { |row| row.values_at(:key, :name, :kind) })
-      .to eq([["group-#{east.id}", "East", "group"], ["pivot-#{lane.id}", "Lane 3", "system"]])
+      .to eq([["group-#{east.id}", "East", "group"], ["system-#{lane.id}", "Lane 3", "system"]])
     expect(farm_props[:rain_rows].first[:systems]).to eq(2)
     expect(farm_props[:irrigation_rows].map { |row| row.values_at(:key, :name, :id, :kind, :kind_name) })
-      .to eq([["pivot-#{north.id}", "North", north.id, "center", "Pivot"], ["pivot-#{south.id}", "South", south.id, "center", "Pivot"],
-        ["pivot-#{lane.id}", "Lane 3", lane.id, "center", "Pivot"]])
+      .to eq([["system-#{north.id}", "North", north.id, "center", "Pivot"], ["system-#{south.id}", "South", south.id, "center", "Pivot"],
+        ["system-#{lane.id}", "Lane 3", lane.id, "center", "Pivot"]])
   end
 
   it "leaves out a farm with nothing in season" do
@@ -107,7 +107,7 @@ RSpec.describe DailyEntryWeek do
   end
 
   it "gives a field growing only plots as its plots, for irrigation (as the day page does), and as itself for rain" do
-    plots = create(:field, pivot: north, name: "Plots")
+    plots = create(:field, system: north, name: "Plots")
     season = {season_start: Date.new(2026, 4, 20), emergence_date: Date.new(2026, 5, 1), end_date: Date.new(2026, 9, 30)}
     corn = create(:planting, field: plots, partial: true, area_acres: 1, plant: create(:plant, name: "Corn"), **season)
     beans = create(:planting, field: plots, partial: true, area_acres: 2, plant: create(:plant, name: "Beans"), **season)
@@ -125,7 +125,7 @@ RSpec.describe DailyEntryWeek do
 
   it "places a field that moved systems mid-week under the system its season ran on each day" do
     moved = field_on(north, "Moved", to: Date.new(2026, 7, 16))
-    moved.update!(pivot: lane)
+    moved.update!(system: lane)
     create(:planting, field: moved, season_start: Date.new(2026, 7, 17), emergence_date: Date.new(2026, 7, 20),
       end_date: Date.new(2026, 9, 30))
 

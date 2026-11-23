@@ -17,7 +17,7 @@
 
   // A field's status card: on the dashboard (the whole card links to its planting), and compact on
   // the map, where onselect makes the card select it: in the map's panel with View and Edit links
-  // (links), in its list without. weather: whether the pivot's weather is being fetched (the page
+  // (links), in its list without. weather: whether the system's weather is being fetched (the page
   // reloads until it lands) or the page gave up waiting.
   //
   // A field growing several plantings at once (plots) lists each, linking to

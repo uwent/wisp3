@@ -11,7 +11,7 @@
   import Term from '@/lib/components/Term.svelte'
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { currentYear, formatDate, today as todayDate } from '@/lib/dates'
-  import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
+  import { KIND_NOUNS, type SystemKind } from '@/lib/geo'
   import { isExample } from '@/lib/permissions'
   import { outlook } from '@/lib/outlook'
   import { cardWhen, cropName, plotSize, seasonDates, seasonLine } from '@/lib/plantings'
@@ -22,7 +22,7 @@
   import { save } from '@/lib/save'
   import PlantingDialog from '@/lib/setup/PlantingDialog.svelte'
   import { currentUnits } from '@/lib/units'
-  import { fieldDays, pivots, planting as plantingRoute } from '@/routes'
+  import { fieldDays, systems, planting as plantingRoute } from '@/routes'
   import type { Field, ForecastDay, GenericCurve, Plant, PlantingSummary, SoilType } from '@/types/serializers'
 
   // The field page: the land, not one crop on it. The season's plantings on
@@ -41,7 +41,7 @@
 
   let {
     field,
-    pivot,
+    system,
     farm,
     year,
     weather_updating,
@@ -54,15 +54,15 @@
     generic_curves,
   }: {
     field: Field
-    pivot: {
+    system: {
       id: number
       name: string
-      kind: PivotKind
+      kind: SystemKind
       kind_name: string
       pump_capacity_gpm: number | null
       /** Whether days without entered rain take the modeled rain: its group's setting, else its farm's */
       use_model_precip: boolean
-      pivot_group: { id: number; name: string } | null
+      irrigation_group: { id: number; name: string } | null
     }
     farm: { id: number; name: string }
     year: number
@@ -80,8 +80,8 @@
   } = $props()
 
   const units = $derived(currentUnits())
-  // "pivot", "drip block"
-  const noun = $derived(KIND_NOUNS[pivot.kind])
+  // "system", "drip block"
+  const noun = $derived(KIND_NOUNS[system.kind])
   const today = todayDate()
   const seasonPlantings = $derived(field.plantings.filter((p) => p.year === year))
   const statusById = $derived(Object.fromEntries(plantings.map((s) => [s.planting_id, s.status])))
@@ -92,8 +92,8 @@
   const anyPartial = $derived(seasonPlantings.some((p) => p.partial))
   let plantingDialog: PlantingDialog | undefined = $state()
 
-  // While the pivot's weather is being fetched, reload until it lands
-  const weatherWait = pollWeather(() => (weather_updating ? [pivot.id] : []))
+  // While the system's weather is being fetched, reload until it lands
+  const weatherWait = pollWeather(() => (weather_updating ? [system.id] : []))
   const weatherState = $derived(weatherWait.state(weather_updating))
 
   type Column = 'rain_in' | 'irrigation_in' | 'notes'
@@ -118,7 +118,7 @@
 
 <svelte:head><title>{field.name} · WISP</title></svelte:head>
 
-<FieldHeader {field} {pivot} {farm} {units} {year} current="field">
+<FieldHeader {field} {system} {farm} {units} {year} current="field">
   {#snippet actions()}
     {#if !readOnly}
       <Button variant="secondary" class="px-3 py-1.5" onclick={() => plantingDialog?.open(field)}>Add a planting</Button
@@ -309,17 +309,17 @@
       <p class="text-xs text-ink-muted">
         Rain in gray is modeled for the {noun}'s location; bold values are ones you entered. Irrigation can also be
         entered for all the {noun}'s fields at once on the
-        <Link href={pivots.show(pivot.id)} class="text-brand-600 underline underline-offset-2"
+        <Link href={systems.show(system.id)} class="text-brand-600 underline underline-offset-2"
           >{noun}'s irrigation page</Link
         > or the Daily entry page.
       </p>
-      {#if !pivot.use_model_precip}
+      {#if !system.use_model_precip}
         <p class="text-xs">
-          Rain: <Term id="entered_rain_only">only what you enter</Term>, {rainSettingOwner(pivot.pivot_group)} setting. Days
-          without an entry count as dry.
+          Rain: <Term id="entered_rain_only">only what you enter</Term>, {rainSettingOwner(system.irrigation_group)} setting.
+          Days without an entry count as dry.
           {#if !readOnly}
             <Link
-              href={rainSettingLink(pivot.pivot_group?.id ?? null, farm.id)}
+              href={rainSettingLink(system.irrigation_group?.id ?? null, farm.id)}
               class="text-brand-600 underline underline-offset-2">Change this</Link
             >
           {/if}

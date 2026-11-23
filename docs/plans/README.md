@@ -1,6 +1,6 @@
 # Plans
 
-The build's record, frozen on 2026-11-22: the original design ([design.md](design.md)) and the work in eight phases by theme. The work was planned in phases 0–9, with sub-phases slotted in as work came up; the files regroup it, keeping each section's text, with its old number in its heading.
+The build's record, frozen on 2026-11-22: the original design ([design.md](design.md)) and the work in eight phases by theme, and the work planned since. The work was planned in phases 0–9, with sub-phases slotted in as work came up; the files regroup it, keeping each section's text, with its old number in its heading.
 
 | Phase | Built | |
 |---|---|---|
@@ -12,6 +12,7 @@ The build's record, frozen on 2026-11-22: the original design ([design.md](desig
 | [6. Operations, plantings and seasons](6-operations-plantings-seasons.md) | Nov 10–17 | Beta readiness: systems, plots, seasons, daily entry, the example farm, time travel |
 | [7. Launch](7-launch.md) | Oct 22 – Nov 20 | Accessibility, admin, audit, the beta and launch, analytics |
 | [8. Polish before grower feedback](8-polish.md) | Nov 21–22 | The review's fixes, the dashboard list, the week grid, D15 |
+| [9. The irrigation system rename](9-irrigation-system-rename.md) | Nov 23 | `Pivot` → `IrrigationSystem` in code (D18) |
 
 A new piece of work that needs a plan gets its own file here, ticked as it lands; when it's done, it's frozen like these, with what's still current moved into [architecture.md](../architecture.md) and [engine.md](../engine.md).
 

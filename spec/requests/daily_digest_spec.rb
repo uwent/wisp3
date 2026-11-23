@@ -7,20 +7,20 @@ RSpec.describe "Daily digest", type: :request do
   describe "the alerts page" do
     let(:home) { create(:farm, group:, name: "Home") }
     let(:river) { create(:farm, group:, name: "River") }
-    let!(:north) { create(:field, pivot: create(:pivot, farm: home), name: "North") }
-    let!(:south) { create(:field, pivot: north.pivot, name: "South") }
-    let!(:east) { create(:field, pivot: create(:pivot, farm: river), name: "East") }
+    let!(:north) { create(:field, system: create(:system, farm: home), name: "North") }
+    let!(:south) { create(:field, system: north.system, name: "South") }
+    let!(:east) { create(:field, system: create(:system, farm: river), name: "East") }
 
     before { sign_in user }
 
-    it "lists every field by operation, farm and pivot, all included by default" do
+    it "lists every field by operation, farm and system, all included by default" do
       get alerts_path
       expect_inertia.to render_component("Alerts/Show")
       expect(inertia.props).to include(frequency: "daily", scope: "in_season",
         field_ids: contain_exactly(north.id, south.id, east.id), test_wait: 0)
       farms = inertia.props[:groups].sole[:farms]
-      expect(farms.map { |farm| [farm[:name], farm[:pivots].map { |pivot| [pivot[:name], pivot[:fields].map { |field| field[:name] }] }] })
-        .to eq([["Home", [[north.pivot.name, ["North", "South"]]]], ["River", [[east.pivot.name, ["East"]]]]])
+      expect(farms.map { |farm| [farm[:name], farm[:systems].map { |system| [system[:name], system[:fields].map { |field| field[:name] }] }] })
+        .to eq([["Home", [[north.system.name, ["North", "South"]]]], ["River", [[east.system.name, ["East"]]]]])
       # The preview is built only when asked for
       expect(inertia.props).not_to have_key(:preview)
     end
@@ -31,20 +31,20 @@ RSpec.describe "Daily digest", type: :request do
       expect(user.reload.digest_frequency).to eq("needed")
       expect(user.digest_exclusions.map(&:subject)).to contain_exactly(south, river)
 
-      later = create(:field, pivot: east.pivot)
-      newer = create(:field, pivot: north.pivot)
+      later = create(:field, system: east.system)
+      newer = create(:field, system: north.system)
       # River was left out whole; Home only lost South, so it takes in new fields
       expect(user.digest_fields).to contain_exactly(north, newer)
       expect(user.digest_fields).not_to include(later)
     end
 
-    it "leaves out a pivot with none of its fields picked, and sets which fields the email lists" do
-      west = create(:field, pivot: create(:pivot, farm: home), name: "West")
+    it "leaves out a system with none of its fields picked, and sets which fields the email lists" do
+      west = create(:field, system: create(:system, farm: home), name: "West")
       patch alerts_path, params: {digest: {frequency: "daily_all_year", scope: "needs_action",
                                            field_ids: ["", north.id.to_s, south.id.to_s, east.id.to_s]}}
       expect(user.reload).to have_attributes(digest_frequency: "daily_all_year", digest_scope: "needs_action")
-      expect(user.digest_exclusions.map(&:subject)).to eq([west.pivot])
-      later = create(:field, pivot: west.pivot)
+      expect(user.digest_exclusions.map(&:subject)).to eq([west.system])
+      later = create(:field, system: west.system)
       expect(user.digest_fields).not_to include(later)
     end
 
@@ -64,7 +64,7 @@ RSpec.describe "Daily digest", type: :request do
     end
 
     it "ignores fields from other operations" do
-      theirs = create(:field, pivot: create(:pivot, farm: create(:farm)))
+      theirs = create(:field, system: create(:system, farm: create(:farm)))
       patch alerts_path, params: {digest: {frequency: "daily", field_ids: ["", theirs.id.to_s]}}
       expect(user.digest_fields).to be_empty
       expect(user.digest_exclusions.map(&:subject)).to eq([group])
@@ -72,12 +72,12 @@ RSpec.describe "Daily digest", type: :request do
   end
 
   describe "previewing and testing on the alerts page" do
-    let(:pivot) { create(:pivot, farm: create(:farm, group:)) }
+    let(:system) { create(:system, farm: create(:farm, group:)) }
 
     around { |example| travel_to(digest_today) { example.run } }
 
     before do
-      digest_weather(pivot)
+      digest_weather(system)
       sign_in user
     end
 
@@ -88,7 +88,7 @@ RSpec.describe "Daily digest", type: :request do
     end
 
     it "shows today's email, and why it wouldn't be sent" do
-      digest_field(pivot, "North", 15)
+      digest_field(system, "North", 15)
       expect(preview).to include("skip_reason" => nil, "subject" => "WISP: 1 field OK (Mon, Jul 20)")
 
       user.update!(digest_frequency: "needed")
@@ -97,7 +97,7 @@ RSpec.describe "Daily digest", type: :request do
     end
 
     it "sends a test email, then waits five minutes before another" do
-      digest_field(pivot, "North", 12)
+      digest_field(system, "North", 12)
       user.update!(digest_frequency: "never")
 
       expect { perform_enqueued_jobs { post test_email_alerts_path } }.to change { ActionMailer::Base.deliveries.size }.by(1)
@@ -158,7 +158,7 @@ RSpec.describe "Daily digest", type: :request do
     it "switch to the field's operation, if the user belongs to it" do
       other_group = create(:group, name: "Partners")
       create(:membership, user:, group: other_group)
-      field = create(:field, pivot: create(:pivot, farm: create(:farm, group: other_group)))
+      field = create(:field, system: create(:system, farm: create(:farm, group: other_group)))
       sign_in user
       get root_path
       expect(inertia.props[:auth][:group][:id]).to eq(group.id)
@@ -175,13 +175,13 @@ RSpec.describe "Daily digest", type: :request do
 
   describe "the admin preview" do
     let(:admin) { create(:user, admin: true) }
-    let(:pivot) { create(:pivot, farm: create(:farm, group:)) }
+    let(:system) { create(:system, farm: create(:farm, group:)) }
 
     around { |example| travel_to(digest_today) { example.run } }
 
     it "shows what would be sent today, without sending it" do
-      digest_weather(pivot)
-      digest_field(pivot, "North", 12)
+      digest_weather(system)
+      digest_field(system, "North", 12)
       sign_in admin
       expect { get digest_admin_user_path(user) }.not_to change { ActionMailer::Base.deliveries.size }
       expect_inertia.to render_component("Admin/Users/Digest")

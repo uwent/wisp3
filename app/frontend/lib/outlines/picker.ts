@@ -28,7 +28,7 @@ export type PickerRow = {
 }
 
 export type PickerContext = {
-  field: { id: number; name: string; pivot_id: number; boundary: Boundary | null }
+  field: { id: number; name: string; system_id: number; boundary: Boundary | null }
   system: ImportSystem
   otherFields: { name: string; boundary: Boundary }[]
 }
@@ -67,7 +67,7 @@ export function pickerRows(
   distances: (number | null)[] = shapeDistances(shapes, context.system),
 ): PickerRow[] {
   const { field, system, otherFields } = context
-  const asField = [{ id: field.id, name: field.name, pivot_id: field.pivot_id }]
+  const asField = [{ id: field.id, name: field.name, system_id: field.system_id }]
   const rows = shapes.map((shape, index): PickerRow => {
     const name = shapeName(shape, nameKey)
     const boundary = usableBoundary(shape)

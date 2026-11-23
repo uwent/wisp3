@@ -2,7 +2,7 @@
   import { SYSTEM_SOURCES } from './systemLayers'
   import { ZONE_SOURCES } from './zones'
 
-  /** Our sources (weather zones, irrigation groups, fields, pivots, and overlays named overlay-*), carried over when the basemap changes */
+  /** Our sources (weather zones, irrigation groups, fields, systems, and overlays named overlay-*), carried over when the basemap changes */
   export const isOwnSource = (id: string) =>
     [...SYSTEM_SOURCES, ...ZONE_SOURCES].includes(id) || id.startsWith('overlay-')
 </script>
@@ -27,7 +27,7 @@
   import MapLayersButton from './MapLayersButton.svelte'
   import { followRoads } from './roads.svelte'
   import { ButtonControl, FIT_ICON } from './controls'
-  import PivotMarker from './PivotMarker.svelte'
+  import SystemMarker from './SystemMarker.svelte'
   import FieldMarker from './FieldMarker.svelte'
   import HoverLabel from './HoverLabel.svelte'
   import { MapHover } from './hover.svelte'
@@ -37,10 +37,10 @@
     fieldBadges,
     fieldFeatures,
     unoutlinedFields,
-    type MapPivot,
-    pivotBounds,
-    pivotFeatures,
-  } from './pivots'
+    type MapSystem,
+    systemBounds,
+    systemFeatures,
+  } from './systems'
   import PlaceSearch from './PlaceSearch.svelte'
   import {
     addGlyphImages,
@@ -49,7 +49,7 @@
     GROUP_IDS,
     FAR_ZOOM,
     hoverLines,
-    PIVOT_IDS,
+    SYSTEM_IDS,
     setFieldColors,
     setSystemColors,
     SYSTEM_LAYERS,
@@ -70,7 +70,7 @@
   // systems are outlined (zones): with nothing else under the pointer, the label has the zone's
   // weather, and a click there selects the zone (onselectzone).
   let {
-    pivots,
+    systems,
     groups,
     today,
     selectedId,
@@ -93,7 +93,7 @@
     layersCount = 0,
     children,
   }: {
-    pivots: MapPivot[]
+    systems: MapSystem[]
     /** The irrigation groups' outlines (groupFeatures) */
     groups: FeatureCollection<{ name: string }>
     /** For the plantings' days in the hover label */
@@ -101,7 +101,7 @@
     selectedId: number | null
     /** The field selected with its system, highlighted on the map */
     selectedFieldId?: number | null
-    /** The pivots the list's filters keep (others are muted), or null when nothing's filtered */
+    /** The systems the list's filters keep (others are muted), or null when nothing's filtered */
     highlighted: Set<number> | null
     /** Likewise the fields */
     highlightedFields?: Set<number> | null
@@ -115,10 +115,10 @@
     selectedZoneId?: number | null
     onselectzone?: (zoneId: number) => void
     basemap: Basemap
-    /** Where to start; without one the map fits every pivot */
+    /** Where to start; without one the map fits every system */
     view: { center: LngLat; zoom: number } | null
     unitSystem?: UnitSystem
-    onselect: (pivotId: number | null, fieldId?: number | null) => void
+    onselect: (systemId: number | null, fieldId?: number | null) => void
     onbasemap: (basemap: Basemap) => void
     onviewchange: (view: { center: LngLat; zoom: number }) => void
     /** Once the map and our layers are on it, and again after a basemap change */
@@ -129,10 +129,10 @@
     children?: Snippet
   } = $props()
 
-  // Below FAR_ZOOM a pivot is a few pixels across: its marker is one dot. Below NAME_ZOOM the
-  // marker shows badges without the pivot's name.
+  // Below FAR_ZOOM a system is a few pixels across: its marker is one dot. Below NAME_ZOOM the
+  // marker shows badges without the system's name.
   const NAME_ZOOM = 13
-  const PIVOT_ZOOM = 14
+  const SYSTEM_ZOOM = 14
 
   let wrapper: HTMLDivElement
   let container: HTMLDivElement
@@ -142,7 +142,7 @@
   let placeSearch = $state<PlaceSearch>()
 
   type MarkerProps = {
-    pivot: MapPivot
+    system: MapSystem
     fields: FieldCard[]
     today: string
     selected: boolean
@@ -191,10 +191,10 @@
   }
   const selectedZone = () => zones.find((zone) => zone.id === selectedZoneId) ?? null
 
-  const features = () => pivotFeatures(pivots, selectedId, highlighted)
-  const fields = () => fieldFeatures(pivots, selectedFieldId, highlighted, highlightedFields)
+  const features = () => systemFeatures(systems, selectedId, highlighted)
+  const fields = () => fieldFeatures(systems, selectedFieldId, highlighted, highlightedFields)
 
-  function addPivotLayers(m: MapLibreMap) {
+  function addOurLayers(m: MapLibreMap) {
     // Weather zones, under everything else of ours (the public overlays go under them)
     addZoneLayers(m, zones, selectedZone(), showZones)
 
@@ -297,34 +297,34 @@
     // The page went (or the map was replaced) meanwhile
     if (map !== m) return
     // A system's marker shows its fields without an outline; zoomed out, it's one dot for all of them
-    const ids = new Set(pivots.map((pivot) => pivot.id))
+    const ids = new Set(systems.map((system) => system.id))
     for (const [id, entry] of markers) {
       if (ids.has(id)) continue
       entry.marker.remove()
       unmount(entry.component)
       markers.delete(id)
     }
-    for (const pivot of pivots) {
+    for (const system of systems) {
       const state = {
-        pivot,
-        fields: unoutlinedFields(pivot),
-        selected: pivot.id === selectedId,
-        dimmed: highlighted !== null && !highlighted.has(pivot.id),
+        system,
+        fields: unoutlinedFields(system),
+        selected: system.id === selectedId,
+        dimmed: highlighted !== null && !highlighted.has(system.id),
       }
-      const entry = markers.get(pivot.id)
+      const entry = markers.get(system.id)
       if (entry) {
         Object.assign(entry.props, state)
         continue
       }
       const element = document.createElement('div')
-      const props: MarkerProps = $state({ ...state, today, onselect: () => onselect(pivot.id) })
-      const component = mount(PivotMarker, { target: element, props })
-      const marker = new Marker({ element, anchor: 'center' }).setLngLat([pivot.longitude, pivot.latitude]).addTo(m)
-      markers.set(pivot.id, { marker, props, component })
+      const props: MarkerProps = $state({ ...state, today, onselect: () => onselect(system.id) })
+      const component = mount(SystemMarker, { target: element, props })
+      const marker = new Marker({ element, anchor: 'center' }).setLngLat([system.longitude, system.latitude]).addTo(m)
+      markers.set(system.id, { marker, props, component })
     }
 
     // An outlined field's plantings, as badges at its center
-    const outlined = fieldBadges(pivots, today)
+    const outlined = fieldBadges(systems, today)
     const fieldIds = new Set(outlined.map((field) => field.field_id))
     for (const [id, entry] of fieldMarkers) {
       if (fieldIds.has(id)) continue
@@ -337,7 +337,7 @@
         field,
         selected: field.field_id === selectedFieldId,
         dimmed:
-          (highlighted !== null && !highlighted.has(field.pivot_id)) ||
+          (highlighted !== null && !highlighted.has(field.system_id)) ||
           (highlightedFields !== null && !highlightedFields.has(field.field_id)),
       }
       const entry = fieldMarkers.get(field.field_id)
@@ -349,7 +349,7 @@
       const element = document.createElement('div')
       const props: FieldProps = $state({
         ...state,
-        onselect: () => onselect(field.pivot_id, field.field_id),
+        onselect: () => onselect(field.system_id, field.field_id),
       })
       const component = mount(FieldMarker, { target: element, props })
       const marker = new Marker({ element, anchor: 'center' }).setLngLat(field.center).addTo(m)
@@ -357,10 +357,10 @@
     }
   }
 
-  // Redraw when the pivots (farm filter), the selection or the window change
+  // Redraw when the systems (farm filter), the selection or the window change
   $effect(() => {
-    void [pivots, selectedId, selectedFieldId, highlighted, highlightedFields]
-    map?.getSource<GeoJSONSource>(PIVOT_IDS.source)?.setData(features())
+    void [systems, selectedId, selectedFieldId, highlighted, highlightedFields]
+    map?.getSource<GeoJSONSource>(SYSTEM_IDS.source)?.setData(features())
     map?.getSource<GeoJSONSource>(FIELD_IDS.source)?.setData(fields() as never)
     syncMarkers()
   })
@@ -371,19 +371,19 @@
   $effect(() => setZones(map, zones, selectedZone()))
   $effect(() => showZoneLayers(map, showZones))
 
-  /** Fits the map to these pivots (all of them by default) */
-  export function fit(some: MapPivot[] = pivots, animate = true) {
-    const bounds = pivotBounds(some)
-    if (bounds) map?.fitBounds(bounds, { padding: 60, maxZoom: PIVOT_ZOOM, duration: animate ? 800 : 0 })
+  /** Fits the map to these systems (all of them by default) */
+  export function fit(some: MapSystem[] = systems, animate = true) {
+    const bounds = systemBounds(some)
+    if (bounds) map?.fitBounds(bounds, { padding: 60, maxZoom: SYSTEM_ZOOM, duration: animate ? 800 : 0 })
   }
 
-  /** Brings a pivot into view beside the panel that opens for it */
-  export function show(pivotId: number) {
-    const pivot = pivots.find((p) => p.id === pivotId)
-    if (!map || !pivot) return
+  /** Brings a system into view beside the panel that opens for it */
+  export function show(systemId: number) {
+    const system = systems.find((p) => p.id === systemId)
+    if (!map || !system) return
     const wide = wrapper.clientWidth >= 640
     map.flyTo({
-      center: [pivot.longitude, pivot.latitude],
+      center: [system.longitude, system.latitude],
       zoom: Math.max(map.getZoom(), NAME_ZOOM + 0.5),
       offset: wide ? [-170, 0] : [0, -wrapper.clientHeight * 0.2],
     })
@@ -401,8 +401,8 @@
         if (!map) return
         // The new style has none of our icons
         addGlyphImages(map)
-        // The style's pivot layers have the palette of the old theme only if it changed meanwhile
-        map.getSource<GeoJSONSource>(PIVOT_IDS.source)?.setData(features())
+        // The style's system layers have the palette of the old theme only if it changed meanwhile
+        map.getSource<GeoJSONSource>(SYSTEM_IDS.source)?.setData(features())
         map.getSource<GeoJSONSource>(FIELD_IDS.source)?.setData(fields() as never)
         onload?.(map)
       },
@@ -418,8 +418,8 @@
       const zone = onselectzone && zoneUnder(map, [event.point.x, event.point.y])
       return zone ? onselectzone!(zone.id) : onselect(null)
     }
-    if (hit.kind === 'system') onselect(hit.pivotId)
-    else onselect(hit.pivotId, hit.fieldId)
+    if (hit.kind === 'system') onselect(hit.systemId)
+    else onselect(hit.systemId, hit.fieldId)
   }
 
   onMount(() => {
@@ -439,10 +439,10 @@
           new maplibre.ScaleControl({ unit: unitSystem === 'metric' ? 'metric' : 'imperial' }),
           'bottom-left',
         )
-        if (!view) fit(pivots, false)
+        if (!view) fit(systems, false)
 
         m.on('load', () => {
-          addPivotLayers(m)
+          addOurLayers(m)
           syncMarkers()
           onload?.(m)
         })
@@ -495,7 +495,7 @@
     bind:this={container}
     class="h-full w-full"
     role="application"
-    aria-label="Map of the operation's pivots. Select a pivot to see its fields."
+    aria-label="Map of the operation's systems. Select a system to see its fields."
   ></div>
 
   <div class="pointer-events-none absolute top-2 left-2 flex w-[min(17rem,calc(100%-4rem))] flex-col gap-2">
@@ -506,7 +506,7 @@
       </MapLayersButton>
     </div>
     <div class="pointer-events-auto hidden sm:block">
-      <PlaceSearch bind:this={placeSearch} {map} maxZoom={PIVOT_ZOOM - 1} />
+      <PlaceSearch bind:this={placeSearch} {map} maxZoom={SYSTEM_ZOOM - 1} />
     </div>
   </div>
 

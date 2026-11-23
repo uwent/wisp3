@@ -38,11 +38,11 @@ Nothing needs your attention today. <%= @digest.nothing_listed %>
 <% digest_weather(zone, @digest).each do |line| %>
    <%= line %>
 <% end %>
-   Irrigation systems in this zone: <%= digest_zone_pivots(zone) %>
-<% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
+   Irrigation systems in this zone: <%= digest_zone_systems(zone) %>
+<% zone.systems.select { |system_section| system_section.entries.any? }.each do |system_section| %>
 
-   Irrigation system: <%= pivot_section.pivot.label %>
-<% pivot_section.entries.each do |entry| %>
+   Irrigation system: <%= system_section.system.label %>
+<% system_section.entries.each do |entry| %>
 
 <% if !entry.active? %>
      Field: <%= entry.field.name %> [<%= status_label(:off) %>] <%= digest_off_season(entry) %>

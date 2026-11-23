@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Canopy cuttings", type: :request do
   let(:user) { create(:user) }
-  let(:field) { create(:field, pivot: create(:pivot, farm: create(:farm, group: user.groups.first))) }
+  let(:field) { create(:field, system: create(:system, farm: create(:farm, group: user.groups.first))) }
   let(:planting) do
     create(:planting, field:, plant: create(:plant, key: "alfalfa", name: "Alfalfa"), season_start: Date.new(2026, 4, 1),
       emergence_date: Date.new(2026, 4, 15), end_date: Date.new(2026, 10, 15))

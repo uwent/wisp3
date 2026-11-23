@@ -5,9 +5,9 @@ RSpec.describe "Admin weather status", type: :request do
 
   it "shows the API mode and each cell's coverage, forecast and errors" do
     travel_to(Time.zone.parse("2026-07-20 12:00")) do
-      field = create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53))
+      field = create(:field, system: create(:system, latitude: 44.12, longitude: -89.53))
       create(:planting, field:, season_start: Date.new(2026, 7, 10), end_date: Date.new(2026, 9, 30))
-      cell = field.pivot.reload.weather_cell
+      cell = field.system.reload.weather_cell
       cell.update!(timezone: "America/Chicago", last_error: "Open-Meteo 503", last_error_at: 1.hour.ago)
       (Date.new(2026, 7, 10)..Date.new(2026, 7, 17)).each do |date|
         cell.weather_days.create!(date:, model: "best_match", hours: 24, fetched_at: Time.current, final: date < Date.new(2026, 7, 13))
@@ -18,8 +18,8 @@ RSpec.describe "Admin weather status", type: :request do
       get admin_weather_path
       expect_inertia.to render_component("Admin/Weather")
       expect(inertia.props[:api]).to include(mode: "free", model: "ncep_nbm_conus, best_match", soil_model: "ecmwf_ifs")
-      expect(inertia.props[:pending_jobs]).to eq(1) # the new pivot's weather update
-      expect(inertia.props[:cells].sole).to include(pivot_count: 1, active: true, season_start: "2026-07-10",
+      expect(inertia.props[:pending_jobs]).to eq(1) # the new system's weather update
+      expect(inertia.props[:cells].sole).to include(system_count: 1, active: true, season_start: "2026-07-10",
         days_stored: 8, missing_days: 2, provisional_days: 5, latest_date: "2026-07-17",
         forecast_through: "2026-08-04", last_error: "Open-Meteo 503")
       # Not checked yet: the page shows the stored result rather than checking on each visit
@@ -30,7 +30,7 @@ RSpec.describe "Admin weather status", type: :request do
   it "shows the last health check, and re-runs it without emailing" do
     sign_in admin
     travel_to(Time.zone.parse("2026-07-20 12:00")) do
-      cell = create(:pivot).reload.weather_cell
+      cell = create(:system).reload.weather_cell
       cell.update!(last_error: "Open-Meteo 503", last_error_at: 1.hour.ago)
 
       expect { post admin_health_check_path }.not_to change { ActionMailer::Base.deliveries.size }

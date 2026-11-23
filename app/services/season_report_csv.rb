@@ -1,9 +1,9 @@
 # An operation's season as one CSV, for its records (legacy's end-of-season report, for every field
 # at once): frontmatter (CsvExport) with a short summary, then three sections, each a title line, a
-# header and rows: the fields (each planting's crop and season totals), irrigation by pivot, and the
-# weather by zone (the weather grid cell its pivots share). Seasons count through today. Irrigation's
+# header and rows: the fields (each planting's crop and season totals), irrigation by system, and the
+# weather by zone (the weather grid cell its systems share). Seasons count through today. Irrigation's
 # spread and averages leave out rainfed plantings that weren't irrigated (D17), whose zero isn't a
-# system's. The daily detail is in each field's export and each pivot's weather export.
+# system's. The daily detail is in each field's export and each system's weather export.
 class SeasonReportCsv
   include CsvExport
 
@@ -16,7 +16,7 @@ class SeasonReportCsv
       frontmatter(csv, "WISP season report, #{@year}", summary.merge(weather_corrections), exported_by: @exported_by, about_url: @about_url)
       fields_section(csv)
       csv << []
-      pivots_section(csv)
+      systems_section(csv)
       csv << []
       weather_section(csv)
     end
@@ -27,14 +27,14 @@ class SeasonReportCsv
   def summary
     return {"Operation" => @group.name, "Season" => "no crops entered for #{@year}"} if statuses.empty?
     fields = statuses.map { |status| status.planting.field }.uniq
-    pivots = statuses.map { |status| status.planting.system }.uniq
-    farms = pivots.map(&:farm).uniq
+    systems = statuses.map { |status| status.planting.system }.uniq
+    farms = systems.map(&:farm).uniq
     acres = fields.filter_map { |field| field_areas[field] }
     without_area = fields.size - acres.size
     {
       "Operation" => @group.name,
       "Season" => "#{@year}, counted through #{through}",
-      "Fields" => "#{count(fields.size, "field")} on #{count(pivots.size, "pivot")} across #{count(farms.size, "farm")}, " \
+      "Fields" => "#{count(fields.size, "field")} on #{count(systems.size, "system")} across #{count(farms.size, "farm")}, " \
         "#{acres.sum.round(1)} acres#{" (#{count(without_area, "field")} without an area)" if without_area.positive?}",
       "Irrigation" => spread(by_field(irrigated) { |totals| totals.irrigation }),
       "Rainfall" => spread(by_field { |totals| totals.rain }),
@@ -62,11 +62,11 @@ class SeasonReportCsv
 
   # Each irrigation system's irrigation as the average over its fields, weighted by area when every
   # field has one; rainfed plantings that weren't irrigated left out
-  def pivots_section(csv)
+  def systems_section(csv)
     csv << ["Irrigation by irrigation system (the average of its irrigated fields' season irrigation, weighted by area where every field has one)"]
     csv << ["Farm", "Irrigation system", "Kind", "Equipment", "Fields", "Area (acres)", "Days irrigated", "Irrigation (in)"]
-    irrigated.group_by { |status| status.planting.system }.each do |pivot, pivot_statuses|
-      by_field = pivot_statuses.group_by { |status| status.planting.field }
+    irrigated.group_by { |status| status.planting.system }.each do |system, system_statuses|
+      by_field = system_statuses.group_by { |status| status.planting.field }
         .transform_values { |field_statuses| field_statuses.sum { |status| status.totals.irrigation } }
       areas = by_field.keys.map { |field| field_areas[field] }
       average = if areas.all?
@@ -74,8 +74,8 @@ class SeasonReportCsv
       else
         by_field.values.sum / by_field.size
       end
-      csv << [text(pivot.farm.name), text(pivot.name), pivot.kind_name, text(pivot.equipment), by_field.size,
-        areas.all? ? areas.sum : nil, pivot_statuses.flat_map { |status| irrigated_dates(status) }.uniq.size, num(average)]
+      csv << [text(system.farm.name), text(system.name), system.kind_name, text(system.equipment), by_field.size,
+        areas.all? ? areas.sum : nil, system_statuses.flat_map { |status| irrigated_dates(status) }.uniq.size, num(average)]
     end
   end
 
@@ -84,15 +84,15 @@ class SeasonReportCsv
     csv << ["Weather by zone (the weather grid cell its irrigation systems share)"]
     csv << ["Zone", "Latitude", "Longitude", "Irrigation systems", "From", "Through", "Days with weather", "Precipitation (in)",
       "Reference ET (in)", "GDD (50/86 °F)", "Mean temperature (°F)", "Highest (°F)", "Lowest (°F)"]
-    # The weather each planting ran on (where its pivot was that season)
+    # The weather each planting ran on (where its system was that season)
     zones = statuses.group_by { |status| status.planting.weather_cell }.except(nil)
     weather = weather_by_cell(zones.keys)
     zones.each_with_index do |(cell, cell_statuses), i|
       from = cell_statuses.map { |status| status.planting.season_start }.min
       to = [cell_statuses.map { |status| status.planting.end_date }.max, @today].min
       days = weather.fetch(cell.id, []).select { |day| (from..to).cover?(day[:date]) }
-      pivots = cell_statuses.map { |status| status.planting.system.label }.uniq
-      csv << [i + 1, cell.latitude, cell.longitude, text(pivots.join("; ")), from, to, days.size,
+      systems = cell_statuses.map { |status| status.planting.system.label }.uniq
+      csv << [i + 1, cell.latitude, cell.longitude, text(systems.join("; ")), from, to, days.size,
         num(total(days, :precip)), num(total(days, :et0)),
         num(total(days.map { |day| {gdd: Weather::DegreeDays.daily(day[:tmax], day[:tmin])} }, :gdd)),
         num(mean(days, :tmean)), num(days.filter_map { |day| day[:tmax] }.max), num(days.filter_map { |day| day[:tmin] }.min)]
@@ -104,7 +104,7 @@ class SeasonReportCsv
     @statuses ||= begin
       plantings = @group.plantings.where(season_start: Date.new(@year).all_year)
         .includes(:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell,
-          pivot: [:pivot_group, {farm: :group}], field: {pivot: [:pivot_group, {farm: :group}]})
+          system: [:irrigation_group, {farm: :group}], field: {system: [:irrigation_group, {farm: :group}]})
         .sort_by { |p| [p.system.farm.name, p.system.name, p.field.name, p.season_start] }
       if plantings.empty?
         []

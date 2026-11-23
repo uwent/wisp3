@@ -7,7 +7,7 @@
   import { cellLabel, cellText, depthUnitName, type DayColumn } from '@/lib/fieldDays'
   import { ET_SOURCE_LABELS, rainOverridden } from '@/lib/provenance'
   import { formatNumber, type Units } from '@/lib/units'
-  import { fields, pivots } from '@/routes'
+  import { fields, systems } from '@/routes'
   import type { FieldDay, Planting } from '@/types/serializers'
 
   // The planting page's daily values: the season's days, latest first, its entries
@@ -17,7 +17,7 @@
     days,
     planting,
     fieldId,
-    pivotId,
+    systemId,
     units,
     noun,
     plot,
@@ -28,7 +28,7 @@
     days: FieldDay[]
     planting: Planting
     fieldId: number
-    pivotId: number
+    systemId: number
     units: Units
     noun: string
     plot: string | null
@@ -208,7 +208,7 @@
       Rain in gray is modeled for the {noun}'s location; bold values are ones you entered.{#if plot}{' '}Under a plot's
         irrigation, the field's when it differs.{/if} Irrigation can also be entered for all the {noun}'s fields at once
       on the
-      <Link href={pivots.show(pivotId)} class="text-brand-600 underline underline-offset-2"
+      <Link href={systems.show(systemId)} class="text-brand-600 underline underline-offset-2"
         >{noun}'s irrigation page</Link
       > or the Daily entry page. * Crop ET is estimated from the past week because that day's weather is missing.
       {lai ? 'LAI' : 'Cover'} in gray is estimated: {planting?.effective_canopy_interpolation === 'curve'

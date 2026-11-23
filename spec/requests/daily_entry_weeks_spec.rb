@@ -3,10 +3,10 @@ require "rails_helper"
 RSpec.describe "Daily entry's week", type: :request do
   let(:user) { create(:user) }
   let(:farm) { create(:farm, group: user.groups.first, name: "Home") }
-  let(:pivot_group) { create(:pivot_group, farm:, name: "East") }
-  let(:pivot) { create(:pivot, farm:, pivot_group:, name: "River") }
-  let(:north) { create(:field, pivot:, name: "North", area_acres: 40) }
-  let(:south) { create(:field, pivot:, name: "South", area_acres: 30) }
+  let(:irrigation_group) { create(:irrigation_group, farm:, name: "East") }
+  let(:system) { create(:system, farm:, irrigation_group:, name: "River") }
+  let(:north) { create(:field, system:, name: "North", area_acres: 40) }
+  let(:south) { create(:field, system:, name: "South", area_acres: 30) }
   let(:date) { Date.new(2026, 7, 19) }
   let(:day) { Date.new(2026, 7, 15) }
 
@@ -36,7 +36,7 @@ RSpec.describe "Daily entry's week", type: :request do
 
   describe "saving" do
     it "saves a plot's irrigation sent for a field growing only plots" do
-      plots = create(:field, pivot:, name: "Plots")
+      plots = create(:field, system:, name: "Plots")
       plot = create(:planting, field: plots, partial: true, area_acres: 1, season_start: Date.new(2026, 4, 20),
         emergence_date: Date.new(2026, 5, 10), end_date: Date.new(2026, 9, 30))
       save({day.iso8601 => {plantings: {plot.id => {irrigation_in: "0.6"}}}})
@@ -67,7 +67,7 @@ RSpec.describe "Daily entry's week", type: :request do
     end
 
     it "sets a field's plots that had its irrigation" do
-      plotted = create(:field, pivot:, name: "Plots", area_acres: 2)
+      plotted = create(:field, system:, name: "Plots", area_acres: 2)
       plot = create(:planting, field: plotted, partial: true, area_acres: 0.5, season_start: Date.new(2026, 4, 20),
         emergence_date: Date.new(2026, 5, 10), end_date: Date.new(2026, 9, 30))
       save({day.iso8601 => {fields: {plotted.id => {irrigation_in: "0.7"}}}})

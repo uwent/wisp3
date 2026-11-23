@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { type LngLat, pivotAcres, pivotRing } from './geo'
+import { type LngLat, systemAcres, systemRing } from './geo'
 import {
   type Boundary,
   boundaryAcres,
@@ -41,9 +41,9 @@ describe("an outline's area", () => {
     expect(boundaryAcres(square)).toBeCloseTo(222.338, 2)
   })
 
-  it("agrees with a pivot's acres for its circle", () => {
-    const circle: Boundary = { type: 'Polygon', coordinates: [pivotRing([-89.5, 44.1], 1300, null, null, 360)] }
-    expect(boundaryAcres(circle)).toBeCloseTo(pivotAcres(1300), 0)
+  it("agrees with a system's acres for its circle", () => {
+    const circle: Boundary = { type: 'Polygon', coordinates: [systemRing([-89.5, 44.1], 1300, null, null, 360)] }
+    expect(boundaryAcres(circle)).toBeCloseTo(systemAcres(1300), 0)
   })
 })
 

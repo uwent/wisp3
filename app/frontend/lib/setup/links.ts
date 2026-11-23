@@ -1,15 +1,15 @@
-import { pivots, setup } from '@/routes'
+import { systems, setup } from '@/routes'
 
 // Where each level of the operation is edited: a system on its own page; a farm, irrigation group
-// or field in its dialog on Setup, opened by ?farm=, ?pivot_group= or ?field= (and a planting's by
+// or field in its dialog on Setup, opened by ?farm=, ?irrigation_group= or ?field= (and a planting's by
 // ?planting=), which Setup reads once (openFromQuery) and removes from the address
 
 export type EditLevel = 'farm' | 'group' | 'system' | 'field'
 
-export const SETUP_PARAMS = { farm: 'farm', group: 'pivot_group', field: 'field', planting: 'planting' } as const
+export const SETUP_PARAMS = { farm: 'farm', group: 'irrigation_group', field: 'field', planting: 'planting' } as const
 
 export function editLink(level: EditLevel, id: number): string {
-  if (level === 'system') return pivots.edit(id).url
+  if (level === 'system') return systems.edit(id).url
   return setup.show({ query: { [SETUP_PARAMS[level]]: id } }).url
 }
 

@@ -1,5 +1,5 @@
 import { addDays, formatDate } from '@/lib/dates'
-import type { PivotKind } from '@/lib/geo'
+import type { SystemKind } from '@/lib/geo'
 import type { Units } from '@/lib/units'
 
 // Daily entry's week view: rain and irrigation for the seven days ending on a date, as
@@ -20,7 +20,7 @@ export type WeekDay = {
   fields: { id: number; name: string; value: number | null; acres?: number | null; plot?: boolean }[]
 }
 export type WeekRainRow = {
-  /** "group-3", "pivot-12" */
+  /** "group-3", "system-12" */
   key: string
   name: string
   kind: 'group' | 'system'
@@ -31,11 +31,11 @@ export type WeekRainRow = {
   days: WeekDay[]
 }
 export type WeekIrrigationRow = {
-  /** "pivot-12" */
+  /** "system-12" */
   key: string
   id: number
   name: string
-  kind: PivotKind
+  kind: SystemKind
   kind_name: string
   /** For the irrigation calculator */
   pump_capacity_gpm: number | null

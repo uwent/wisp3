@@ -16,7 +16,7 @@ module Weather
     SOURCES = %w[best_match ncep_nbm_conus wisp_2026 wisp].freeze
     RAIN_DAY_IN = 0.05
 
-    # Irrigated areas of Wisconsin, standing in for real pivot locations
+    # Irrigated areas of Wisconsin, standing in for real system locations
     DEFAULT_POINTS = [
       ["Hancock", 44.12, -89.53], ["Plainfield", 44.21, -89.49], ["Coloma", 44.03, -89.52],
       ["Almond", 44.26, -89.41], ["Bancroft", 44.31, -89.51], ["Plover", 44.45, -89.54],

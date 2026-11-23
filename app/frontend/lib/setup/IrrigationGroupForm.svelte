@@ -6,8 +6,8 @@
   import FormFooter from '@/lib/components/FormFooter.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { systemName } from '@/lib/geo'
-  import { pivotGroups } from '@/routes'
-  import type { Farm, PivotGroup } from '@/types/serializers'
+  import { irrigationGroups } from '@/routes'
+  import type { Farm, IrrigationGroup } from '@/types/serializers'
 
   // Add an irrigation group on a farm, or edit one (Setup's dialog): its name,
   // which of the farm's systems share its rain gauge, and which rain their balances use (Q7). A
@@ -19,7 +19,7 @@
     ondelete,
   }: {
     farm: Farm
-    group?: PivotGroup
+    group?: IrrigationGroup
     ondone: () => void
     /** Deletes the group (asking first); left out for a new group or someone who may not (mayDelete) */
     ondelete?: () => void
@@ -40,48 +40,48 @@
 </script>
 
 <Form
-  action={group ? pivotGroups.update(group.id) : pivotGroups.create()}
+  action={group ? irrigationGroups.update(group.id) : irrigationGroups.create()}
   class="space-y-4"
   options={{ preserveScroll: true, preserveState: true }}
   onSuccess={ondone}
 >
   {#snippet children({ errors, processing })}
-    {#if !group}<input type="hidden" name="pivot_group[farm_id]" value={farm.id} />{/if}
+    {#if !group}<input type="hidden" name="irrigation_group[farm_id]" value={farm.id} />{/if}
     <TextField
       label="Group name"
-      name="pivot_group[name]"
+      name="irrigation_group[name]"
       value={group?.name ?? ''}
       placeholder="e.g. East half"
-      info="pivot_group.name"
+      info="irrigation_group.name"
       error={errors.name}
       required
     />
     <fieldset class="space-y-1">
       <legend class="text-sm font-medium">Irrigation systems in this group</legend>
-      <input type="hidden" name="pivot_group[pivot_ids][]" value="" />
-      {#each farm.pivots as pivot (pivot.id)}
-        {@const other = farm.pivot_groups.find((g) => g.id === pivot.pivot_group_id && g.id !== group?.id)}
+      <input type="hidden" name="irrigation_group[system_ids][]" value="" />
+      {#each farm.systems as system (system.id)}
+        {@const other = farm.irrigation_groups.find((g) => g.id === system.irrigation_group_id && g.id !== group?.id)}
         <label class="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             class="rounded"
-            name="pivot_group[pivot_ids][]"
-            value={pivot.id}
-            checked={group !== undefined && pivot.pivot_group_id === group.id}
+            name="irrigation_group[system_ids][]"
+            value={system.id}
+            checked={group !== undefined && system.irrigation_group_id === group.id}
           />
-          {systemName(pivot)}
+          {systemName(system)}
           {#if other}<span class="text-xs text-ink-muted">{`(now in ${other.name})`}</span>{/if}
         </label>
       {/each}
       <p class="text-xs text-ink-muted">A system is in one group at most; checking it here moves it.</p>
     </fieldset>
-    <fieldset class="space-y-2" aria-labelledby="pivot-group-rainfall">
-      <FieldLabel as="legend" label="Rainfall" labelId="pivot-group-rainfall" info="pivot_group.rainfall" />
+    <fieldset class="space-y-2" aria-labelledby="irrigation-group-rainfall">
+      <FieldLabel as="legend" label="Rainfall" labelId="irrigation-group-rainfall" info="irrigation_group.rainfall" />
       {#each rainOptions as [value, label, hint] (value)}
         <label class="flex items-start gap-3 text-sm">
           <input
             type="radio"
-            name="pivot_group[use_model_precip]"
+            name="irrigation_group[use_model_precip]"
             {value}
             checked={rainSetting === value}
             class="mt-0.5"

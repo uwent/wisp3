@@ -11,11 +11,11 @@
   import { MapOverlays } from '@/lib/map/mapOverlays.svelte'
   import OverlayTooltip from '@/lib/map/OverlayTooltip.svelte'
   import OverviewMap from '@/lib/map/OverviewMap.svelte'
-  import PivotPanel from '@/lib/map/PivotPanel.svelte'
+  import SystemPanel from '@/lib/map/SystemPanel.svelte'
   import ScopePanel from '@/lib/map/ScopePanel.svelte'
   import ZonePanel from '@/lib/map/ZonePanel.svelte'
   import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
-  import { groupFeatures, type MapPivot } from '@/lib/map/pivots'
+  import { groupFeatures, type MapSystem } from '@/lib/map/systems'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
   import { buildTree, type FarmGroup, treeSystems, type Selection, treeFields, updatingIds } from '@/lib/overview'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
@@ -24,7 +24,7 @@
   import { map as mapRoute, newQuickSetup } from '@/routes'
   import type { MapZone } from '@/types/serializers'
 
-  // Every pivot on a map with its fields' status, beside a list of the operation as a tree of cards.
+  // Every system on a map with its fields' status, beside a list of the operation as a tree of cards.
   // One selection, at any level, is shared by the list, the map and the
   // panel: a farm or irrigation group zooms the map to its systems; a system or field opens its
   // system's panel and is marked on the map. A click on the map selects the system or field there.
@@ -37,7 +37,7 @@
     years,
     farms,
     zones,
-  }: { today: string; year: number; years: number[]; farms: FarmGroup<MapPivot>[]; zones: MapZone[] } = $props()
+  }: { today: string; year: number; years: number[]; farms: FarmGroup<MapSystem>[]; zones: MapZone[] } = $props()
 
   const auth = $derived(page.props.auth)
   const units = $derived(currentUnits())
@@ -59,9 +59,9 @@
   let mapWidth = $state(0)
   let mapHeight = $state(0)
 
-  // Optional public layers; the drought polygons are loaded around all the operation's pivots
+  // Optional public layers; the drought polygons are loaded around all the operation's systems
   const overlays = new MapOverlays(() =>
-    droughtBounds(farms.flatMap((farm) => farm.pivots.map((pivot): LngLat => [pivot.longitude, pivot.latitude]))),
+    droughtBounds(farms.flatMap((farm) => farm.systems.map((system): LngLat => [system.longitude, system.latitude]))),
   )
   // The controller records each overlay's status as it goes, so it runs untracked here
   $effect(() => {
@@ -72,9 +72,9 @@
   onDestroy(() => overlays.destroy())
   let list = $state<HTMLElement>()
 
-  // While a pivot's weather is on its way, reload the pivots and cards until it lands
+  // While a system's weather is on its way, reload the systems and cards until it lands
   const weatherWait = pollWeather(() => updatingIds(farms), ['farms'])
-  const weatherFor = (pivot: { weather_updating: boolean }) => weatherWait.state(pivot.weather_updating)
+  const weatherFor = (system: { weather_updating: boolean }) => weatherWait.state(system.weather_updating)
 
   // The farms shown, with only the plantings growing today when asked (fields without one go, their
   // outlines too)
@@ -85,25 +85,27 @@
         onlyGrowing
           ? {
               ...farm,
-              pivots: farm.pivots.map((pivot) => {
-                const fields = pivot.fields.flatMap((card) => {
+              systems: farm.systems.map((system) => {
+                const fields = system.fields.flatMap((card) => {
                   const plantings = card.plantings.filter((summary) => summary.phase === 'active')
                   return plantings.length ? [{ ...card, plantings }] : []
                 })
                 const kept = new Set(fields.map((card) => card.id))
-                return { ...pivot, fields, outlines: pivot.outlines.filter((outline) => kept.has(outline.field_id)) }
+                return { ...system, fields, outlines: system.outlines.filter((outline) => kept.has(outline.field_id)) }
               }),
             }
           : farm,
       ),
   )
-  const mapPivots = $derived(shown.flatMap((farm) => farm.pivots))
-  const mapGroups = $derived(groupFeatures(shown, mapPivots))
-  const farmOf = $derived(new Map(farms.flatMap((farm) => farm.pivots.map((pivot) => [pivot.id, farm]))))
-  const pivotOfField = $derived(
-    new Map(farms.flatMap((farm) => farm.pivots.flatMap((pivot) => pivot.fields.map((card) => [card.id, pivot.id])))),
+  const mapSystems = $derived(shown.flatMap((farm) => farm.systems))
+  const mapGroups = $derived(groupFeatures(shown, mapSystems))
+  const farmOf = $derived(new Map(farms.flatMap((farm) => farm.systems.map((system) => [system.id, farm]))))
+  const systemOfField = $derived(
+    new Map(
+      farms.flatMap((farm) => farm.systems.flatMap((system) => system.fields.map((card) => [card.id, system.id]))),
+    ),
   )
-  const cards = $derived(mapPivots.flatMap((pivot) => pivot.fields))
+  const cards = $derived(mapSystems.flatMap((system) => system.fields))
   const tree = $derived(buildTree(shown, { order: prefs.sort, query, windowDays, growing: onlyGrowing }))
   const listedCount = $derived(treeFields(tree).length)
   // "3 farms · 8 systems · 25 fields · 40 plantings": what the list shows
@@ -123,19 +125,19 @@
   const filtersSet = $derived([!thisYear, farmId !== 'all', onlyGrowing, windowDays !== null].filter(Boolean).length)
   // What the list's filters leave out is muted on the map
   const filtering = $derived(windowDays !== null || query.trim() !== '')
-  const highlighted = $derived(filtering ? new Set(tree.flatMap(treeSystems).map((node) => node.pivot.id)) : null)
+  const highlighted = $derived(filtering ? new Set(tree.flatMap(treeSystems).map((node) => node.system.id)) : null)
   const highlightedFields = $derived(filtering ? new Set(treeFields(tree).map((card) => card.id)) : null)
   // The system and field the selection puts on the map and in the panel
-  const selectedPivotId = $derived(
+  const selectedSystemId = $derived(
     selection?.level === 'system'
       ? selection.id
       : selection?.level === 'field'
-        ? (pivotOfField.get(selection.id) ?? null)
+        ? (systemOfField.get(selection.id) ?? null)
         : null,
   )
   const selectedFieldId = $derived(selection?.level === 'field' ? selection.id : null)
-  const selectedPivot = $derived(mapPivots.find((pivot) => pivot.id === selectedPivotId) ?? null)
-  const selectedFarm = $derived(selectedPivot ? farmOf.get(selectedPivot.id) : undefined)
+  const selectedSystem = $derived(mapSystems.find((system) => system.id === selectedSystemId) ?? null)
+  const selectedFarm = $derived(selectedSystem ? farmOf.get(selectedSystem.id) : undefined)
   // A selected farm or group's card in the list, for its panel, and a group's farm
   const scopeNode = $derived.by(() => {
     if (selection?.level === 'farm') return tree.find((farm) => farm.id === selection!.id) ?? null
@@ -146,16 +148,16 @@
   })
   const scopeFarm = $derived(
     selection?.level === 'group'
-      ? farms.find((farm) => farm.pivot_groups.some((g) => g.id === selection!.id))
+      ? farms.find((farm) => farm.irrigation_groups.some((g) => g.id === selection!.id))
       : undefined,
   )
   const zoneOf = (cellId: number | null) => zones.find((zone) => zone.id === cellId) ?? null
   const selectedZone = $derived(selection?.level === 'zone' ? zoneOf(selection.id) : null)
-  const anyPivots = $derived(farms.some((farm) => farm.pivots.length))
-  // The Drought Monitor's category at the selected pivot, when that layer is on
+  const anySystems = $derived(farms.some((farm) => farm.systems.length))
+  // The Drought Monitor's category at the selected system, when that layer is on
   const panelNotes = $derived.by(() => {
-    if (!selectedPivot || !prefs.overlays.includes('drought') || !overlays.drought) return []
-    const category = droughtAt(overlays.drought, [selectedPivot.longitude, selectedPivot.latitude])
+    if (!selectedSystem || !prefs.overlays.includes('drought') || !overlays.drought) return []
+    const category = droughtAt(overlays.drought, [selectedSystem.longitude, selectedSystem.latitude])
     return [{ label: 'Drought Monitor', value: category?.label ?? 'None', swatch: category?.color }]
   })
 
@@ -169,30 +171,30 @@
   function chooseFarm(id: number | 'all') {
     farmId = id
     if (id !== 'all' && selection && selectionFarm(selection) !== id) clearSelection()
-    overview?.fit(mapPivots)
+    overview?.fit(mapSystems)
   }
 
   /** The farm a selection is on */
   function selectionFarm({ level, id }: Selection): number | undefined {
     if (level === 'farm') return id
-    if (level === 'group') return farms.find((farm) => farm.pivot_groups.some((group) => group.id === id))?.id
+    if (level === 'group') return farms.find((farm) => farm.irrigation_groups.some((group) => group.id === id))?.id
     if (level === 'zone') return undefined
-    return farmOf.get(level === 'system' ? id : (pivotOfField.get(id) ?? -1))?.id
+    return farmOf.get(level === 'system' ? id : (systemOfField.get(id) ?? -1))?.id
   }
 
   /** The systems a farm or group selection zooms the map to */
-  function selectionPivots({ level, id }: Selection) {
-    if (level === 'farm') return farms.find((farm) => farm.id === id)?.pivots ?? []
-    return mapPivots.filter((pivot) => pivot.pivot_group_id === id)
+  function selectionSystems({ level, id }: Selection) {
+    if (level === 'farm') return farms.find((farm) => farm.id === id)?.systems ?? []
+    return mapSystems.filter((system) => system.irrigation_group_id === id)
   }
 
   function chooseWindow(days: number | null) {
     windowDays = days
-    const inWindow = mapPivots.filter((pivot) => highlighted?.has(pivot.id))
+    const inWindow = mapSystems.filter((system) => highlighted?.has(system.id))
     if (inWindow.length) overview?.fit(inWindow)
   }
 
-  // From the keyboard, selecting a pivot moves focus to its panel, and closing the panel returns
+  // From the keyboard, selecting a system moves focus to its panel, and closing the panel returns
   // focus to the marker or card that opened it (pointer users stay where they are)
   let keyboard = false
   let opener: HTMLElement | null = null
@@ -206,23 +208,23 @@
   // From the list (or the panel's cards): a farm or group zooms the map to its systems; a system or
   // field opens its panel and flies to it
   function select(next: Selection) {
-    const before = selectedPivotId
+    const before = selectedSystemId
     selection = next
     if (next.level === 'farm' || next.level === 'group') {
-      overview?.fit(selectionPivots(next))
+      overview?.fit(selectionSystems(next))
       focusPanel()
       return
     }
     // Another field of the same system (in its panel, say) leaves the map where it is
-    if (selectedPivotId !== before) overview?.show(selectedPivotId!)
+    if (selectedSystemId !== before) overview?.show(selectedSystemId!)
     focusPanel()
   }
 
   // From the map: a system, or a field (its outline or its badges) with its system; the list
   // scrolls to its card
-  function selectOnMap(pivotId: number | null, fieldId: number | null = null) {
+  function selectOnMap(systemId: number | null, fieldId: number | null = null) {
     selection =
-      fieldId !== null ? { level: 'field', id: fieldId } : pivotId !== null ? { level: 'system', id: pivotId } : null
+      fieldId !== null ? { level: 'field', id: fieldId } : systemId !== null ? { level: 'system', id: systemId } : null
     if (!selection) return
     focusPanel()
     if (!prefs.listOpen) return
@@ -284,7 +286,7 @@
   onpointerdown={() => (keyboard = false)}
 />
 
-{#if !anyPivots}
+{#if !anySystems}
   <div class="mx-auto w-full max-w-6xl px-4 py-6">
     <section class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-12 text-center">
       <h1 class="text-lg font-medium">No irrigation systems to show yet</h1>
@@ -410,7 +412,7 @@
       </div>
       <div bind:this={list} class="min-h-0 flex-1 overflow-y-auto p-2">
         {#if tree.length}
-          <MapTree {tree} {selection} {today} {units} weatherFor={(pivot) => weatherFor(pivot)} onselect={select} />
+          <MapTree {tree} {selection} {today} {units} weatherFor={(system) => weatherFor(system)} onselect={select} />
         {:else}
           <p class="px-1 py-4 text-sm text-ink-muted">
             {#if windowDays !== null}
@@ -448,10 +450,10 @@
     >
       <OverviewMap
         bind:this={overview}
-        pivots={mapPivots}
+        systems={mapSystems}
         groups={mapGroups}
         {today}
-        selectedId={selectedPivotId}
+        selectedId={selectedSystemId}
         {selectedFieldId}
         {highlighted}
         {highlightedFields}
@@ -501,7 +503,7 @@
             >
           </div>
         {/if}
-        {#if scopeNode || selectedPivot || selectedZone}
+        {#if scopeNode || selectedSystem || selectedZone}
           <div
             class="pointer-events-none absolute inset-x-2 bottom-8 z-10 flex max-h-[60%] flex-col sm:inset-x-auto sm:top-2
               sm:right-12 sm:bottom-auto sm:max-h-[calc(100%-3rem)] sm:w-80"
@@ -510,14 +512,16 @@
               <ZonePanel zone={selectedZone} {today} {units} onclose={clearSelection} />
             {:else if scopeNode}
               <ScopePanel node={scopeNode} farm={scopeFarm} onselect={select} onclose={clearSelection} />
-            {:else if selectedPivot && selectedFarm}
-              <PivotPanel
-                pivot={selectedPivot}
+            {:else if selectedSystem && selectedFarm}
+              <SystemPanel
+                system={selectedSystem}
                 farm={selectedFarm}
-                group={selectedFarm.pivot_groups.find((group) => group.id === selectedPivot.pivot_group_id) ?? null}
+                group={selectedFarm.irrigation_groups.find(
+                  (group) => group.id === selectedSystem.irrigation_group_id,
+                ) ?? null}
                 {today}
                 {units}
-                weather={zoneOf(selectedPivot.weather_cell_id)?.weather ?? null}
+                weather={zoneOf(selectedSystem.weather_cell_id)?.weather ?? null}
                 fieldId={selectedFieldId}
                 onselectfield={(id) => select({ level: 'field', id })}
                 onselect={select}

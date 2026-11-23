@@ -5,16 +5,16 @@ class AlertsController < AuthenticatedController
   before_action :forbid_while_impersonating, only: :test_email
 
   def show
-    groups = current_user.groups.order(:name).includes(farms: {pivots: :fields})
+    groups = current_user.groups.order(:name).includes(farms: {systems: :fields})
     render inertia: "Alerts/Show", props: {
       frequency: current_user.digest_frequency,
       scope: current_user.digest_scope,
       field_ids: current_user.digest_fields.pluck(:id),
       groups: groups.map do |group|
         {id: group.id, name: group.name, farms: group.farms.sort_by(&:name).map do |farm|
-          {id: farm.id, name: farm.name, pivots: farm.pivots.map do |pivot|
-            {id: pivot.id, name: pivot.name, kind_name: pivot.kind_name,
-             fields: pivot.fields.map { |field| {id: field.id, name: field.name} }}
+          {id: farm.id, name: farm.name, systems: farm.systems.map do |system|
+            {id: system.id, name: system.name, kind_name: system.kind_name,
+             fields: system.fields.map { |field| {id: field.id, name: field.name} }}
           end}
         end}
       end,

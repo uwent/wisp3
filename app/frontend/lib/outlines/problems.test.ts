@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { LngLat, PivotShape } from '@/lib/geo'
+import type { LngLat, SystemShape } from '@/lib/geo'
 import type { Boundary } from '@/lib/boundary'
 
 import {
@@ -28,7 +28,7 @@ const square = (lng: number, lat: number, size = 0.004): Boundary => ({
   ],
 })
 
-const system = (kind: PivotShape['kind'], longitude: number, latitude: number) => ({
+const system = (kind: SystemShape['kind'], longitude: number, latitude: number) => ({
   name: 'Lane 3',
   kind,
   longitude,
@@ -119,7 +119,7 @@ describe('a shape away from its system', () => {
     expect(line.meters).toBeCloseTo(480, -1)
   })
 
-  it("draws the line to the nearest point of a pivot's circle", () => {
+  it("draws the line to the nearest point of a system's circle", () => {
     const pivot = system('center', -89.5, 44.1) // 1,300 ft, about 396 m
     const line = reachLine(square(-89.49, 44.0985, 0.003), pivot)
     expect(line.from[0]).toBeCloseTo(-89.49, 6) // the shape's west edge

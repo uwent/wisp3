@@ -15,14 +15,14 @@
     percentInches,
   } from '@/lib/irrigation'
   import { currentUnits } from '@/lib/units'
-  import { pivots } from '@/routes'
+  import { systems } from '@/routes'
 
   // The irrigation calculator (D15): irrigation is entered in
   // inches, and this works them out from the run hours (gallons a minute × hours, over the acres of
   // the fields watered) or, on a pivot or linear, the percent timer (the depth at 100% × 100 ÷
   // percent, for each circle), laid out as a sum with its result beside it. The pump capacity and
   // depth at 100% start as the system's (its placeholders) and can be typed here; a value typed that
-  // isn't the system's can be saved to it (saveEquipment, PivotsController#equipment). result is the
+  // isn't the system's can be saved to it (saveEquipment, SystemsController#equipment). result is the
   // inches when they can be used (none out of range, not more than a day could be). In a dialog of
   // its own (IrrigationCalculatorDialog) or in the dashboard's log irrigation dialog.
   type Field = { id: number; name: string; acres: number | null }
@@ -129,7 +129,7 @@
     if (!saveToSystem || (newGpm === null && newDepth === null)) return
     const values = newGpm !== null ? { pump_capacity_gpm: newGpm } : { inches_at_100: newDepth }
     // Not a GET, so a page's unsaved-changes guard lets it through; preserveState keeps what's typed
-    router.patch(pivots.equipment(system.id).url, { pivot: values }, { preserveState: true, preserveScroll: true })
+    router.patch(systems.equipment(system.id).url, { system: values }, { preserveState: true, preserveScroll: true })
   }
 
   const names: Record<CalculatorMethod, string> = { hours: 'Run hours', percent: '% timer' }

@@ -1,10 +1,10 @@
-class Pivot < ApplicationRecord
+class IrrigationSystem < ApplicationRecord
   # The US and Canada for now (Hawaii to the Arctic, Alaska to Newfoundland). Open-Meteo is
   # global, so this can widen; it also catches swapped or unsigned coordinates.
   LATITUDES = 18.0..84.0
   LONGITUDES = -180.0..-52.0
 
-  # A pivot in code is any irrigation system; growers see its kind's name.
+  # A system in code is any irrigation system; growers see its kind's name.
   # A center pivot is a circle (or an arc of one) around its location; a linear is a machine
   # length_ft long traveling travel_ft along travel_bearing_deg (whole degrees from north, 0–179, as
   # it runs both ways), a rectangle centered on its location. The other kinds are a point with no
@@ -27,13 +27,13 @@ class Pivot < ApplicationRecord
   MAX_INCHES_AT_100 = 3.0
 
   belongs_to :farm
-  belongs_to :pivot_group, optional: true
+  belongs_to :irrigation_group, optional: true
   belongs_to :weather_cell, optional: true
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
-  has_many :fields, -> { order(:name) }, dependent: :destroy
+  has_many :fields, -> { order(:name) }, foreign_key: :system_id, inverse_of: :system, dependent: :destroy
   # The plantings whose seasons ran on this system: its fields' and, for seasons that
   # ended before their field moved to another system, theirs
-  has_many :plantings, dependent: nil
+  has_many :plantings, foreign_key: :system_id, inverse_of: :system, dependent: nil
   # Its own fields' plantings go with them; seasons that ran here on fields since moved elsewhere
   # are handed to their field's system
   before_destroy :hand_over_plantings
@@ -43,7 +43,7 @@ class Pivot < ApplicationRecord
   # Whether the balance takes modeled rain on days without entered rain (Q7): its irrigation group's
   # setting, else its farm's. Either way the projection uses forecast rain (DailyInputs).
   def use_model_precip?
-    own = pivot_group&.use_model_precip
+    own = irrigation_group&.use_model_precip
     own.nil? ? farm.use_model_precip : own
   end
   validates :latitude, presence: true, numericality: {in: LATITUDES, message: "must be in the US or Canada"}
@@ -67,17 +67,17 @@ class Pivot < ApplicationRecord
   end
   validates :arc_start_deg, :arc_end_deg, numericality: {in: 0..360, message: "must be between 0 and 360"}, allow_nil: true
   validate :arc_complete
-  validate :pivot_group_on_farm
+  validate :irrigation_group_on_farm
 
   normalizes :equipment, :notes, with: ->(text) { text.strip.presence }
 
   before_validation :clear_other_shape
-  # A pivot moved to another farm leaves its group (groups don't span farms)
-  before_validation -> { self.pivot_group = nil }, if: -> { persisted? && farm_id_changed? && pivot_group&.farm_id != farm_id }
+  # A system moved to another farm leaves its group (groups don't span farms)
+  before_validation -> { self.irrigation_group = nil }, if: -> { persisted? && farm_id_changed? && irrigation_group&.farm_id != farm_id }
 
   before_save :assign_weather_cell, if: -> { will_save_change_to_latitude? || will_save_change_to_longitude? }
   after_commit :update_weather, if: -> { saved_change_to_weather_cell_id? && weather_cell_id }
-  # Plantings that haven't ended move with the pivot; ended ones keep the weather they ran on
+  # Plantings that haven't ended move with the system; ended ones keep the weather they ran on
   after_update :move_open_plantings, if: :saved_change_to_weather_cell_id?
 
   def linear? = kind == "linear"
@@ -90,22 +90,22 @@ class Pivot < ApplicationRecord
   # "Irrigation system:" (or "System:" where space is short) before it, never the kind.
   def label = name.downcase.include?(kind_name.downcase) ? name : "#{name} (#{kind_name.downcase})"
 
-  # The fields this system watered on date (Field#pivot_id_on): those whose planting then ran on it,
+  # The fields this system watered on date (Field#system_id_on): those whose planting then ran on it,
   # and its own fields with nothing planted. Its fields today, apart from a field since moved here
   # whose earlier season was elsewhere, or one moved away whose season ran here.
   def fields_on(date)
-    Field.where(pivot_id: id).or(Field.where(id: plantings.on(date).select(:field_id)))
-      .includes(:plantings).order(:name).select { |field| field.pivot_id_on(date) == id }
+    Field.where(system_id: id).or(Field.where(id: plantings.on(date).select(:field_id)))
+      .includes(:plantings).order(:name).select { |field| field.system_id_on(date) == id }
   end
 
   # The irrigation on the fields this system watered (D15: stored per field), by date: {date =>
   # {Field => FieldEntry}} for the days in dates with any, each field as fields_on places it
   def irrigation_on(dates)
-    fields = Field.where(pivot_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
+    fields = Field.where(system_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
       .index_by(&:id)
     FieldEntry.where(field_id: fields.keys, date: dates).where.not(irrigation_in: nil).order(:date).group_by(&:date)
       .filter_map do |date, entries|
-        here = entries.select { |entry| fields[entry.field_id].pivot_id_on(date) == id }
+        here = entries.select { |entry| fields[entry.field_id].system_id_on(date) == id }
           .sort_by { |entry| fields[entry.field_id].name }
         [date, here.to_h { |entry| [fields[entry.field_id], entry] }] if here.any?
       end.to_h
@@ -115,12 +115,12 @@ class Pivot < ApplicationRecord
   # (fieldsOn in lib/irrigation.ts): whether it's on it now, and its seasons in the order
   # Field#planting_on picks them, each saying whether it ran here
   def field_seasons
-    Field.where(pivot_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
+    Field.where(system_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
       .map do |field|
         seasons = field.plantings.sort_by(&:order_key)
-        {id: field.id, name: field.name, here: field.pivot_id == id,
+        {id: field.id, name: field.name, here: field.system_id == id,
          seasons: seasons.map { |planting|
-           {from: planting.season_start, to: planting.end_date, here: planting.pivot_id == id, rainfed: planting.rainfed?}
+           {from: planting.season_start, to: planting.end_date, here: planting.system_id == id, rainfed: planting.rainfed?}
          }}
       end
   end
@@ -140,20 +140,20 @@ class Pivot < ApplicationRecord
 
   def hand_over_plantings
     plantings.where.not(field_id: fields.select(:id))
-      .update_all("pivot_id = (SELECT fields.pivot_id FROM fields WHERE fields.id = plantings.field_id)")
+      .update_all("system_id = (SELECT fields.system_id FROM fields WHERE fields.id = plantings.field_id)")
   end
 
   def assign_weather_cell
     self.weather_cell = WeatherCell.for(latitude, longitude)
   end
 
-  # A new or moved pivot gets its cell's forecast and season-to-date weather in the background
+  # A new or moved system gets its cell's forecast and season-to-date weather in the background
   def update_weather
     WeatherUpdateJob.perform_later(weather_cell_id)
   end
 
-  def pivot_group_on_farm
-    errors.add(:pivot_group, "must be on the same farm") if pivot_group && pivot_group.farm_id != farm_id
+  def irrigation_group_on_farm
+    errors.add(:irrigation_group, "must be on the same farm") if irrigation_group && irrigation_group.farm_id != farm_id
   end
 
   def arc_complete

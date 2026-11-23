@@ -13,8 +13,8 @@
   type Frequency = 'never' | 'daily' | 'daily_all_year' | 'needed'
   type Scope = 'all' | 'in_season' | 'needs_action' | 'needs_irrigation'
   type DigestField = { id: number; name: string }
-  type DigestPivot = { id: number; name: string; kind_name: string; fields: DigestField[] }
-  type DigestFarm = { id: number; name: string; pivots: DigestPivot[] }
+  type DigestSystem = { id: number; name: string; kind_name: string; fields: DigestField[] }
+  type DigestFarm = { id: number; name: string; systems: DigestSystem[] }
   type DigestGroup = { id: number; name: string; farms: DigestFarm[] }
 
   let {
@@ -81,7 +81,7 @@
   let chosen = $state<Frequency>(untrack(() => frequency))
   let chosenScope = $state<Scope>(untrack(() => scope))
   const picked = new SvelteSet<number>(untrack(() => field_ids))
-  const farmFields = (farm: DigestFarm) => farm.pivots.flatMap((pivot) => pivot.fields)
+  const farmFields = (farm: DigestFarm) => farm.systems.flatMap((system) => system.fields)
   const groupFields = (group: DigestGroup) => group.farms.flatMap(farmFields)
   const allFields = $derived(groups.flatMap(groupFields))
   // Operations get their own checkbox only when there's more than one with fields
@@ -220,7 +220,7 @@
       <fieldset class="space-y-3 {chosen === 'never' ? 'opacity-60' : ''}">
         <legend class="text-sm font-medium">Fields it covers</legend>
         <p class="text-sm text-ink-muted">
-          New fields are included automatically, unless their pivot, farm or operation is left out entirely.
+          New fields are included automatically, unless their system, farm or operation is left out entirely.
           {pickedCount(allFields)} of {allFields.length} fields are included.
         </p>
         {#each groups as group (group.id)}
@@ -251,20 +251,20 @@
                       />
                       <span><span class="font-normal text-ink-muted">Farm:</span> {farm.name}</span>
                     </label>
-                    {#each farm.pivots as pivot (pivot.id)}
-                      {#if pivot.fields.length}
+                    {#each farm.systems as system (system.id)}
+                      {#if system.fields.length}
                         <div class="space-y-1 pl-6">
                           <label class="flex items-center gap-2 text-sm">
                             <input
                               type="checkbox"
-                              checked={pickedCount(pivot.fields) === pivot.fields.length}
-                              {@attach mixed(pivot.fields)}
-                              onchange={(event) => pickAll(pivot.fields, event.currentTarget.checked)}
+                              checked={pickedCount(system.fields) === system.fields.length}
+                              {@attach mixed(system.fields)}
+                              onchange={(event) => pickAll(system.fields, event.currentTarget.checked)}
                             />
-                            <span><span class="text-ink-muted">Irrigation system:</span> {systemName(pivot)}</span>
+                            <span><span class="text-ink-muted">Irrigation system:</span> {systemName(system)}</span>
                           </label>
                           <div class="grid gap-1 pl-6 sm:grid-cols-2">
-                            {#each pivot.fields as field (field.id)}
+                            {#each system.fields as field (field.id)}
                               <label class="flex items-center gap-2 text-sm">
                                 <input
                                   type="checkbox"

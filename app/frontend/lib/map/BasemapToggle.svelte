@@ -1,7 +1,7 @@
 <script lang="ts">
   import { BASEMAPS, type Basemap } from './basemaps'
 
-  // Satellite / Map, for the pivot picker and the map page
+  // Satellite / Map, for the system picker and the map page
   let { value, onchange }: { value: Basemap; onchange: (basemap: Basemap) => void } = $props()
 </script>
 

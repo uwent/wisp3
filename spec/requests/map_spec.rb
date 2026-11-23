@@ -3,17 +3,17 @@ require "rails_helper"
 RSpec.describe "Map", type: :request do
   let(:user) { create(:user) }
   let(:farm) { create(:farm, group: user.groups.first, name: "Hancock Sands") }
-  let(:pivot) do
-    create(:pivot, farm:, name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300,
+  let(:system) do
+    create(:system, farm:, name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300,
       arc_start_deg: 30, arc_end_deg: 300)
   end
-  let(:field) { create(:field, pivot:, name: "North potatoes") }
+  let(:field) { create(:field, system:, name: "North potatoes") }
 
   before do
     create(:planting, field:, season_start: Date.new(2026, 5, 1), emergence_date: Date.new(2026, 5, 20),
       end_date: Date.new(2026, 9, 15))
     (Date.new(2026, 5, 1)..Date.new(2026, 7, 19)).each do |date|
-      pivot.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: (date.day == 15) ? 0.5 : 0.0,
+      system.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: (date.day == 15) ? 0.5 : 0.0,
         tmax_f: 85, tmin_f: 60, model: "ncep_nbm_conus", hours: 24, fetched_at: Time.current)
     end
     sign_in user
@@ -21,23 +21,23 @@ RSpec.describe "Map", type: :request do
 
   around { |example| travel_to(Time.zone.local(2026, 7, 20, 9)) { example.run } }
 
-  it "gives each pivot its location, its weather zone and its fields' cards" do
+  it "gives each system its location, its weather zone and its fields' cards" do
     get map_path
     expect_inertia.to render_component("Map/Show")
-    shown = inertia.props[:farms].sole[:pivots].sole
-    expect(shown).to include(id: pivot.id, name: "North 160", latitude: 44.1335, longitude: -89.5213, kind: "center",
+    shown = inertia.props[:farms].sole[:systems].sole
+    expect(shown).to include(id: system.id, name: "North 160", latitude: 44.1335, longitude: -89.5213, kind: "center",
       radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300, length_ft: nil, travel_ft: nil, travel_bearing_deg: nil)
-    expect(shown[:weather_cell_id]).to eq(pivot.weather_cell_id)
+    expect(shown[:weather_cell_id]).to eq(system.weather_cell_id)
     card = shown[:fields].sole
     expect(card).to include(id: field.id, name: "North potatoes")
     expect(card[:plantings].sole).to include(phase: "active")
   end
 
   it "gives the systems' weather zones their grid cell, last week and week ahead" do
-    other = create(:pivot, farm:, name: "Next door", latitude: 44.134, longitude: -89.521)
+    other = create(:system, farm:, name: "Next door", latitude: 44.134, longitude: -89.521)
     get map_path
     zone = inertia.props[:zones].sole
-    cell = pivot.weather_cell
+    cell = system.weather_cell
     expect(other.weather_cell_id).to eq(cell.id)
     expect(zone).to include(id: cell.id, location: cell.location, coordinates: "44.11°N, 89.59°W")
     grid = Weather::Grid.cell_for(cell.latitude, cell.longitude)
@@ -49,12 +49,12 @@ RSpec.describe "Map", type: :request do
     expect(zone[:forecast]).to eq([])
   end
 
-  it "gives each pivot its fields' outlines" do
+  it "gives each system its fields' outlines" do
     outline = {"type" => "Polygon", "coordinates" => [[[-89.53, 44.13], [-89.52, 44.13], [-89.52, 44.14], [-89.53, 44.13]]]}
     field.update!(boundary: outline)
-    create(:field, pivot:, name: "No outline")
+    create(:field, system:, name: "No outline")
     get map_path
-    shown = inertia.props[:farms].sole[:pivots].sole
+    shown = inertia.props[:farms].sole[:systems].sole
     expect(shown[:outlines]).to eq([{"field_id" => field.id, "boundary" => outline}])
   end
 
@@ -64,13 +64,13 @@ RSpec.describe "Map", type: :request do
     get map_path
     expect(inertia.props).to include(year: 2026, years: [2026, 2025])
 
-    new_field = create(:field, pivot:, name: "New this year")
+    new_field = create(:field, system:, name: "New this year")
     create(:planting, field: new_field, season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 10),
       end_date: Date.new(2026, 10, 15))
 
     get map_path(year: 2025)
     expect(inertia.props[:year]).to eq(2025)
-    cards = inertia.props[:farms].sole[:pivots].sole[:fields].index_by { |card| card[:name] }
+    cards = inertia.props[:farms].sole[:systems].sole[:fields].index_by { |card| card[:name] }
     plantings = cards.fetch("North potatoes")[:plantings]
     expect(plantings.map { |summary| [summary[:season_start], summary[:phase]] }).to eq([["2025-05-01", "ended"]])
     # A field planted only this year has nothing in 2025, not this year's planting

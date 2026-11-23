@@ -3,8 +3,8 @@ require "rails_helper"
 RSpec.describe HealthCheck do
   let(:now) { Time.zone.local(2026, 7, 20, 7) }
   let(:check) { described_class.new(now:) }
-  let(:field) { create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53)) }
-  let(:cell) { field.pivot.reload.weather_cell }
+  let(:field) { create(:field, system: create(:system, latitude: 44.12, longitude: -89.53)) }
+  let(:cell) { field.system.reload.weather_cell }
 
   around { |example| travel_to(now) { example.run } }
 

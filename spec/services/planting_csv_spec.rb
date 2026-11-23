@@ -2,8 +2,8 @@ require "rails_helper"
 
 RSpec.describe PlantingCsv do
   let(:farm) { create(:farm, name: "Hancock") }
-  let(:pivot) { create(:pivot, farm:, name: "=HYPERLINK(\"http://example.com\")", equipment: "+Zimmatic") }
-  let(:field) { create(:field, pivot:, name: "North", area_acres: 60) }
+  let(:system) { create(:system, farm:, name: "=HYPERLINK(\"http://example.com\")", equipment: "+Zimmatic") }
+  let(:field) { create(:field, system:, name: "North", area_acres: 60) }
   let(:planting) do
     create(:planting, field:, variety: "@Russet", season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1),
       end_date: Date.new(2026, 7, 31))
@@ -39,12 +39,12 @@ RSpec.describe PlantingCsv do
 
   it "names the system the season ran on, after its field moves to another" do
     planting.update!(end_date: Date.new(2026, 7, 8))
-    field.update!(pivot: create(:pivot, farm:, name: "South", latitude: 45.3, longitude: -90.1))
+    field.update!(system: create(:system, farm:, name: "South", latitude: 45.3, longitude: -90.1))
     rows = CSV.parse(described_class.new(PlantingStatus.new(planting.reload, today: Date.new(2026, 7, 10), weather:))
       .to_csv.delete_prefix(CsvExport::BOM))
     header = rows.index { |row| row.first == "Farm" }
-    expect(rows[header].zip(rows[header + 1]).to_h).to include("Irrigation system" => "'#{pivot.name}", "Field" => "North")
-    expect(rows).to include(["Field: Hancock / #{pivot.label} / North"])
+    expect(rows[header].zip(rows[header + 1]).to_h).to include("Irrigation system" => "'#{system.name}", "Field" => "North")
+    expect(rows).to include(["Field: Hancock / #{system.label} / North"])
   end
 
   it "names the canopy column by the planting's method" do

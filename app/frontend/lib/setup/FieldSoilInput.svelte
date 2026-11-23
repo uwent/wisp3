@@ -3,7 +3,7 @@
   import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import SoilFitNote from './SoilFitNote.svelte'
   import type { FieldInfoKey } from '@/lib/fieldInfo'
-  import { isPoint, type PivotShape } from '@/lib/geo'
+  import { isPoint, type SystemShape } from '@/lib/geo'
   import { type Boundary } from '@/lib/boundary'
   import { soilFit, soilOptionsByShare } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
@@ -32,7 +32,7 @@
     /** The field's shape, surveyed in place of its system */
     boundary?: Boundary | null
     /** The field's system and its name, surveyed when there's no shape */
-    system?: (PivotShape & { name: string }) | null
+    system?: (SystemShape & { name: string }) | null
     /** Take the survey's suggestion until a soil is picked (a new field) */
     suggest?: boolean
     error?: string | string[]

@@ -1,26 +1,26 @@
 # A weather zone: one weather grid cell (Weather::Grid) and the operation's irrigation systems in it,
-# named from them ("North 160 and River"). Pages reach a cell only through the group's pivots
-# and plantings: a planting keeps the cell its season ran on, so a moved pivot's old zone
+# named from them ("North 160 and River"). Pages reach a cell only through the group's systems
+# and plantings: a planting keeps the cell its season ran on, so a moved system's old zone
 # stays reachable from its ended seasons.
 class WeatherZone
   # Names past this many systems end "and 3 more"
   NAMED = 3
 
-  attr_reader :cell, :pivots
+  attr_reader :cell, :systems
 
   # The zones of the group's irrigation systems as they are now, by name
   def self.for_group(group)
-    pivots = group.pivots.includes(:farm, :weather_cell, :fields).where.not(weather_cell_id: nil).to_a
-    pivots.group_by(&:weather_cell).map { |cell, cell_pivots| new(cell, cell_pivots) }.sort_by(&:sort_key)
+    systems = group.systems.includes(:farm, :weather_cell, :fields).where.not(weather_cell_id: nil).to_a
+    systems.group_by(&:weather_cell).map { |cell, cell_systems| new(cell, cell_systems) }.sort_by(&:sort_key)
   end
 
-  # The zone of one of the group's cells (its pivots', or a planting's from an earlier season), or
+  # The zone of one of the group's cells (its systems', or a planting's from an earlier season), or
   # ActiveRecord::RecordNotFound
   def self.find(group, cell_id)
     cell = WeatherCell.where(id: cell_ids(group)).find(cell_id)
-    pivots = group.pivots.includes(:farm, :fields).where(weather_cell_id: cell.id)
-      .or(group.pivots.includes(:farm, :fields).where(id: group.plantings.where(weather_cell_id: cell.id).select(:pivot_id)))
-    new(cell, pivots.to_a.uniq)
+    systems = group.systems.includes(:farm, :fields).where(weather_cell_id: cell.id)
+      .or(group.systems.includes(:farm, :fields).where(id: group.plantings.where(weather_cell_id: cell.id).select(:system_id)))
+    new(cell, systems.to_a.uniq)
   end
 
   # The zone of the group's cell a point ("44.1234,-89.5") falls in, or nil: a point outside the
@@ -37,7 +37,7 @@ class WeatherZone
 
   # Every cell the group's pages may show
   def self.cell_ids(group)
-    group.pivots.where.not(weather_cell_id: nil).pluck(:weather_cell_id) |
+    group.systems.where.not(weather_cell_id: nil).pluck(:weather_cell_id) |
       group.plantings.where.not(weather_cell_id: nil).pluck(:weather_cell_id)
   end
 
@@ -46,15 +46,15 @@ class WeatherZone
   def self.page_props(group, cell, forecast: true)
     return {weather_zone: nil, forecast: []} unless cell
 
-    pivots = group.pivots.where(weather_cell_id: cell.id).order(:name)
+    systems = group.systems.where(weather_cell_id: cell.id).order(:name)
     {
-      weather_zone: {id: cell.id, name: new(cell, pivots.to_a).name, location: cell.location},
+      weather_zone: {id: cell.id, name: new(cell, systems.to_a).name, location: cell.location},
       forecast: forecast ? ForecastDaySerializer.new(ForecastDays.for(cell)).to_h : []
     }
   end
 
-  def initialize(cell, pivots)
-    @cell, @pivots = cell, pivots.sort_by { |pivot| [pivot.name.downcase, pivot.id] }
+  def initialize(cell, systems)
+    @cell, @systems = cell, systems.sort_by { |system| [system.name.downcase, system.id] }
   end
 
   def id = cell.id
@@ -65,11 +65,11 @@ class WeatherZone
   def to_param = location
 
   # The fields on its systems, by name
-  def fields = pivots.flat_map(&:fields).sort_by { |field| [field.name.downcase, field.id] }
+  def fields = systems.flat_map(&:fields).sort_by { |field| [field.name.downcase, field.id] }
 
   # "North 160", "North 160 and River", "North 160, River and South", "A, B, C and 2 more"
   def name
-    names = pivots.map(&:name).uniq
+    names = systems.map(&:name).uniq
     return "Weather zone at #{coordinates}" if names.empty?
     return names.to_sentence(two_words_connector: " and ", last_word_connector: " and ") if names.size <= NAMED
 

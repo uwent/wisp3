@@ -1,5 +1,5 @@
 # Field outlines for many fields at once: each row's shape goes on one of the
-# group's fields (field_id), or makes a new field under one of its systems (pivot_id, name,
+# group's fields (field_id), or makes a new field under one of its systems (system_id, name,
 # soil_type_id, area_acres). One save, in a transaction: every row saves, or none does. use_area
 # also sets existing fields' area from their outlines. Ids outside the group raise RecordNotFound.
 class OutlineImport
@@ -47,7 +47,7 @@ class OutlineImport
 
   def field_for(row)
     return @group.fields.find(row[:field_id]) if row[:field_id].present?
-    @group.pivots.find(row[:pivot_id]).fields.build(name: row[:name], soil_type_id: row[:soil_type_id],
+    @group.systems.find(row[:system_id]).fields.build(name: row[:name], soil_type_id: row[:soil_type_id],
       area_acres: row[:area_acres].presence)
   end
 end

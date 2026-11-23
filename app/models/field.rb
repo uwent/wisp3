@@ -1,14 +1,14 @@
 class Field < ApplicationRecord
-  belongs_to :pivot
+  belongs_to :system, class_name: "IrrigationSystem"
   belongs_to :soil_type
-  has_one :farm, through: :pivot
+  has_one :farm, through: :system
   has_many :plantings, -> { order(:season_start, :id) }, dependent: :destroy
   has_many :field_entries, dependent: :destroy
   has_many :digest_exclusions, as: :subject, dependent: :delete_all
 
   # What the field and planting pages read: the field's system and every planting with its balance's inputs
   scope :with_season_tree, -> {
-    includes(:soil_type, pivot: [:farm, :weather_cell, :pivot_group],
+    includes(:soil_type, system: [:farm, :weather_cell, :irrigation_group],
       plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell])
   }
 
@@ -69,7 +69,7 @@ class Field < ApplicationRecord
 
   # The irrigation system the field was on that day: its planting's (a season keeps the system it
   # ran on), else, with nothing planted, the one it's on now
-  def pivot_id_on(date) = planting_on(date)&.pivot_id || pivot_id
+  def system_id_on(date) = planting_on(date)&.system_id || system_id
 
   # Saves the field, moved to system if given: one of its operation's, or a new Location
   # (unsaved), added in the same transaction. Its open plantings follow (update_open_plantings);
@@ -77,10 +77,10 @@ class Field < ApplicationRecord
   def save_moving_to(system)
     saved = Field.transaction do
       if system&.new_record? && !system.save
-        errors.add(:pivot_id, "couldn't be added as a Location: #{system.errors.full_messages.to_sentence}")
+        errors.add(:system_id, "couldn't be added as a Location: #{system.errors.full_messages.to_sentence}")
         raise ActiveRecord::Rollback
       end
-      self.pivot = system if system
+      self.system = system if system
       save || raise(ActiveRecord::Rollback)
     end
     saved || false
@@ -91,14 +91,14 @@ class Field < ApplicationRecord
   def update_open_plantings
     changed = Planting::FIELD_VALUES.select { |attribute| saved_change_to_attribute?(attribute) }
     values = changed.to_h { |attribute| [attribute, self[attribute]] }
-    if saved_change_to_pivot_id?
-      values[:pivot_id] = pivot_id
-      values[:weather_cell_id] = pivot.weather_cell_id
+    if saved_change_to_system_id?
+      values[:system_id] = system_id
+      values[:weather_cell_id] = system.weather_cell_id
     end
     soil = values.slice(:soil_type_id, :field_capacity, :perm_wilting_pt)
     # Plots on their own soil keep it
     plantings.open.where(own_soil: false).update_all(soil) if soil.any?
-    plantings.open.update_all(values.slice(:pivot_id, :weather_cell_id)) if values.key?(:pivot_id)
+    plantings.open.update_all(values.slice(:system_id, :weather_cell_id)) if values.key?(:system_id)
     # Part-field plantings keep their own area
     plantings.open.where(partial: false).update_all(area_acres:) if values.key?(:area_acres)
   end

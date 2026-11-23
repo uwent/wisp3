@@ -17,7 +17,7 @@ RSpec.describe DemoSeed do
     expect(result).to include(farms: data["farms"].size, fields: fields.size,
       plantings: fields.sum { |field| Array(field["plantings"]).size })
     group = demo_group
-    expect(group.pivots.count).to eq(systems.size)
+    expect(group.systems.count).to eq(systems.size)
     group.fields.where.not(boundary: nil).each do |field|
       expect(FieldBoundary.errors(field.boundary)).to be_empty, "#{field.name}: #{FieldBoundary.errors(field.boundary)}"
     end

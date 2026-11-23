@@ -1,17 +1,17 @@
-// Pivot geometry for the map. A center pivot is a center, a radius in feet, and optionally an arc
+// Irrigation system geometry for the map. A center pivot is a center, a radius in feet, and optionally an arc
 // (start and end bearings in degrees clockwise from north; the pivot sweeps clockwise from start
 // to end). A linear is a machine length_ft long traveling travel_ft along travel_bearing_deg
 // (whole degrees from north, 0–179, as it runs both ways): a rectangle centered on its location.
-// The other kinds (a traveler, solid set, drip, or a location only; Pivot::POINT_KINDS) are a
+// The other kinds (a traveler, solid set, drip, or a location only; IrrigationSystem::POINT_KINDS) are a
 // point with no outline. Spherical-earth math, which is plenty at pivot scale.
 
 export type LngLat = [number, number]
 
-/** An irrigation system's kind (Pivot::KINDS); "pivot" in code is any of them */
-export type PivotKind = 'center' | 'linear' | 'traveler' | 'solid_set' | 'drip' | 'point'
+/** An irrigation system's kind (IrrigationSystem::KINDS); "system" in code is any of them */
+export type SystemKind = 'center' | 'linear' | 'traveler' | 'solid_set' | 'drip' | 'point'
 
-/** What growers call each kind (Pivot::KIND_NAMES; the server sends it as kind_name) */
-export const KIND_NAMES: Record<PivotKind, string> = {
+/** What growers call each kind (IrrigationSystem::KIND_NAMES; the server sends it as kind_name) */
+export const KIND_NAMES: Record<SystemKind, string> = {
   center: 'Pivot',
   linear: 'Linear',
   traveler: 'Traveler',
@@ -21,7 +21,7 @@ export const KIND_NAMES: Record<PivotKind, string> = {
 }
 
 /** The kind in a sentence: "place the drip block" */
-export const KIND_NOUNS: Record<PivotKind, string> = {
+export const KIND_NOUNS: Record<SystemKind, string> = {
   center: 'pivot',
   linear: 'linear',
   traveler: 'traveler',
@@ -31,7 +31,7 @@ export const KIND_NOUNS: Record<PivotKind, string> = {
 }
 
 /**
- * How a system is named to growers (Pivot#label): "East gun (traveler)", or the name alone
+ * How a system is named to growers (IrrigationSystem#label): "East gun (traveler)", or the name alone
  * when it already says its kind ("Home pivot"). Pages put "Irrigation system:" (or "System:" where
  * space is short) before it, never the kind.
  */
@@ -40,12 +40,12 @@ export function systemName(system: { name: string; kind_name: string }): string 
   return system.name.toLowerCase().includes(kind) ? system.name : `${system.name} (${kind})`
 }
 
-/** Kinds that are a point with no dimensions (Pivot::POINT_KINDS) */
-export const isPoint = (kind: PivotKind) => kind !== 'center' && kind !== 'linear'
+/** Kinds that are a point with no dimensions (IrrigationSystem::POINT_KINDS) */
+export const isPoint = (kind: SystemKind) => kind !== 'center' && kind !== 'linear'
 
-/** What a pivot covers, as the server sends it (PivotSerializer::SHAPE) */
-export type PivotShape = {
-  kind: PivotKind
+/** What a system covers, as the server sends it (IrrigationSystemSerializer::SHAPE) */
+export type SystemShape = {
+  kind: SystemKind
   latitude: number
   longitude: number
   radius_ft: number | null
@@ -61,13 +61,13 @@ export type Linear = { lengthFt: number; travelFt: number; bearingDeg: number }
 
 export const EARTH_RADIUS_M = 6_371_008.8
 export const FEET_PER_METER = 3.28084
-/** A quarter-section (160 acre) pivot */
+/** A quarter-section (160 acre) system */
 export const DEFAULT_RADIUS_FT = 1300
 /** A quarter-mile machine traveling half a mile north and south (about 80 acres) */
 export const DEFAULT_LINEAR: Linear = { lengthFt: 1300, travelFt: 2640, bearingDeg: 0 }
 /** The smallest radius or side the picker's handles allow */
 export const MIN_SIZE_FT = 50
-// The largest pivots (Pivot::MAX_RADIUS_FT and friends): a center pivot's radius, a linear
+// The largest systems (IrrigationSystem::MAX_RADIUS_FT and friends): a center pivot's radius, a linear
 // machine's length and how far it travels
 export const MAX_RADIUS_FT = 3000
 export const MAX_LINEAR_LENGTH_FT = 3300
@@ -111,8 +111,8 @@ export function sweep(arcStart: number | null, arcEnd: number | null): number {
   return swept === 0 ? 360 : swept
 }
 
-/** The pivot's irrigated area as a closed polygon ring: a circle, or a sector for an arc */
-export function pivotRing(
+/** The system's irrigated area as a closed polygon ring: a circle, or a sector for an arc */
+export function systemRing(
   center: LngLat,
   radiusFt: number,
   arcStart: number | null = null,
@@ -129,7 +129,7 @@ export function pivotRing(
 }
 
 /** Irrigated acres for a radius and arc (the full circle is π r²) */
-export function pivotAcres(radiusFt: number, arcStart: number | null = null, arcEnd: number | null = null): number {
+export function systemAcres(radiusFt: number, arcStart: number | null = null, arcEnd: number | null = null): number {
   return ((Math.PI * radiusFt ** 2) / 43_560) * (sweep(arcStart, arcEnd) / 360)
 }
 
@@ -212,7 +212,7 @@ export function snapBearing(degrees: number): number {
 }
 
 /** A linear's sizes and direction, with the defaults for any missing */
-export function linearOf(shape: Pick<PivotShape, 'length_ft' | 'travel_ft' | 'travel_bearing_deg'>): Linear {
+export function linearOf(shape: Pick<SystemShape, 'length_ft' | 'travel_ft' | 'travel_bearing_deg'>): Linear {
   return {
     lengthFt: shape.length_ft ?? DEFAULT_LINEAR.lengthFt,
     travelFt: shape.travel_ft ?? DEFAULT_LINEAR.travelFt,
@@ -221,26 +221,26 @@ export function linearOf(shape: Pick<PivotShape, 'length_ft' | 'travel_ft' | 'tr
 }
 
 /**
- * A pivot's irrigated area as a closed ring: a circle, a sector, or a linear's rectangle; null
+ * A system's irrigated area as a closed ring: a circle, a sector, or a linear's rectangle; null
  * for a point kind, which has no outline
  */
-export function pivotOutline(shape: PivotShape, steps = 96): LngLat[] | null {
+export function shapeOutline(shape: SystemShape, steps = 96): LngLat[] | null {
   if (isPoint(shape.kind)) return null
   const center: LngLat = [shape.longitude, shape.latitude]
   if (shape.kind === 'linear') {
     return linearRing(center, linearOf(shape))
   }
-  return pivotRing(center, shape.radius_ft ?? DEFAULT_RADIUS_FT, shape.arc_start_deg, shape.arc_end_deg, steps)
+  return systemRing(center, shape.radius_ft ?? DEFAULT_RADIUS_FT, shape.arc_start_deg, shape.arc_end_deg, steps)
 }
 
 /**
  * The area systems cover, [[west, south], [east, north]]: their shapes (a point kind's location) and
- * their fields' outlines' extents; null for none (the pivot picker opens on a farm's, Pivots/Form)
+ * their fields' outlines' extents; null for none (the system picker opens on a farm's, Systems/Form)
  */
-export function systemsFrame(systems: (PivotShape & { fields_extent?: [LngLat, LngLat] | null })[]) {
+export function systemsFrame(systems: (SystemShape & { fields_extent?: [LngLat, LngLat] | null })[]) {
   return boundsOf(
     systems.flatMap((system) => [
-      ...(pivotOutline(system) ?? [[system.longitude, system.latitude] as LngLat]),
+      ...(shapeOutline(system) ?? [[system.longitude, system.latitude] as LngLat]),
       ...(system.fields_extent ?? []),
     ]),
   )
@@ -250,21 +250,21 @@ export function systemsFrame(systems: (PivotShape & { fields_extent?: [LngLat, L
 export const POINT_SURVEY_RADIUS_FT = 165
 
 /** The ring the soil survey is read in: the outline, or a small circle around a point kind */
-export function surveyRing(shape: PivotShape, steps = 48): LngLat[] {
+export function surveyRing(shape: SystemShape, steps = 48): LngLat[] {
   return (
-    pivotOutline(shape, steps) ??
-    pivotRing([shape.longitude, shape.latitude], POINT_SURVEY_RADIUS_FT, null, null, steps)
+    shapeOutline(shape, steps) ??
+    systemRing([shape.longitude, shape.latitude], POINT_SURVEY_RADIUS_FT, null, null, steps)
   )
 }
 
-/** A pivot's irrigated acres; null for a point kind, whose area comes from its fields */
-export function shapeAcres(shape: Omit<PivotShape, 'latitude' | 'longitude'>): number | null {
+/** A system's irrigated acres; null for a point kind, whose area comes from its fields */
+export function shapeAcres(shape: Omit<SystemShape, 'latitude' | 'longitude'>): number | null {
   if (isPoint(shape.kind)) return null
   if (shape.kind === 'linear') {
     const { lengthFt, travelFt } = linearOf(shape)
     return (lengthFt * travelFt) / 43_560
   }
-  return pivotAcres(shape.radius_ft ?? DEFAULT_RADIUS_FT, shape.arc_start_deg, shape.arc_end_deg)
+  return systemAcres(shape.radius_ft ?? DEFAULT_RADIUS_FT, shape.arc_start_deg, shape.arc_end_deg)
 }
 
 /**
@@ -304,11 +304,11 @@ function inRing([x, y]: LngLat, ring: LngLat[]): boolean {
 }
 
 /**
- * A pivot's shape while the form edits it. Both kinds' sizes and the arc are kept while editing,
+ * A system's shape while the form edits it. Both kinds' sizes and the arc are kept while editing,
  * so switching kinds or turning the arc off and on gives back what was there.
  */
 export type ShapeDraft = {
-  kind: PivotKind
+  kind: SystemKind
   latitude: number | null
   longitude: number | null
   radiusFt: number | null
@@ -320,23 +320,23 @@ export type ShapeDraft = {
   travelBearing: number | null
 }
 
-export function shapeDraft(pivot: Partial<PivotShape> = {}): ShapeDraft {
+export function shapeDraft(system: Partial<SystemShape> = {}): ShapeDraft {
   return {
-    kind: pivot.kind ?? 'center',
-    latitude: pivot.latitude ?? null,
-    longitude: pivot.longitude ?? null,
-    radiusFt: pivot.radius_ft ?? DEFAULT_RADIUS_FT,
-    partial: pivot.arc_start_deg != null && pivot.arc_end_deg != null,
-    arcStart: pivot.arc_start_deg ?? 0,
-    arcEnd: pivot.arc_end_deg ?? 270,
-    lengthFt: pivot.length_ft ?? DEFAULT_LINEAR.lengthFt,
-    travelFt: pivot.travel_ft ?? DEFAULT_LINEAR.travelFt,
-    travelBearing: pivot.travel_bearing_deg ?? DEFAULT_LINEAR.bearingDeg,
+    kind: system.kind ?? 'center',
+    latitude: system.latitude ?? null,
+    longitude: system.longitude ?? null,
+    radiusFt: system.radius_ft ?? DEFAULT_RADIUS_FT,
+    partial: system.arc_start_deg != null && system.arc_end_deg != null,
+    arcStart: system.arc_start_deg ?? 0,
+    arcEnd: system.arc_end_deg ?? 270,
+    lengthFt: system.length_ft ?? DEFAULT_LINEAR.lengthFt,
+    travelFt: system.travel_ft ?? DEFAULT_LINEAR.travelFt,
+    travelBearing: system.travel_bearing_deg ?? DEFAULT_LINEAR.bearingDeg,
   }
 }
 
 /** The shape a draft describes, or null until it has a location */
-export function draftShape(draft: ShapeDraft): PivotShape | null {
+export function draftShape(draft: ShapeDraft): SystemShape | null {
   if (draft.latitude === null || draft.longitude === null) return null
   const linear = draft.kind === 'linear'
   const center = draft.kind === 'center'

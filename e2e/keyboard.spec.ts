@@ -3,7 +3,7 @@ import { firstPlantingPath, signIn } from './session'
 import { expect, test } from './test'
 
 // Keyboard use (WCAG 2.1.1, 2.4.1, 2.4.3): skipping the nav, grids as one tab stop, and focus moving
-// into the map's pivot panel, the layers panel, dialogs and menus and back out again
+// into the map's system panel, the layers panel, dialogs and menus and back out again
 
 test.beforeEach(async ({ page }) => {
   await signIn(page)
@@ -70,7 +70,7 @@ test("daily entry's week moves between cells with the arrow keys and Enter", asy
   await expect(page.getByText(/^Saved /)).toHaveCount(0)
 })
 
-test('selecting a pivot from the keyboard moves to its panel, and Escape comes back', async ({ page }) => {
+test('selecting a system from the keyboard moves to its panel, and Escape comes back', async ({ page }) => {
   await page.goto('/map')
   const show = page.getByRole('button', { name: /on the map$/ }).first()
   await show.focus()

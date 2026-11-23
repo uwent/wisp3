@@ -14,7 +14,7 @@ import {
   needsWaterFirst,
   needsWaterWithin,
   type OverviewSystem,
-  pivotStatus,
+  systemStatus,
   type SystemNode,
   treeFields,
   urgency,
@@ -84,24 +84,24 @@ describe('needing water', () => {
   })
 })
 
-describe('pivotStatus', () => {
-  it("is the most urgent status among the pivot's fields in season", () => {
+describe('systemStatus', () => {
+  it("is the most urgent status among the system's fields in season", () => {
     expect(
-      pivotStatus([card('a'), card('b', { status: 'caution' }), card('c', { phase: 'ended', status: 'irrigate' })]),
+      systemStatus([card('a'), card('b', { status: 'caution' }), card('c', { phase: 'ended', status: 'irrigate' })]),
     ).toBe('caution')
-    expect(pivotStatus([card('a', { phase: 'ended' }), card('b', null)])).toBeNull()
-    expect(pivotStatus([])).toBeNull()
+    expect(systemStatus([card('a', { phase: 'ended' }), card('b', null)])).toBeNull()
+    expect(systemStatus([])).toBeNull()
   })
 })
 
 describe('buildTree', () => {
   type P = OverviewSystem & { latitude: number }
   let nextId = 100
-  const pivot = (name: string, latitude: number, fields: FieldCard[], group: number | null = null): P => ({
+  const system = (name: string, latitude: number, fields: FieldCard[], group: number | null = null): P => ({
     id: nextId++,
     name,
     kind_name: 'Pivot',
-    pivot_group_id: group,
+    irrigation_group_id: group,
     weather_updating: false,
     latitude,
     fields,
@@ -110,15 +110,15 @@ describe('buildTree', () => {
     ...card(name, overrides),
     id: nextId++,
   })
-  // Coloma: South (in the East half group) and North; Hancock: Middle and an empty pivot
+  // Coloma: South (in the East half group) and North; Hancock: Middle and an empty system
   const farms: FarmGroup<P>[] = [
     {
       id: 1,
       name: 'Coloma',
-      pivot_groups: [{ id: 7, name: 'East half' }],
-      pivots: [
-        pivot('South', 44.0, [field('B ok'), field('E dry', { status: 'irrigate' })], 7),
-        pivot('North', 44.5, [
+      irrigation_groups: [{ id: 7, name: 'East half' }],
+      systems: [
+        system('South', 44.0, [field('B ok'), field('E dry', { status: 'irrigate' })], 7),
+        system('North', 44.5, [
           field('A later', { status: 'caution', crossing: crossing(3) }),
           field('D ended', { phase: 'ended' }),
         ]),
@@ -127,19 +127,19 @@ describe('buildTree', () => {
     {
       id: 2,
       name: 'Hancock',
-      pivot_groups: [],
-      pivots: [
-        pivot('Middle', 44.2, [
+      irrigation_groups: [],
+      systems: [
+        system('Middle', 44.2, [
           field('C sooner', { status: 'caution', crossing: crossing(1), plant_name: 'Potato', variety: 'Russet' }),
         ]),
-        pivot('Empty', 44.3, []),
+        system('Empty', 44.3, []),
       ],
     },
   ]
   // The tree as names, indented by level
   const outline = (tree: FarmNode<P>[]) => {
     const system = (node: SystemNode<P>, indent: string) => [
-      `${indent}${node.pivot.name}`,
+      `${indent}${node.system.name}`,
       ...node.fields.map((card) => `${indent}  ${card.name}`),
     ]
     return tree.flatMap((farm) => [
@@ -238,10 +238,10 @@ describe('buildTree', () => {
       {
         id: 3,
         name: 'Farm',
-        pivot_groups: [],
-        pivots: [
-          pivot('A south', 44.0, [field('South field', { status: 'ok' })]),
-          pivot('B north', 44.6, [field('North field', { status: 'ok' })]),
+        irrigation_groups: [],
+        systems: [
+          system('A south', 44.0, [field('South field', { status: 'ok' })]),
+          system('B north', 44.6, [field('North field', { status: 'ok' })]),
         ],
       },
     ]
@@ -254,7 +254,7 @@ describe('the dashboard', () => {
     id,
     name,
     kind_name: 'Pivot',
-    pivot_group_id: null,
+    irrigation_group_id: null,
     weather_updating: false,
     fields,
   })
@@ -262,8 +262,8 @@ describe('the dashboard', () => {
     {
       id: 1,
       name: 'Home',
-      pivot_groups: [],
-      pivots: [
+      irrigation_groups: [],
+      systems: [
         system(1, 'North', [card('ended', { phase: 'ended' }), card('ok soon', { crossing: crossing(5) })]),
         system(2, 'South', [card('ok', {}), card('dry', { status: 'irrigate' })]),
       ],
@@ -271,13 +271,16 @@ describe('the dashboard', () => {
     {
       id: 2,
       name: 'Away',
-      pivot_groups: [],
-      pivots: [system(3, 'East', [card('caution', { status: 'caution' }), card('none', null)]), system(4, 'Empty', [])],
+      irrigation_groups: [],
+      systems: [
+        system(3, 'East', [card('caution', { status: 'caution' }), card('none', null)]),
+        system(4, 'Empty', []),
+      ],
     },
   ]
 
   it('orders every field most urgent first, the soonest to need water before the rest, ended last', () => {
-    const order = needsWaterFirst(farms).map(({ card, pivot, farm }) => `${card.name} ${pivot.name} ${farm.name}`)
+    const order = needsWaterFirst(farms).map(({ card, system, farm }) => `${card.name} ${system.name} ${farm.name}`)
     expect(order).toEqual([
       'dry South Home',
       'caution East Away',
@@ -305,7 +308,7 @@ describe('the dashboard', () => {
     expect(filterByStatus(farms, null)).toBe(farms)
     const ok = filterByStatus(farms, 'ok')
     expect(ok.map((farm) => farm.name)).toEqual(['Home'])
-    expect(ok[0].pivots.map((pivot) => [pivot.name, pivot.fields.map((c) => c.name)])).toEqual([
+    expect(ok[0].systems.map((system) => [system.name, system.fields.map((c) => c.name)])).toEqual([
       ['North', ['ok soon']],
       ['South', ['ok']],
     ])

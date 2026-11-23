@@ -4,8 +4,8 @@ require "rails_helper"
 # correct; "none" is readings only, and until the first reading the planting needs canopy data.
 RSpec.describe "Generic canopy curves" do
   let(:onion) { create(:plant, key: "onion", name: "Onion") }
-  let(:pivot) { create(:pivot) }
-  let(:field) { create(:field, pivot:) }
+  let(:system) { create(:system) }
+  let(:field) { create(:field, system:) }
   let(:planting) do
     create(:planting, field:, plant: onion, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 5, 1),
       end_date: Date.new(2026, 9, 30))

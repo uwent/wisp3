@@ -9,27 +9,27 @@ const field = (name: string, ...crops: [string, string | null][]) => ({
 const farms = [
   {
     name: 'Hancock',
-    pivot_groups: [
+    irrigation_groups: [
       { id: 1, name: 'River gauge' },
       { id: 2, name: 'Hill gauge' },
     ],
-    pivots: [
-      { name: 'North pivot', pivot_group_id: 1, fields: [field('North 40', ['Potato', 'Russet Burbank'])] },
-      { name: 'South pivot', pivot_group_id: 2, fields: [field('South 80', ['Field Corn', null]), field('Bare')] },
-      { name: 'East 9', pivot_group_id: null, fields: [field('East 9', ['Soybean', 'Double crop'])] },
+    systems: [
+      { name: 'North system', irrigation_group_id: 1, fields: [field('North 40', ['Potato', 'Russet Burbank'])] },
+      { name: 'South pivot', irrigation_group_id: 2, fields: [field('South 80', ['Field Corn', null]), field('Bare')] },
+      { name: 'East 9', irrigation_group_id: null, fields: [field('East 9', ['Soybean', 'Double crop'])] },
     ],
   },
   {
     name: 'Coloma',
-    pivot_groups: [],
-    pivots: [{ name: 'Powell', pivot_group_id: null, fields: [field('Powell West')] }],
+    irrigation_groups: [],
+    systems: [{ name: 'Powell', irrigation_group_id: null, fields: [field('Powell West')] }],
   },
 ]
 const outline = (result: typeof farms) =>
   result.map((farm) => [
     farm.name,
-    farm.pivot_groups.map((group) => group.name),
-    farm.pivots.map((pivot) => [pivot.name, pivot.fields.map((f) => f.name)]),
+    farm.irrigation_groups.map((group) => group.name),
+    farm.systems.map((system) => [system.name, system.fields.map((f) => f.name)]),
   ])
 
 describe('searchFarms', () => {
@@ -40,7 +40,7 @@ describe('searchFarms', () => {
   it('finds fields by name, crop or variety, in any case, keeping their system and farm', () => {
     expect(outline(searchFarms(farms, 'CORN'))).toEqual([['Hancock', ['Hill gauge'], [['South pivot', ['South 80']]]]])
     expect(outline(searchFarms(farms, 'russet'))).toEqual([
-      ['Hancock', ['River gauge'], [['North pivot', ['North 40']]]],
+      ['Hancock', ['River gauge'], [['North system', ['North 40']]]],
     ])
     expect(outline(searchFarms(farms, 'west'))).toEqual([['Coloma', [], [['Powell', ['Powell West']]]]])
   })

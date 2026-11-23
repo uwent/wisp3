@@ -60,35 +60,35 @@ class User < ApplicationRecord
   end
 
   # The fields the daily digest covers: every field in the user's operations, less the operations,
-  # farms, pivots and fields they've left out
+  # farms, systems and fields they've left out
   def digest_fields
     excluded = digest_exclusions.pluck(:subject_type, :subject_id).group_by(&:first).transform_values { |pairs| pairs.map(&:last) }
-    Field.joins(pivot: :farm)
+    Field.joins(system: :farm)
       .where(farms: {group_id: memberships.select(:group_id)})
       .where.not(farms: {group_id: excluded.fetch("Group", [])})
       .where.not(farms: {id: excluded.fetch("Farm", [])})
-      .where.not(pivot_id: excluded.fetch("Pivot", []))
+      .where.not(system_id: excluded.fetch("IrrigationSystem", []))
       .where.not(id: excluded.fetch("Field", []))
   end
 
   # Includes exactly these fields of the user's operations in the digest. An operation, farm or
-  # pivot with none of its fields picked is left out as a whole, so fields added to it later stay out
+  # system with none of its fields picked is left out as a whole, so fields added to it later stay out
   # too; one with all of them picked takes in new fields.
   def digest_field_ids=(ids)
     picked = ids.map(&:to_i).to_set
     none_picked = ->(fields) { fields.any? && fields.none? { |field| picked.include?(field.id) } }
     transaction do
       digest_exclusions.delete_all
-      groups.includes(farms: {pivots: :fields}).find_each do |group|
-        next digest_exclusions.create!(subject: group) if none_picked.call(group.farms.flat_map { |farm| farm.pivots.flat_map(&:fields) })
+      groups.includes(farms: {systems: :fields}).find_each do |group|
+        next digest_exclusions.create!(subject: group) if none_picked.call(group.farms.flat_map { |farm| farm.systems.flat_map(&:fields) })
 
         group.farms.each do |farm|
-          next digest_exclusions.create!(subject: farm) if none_picked.call(farm.pivots.flat_map(&:fields))
+          next digest_exclusions.create!(subject: farm) if none_picked.call(farm.systems.flat_map(&:fields))
 
-          farm.pivots.each do |pivot|
-            next digest_exclusions.create!(subject: pivot) if none_picked.call(pivot.fields)
+          farm.systems.each do |system|
+            next digest_exclusions.create!(subject: system) if none_picked.call(system.fields)
 
-            pivot.fields.reject { |field| picked.include?(field.id) }.each { |field| digest_exclusions.create!(subject: field) }
+            system.fields.reject { |field| picked.include?(field.id) }.each { |field| digest_exclusions.create!(subject: field) }
           end
         end
       end

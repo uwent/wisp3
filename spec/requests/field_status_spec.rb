@@ -4,8 +4,8 @@ RSpec.describe "Field status and daily entry", type: :request do
   let(:user) { create(:user) }
   let(:group) { user.groups.first }
   let(:farm) { create(:farm, group:) }
-  let(:pivot) { create(:pivot, farm:, pump_capacity_gpm: 900) }
-  let(:field) { create(:field, pivot:, name: "North potatoes", area_acres: 60) }
+  let(:system) { create(:system, farm:, pump_capacity_gpm: 900) }
+  let(:field) { create(:field, system:, name: "North potatoes", area_acres: 60) }
   let!(:planting) do
     create(:planting, field:, season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1),
       end_date: Date.new(2026, 9, 30))
@@ -14,7 +14,7 @@ RSpec.describe "Field status and daily entry", type: :request do
   before do
     sign_in user
     (Date.new(2026, 7, 1)..Date.new(2026, 7, 19)).each do |date|
-      pivot.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: (date.day == 5) ? 0.4 : 0.0, tmax_f: 85,
+      system.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: (date.day == 5) ? 0.4 : 0.0, tmax_f: 85,
         tmin_f: 60, model: "ncep_nbm_conus", hours: 24, fetched_at: Time.current)
     end
   end
@@ -23,7 +23,7 @@ RSpec.describe "Field status and daily entry", type: :request do
 
   describe "the field page" do
     it "shows the season's balance, summary, and its zone's week ahead" do
-      pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
+      system.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: [{date: "2026-07-20", tmax_f: 90, tmin_f: 70}, {date: "2026-07-21", tmax_f: 88, tmin_f: 66}]})
 
       get planting_path(planting)
@@ -35,7 +35,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(props[:summary]).to include(phase: "active", date: "2026-07-20", ad_max: 1.2) # 0.5 × (0.15 − 0.05) × 24 in
       expect(props[:summary][:totals]).to include(rain: 0.4)
       expect(props).not_to have_key(:weather)
-      expect(props[:weather_zone]).to eq({"id" => pivot.weather_cell_id, "name" => pivot.name, "location" => pivot.weather_cell.location})
+      expect(props[:weather_zone]).to eq({"id" => system.weather_cell_id, "name" => system.name, "location" => system.weather_cell.location})
       expect(props[:forecast].map { |day| [day[:date], day[:tmax_f]] }).to eq([["2026-07-20", 90], ["2026-07-21", 88]])
 
       # An ended season still shows the location's week ahead
@@ -62,30 +62,30 @@ RSpec.describe "Field status and daily entry", type: :request do
     end
 
     it "uses only entered rain when the system's irrigation group says so, else its farm's setting (Q7)" do
-      pivot_group = create(:pivot_group, farm:, pivots: [pivot], use_model_precip: false)
+      irrigation_group = create(:irrigation_group, farm:, systems: [system], use_model_precip: false)
       get planting_path(planting)
-      expect(inertia.props[:pivot]).to include(use_model_precip: false, pivot_group: {id: pivot_group.id, name: pivot_group.name})
-      expect(inertia.props[:summary]).to include(use_model_precip: false, rain_group_id: pivot_group.id, rain_farm_id: farm.id)
+      expect(inertia.props[:system]).to include(use_model_precip: false, irrigation_group: {id: irrigation_group.id, name: irrigation_group.name})
+      expect(inertia.props[:summary]).to include(use_model_precip: false, rain_group_id: irrigation_group.id, rain_farm_id: farm.id)
       expect(inertia.props[:days][4]).to include(rain: 0.0, rain_source: "none", rain_model: 0.4)
       expect(inertia.props[:summary][:totals]).to include(rain: 0.0, rain_model: 0.4)
 
-      pivot_group.update!(use_model_precip: nil)
+      irrigation_group.update!(use_model_precip: nil)
       get field_path(field)
-      expect(inertia.props[:pivot]).to include(use_model_precip: true)
+      expect(inertia.props[:system]).to include(use_model_precip: true)
       farm.update!(use_model_precip: false)
       get field_path(field)
-      expect(inertia.props[:pivot]).to include(use_model_precip: false)
+      expect(inertia.props[:system]).to include(use_model_precip: false)
     end
 
     it "shows the field's own irrigation as entered, and no system amount" do
       field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.5)
-      other = create(:field, pivot:)
+      other = create(:field, system:)
       other.field_entries.create!(date: Date.new(2026, 7, 12), irrigation_in: 0.8)
 
       get planting_path(planting)
       days = inertia.props[:days].index_by { |day| day[:date] }
       expect(days["2026-07-10"]).to include(irrigation: 0.5, irrigation_source: "entered")
-      expect(days["2026-07-10"]).not_to have_key(:pivot_inches)
+      expect(days["2026-07-10"]).not_to have_key(:system_inches)
       expect(days["2026-07-12"]).to include(irrigation: 0.0, irrigation_source: "none")
     end
 
@@ -98,28 +98,28 @@ RSpec.describe "Field status and daily entry", type: :request do
       end
       field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.5)
       get planting_path(planting) # Devise's sign-in and the first visit's one-off writes
-      get pivot_path(pivot)
-      planting_one, pivot_one = queries.call(planting_path(planting)), queries.call(pivot_path(pivot))
+      get system_path(system)
+      planting_one, system_one = queries.call(planting_path(planting)), queries.call(system_path(system))
       [12, 14, 16].each { |day| field.field_entries.create!(date: Date.new(2026, 7, day), irrigation_in: 0.5) }
       expect(queries.call(planting_path(planting))).to eq(planting_one)
-      expect(queries.call(pivot_path(pivot))).to eq(pivot_one)
+      expect(queries.call(system_path(system))).to eq(system_one)
     end
 
     it "queues a weather update for the field's cell, and for the dashboard's" do
-      expect { get field_path(field) }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id, quiet: false)
+      expect { get field_path(field) }.to have_enqueued_job(WeatherUpdateJob).with(system.weather_cell_id, quiet: false)
       Rails.cache.clear
-      expect { get root_path }.to have_enqueued_job(WeatherUpdateJob).with(pivot.weather_cell_id, quiet: false)
+      expect { get root_path }.to have_enqueued_job(WeatherUpdateJob).with(system.weather_cell_id, quiet: false)
     end
 
-    it "says while the pivot's weather is updating, so the pages reload until it lands" do
+    it "says while the system's weather is updating, so the pages reload until it lands" do
       get root_path
-      expect(inertia.props[:farms].sole[:pivots].sole).to include(weather_updating: true)
+      expect(inertia.props[:farms].sole[:systems].sole).to include(weather_updating: true)
       get planting_path(planting)
       expect(inertia.props[:weather_updating]).to be(true)
 
-      Rails.cache.delete(WeatherUpdateJob.updating_key(pivot.weather_cell_id)) # the job has run
+      Rails.cache.delete(WeatherUpdateJob.updating_key(system.weather_cell_id)) # the job has run
       get root_path
-      expect(inertia.props[:farms].sole[:pivots].sole).to include(weather_updating: false)
+      expect(inertia.props[:farms].sole[:systems].sole).to include(weather_updating: false)
       get planting_path(planting)
       expect(inertia.props[:weather_updating]).to be(false)
     end
@@ -156,8 +156,8 @@ RSpec.describe "Field status and daily entry", type: :request do
     it "gives the target, and for a field on entered rain the no-rain case beside the forecast's, without an ensemble" do
       planting.update!(target_ad_pct: 40)
       planting.canopy_observations.create!(date: Date.new(2026, 7, 1), pct_cover: 80) # adjusted ET = et0
-      create(:pivot_group, farm:, pivots: [pivot], use_model_precip: false)
-      pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
+      create(:irrigation_group, farm:, systems: [system], use_model_precip: false)
+      system.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: (Date.new(2026, 7, 20)..Date.new(2026, 7, 22)).map { |d| {date: d.iso8601, et0_in: 0.2, precip_in: 0.5} }})
 
       get planting_path(planting)
@@ -172,7 +172,7 @@ RSpec.describe "Field status and daily entry", type: :request do
     end
 
     it "handles a field with no planting" do
-      bare = create(:field, pivot:)
+      bare = create(:field, system:)
       get field_path(bare)
       expect_inertia.to render_component("Fields/Show")
       expect(inertia.props).to include(plantings: [], year: 2026)
@@ -186,7 +186,7 @@ RSpec.describe "Field status and daily entry", type: :request do
     # Today and 15 days ahead at 0.2 in/day of ET, and an ensemble of a dry member and a wet one
     before do
       dates = Date.new(2026, 7, 20)..Date.new(2026, 8, 4)
-      cell = pivot.weather_cell
+      cell = system.weather_cell
       cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: dates.map { |date| {date: date.iso8601, et0_in: 0.2, precip_in: 0.0} }})
       cell.weather_forecasts.create!(kind: "ensemble", issued_at: 1.hour.ago, model: "gfs_seamless",
@@ -225,7 +225,7 @@ RSpec.describe "Field status and daily entry", type: :request do
 
     it "gives each dashboard card the projection" do
       get root_path
-      summary = inertia.props[:farms].sole[:pivots].sole[:fields].sole[:plantings].sole
+      summary = inertia.props[:farms].sole[:systems].sole[:fields].sole[:plantings].sole
       expect(summary[:projection].size).to eq(15)
       expect(summary[:ensemble_size]).to eq(2)
     end
@@ -235,7 +235,7 @@ RSpec.describe "Field status and daily entry", type: :request do
     before do
       # An ensemble that would give the projection a band today
       dates = Date.new(2026, 7, 20)..Date.new(2026, 8, 4)
-      pivot.weather_cell.weather_forecasts.create!(kind: "ensemble", issued_at: 1.hour.ago, model: "gfs_seamless",
+      system.weather_cell.weather_forecasts.create!(kind: "ensemble", issued_at: 1.hour.ago, model: "gfs_seamless",
         payload: {dates: dates.map(&:iso8601), members: [{et0_in: [0.2] * 16, precip_in: [0.0] * 16}] * 2})
     end
 
@@ -258,7 +258,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(props[:forecast_days].map { |day| day[:rain_source] }.uniq).to eq(["model"])
       expect(props[:summary][:projection].map { |day| day[:p50] }.uniq).to eq([nil])
       expect(props[:forecast]).to eq([]) # the zone's link only
-      expect(props[:weather_zone]).to include("id" => pivot.weather_cell_id)
+      expect(props[:weather_zone]).to include("id" => system.weather_cell_id)
 
       get planting_path(planting)
       expect(inertia.props).to include(as_of: nil)
@@ -315,7 +315,7 @@ RSpec.describe "Field status and daily entry", type: :request do
     let(:url) { field_day_path(field, "2026-07-08") }
 
     it "gives a part-field planting its own irrigation, readings and notes, and the field the rain" do
-      plot_field = create(:field, pivot:, name: "Arlington 525", area_acres: 4)
+      plot_field = create(:field, system:, name: "Arlington 525", area_acres: 4)
       plot = create(:planting, field: plot_field, partial: true, plot_length_ft: 100, plot_width_ft: 20,
         season_start: Date.new(2026, 5, 1), emergence_date: Date.new(2026, 5, 20), end_date: Date.new(2026, 9, 30))
       patch field_day_path(plot_field, "2026-07-08"),
@@ -384,14 +384,14 @@ RSpec.describe "Field status and daily entry", type: :request do
   end
 
   describe "the dashboard" do
-    it "shows each farm's pivots, with a card per field and its status today" do
-      create(:field, pivot:, name: "Bare")
-      empty = create(:pivot, farm:, name: "A new pivot")
+    it "shows each farm's systems, with a card per field and its status today" do
+      create(:field, system:, name: "Bare")
+      empty = create(:system, farm:, name: "A new system")
       get root_path
       farm_props = inertia.props[:farms].sole
       expect(farm_props[:name]).to eq(farm.name)
-      expect(farm_props[:pivots].map { |p| [p[:name], p[:fields].size] }).to eq([[empty.name, 0], [pivot.name, 2]])
-      cards = farm_props[:pivots].last[:fields].index_by { |card| card[:name] }
+      expect(farm_props[:systems].map { |p| [p[:name], p[:fields].size] }).to eq([[empty.name, 0], [system.name, 2]])
+      cards = farm_props[:systems].last[:fields].index_by { |card| card[:name] }
       summary = cards["North potatoes"][:plantings].sole
       expect(summary).to include(phase: "active", status: "ok", partial: false) # AD 1.05 of 1.2
       expect(summary[:recent].size).to eq(20)
@@ -409,7 +409,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect_inertia.to render_component("Dashboard/Show")
       expect(inertia.props).to include(farms: [], today: "2026-07-20", getting_started: {"farms" => 0, "systems" => 0, "fields" => 0})
 
-      create(:field, pivot: create(:pivot, farm: create(:farm, group: newcomer.groups.first)))
+      create(:field, system: create(:system, farm: create(:farm, group: newcomer.groups.first)))
       get root_path
       expect(inertia.props[:getting_started]).to eq("farms" => 1, "systems" => 1, "fields" => 1)
     end
@@ -425,10 +425,10 @@ RSpec.describe "Field status and daily entry", type: :request do
       field.record_entry(Date.new(2026, 7, 19), {irrigation_in: 0.8})
       field.record_entry(Date.new(2026, 7, 1), {irrigation_in: 0.5})
       get root_path
-      system = inertia.props[:farms].first["pivots"].first
-      expect(system).to include("kind" => pivot.kind, "pump_capacity_gpm" => 900,
+      props = inertia.props[:farms].first["systems"].first
+      expect(props).to include("kind" => system.kind, "pump_capacity_gpm" => 900,
         "recent_irrigation" => {"2026-07-19" => {field.id.to_s => 0.8}})
-      expect(system["log_fields"]).to eq([{
+      expect(props["log_fields"]).to eq([{
         "id" => field.id, "name" => "North potatoes", "acres" => 60.0, "here" => true,
         "seasons" => [{"from" => "2026-07-01", "to" => "2026-09-30", "here" => true, "rainfed" => false}]
       }])
@@ -437,11 +437,11 @@ RSpec.describe "Field status and daily entry", type: :request do
     end
 
     it "says which of a field's seasons ran on another system, which the dialog leaves out on those days" do
-      other = create(:pivot, farm:)
-      create(:planting, field:, pivot: other, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 4, 1),
+      other = create(:system, farm:)
+      create(:planting, field:, system: other, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 4, 1),
         end_date: Date.new(2026, 6, 20))
       get root_path
-      seasons = inertia.props[:farms].first["pivots"].find { |system| system["id"] == pivot.id }["log_fields"].first["seasons"]
+      seasons = inertia.props[:farms].first["systems"].find { |row| row["id"] == system.id }["log_fields"].first["seasons"]
       expect(seasons).to contain_exactly({"from" => "2026-04-01", "to" => "2026-06-20", "here" => false, "rainfed" => false},
         {"from" => "2026-07-01", "to" => "2026-09-30", "here" => true, "rainfed" => false})
     end
@@ -449,125 +449,125 @@ RSpec.describe "Field status and daily entry", type: :request do
     # RainAhead: the week's rain per weather zone of the operation's systems, never another's
     it "gives the week's rain in each of the operation's weather zones" do
       dates = (Date.new(2026, 7, 20)..Date.new(2026, 7, 29)).to_a
-      pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
+      system.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: dates.map { |date| {date: date.iso8601, precip_in: (date.day == 22) ? 0.4 : 0.0} }})
-      elsewhere = create(:pivot, latitude: 45.5)
+      elsewhere = create(:system, latitude: 45.5)
       elsewhere.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: dates.map { |date| {date: date.iso8601, precip_in: 1.0} }})
 
       get root_path
       rain = inertia.props[:rain]
       expect(rain.size).to eq(1)
-      expect(rain.first).to include("id" => pivot.weather_cell_id, "name" => pivot.name, "systems" => [pivot.name],
-        "pivot_ids" => [pivot.id], "coordinates" => WeatherZone.new(pivot.weather_cell, [pivot]).coordinates)
+      expect(rain.first).to include("id" => system.weather_cell_id, "name" => system.name, "systems" => [system.name],
+        "system_ids" => [system.id], "coordinates" => WeatherZone.new(system.weather_cell, [system]).coordinates)
       expect(rain.first["days"].map { |day| day["precip_in"] }).to eq([0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0])
     end
   end
 
-  describe "the irrigation calculator's equipment (PivotsController#equipment)" do
+  describe "the irrigation calculator's equipment (SystemsController#equipment)" do
     it "saves the pump capacity or depth at 100% and goes back to the page" do
-      patch equipment_pivot_path(pivot), params: {pivot: {pump_capacity_gpm: "1200"}}, headers: {"HTTP_REFERER" => daily_entry_url}
+      patch equipment_system_path(system), params: {system: {pump_capacity_gpm: "1200"}}, headers: {"HTTP_REFERER" => daily_entry_url}
       expect(response).to redirect_to(daily_entry_url)
-      expect(pivot.reload.pump_capacity_gpm).to eq(1200)
-      patch equipment_pivot_path(pivot), params: {pivot: {inches_at_100: "0.2"}}
-      expect(pivot.reload).to have_attributes(inches_at_100: 0.2, pump_capacity_gpm: 1200)
+      expect(system.reload.pump_capacity_gpm).to eq(1200)
+      patch equipment_system_path(system), params: {system: {inches_at_100: "0.2"}}
+      expect(system.reload).to have_attributes(inches_at_100: 0.2, pump_capacity_gpm: 1200)
     end
 
     it "keeps the system as it was when the value can't be saved, and says why" do
-      patch equipment_pivot_path(pivot), params: {pivot: {inches_at_100: "9"}}
-      expect(pivot.reload.inches_at_100).to be_nil
+      patch equipment_system_path(system), params: {system: {inches_at_100: "9"}}
+      expect(system.reload.inches_at_100).to be_nil
       expect(flash[:alert]).to match(/at most 3 inches/)
     end
 
     it "takes only those two values" do
-      patch equipment_pivot_path(pivot), params: {pivot: {name: "Renamed", pump_capacity_gpm: "800"}}
-      expect(pivot.reload).to have_attributes(name: pivot.name, pump_capacity_gpm: 800)
+      patch equipment_system_path(system), params: {system: {name: "Renamed", pump_capacity_gpm: "800"}}
+      expect(system.reload).to have_attributes(name: system.name, pump_capacity_gpm: 800)
     end
   end
 
   describe "an irrigation system's irrigation (D15: saved on each field)" do
-    let!(:other_field) { create(:field, pivot:, name: "North corn", area_acres: 50) }
+    let!(:other_field) { create(:field, system:, name: "North corn", area_acres: 50) }
 
-    def irrigation_on(date) = pivot.reload.irrigation_on(date).values.first&.to_h { |f, entry| [f.name, entry.irrigation_in] }
+    def irrigation_on(date) = system.reload.irrigation_on(date).values.first&.to_h { |f, entry| [f.name, entry.irrigation_in] }
 
     it "saves each field's amount, replaces it, and deletes the day" do
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8", other_field.id => "0.6"}}}
-      expect(response).to redirect_to(pivot_path(pivot))
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8", other_field.id => "0.6"}}}
+      expect(response).to redirect_to(system_path(system))
       expect(irrigation_on(Date.new(2026, 7, 10))).to eq("North corn" => 0.6, "North potatoes" => 0.8)
 
       field.field_entries.find_by(date: Date.new(2026, 7, 10)).update!(rain_in: 0.2)
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.7", other_field.id => ""}}}
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.7", other_field.id => ""}}}
       expect(irrigation_on(Date.new(2026, 7, 10))).to eq("North potatoes" => 0.7)
       expect(other_field.field_entries).to be_empty
 
-      delete pivot_irrigation_path(pivot, "2026-07-10")
-      expect(response).to redirect_to(pivot_path(pivot))
+      delete system_irrigation_path(system, "2026-07-10")
+      expect(response).to redirect_to(system_path(system))
       expect(irrigation_on(Date.new(2026, 7, 10))).to be_nil
       expect(field.field_entries.sole).to have_attributes(rain_in: 0.2, irrigation_in: nil) # the rain stays
     end
 
     it "leaves fields not sent as they were" do
       other_field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.5)
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8"}}}
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8"}}}
       expect(irrigation_on(Date.new(2026, 7, 10))).to eq("North corn" => 0.5, "North potatoes" => 0.8)
     end
 
     it "moves a day to another date, clearing the one it came from" do
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8"}}}
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-11", from: "2026-07-10", fields: {field.id => "0.8"}}}
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8"}}}
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-11", from: "2026-07-10", fields: {field.id => "0.8"}}}
       expect(irrigation_on(Date.new(2026, 7, 10))).to be_nil
       expect(irrigation_on(Date.new(2026, 7, 11))).to eq("North potatoes" => 0.8)
     end
 
     it "sets the field's plots that had its amount, as the field's own save does" do
-      plotted = create(:field, pivot:, name: "Plots", area_acres: 10)
+      plotted = create(:field, system:, name: "Plots", area_acres: 10)
       plot = create(:planting, field: plotted, partial: true, area_acres: 1, season_start: Date.new(2026, 7, 1),
         emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30))
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {plotted.id => "0.8"}}}
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-10", fields: {plotted.id => "0.8"}}}
       expect(plot.planting_entries.sole).to have_attributes(date: Date.new(2026, 7, 10), irrigation_in: 0.8)
-      delete pivot_irrigation_path(pivot, "2026-07-10")
+      delete system_irrigation_path(system, "2026-07-10")
       expect(plot.planting_entries.reload).to be_empty
     end
 
     it "writes only the fields on the system that day" do
-      elsewhere = create(:field, pivot: create(:pivot, farm:))
-      moved = create(:field, pivot:, name: "Moved")
+      elsewhere = create(:field, system: create(:system, farm:))
+      moved = create(:field, system:, name: "Moved")
       create(:planting, field: moved, season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1),
         end_date: Date.new(2026, 7, 12))
-      moved.update!(pivot: elsewhere.pivot)
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-15",
-                                                                fields: {elsewhere.id => "0.8", moved.id => "0.8", field.id => "0.5"}}}
+      moved.update!(system: elsewhere.system)
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-15",
+                                                                  fields: {elsewhere.id => "0.8", moved.id => "0.8", field.id => "0.5"}}}
       expect(elsewhere.field_entries).to be_empty
       expect(moved.field_entries).to be_empty # on another system by then
       expect(irrigation_on(Date.new(2026, 7, 15))).to eq("North potatoes" => 0.5)
 
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {moved.id => "0.4"}}}
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-10", fields: {moved.id => "0.4"}}}
       expect(moved.field_entries.sole).to have_attributes(date: Date.new(2026, 7, 10), irrigation_in: 0.4) # its season ran here
     end
 
     it "saves nothing when an amount is invalid, keyed by field" do
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8", other_field.id => "-1"}}},
-        headers: {"HTTP_REFERER" => pivot_path(pivot)}
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-10", fields: {field.id => "0.8", other_field.id => "-1"}}},
+        headers: {"HTTP_REFERER" => system_path(system)}
       expect(FieldEntry.where(field: [field, other_field])).to be_empty
       follow_redirect!
       expect(inertia.props[:errors]).to include("fields.#{other_field.id}.irrigation_in")
     end
 
     it "needs a date" do
-      post pivot_irrigations_path(pivot), params: {irrigation: {date: "", fields: {field.id => "0.8"}}},
-        headers: {"HTTP_REFERER" => pivot_path(pivot)}
+      post system_irrigations_path(system), params: {irrigation: {date: "", fields: {field.id => "0.8"}}},
+        headers: {"HTTP_REFERER" => system_path(system)}
       expect(field.field_entries).to be_empty
       follow_redirect!
       expect(inertia.props[:errors]).to include("date")
     end
 
-    it "lists a season's irrigation on the pivot page by date, newest first, with each field's amount" do
+    it "lists a season's irrigation on the system page by date, newest first, with each field's amount" do
       field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.8)
       other_field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.6)
       field.field_entries.create!(date: Date.new(2026, 7, 12), irrigation_in: 0.0)
       field.field_entries.create!(date: Date.new(2026, 7, 14), rain_in: 0.3)
       field.field_entries.create!(date: Date.new(2025, 7, 10), irrigation_in: 0.8)
-      get pivot_path(pivot)
+      get system_path(system)
       expect(inertia.props[:irrigations]).to eq([
         {"date" => "2026-07-12", "fields" => {field.id.to_s => 0.0}},
         {"date" => "2026-07-10", "fields" => {other_field.id.to_s => 0.6, field.id.to_s => 0.8}}
@@ -575,10 +575,10 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(inertia.props).not_to have_key(:field_amounts)
     end
 
-    it "lists the fields on the pivot with their seasons, a field moved away among them" do
+    it "lists the fields on the system with their seasons, a field moved away among them" do
       planting.update!(end_date: Date.new(2026, 7, 15))
-      field.update!(pivot: create(:pivot, farm:))
-      get pivot_path(pivot)
+      field.update!(system: create(:system, farm:))
+      get system_path(system)
       expect(inertia.props[:field_seasons]).to eq([
         {"id" => other_field.id, "name" => "North corn", "here" => true, "seasons" => []},
         {"id" => field.id, "name" => "North potatoes", "here" => false,
@@ -586,46 +586,46 @@ RSpec.describe "Field status and daily entry", type: :request do
       ])
     end
 
-    it "shows the week ahead in the pivot's weather zone, linking to it" do
-      pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
+    it "shows the week ahead in the system's weather zone, linking to it" do
+      system.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
         payload: {days: [{date: "2026-07-19", tmax_f: 80}, {date: "2026-07-20", tmax_f: 90, tmin_f: 70}]})
-      get pivot_path(pivot)
-      expect(inertia.props[:weather_zone]).to eq({"id" => pivot.weather_cell_id, "name" => pivot.name, "location" => pivot.weather_cell.location})
+      get system_path(system)
+      expect(inertia.props[:weather_zone]).to eq({"id" => system.weather_cell_id, "name" => system.name, "location" => system.weather_cell.location})
       expect(inertia.props[:forecast].map { |day| day[:date] }).to eq(["2026-07-20"])
 
-      get pivot_path(pivot, year: 2025)
+      get system_path(system, year: 2025)
       expect(inertia.props[:forecast]).to eq([])
     end
   end
 
   describe "bulk daily entry" do
-    let!(:other_field) { create(:field, pivot:, name: "North corn", area_acres: 50) }
+    let!(:other_field) { create(:field, system:, name: "North corn", area_acres: 50) }
 
-    it "shows every pivot and field for a date with modeled rain" do
+    it "shows every system and field for a date with modeled rain" do
       get daily_entry_path(date: "2026-07-05")
-      pivot_props = inertia.props[:farms].sole[:pivots].sole
-      expect(pivot_props[:fields].map { |f| [f[:name], f[:rain_model]] }).to eq([["North corn", 0.4], ["North potatoes", 0.4]])
+      system_props = inertia.props[:farms].sole[:systems].sole
+      expect(system_props[:fields].map { |f| [f[:name], f[:rain_model]] }).to eq([["North corn", 0.4], ["North potatoes", 0.4]])
       expect(inertia.props[:date]).to eq("2026-07-05")
     end
 
     it "shows what's already entered for the date, and the crop in season" do
       field.field_entries.create!(date: Date.new(2026, 7, 5), rain_in: 0.3, irrigation_in: 0.8, notes: "gauge")
       get daily_entry_path(date: "2026-07-05")
-      pivot_props = inertia.props[:farms].sole[:pivots].sole
-      expect(pivot_props).not_to have_key(:irrigation)
-      expect(pivot_props[:yesterday]).to be_nil
-      fields = pivot_props[:fields].index_by { |f| f[:name] }
+      system_props = inertia.props[:farms].sole[:systems].sole
+      expect(system_props).not_to have_key(:irrigation)
+      expect(system_props[:yesterday]).to be_nil
+      fields = system_props[:fields].index_by { |f| f[:name] }
       expect(fields["North potatoes"]).to include(entry: {"rain_in" => 0.3, "irrigation_in" => 0.8, "soil_moisture_pct" => nil})
       expect(fields["North potatoes"][:plantings].map { |planting| planting[:plant_name] }).to eq(["Potato"])
       expect(fields["North corn"]).to include(plantings: [], entry: nil)
     end
 
     it "leaves out the modeled rain on a system whose irrigation group uses only entered rain (Q7)" do
-      pivot_group = create(:pivot_group, farm:, pivots: [pivot], use_model_precip: false)
+      irrigation_group = create(:irrigation_group, farm:, systems: [system], use_model_precip: false)
       get daily_entry_path(date: "2026-07-05")
       farm_props = inertia.props[:farms].sole
-      expect(farm_props[:pivot_groups]).to eq([{"id" => pivot_group.id, "name" => pivot_group.name, "use_model_precip" => false}])
-      expect(farm_props[:pivots].sole[:fields].map { |f| f[:rain_model] }).to eq([nil, nil])
+      expect(farm_props[:irrigation_groups]).to eq([{"id" => irrigation_group.id, "name" => irrigation_group.name, "use_model_precip" => false}])
+      expect(farm_props[:systems].sole[:fields].map { |f| f[:rain_model] }).to eq([nil, nil])
     end
 
     it "saves each field's irrigation with its other values for the day" do
@@ -644,7 +644,7 @@ RSpec.describe "Field status and daily entry", type: :request do
     end
 
     it "ignores a field sent without values, and systems (irrigation is the fields')" do
-      patch daily_entry_path, params: {date: "2026-07-15", pivots: {pivot.id => {inches: 0.5}}, fields: {field.id => "0.3"}}
+      patch daily_entry_path, params: {date: "2026-07-15", systems: {system.id => {inches: 0.5}}, fields: {field.id => "0.3"}}
       expect(response).to redirect_to(daily_entry_path(date: "2026-07-15"))
       expect(FieldEntry.where(field: [field, other_field])).to be_empty
     end

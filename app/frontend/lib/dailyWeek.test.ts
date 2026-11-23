@@ -49,7 +49,7 @@ const rainRow: WeekRainRow = {
   days: [weekDay(), weekDay({ value: 0.4, fields: [{ id: 1, name: 'North', value: 0.4 }] }), varied],
 }
 const irrigationRow: WeekIrrigationRow = {
-  key: 'pivot-12',
+  key: 'system-12',
   id: 12,
   name: 'River',
   kind: 'center',
