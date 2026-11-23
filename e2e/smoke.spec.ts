@@ -69,7 +69,7 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   // A pivot's name links to its page: its irrigation, and its weather zone's week ahead (G.12)
   const pivot = page.getByRole('heading', { name: /^Irrigation system: / }).first()
   const name = (await pivot.textContent())!.replace('Irrigation system:', '').trim()
-  await expect(page.getByRole('link', { name: `Irrigation on ${name}` })).toBeVisible()
+  await expect(page.getByRole('link', { name: `View ${name}`, exact: true })).toBeVisible()
   await pivot.getByRole('link', { name }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Irrigation system: ${name}`)
   await expect(page.getByRole('heading', { name: /^Weather/, level: 2 })).toBeVisible()
@@ -1213,6 +1213,57 @@ test("adding a system's irrigation on a date that has one offers to edit it inst
   page.once('dialog', (dialog) => dialog.accept())
   await rows.first().getByRole('button', { name: 'Delete' }).click()
   await expect(rows).toHaveCount(before - 1)
+})
+
+test('logging irrigation from the dashboard, an amount on each field', async ({ page }) => {
+  // otherPivot's fields, yesterday (the system page's test above writes the first field's system today)
+  const system = DEMO.otherPivot
+  const [west, east] = ['Home West', 'Home East']
+  await page.goto('/')
+  await page.getByRole('button', { name: `Log irrigation on ${system}`, exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: `Log irrigation on ${system}` })
+  await expect(dialog.getByText(/^(Last irrigated|No irrigation entered)/)).toBeVisible()
+  await dialog.getByRole('button', { name: 'Yesterday' }).click()
+  const date = await dialog.getByLabel('Choose a date').inputValue()
+  for (const name of [west, east]) await dialog.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check()
+  // The calculator's workings open under the amount and fill it as they're typed
+  await dialog.getByRole('button', { name: `Work out ${system}'s irrigation` }).click()
+  await dialog.getByLabel('Hours it ran').fill('10')
+  await expect(dialog.getByLabel('Amount', { exact: true })).not.toHaveValue('')
+  await dialog.getByLabel('Amount', { exact: true }).fill('0.3')
+  await dialog.getByRole('button', { name: 'A different amount on each field' }).click()
+  await expect(dialog.getByLabel(`Irrigation on ${west}`)).toHaveValue('0.30')
+  await dialog.getByLabel(`Irrigation on ${east}`).fill('0.5')
+  await dialog.getByRole('button', { name: 'Save irrigation' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText('Irrigation saved')).toBeVisible()
+
+  // Again on that day: it warns before replacing, and closing with something typed asks first
+  await page.getByRole('button', { name: `Log irrigation on ${system}`, exact: true }).click()
+  // Fresh: the calculator's earlier result doesn't come back into the amount
+  await expect(dialog.getByLabel('Amount', { exact: true })).toHaveValue('')
+  await dialog.getByRole('button', { name: `Work out ${system}'s irrigation` }).click()
+  await expect(dialog.getByLabel('Hours it ran')).toHaveValue('')
+  await expect(dialog.getByLabel('Amount', { exact: true })).toHaveValue('')
+  await dialog.getByRole('button', { name: `Work out ${system}'s irrigation` }).click()
+  await dialog.getByRole('button', { name: 'Yesterday' }).click()
+  for (const name of [west, east]) await dialog.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check()
+  await dialog.getByLabel('Amount', { exact: true }).fill('0.4')
+  await expect(dialog.getByRole('status').filter({ hasText: 'Saving replaces it' })).toContainText(
+    `${east} (0.50 in) and ${west} (0.30 in)`,
+  )
+  await page.keyboard.press('Escape')
+  await dialog.getByRole('button', { name: 'Discard' }).click()
+  await expect(dialog).toBeHidden()
+
+  // On the system page, by field; deleted again
+  await page.getByRole('link', { name: `View ${system}`, exact: true }).click()
+  const shown = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' })
+  const row = page.locator('main table tbody tr').filter({ hasText: shown.format(new Date(`${date}T00:00:00Z`)) })
+  await expect(row).toContainText(`${east} (0.50 in), ${west} (0.30 in)`)
+  page.once('dialog', (confirm) => confirm.accept())
+  await row.getByRole('button', { name: 'Delete' }).click()
+  await expect(row).toHaveCount(0)
 })
 
 test('the weather charts follow the page width without overlapping', async ({ page }) => {

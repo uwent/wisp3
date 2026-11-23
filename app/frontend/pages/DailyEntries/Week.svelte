@@ -4,7 +4,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import DailyViewSwitch, { DAILY_VIEW_KEY } from '@/lib/components/DailyViewSwitch.svelte'
-  import IrrigationCalculator from '@/lib/components/IrrigationCalculator.svelte'
+  import IrrigationCalculatorDialog from '@/lib/components/IrrigationCalculatorDialog.svelte'
   import {
     cellErrors,
     changes,
@@ -295,7 +295,7 @@
                       <th scope="row" class="{nameCell} font-medium">{systemName(row)}</th>
                       <td class="py-1 align-middle">
                         {#if start}
-                          <IrrigationCalculator
+                          <IrrigationCalculatorDialog
                             system={row}
                             date={start}
                             days={calculatorDays(row)}

@@ -22,7 +22,7 @@ class PivotsController < AuthenticatedController
     }
   end
 
-  # The pump capacity or depth at 100% set in the irrigation calculator (IrrigationCalculator), back
+  # The pump capacity or depth at 100% set in the irrigation calculator (IrrigationCalculatorDialog), back
   # to the page it was on
   def equipment
     pivot = Current.group.pivots.find(params[:id])

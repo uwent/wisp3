@@ -56,8 +56,8 @@ function when(date: string, today: string): string {
   return name === 'Today' || name === 'Tomorrow' ? name.toLowerCase() : `on ${name}`
 }
 
-/** "0.20 in", or "0.10–0.40 in" when the amounts differ as shown */
-function amountRange(amounts: (number | null)[], units: Units): string {
+/** "0.20 in", or "0.10–0.40 in" when the amounts differ as shown (blanks left out) */
+export function amountRange(amounts: (number | null)[], units: Units): string {
   const known = amounts.filter((inches): inches is number => inches !== null)
   if (!known.length) return units.format('depth', null)
   const [low, high] = [Math.min(...known), Math.max(...known)].map((inches) => units.format('depth', inches))
@@ -87,12 +87,11 @@ export function rainSummary(zones: { days: RainDay[] }[], today: string, units: 
   const that = wet.filter((day) => day.date === date)
   const odds = that.some((day) => day.odds === 'likely') ? 'likely' : 'possible'
   const where = withDays.length === 1 ? '' : that.length === withDays.length ? ', all fields' : ', some fields'
-  return `Rain ${odds} ${when(date, today)}${where}, ${amountRange(
-    that.map((day) => day.precip_in),
-    units,
-  )}`
+  // The amount only when the forecast gives one (a possible day's can be none)
+  const amounts = that.map((day) => day.precip_in).filter((inches) => inches !== null && inches >= 0.005)
+  return `Rain ${odds} ${when(date, today)}${where}${amounts.length ? `, ${amountRange(amounts, units)}` : ''}`
 }
 
-/** A day with no chance of rain and none forecast */
+/** A day with no chance of rain (or none known) and none forecast; a day without an amount isn't */
 export const noRain = (day: Pick<RainDay, 'precip_in' | 'precip_chance'>): boolean =>
-  (day.precip_chance ?? 0) === 0 && (day.precip_in ?? 0) < 0.005
+  (day.precip_chance ?? 0) === 0 && day.precip_in !== null && day.precip_in < 0.005

@@ -419,6 +419,33 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(inertia.props[:getting_started]).to be_nil
     end
 
+    # The log irrigation dialog (docs/plans/phase-9.md §9): the calculator's equipment, the fields
+    # with their seasons here, and the recent irrigation it warns before replacing
+    it "gives each system what logging its irrigation needs" do
+      field.record_entry(Date.new(2026, 7, 19), {irrigation_in: 0.8})
+      field.record_entry(Date.new(2026, 7, 1), {irrigation_in: 0.5})
+      get root_path
+      system = inertia.props[:farms].first["pivots"].first
+      expect(system).to include("kind" => pivot.kind, "pump_capacity_gpm" => 900,
+        "recent_irrigation" => {"2026-07-19" => {field.id.to_s => 0.8}})
+      expect(system["log_fields"]).to eq([{
+        "id" => field.id, "name" => "North potatoes", "acres" => 60.0, "here" => true,
+        "seasons" => [{"from" => "2026-07-01", "to" => "2026-09-30", "here" => true}]
+      }])
+      expect(inertia.props[:log_dates]).to eq("default" => DailyEntryPage.default_date.iso8601, "from" => "2026-07-07",
+        "to" => "2026-07-27")
+    end
+
+    it "says which of a field's seasons ran on another system, which the dialog leaves out on those days" do
+      other = create(:pivot, farm:)
+      create(:planting, field:, pivot: other, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 4, 1),
+        end_date: Date.new(2026, 6, 20))
+      get root_path
+      seasons = inertia.props[:farms].first["pivots"].find { |system| system["id"] == pivot.id }["log_fields"].first["seasons"]
+      expect(seasons).to contain_exactly({"from" => "2026-04-01", "to" => "2026-06-20", "here" => false},
+        {"from" => "2026-07-01", "to" => "2026-09-30", "here" => true})
+    end
+
     # RainAhead: the week's rain per weather zone of the operation's systems, never another's
     it "gives the week's rain in each of the operation's weather zones" do
       dates = (Date.new(2026, 7, 20)..Date.new(2026, 7, 29)).to_a

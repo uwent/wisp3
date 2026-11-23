@@ -6,9 +6,11 @@
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import FieldRow from '@/lib/components/FieldRow.svelte'
   import GettingStarted from '@/lib/components/GettingStarted.svelte'
+  import LogIrrigationDialog from '@/lib/components/LogIrrigationDialog.svelte'
   import RainAhead, { type RainZone } from '@/lib/components/RainAhead.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
+  import type { LogSystemProps } from '@/lib/logIrrigation'
   import {
     filterByStatus,
     needsWaterFirst,
@@ -28,13 +30,17 @@
     farms,
     getting_started,
     rain,
+    log_dates,
   }: {
     today: string
-    farms: FarmGroup[]
+    /** Each system with what logging its irrigation needs (DashboardController#log_props) */
+    farms: FarmGroup<OverviewSystem & LogSystemProps>[]
     /** Until the operation has any planting: what's set up so far (PLAN.md G.6) */
     getting_started: { farms: number; systems: number; fields: number } | null
     /** The week's rain in each weather zone of the operation's systems */
     rain: RainZone[]
+    /** The day the log irrigation dialog starts on, and the first and last it offers */
+    log_dates: { default: string; from: string; to: string }
   } = $props()
 
   const units = $derived(currentUnits())
@@ -94,6 +100,26 @@
     const systemIds = new Set(shown.flatMap((farm) => farm.pivots.map((pivot) => pivot.id)))
     return rain.filter((zone) => zone.pivot_ids.some((id) => systemIds.has(id)))
   })
+  // Log irrigation (docs/plans/phase-9.md §9): one dialog, for the system (and field) it was opened
+  // for, found in the unfiltered farms so it has all the system's fields
+  let logOpen = $state(false)
+  let logging = $state<{ systemId: number; fieldId: number | null } | null>(null)
+  const logSystem = $derived(
+    logging && farms.flatMap((farm) => farm.pivots).find((pivot) => pivot.id === logging!.systemId),
+  )
+  const logRain = $derived((logging && rain.find((zone) => zone.pivot_ids.includes(logging!.systemId))?.days) ?? [])
+  function logIrrigation(systemId: number, fieldId: number | null = null) {
+    logging = { systemId, fieldId }
+    logOpen = true
+  }
+  const readOnly = $derived(isExample(page.props))
+  // "Irrigated since …?" due on one of the card's plantings
+  const irrigationDue = (card: Card) =>
+    card.plantings.some(
+      (summary) =>
+        summary.phase === 'active' && summary.tasks.some((task) => task.kind === 'irrigation_check' && task.due),
+    )
+
   const anyFields = $derived(farms.some((farm) => farm.pivots.some((pivot) => pivot.fields.length)))
 </script>
 
@@ -151,25 +177,50 @@
   <GettingStarted progress={getting_started} year={Number(today.slice(0, 4))} />
 {/if}
 {#snippet systemHeading(pivot: OverviewSystem)}
-  <div class="flex items-center justify-between gap-3">
-    <h3 id="pivot-{pivot.id}" class="min-w-0 truncate font-medium">
+  <!-- The links wrap under the name rather than squeezing it (a phone) -->
+  <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+    <h3 id="pivot-{pivot.id}" class="min-w-0 flex-1 basis-56 truncate font-medium">
       <span class="font-normal text-ink-muted">Irrigation system:</span>
       <Link
         href={pivots.show(pivot.id)}
         class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current">{systemName(pivot)}</Link
       >
     </h3>
-    <div class="flex shrink-0 gap-3 text-sm">
-      <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline" aria-label="Irrigation on {pivot.name}"
-        >Irrigation</Link
+    <div class="flex shrink-0 items-center gap-2 text-sm">
+      {#if !readOnly}
+        <button
+          type="button"
+          class="text-brand-600 hover:underline"
+          aria-label="Log irrigation on {pivot.name}"
+          onclick={() => logIrrigation(pivot.id)}>Log irrigation</button
+        >
+        <span class="text-ink-muted" aria-hidden="true">·</span>
+      {/if}
+      <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline" aria-label="View {pivot.name}"
+        >View</Link
       >
-      {#if !isExample(page.props)}
+      {#if !readOnly}
+        <span class="text-ink-muted" aria-hidden="true">·</span>
         <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
           >Edit</Link
         >
       {/if}
     </div>
   </div>
+{/snippet}
+
+<!-- Needs water first has no system headings: a field asked "Irrigated since …?" offers the dialog under it -->
+{#snippet logFromCard(card: Card, pivot: OverviewSystem, padding: string)}
+  {#if !readOnly && irrigationDue(card)}
+    <p class="text-xs {padding}">
+      <button
+        type="button"
+        class="text-brand-600 underline underline-offset-2"
+        aria-label="Log irrigation on {systemName(pivot)} for {card.name}"
+        onclick={() => logIrrigation(pivot.id, card.id)}>Log irrigation on {systemName(pivot)}</button
+      >
+    </p>
+  {/if}
 {/snippet}
 
 {#snippet noFields()}
@@ -195,14 +246,16 @@
           {#each flat as { card, pivot, farm } (card.id)}
             <li>
               <FieldRow {card} {today} {units} weather={weatherFor(pivot)} context={place(pivot, farm)} />
+              {@render logFromCard(card, pivot, 'px-3 pb-2')}
             </li>
           {/each}
         </ul>
       {:else}
         <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {#each flat as { card, pivot, farm } (card.id)}
-            <li>
+            <li class="space-y-1">
               <FieldCard {card} {today} {units} weather={weatherFor(pivot)} context={place(pivot, farm)} />
+              {@render logFromCard(card, pivot, 'px-1')}
             </li>
           {/each}
         </ul>
@@ -258,4 +311,16 @@
       </section>
     {/each}
   {/if}
+{/if}
+
+{#if logSystem}
+  <LogIrrigationDialog
+    bind:open={logOpen}
+    system={logSystem}
+    field={logging?.fieldId ?? null}
+    rain={logRain}
+    dates={log_dates}
+    {today}
+    {units}
+  />
 {/if}

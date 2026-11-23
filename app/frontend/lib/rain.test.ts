@@ -68,6 +68,10 @@ describe('rainSummary', () => {
     expect(rainSummary(zones, today, imperial)).toBe('Rain possible on Wed, some fields, 0.10 in')
   })
 
+  it('leaves out the amount when the forecast gives none', () => {
+    expect(rainSummary([zone(day(today, 0, 30))], today, imperial)).toBe('Rain possible today')
+  })
+
   it('leaves out which fields with one zone, and says when none is expected', () => {
     expect(rainSummary([zone(day(today, 0.3, 80))], today, imperial)).toBe('Rain likely today, 0.30 in')
     expect(rainSummary([zone(dry('2026-07-20'), dry('2026-07-21'))], today, imperial)).toBe(
@@ -81,6 +85,7 @@ describe('noRain', () => {
   it('is a day with no chance and no amount', () => {
     expect(noRain(day(today, 0, 0))).toBe(true)
     expect(noRain(day(today, 0, null))).toBe(true)
+    expect(noRain(day(today, null, null))).toBe(false)
     expect(noRain(day(today, 0.01, 0))).toBe(false)
     expect(noRain(day(today, 0, 5))).toBe(false)
   })

@@ -2,7 +2,7 @@
   import { Form, Link, page, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
-  import IrrigationCalculator from '@/lib/components/IrrigationCalculator.svelte'
+  import IrrigationCalculatorDialog from '@/lib/components/IrrigationCalculatorDialog.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { currentYear, formatDate, today as todayDate } from '@/lib/dates'
@@ -230,7 +230,7 @@
                 error={dayFields.length === 1 ? errs[`fields.${dayFields[0].id}.irrigation_in`] : undefined}
               >
                 {#snippet trailing()}
-                  <IrrigationCalculator
+                  <IrrigationCalculatorDialog
                     system={pivot}
                     fields={calculatorFields}
                     {date}

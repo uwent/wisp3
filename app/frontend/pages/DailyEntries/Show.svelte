@@ -4,7 +4,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import DailyViewSwitch, { DAILY_VIEW_KEY } from '@/lib/components/DailyViewSwitch.svelte'
-  import IrrigationCalculator from '@/lib/components/IrrigationCalculator.svelte'
+  import IrrigationCalculatorDialog from '@/lib/components/IrrigationCalculatorDialog.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import {
     farmRows,
@@ -417,7 +417,7 @@
               placeholder={amount.varies ? 'varies' : ''}
             >
               {#snippet trailing()}
-                <IrrigationCalculator
+                <IrrigationCalculatorDialog
                   system={pivot}
                   fields={calculatorFields(growing)}
                   {date}

@@ -48,7 +48,7 @@ class DailyEntryWeek
     {id: farm.id, name: farm.name, rain_rows:,
      irrigation_rows: (groups.flat_map(&:last) + ungrouped).map do |pivot|
        row("pivot-#{pivot.id}", pivot.name, [pivot], :irrigation_in).merge(id: pivot.id, kind: pivot.kind, kind_name: pivot.kind_name,
-         # For the irrigation calculator (IrrigationCalculator)
+         # For the irrigation calculator (IrrigationCalculatorDialog)
          pump_capacity_gpm: pivot.pump_capacity_gpm, inches_at_100: pivot.inches_at_100)
      end}
   end
