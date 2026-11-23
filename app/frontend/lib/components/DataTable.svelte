@@ -195,10 +195,9 @@
           <tr id={rowId?.(row)} class="{chosen ? 'bg-brand-50' : ''} {rowClass?.(row) ?? ''}">
             {#each columns as column (column.key)}
               <td
-                class="px-3 py-2 {alignClass[column.align ?? 'left']} {nowrap ? 'whitespace-nowrap' : ''} {pinClass(
-                  column,
-                  chosen,
-                )}"
+                class="px-3 py-2 {alignClass[column.align ?? 'left']} {nowrap && !column.wrap
+                  ? 'whitespace-nowrap'
+                  : ''} {pinClass(column, chosen)}"
                 style={pinStyle(column)}
               >
                 {#if cell}{@render cell(row, column)}{:else}{cellText(column, row)}{/if}

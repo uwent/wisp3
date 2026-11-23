@@ -1,5 +1,6 @@
-import { type LngLat, pointInPolygon } from '@/lib/geo'
+import { EARTH_RADIUS_M, type LngLat, pointInPolygon } from '@/lib/geo'
 import { type Boundary, boundaryBounds, boundaryRing, ringAreaM2 } from '@/lib/boundary'
+import { segmentDistance } from '@/lib/planar'
 
 // How much two field outlines overlap, to catch a shape that's already a field (an import's
 // duplicate, or two saved fields drawn over each other). Estimated on a grid of points over the
@@ -73,6 +74,43 @@ export function overlappingPairs<T extends Outline>(
       if (share >= least) pairs.push({ a: boxed[i].outline, b: boxed[j].outline, share })
     }
   return pairs.sort((x, y) => y.share - x.share)
+}
+
+/**
+ * Outlines this close (outlineDifferenceM) are the same shape: a file read again, or the same field
+ * boundary exported from another program. About 10 ft, inside a GPS's error and a boundary line's
+ * width on the imagery; a field redrawn or a corner moved is farther.
+ */
+export const SAME_OUTLINE_M = 3
+
+/**
+ * How far apart two outlines are, in meters: the farthest a corner of either lies from the other's
+ * edge (their Hausdorff distance, near enough: a field's corners are where outlines part). 0 for the
+ * same outline, whichever corner it starts at or way it runs. The overlap's grid can't tell the
+ * same shape from one a few percent off, so this, exact, decides whether a shape is already a field's.
+ */
+export function outlineDifferenceM(a: Boundary, b: Boundary): number {
+  const [ringA, ringB] = [boundaryRing(a), boundaryRing(b)]
+  // Plane coordinates in meters around the first outline, plenty at a field's scale
+  const [lng0, lat0] = ringA[0]
+  const cos = Math.cos((lat0 * Math.PI) / 180)
+  const toM = ([lng, lat]: LngLat) => [
+    (((lng - lng0) * Math.PI) / 180) * cos * EARTH_RADIUS_M,
+    (((lat - lat0) * Math.PI) / 180) * EARTH_RADIUS_M,
+  ]
+  const [xyA, xyB] = [ringA.map(toM), ringB.map(toM)]
+  const farthest = (corners: number[][], ring: number[][]) => {
+    let most = 0
+    for (const corner of corners) {
+      let nearest = Infinity
+      for (let i = 0; i + 1 < ring.length && nearest > most; i++) {
+        nearest = Math.min(nearest, segmentDistance(corner, ring[i], ring[i + 1]))
+      }
+      most = Math.max(most, nearest)
+    }
+    return most
+  }
+  return Math.max(farthest(xyA, xyB), farthest(xyB, xyA))
 }
 
 /** "85%" (a sliver rounds up to 1%) */

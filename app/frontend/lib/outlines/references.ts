@@ -7,6 +7,7 @@ import { LABEL_FONT, labelPaint } from '@/lib/map/basemaps'
 
 // What the outline pages draw for reference: irrigation systems (an outline,
 // or a point kind's dot) and fields' outlines, each named, the first one ("own") more strongly
+// unless ownFirst is false
 
 export type Reference = { name: string; boundary?: Boundary | null; shape?: PivotShape }
 
@@ -26,12 +27,18 @@ export function referenceBounds(reference: Reference): [LngLat, LngLat] | null {
 }
 
 /** The references as GeoJSON: outlines, dots and label points */
-export function referenceData(references: Reference[]) {
+export function referenceData(references: Reference[], { ownFirst = true } = {}) {
   const features = references.flatMap((reference, index) => {
-    const own = index === 0
+    const own = ownFirst && index === 0
+    // hoverName: the name on every part, for a hover label
+    const hoverName = reference.name
     if (reference.boundary) {
       return [
-        { type: 'Feature' as const, properties: { name: '', own, kind: 'field' }, geometry: reference.boundary },
+        {
+          type: 'Feature' as const,
+          properties: { name: '', hoverName, own, kind: 'field' },
+          geometry: reference.boundary,
+        },
         {
           type: 'Feature' as const,
           properties: { name: reference.name, own, kind: 'label' },
@@ -46,12 +53,12 @@ export function referenceData(references: Reference[]) {
       ring
         ? {
             type: 'Feature' as const,
-            properties: { name: '', own, kind: 'system' },
+            properties: { name: '', hoverName, own, kind: 'system' },
             geometry: { type: 'Polygon' as const, coordinates: [ring] },
           }
         : {
             type: 'Feature' as const,
-            properties: { name: '', own, kind: 'dot' },
+            properties: { name: '', hoverName, own, kind: 'dot' },
             geometry: { type: 'Point' as const, coordinates: at },
           },
       {
@@ -65,6 +72,8 @@ export function referenceData(references: Reference[]) {
 }
 
 const isSystem = ['==', ['get', 'kind'], 'system']
+/** A filter for the systems' outlines (not their dots, labels or fields) */
+export const SYSTEM_FILTER = isSystem as never
 
 /** The first of the reference layers, to draw others (soil types) under */
 export const FIRST_REFERENCE_LAYER = 'reference-casing'
@@ -73,10 +82,10 @@ export const FIRST_REFERENCE_LAYER = 'reference-casing'
  * The 'reference' source and its layers: systems in the system color on a dark casing (as on the
  * overview map), the field's own one wider; other fields' outlines faint white; and names
  */
-export function addReferenceLayers(map: MapLibreMap, references: Reference[]) {
+export function addReferenceLayers(map: MapLibreMap, references: Reference[], options: { ownFirst?: boolean } = {}) {
   // The map's system color and its casing (--color-map-system, --color-map-system-casing)
   const { system: SYSTEM, systemCasing: SYSTEM_CASING } = readPalette()
-  map.addSource('reference', { type: 'geojson', data: referenceData(references) as never })
+  map.addSource('reference', { type: 'geojson', data: referenceData(references, options) as never })
   map.addLayer({
     id: 'reference-casing',
     type: 'line',

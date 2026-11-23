@@ -19,6 +19,8 @@ export type Column<Row> = {
    * ones in order
    */
   pin?: 'left' | 'right'
+  /** Wraps its text in a table that otherwise doesn't (DataTable's nowrap): a long name, beside short numbers */
+  wrap?: boolean
 }
 
 /** What a cell shows: its text, or its value; blank when missing */

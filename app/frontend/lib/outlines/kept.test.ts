@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Boundary } from '@/lib/boundary'
 
-import { forgetKept, KEEP_FOR_MS, keepShapes, keptKey, readAt, readKept, toKept } from './kept'
+import { forgetAllKept, forgetKept, KEEP_FOR_MS, keepShapes, keptKey, readAt, readKept, toKept } from './kept'
 import type { ImportedShape } from './read'
 
 const square: Boundary = {
@@ -34,13 +34,13 @@ const NOW = Date.UTC(2026, 6, 20, 19, 14)
 
 describe('kept outline shapes', () => {
   afterEach(() => {
-    sessionStorage.clear()
+    localStorage.clear()
     vi.restoreAllMocks()
   })
 
-  it("keeps a file's shapes for the session, per operation, without the outlines of those that can't be saved", () => {
+  it("keeps a file's shapes in the browser, per operation, without the outlines of those that can't be saved", () => {
     expect(keepShapes(7, file, NOW)).toBe(true)
-    expect(sessionStorage.getItem(keptKey(7))).not.toBeNull()
+    expect(localStorage.getItem(keptKey(7))).not.toBeNull()
     const kept = readKept(7, NOW + 1000)!
     expect(kept.fileName).toBe('Fields.zip')
     expect(kept.savedAt).toBe(NOW)
@@ -59,11 +59,11 @@ describe('kept outline shapes', () => {
     expect(readKept(null, NOW)).toBeNull()
   })
 
-  it('forgets them after a day, or when asked', () => {
+  it('forgets them after a week, or when asked', () => {
     keepShapes(7, file, NOW)
     expect(readKept(7, NOW + KEEP_FOR_MS)).not.toBeNull()
     expect(readKept(7, NOW + KEEP_FOR_MS + 1)).toBeNull()
-    expect(sessionStorage.getItem(keptKey(7))).toBeNull()
+    expect(localStorage.getItem(keptKey(7))).toBeNull()
 
     keepShapes(7, file, NOW)
     forgetKept(7)
@@ -80,9 +80,9 @@ describe('kept outline shapes', () => {
       { ...toKept(file, NOW), shapes: [{ ...toKept(file, NOW).shapes[0], properties: [] }] },
     ]
     for (const value of malformed) {
-      sessionStorage.setItem(keptKey(7), JSON.stringify(value))
+      localStorage.setItem(keptKey(7), JSON.stringify(value))
       expect(readKept(7, NOW)).toBeNull()
-      expect(sessionStorage.getItem(keptKey(7))).toBeNull()
+      expect(localStorage.getItem(keptKey(7))).toBeNull()
     }
   })
 
@@ -104,5 +104,16 @@ describe('kept outline shapes', () => {
     const at = new Date(2026, 6, 20, 14, 14).getTime()
     expect(readAt(at, at + 60_000)).toBe('read at 2:14 pm')
     expect(readAt(at, new Date(2026, 6, 21, 9, 0).getTime())).toBe('read yesterday at 2:14 pm')
+    expect(readAt(at, new Date(2026, 6, 24, 9, 0).getTime())).toBe('read Jul 20 at 2:14 pm')
+  })
+
+  it("forgets every operation's shapes on signing out, and nothing else", () => {
+    keepShapes(7, file, NOW)
+    keepShapes(8, file, NOW)
+    localStorage.setItem('wisp:other', '1')
+    forgetAllKept()
+    expect(readKept(7, NOW)).toBeNull()
+    expect(readKept(8, NOW)).toBeNull()
+    expect(localStorage.getItem('wisp:other')).toBe('1')
   })
 })

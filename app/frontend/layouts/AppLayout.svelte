@@ -9,6 +9,7 @@
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
   import { formatDate } from '@/lib/dates'
+  import { forgetAllKept } from '@/lib/outlines/kept'
   import { stickyHeight } from '@/lib/stickyBars'
   import {
     about,
@@ -287,7 +288,10 @@
                 <DropdownMenu.Separator class="my-1 h-px bg-line" />
                 <DropdownMenu.Item
                   class={menuItem}
-                  onSelect={() => router.visit(usersSessions.destroy().url, { method: 'delete' })}
+                  onSelect={() => {
+                    forgetAllKept()
+                    router.visit(usersSessions.destroy().url, { method: 'delete' })
+                  }}
                 >
                   Sign out
                 </DropdownMenu.Item>

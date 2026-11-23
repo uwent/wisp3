@@ -1515,13 +1515,18 @@ test('a field shape is drawn corner by corner, or picked from a file of several'
   await page.getByRole('link', { name: 'Cancel' }).click()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
 
-  // The file's shapes are kept for the session: Setup's import offers them without reading it again
+  // The file's shapes are kept in the browser: Setup's import matches them as it opens, without
+  // reading the file again, and can forget them
   await page.getByRole('link', { name: 'Import field shapes' }).click()
-  await expect(page.getByText(/^The 2 shapes from clu_utm\.zip \(read at .*\) are still here\.$/)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Forget this file' })).toBeVisible()
-  await expect(page.getByLabel('Upload a new file')).toBeAttached()
-  await page.getByRole('button', { name: 'Use these shapes' }).click()
+  await expect(page.getByText(/^Shapes from clu_utm\.zip \(read at .*\)$/)).toBeVisible()
   await expect(page.getByText(/^2 shapes\./)).toBeVisible()
+  await expect(page.getByLabel('Choose another file')).toBeAttached()
+  await page.getByRole('button', { name: 'Forget this file' }).click()
+  await expect(page.getByText(/^2 shapes\./)).toBeHidden()
+  await expect(page.getByLabel('Choose a file')).toBeAttached()
+  await page.reload()
+  await expect(page.getByLabel('Choose a file')).toBeAttached()
+  await expect(page.getByText(/^Shapes from/)).toBeHidden()
   expect(errors).toEqual([])
 })
 
@@ -1574,8 +1579,9 @@ test('field shapes are imported from a shapefile, matched to fields or new ones'
   await expect(page.getByRole('heading', { name: 'Import field shapes', level: 1 })).toBeVisible()
   await page.getByLabel('Choose a file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
 
-  // Two shapes, named from FIELD_NAME, matching no field's name. The first covers an outlined field,
-  // so it starts as that field's update; made a new field instead, it says it overlaps that field
+  // Two shapes, named from FIELD_NAME, matching no field's name. The first covers an outlined field
+  // (not exactly its shape), so it starts as that field's update; made a new field instead, it says it
+  // overlaps that field
   await expect(page.getByText(/^2 shapes\./)).toBeVisible()
   await expect(page.getByLabel('Names from', { exact: true })).toHaveValue('FIELD_NAME')
   const first = page.locator('#shape-0')
@@ -1583,11 +1589,12 @@ test('field shapes are imported from a shapefile, matched to fields or new ones'
   await expect(first.getByRole('button', { name: 'Home North', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Fields to import' })).toBeVisible()
   await expect(page.getByRole('radio', { name: 'N–S' })).toBeChecked()
-  await expect(first.getByRole('radio', { name: 'Update field' })).toBeChecked()
+  await expect(first.getByRole('radio', { name: 'Update', exact: true })).toBeChecked()
   await expect(first.getByRole('combobox', { name: 'Field to update' })).toContainText(
     new RegExp(`^${literal(DEMO.coveredField)} \\(.*\\) · overlaps 100%`),
   )
-  await first.getByText('New field', { exact: true }).click()
+  await expect(first.getByText('Replaces its shape')).toBeVisible()
+  await first.getByText('New', { exact: true }).click()
   await expect(first.getByText(`Overlaps ${DEMO.coveredField} (100%)`)).toBeVisible()
   await expect(first.getByRole('button', { name: `Update ${DEMO.coveredField} instead` })).toBeVisible()
 
@@ -1601,7 +1608,7 @@ test('field shapes are imported from a shapefile, matched to fields or new ones'
   await expect(first.getByRole('radio', { name: 'Skip' })).toBeChecked()
 
   // The second outlines an existing field
-  await second.getByText('Update field', { exact: true }).click()
+  await second.getByText('Update', { exact: true }).click()
   const garden = await page
     .locator('#shape-1-field option', { hasText: new RegExp(`^${literal(DEMO.shapeField)}`) })
     .getAttribute('value')
@@ -1662,7 +1669,7 @@ test("field shapes under none of the operation's systems start skipped, without 
   await page.getByPlaceholder('Search the skipped shapes').fill('A-123')
   await page.getByRole('button', { name: 'Add Far Forty', exact: true }).click()
   await expect(page.locator('#shape-0').getByRole('button', { name: 'Far Forty', exact: true })).toBeVisible()
-  await expect(page.locator('#shape-0').getByRole('radio', { name: 'New field' })).toBeChecked()
+  await expect(page.locator('#shape-0').getByRole('radio', { name: 'New', exact: true })).toBeChecked()
   await expect(page.getByText('Choose the system that waters it')).toBeVisible()
   await expect(skipped).toBeHidden()
   expect(errors).toEqual([])

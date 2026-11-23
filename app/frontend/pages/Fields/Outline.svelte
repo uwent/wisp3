@@ -144,7 +144,7 @@
   // The server's errors arrive as a string or a list
   const listed = (error: string | string[] | undefined) => (error === undefined ? [] : [error].flat())
 
-  // A file: one shape is used; several are listed to pick one, and kept for the session so the
+  // A file: one shape is used; several are listed to pick one, and kept in the browser for a week so the
   // operation's other fields can be outlined from them without reading the file again (offered
   // when the page opens; lib/outlines/kept.ts)
   const groupId = page.props.auth.group?.id ?? null

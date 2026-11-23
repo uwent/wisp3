@@ -1,7 +1,7 @@
 import { boundsOf, distanceM, isPoint, type LngLat, type PivotShape, pivotOutline, pointInPolygon } from '@/lib/geo'
 import { type Boundary, boundaryBounds, boundaryCenter, inBoundary } from '@/lib/boundary'
 
-import { overlapShare, SAME_FIELD_SHARE, withBoxes } from './overlap'
+import { outlineDifferenceM, overlapShare, SAME_FIELD_SHARE, SAME_OUTLINE_M, withBoxes } from './overlap'
 
 // Matching imported outlines to the operation: each shape to the field of the same name, or the
 // field whose outline it mostly covers, or else a new field under the irrigation system it sits under
@@ -54,14 +54,36 @@ export function matchField(name: string, fields: ImportField[], systemId: number
 
 /** Where a shape goes: nowhere, an existing field, or a new field under a system */
 export type Choice = { kind: 'skip' } | { kind: 'field'; fieldId: number } | { kind: 'new' }
+/** A shape that's already a field's: the field, and how far apart the two outlines are (outlineDifferenceM) */
+export type SameAs = { fieldId: number; meters: number }
+
+/** Whether a shape is already the field's: their outlines within SAME_OUTLINE_M */
+export function sameAs(boundary: Boundary | null | undefined, field: ImportField): SameAs | null {
+  if (!boundary || !field.boundary) return null
+  const meters = outlineDifferenceM(boundary, field.boundary)
+  return meters <= SAME_OUTLINE_M ? { fieldId: field.id, meters } : null
+}
 
 /**
  * Each shape's starting choice: the field of its name; else the field whose outline it shares at
  * least half of (SAME_FIELD_SHARE, of the smaller), the largest overlaps first; else a new field when
  * a system is suggested; else skipped (and a shape that can't be saved is always skipped). A field
- * is matched once.
+ * is matched once. A shape matched to a field whose outline it already is (sameAs) is skipped, with
+ * that field: there's nothing to update.
  */
 export function initialChoices(
+  shapes: Parameters<typeof matchedChoices>[0],
+  fields: ImportField[],
+): { choice: Choice; same: SameAs | null }[] {
+  const byId = new Map(fields.map((field) => [field.id, field]))
+  return matchedChoices(shapes, fields).map((choice, index) => {
+    if (choice.kind !== 'field') return { choice, same: null }
+    const same = sameAs(shapes[index].boundary, byId.get(choice.fieldId)!)
+    return same ? { choice: { kind: 'skip' }, same } : { choice, same: null }
+  })
+}
+
+function matchedChoices(
   shapes: { name: string; systemId: number | null; problems: string[]; boundary?: Boundary | null }[],
   fields: ImportField[],
 ): Choice[] {

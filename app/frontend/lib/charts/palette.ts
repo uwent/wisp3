@@ -21,6 +21,10 @@ export type Palette = {
   /** Outlined fields on the map: one color, not a status (their badges carry that) */
   field: string
   fieldCasing: string
+  /** A file's shapes on Setup's import, by where each goes */
+  shapeNew: string
+  shapeUpdate: string
+  shapeSkip: string
   depths: [string, string, string, string]
   status: { full: string; ok: string; caution: string; irrigate: string }
   dark: boolean
@@ -42,6 +46,9 @@ const TOKENS = {
   systemCasing: '--color-map-system-casing',
   field: '--color-map-field',
   fieldCasing: '--color-map-field-casing',
+  shapeNew: '--color-map-shape-new',
+  shapeUpdate: '--color-map-shape-update',
+  shapeSkip: '--color-map-shape-skip',
 } as const
 
 /** A color from readPalette as #rrggbb, for libraries that take only hex (terra-draw) */

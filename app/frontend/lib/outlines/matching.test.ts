@@ -71,7 +71,12 @@ describe('matching shapes to fields', () => {
       ],
       fields,
     )
-    expect(choices).toEqual([{ kind: 'field', fieldId: 10 }, { kind: 'new' }, { kind: 'skip' }, { kind: 'skip' }])
+    expect(choices.map(({ choice }) => choice)).toEqual([
+      { kind: 'field', fieldId: 10 },
+      { kind: 'new' },
+      { kind: 'skip' },
+      { kind: 'skip' },
+    ])
   })
 
   it('starts a shape covering most of an outlined field at that field, the largest overlap winning', () => {
@@ -82,11 +87,36 @@ describe('matching shapes to fields', () => {
     const choices = initialChoices(
       [
         { name: 'CLU 7', systemId: 1, problems: [], boundary: square(-89.4996, 44.1) }, // about 80% of East 40
-        { name: 'CLU 8', systemId: 1, problems: [], boundary: square(-89.5, 44.1) }, // all of it: wins
+        { name: 'CLU 8', systemId: 1, problems: [], boundary: square(-89.5, 44.1, 0.0021) }, // all of it: wins
         { name: 'CLU 9', systemId: 1, problems: [], boundary: square(-89.5088, 44.1) }, // about 40% of West 40
       ],
       outlined,
     )
-    expect(choices).toEqual([{ kind: 'new' }, { kind: 'field', fieldId: 20 }, { kind: 'new' }])
+    expect(choices.map(({ choice }) => choice)).toEqual([
+      { kind: 'new' },
+      { kind: 'field', fieldId: 20 },
+      { kind: 'new' },
+    ])
+  })
+
+  it("skips a shape that's already its field's, by name or by overlap, saying whose", () => {
+    const outlined = [
+      { id: 20, name: 'East 40', pivot_id: 1, boundary: square(-89.5, 44.1) },
+      { id: 21, name: 'West 40', pivot_id: 1, boundary: square(-89.51, 44.1) },
+    ]
+    // The same corners from another starting corner, running the other way
+    const [ring] = square(-89.51, 44.1).coordinates
+    const reversed: Boundary = { type: 'Polygon', coordinates: [[...ring.slice(0, 4).reverse(), ring[3]]] }
+    const choices = initialChoices(
+      [
+        { name: 'East 40', systemId: 1, problems: [], boundary: square(-89.50001, 44.1) }, // about 1 m off
+        { name: 'CLU 9', systemId: 1, problems: [], boundary: reversed },
+      ],
+      outlined,
+    )
+    expect(choices.map(({ choice }) => choice)).toEqual([{ kind: 'skip' }, { kind: 'skip' }])
+    expect(choices[0].same?.fieldId).toBe(20)
+    expect(choices[0].same?.meters).toBeCloseTo(0.8, 1)
+    expect(choices[1].same).toEqual({ fieldId: 21, meters: 0 })
   })
 })

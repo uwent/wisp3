@@ -1,4 +1,4 @@
-import type { Choice } from './matching'
+import type { Choice, SameAs } from './matching'
 import type { ImportedShape } from './read'
 
 /**
@@ -8,6 +8,8 @@ import type { ImportedShape } from './read'
  */
 export class ImportRow {
   readonly shape: ImportedShape
+  /** The field whose shape it already is, as matched: skipped to start with */
+  readonly same: SameAs | null
   systemId = $state<number | null>(null)
   choice = $state.raw<Choice>({ kind: 'skip' })
   /** A new field's name: the shape's, until the grower types one */
@@ -22,14 +24,15 @@ export class ImportRow {
 
   constructor(
     shape: ImportedShape,
-    init: { systemId: number | null; choice: Choice; name: string; soilTypeId: number },
+    init: { systemId: number | null; choice: Choice; same?: SameAs | null; name: string; soilTypeId: number },
   ) {
     this.shape = shape
+    this.same = init.same ?? null
     this.systemId = init.systemId
     this.choice = init.choice
     this.name = init.name
     this.soilTypeId = init.soilTypeId
     this.carded = init.choice.kind !== 'skip'
-    this.lastFieldId = init.choice.kind === 'field' ? init.choice.fieldId : null
+    this.lastFieldId = init.choice.kind === 'field' ? init.choice.fieldId : (init.same?.fieldId ?? null)
   }
 }

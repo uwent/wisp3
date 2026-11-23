@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { LngLat } from '@/lib/geo'
 import type { Boundary } from '@/lib/boundary'
 
-import { overlappingPairs, overlapShare, sharePercent } from './overlap'
+import { outlineDifferenceM, overlappingPairs, overlapShare, sharePercent } from './overlap'
 
 const rect = (lng: number, lat: number, width = 0.004, height = 0.003): Boundary => ({
   type: 'Polygon',
@@ -58,5 +58,17 @@ describe('how much two outlines overlap', () => {
     ])
     expect(sharePercent(pairs[0].share)).toMatch(/^9\d%$/)
     expect(sharePercent(0.001)).toBe('1%')
+  })
+})
+
+describe('how far apart two outlines are', () => {
+  it('is 0 for the same outline, and the farthest corner from the other edge otherwise', () => {
+    expect(outlineDifferenceM(rect(-89.5, 44.1), rect(-89.5, 44.1))).toBe(0)
+    // 0.0001° of latitude is about 11 m: the taller one's top corners are that far from the other
+    expect(outlineDifferenceM(rect(-89.5, 44.1), rect(-89.5, 44.1, 0.004, 0.0031))).toBeCloseTo(11.1, 0)
+    // A corner added along an edge changes nothing
+    const [ring] = rect(-89.5, 44.1).coordinates
+    const extra: Boundary = { type: 'Polygon', coordinates: [[ring[0], [-89.498, 44.1], ...ring.slice(1)]] }
+    expect(outlineDifferenceM(rect(-89.5, 44.1), extra)).toBeCloseTo(0, 6)
   })
 })

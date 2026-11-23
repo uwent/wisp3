@@ -4,8 +4,12 @@
   import BrandBar from '@/lib/components/BrandBar.svelte'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
   import Logo from '@/lib/components/Logo.svelte'
+  import { forgetAllKept } from '@/lib/outlines/kept'
 
   let { children }: { children: Snippet } = $props()
+
+  // Signed out: an outline file kept in this browser goes, so the next person here doesn't see it
+  forgetAllKept()
 </script>
 
 <BrandBar />
