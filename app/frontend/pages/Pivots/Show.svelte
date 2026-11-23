@@ -7,7 +7,7 @@
   import ZoneWeather from '@/lib/components/ZoneWeather.svelte'
   import { currentYear, formatDate, today as todayDate } from '@/lib/dates'
   import { KIND_NOUNS, systemName } from '@/lib/geo'
-  import { common, type FieldSeasons, fieldsOn } from '@/lib/irrigation'
+  import { common, type FieldSeasons, fieldsOn, rainfedOn } from '@/lib/irrigation'
   import { isExample } from '@/lib/permissions'
   import { currentUnits } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
@@ -63,7 +63,12 @@
   // The fields on the system on the form's date: a field moved here or away is on it for the
   // seasons that ran here
   const dayFields = $derived(fieldsOn(field_seasons, date))
-  const shared = $derived(common(dayFields.map((field) => amounts[field.id] ?? null)))
+  // The ones the system's amount fills: not a rainfed field (D17), typed in its own box, unless it's all there is
+  const filledFields = $derived.by(() => {
+    const irrigated = dayFields.filter((field) => !rainfedOn(field, date))
+    return irrigated.length ? irrigated : dayFields
+  })
+  const shared = $derived(common(filledFields.map((field) => amounts[field.id] ?? null)))
 
   /** Puts a day's irrigation (or a new one) in the form; ask: first, if there are unsaved values */
   function edit(irrigation: IrrigationDay | null, ask = true) {
@@ -104,7 +109,7 @@
 
   const areas = $derived(Object.fromEntries(pivot.fields.map((field) => [field.id, field.area_acres])))
   const calculatorFields = $derived(
-    dayFields.map((field) => ({ id: field.id, name: field.name, acres: areas[field.id] ?? null })),
+    filledFields.map((field) => ({ id: field.id, name: field.name, acres: areas[field.id] ?? null })),
   )
 
   /** A day's amount: its fields' shared amount, else "varies" */
@@ -225,7 +230,14 @@
                 label={dayFields.length > 1 ? 'Amount on every field' : 'Amount'}
                 quantity="depth"
                 precision={units.digits('depth')}
-                bind:value={() => shared.value, (value) => fill(Object.keys(amounts).map(Number), value)}
+                bind:value={
+                  () => shared.value,
+                  (value) =>
+                    fill(
+                      filledFields.map((field) => field.id),
+                      value,
+                    )
+                }
                 placeholder={shared.varies ? 'varies' : ''}
                 error={dayFields.length === 1 ? errs[`fields.${dayFields[0].id}.irrigation_in`] : undefined}
               >
@@ -251,7 +263,11 @@
                   <tr class="align-top">
                     <td class="py-1 pr-4">
                       <!-- The box is named by its own (hidden) label, "Irrigation on North" -->
-                      <span class="block py-2" aria-hidden="true">{field.name}</span>
+                      <span class="block py-2" aria-hidden="true"
+                        >{field.name}{#if rainfedOn(field, date)}<span class="text-xs text-ink-muted"
+                            >{' · Rainfed'}</span
+                          >{/if}</span
+                      >
                     </td>
                     <td class="w-36 py-1">
                       <NumberField

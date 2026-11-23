@@ -10,6 +10,7 @@
     farmRows,
     fieldBox,
     fieldBoxes,
+    rainfedField,
     fieldHasEntry,
     fieldRowBoxes,
     inSeason,
@@ -107,13 +108,18 @@
     dirty = true
   }
 
-  /** The calculator's fields: each with the acres its run hours spread over (its crop's area, else the field's) */
+  /**
+   * The calculator's fields: each with the acres its run hours spread over (its crop's area, else
+   * the field's); not a rainfed one, whose irrigation is typed in its own box
+   */
   const calculatorFields = (fields: DayField[]) =>
-    fields.map((field) => ({
-      id: field.id,
-      name: field.name,
-      acres: wholeField(field)?.area_acres ?? field.area_acres,
-    }))
+    fields
+      .filter((field) => !rainfedField(field))
+      .map((field) => ({
+        id: field.id,
+        name: field.name,
+        acres: wholeField(field)?.area_acres ?? field.area_acres,
+      }))
   function applyToFields(pivot: DayPivot, inches: number, fieldIds: number[]) {
     for (const field of pivot.fields.filter((f) => fieldIds.includes(f.id))) fillIrrigation(fieldBoxes(field), inches)
   }
@@ -239,7 +245,9 @@
         <span>
           <Link href={fieldRoutes.show(field.id)} class="hover:underline">{field.name}</Link>
           <span class="block text-xs text-ink-muted">
-            {#if whole}{cropName(whole)}{fieldPlots.length ? ` + ${count(fieldPlots.length, 'plot')}` : ''}
+            {#if whole}{cropName(whole)}{whole.rainfed ? ' · Rainfed' : ''}{fieldPlots.length
+                ? ` + ${count(fieldPlots.length, 'plot')}`
+                : ''}
             {:else if fieldPlots.length}{count(fieldPlots.length, 'plot')}
             {:else}No crop{/if}
           </span>
@@ -304,7 +312,7 @@
     <tr class="align-top" hidden={hidden || !plotsOpen}>
       <th scope="row" class="{nameCell} bg-surface-raised font-normal {indent[depth + 1]}">
         <Link href={plantingRoutes.show(plot.id)} class="hover:underline">{cropName(plot)}</Link>
-        <span class="block text-xs text-ink-muted">{plotSize(plot, units)}</span>
+        <span class="block text-xs text-ink-muted">{plotSize(plot, units)}{plot.rainfed ? ' · Rainfed' : ''}</span>
       </th>
       <td class="px-1 py-1.5 sm:px-2"></td>
       <td class="px-1 py-1.5 sm:px-2">

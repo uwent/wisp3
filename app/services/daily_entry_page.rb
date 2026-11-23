@@ -70,6 +70,7 @@ class DailyEntryPage
 
   def planting_props(planting)
     {id: planting.id, plant_name: planting.plant.name, variety: planting.variety, partial: planting.partial?,
+     rainfed: planting.rainfed?,
      area_acres: planting.area_acres, plot_length_ft: planting.plot_length_ft, plot_width_ft: planting.plot_width_ft,
      entry: planting.partial? ? planting_entries[planting.id]&.slice(:irrigation_in, :soil_moisture_pct) : nil,
      cover: cover(planting)}

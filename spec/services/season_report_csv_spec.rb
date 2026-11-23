@@ -105,5 +105,15 @@ RSpec.describe SeasonReportCsv do
     expect(section_rows(rows)).to be_empty
   end
 
+  it "leaves rainfed plantings that weren't irrigated out of irrigation's spread and averages" do
+    dry = create(:field, pivot:, name: "Dry", area_acres: 40)
+    create(:planting, field: dry, rainfed: true, season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1),
+      end_date: Date.new(2026, 9, 30))
+    frontmatter = rows[1..].take_while(&:any?).map(&:sole)
+    expect(frontmatter).to include("Irrigation: 0.60 to 1.00 in by field, 0.80 in on average")
+    expect(section("Irrigation by irrigation system").sole).to include("Fields" => "2", "Area (acres)" => "120.0", "Irrigation (in)" => "0.7000")
+    expect(section("Fields").find { |row| row["Field"] == "Dry" }).to include("Water" => "Rainfed", "Irrigation (in)" => "0.0000")
+  end
+
   def section_rows(rows) = rows[(rows.index(["Fields"]) + 2)..].take_while(&:any?)
 end

@@ -1,8 +1,9 @@
 # An operation's season as one CSV, for its records (legacy's end-of-season report, for every field
 # at once): frontmatter (CsvExport) with a short summary, then three sections, each a title line, a
 # header and rows: the fields (each planting's crop and season totals), irrigation by pivot, and the
-# weather by zone (the weather grid cell its pivots share). Seasons count through today. The daily
-# detail is in each field's export and each pivot's weather export.
+# weather by zone (the weather grid cell its pivots share). Seasons count through today. Irrigation's
+# spread and averages leave out rainfed plantings that weren't irrigated (D17), whose zero isn't a
+# system's. The daily detail is in each field's export and each pivot's weather export.
 class SeasonReportCsv
   include CsvExport
 
@@ -35,7 +36,7 @@ class SeasonReportCsv
       "Season" => "#{@year}, counted through #{through}",
       "Fields" => "#{count(fields.size, "field")} on #{count(pivots.size, "pivot")} across #{count(farms.size, "farm")}, " \
         "#{acres.sum.round(1)} acres#{" (#{count(without_area, "field")} without an area)" if without_area.positive?}",
-      "Irrigation" => spread(by_field { |totals| totals.irrigation }),
+      "Irrigation" => spread(by_field(irrigated) { |totals| totals.irrigation }),
       "Rainfall" => spread(by_field { |totals| totals.rain }),
       "Sections" => "Fields; Irrigation by irrigation system; Weather by zone"
     }
@@ -43,7 +44,7 @@ class SeasonReportCsv
 
   def fields_section(csv)
     csv << ["Fields"]
-    csv << ["Farm", "Irrigation system", "Kind", "Equipment", "Field", "Area (acres)", "Part of the field", "Crop", "Variety", "Soil type", "Season start",
+    csv << ["Farm", "Irrigation system", "Kind", "Equipment", "Field", "Area (acres)", "Part of the field", "Crop", "Variety", "Water", "Soil type", "Season start",
       "Emergence", "Vine kill", "Harvest or kill", "Days counted", "Rainfall (in)", "Modeled rain (in)", "Irrigation (in)",
       "Days irrigated", "Adjusted ET (in)", "Deep drainage (in)", "Days below AD 0", "AD at end (in)",
       "Percent moisture at end", "Notes"]
@@ -51,18 +52,20 @@ class SeasonReportCsv
       planting, totals, last = status.planting, status.totals, status.current&.result
       field, system = planting.field, planting.system
       csv << [text(system.farm.name), text(system.name), system.kind_name, text(system.equipment),
-        text(field.name), planting.area_acres, planting.size_label, planting.plant.name, text(planting.variety), planting.soil_type.name, planting.season_start,
+        text(field.name), planting.area_acres, planting.size_label, planting.plant.name, text(planting.variety),
+        planting.rainfed? ? "Rainfed" : "Irrigated", planting.soil_type.name, planting.season_start,
         planting.emergence_date, planting.vine_kill_date, planting.end_date, status.days.size, num(totals.rain), num(totals.rain_model),
         num(totals.irrigation), totals.irrigation_days, num(totals.adj_et), num(totals.deep_drainage),
         totals.stress_days, num(last&.ad), num(last&.pct_moisture), text(planting.notes)]
     end
   end
 
-  # Each irrigation system's irrigation as the average over its fields, weighted by area when every field has one
+  # Each irrigation system's irrigation as the average over its fields, weighted by area when every
+  # field has one; rainfed plantings that weren't irrigated left out
   def pivots_section(csv)
-    csv << ["Irrigation by irrigation system (the average of its fields' season irrigation, weighted by area where every field has one)"]
+    csv << ["Irrigation by irrigation system (the average of its irrigated fields' season irrigation, weighted by area where every field has one)"]
     csv << ["Farm", "Irrigation system", "Kind", "Equipment", "Fields", "Area (acres)", "Days irrigated", "Irrigation (in)"]
-    statuses.group_by { |status| status.planting.system }.each do |pivot, pivot_statuses|
+    irrigated.group_by { |status| status.planting.system }.each do |pivot, pivot_statuses|
       by_field = pivot_statuses.group_by { |status| status.planting.field }
         .transform_values { |field_statuses| field_statuses.sum { |status| status.totals.irrigation } }
       areas = by_field.keys.map { |field| field_areas[field] }
@@ -120,10 +123,15 @@ class SeasonReportCsv
     end
   end
 
+  # The plantings irrigation is counted over: not a rainfed one that wasn't irrigated (D17)
+  def irrigated
+    @irrigated ||= statuses.reject { |status| status.rainfed? && status.totals.irrigation_days.zero? }
+  end
+
   # A season total for each field, adding up its plantings (a field can grow two crops in a year);
   # nil for a field none of whose plantings has one
-  def by_field
-    statuses.group_by { |status| status.planting.field }.values.map do |field_statuses|
+  def by_field(over = statuses)
+    over.group_by { |status| status.planting.field }.values.map do |field_statuses|
       values = field_statuses.filter_map { |status| yield status.totals }
       values.sum if values.any?
     end

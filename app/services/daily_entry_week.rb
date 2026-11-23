@@ -1,11 +1,13 @@
 # The props of daily entry's week view: rain and irrigation for the seven days ending on
 # a date, for a grower entering several days at once. Per farm, rain rows (each irrigation group with
 # a system in season any day of the week, then each system in season in no group, as the day page
-# orders them: farmRows in lib/dailyEntry.ts) and irrigation rows (each system in season any day).
+# orders them: farmRows in lib/dailyEntry.ts) and irrigation rows (each system with an irrigated
+# field in season any day).
 # Per row and day: whether it takes a value (a field in season under it that day; Field#pivot_id_on
 # places a field under the system its season ran on), and the fields typing there fills with their
 # amounts and their common value or "varies": rain for a group's or system's fields, irrigation for
-# a system's (stored per field, D15; saving a field's also sets its plots that had its amount).
+# a system's (stored per field, D15; saving a field's also sets its plots that had its amount), never
+# a rainfed field or plot's (D17: entered on the day page, field by field).
 # Fields, plots and canopy readings stay on the day page. Loads everything in a few queries, with
 # none per field or day.
 class DailyEntryWeek
@@ -50,7 +52,7 @@ class DailyEntryWeek
        row("pivot-#{pivot.id}", pivot.name, [pivot], :irrigation_in).merge(id: pivot.id, kind: pivot.kind, kind_name: pivot.kind_name,
          # For the irrigation calculator (IrrigationCalculatorDialog)
          pump_capacity_gpm: pivot.pump_capacity_gpm, inches_at_100: pivot.inches_at_100)
-     end}
+     end.select { |row| row[:days].any? { |day| day[:active] } }}
   end
 
   # attribute: :rain_in or :irrigation_in; irrigation's fields carry the acres the calculator spreads
@@ -67,14 +69,16 @@ class DailyEntryWeek
       next [{id: field.id, name: field.name, value:}] unless attribute == :irrigation_in
       plantings = field.plantings_on(date)
       whole = plantings.find { |planting| !planting.partial? }
+      next [] if whole&.rainfed?
       next [{id: field.id, name: field.name, value:, acres: whole&.area_acres || field.area_acres}] if whole || plantings.empty?
-      plantings.sort_by(&:order_key).map do |plot|
+      plantings.reject(&:rainfed?).sort_by(&:order_key).map do |plot|
         {id: plot.id, name: "#{field.name}: #{plot.plant.name}", value: planting_entries[[plot.id, date]]&.irrigation_in,
          acres: plot.area_acres, plot: true}
       end
     end
     values = amounts.map { |amount| amount[:value] }.uniq
-    {active: fields.any?, value: (values.first if values.size == 1), varies: values.size > 1, fields: amounts}
+    active = (attribute == :irrigation_in) ? amounts.any? : fields.any?
+    {active:, value: (values.first if values.size == 1), varies: values.size > 1, fields: amounts}
   end
 
   # The fields under the system on the date (its own, or those whose season there ran on it), by name

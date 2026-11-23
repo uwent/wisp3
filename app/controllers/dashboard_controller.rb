@@ -28,7 +28,9 @@ class DashboardController < AuthenticatedController
     fields = pivot.fields.sort_by { |field| [field.name.downcase, field.id] }.map do |field|
       seasons = field.plantings.sort_by(&:order_key)
       {id: field.id, name: field.name, acres: field.area_acres, here: true,
-       seasons: seasons.map { |planting| {from: planting.season_start, to: planting.end_date, here: planting.pivot_id == pivot.id} }}
+       seasons: seasons.map { |planting|
+         {from: planting.season_start, to: planting.end_date, here: planting.pivot_id == pivot.id, rainfed: planting.rainfed?}
+       }}
     end
     recent = pivot.fields.each_with_object({}) do |field, days|
       irrigation.fetch(field.id, []).each { |date, inches| (days[date.iso8601] ||= {})[field.id] = inches }

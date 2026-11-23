@@ -25,6 +25,7 @@ const planting = (id: number, values: Partial<DayPlanting> = {}): DayPlanting =>
   plant_name: 'Corn',
   variety: null,
   partial: false,
+  rainfed: false,
   area_acres: 10,
   plot_length_ft: null,
   plot_width_ft: null,
@@ -127,6 +128,20 @@ describe('irrigation boxes', () => {
   it("fills a field's and its plots' boxes, and a system's fields in season with their plots", () => {
     expect(fieldBoxes(withPlots)).toEqual(['field-2', 'plot-21', 'plot-22'])
     expect(systemBoxes(system)).toEqual(['field-1', 'field-2', 'plot-21', 'plot-22', 'field-3', 'plot-31', 'plot-32'])
+  })
+
+  it("leaves a rainfed field or plot out of a system's or field's fill, and Same as yesterday", () => {
+    const rainfed = field(5, [planting(50, { rainfed: true }), plot(51)])
+    const mixed = field(6, [planting(60), plot(61), { ...plot(62), rainfed: true }])
+    const dry = pivot(2, [rainfed, mixed])
+    expect(systemBoxes(dry)).toEqual(['plot-51', 'field-6', 'plot-61'])
+    expect(fieldBoxes(mixed)).toEqual(['field-6', 'plot-61'])
+    // Its own box still takes what's typed in it
+    expect(fieldRowBoxes(rainfed)).toEqual(['field-5'])
+    const plotsOnly = field(7, [{ ...plot(71), rainfed: true }, plot(72)])
+    expect(fieldRowBoxes(plotsOnly)).toEqual(['plot-72'])
+    const before = { ...dry, yesterday: { fields: { 5: 0.5, 6: 0.4 }, plantings: { 62: 0.3 } } }
+    expect(yesterdayBoxes(before)).toEqual({ 'field-6': 0.4, 'plot-51': null, 'plot-61': null })
   })
 
   it('reads every field and plot as saved', () => {

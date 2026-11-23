@@ -7,7 +7,7 @@
   import IrrigationCalculator from './IrrigationCalculator.svelte'
   import NumberField from './NumberField.svelte'
   import { addDays, formatDate } from '../dates'
-  import { fieldsOn } from '../irrigation'
+  import { fieldsOn, rainfedOn } from '../irrigation'
   import { systemName } from '../geo'
   import { inSeason, lastIrrigationLine, type LogSystemProps, replacing } from '../logIrrigation'
   import type { OverviewSystem } from '../overview'
@@ -58,12 +58,12 @@
   let worked = $state<number | null>(null)
   let calculator = $state<ReturnType<typeof IrrigationCalculator>>()
 
-  /** The fields in season on the day, or the one the dialog was opened for */
+  /** The fields in season on the day, but not a rainfed one (D17), or the one the dialog was opened for */
   const seasonal = (day: string) =>
     field !== null
       ? [field]
       : fieldsOn(system.log_fields, day)
-          .filter((f) => inSeason(f, day))
+          .filter((f) => inSeason(f, day) && !rainfedOn(f, day))
           .map((f) => f.id)
 
   // Fresh each time it opens
@@ -240,7 +240,8 @@
                 <!-- The note under the name, so a phone's narrow row keeps the name whole -->
                 <span class="min-w-0 leading-tight">
                   <span class="block truncate">{f.name}</span>
-                  {#if !inSeason(f, date)}<span class="block text-xs text-ink-muted">no crop that day</span>{/if}
+                  {#if !inSeason(f, date)}<span class="block text-xs text-ink-muted">no crop that day</span>
+                  {:else if rainfedOn(f, date)}<span class="block text-xs text-ink-muted">Rainfed</span>{/if}
                 </span>
               </label>
               {#if each && on}

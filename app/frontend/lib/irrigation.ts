@@ -11,9 +11,13 @@ export type FieldSeasons = {
   name: string
   // On the system now
   here: boolean
-  // Its plantings, the one Field#planting_on picks first; dates as ISO strings
-  seasons: { from: string; to: string; here: boolean }[]
+  // Its plantings, the one Field#planting_on picks first; dates as ISO strings; rainfed (D17)
+  seasons: { from: string; to: string; here: boolean; rainfed?: boolean }[]
 }
+
+/** Whether the field's crop that day (Field#planting_on's) is rainfed: a system's amount doesn't fill it */
+export const rainfedOn = (field: FieldSeasons, date: string): boolean =>
+  field.seasons.find((s) => s.from <= date && date <= s.to)?.rainfed ?? false
 
 export function fieldsOn<T extends FieldSeasons>(fields: T[], date: string): T[] {
   return fields.filter((field) => {

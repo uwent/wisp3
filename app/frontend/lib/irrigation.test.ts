@@ -9,6 +9,7 @@ import {
   hoursInches,
   outOfRange,
   percentInches,
+  rainfedOn,
 } from './irrigation'
 
 describe('fieldsOn', () => {
@@ -36,6 +37,23 @@ describe('fieldsOn', () => {
   it("takes the field's system now on days with nothing planted", () => {
     expect(fieldsOn(fields, '2026-07-01').map((f) => f.name)).toEqual(['Stayed', 'Here'])
     expect(fieldsOn(fields, '2025-12-01').map((f) => f.name)).toEqual(['Stayed', 'Here'])
+  })
+})
+
+describe('rainfedOn', () => {
+  it("is the field's crop that day, rainfed or not, and not rainfed with none", () => {
+    const field = {
+      id: 1,
+      name: 'East 9',
+      here: true,
+      seasons: [
+        { from: '2026-04-01', to: '2026-07-15', here: true, rainfed: true },
+        { from: '2026-07-16', to: '2026-10-10', here: true, rainfed: false },
+      ],
+    }
+    expect(rainfedOn(field, '2026-06-01')).toBe(true)
+    expect(rainfedOn(field, '2026-08-01')).toBe(false)
+    expect(rainfedOn(field, '2026-11-01')).toBe(false)
   })
 })
 

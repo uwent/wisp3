@@ -83,6 +83,22 @@ RSpec.describe DailyEntryWeek do
     expect(days[3]).to include(value: nil, varies: false)
   end
 
+  it "leaves a rainfed field or plot out of a system's irrigation, which it doesn't fill (D17)" do
+    n1 = field_on(north, "N1")
+    dry = field_on(north, "Dry")
+    dry.plantings.sole.update!(rainfed: true)
+    dry.field_entries.create!(date: week[0], irrigation_in: 0.3)
+    n1.field_entries.create!(date: week[0], irrigation_in: 0.8)
+    expect(farm_props[:irrigation_rows].sole[:days][0]).to include(active: true, value: 0.8, varies: false,
+      fields: [{id: n1.id, name: "N1", value: 0.8, acres: 60.0}])
+
+    lone = field_on(lane, "Lone")
+    lone.plantings.sole.update!(rainfed: true)
+    # A system with only rainfed fields has no irrigation row, but its rain
+    expect(farm_props[:irrigation_rows].map { |row| row[:name] }).to eq(["North"])
+    expect(farm_props[:rain_rows].find { |row| row[:name] == "Lane 3" }[:days][0]).to include(active: true)
+  end
+
   it "gives no common value on a day some fields have an amount and others none" do
     n1 = field_on(north, "N1")
     field_on(north, "N2")

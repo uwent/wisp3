@@ -204,6 +204,12 @@ RSpec.describe "Part-field plantings" do
       expect(irrigation(own)).to eq(0.4)
     end
 
+    it "never sets a rainfed plot (D17)" do
+      own.update!(rainfed: true)
+      field.record_entry(date, {irrigation_in: 0.6})
+      expect([irrigation(following), irrigation(own)]).to eq([0.6, nil])
+    end
+
     it "keeps a plot's other values when its irrigation follows" do
       following.planting_entries.create!(date:, soil_moisture_pct: 11)
       field.record_entry(date, {irrigation_in: 0.5})

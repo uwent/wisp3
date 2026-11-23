@@ -50,7 +50,8 @@ class Field < ApplicationRecord
 
   # Records the field's entry for date (FieldEntry.record, values: any of DailyEntry::VALUES) and,
   # when its irrigation changes, makes the same change on each plot in season that day that had the
-  # field's amount (D15: a plot's irrigation is its own, and one that had the field's follows it).
+  # field's amount (D15: a plot's irrigation is its own, and one that had the field's follows it),
+  # but never a rainfed plot, which takes only what's entered for it (D17).
   # plots_sent: plots whose own values the same save sets (daily entry's plot rows), left alone.
   # Returns the field's entry; check its errors.
   def record_entry(date, values, plots_sent: [])
@@ -59,7 +60,7 @@ class Field < ApplicationRecord
     entry = FieldEntry.record(field_entries, date, values)
     return entry if entry.errors.any? || !values.key?(:irrigation_in) || entry.irrigation_in == before
 
-    plantings_on(date).select { |planting| planting.partial? && plots_sent.exclude?(planting.id) }.each do |plot|
+    plantings_on(date).select { |planting| planting.partial? && !planting.rainfed? && plots_sent.exclude?(planting.id) }.each do |plot|
       next unless plot.planting_entries.find_by(date:)&.irrigation_in == before
       PlantingEntry.record(plot.planting_entries, date, irrigation_in: entry.irrigation_in)
     end

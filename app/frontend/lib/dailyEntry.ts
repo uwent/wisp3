@@ -24,6 +24,8 @@ export type DayPlanting = {
   plant_name: string
   variety: string | null
   partial: boolean
+  /** Not irrigated (D17): a system's or field's amount doesn't fill it */
+  rainfed: boolean
   area_acres: number | null
   plot_length_ft: number | null
   plot_width_ft: number | null
@@ -133,11 +135,28 @@ export function rainView(
 export const fieldBox = (id: number) => `field-${id}`
 export const plotBox = (id: number) => `plot-${id}`
 
-/** The boxes a field's row fills: the field's and its plots' */
-export const fieldBoxes = (field: DayField) => [fieldBox(field.id), ...plots(field).map((plot) => plotBox(plot.id))]
+/** A field's plots that are irrigated: a rainfed one (D17) takes only what's typed in its own box */
+const irrigatedPlots = (field: DayField) => plots(field).filter((plot) => !plot.rainfed)
 
-/** The boxes a system's row fills: its fields in season and their plots */
-export const systemBoxes = (pivot: DayPivot) => pivot.fields.filter(inSeason).flatMap(fieldBoxes)
+/** Whether the field's own crop that day (its whole-field planting) is rainfed */
+export const rainfedField = (field: DayField) => wholeField(field)?.rainfed ?? false
+
+/** The boxes a field's row fills: the field's and its irrigated plots' */
+export const fieldBoxes = (field: DayField) => [
+  fieldBox(field.id),
+  ...irrigatedPlots(field).map((plot) => plotBox(plot.id)),
+]
+
+/**
+ * The boxes a system's row fills: its fields in season and their plots, but none rainfed (a
+ * rainfed field's plots that are irrigated still are)
+ */
+export const systemBoxes = (pivot: DayPivot) =>
+  pivot.fields
+    .filter(inSeason)
+    .flatMap((field) =>
+      rainfedField(field) ? irrigatedPlots(field).map((plot) => plotBox(plot.id)) : fieldBoxes(field),
+    )
 
 /** Irrigation as saved, by box, for every field and plot */
 export function savedIrrigation(pivots: DayPivot[]): Record<string, number | null> {
@@ -162,16 +181,20 @@ export function rowAmount(
 }
 
 export const fieldRowBoxes = (field: DayField) =>
-  wholeField(field) || !plots(field).length ? [fieldBox(field.id)] : plots(field).map((plot) => plotBox(plot.id))
+  wholeField(field) || !irrigatedPlots(field).length
+    ? [fieldBox(field.id)]
+    : irrigatedPlots(field).map((plot) => plotBox(plot.id))
 
-/** "Same as yesterday": the day before's amounts for a system's fields in season and their plots, by box */
+/** "Same as yesterday": the day before's amounts for the boxes a system's row fills (systemBoxes), by box */
 export function yesterdayBoxes(pivot: DayPivot): Record<string, number | null> | null {
   if (!pivot.yesterday) return null
   const before = pivot.yesterday
   const boxes: Record<string, number | null> = {}
+  const filled = new Set(systemBoxes(pivot))
   for (const field of pivot.fields.filter(inSeason)) {
     boxes[fieldBox(field.id)] = before.fields[field.id] ?? null
     for (const plot of plots(field)) boxes[plotBox(plot.id)] = before.plantings[plot.id] ?? null
   }
+  for (const box of Object.keys(boxes)) if (!filled.has(box)) delete boxes[box]
   return boxes
 }

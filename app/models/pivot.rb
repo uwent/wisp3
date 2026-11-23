@@ -119,7 +119,9 @@ class Pivot < ApplicationRecord
       .map do |field|
         seasons = field.plantings.sort_by(&:order_key)
         {id: field.id, name: field.name, here: field.pivot_id == id,
-         seasons: seasons.map { |planting| {from: planting.season_start, to: planting.end_date, here: planting.pivot_id == id} }}
+         seasons: seasons.map { |planting|
+           {from: planting.season_start, to: planting.end_date, here: planting.pivot_id == id, rainfed: planting.rainfed?}
+         }}
       end
   end
 

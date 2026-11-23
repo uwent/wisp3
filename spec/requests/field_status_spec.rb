@@ -430,7 +430,7 @@ RSpec.describe "Field status and daily entry", type: :request do
         "recent_irrigation" => {"2026-07-19" => {field.id.to_s => 0.8}})
       expect(system["log_fields"]).to eq([{
         "id" => field.id, "name" => "North potatoes", "acres" => 60.0, "here" => true,
-        "seasons" => [{"from" => "2026-07-01", "to" => "2026-09-30", "here" => true}]
+        "seasons" => [{"from" => "2026-07-01", "to" => "2026-09-30", "here" => true, "rainfed" => false}]
       }])
       expect(inertia.props[:log_dates]).to eq("default" => DailyEntryPage.default_date.iso8601, "from" => "2026-07-07",
         "to" => "2026-07-27")
@@ -442,8 +442,8 @@ RSpec.describe "Field status and daily entry", type: :request do
         end_date: Date.new(2026, 6, 20))
       get root_path
       seasons = inertia.props[:farms].first["pivots"].find { |system| system["id"] == pivot.id }["log_fields"].first["seasons"]
-      expect(seasons).to contain_exactly({"from" => "2026-04-01", "to" => "2026-06-20", "here" => false},
-        {"from" => "2026-07-01", "to" => "2026-09-30", "here" => true})
+      expect(seasons).to contain_exactly({"from" => "2026-04-01", "to" => "2026-06-20", "here" => false, "rainfed" => false},
+        {"from" => "2026-07-01", "to" => "2026-09-30", "here" => true, "rainfed" => false})
     end
 
     # RainAhead: the week's rain per weather zone of the operation's systems, never another's
@@ -582,7 +582,7 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(inertia.props[:field_seasons]).to eq([
         {"id" => other_field.id, "name" => "North corn", "here" => true, "seasons" => []},
         {"id" => field.id, "name" => "North potatoes", "here" => false,
-         "seasons" => [{"from" => "2026-07-01", "to" => "2026-07-15", "here" => true}]}
+         "seasons" => [{"from" => "2026-07-01", "to" => "2026-07-15", "here" => true, "rainfed" => false}]}
       ])
     end
 
