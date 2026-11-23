@@ -12,7 +12,10 @@ class QuickSetupsController < AuthenticatedController
       seasons:,
       farms: Current.group.farms.order(:name).map { |farm| {id: farm.id, name: farm.name} },
       soil_types: ReferenceProps.soil_types,
-      default_soil_type_id: ReferenceProps.default_soil_type_id
+      default_soil_type_id: ReferenceProps.default_soil_type_id,
+      # The operation's field outlines, drawn on the map, and leaving a kept outline file's shapes already saved off it
+      field_outlines: Current.group.fields.where.not(boundary: nil).pluck(:name, :boundary)
+        .map { |name, boundary| {name:, boundary:} }
     }
   end
 

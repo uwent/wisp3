@@ -6,6 +6,8 @@
   import NumberField from '@/lib/components/NumberField.svelte'
   import KindIcon from '@/lib/components/KindIcon.svelte'
   import PivotMap from '@/lib/components/PivotMap.svelte'
+  import type { FileShapes } from '@/lib/outlines/fileShapes'
+  import type { SavedField } from '@/lib/outlines/layers'
   import SectionHeading from '@/lib/components/SectionHeading.svelte'
   import SoilSurvey from '@/lib/components/SoilSurvey.svelte'
   import {
@@ -39,6 +41,8 @@
     headingLevel = 'h3',
     surveyNote,
     locked = false,
+    fileShapes = null,
+    fields = [],
   }: {
     shape: ShapeDraft
     prefix: string
@@ -56,6 +60,10 @@
     surveyNote?: string
     /** A saved system: the map starts locked (unlocked with Edit on the map) and the kind is one line */
     locked?: boolean
+    /** A kept outline file's shapes not yet imported, drawn on the map as a guide */
+    fileShapes?: FileShapes | null
+    /** The operation's field outlines, on the map */
+    fields?: SavedField[]
   } = $props()
 
   let pivotMap = $state<PivotMap>()
@@ -148,7 +156,7 @@
     id="pivot-location"
     level={headingLevel}
   />
-  <PivotMap bind:this={pivotMap} bind:shape {others} {frame} {soilTypes} {locked} />
+  <PivotMap bind:this={pivotMap} bind:shape {others} {frame} {soilTypes} {locked} {fileShapes} {fields} />
 
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <CoordinatesField

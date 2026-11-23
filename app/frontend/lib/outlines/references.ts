@@ -72,20 +72,29 @@ export function referenceData(references: Reference[], { ownFirst = true } = {})
 }
 
 const isSystem = ['==', ['get', 'kind'], 'system']
-/** A filter for the systems' outlines (not their dots, labels or fields) */
-export const SYSTEM_FILTER = isSystem as never
 
 /** The first of the reference layers, to draw others (soil types) under */
-export const FIRST_REFERENCE_LAYER = 'reference-casing'
+export const FIRST_REFERENCE_LAYER = 'reference-hit'
+
+/** The hover label's line for each system under a point: "System: Home pivot" */
+export const SYSTEM_HOVER_LAYERS = ['reference-dot', 'reference-hit']
 
 /**
  * The 'reference' source and its layers: systems in the system color on a dark casing (as on the
- * overview map), the field's own one wider; other fields' outlines faint white; and names
+ * overview map), the field's own one wider; other fields' outlines faint, in the map's field color; and names
  */
 export function addReferenceLayers(map: MapLibreMap, references: Reference[], options: { ownFirst?: boolean } = {}) {
   // The map's system color and its casing (--color-map-system, --color-map-system-casing)
-  const { system: SYSTEM, systemCasing: SYSTEM_CASING } = readPalette()
+  const { system: SYSTEM, systemCasing: SYSTEM_CASING, field: FIELD } = readPalette()
   map.addSource('reference', { type: 'geojson', data: referenceData(references, options) as never })
+  // The systems' outlines, unseen, so a hover label can name one from anywhere inside it
+  map.addLayer({
+    id: 'reference-hit',
+    type: 'fill',
+    source: 'reference',
+    filter: isSystem as never,
+    paint: { 'fill-opacity': 0 },
+  })
   map.addLayer({
     id: 'reference-casing',
     type: 'line',
@@ -103,7 +112,7 @@ export function addReferenceLayers(map: MapLibreMap, references: Reference[], op
     source: 'reference',
     filter: ['==', ['geometry-type'], 'Polygon'],
     paint: {
-      'line-color': ['case', isSystem, SYSTEM, '#ffffff'] as never,
+      'line-color': ['case', isSystem, SYSTEM, FIELD] as never,
       'line-width': ['case', isSystem, ['case', ['get', 'own'], 2.5, 1.5], 1.2] as never,
       'line-opacity': ['case', ['get', 'own'], 1, isSystem, 0.7, 0.55] as never,
     },

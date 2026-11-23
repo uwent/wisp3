@@ -194,6 +194,21 @@ RSpec.describe "Setup", type: :request do
       expect(others["Neighbor"]).to include("farm_id" => farm.id, "fields_extent" => [[-89.5, 44.1], [-89.49, 44.11]])
       expect(others["Bare"]["fields_extent"]).to be_nil
     end
+
+    it "gives the operation's field outlines to the system form and quick setup, for the map, and only its own" do
+      ring = [[-89.5, 44.1], [-89.49, 44.1], [-89.49, 44.11], [-89.5, 44.11], [-89.5, 44.1]]
+      boundary = {"type" => "Polygon", "coordinates" => [ring]}
+      create(:field, pivot: create(:pivot, farm:), name: "East 40", boundary:)
+      create(:field, pivot: create(:pivot, farm: create(:farm)), boundary:)
+      get new_pivot_path(farm_id: farm.id)
+      expect(inertia.props[:field_outlines]).to eq([{"name" => "East 40", "boundary" => boundary}])
+
+      get edit_pivot_path(farm.pivots.first)
+      expect(inertia.props[:field_outlines]).to eq([{"name" => "East 40", "boundary" => boundary}])
+
+      get new_quick_setup_path
+      expect(inertia.props[:field_outlines]).to eq([{"name" => "East 40", "boundary" => boundary}])
+    end
   end
 
   describe "fields" do

@@ -2,6 +2,7 @@
   import 'maplibre-gl/dist/maplibre-gl.css'
 
   import { onMount, untrack } from 'svelte'
+  import { Link } from '@inertiajs/svelte'
   import type { GeoJSONSource, Map as MapLibreMap, Marker as MarkerClass } from 'maplibre-gl'
 
   import Button from '@/lib/components/Button.svelte'
@@ -27,7 +28,6 @@
     sweep,
     travelArrow,
     type LngLat,
-    type PivotKind,
     type PivotShape,
     type ShapeDraft,
   } from '@/lib/geo'
@@ -36,6 +36,26 @@
   import BasemapToggle from '@/lib/map/BasemapToggle.svelte'
   import { resizeCursor, ROTATE_CURSOR } from '@/lib/map/cursors'
   import PlaceSearch from '@/lib/map/PlaceSearch.svelte'
+  import { readPalette } from '@/lib/charts/palette'
+  import { boundaryBounds, boundaryCenter } from '@/lib/boundary'
+  import { boundsOf } from '@/lib/geo'
+  import type { FileShapes } from '@/lib/outlines/fileShapes'
+  import {
+    addSavedFieldLayers,
+    addShapeTier,
+    SAVED_FIELD_SOURCE,
+    savedFieldData,
+    shapeTierLayers,
+    showLayers,
+    type Swatch,
+    type SavedField,
+    swatches,
+  } from '@/lib/outlines/layers'
+  import { addReferenceLayers, SYSTEM_HOVER_LAYERS } from '@/lib/outlines/references'
+  import HoverLabel from '@/lib/map/HoverLabel.svelte'
+  import { MapHover, propertiesAt } from '@/lib/map/hover.svelte'
+  import MapLegend from '@/lib/map/MapLegend.svelte'
+  import { newOutlineImport } from '@/routes'
   import { SOIL_SOURCE, SoilTypesLayer } from '@/lib/map/soilTypes.svelte'
   import SoilTypesHover from '@/lib/map/SoilTypesHover.svelte'
   import SoilTypesLegend from '@/lib/map/SoilTypesLegend.svelte'
@@ -53,7 +73,10 @@
   // end that turns it. A point kind (a traveler, drip, a location) is just the pin. The group's
   // other irrigation systems are drawn for reference. A place search moves
   // the map (it doesn't place the pivot), and an arrow at the edge points back to the pivot when
-  // it's out of view. A saved system's map starts locked (`locked`), so a stray click or drag
+  // it's out of view. The map shares the setup maps' symbology (lib/outlines/layers.ts), with a
+  // legend: bottom to top, a kept outline file's shapes not yet imported (fileShapes, a layer on to
+  // start with, gray and named, a guide to place systems on), the operation's saved fields, its other
+  // systems (muted) and this one. A saved system's map starts locked (`locked`), so a stray click or drag
   // can't move it: Edit on the map unlocks it, Done editing keeps the changes (the form's Save saves
   // them) and Cancel puts back the shape from before, as on the field shape page.
   let {
@@ -63,6 +86,8 @@
     soilTypes = [],
     height = 'min(36rem, 60vh)',
     locked = false,
+    fileShapes = null,
+    fields = [],
   }: {
     shape: ShapeDraft
     others?: Outline[]
@@ -73,6 +98,10 @@
     height?: string
     /** Start locked (an existing system): the map moves nothing until Edit on the map */
     locked?: boolean
+    /** A kept outline file's shapes not yet imported (lib/outlines/fileShapes.ts) */
+    fileShapes?: FileShapes | null
+    /** The operation's field outlines */
+    fields?: SavedField[]
   } = $props()
 
   // Wisconsin's Central Sands, where most WISP pivots are
@@ -81,20 +110,20 @@
   const MIN_SWEEP_DEG = 5
 
   // Our sources, carried over when the basemap changes
-  const OWN_SOURCES = ['others', 'pivot', SOIL_SOURCE]
+  const OWN_SOURCES = ['file-shapes', SAVED_FIELD_SOURCE, 'reference', 'pivot', SOIL_SOURCE]
+  const FILE_SHAPE_LAYERS = [...shapeTierLayers('file-shapes', 'skip'), 'file-shapes-label']
+  // This system, in a stronger blue than the others' cyan
+  const THIS_SYSTEM = '#3987e5'
+  let fileShapesOn = $state(true)
   // Soil types are shown around the pivot, or in the view once zoomed in this far without one
   const SOIL_ZOOM = 13
   const SOIL_MARGIN_M = 900
 
-  // Where to click, for each kind
-  const PLACE_HINTS: Record<PivotKind, string> = {
-    center: 'Click the map at the center of the pivot, or enter its coordinates below',
-    linear: 'Click the map in the middle of the area the linear irrigates, or enter its coordinates below',
-    traveler: 'Click the map at the field this traveler waters, or enter its coordinates below',
-    solid_set: 'Click the map at the middle of the solid set block, or enter its coordinates below',
-    drip: 'Click the map at the middle of the drip block, or enter its coordinates below',
-    point: 'Click the map at the field, or enter its coordinates below',
-  }
+  // Where to click, above the map while the system has no location, and over it until the map's touched
+  const PLACE_HINT = 'Click the map at the center of the irrigation system, or enter its coordinates below.'
+  let touched = $state(false)
+  // A click nearer the center than this share of the system's reach doesn't move it (a click meant for the pin)
+  const MOVE_SHARE = 0.15
 
   type Handle = 'radius' | 'start' | 'end' | 'frontLeft' | 'backRight' | 'rotate'
 
@@ -106,11 +135,9 @@
   let handles: Partial<Record<Handle, MarkerClass>> = {}
   let handleSet = ''
   let basemap = $state<Basemap>('imagery')
-  const soilLayer = new SoilTypesLayer(() => soilTypes, soilArea, 'others-line')
+  const soilLayer = new SoilTypesLayer(() => soilTypes, soilArea, FILE_SHAPE_LAYERS[0])
   /** For the soil survey beside the map, to show its soils on the map */
   export const soil = soilLayer
-  let locating = $state(false)
-  let locateError = $state<string | null>(null)
   let pointer = $state<{ x: number; y: number; angle: number } | null>(null)
   let placeSearch: PlaceSearch | undefined = $state()
   // Whether clicks and drags change the shape; the shape when editing began, for Cancel
@@ -184,63 +211,58 @@
     }
   }
 
-  // Another system: its outline, or a point kind's location
-  function otherFeature(other: Outline) {
-    const ring = pivotOutline(other)
-    if (ring) return feature(ring, other.name)
-    return {
-      type: 'Feature' as const,
-      properties: { name: other.name },
-      geometry: { type: 'Point' as const, coordinates: [other.longitude, other.latitude] as LngLat },
-    }
-  }
+  // The file's shapes, as the import map draws a skipped one, and named
+  const fileShapeData = () => ({
+    type: 'FeatureCollection' as const,
+    features: (fileShapes?.shapes ?? []).flatMap((fileShape) => [
+      {
+        type: 'Feature' as const,
+        properties: { name: '', hoverName: fileShape.name, state: 'skip' },
+        geometry: fileShape.boundary,
+      },
+      {
+        type: 'Feature' as const,
+        properties: { name: fileShape.name },
+        geometry: { type: 'Point' as const, coordinates: boundaryCenter(fileShape.boundary) },
+      },
+    ]),
+  })
 
   function addLayers(m: MapLibreMap) {
-    m.addSource('others', {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: others.map(otherFeature),
-      },
-    })
+    const palette = readPalette()
+    m.addSource('file-shapes', { type: 'geojson', data: fileShapeData() as never })
+    addShapeTier(m, palette, 'file-shapes', 'skip', fileShapesOn)
+    addSavedFieldLayers(m, palette, fields)
     m.addLayer({
-      id: 'others-point',
-      type: 'circle',
-      source: 'others',
-      filter: ['==', ['geometry-type'], 'Point'],
-      paint: { 'circle-radius': 6, 'circle-color': '#ffffff', 'circle-opacity': 0.7 },
-    })
-    m.addLayer({
-      id: 'others-line',
-      type: 'line',
-      source: 'others',
-      paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0.7 },
-    })
-    m.addLayer({
-      id: 'others-label',
+      id: 'file-shapes-label',
       type: 'symbol',
-      source: 'others',
+      source: 'file-shapes',
+      filter: ['==', ['geometry-type'], 'Point'],
       layout: {
+        visibility: fileShapesOn ? 'visible' : 'none',
         'text-field': ['get', 'name'],
         'text-size': 12,
         'text-font': LABEL_FONT,
-        'text-variable-anchor': ['center', 'top'],
-        'text-radial-offset': 0.8,
       },
       paint: labelPaint(),
     })
+    addReferenceLayers(
+      m,
+      others.map((other) => ({ name: other.name, shape: other })),
+      { ownFirst: false },
+    )
     m.addSource('pivot', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
     m.addLayer({
       id: 'pivot-fill',
       type: 'fill',
       source: 'pivot',
-      paint: { 'fill-color': '#3987e5', 'fill-opacity': 0.25 },
+      paint: { 'fill-color': THIS_SYSTEM, 'fill-opacity': 0.25 },
     })
     m.addLayer({
       id: 'pivot-line',
       type: 'line',
       source: 'pivot',
-      paint: { 'line-color': '#3987e5', 'line-width': ['match', ['get', 'role'], 'arrow', 2, 2.5] },
+      paint: { 'line-color': THIS_SYSTEM, 'line-width': ['match', ['get', 'role'], 'arrow', 2, 2.5] },
       layout: { 'line-cap': 'round', 'line-join': 'round' },
     })
     drawPivot()
@@ -449,6 +471,42 @@
     return [view.getWest(), view.getSouth(), view.getEast(), view.getNorth()]
   }
 
+  // The file's shapes, once they're in: drawn, and framed with the farm's systems while the system has no location
+  let framedFile: FileShapes | null = null
+  $effect(() => {
+    const file = fileShapes
+    const m = map
+    untrack(() => {
+      m?.getSource<GeoJSONSource>('file-shapes')?.setData(fileShapeData() as never)
+      if (!m || !file || file === framedFile || center) return
+      framedFile = file
+      const corners = file.shapes.flatMap((fileShape) => boundaryBounds(fileShape.boundary))
+      m.fitBounds(boundsOf([...corners, ...(frame ?? [])])!, { padding: 60, maxZoom: PIVOT_ZOOM, duration: 600 })
+    })
+  })
+  $effect(() => {
+    const on = fileShapesOn
+    untrack(() => showLayers(map, FILE_SHAPE_LAYERS, on))
+  })
+  $effect(() => {
+    const outlines = fields
+    const m = map
+    untrack(() => m?.getSource<GeoJSONSource>(SAVED_FIELD_SOURCE)?.setData(savedFieldData(outlines) as never))
+  })
+
+  // The legend: this system and the others, then the saved fields and the file's shapes when shown
+  const legend = swatches(readPalette())
+  const legendRows = $derived<Swatch[][]>([
+    [
+      { label: `This ${noun}`, color: THIS_SYSTEM, width: 2.5, filled: true, round: true },
+      ...(others.length ? [{ ...legend.system, label: 'Other irrigation systems' }] : []),
+    ],
+    [
+      ...(fields.length ? [legend.saved] : []),
+      ...(fileShapes && fileShapesOn ? [{ ...legend.skip, label: 'Not yet imported' }] : []),
+    ],
+  ])
+
   // Load again when the pivot moves out of the loaded area
   $effect(() => {
     void [center, reachM]
@@ -469,29 +527,45 @@
     if (center) map?.flyTo({ center, zoom: Math.max(map.getZoom(), PIVOT_ZOOM - 1) })
   }
 
-  function locate() {
-    if (!navigator.geolocation)
-      return (locateError = "This browser can't share your location. Click the map or search for a place instead.")
-    locating = true
-    locateError = null
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        locating = false
-        setCenter([coords.longitude, coords.latitude])
-        map?.flyTo({ center: [coords.longitude, coords.latitude], zoom: PIVOT_ZOOM })
-      },
-      () => {
-        locating = false
-        locateError = "Couldn't get your location. Check that location sharing is allowed, or click the map instead."
-      },
-      { enableHighAccuracy: true, timeout: 10_000 },
-    )
-  }
+  // Beside the pointer: this system, the others, the saved fields and the file's shapes under it,
+  // and what a click there would do
+  let box = $state<HTMLDivElement>()
+  const hover = new MapHover(
+    (m, at) => {
+      const named = [
+        ...new Set([
+          ...propertiesAt(m, at, ['pivot-fill']).map(() => `This ${noun}`),
+          ...propertiesAt(m, at, SYSTEM_HOVER_LAYERS).map((properties) => `System: ${properties.hoverName}`),
+          ...propertiesAt(m, at, ['saved-fields-hit']).map((properties) => String(properties.hover)),
+          ...propertiesAt(m, at, [FILE_SHAPE_LAYERS[0]]).map(
+            (properties) => `Not yet imported: ${properties.hoverName || 'unnamed shape'}`,
+          ),
+        ]),
+      ]
+      // With something named, the soil type joins this label in place of its own (SoilTypesHover)
+      const soil = propertiesAt(m, at, ['soil-types-fill']).map((properties) => `Soil: ${properties.name}`)
+      return named.length ? [...named, ...soil.slice(0, 1)] : []
+    },
+    () => box,
+    (m, at) => {
+      if (!editing) return null
+      if (!center) return `Click to place the ${noun} here`
+      // A click this near the system's center doesn't move it
+      const { lng, lat } = m.unproject(at)
+      return distanceM(center, [lng, lat]) > reachM * MOVE_SHARE ? `Click to move the ${noun} here` : null
+    },
+  )
+  let stopHover = () => {}
 
-  onMount(() =>
-    createMap(container, basemap, (m, maplibre) => {
+  onMount(() => {
+    const remove = createMap(container, basemap, (m, maplibre) => {
       const { LngLatBounds } = maplibre
       Marker = maplibre.Marker
+      // Under the zoom buttons: the map to where the grower is (it moves the map, not the system)
+      m.addControl(
+        new maplibre.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false }),
+        'top-right',
+      )
       if (center) {
         m.jumpTo({ center, zoom: PIVOT_ZOOM })
       } else if (frame) {
@@ -505,6 +579,7 @@
       m.on('load', () => {
         addLayers(m)
         placeMarkers()
+        stopHover = hover.attach(m)
       })
       soilLayer.attach(m)
       m.on('move', updatePointer)
@@ -524,17 +599,39 @@
             bounds.extend(corner)
           }
           if (m.getZoom() < PIVOT_ZOOM - 1) m.fitBounds(bounds, { padding: 40, maxZoom: PIVOT_ZOOM, duration: 600 })
-        } else if (distanceM(center, point) > reachM * 0.15) {
+        } else if (distanceM(center, point) > reachM * MOVE_SHARE) {
           setCenter(point)
         }
       })
       map = m
-    }),
-  )
+    })
+    return () => {
+      stopHover()
+      remove()
+    }
+  })
 </script>
 
 <div class="space-y-2">
-  <div class="relative overflow-hidden rounded-lg border border-line" style:height>
+  {#if !center}<p class="text-sm text-ink-muted">{PLACE_HINT}</p>{/if}
+  {#if fileShapes}
+    <p class="text-sm text-ink-muted">
+      {`The ${fileShapes.shapes.length === 1 ? 'shape' : `${fileShapes.shapes.length.toLocaleString('en-US')} shapes`} from ${fileShapes.fileName} not yet imported ${fileShapes.shapes.length === 1 ? 'is' : 'are'} a layer on the map (Layers), gray and named, to place your irrigation systems on. Once their systems are set up, `}<Link
+        href={newOutlineImport()}
+        class="text-brand-600 underline">import the shapes as fields</Link
+      >.
+    </p>
+  {/if}
+  <!-- Any use of the map takes the hint off it -->
+  <div
+    bind:this={box}
+    class="relative overflow-hidden rounded-lg border border-line"
+    style:height
+    onpointerdown={() => (touched = true)}
+    onwheel={() => (touched = true)}
+    onkeydown={() => (touched = true)}
+    role="presentation"
+  >
     <div
       bind:this={container}
       class="h-full w-full"
@@ -544,20 +641,61 @@
       role="application"
     ></div>
 
-    <div class="absolute top-2 left-2">
-      <div class="flex gap-2">
+    <!-- Top left, in a column: the map's toggles, the place search while editing, and a saved
+         system's lock (the attribution and the legend take the bottom corners) -->
+    <div
+      class="pointer-events-none absolute top-2 left-2 flex w-[min(18rem,calc(100%-4rem))] flex-col items-start gap-2"
+    >
+      <div class="pointer-events-auto flex gap-2">
         <BasemapToggle value={basemap} onchange={(to) => basemapSwitch.change(to)} />
-        <MapLayersButton id="pivot-map-layers" {basemap} count={soilLayer.on ? 1 : 0}>
+        <MapLayersButton
+          id="pivot-map-layers"
+          {basemap}
+          count={(soilLayer.on ? 1 : 0) + (fileShapes && fileShapesOn ? 1 : 0)}
+        >
+          {#if fileShapes}
+            <label class="flex items-start gap-2">
+              <input type="checkbox" class="mt-1" bind:checked={fileShapesOn} />
+              <span>
+                {`Shapes from ${fileShapes.fileName}`}
+                <span class="block text-xs text-ink-muted"
+                  >Your field shapes not yet imported, to place your irrigation systems on</span
+                >
+              </span>
+            </label>
+          {/if}
           <SoilTypesOption layer={soilLayer} />
         </MapLayersButton>
       </div>
+      {#if editing}
+        <div class="pointer-events-auto w-full">
+          <PlaceSearch bind:this={placeSearch} {map} maxZoom={PIVOT_ZOOM - 1} />
+        </div>
+      {/if}
+      <!-- A saved system's lock: Edit on the map, then keep or undo what the map changed, as on the
+           field shape page -->
+      {#if editing && before}
+        <div
+          class="pointer-events-auto flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-lg"
+          role="group"
+          aria-label="The {noun} on the map"
+        >
+          <Button type="button" onclick={doneEditing}>Done editing</Button>
+          <Button type="button" variant="secondary" onclick={cancelEditing}>Cancel</Button>
+        </div>
+      {:else if !editing}
+        <Button type="button" variant="secondary" class="pointer-events-auto shadow-lg" onclick={startEditing}
+          >Edit on the map</Button
+        >
+      {/if}
     </div>
 
-    {#if !center}
+    {#if !center && !touched}
       <p
-        class="pointer-events-none absolute top-12 right-12 left-2 mx-auto max-w-xs rounded-md bg-black/60 px-3 py-2 text-center text-sm text-white"
+        aria-hidden="true"
+        class="pointer-events-none absolute top-1/3 left-1/2 w-[min(20rem,calc(100%-2rem))] -translate-x-1/2 rounded-md bg-black/60 px-3 py-2 text-center text-sm text-white"
       >
-        {PLACE_HINTS[shape.kind]}
+        {PLACE_HINT}
       </p>
     {/if}
 
@@ -587,42 +725,12 @@
       </button>
     {/if}
 
-    <SoilTypesHover layer={soilLayer} />
+    {#if !hover.label}<SoilTypesHover layer={soilLayer} />{/if}
+    <HoverLabel {hover} />
 
-    {#if editing}
-      <div class="absolute bottom-2 left-2 w-[min(18rem,calc(100%-6rem))]">
-        <PlaceSearch bind:this={placeSearch} {map} maxZoom={PIVOT_ZOOM - 1} />
-      </div>
-    {/if}
-    <!-- A saved system's lock, under the map's toggles (the attribution covers the bottom corners on a
-         phone): Edit on the map, then keep or undo what the map changed, as on the field shape page -->
-    {#if editing && before}
-      <div
-        class="absolute top-12 left-2 flex max-w-[calc(100%-4rem)] flex-wrap items-center gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-lg"
-        role="group"
-        aria-label="The {noun} on the map"
-      >
-        <Button type="button" onclick={doneEditing}>Done editing</Button>
-        <Button type="button" variant="secondary" onclick={cancelEditing}>Cancel</Button>
-      </div>
-    {:else if !editing}
-      <div class="absolute top-12 left-2">
-        <Button type="button" variant="secondary" class="shadow-lg" onclick={startEditing}>Edit on the map</Button>
-      </div>
-    {/if}
+    <MapLegend rows={legendRows} />
   </div>
   <div class="flex flex-wrap items-center gap-3 text-sm">
-    {#if editing}
-      <button
-        type="button"
-        class="text-brand-600 hover:underline disabled:opacity-60"
-        onclick={locate}
-        disabled={locating}
-      >
-        {locating ? 'Finding you…' : 'Use my location'}
-      </button>
-    {/if}
-    {#if locateError}<span class="text-status-irrigate-ink">{locateError}</span>{/if}
     {#if center && !editing}<span class="text-ink-muted"
         >Locked so a stray click can't move the {noun}: Edit on the map to move{point ? '' : ' or resize'} it.</span
       >

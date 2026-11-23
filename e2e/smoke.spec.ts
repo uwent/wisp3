@@ -1128,10 +1128,14 @@ test("daily entry's week saves rain for a group's fields and a system's irrigati
   await expect(rain).toHaveValue('0.30')
   await expect(rain).toHaveAttribute('placeholder', '')
 
-  // Cleared for the next run (a blank box on varied rain would leave the fields' amounts as they are)
+  // Cleared for the next run (a blank box on varied rain would leave the fields' amounts as they are).
+  // The last save's message is still showing, so wait for this save itself before reloading
   await rain.fill('')
   await irrigation.fill('')
-  await page.getByRole('button', { name: 'Save Aug 24–30' }).click()
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() !== 'GET' && response.url().includes('/daily/week')),
+    page.getByRole('button', { name: 'Save Aug 24–30' }).click(),
+  ])
   await expect(page.getByText('Saved Aug 24–30')).toBeVisible()
   await page.reload()
   await expect(rain).toHaveValue('')
@@ -1672,6 +1676,51 @@ test("field shapes under none of the operation's systems start skipped, without 
   await expect(page.locator('#shape-0').getByRole('radio', { name: 'New', exact: true })).toBeChecked()
   await expect(page.getByText('Choose the system that waters it')).toBeVisible()
   await expect(skipped).toBeHidden()
+  expect(errors).toEqual([])
+})
+
+test("a kept file's shapes not yet imported are on the irrigation system map, to place a system on", async ({
+  page,
+}) => {
+  const errors = watchErrors(page)
+  // Two fields near Superior, far from every demo system
+  const square = (lng: number, lat: number) => [
+    [lng, lat],
+    [lng + 0.005, lat],
+    [lng + 0.005, lat + 0.003],
+    [lng, lat + 0.003],
+    [lng, lat],
+  ]
+  const file = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { NAME: 'Far Forty' },
+        geometry: { type: 'Polygon', coordinates: [square(-92.1, 46.7)] },
+      },
+      {
+        type: 'Feature',
+        properties: { NAME: 'Far Eighty' },
+        geometry: { type: 'Polygon', coordinates: [square(-92.11, 46.7)] },
+      },
+    ],
+  }
+  await page.goto('/setup/outlines/import')
+  await page
+    .getByLabel('Choose a file')
+    .setInputFiles({ name: 'far.geojson', mimeType: 'application/geo+json', buffer: Buffer.from(JSON.stringify(file)) })
+  await expect(page.getByText(/^2 shapes\./)).toBeVisible()
+  await page.getByRole('link', { name: 'add an irrigation system' }).click()
+
+  await expect(page.getByText(/^The 2 shapes from far\.geojson not yet imported are a layer on the map/)).toBeVisible()
+  await page.getByRole('button', { name: /^Layers/ }).click()
+  const layer = page.getByRole('checkbox', { name: /^Shapes from far\.geojson/ })
+  await expect(layer).toBeChecked()
+  await layer.uncheck()
+  await expect(layer).not.toBeChecked()
+  // The way back to the import stays
+  await expect(page.getByRole('link', { name: 'import the shapes as fields' })).toBeVisible()
   expect(errors).toEqual([])
 })
 

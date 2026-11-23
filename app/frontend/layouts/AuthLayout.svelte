@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
+  import { page } from '@inertiajs/svelte'
 
   import BrandBar from '@/lib/components/BrandBar.svelte'
   import FlashMessages from '@/lib/components/FlashMessages.svelte'
@@ -8,8 +9,9 @@
 
   let { children }: { children: Snippet } = $props()
 
-  // Signed out: an outline file kept in this browser goes, so the next person here doesn't see it
-  forgetAllKept()
+  // Signed out (not a signed-in grower on an email's unsubscribe page): an outline file kept in this
+  // browser goes, so the next person here doesn't see it
+  if (!page.props.auth?.user) forgetAllKept()
 </script>
 
 <BrandBar />

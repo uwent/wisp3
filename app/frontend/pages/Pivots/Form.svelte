@@ -27,6 +27,10 @@
   import { currentUnits } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { pivots, setup } from '@/routes'
+  import type { FileShapes } from '@/lib/outlines/fileShapes'
+  import { type Boundary } from '@/lib/boundary'
+  import { unimportedShapes } from '@/lib/outlines/fileShapes'
+  import { readKept } from '@/lib/outlines/kept'
   import type { Pivot, SoilType } from '@/types/serializers'
 
   type Outline = PivotShape &
@@ -42,6 +46,7 @@
     soil_types,
     pivot_group = null,
     copy_of = null,
+    field_outlines = [],
   }: {
     pivot: Partial<Omit<Pivot, 'fields'>>
     farms: { id: number; name: string }[]
@@ -51,7 +56,21 @@
     pivot_group?: { id: number; name: string; farm_id: number } | null
     /** The system being duplicated (Setup's Duplicate, ?copy_of=): everything but its location is copied */
     copy_of?: { id: number; name: string } | null
+    /** The operation's field outlines, on the map */
+    field_outlines?: { name: string; boundary: Boundary }[]
   } = $props()
+
+  // A kept outline file's shapes not yet imported, on the map as a guide to place the system on
+  const fileShapes: FileShapes | null = untrack(() => {
+    const kept = readKept(page.props.auth.group?.id)
+    return (
+      kept &&
+      unimportedShapes(
+        kept,
+        field_outlines.map((field) => field.boundary),
+      )
+    )
+  })
 
   const editing = $derived(pivot.id !== undefined)
   let farmId = $state(untrack(() => String(pivot.farm_id ?? farms[0]?.id ?? '')))
@@ -165,6 +184,8 @@
           soilTypes={soil_types}
           headingLevel="h2"
           locked={editing}
+          {fileShapes}
+          fields={field_outlines}
         />
 
         <section class="space-y-4" aria-labelledby="pivot-equipment">

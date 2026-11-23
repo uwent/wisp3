@@ -108,7 +108,10 @@ class PivotsController < AuthenticatedController
       other_pivots: Current.group.pivots.where.not(id: pivot.id).includes(:fields).map do |other|
         other.slice(:id, :name, :farm_id, *PivotSerializer::SHAPE).merge(fields_extent: fields_extent(other))
       end,
-      soil_types: ReferenceProps.soil_types
+      soil_types: ReferenceProps.soil_types,
+      # The operation's field outlines, drawn on the map, and leaving a kept outline file's shapes already saved off it
+      field_outlines: Current.group.fields.where.not(boundary: nil).pluck(:name, :boundary)
+        .map { |name, boundary| {name:, boundary:} }
     }
   end
 

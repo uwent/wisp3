@@ -119,4 +119,12 @@ describe('matching shapes to fields', () => {
     expect(choices[0].same?.meters).toBeCloseTo(0.8, 1)
     expect(choices[1].same).toEqual({ fieldId: 21, meters: 0 })
   })
+
+  it('updates the field of its name when that field has no outline yet', () => {
+    const choices = initialChoices(
+      [{ name: 'East 40', systemId: 1, problems: [], boundary: square(-89.5, 44.1) }],
+      [{ id: 20, name: 'East 40', pivot_id: 1, boundary: null }],
+    )
+    expect(choices).toEqual([{ choice: { kind: 'field', fieldId: 20 }, same: null }])
+  })
 })

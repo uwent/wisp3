@@ -26,7 +26,7 @@
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { currentUnits } from '@/lib/units'
   import type { Column } from '@/lib/table'
-  import { outlineImport, setup } from '@/routes'
+  import { outlineImport, pivots as pivotRoutes, setup } from '@/routes'
   import type { SoilType } from '@/types/serializers'
 
   type System = PivotShape & { id: number; name: string; kind_name: string; farm: string }
@@ -164,9 +164,14 @@
   const groupId = page.props.auth.group?.id ?? null
   /** When the file shown was read */
   let readTime = $state<number | null>(null)
+  /** Whether the file shown is kept (a file of one shape isn't, nor one too big to keep) */
+  let fileKept = $state(false)
   onMount(() => {
     const kept = readKept(groupId)
-    if (kept) loadShowing(kept, kept.savedAt)
+    if (kept) {
+      fileKept = true
+      loadShowing(kept, kept.savedAt)
+    }
   })
 
   // Shapes that can't be saved have no row (nor a soil survey, nor a place on the map): a county
@@ -201,8 +206,11 @@
     }
     const { result } = read
     // This file is kept in place of the last one
-    if (result.shapes.length > 1) keepShapes(groupId, { fileName: file.name, ...result })
-    else forgetKept(groupId)
+    if (result.shapes.length > 1) fileKept = keepShapes(groupId, { fileName: file.name, ...result })
+    else {
+      forgetKept(groupId)
+      fileKept = false
+    }
     await loadShowing({ fileName: file.name, ...result }, Date.now())
   }
 
@@ -223,6 +231,7 @@
     forgetKept(groupId)
     fileName = null
     readTime = null
+    fileKept = false
     rows = []
     unusable = []
     keys = []
@@ -811,6 +820,17 @@
             {/each}
           </ol>
 
+          {#if others.length > sameCount}
+            <!-- Shapes under no system need one first: the system map shows this file's shapes when it's kept -->
+            <p class="text-sm text-ink-muted">
+              {`To import ${others.length - sameCount === 1 ? 'the shape' : 'shapes'} with no irrigation system under ${others.length - sameCount === 1 ? 'it' : 'them'}, set up ${others.length - sameCount === 1 ? 'its system' : 'their systems'} first: `}<Link
+                href={pivotRoutes.new()}
+                class="text-brand-600 underline">add an irrigation system</Link
+              >{fileKept
+                ? `, and this file's shapes are on its map to place it on. Then come back here: the file is kept in this browser for a week.`
+                : ', then read this file here again.'}
+            </p>
+          {/if}
           {#if others.length}
             <!-- Enter in its search mustn't save the import -->
             <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->

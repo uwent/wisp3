@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte'
-  import { Form } from '@inertiajs/svelte'
+  import { Form, page } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
@@ -8,12 +8,15 @@
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
   import { isPoint, KIND_NOUNS, MAX_LINEAR_LENGTH_FT, MAX_LINEAR_TRAVEL_FT, MAX_RADIUS_FT, shapeDraft } from '@/lib/geo'
-  import { MAX_LATITUDE, MAX_LONGITUDE, MIN_LATITUDE, MIN_LONGITUDE } from '@/lib/boundary'
+  import { type Boundary, MAX_LATITUDE, MAX_LONGITUDE, MIN_LATITUDE, MIN_LONGITUDE } from '@/lib/boundary'
   import { soilFit, soilOptionsByShare } from '@/lib/soils'
   import SoilFitNote from '@/lib/setup/SoilFitNote.svelte'
   import { currentUnits } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { quickSetups } from '@/routes'
+  import type { FileShapes } from '@/lib/outlines/fileShapes'
+  import { unimportedShapes } from '@/lib/outlines/fileShapes'
+  import { readKept } from '@/lib/outlines/kept'
   import type { SoilType } from '@/types/serializers'
 
   // The guided first-run setup: a farm, an irrigation system and the fields it waters.
@@ -23,13 +26,28 @@
     farms,
     soil_types,
     default_soil_type_id,
+    field_outlines = [],
   }: {
     /** This season and next, from November on: which one the plantings that follow are for */
     seasons?: [number, number] | null
     farms: { id: number; name: string }[]
     soil_types: SoilType[]
     default_soil_type_id: number | null
+    /** The operation's field outlines, on the map */
+    field_outlines?: { name: string; boundary: Boundary }[]
   } = $props()
+
+  // A kept outline file's shapes not yet imported, on the map as a guide to place the system on
+  const fileShapes: FileShapes | null = untrack(() => {
+    const kept = readKept(page.props.auth.group?.id)
+    return (
+      kept &&
+      unimportedShapes(
+        kept,
+        field_outlines.map((field) => field.boundary),
+      )
+    )
+  })
 
   // Next season by default once it's asked
   let season = $state(untrack(() => seasons?.[1] ?? null))
@@ -239,6 +257,8 @@
             error={(attribute) => e[`pivot.${attribute}`]}
             soilTypes={soil_types}
             onsuggest={suggestSoil}
+            {fileShapes}
+            fields={field_outlines}
             surveyNote="What the USDA soil survey says is under the {noun}, which sets the soil suggested for its fields in step 3. You'll see it again when you add more systems or fields in Setup."
           >
             <NumberField
