@@ -30,18 +30,41 @@ export const GLYPH_LAYER = 'pivots-glyph'
 /** Every system's glyph farther out */
 export const FAR_GLYPH_LAYER = 'pivots-glyph-far'
 export const FIELD_LAYER = 'fields-fill'
+
+/** The systems' source and layers (addSystemLayers), bottom to top */
+export const PIVOT_IDS = {
+  source: 'pivots',
+  fill: PIVOT_LAYER,
+  casing: 'pivots-casing',
+  selected: 'pivots-selected',
+  line: 'pivots-line',
+  center: 'pivots-center',
+  glyphSelected: 'pivots-glyph-selected',
+  glyph: GLYPH_LAYER,
+  farGlyphSelected: 'pivots-glyph-far-selected',
+  farGlyph: FAR_GLYPH_LAYER,
+} as const
+/** The irrigation groups' source and layers (OverviewMap) */
+export const GROUP_IDS = {
+  source: 'groups',
+  fill: 'groups-fill',
+  casing: 'groups-casing',
+  line: 'groups-line',
+  label: 'groups-label',
+} as const
+/** The outlined fields' source and layers (OverviewMap) */
+export const FIELD_IDS = {
+  source: 'fields',
+  fill: FIELD_LAYER,
+  casing: 'fields-casing',
+  line: 'fields-line',
+  label: 'fields-label',
+} as const
+/** The sources of the systems, groups and fields */
+export const SYSTEM_SOURCES: string[] = [PIVOT_IDS.source, GROUP_IDS.source, FIELD_IDS.source]
+
 /** The systems' own layers, which the Irrigation systems layer switch shows and hides */
-export const SYSTEM_LAYERS = [
-  PIVOT_LAYER,
-  'pivots-casing',
-  'pivots-selected',
-  'pivots-line',
-  'pivots-center',
-  'pivots-glyph-selected',
-  GLYPH_LAYER,
-  'pivots-glyph-far-selected',
-  FAR_GLYPH_LAYER,
-]
+export const SYSTEM_LAYERS: string[] = Object.values(PIVOT_IDS).filter((id) => id !== PIVOT_IDS.source)
 
 /** Below this zoom every system is its glyph and its marker one dot (OverviewMap's data-far) */
 export const FAR_ZOOM = 11.5
@@ -119,12 +142,12 @@ const glyphLayout = (sizeProperty: 'near_px' | 'far_px', scale = 1): SymbolLayer
 /** The systems' layers, from a source of their outlines and glyph points (pivotFeatures) */
 export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecification['data'], palette: Palette) {
   addGlyphImages(map)
-  map.addSource('pivots', { type: 'geojson', data })
+  map.addSource(PIVOT_IDS.source, { type: 'geojson', data })
   const near = { minzoom: FAR_ZOOM }
   map.addLayer({
     id: PIVOT_LAYER,
     type: 'fill',
-    source: 'pivots',
+    source: PIVOT_IDS.source,
     filter: POLYGONS,
     ...near,
     paint: {
@@ -137,9 +160,9 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
   // cyan carries it. The selected system's line sits on a thin white band with a thin dark edge, as
   // the selected glyph does, so it stands out on either basemap without swamping a small pivot.
   map.addLayer({
-    id: 'pivots-casing',
+    id: PIVOT_IDS.casing,
     type: 'line',
-    source: 'pivots',
+    source: PIVOT_IDS.source,
     filter: POLYGONS,
     ...near,
     paint: {
@@ -149,17 +172,17 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
     },
   })
   map.addLayer({
-    id: 'pivots-selected',
+    id: PIVOT_IDS.selected,
     type: 'line',
-    source: 'pivots',
+    source: PIVOT_IDS.source,
     filter: ['all', POLYGONS, SELECTED],
     ...near,
     paint: { 'line-color': '#ffffff', 'line-width': 5 },
   })
   map.addLayer({
-    id: 'pivots-line',
+    id: PIVOT_IDS.line,
     type: 'line',
-    source: 'pivots',
+    source: PIVOT_IDS.source,
     filter: POLYGONS,
     ...near,
     paint: {
@@ -170,9 +193,9 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
   })
   // A pivot's or linear's center, where its machine turns or the middle of its run
   map.addLayer({
-    id: 'pivots-center',
+    id: PIVOT_IDS.center,
     type: 'circle',
-    source: 'pivots',
+    source: PIVOT_IDS.source,
     filter: ['all', POINTS, ['!', ['get', 'point']]],
     ...near,
     paint: {
@@ -195,14 +218,14 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
   }[] = [
     {
       id: GLYPH_LAYER,
-      selected: 'pivots-glyph-selected',
+      selected: PIVOT_IDS.glyphSelected,
       filter: ['all', POINTS, ['get', 'point']],
       size: 'near_px',
       zooms: near,
     },
     {
       id: FAR_GLYPH_LAYER,
-      selected: 'pivots-glyph-far-selected',
+      selected: PIVOT_IDS.farGlyphSelected,
       filter: POINTS,
       size: 'far_px',
       zooms: { maxzoom: FAR_ZOOM },
@@ -212,7 +235,7 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
     map.addLayer({
       id: selected,
       type: 'symbol',
-      source: 'pivots',
+      source: PIVOT_IDS.source,
       filter: ['all', filter, SELECTED],
       ...zooms,
       layout: glyphLayout(size, SELECTED_BACKING_SCALE),
@@ -221,7 +244,7 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
     map.addLayer({
       id,
       type: 'symbol',
-      source: 'pivots',
+      source: PIVOT_IDS.source,
       filter,
       ...zooms,
       layout: glyphLayout(size),
@@ -239,22 +262,30 @@ export function addSystemLayers(map: MapLibreMap, data: GeoJSONSourceSpecificati
 export function setSystemColors(map: MapLibreMap, palette: Palette) {
   if (!map.getLayer(PIVOT_LAYER)) return
   map.setPaintProperty(PIVOT_LAYER, 'fill-color', palette.system)
-  map.setPaintProperty('pivots-casing', 'line-color', palette.systemCasing)
-  map.setPaintProperty('pivots-line', 'line-color', palette.system)
+  map.setPaintProperty(PIVOT_IDS.casing, 'line-color', palette.systemCasing)
+  map.setPaintProperty(PIVOT_IDS.line, 'line-color', palette.system)
   for (const layer of [GLYPH_LAYER, FAR_GLYPH_LAYER]) {
     map.setPaintProperty(layer, 'icon-color', palette.system)
     map.setPaintProperty(layer, 'icon-halo-color', palette.systemCasing)
   }
-  for (const layer of ['pivots-glyph-selected', 'pivots-glyph-far-selected'])
+  for (const layer of [PIVOT_IDS.glyphSelected, PIVOT_IDS.farGlyphSelected])
     map.setPaintProperty(layer, 'icon-halo-color', palette.systemCasing)
-  map.setPaintProperty('pivots-center', 'circle-color', palette.system)
-  map.setPaintProperty('pivots-center', 'circle-stroke-color', ['case', SELECTED, '#ffffff', palette.systemCasing])
-  if (map.getLayer('groups-line')) {
-    map.setPaintProperty('groups-line', 'line-color', palette.system)
-    map.setPaintProperty('groups-casing', 'line-color', palette.systemCasing)
-    map.setPaintProperty('groups-label', 'text-color', palette.system)
-    map.setPaintProperty('groups-label', 'text-halo-color', palette.systemCasing)
+  map.setPaintProperty(PIVOT_IDS.center, 'circle-color', palette.system)
+  map.setPaintProperty(PIVOT_IDS.center, 'circle-stroke-color', ['case', SELECTED, '#ffffff', palette.systemCasing])
+  if (map.getLayer(GROUP_IDS.line)) {
+    map.setPaintProperty(GROUP_IDS.line, 'line-color', palette.system)
+    map.setPaintProperty(GROUP_IDS.casing, 'line-color', palette.systemCasing)
+    map.setPaintProperty(GROUP_IDS.label, 'text-color', palette.system)
+    map.setPaintProperty(GROUP_IDS.label, 'text-halo-color', palette.systemCasing)
   }
+}
+
+/** The outlined fields' color after a theme change */
+export function setFieldColors(map: MapLibreMap, palette: Palette) {
+  if (!map.getLayer(FIELD_IDS.fill)) return
+  map.setPaintProperty(FIELD_IDS.fill, 'fill-color', palette.field)
+  map.setPaintProperty(FIELD_IDS.casing, 'line-color', palette.fieldCasing)
+  map.setPaintProperty(FIELD_IDS.line, 'line-color', palette.field)
 }
 
 /**
@@ -338,7 +369,7 @@ export function hoverLines(map: MapLibreMap, point: PointLike): string[] {
     featuresAt(map, point, layers).map((feature) => `${prefix}: ${feature.properties[key]}`)
   return [
     ...new Set([
-      ...lines('Group', ['groups-fill'], 'name'),
+      ...lines('Group', [GROUP_IDS.fill], 'name'),
       ...lines('System', SYSTEM_HIT_LAYERS, 'label'),
       ...lines('Field', [FIELD_LAYER], 'name'),
     ]),

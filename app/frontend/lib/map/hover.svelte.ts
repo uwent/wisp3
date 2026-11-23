@@ -1,7 +1,7 @@
 import type { Map as MapLibreMap, PointLike } from 'maplibre-gl'
 
-/** The hover label's lines at a point of the map (empty: no label) */
-export type HoverLines = (map: MapLibreMap, point: PointLike) => string[]
+/** The hover label's lines at a point of the map (empty: no label); event is the pointer's, for what's over the map there (markers) */
+export type HoverLines = (map: MapLibreMap, point: [number, number], event: PointerEvent) => string[]
 /** A muted last line for the label: what a click at the point would do, or null */
 export type HoverHint = (map: MapLibreMap, point: [number, number]) => string | null
 
@@ -15,7 +15,7 @@ const FLIP_PX = 340
 export const flipsAt = (x: number, width: number) => x > width - FLIP_PX
 
 /**
- * A setup map's hover label (HoverLabel.svelte): what's under the pointer, a line each, worked out
+ * A map's hover label (HoverLabel.svelte): what's under the pointer, a line each, worked out
  * once a frame from the last pointer event, cleared on leaving or while dragging, and again as the
  * map moves under a still pointer or `refresh` is called (what a line says has changed). The label
  * sits beside the pointer, flipped to its left near the right edge of `box` (the map's box). `hint`
@@ -82,7 +82,7 @@ export class MapHover {
     }
     const canvasBox = map.getCanvasContainer().getBoundingClientRect()
     const point: [number, number] = [event.clientX - canvasBox.left, event.clientY - canvasBox.top]
-    const lines = this.lines(map, point)
+    const lines = this.lines(map, point, event)
     const frameBox = box.getBoundingClientRect()
     const x = event.clientX - frameBox.left
     this.label = lines.length

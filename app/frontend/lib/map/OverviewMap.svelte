@@ -1,9 +1,10 @@
 <script module lang="ts">
+  import { SYSTEM_SOURCES } from './systemLayers'
   import { ZONE_SOURCES } from './zones'
 
   /** Our sources (weather zones, irrigation groups, fields, pivots, and overlays named overlay-*), carried over when the basemap changes */
   export const isOwnSource = (id: string) =>
-    ['pivots', 'groups', 'fields', ...ZONE_SOURCES].includes(id) || id.startsWith('overlay-')
+    [...SYSTEM_SOURCES, ...ZONE_SOURCES].includes(id) || id.startsWith('overlay-')
 </script>
 
 <script lang="ts">
@@ -29,7 +30,7 @@
   import PivotMarker from './PivotMarker.svelte'
   import FieldMarker from './FieldMarker.svelte'
   import HoverLabel from './HoverLabel.svelte'
-  import { flipsAt, type HoverLabelState } from './hover.svelte'
+  import { MapHover } from './hover.svelte'
   import {
     type FeatureCollection,
     type FieldBadges,
@@ -44,9 +45,12 @@
   import {
     addGlyphImages,
     addSystemLayers,
-    FIELD_LAYER,
+    FIELD_IDS,
+    GROUP_IDS,
     FAR_ZOOM,
     hoverLines,
+    PIVOT_IDS,
+    setFieldColors,
     setSystemColors,
     SYSTEM_LAYERS,
     systemHit,
@@ -136,8 +140,6 @@
   followRoads(() => map)
   let zoom = $state(DEFAULT_VIEW.zoom)
   let placeSearch = $state<PlaceSearch>()
-  // What's under the pointer, named beside it; flipped to its left near the map's right edge
-  let hover = $state<HoverLabelState | null>(null)
 
   type MarkerProps = {
     pivot: MapPivot
@@ -158,40 +160,28 @@
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- as markers, by field
   const fieldMarkers = new Map<number, { marker: Marker; props: FieldProps; component: ReturnType<typeof mount> }>()
 
-  // The hover label follows the pointer, worked out once a frame from the last pointer event: the
-  // map's features under it (hoverLines) and every marker badge there (data-hover), the ones
-  // covered by another too: zoomed out, markers overlap where their systems don't
-  let lastPointer: PointerEvent | null = null
-  let frame = 0
-  function onPointer(event: PointerEvent) {
-    lastPointer = event
-    frame ||= requestAnimationFrame(updateHover)
-  }
-  function updateHover() {
-    frame = 0
-    const m = map
-    const event = lastPointer
-    if (!m || !event || event.buttons) return (hover = null)
-    const box = m.getCanvasContainer().getBoundingClientRect()
-    const point: [number, number] = [event.clientX - box.left, event.clientY - box.top]
-    const badges = document
-      .elementsFromPoint(event.clientX, event.clientY)
-      .filter((element): element is HTMLElement => element instanceof HTMLElement && !!element.dataset.hover)
-      .flatMap((element) => element.dataset.hover!.split('\n'))
-    let lines = [...new Set([...hoverLines(m, point), ...badges])]
-    // With nothing else there, the weather zone's weather
-    const zone = lines.length ? null : zoneUnder(m, point)
-    if (zone) {
-      const weather = weatherLines(zone.weather, unitsFor(unitSystem))
-      lines = weather.length ? weather : ['No weather for this zone yet']
-    }
-    const frameBox = wrapper.getBoundingClientRect()
-    const x = event.clientX - frameBox.left
-    hover = lines.length ? { x, y: event.clientY - frameBox.top, lines, flip: flipsAt(x, frameBox.width) } : null
-    // A pointer where a click selects something
-    const selectable = !!zone || badges.length > 0 || lines.some((line) => !line.startsWith('Group:'))
-    m.getCanvas().style.cursor = selectable ? 'pointer' : ''
-  }
+  // The hover label follows the pointer (MapHover): the map's features under it (hoverLines) and
+  // every marker badge there (data-hover), the ones covered by another too (zoomed out, markers
+  // overlap where their systems don't), or with nothing else there the weather zone's weather. The
+  // cursor is a pointer where a click selects something.
+  const hover = new MapHover(
+    (m, point, event) => {
+      const badges = document
+        .elementsFromPoint(event.clientX, event.clientY)
+        .filter((element): element is HTMLElement => element instanceof HTMLElement && !!element.dataset.hover)
+        .flatMap((element) => element.dataset.hover!.split('\n'))
+      let lines = [...new Set([...hoverLines(m, point), ...badges])]
+      const zone = lines.length ? null : zoneUnder(m, point)
+      if (zone) {
+        const weather = weatherLines(zone.weather, unitsFor(unitSystem))
+        lines = weather.length ? weather : ['No weather for this zone yet']
+      }
+      const selectable = !!zone || badges.length > 0 || lines.some((line) => !line.startsWith('Group:'))
+      m.getCanvas().style.cursor = selectable ? 'pointer' : ''
+      return lines
+    },
+    () => wrapper,
+  )
 
   /** The shown weather zone at a point of the map, or null */
   const zoneUnder = (m: MapLibreMap, point: [number, number]) => {
@@ -210,29 +200,29 @@
 
     // Irrigation groups: a light shade inside a dashed line in the system color, named along it
     const palette = readPalette()
-    m.addSource('groups', { type: 'geojson', data: groups })
+    m.addSource(GROUP_IDS.source, { type: 'geojson', data: groups })
     m.addLayer({
-      id: 'groups-fill',
+      id: GROUP_IDS.fill,
       type: 'fill',
-      source: 'groups',
+      source: GROUP_IDS.source,
       paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.08 },
     })
     m.addLayer({
-      id: 'groups-casing',
+      id: GROUP_IDS.casing,
       type: 'line',
-      source: 'groups',
+      source: GROUP_IDS.source,
       paint: { 'line-color': palette.systemCasing, 'line-width': 4, 'line-opacity': 0.55 },
     })
     m.addLayer({
-      id: 'groups-line',
+      id: GROUP_IDS.line,
       type: 'line',
-      source: 'groups',
+      source: GROUP_IDS.source,
       paint: { 'line-color': palette.system, 'line-width': 2, 'line-dasharray': [3, 2] },
     })
     m.addLayer({
-      id: 'groups-label',
+      id: GROUP_IDS.label,
       type: 'symbol',
-      source: 'groups',
+      source: GROUP_IDS.source,
       layout: {
         'symbol-placement': 'line',
         'text-field': ['get', 'name'],
@@ -245,12 +235,12 @@
 
     // Fields with an outline, under the systems: a white line with a thin black edge around a
     // faint white fill (their plantings' badges carry the status)
-    m.addSource('fields', { type: 'geojson', data: fields() as never })
+    m.addSource(FIELD_IDS.source, { type: 'geojson', data: fields() as never })
     const OUTLINES: ExpressionSpecification = ['==', ['get', 'kind'], 'outline']
     m.addLayer({
-      id: FIELD_LAYER,
+      id: FIELD_IDS.fill,
       type: 'fill',
-      source: 'fields',
+      source: FIELD_IDS.source,
       filter: OUTLINES,
       paint: {
         'fill-color': palette.field,
@@ -258,9 +248,9 @@
       },
     })
     m.addLayer({
-      id: 'fields-casing',
+      id: FIELD_IDS.casing,
       type: 'line',
-      source: 'fields',
+      source: FIELD_IDS.source,
       filter: OUTLINES,
       paint: {
         'line-color': palette.fieldCasing,
@@ -269,9 +259,9 @@
       },
     })
     m.addLayer({
-      id: 'fields-line',
+      id: FIELD_IDS.line,
       type: 'line',
-      source: 'fields',
+      source: FIELD_IDS.source,
       filter: OUTLINES,
       paint: {
         'line-color': palette.field,
@@ -280,9 +270,9 @@
       },
     })
     m.addLayer({
-      id: 'fields-label',
+      id: FIELD_IDS.label,
       type: 'symbol',
-      source: 'fields',
+      source: FIELD_IDS.source,
       filter: ['==', ['get', 'kind'], 'label'],
       minzoom: NAME_ZOOM,
       // Just above the top edge, clear of the badges at the center however small the field is
@@ -370,13 +360,13 @@
   // Redraw when the pivots (farm filter), the selection or the window change
   $effect(() => {
     void [pivots, selectedId, selectedFieldId, highlighted, highlightedFields]
-    map?.getSource<GeoJSONSource>('pivots')?.setData(features())
-    map?.getSource<GeoJSONSource>('fields')?.setData(fields() as never)
+    map?.getSource<GeoJSONSource>(PIVOT_IDS.source)?.setData(features())
+    map?.getSource<GeoJSONSource>(FIELD_IDS.source)?.setData(fields() as never)
     syncMarkers()
   })
   $effect(() => showLayers(map, SYSTEM_LAYERS, showSystems))
   $effect(() => {
-    map?.getSource<GeoJSONSource>('groups')?.setData(groups)
+    map?.getSource<GeoJSONSource>(GROUP_IDS.source)?.setData(groups)
   })
   $effect(() => setZones(map, zones, selectedZone()))
   $effect(() => showZoneLayers(map, showZones))
@@ -412,8 +402,8 @@
         // The new style has none of our icons
         addGlyphImages(map)
         // The style's pivot layers have the palette of the old theme only if it changed meanwhile
-        map.getSource<GeoJSONSource>('pivots')?.setData(features())
-        map.getSource<GeoJSONSource>('fields')?.setData(fields() as never)
+        map.getSource<GeoJSONSource>(PIVOT_IDS.source)?.setData(features())
+        map.getSource<GeoJSONSource>(FIELD_IDS.source)?.setData(fields() as never)
         onload?.(map)
       },
     },
@@ -459,16 +449,7 @@
         m.on('click', onClick)
         // A style image dropped with the old style (a basemap change) comes back
         m.on('styleimagemissing', () => addGlyphImages(m))
-        // The hover label, over the map and its markers: what's under the pointer, with a pointer
-        // cursor where a click would select it; cleared on leaving, recomputed as the map moves
-        // under a still pointer
-        const canvasContainer = m.getCanvasContainer()
-        canvasContainer.addEventListener('pointermove', onPointer)
-        canvasContainer.addEventListener('pointerleave', () => {
-          lastPointer = null
-          hover = null
-        })
-        m.on('moveend', () => lastPointer && onPointer(lastPointer))
+        cleanups.push(hover.attach(m))
         m.on('zoom', () => (zoom = m.getZoom()))
         m.on('moveend', () => {
           const { lng, lat } = m.getCenter()
@@ -486,10 +467,7 @@
           onThemeChange(() => {
             const palette = readPalette()
             setSystemColors(m, palette)
-            if (!m.getLayer(FIELD_LAYER)) return
-            m.setPaintProperty(FIELD_LAYER, 'fill-color', palette.field)
-            m.setPaintProperty('fields-casing', 'line-color', palette.fieldCasing)
-            m.setPaintProperty('fields-line', 'line-color', palette.field)
+            setFieldColors(m, palette)
           }),
         )
       },
@@ -497,7 +475,6 @@
     )
 
     return () => {
-      cancelAnimationFrame(frame)
       cleanups.forEach((cleanup) => cleanup())
       for (const { component } of [...markers.values(), ...fieldMarkers.values()]) unmount(component)
       markers.clear()
@@ -533,7 +510,7 @@
     </div>
   </div>
 
-  <HoverLabel label={hover} />
+  <HoverLabel label={hover.label} />
 
   {@render children?.()}
 </div>
