@@ -1,6 +1,6 @@
 # WISP 3: the original design
 
-*The design written before the build (October 2026), amended along the way with "as built" notes, and frozen when it was folded out of `PLAN.md` on 2026-11-22. Where it and the code disagree, the code is right: for how the app works now, see [docs/architecture.md](../architecture.md) and [docs/engine.md](../engine.md); for why, [docs/decisions.md](../decisions.md). Section numbers are kept from `PLAN.md`: §2 (decisions) and §15 (open questions) are now [docs/decisions.md](../decisions.md), §9 (the legacy audit) [docs/legacy-audit.md](../legacy-audit.md), and §14 (the phases) the phase files beside this one.*
+*The design written before the build (October 2026), amended along the way with "as built" notes, and frozen when it was folded out of `PLAN.md` on 2026-11-22. Where it and the code disagree, the code is right: for how the app works now, see [docs/architecture.md](../architecture.md) and [docs/engine.md](../engine.md); for why, [docs/decisions.md](../decisions.md). Section numbers are kept from `PLAN.md`: §2 (decisions) and §15 (open questions) are now [docs/decisions.md](../decisions.md), §9 (the legacy audit) [docs/legacy-audit.md](../legacy-audit.md), and §14 (the phases) the phase files beside this one, regrouped by theme ([README.md](README.md) maps the old phase numbers).*
 
 ## 1. Goals
 
@@ -415,4 +415,4 @@ Users start fresh in WISP 3. That removes the riskiest part of the project (the 
 
 ## 14. Phased execution
 
-Now the phase files beside this one (`phase-0.md` to `phase-9.md`). Calendar assumed one primary developer, Oct 2026 → Mar 2027, each phase ending deployed to staging. Checklists: `[x]` done, `[ ]` open, `[~]` deferred or folded into another item (its note says where).
+Planned as phases 0–9; the record is now regrouped by theme in the phase files beside this one ([README.md](README.md) maps the old numbers). Calendar assumed one primary developer, Oct 2026 → Mar 2027, each phase ending deployed to staging. Checklists: `[x]` done, `[ ]` open, `[~]` deferred or folded into another item (its note says where).

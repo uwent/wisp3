@@ -1,6 +1,6 @@
 # Legacy audit: bugs and dispositions
 
-Formerly `PLAN.md` §9. The IDs (S, C, A) are cited in code, in `LegacyEngine` (`spec/support/legacy_engine.rb`) and in `docs/decisions.md`; keep them stable, and give a new deliberate change from legacy the next C number, with its switch in `LegacyEngine`. Section numbers (§) in the dispositions refer to the original design ([plans/design.md](plans/design.md)).
+Formerly `PLAN.md` §9. The IDs (S, C, A) are cited in code, in `LegacyEngine` (`spec/support/legacy_engine.rb`) and in `docs/decisions.md`; keep them stable, and give a new deliberate change from legacy the next C number, with its switch in `LegacyEngine`. Section numbers (§) in the dispositions refer to the original design ([plans/design.md](plans/design.md)). Phase numbers in it are the ones the work was planned under; [plans/README.md](plans/README.md) maps them to the regrouped record.
 
 Every ported method is checked against this list. Items marked **Hotfix** should also be patched in the legacy app now (Phase 0), because it is live through Nov 30.
 

@@ -2,7 +2,7 @@
 
 Why WISP 3 is built the way it is: the recorded decisions (D1–D15) and the questions that were put to Ben and settled (Q1–Q11), formerly `PLAN.md` §2 and §15. Code cites them by ID (`D12`, `Q10`); keep the IDs stable. A decision that's replaced stays in the table, struck through, with what replaced it, and a new one takes the next number with its date and reasons.
 
-The deliberate changes from legacy WISP's behavior (C1–C25) are in [legacy-audit.md](legacy-audit.md); section numbers (§) below refer to the original design ([plans/design.md](plans/design.md)). For how the app works now, see [architecture.md](architecture.md) and [engine.md](engine.md).
+The deliberate changes from legacy WISP's behavior (C1–C25) are in [legacy-audit.md](legacy-audit.md); section numbers (§) below refer to the original design ([plans/design.md](plans/design.md)). For how the app works now, see [architecture.md](architecture.md) and [engine.md](engine.md). Phase numbers in it are the ones the work was planned under; [plans/README.md](plans/README.md) maps them to the regrouped record.
 
 ## Decisions
 

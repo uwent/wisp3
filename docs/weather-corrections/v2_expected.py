@@ -1,4 +1,4 @@
-"""AgWeather v2's corrected hours for WISP's port to match (docs/plans/phase-8.md E, step 6).
+"""AgWeather v2's corrected hours for WISP's port to match (docs/plans/4-crop-and-weather-science.md, Weather corrections, step 6).
 
 Runs v2's own pipeline (`agdata.sources.openmeteo.fetch`, then `correct`) on v2's recorded Open-Meteo
 responses (three June 2025 days at the O1280 cell over Stillwater, OK: NBM then best_match from the

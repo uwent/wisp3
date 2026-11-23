@@ -12,7 +12,7 @@ This file is where things stand and what's next. Rewrite the handoff at the end 
 | [docs/engine.md](docs/engine.md) | The water balance and the projection, as they work now |
 | [docs/decisions.md](docs/decisions.md) | Why: the recorded decisions (D1–D15) and settled questions (Q1–Q11). A new decision takes the next D number |
 | [docs/legacy-audit.md](docs/legacy-audit.md) | Legacy WISP's bugs and what WISP 3 does instead (S, C and A IDs); a deliberate change from legacy takes the next C number and a switch in `LegacyEngine` |
-| [docs/plans/](docs/plans/) | The build's record, frozen: the original design (`design.md`) and each phase's plan (`phase-0.md` to `phase-9.md`). A new piece of work that needs a plan gets its own file here |
+| [docs/plans/](docs/plans/) | The build's record, frozen: the original design (`design.md`) and the work in eight phases by theme, from groundwork to the polish before grower feedback (its README maps the old phase numbers). A new piece of work that needs a plan gets its own file here |
 | [DEVELOPMENT.md](DEVELOPMENT.md), [docs/deployment.md](docs/deployment.md) | Setting up a machine and the commands; staging and production |
 | [TODO.md](TODO.md) | What only Ben can do |
 
@@ -20,19 +20,19 @@ Code comments say what the code is for; they cite a doc only for a decision or l
 
 ## Handoff (2026-11-22)
 
-**Where things stand.** Production is `https://wisp.cals.wisc.edu` (EC2 t3.medium and RDS db.t4g.small, mail through SES); staging is `dev.wisp.cals.wisc.edu`. Legacy is at `https://old.wisp.cals.wisc.edu` until it's deleted on December 31, 2027. Growers set up their operations over the winter; Ben sends the announcement email and holds a training session. Production runs `main` as of `dae08af`; `main` has moved on with C22–C25, the rainfall setting's move, the admin tools, Phase 9 (`docs/plans/phase-9.md`) and D15. Phases 0–9 are done; what remains of Phase 8 is Ben's (TODO.md: the screen reader walkthrough, the wording review, the RDS restore test).
+**Where things stand.** Production is `https://wisp.cals.wisc.edu` (EC2 t3.medium and RDS db.t4g.small, mail through SES); staging is `dev.wisp.cals.wisc.edu`. Legacy is at `https://old.wisp.cals.wisc.edu` until it's deleted on December 31, 2027. Growers set up their operations over the winter; Ben sends the announcement email and holds a training session. Production runs `main` as of `dae08af`; `main` has moved on with C22–C25, the rainfall setting's move, the admin tools, the polish before grower feedback (`docs/plans/8-polish.md`) and D15. The planned work is done; what remains of launch preparation is Ben's (TODO.md: the screen reader walkthrough, the wording review, the RDS restore test).
 
-**This session (2026-11-22):** the docs were reorganized on branch `docs-reorg`: `PLAN.md` became this status file; its decisions and questions moved to `docs/decisions.md`, the legacy audit to `docs/legacy-audit.md`, the original design and each phase's plan to `docs/plans/` (frozen, with the earlier handoffs' session notes at the end of `phase-9.md`); `docs/engine.md` describes the balance as it works now. Code comments no longer cite phases or `PLAN.md` sections: they describe the code, and point to `docs/decisions.md`, `docs/legacy-audit.md`, `docs/engine.md` or `docs/architecture.md` where the reason lives there.
+**This session (2026-11-22):** the docs were reorganized on branch `docs-reorg`: `PLAN.md` became this status file; its decisions and questions moved to `docs/decisions.md`, the legacy audit to `docs/legacy-audit.md`, the original design and the phase plans to `docs/plans/` (frozen, regrouped from phases 0–9 into eight phases by theme, with a README mapping the old numbers; the earlier handoffs' session notes are at the end of `8-polish.md`); `docs/engine.md` describes the balance as it works now. Code comments no longer cite phases or `PLAN.md` sections: they describe the code, and point to `docs/decisions.md`, `docs/legacy-audit.md`, `docs/engine.md` or `docs/architecture.md` where the reason lives there.
 
 **Next:**
-1. **Deploy `main`** (`bin/production deploy`) before the announcement: C22–C25 and the About page, the rainfall setting's migration, the admin tools (a migration), Phase 9's work, and D15's two migrations (the second reports any irrigation it couldn't move).
+1. **Deploy `main`** (`bin/production deploy`) before the announcement: C22–C25 and the About page, the rainfall setting's migration, the admin tools (a migration), the polish before grower feedback (`docs/plans/8-polish.md`), and D15's two migrations (the second reports any irrigation it couldn't move).
 2. **Legacy:** commit, push and `cap production deploy` the retirement changes; take the archive `pg_dump` before it's deleted (TODO.md).
 3. **Ben** (TODO.md): the RDS restore test; the announcement email and training session; GA's settings and the privacy wording; the wording review (C21's included) and the screen reader walkthrough.
-4. **Code during the winter beta:** Ben's open choices (below); Wisconsin season lengths for the warm-climate crops (needs extension sources; `docs/plans/phase-8.md` G.2); whatever the beta and training session turn up.
+4. **Code during the winter beta:** Ben's open choices (below); Wisconsin season lengths for the warm-climate crops (needs extension sources; `docs/plans/4-crop-and-weather-science.md`, Season end dates); whatever the beta and training session turn up.
 
 ## Ben's open choices
 
-From Phase 9 (`docs/plans/phase-9.md`):
+From the polish before grower feedback (`docs/plans/8-polish.md`):
 - The remembered Week view redirects from the day page after it loads (a brief flash). Keep, server-side instead (a cookie), or don't remember at all?
 - Setup's import still gives every *usable* shape a card and a soil survey (a large CLU export of thousands of usable shapes); cap it, or start unmatched shapes as Skip?
 - The home-screen icon's phone bar is the branding bar's red (`theme-color` in `application.html.erb`); the brand blue instead?
@@ -42,7 +42,7 @@ From Phase 9 (`docs/plans/phase-9.md`):
 
 ## Backlog
 
-After launch, roughly in order of value; check with the beta before building most of it. Phase references point into `docs/plans/`, and § numbers into its `design.md`.
+After launch, roughly in order of value; check with the beta before building most of it. Phase references use the old numbers, which `docs/plans/README.md` maps; § numbers point into `docs/plans/design.md`.
 
 - Forecast accuracy tracking (stored forecasts vs finalized weather), from the daily archive started in Phase 8 E: by lead time, for ET0 and rain, and whether the ensemble's spread covers what happened. Part of the evaluation pages below.
 - **Model evaluation and usage insights (admin pages; Ben, 2026-11-10; ideas, not designed).** After a season of data, an admin section that shows how WISP's models compare with what happened and with what growers entered, as anonymised statistics and charts, and how WISP is used:

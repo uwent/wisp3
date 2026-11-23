@@ -58,7 +58,7 @@ Where to read next:
 | [docs/architecture.md](docs/architecture.md) | How each area works and where its code is; [docs/engine.md](docs/engine.md) the water balance |
 | [docs/decisions.md](docs/decisions.md) | Why it's built this way: the recorded decisions and settled questions; [docs/legacy-audit.md](docs/legacy-audit.md) legacy WISP's bugs and the fixes |
 | [PLAN.md](PLAN.md) | Where work stands, what's next and the backlog |
-| [docs/plans/](docs/plans/) | The build's record: the original design and each phase's plan |
+| [docs/plans/](docs/plans/) | The build's record: the original design and the work in eight phases by theme |
 | [docs/deployment.md](docs/deployment.md) | Staging (Capistrano) and production (Docker on AWS) |
 | [docs/](docs/) | The accessibility audit, and the research behind the canopy curves and weather corrections |
 

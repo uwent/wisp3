@@ -9,7 +9,7 @@ WISP 3: a rewrite of the Wisconsin Irrigation Scheduling Program (legacy app in 
 - `PLAN.md`: where things stand. Its **Handoff** says what's next, then Ben's open choices and the backlog; read it at the start of a session and rewrite the handoff at the end.
 - `docs/architecture.md`: how each area works now (pages, irrigation systems, fields and plantings, canopy, weather, daily entry, maps, charts, wording, email, CSV, outside services); `docs/engine.md`: the water balance and projection. Read the area's section before changing it, and keep it current.
 - `docs/decisions.md`: why (decisions D1–D15, settled questions Q1–Q11); a new decision takes the next D number with its date and reasons. `docs/legacy-audit.md`: legacy's bugs and WISP 3's fixes (S, C, A IDs).
-- `docs/plans/`: the build's frozen record (the original design, one file a phase). A new piece of work that needs a plan gets its own file there, ticked as it lands; when it's done it's frozen like the rest, with what's still current moved into the architecture and engine docs.
+- `docs/plans/`: the build's frozen record: the original design and eight phases by theme, regrouped from the phases 0–9 the work was planned in (its README maps the old numbers, which older text still cites). A new piece of work that needs a plan gets its own file there, ticked as it lands; when it's done it's frozen like the rest, with what's still current moved into the architecture and engine docs.
 - `DEVELOPMENT.md` (setting up a machine, commands), `docs/deployment.md` (staging and production), `TODO.md` (what only Ben can do).
 
 ## Commands
