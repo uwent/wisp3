@@ -2,13 +2,16 @@
 # farm, weather zone (the weather grid cell its pivots share, with a summary of its weather), pivot
 # and field. users.digest_scope chooses which included fields are listed: all of them, those with a
 # crop in season, those needing irrigation or a reading, or only those needing irrigation. Fields
-# needing attention (irrigate, or caution) are also listed first, soonest crossing first. A field
-# growing several plantings at once (plots) has a line for each.
+# needing attention (irrigate, or caution) are also listed first, soonest crossing first, and
+# rainfed crops short of water, or soon to be, in a section of their own. A field growing several
+# plantings at once (plots) has a line for each.
 class DailyDigest
   # One line: a planting's PlantingStatus this year, or nil for a field without a planting
   Entry = Data.define(:field, :status, :outlook) do
     def active? = status&.phase == :active
     def attention? = active? && ATTENTION.include?(status.status)
+    # A rainfed crop short of water today, or projected to be within the lead days
+    def rainfed_stress? = active? && RAINFED_STRESS.include?(status.status)
     # Needs irrigation (attention) or has a reading or check due
     def action? = attention? || (active? && status.tasks.any?(&:due))
     def pivot = field.pivot
@@ -25,6 +28,7 @@ class DailyDigest
   PivotSection = Data.define(:pivot, :entries)
 
   ATTENTION = %i[irrigate caution].freeze
+  RAINFED_STRESS = %i[stressed stress_coming].freeze
 
   attr_reader :user, :today
 
@@ -51,6 +55,8 @@ class DailyDigest
   def entries = @entries ||= all_entries.select(&:active?)
 
   def attention = entries.select(&:attention?)
+
+  def rainfed_stress = entries.select(&:rainfed_stress?)
 
   # The included fields the email lists, by the user's digest_scope
   def listed
@@ -133,23 +139,30 @@ class DailyDigest
 
   def deliverable? = skip_reason.nil?
 
-  # "WISP: 2 fields to irrigate, 1 to watch (Sun, Oct 4)", "WISP: 5 fields OK (…)", or "WISP: no
-  # crops in season (…)"
+  # "WISP: 2 fields to irrigate, 1 to watch (Sun, Oct 4)", "WISP: 5 fields OK, 1 rainfed stressed (…)",
+  # "WISP: 2 fields rainfed, no stress (…)", or "WISP: no crops in season (…)". Irrigated and rainfed
+  # crops are counted apart, each by field (a field of plots once, at its most urgent)
   def subject
-    # Fields, not plantings: a field of plots counts once, at its most urgent
-    worst = entries.group_by(&:field).transform_values { |list| FieldStatuses.most_urgent(list.map(&:status)).status }
+    irrigated, rainfed = entries.partition { |entry| !entry.status.rainfed? }
+    worst = irrigated.group_by(&:field).transform_values { |list| FieldStatuses.most_urgent(list.map(&:status)).status }
     irrigate = worst.count { |_, status| status == :irrigate }
     caution = worst.count { |_, status| status == :caution }
-    summary = if irrigate.positive?
-      ["#{fields(irrigate)} to irrigate", ("#{caution} to watch" if caution.positive?)].compact.join(", ")
+    stressed = rainfed.select { |entry| entry.status.status == :stressed }.map(&:field).uniq.size
+    parts = if irrigate.positive?
+      ["#{fields(irrigate)} to irrigate", ("#{caution} to watch" if caution.positive?)]
     elsif caution.positive?
-      "#{fields(caution)} to watch"
-    elsif entries.any?
-      "#{fields(worst.size)} OK"
+      ["#{fields(caution)} to watch"]
+    elsif worst.any?
+      ["#{fields(worst.size)} OK"]
     else
-      "no crops in season"
+      []
     end
-    "WISP: #{summary} (#{Outlook.day(today)})"
+    if stressed.positive?
+      parts << "#{parts.empty? ? fields(stressed) : stressed} rainfed stressed"
+    elsif parts.empty? && rainfed.any?
+      parts << "#{fields(rainfed.map(&:field).uniq.size)} rainfed, no stress"
+    end
+    "WISP: #{parts.compact.presence&.join(", ") || "no crops in season"} (#{Outlook.day(today)})"
   end
 
   # Inches in the user's units, as the app shows them: "0.75 in", "19.1 mm"

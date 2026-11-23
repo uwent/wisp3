@@ -42,11 +42,13 @@
   {@const look = summary ? outlook(summary, units) : null}
   {@const due = summary?.phase === 'active' ? summary.tasks.filter((task) => task.due) : []}
   <span class="min-w-0 flex-1">
-    {#if name}<span class="block truncate font-medium">{name}</span>{/if}
-    {#if name && context}<span class="block truncate text-xs text-ink-muted">{context}</span>{/if}
+    {#if name}<span class="block truncate font-medium" data-search-text>{name}</span>{/if}
+    {#if name && context}<span class="block truncate text-xs text-ink-muted" data-search-text>{context}</span>{/if}
     {#if summary}
       <span class="block truncate text-xs {name ? 'text-ink-muted' : 'text-sm'}"
-        >{cropName(summary)}<span class="text-ink-muted">{` · ${cardWhen(summary, today)}`}</span></span
+        ><span data-search-text>{cropName(summary)}</span>{summary.rainfed ? ' · Rainfed' : ''}<span
+          class="text-ink-muted">{` · ${cardWhen(summary, today)}`}</span
+        ></span
       >
     {/if}
     {#if !summary}
@@ -99,7 +101,7 @@
   <div data-field-row={card.id}>
     <Link href={fields.show(card.id)} class="{row} pb-1">
       <span class="min-w-0 flex-1">
-        <span class="block truncate font-medium">{card.name}</span>
+        <span class="block truncate font-medium" data-search-text>{card.name}</span>
         {#if context}<span class="block truncate text-xs text-ink-muted">{context}</span>{/if}
       </span>
       <span class="shrink-0 text-xs text-ink-muted">{card.plantings.length} plantings</span>

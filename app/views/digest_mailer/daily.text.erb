@@ -10,6 +10,14 @@ NEEDS ATTENTION
 - Field: <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_place(entry, @digest) %><%= ": #{entry.outlook.headline}" if entry.outlook %>
 <% end %>
 <% end %>
+<% if @digest.rainfed_stress.any? %>
+
+RAINFED CROPS SHORT OF WATER
+
+<% @digest.rainfed_stress.each do |entry| %>
+- Field: <%= entry.field.name %> [<%= status_label(entry.status.status) %>] <%= digest_crop(entry) %> · <%= digest_place(entry, @digest) %><%= ": #{entry.outlook.headline}" if entry.outlook %>
+<% end %>
+<% end %>
 <% if @digest.nothing_listed %>
 
 Nothing needs your attention today. <%= @digest.nothing_listed %>

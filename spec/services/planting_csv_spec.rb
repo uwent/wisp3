@@ -63,6 +63,20 @@ RSpec.describe PlantingCsv do
     expect(crop).to include("Season start" => "2026-07-01", "Vine kill" => "2026-07-20", "Harvest or kill" => "2026-07-31")
   end
 
+  it "says whether the planting is irrigated, with each day's water stress, and gives a rainfed one no target" do
+    planting.update!(target_ad_pct: 40)
+    soil = ->(rows) { rows.index { |row| row.first == "Soil type" }.then { |i| rows[i].zip(rows[i + 1]).to_h } }
+    expect(soil.call(rows)).to include("Target AD (%)" => "40.0", "Water" => "Irrigated")
+    header = rows.index { |row| row.first == "Date" }
+    expect(rows[header].last).to eq("Water stress coefficient (Ks)")
+    expect(rows[header + 1].last).to eq("1.0000")
+
+    planting.update!(rainfed: true)
+    rainfed = CSV.parse(described_class.new(PlantingStatus.new(planting.reload, today: Date.new(2026, 7, 10), weather:))
+      .to_csv.delete_prefix(CsvExport::BOM))
+    expect(soil.call(rainfed)).to include("Target AD (%)" => nil, "Water" => "Rainfed")
+  end
+
   it "says there are no days yet before the season starts" do
     upcoming = CSV.parse(described_class.new(PlantingStatus.new(planting, today: Date.new(2026, 6, 20), weather:))
       .to_csv.delete_prefix(CsvExport::BOM))

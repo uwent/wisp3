@@ -52,7 +52,13 @@ export function thresholds({
     mode === 'ad' ? (units.toDisplay('depth', ad) ?? 0) : summary.pct_at_ad_zero + (ad / rootZoneDepth) * 100
   const lines: Threshold[] = [
     { name: 'Field capacity', value: value(summary.ad_max), color: palette.status.full, dashed: true },
-    { name: 'Irrigation point', value: value(0), color: palette.status.irrigate, dashed: false },
+    // Where water stress begins (C26); a rainfed crop has nothing to irrigate
+    {
+      name: summary.rainfed ? 'Stress begins' : 'Irrigation point',
+      value: value(0),
+      color: palette.status.irrigate,
+      dashed: false,
+    },
     { name: 'Wilting point', value: value(summary.ad_pwp), color: palette.inkMuted, dashed: true },
   ]
   if (summary.target_in !== null) {
@@ -90,7 +96,7 @@ export function fieldChartOption(input: FieldChartInput): EChartsCoreOption {
   const level = (ad: number | null) =>
     ad === null ? null : round(mode === 'ad' ? depth(ad) : summary.pct_at_ad_zero + (ad / rootZoneDepth) * 100)
   const lines = thresholds(input)
-  const zeroLine = lines.find((line) => line.name === 'Irrigation point')!.value
+  const zeroLine = level(0)!
   const wiltingLine = lines[lines.length - 1].value
   const forecastOnly = <T>(value: (day: FieldDay, i: number) => T) =>
     all.map((day, i) => (i < observed ? null : value(day, i)))

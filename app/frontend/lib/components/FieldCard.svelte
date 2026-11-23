@@ -6,7 +6,7 @@
   import Sparkline from '@/lib/components/Sparkline.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import { formatDate, relativeDay } from '@/lib/dates'
-  import { outlook } from '@/lib/outlook'
+  import { outlook, waterUsePct } from '@/lib/outlook'
   import type { FieldCard } from '@/lib/overview'
   import { cardWhen, cropName, seasonLine, endedSeasonStats } from '@/lib/plantings'
   import type { Units } from '@/lib/units'
@@ -78,11 +78,13 @@
   <div class="min-w-0">
     <h4 class="truncate font-medium">
       <span class="font-normal text-ink-muted">Field:</span>
-      {card.name}
+      <span data-search-text>{card.name}</span>
     </h4>
-    {#if context}<p class="truncate text-xs text-ink-muted">{context}</p>{/if}
+    {#if context}<p class="truncate text-xs text-ink-muted" data-search-text>{context}</p>{/if}
     {#if single && !several}
-      <p class="truncate text-xs text-ink-muted">{cropName(single)}</p>
+      <p class="truncate text-xs text-ink-muted">
+        <span data-search-text>{cropName(single)}</span>{single.rainfed ? ' · Rainfed' : ''}
+      </p>
       <p class="truncate text-[0.7rem] text-ink-muted">{cardWhen(single, today)}</p>
     {:else if several}
       <p class="truncate text-xs text-ink-muted">{card.plantings.length} plantings</p>
@@ -106,10 +108,10 @@
   {:else if summary.phase === 'ended'}
     <!-- An ended season in brief: what it took, in place of AD and the outlook -->
     {#if small}
-      <p class="text-xs text-ink-muted">{seasonLine(summary.totals, units)}</p>
+      <p class="text-xs text-ink-muted">{seasonLine(summary.totals, units, summary.rainfed)}</p>
     {:else}
       <dl class="grid grid-cols-2 gap-2 text-xs">
-        {#each endedSeasonStats(summary.totals, units) as stat (stat.label)}
+        {#each endedSeasonStats(summary.totals, units, summary.rainfed) as stat (stat.label)}
           <div>
             <dt class="text-ink-muted">{stat.label}</dt>
             <dd>{stat.value}</dd>
@@ -152,15 +154,23 @@
               )}{:else}None{/if}
           </dd>
         </div>
-        <div>
-          <dt class="text-ink-muted">Last irrigation</dt>
-          <dd>
-            {#if summary.last_irrigation}{units.format('depth', summary.last_irrigation.inches)}, {relativeDay(
-                summary.last_irrigation.date,
-                today,
-              )}{:else}None{/if}
-          </dd>
-        </div>
+        {#if summary.rainfed}
+          {@const pct = waterUsePct(summary.ks)}
+          <div>
+            <dt class="text-ink-muted">Water use</dt>
+            <dd>{pct === null ? 'Not short of water' : `About ${pct}% of normal`}</dd>
+          </div>
+        {:else}
+          <div>
+            <dt class="text-ink-muted">Last irrigation</dt>
+            <dd>
+              {#if summary.last_irrigation}{units.format('depth', summary.last_irrigation.inches)}, {relativeDay(
+                  summary.last_irrigation.date,
+                  today,
+                )}{:else}None{/if}
+            </dd>
+          </div>
+        {/if}
       </dl>
     {/if}
     {#if todo.length}
@@ -208,7 +218,7 @@
         <li>
           {#snippet row()}
             <span class="min-w-0 flex-1">
-              <span class="block">{cropName(summary)}</span>
+              <span class="block" data-search-text>{cropName(summary)}</span>
               <span class="block text-xs text-ink-muted">{cardWhen(summary, today)}</span>
               {#if look}<span
                   class="block text-xs {look.urgent ? 'font-medium text-status-irrigate-ink' : 'text-ink-muted'}"
@@ -216,7 +226,7 @@
                 >{/if}
               <!-- Moisture and AD in season, the stats once ended; nothing while weather is on its way (the card's note says so) -->
               {#if !summary.weather_pending && summary.phase === 'ended'}
-                <span class="block text-xs text-ink-muted">{seasonLine(summary.totals, units)}</span>
+                <span class="block text-xs text-ink-muted">{seasonLine(summary.totals, units, summary.rainfed)}</span>
               {:else if !summary.weather_pending && summary.phase === 'active' && summary.status !== 'needs_canopy'}
                 <span class="block text-xs text-ink-muted tabular-nums">{moistureLine(summary)}</span>
               {/if}
@@ -240,7 +250,7 @@
           {#snippet brief()}
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
-                <p class="truncate text-sm font-medium">{cropName(summary)}</p>
+                <p class="truncate text-sm font-medium" data-search-text>{cropName(summary)}</p>
                 <p class="truncate text-xs text-ink-muted">{cardWhen(summary, today)}</p>
               </div>
               {@render badge(summary)}

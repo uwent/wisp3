@@ -148,6 +148,10 @@ export const FIELD_INFO = {
   'planting.interpolation': {
     text: "How WISP draws the canopy between your readings. The curve keeps the crop's usual shape, including its decline late in the season; straight lines join the readings and hold the last one.",
   },
+  'planting.rainfed': {
+    text: 'Whether this crop is irrigated. For a rainfed crop WISP follows the soil moisture the same way, but shows when the crop runs short of water and how stressed it is, in place of when to irrigate, and keeps it out of the fields to irrigate.',
+    term: 'rainfed',
+  },
   'planting.target_ad': {
     text: 'WISP warns you, and projects the day to irrigate, when the water left falls to this share of its most, instead of when it runs out. Set it to irrigate early, leaving a margin for a hot spell or a slow system.',
     term: 'ad',

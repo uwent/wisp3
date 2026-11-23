@@ -67,8 +67,12 @@ Sources are `entered`, `model`, `forecast`, `none` and `missing`; pages show the
 For a planting whose crop has FAO-56 coefficients (every crop in `db/reference/plants.yml`), FAO-56's dual crop coefficient (C22, coefficients from FAO-56 Rev.1 since C25):
 
 ```
-crop ET = (Kcb + Ke) × ET0
+crop ET = (Ks × Kcb + Ke) × ET0
+Ks      = 1                       when AD ≥ 0
+        = (AD − AD_pwp) / −AD_pwp  below it, to 0 at the wilting point
 ```
+
+- **Ks** (`Params#ks`, C26, D17): FAO-56's water stress coefficient (eq. 84) from the day's starting AD: below the MAD trigger the crop transpires less, in a straight line to nothing at the wilting point. Only the crop's transpiration (Kcb) is scaled; soil evaporation is figured on the unstressed Kcb (eq. 80). Each `Result` carries `ks` at the day's end AD, what the crop manages next: the pages show it as the share of its normal water use (`Outlook.water_use_pct`, `waterUsePct` in `lib/outlook.ts`, to the nearest 5%, shown below 100%). Irrigated and rainfed plantings alike.
 
 - **Kcb** (`CropEt.kcb`): from percent cover (eq. 98) or LAI (eq. 97), 0 on bare soil, toward the crop's Kcb at full cover that day (`WaterBalance::Crop#kcb_full`): `kcb_mid` adjusted for the day's wind and minimum RH (eqs. 62/70), easing to `kcb_end` from the late stage's start (the day before its canopy curve declines, `Planting#late_stage_start`) to harvest.
 - **Ke** (`SoilEvaporation`, eqs. 71–77): the soil surface's evaporation, its depletion carried day to day from season start (wet): wetted by rain of 0.1 in or more and by irrigation (over the system's wetted fraction: drip 0.35), drying at the energy available, then slowing. A reading's day and a gap-filled day leave it as it was. Each `Result` carries the layer's state (`evaporation`), so a run that resumes mid-season (the projection, the ensemble) starts from it.
@@ -85,7 +89,15 @@ Without a crop's coefficients (`Params` with `crop: nil`, as the spec factory's 
 | Irrigate | ≤ 0 |
 | Needs canopy | in season and emerged, set to readings only (no curve), with no reading yet: bare soil's ET, so the balance can't say |
 
-The **threshold** is the target, or AD = 0 without one. `FieldStatuses.urgency` and `RANK` order fields by status (Irrigate first) for the dashboard, map and digest.
+A **rainfed** planting (`plantings.rainfed`, D17) has no target and gets its water stress instead (`WaterBalance.status` with `Params#rainfed`):
+
+| Status | Today's AD |
+|---|---|
+| No stress | > 0 |
+| Stress coming | No stress today, projected to reach 0 within 3 days |
+| Stressed | ≤ 0 (Ks below 1 once it's under 0) |
+
+The **threshold** is the target, or AD = 0 without one (always 0 for a rainfed planting). `FieldStatuses.urgency` and `RANK` order fields by status (Irrigate first, the rainfed statuses after every irrigated one) for the dashboard, map and digest.
 
 ## Ahead: the projection
 

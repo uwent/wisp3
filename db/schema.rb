@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -239,6 +239,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_130000) do
     t.bigint "pivot_id", null: false
     t.integer "season_days"
     t.bigint "created_by_id"
+    t.boolean "rainfed", default: false, null: false
     t.index ["created_by_id"], name: "index_plantings_on_created_by_id"
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["pivot_id"], name: "index_plantings_on_pivot_id"

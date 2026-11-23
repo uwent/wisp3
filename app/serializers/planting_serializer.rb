@@ -12,7 +12,9 @@ class PlantingSerializer < ApplicationSerializer
     # Its own season length in days, or null for the crop's typical one
     :season_days,
     # Who added it: they may delete it as well as the owners
-    :created_by_id
+    :created_by_id,
+    # Not irrigated: its status is its water stress (C26)
+    :rainfed
 
   attribute :plant_name do |planting|
     planting.plant.name

@@ -4,7 +4,8 @@ module DigestHelper
   def digest_crop(entry)
     planting = entry.status.planting
     name = planting.variety.present? ? "#{planting.plant.name} (#{planting.variety})" : planting.plant.name
-    (planting.partial? && @digest) ? "#{name}, #{@digest.plot(planting)}" : name
+    name = (planting.partial? && @digest) ? "#{name}, #{@digest.plot(planting)}" : name
+    planting.rainfed? ? "#{name}, rainfed" : name
   end
 
   # "Home farm › Pivot 1", with the operation when the digest spans several

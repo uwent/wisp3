@@ -20,6 +20,11 @@ class PlantingSummarySerializer < ApplicationSerializer
   attribute(:end_date) { |status| status.planting.end_date }
   attribute(:phase, &:phase)
   attribute(:status, &:status)
+  # Not irrigated: status is its water stress (C26)
+  attribute(:rainfed, &:rainfed?)
+  # The water stress coefficient at today's AD: the share of its unstressed water use the crop
+  # manages, 1 unstressed
+  attribute(:ks, &:ks)
   attribute(:weather_pending, &:weather_pending?)
   attribute(:date) { |status| status.current&.inputs&.date }
   attribute(:ad) { |status| status.current&.result&.ad }
@@ -77,7 +82,8 @@ class PlantingSummarySerializer < ApplicationSerializer
   typelize planting_id: :number, plant_name: :string, variety: "string | null", season_start: :string,
     partial: :boolean, area_acres: "number | null", plot_length_ft: "number | null", plot_width_ft: "number | null",
     end_date: :string, phase: "'upcoming' | 'active' | 'ended'",
-    status: "'full' | 'ok' | 'caution' | 'irrigate' | 'needs_canopy' | null", weather_pending: :boolean, date: "string | null", ad: "number | null",
+    status: "'full' | 'ok' | 'caution' | 'irrigate' | 'no_stress' | 'stress_coming' | 'stressed' | 'needs_canopy' | null",
+    rainfed: :boolean, ks: "number | null", weather_pending: :boolean, date: "string | null", ad: "number | null",
     pct_moisture: "number | null", taw: :number, ad_max: :number, ad_pwp: :number, target_in: "number | null",
     field_capacity_pct: :number, wilting_point_pct: :number, pct_at_ad_zero: :number,
     last_rain: "{ date: string; inches: number } | null", last_irrigation: "{ date: string; inches: number } | null",

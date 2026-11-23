@@ -37,6 +37,33 @@
   </table>
 <% end %>
 
+<% if @digest.rainfed_stress.any? %>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="<%= email_style(:card) %>;border-left:4px solid <%= c[:caution] %>">
+    <tr>
+      <td style="<%= email_style(:card_header) %>">
+        <h2 style="font-size:16px;line-height:1.3;margin:0">Rainfed crops short of water</h2>
+      </td>
+    </tr>
+    <tr>
+      <td style="<%= email_style(:card_body) %>">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px">
+          <% @digest.rainfed_stress.each_with_index do |entry, index| %>
+            <% border = index.zero? ? "" : rule %>
+            <tr>
+              <td width="1" style="padding:10px 10px 8px 0;<%= border %>;white-space:nowrap;vertical-align:top"><span style="<%= status_style(entry.status.status) %>"><%= status_label(entry.status.status) %></span></td>
+              <td style="padding:8px 0;<%= border %>">
+                <span style="<%= muted %>">Field:</span> <span style="font-weight:600"><%= email_link_to entry.field.name, field_link(entry) %></span>
+                <span style="<%= muted %>">· <%= digest_crop(entry) %> · <%= digest_place(entry, @digest) %></span><br>
+                <% if entry.outlook %><span style="font-weight:600"><%= entry.outlook.headline %></span><% end %>
+              </td>
+            </tr>
+          <% end %>
+        </table>
+      </td>
+    </tr>
+  </table>
+<% end %>
+
 <% if @digest.nothing_listed %>
   <p style="margin:0 0 20px;font-weight:600">Nothing needs your attention today. <span style="font-weight:400"><%= @digest.nothing_listed %></span></p>
 <% end %>

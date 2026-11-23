@@ -175,6 +175,9 @@ export const STATUS_LABELS: Record<Status, string> = {
   needs_canopy: 'No canopy data',
   ok: 'OK',
   full: 'Full',
+  stressed: 'Stressed',
+  stress_coming: 'Stress coming',
+  no_stress: 'No stress',
 }
 
 /** A badge: a status, or a gray dot when there's none, and what it is, a line each, for the hover label */

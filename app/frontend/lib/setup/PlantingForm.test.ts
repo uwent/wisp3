@@ -246,3 +246,40 @@ describe('PlantingForm also plant this on', () => {
     expect(screen.getAllByText('West 40: overlaps its Soybean planting')).toHaveLength(1)
   })
 })
+
+describe('PlantingForm water', () => {
+  beforeEach(() => {
+    form.errors = {}
+    sessionStorage.clear()
+  })
+
+  const water = () => screen.getByRole('group', { name: /^Water/ })
+  const checked = (name: RegExp) => (screen.getByRole('radio', { name }) as HTMLInputElement).checked
+
+  it('starts a new planting rainfed on a location with no pump', () => {
+    render(PlantingForm, {
+      field: { ...field, rainfed_default: true } as Field,
+      year: 2026,
+      plants: [corn],
+      ondone: () => {},
+    })
+    flushSync()
+    const crop = screen.getByRole('combobox', { name: /^Crop/ })
+    ;(crop as HTMLSelectElement).value = String(corn.id)
+    crop.dispatchEvent(new Event('change', { bubbles: true }))
+    flushSync()
+    expect(water()).toBeInTheDocument()
+    expect(checked(/^Rainfed/)).toBe(true)
+  })
+
+  it("keeps a planting's own choice, and hides the irrigation target for a rainfed one", () => {
+    show(plantingOf(corn, { rainfed: true, target_ad_pct: 40 }), {})
+    expect(checked(/^Rainfed/)).toBe(true)
+    expect(screen.queryByLabelText(/^Target allowable depletion/)).not.toBeInTheDocument()
+    expect(document.querySelector<HTMLInputElement>('input[name="planting[target_ad_pct]"]')!.value).toBe('40')
+
+    screen.getByRole('radio', { name: 'Irrigated' }).click()
+    flushSync()
+    expect(screen.getByLabelText(/^Target allowable depletion/)).toBeInTheDocument()
+  })
+})

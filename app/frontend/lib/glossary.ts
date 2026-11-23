@@ -66,7 +66,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Crop ET',
     matches: ['crop ET', 'adjusted ET'],
     definition:
-      "The water the crop and its soil use in a day: reference ET multiplied by a crop coefficient, from the crop's canopy and how wet the soil's surface is.",
+      "The water the crop and its soil use in a day: reference ET multiplied by a crop coefficient, from the crop's canopy and how wet the soil's surface is, and less when the crop is short of water.",
   },
   {
     id: 'et',
@@ -115,6 +115,20 @@ export const GLOSSARY: GlossaryEntry[] = [
     matches: ['AquaCrop'],
     definition:
       "FAO's crop growth model, which simulates how a crop's canopy grows and declines and how its yield responds to water. WISP's canopy curves use its canopy cover equations, and start from its crop files where it has one. See Sources on the About page.",
+  },
+  {
+    id: 'water_stress',
+    term: 'Water stress',
+    matches: ['water stress', 'short of water'],
+    definition:
+      "Below the irrigation point (AD 0) a crop can't draw water as easily and uses less than it would with enough: all it would at AD 0, falling in a straight line to nothing at the wilting point (FAO-56). WISP takes that into account, so a dry field dries more slowly, and shows the share of its normal water use the crop manages.",
+  },
+  {
+    id: 'rainfed',
+    term: 'Rainfed',
+    matches: ['rainfed'],
+    definition:
+      "A crop that isn't irrigated. WISP follows its soil moisture through rain and crop water use as for any other, and in place of when to irrigate shows when the crop runs short of water and how stressed it is.",
   },
   {
     id: 'deep_drainage',

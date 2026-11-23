@@ -13,6 +13,9 @@ class DigestMailer < ApplicationMailer
     needs_canopy: {label: "? No canopy data", color: COLORS[:off], text: COLORS[:ink]},
     ok: {label: "✓ OK", color: COLORS[:ok], text: COLORS[:white]},
     full: {label: "● Full", color: COLORS[:full], text: COLORS[:white]},
+    stressed: {label: "▼ Stressed", color: COLORS[:irrigate], text: COLORS[:white]},
+    stress_coming: {label: "! Stress coming", color: COLORS[:caution], text: COLORS[:ink]},
+    no_stress: {label: "✓ No stress", color: COLORS[:ok], text: COLORS[:white]},
     off: {label: "– Off season", color: COLORS[:off], text: COLORS[:ink]}
   }.freeze
 

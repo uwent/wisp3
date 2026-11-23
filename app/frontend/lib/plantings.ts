@@ -68,16 +68,22 @@ type SeasonTotals = {
 const times = (n: number) => (n === 1 ? 'once' : `${n} times`)
 
 /**
- * An ended season in four stats, for its card: irrigation, rain, deep drainage, and the days
- * spent below the irrigation point
+ * An ended season in four stats, for its card: irrigation (left out for a rainfed crop never watered), rain, deep
+ * drainage, and the days spent below the irrigation point (rainfed: short of water)
  */
-export function endedSeasonStats(totals: SeasonTotals, units: Units): { label: string; value: string }[] {
+export function endedSeasonStats(
+  totals: SeasonTotals,
+  units: Units,
+  rainfed = false,
+): { label: string; value: string }[] {
   const depth = (inches: number) => units.format('depth', inches)
   return [
-    {
-      label: 'Irrigated',
-      value: totals.irrigation_days ? `${times(totals.irrigation_days)}, ${depth(totals.irrigation)}` : 'Never',
-    },
+    rainfed && !totals.irrigation_days
+      ? null
+      : {
+          label: 'Irrigated',
+          value: totals.irrigation_days ? `${times(totals.irrigation_days)}, ${depth(totals.irrigation)}` : 'Never',
+        },
     {
       label: 'Rain',
       value:
@@ -91,19 +97,21 @@ export function endedSeasonStats(totals: SeasonTotals, units: Units): { label: s
       label: 'Deep drainage',
       value: totals.drainage_days ? `${count(totals.drainage_days, 'day')}, ${depth(totals.deep_drainage)}` : 'None',
     },
-    { label: 'Below the irrigation point', value: totals.stress_days ? count(totals.stress_days, 'day') : 'Never' },
-  ]
+    {
+      label: rainfed ? 'Short of water' : 'Below the irrigation point',
+      value: totals.stress_days ? count(totals.stress_days, 'day') : 'Never',
+    },
+  ].filter((stat) => stat !== null)
 }
 
 /** An ended season in a line, for a compact card: "Irrigated 7.20 in · rain 11.80 in · 3 days below the irrigation point" */
-export function seasonLine(totals: SeasonTotals, units: Units): string {
+export function seasonLine(totals: SeasonTotals, units: Units, rainfed = false): string {
   const depth = (inches: number) => units.format('depth', inches)
+  const below = rainfed ? 'short of water' : 'below the irrigation point'
   return [
-    totals.irrigation_days ? `Irrigated ${depth(totals.irrigation)}` : 'No irrigation',
+    totals.irrigation_days ? `Irrigated ${depth(totals.irrigation)}` : rainfed ? 'Rainfed' : 'No irrigation',
     totals.rain === null ? null : `rain ${depth(totals.rain)}`,
-    totals.stress_days
-      ? `${count(totals.stress_days, 'day')} below the irrigation point`
-      : 'never below the irrigation point',
+    totals.stress_days ? `${count(totals.stress_days, 'day')} ${below}` : `never ${below}`,
   ]
     .filter(Boolean)
     .join(' · ')

@@ -14,6 +14,9 @@
 # - C22: crop ET by FAO-56's dual crop coefficient, (Kcb + Ke) × ET0, when Params has a crop: Kcb from
 #   the canopy (CropEt.kcb), easing from mid season's to harvest's over the late season (Crop), and Ke
 #   from the soil surface's wetting and drying (SoilEvaporation), carried from day to day.
+# - C26: below the MAD trigger the crop runs short of water and transpires less, by FAO-56's water
+#   stress coefficient Ks (eq. 84) on Kcb, straight down from 1 at AD 0 to 0 at the wilting point
+#   (legacy took full crop ET however dry the soil).
 module WaterBalance
   GAP_FILL_DAYS = 7 # gap fill: mean of the top GAP_FILL_TOP adjusted ETs in the previous 7 days
   GAP_FILL_TOP = 3
@@ -45,11 +48,12 @@ module WaterBalance
   # FC and PWP are fractions; MRZD inches; MAD a fraction; percents are 0–100. crop: a Crop, or nil
   # for the percent cover table as legacy used it (CropEt). rew: the soil's readily evaporable water
   # (inches; nil: SoilEvaporation's default) and irrigation_fw the fraction of the surface its
-  # irrigation wets, for soil evaporation (C22).
+  # irrigation wets, for soil evaporation (C22). rainfed: a crop that isn't irrigated, whose status
+  # is its water stress (status) and which has no irrigation target.
   Params = Data.define(:field_capacity, :perm_wilting_pt, :max_root_zone_depth, :mad_frac, :et_method,
-    :target_ad_pct, :initial_moisture_pct, :crop, :rew, :irrigation_fw) do
+    :target_ad_pct, :initial_moisture_pct, :crop, :rew, :irrigation_fw, :rainfed) do
     def initialize(field_capacity:, perm_wilting_pt:, max_root_zone_depth:, mad_frac:, et_method: "pct_cover",
-      target_ad_pct: nil, initial_moisture_pct: nil, crop: nil, rew: nil, irrigation_fw: 1.0)
+      target_ad_pct: nil, initial_moisture_pct: nil, crop: nil, rew: nil, irrigation_fw: 1.0, rainfed: false)
       unless perm_wilting_pt.positive? && perm_wilting_pt < field_capacity && field_capacity < 1
         raise ArgumentError, "need 0 < wilting point < field capacity < 1"
       end
@@ -64,7 +68,8 @@ module WaterBalance
         max_root_zone_depth: planting.max_root_zone_depth, mad_frac: planting.mad_frac,
         et_method: planting.et_method, target_ad_pct: planting.target_ad_pct,
         initial_moisture_pct: planting.initial_moisture_pct, crop: Crop.for(planting, temperatures:),
-        rew: planting.soil_type.rew_in, irrigation_fw: SoilEvaporation.wetted_fraction(planting.system&.kind))
+        rew: planting.soil_type.rew_in, irrigation_fw: SoilEvaporation.wetted_fraction(planting.system&.kind),
+        rainfed: planting.rainfed)
     end
 
     # The soil surface's evaporation layer (C22), from the planting's own soil values
@@ -76,7 +81,12 @@ module WaterBalance
     def ad_pwp = -(1 - mad_frac) * taw
     # Soil moisture (%) at AD = 0
     def pct_at_ad_zero = (field_capacity - ad_max / max_root_zone_depth) * 100
-    def target_in = target_ad_pct && target_ad_pct / 100.0 * ad_max
+    def target_in = (target_ad_pct / 100.0 * ad_max if target_ad_pct && !rainfed)
+
+    # FAO-56's water stress coefficient (eq. 84, C26) at AD: 1 down to the trigger (AD 0), then in
+    # a straight line to 0 at the wilting point. The share of its unstressed transpiration the crop
+    # manages.
+    def ks(ad) = ad.negative? ? (1 - ad / ad_pwp).clamp(0.0, 1.0) : 1.0
 
     # AD from a soil moisture reading, before clamping
     def ad_from_moisture(pct) = max_root_zone_depth * (pct - pct_at_ad_zero) / 100
@@ -101,10 +111,11 @@ module WaterBalance
   # et_source: :computed, :gap_fill, or :missing (et0 missing and no recent ET to fill from;
   # the day then has no ET). moisture_reset: AD came from a soil moisture reading. evaporation: the
   # soil surface's SoilEvaporation::State at the end of the day (nil without a crop), for a run
-  # resuming from it.
+  # resuming from it. ks: the water stress coefficient at the day's end AD (Params#ks), what the
+  # crop manages the next day: 1 unstressed, and always 1 without a crop, whose table ET isn't reduced.
   Result = Data.define(:date, :adj_et, :et_source, :ad, :deep_drainage, :pct_moisture, :moisture_reset,
-    :evaporation) do
-    def initialize(evaporation: nil, **) = super
+    :evaporation, :ks) do
+    def initialize(evaporation: nil, ks: 1.0, **) = super
   end
 
   module_function
@@ -119,7 +130,7 @@ module WaterBalance
     layer = params.crop && params.evaporation
     surface = layer && (evaporation || SoilEvaporation::State.initial)
     days.map do |day|
-      adj_et, et_source, after = crop_et(params, day, history, layer, surface)
+      adj_et, et_source, after = crop_et(params, day, history, layer, surface, ad)
       history << [day.date, adj_et] if et_source == :computed
 
       if day.soil_moisture_pct
@@ -137,15 +148,17 @@ module WaterBalance
 
       Result.new(date: day.date, adj_et: adj_et&.round(PRECISION), et_source:, ad: ad.round(PRECISION),
         deep_drainage: drainage.round(PRECISION), pct_moisture: params.pct_moisture(ad).round(PRECISION),
-        moisture_reset: !day.soil_moisture_pct.nil?, evaporation: surface)
+        moisture_reset: !day.soil_moisture_pct.nil?, evaporation: surface,
+        ks: layer ? params.ks(ad).round(PRECISION) : 1.0)
     end
   end
 
-  # [adj_et, source, the surface layer after the day (nil unless computed with a crop)]
-  def crop_et(params, day, history, layer = nil, surface = nil)
+  # [adj_et, source, the surface layer after the day (nil unless computed with a crop)]. ad: the
+  # day's starting AD, for water stress (with a crop)
+  def crop_et(params, day, history, layer = nil, surface = nil, ad = params.ad_max)
     if day.et0
       return [CropEt.adjusted(params.et_method, day.et0, day.canopy), :computed, nil] unless layer
-      adj_et, after = dual(params, day, layer, surface)
+      adj_et, after = dual(params, day, layer, surface, ad)
       return [adj_et, :computed, after]
     end
 
@@ -155,8 +168,10 @@ module WaterBalance
     [top.sum / top.size, :gap_fill, nil]
   end
 
-  # FAO-56's dual crop coefficient (C22): [crop ET, the surface layer after the day]
-  def dual(params, day, layer, surface)
+  # FAO-56's dual crop coefficient (C22): [crop ET, the surface layer after the day]. Water stress
+  # (C26) scales the crop's transpiration, Kcb, from the day's starting AD (FAO-56 eq. 80); soil
+  # evaporation is figured on the unstressed Kcb, as FAO-56 does.
+  def dual(params, day, layer, surface, ad = params.ad_max)
     crop = params.crop
     et0 = [day.et0, 0.0].max
     weather = {wind_mph: day.wind_mph, rh_min_pct: day.rh_min_pct}
@@ -164,12 +179,14 @@ module WaterBalance
     step = layer.step(surface, et0:, kcb:, kc_max: CropEt.kc_max(kcb, crop.height_m, **weather),
       cover: CropEt.cover_fraction(params.et_method, day.canopy), rain: day.rain, irrigation: day.irrigation,
       irrigation_fw: params.irrigation_fw)
-    [(kcb + step.ke) * et0, step.state]
+    [(params.ks(ad) * kcb + step.ke) * et0, step.state]
   end
 
-  # Today's status from AD (docs/engine.md); projections add "caution" for a coming crossing
+  # Today's status from AD (docs/engine.md); projections add "caution" ("stress_coming") for a coming
+  # crossing. A rainfed crop's is its water stress: none above the trigger, stressed below it.
   def status(params, ad)
-    if ad >= 0.9 * params.ad_max then :full
+    if params.rainfed then ad.positive? ? :no_stress : :stressed
+    elsif ad >= 0.9 * params.ad_max then :full
     elsif ad >= (params.target_in || 0.5 * params.ad_max) then :ok
     elsif ad > 0 then :caution
     else :irrigate

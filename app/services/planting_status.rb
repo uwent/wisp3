@@ -21,7 +21,8 @@ class PlantingStatus
 
   # Days projected after today: the forecast's 16 days include today
   HORIZON = Weather::Fetcher::FORECAST_DAYS - 1
-  # A field OK today but projected to reach its threshold within this many days is "caution"
+  # A field OK today but projected to reach its threshold within this many days is "caution" (a
+  # rainfed crop's "stress_coming")
   LEAD_DAYS = 3
 
   attr_reader :planting, :today, :as_of
@@ -72,17 +73,29 @@ class PlantingStatus
   # Today's day, or the season's last
   def current = days.last
 
-  # Today's status; caution when it's fine today but the projection reaches the threshold soon;
-  # needs_canopy when nothing says how much the crop covers
+  # Today's status; caution (stress_coming, rainfed) when it's fine today but the projection reaches
+  # the threshold soon; needs_canopy when nothing says how much the crop covers
   def status
     return unless current
     return :needs_canopy if needs_canopy?
     today_status = WaterBalance.status(params, current.result.ad)
     soon = phase == :active && crossing && crossing.days <= LEAD_DAYS
-    (%i[full ok].include?(today_status) && soon) ? :caution : today_status
+    return today_status unless soon
+    case today_status
+    when :full, :ok then :caution
+    when :no_stress then :stress_coming
+    else today_status
+    end
   end
 
-  # The AD to stay above: the target, or the irrigation point (AD 0) without one
+  def rainfed? = params.rainfed
+
+  # The water stress coefficient at today's AD (C26): the share of its unstressed water use the crop
+  # manages, 1 unstressed
+  def ks = current&.result&.ks
+
+  # The AD to stay above: the target, or the irrigation point (AD 0) without one; a rainfed crop's
+  # is where stress begins (AD 0)
   def threshold = params.target_in || 0.0
 
   def crossing

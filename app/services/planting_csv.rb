@@ -1,6 +1,7 @@
 # A planting's season as CSV: frontmatter (CsvExport), a header block describing the farm, field and
 # crop, one row per day through today, and season totals. Columns follow the legacy export, plus
-# the source of each input. Depths are in inches, as stored.
+# the source of each input and the water stress coefficient (C26: the share of its unstressed water
+# use the crop manages). Depths are in inches, as stored.
 class PlantingCsv
   include CsvExport
 
@@ -25,8 +26,9 @@ class PlantingCsv
       csv << ["Farm", "Irrigation system", "Kind", "Equipment", "Field", "Area (acres)", "Part of the field"]
       csv << [text(system.farm.name), text(system.name), system.kind_name, text(system.equipment), text(field.name),
         planting.area_acres, planting.size_label]
-      csv << ["Soil type", "Field capacity (%)", "Wilting point (%)", "Target AD (%)"]
-      csv << [planting.soil_type.name, pct(params.field_capacity), pct(params.perm_wilting_pt), planting.target_ad_pct]
+      csv << ["Soil type", "Field capacity (%)", "Wilting point (%)", "Target AD (%)", "Water"]
+      csv << [planting.soil_type.name, pct(params.field_capacity), pct(params.perm_wilting_pt),
+        (planting.target_ad_pct unless planting.rainfed?), planting.rainfed? ? "Rainfed" : "Irrigated"]
       csv << ["Crop", "Variety", "Root zone depth (in)", "MAD (%)", "Initial moisture (%)", "Emergence",
         "AD at field capacity (in)", "Season start", "Vine kill", "Harvest or kill"]
       csv << [planting.plant.name, text(planting.variety), planting.max_root_zone_depth, pct(planting.mad_frac),
@@ -35,13 +37,13 @@ class PlantingCsv
       csv << []
       csv << ["Date", "Reference ET (in)", "AD (in)", "Percent moisture", canopy, "Rainfall (in)", "Rain source",
         "Modeled rain (in)", "Irrigation (in)", "Irrigation source", "Soil moisture reading (%)", "Adjusted ET (in)",
-        "ET source", "Deep drainage (in)"]
+        "ET source", "Deep drainage (in)", "Water stress coefficient (Ks)"]
       days.each do |day|
         inputs, result = day.inputs, day.result
         csv << [inputs.date, num(inputs.et0), num(result.ad), num(result.pct_moisture), num(day.canopy),
           num(inputs.rain), inputs.rain_source, num(inputs.rain_model), num(inputs.irrigation),
           inputs.irrigation_source, inputs.soil_moisture_pct, num(result.adj_et), result.et_source,
-          num(result.deep_drainage)]
+          num(result.deep_drainage), num(result.ks)]
       end
       totals = @status.totals
       csv << []

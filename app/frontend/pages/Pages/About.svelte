@@ -256,8 +256,11 @@
     </ul>
     <p>
       A full root zone has AD at its maximum. At 0 AD the crop has used its allowance and it's time to irrigate; below 0
-      it is increasingly stressed. The balance is recalculated from the start of the season every time you open a page,
-      so a value you correct from last week is reflected in today's numbers right away.
+      it is increasingly <Term id="water_stress">short of water</Term> and uses less of it, as FAO-56 describes: all it would
+      at 0 AD, falling in a straight line to nothing at the wilting point. So a field that isn't watered dries more slowly
+      the drier it gets, and WISP shows the share of its normal water use the crop still manages. The balance is recalculated
+      from the start of the season every time you open a page, so a value you correct from last week is reflected in today's
+      numbers right away.
     </p>
 
     <h3 id="how-weather">Weather</h3>
@@ -302,6 +305,24 @@
             A planting set to readings only (no canopy curve) with no percent cover reading yet, so WISP can't estimate
             its water use. Enter a reading to start.
           </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      A <Term id="rainfed">rainfed</Term> planting, one that isn't irrigated, gets its water stress instead, and its outlook
+      says when it will run short of water rather than when to irrigate. Rainfed plantings are listed after the irrigated
+      ones, never among the fields to irrigate, and the morning email gathers those short of water in a section of their own.
+    </p>
+    <table class="[&_td]:align-middle [&_td:first-child]:whitespace-nowrap">
+      <tbody>
+        <tr><td><StatusBadge status="no_stress" /></td><td>Above 0 AD: the crop has the water it needs.</td></tr>
+        <tr>
+          <td><StatusBadge status="stress_coming" /></td>
+          <td>Expected to fall below 0 AD within {defaults.lead_days} days.</td>
+        </tr>
+        <tr>
+          <td><StatusBadge status="stressed" /></td>
+          <td>At or below 0 AD today, with the share of its normal water use the crop manages.</td>
         </tr>
       </tbody>
     </table>
@@ -862,6 +883,10 @@ t′: days since the decline starts</code
         <strong>Crop water use</strong> from each crop's FAO-56 crop coefficient and a typical canopy curve, which your
         cover readings correct (see <a href="#crops">Crops</a>), checked against flux towers in Central Sands potato
         fields (see <a href="#et-validation">Field validation with eddy covariance towers</a>).
+      </li>
+      <li>
+        <strong>Water stress:</strong> below the irrigation point a crop uses less water, so a field that falls behind dries
+        more slowly than WISP 2012 had it, and rainfed crops can be followed alongside irrigated ones.
       </li>
       <li>
         <strong>Plantings on part of a field,</strong> side by side, each with its own balance and page, and a page that can

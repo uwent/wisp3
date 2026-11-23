@@ -2,6 +2,7 @@
   import { onDestroy, tick, untrack } from 'svelte'
   import { Link, page, router } from '@inertiajs/svelte'
 
+  import SearchFilter from '@/lib/components/SearchFilter.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
   import type { LngLat } from '@/lib/geo'
@@ -404,13 +405,7 @@
             </select>
           </label>
         </div>
-        <input
-          type="search"
-          bind:value={query}
-          placeholder="Filter by field, system, group or farm"
-          aria-label="Filter fields"
-          class="block w-full rounded-md py-1 text-sm"
-        />
+        <SearchFilter bind:value={query} compact class="w-full" />
         <h2 class="text-xs text-ink-muted">{listedSummary}</h2>
       </div>
       <div bind:this={list} class="min-h-0 flex-1 overflow-y-auto p-2">

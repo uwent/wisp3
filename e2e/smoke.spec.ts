@@ -40,6 +40,8 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   const rows = page.locator('[data-field-row]')
   await expect(rows.first()).toBeVisible()
   await expect(page.getByText(/% soil moisture · AD /)).toHaveCount(0)
+  // A rainfed planting says so in its row, as on its card
+  await expect(rows.filter({ hasText: DEMO.rainfedField }).first()).toContainText('Rainfed')
   await page.reload()
   await expect(rows.first()).toBeVisible()
   const fieldCount = await rows.count()
@@ -51,7 +53,7 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   const statuses = page.getByRole('group', { name: 'Show fields by status' })
   const first = statuses.getByRole('button').first()
   const [, label, count] = (await first.textContent())!.match(
-    /(Irrigate|Caution|No canopy data|OK|Full|Season ended)\s*(\d+) fields?/,
+    /(Irrigate|Caution|No canopy data|OK|Full|Stressed|Stress coming|No stress|Season ended)\s*(\d+) fields?/,
   )!
   await expect(rows.first()).toContainText(label)
 
@@ -302,7 +304,7 @@ test("the map's list is the operation as a tree, selected at any level", { tag: 
   await expect(system).toHaveAttribute('aria-pressed', 'false')
 
   // The filter keeps a match with its parents
-  await list.getByRole('searchbox', { name: 'Filter fields' }).fill(DEMO.splitEast)
+  await list.getByRole('searchbox', { name: 'Search fields' }).fill(DEMO.splitEast)
   await expect(list.getByRole('button', { name: /on the map$/ })).toHaveCount(2) // the system and the field
   await expect(list.getByRole('button', { name: /^Zoom the map to the farm / })).toHaveCount(1)
   await expect(list.getByText(/^1 farm · 1 system · 1 field · \d+ plantings?$/)).toBeVisible()
@@ -1877,4 +1879,34 @@ test("a planting's bar in Setup opens its page or its form, and the page's Edit 
   // From the form, its page again
   await dialog.getByRole('link', { name: 'View this planting' }).click()
   await expect(page).toHaveURL(/\/plantings\/\d+/)
+})
+
+test('the dashboard and Setup search fields by name or crop', async ({ page }) => {
+  await page.goto('/')
+  const search = page.getByRole('searchbox', { name: 'Search fields' })
+  const fieldHeading = (name: string) => page.getByRole('heading', { name: `Field: ${name}`, exact: true })
+  await expect(fieldHeading(DEMO.researchField)).toBeVisible()
+  await search.fill(DEMO.firstCrop.toLowerCase())
+  await expect(fieldHeading(DEMO.firstField)).toBeVisible()
+  await expect(fieldHeading(DEMO.researchField)).toHaveCount(0)
+  // What matched is highlighted (the CSS Custom Highlight API)
+  await expect
+    .poll(() => page.evaluate(() => (CSS.highlights.get('search') as Highlight | undefined)?.size ?? 0))
+    .toBeGreaterThan(0)
+  await search.fill('no such field')
+  await expect(page.getByText('Nothing matches "no such field".')).toBeVisible()
+
+  await page.goto('/setup')
+  const edit = (name: string) => page.getByRole('button', { name: `Edit ${name}`, exact: true })
+  await expect(edit(DEMO.firstField)).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search fields' }).fill(DEMO.researchField)
+  await expect(edit(DEMO.researchField)).toBeVisible()
+  await expect(edit(DEMO.firstField)).toHaveCount(0)
+
+  // A group's form still has all its systems, not just those the search left (saving it keeps them)
+  await page.getByRole('button', { name: `Edit ${DEMO.gauge}`, exact: true }).click()
+  const group = page.getByRole('group', { name: 'Irrigation systems in this group' })
+  await expect(group.getByRole('checkbox', { name: new RegExp(`^${literal(DEMO.gaugeFieldSystem)}`) })).toBeChecked()
+  await expect(group.getByRole('checkbox', { name: new RegExp(`^${literal(DEMO.researchSystem)}`) })).toBeChecked()
+  await page.keyboard.press('Escape')
 })

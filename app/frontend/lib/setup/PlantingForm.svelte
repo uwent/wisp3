@@ -158,6 +158,9 @@
     untrack(() => (planting && Math.abs(planting.mad_frac - DEFAULT_MAD) > 1e-9 ? planting.mad_frac : null)),
   )
   let targetAd = $state<number | null>(untrack(() => planting?.target_ad_pct ?? null))
+  // Rainfed: not irrigated, so WISP shows its water stress rather than when to irrigate (C26). A new
+  // planting starts rainfed on a location with no pump
+  let rainfed = $state(untrack(() => start?.rainfed ?? field.rainfed_default))
   let vineKill = $state(untrack(() => planting?.vine_kill_date ?? ''))
   let etMethod = $state(untrack(() => planting?.et_method ?? 'pct_cover'))
   let interpolation = $state(untrack(() => planting?.canopy_interpolation ?? 'curve'))
@@ -241,7 +244,7 @@
     else if (generic && curveKey === NONE) canopy = 'percent cover, readings only'
     else if (interpolation === 'linear') canopy = 'percent cover, straight lines between readings'
     else canopy = `percent cover, following the ${(generic ? genericCurve?.name : plant.name)?.toLowerCase()} curve`
-    const target = targetAd !== null ? ` · target AD ${targetAd}%` : ''
+    const target = targetAd !== null && !rainfed ? ` · target AD ${targetAd}%` : ''
     return `Root zone ${depth} · ${mad} · ${canopy}${target}`
   })
 
@@ -363,6 +366,34 @@
     {#if !plant}
       <p class="text-sm text-ink-muted">Choose a crop: WISP suggests its season, root zone and canopy curve from it.</p>
     {:else}
+      <fieldset class="space-y-2" aria-labelledby="planting-water">
+        <FieldLabel as="legend" label="Water" labelId="planting-water" info="planting.rainfed" />
+        <div class="flex flex-wrap gap-x-6 gap-y-2">
+          <label class="flex items-start gap-3 text-sm">
+            <input
+              type="radio"
+              name="planting[rainfed]"
+              value="false"
+              checked={!rainfed}
+              onchange={() => (rainfed = false)}
+              class="mt-0.5"
+            />
+            <span>Irrigated</span>
+          </label>
+          <label class="flex items-start gap-3 text-sm">
+            <input
+              type="radio"
+              name="planting[rainfed]"
+              value="true"
+              checked={rainfed}
+              onchange={() => (rainfed = true)}
+              class="mt-0.5"
+            />
+            <span>Rainfed <span class="text-ink-muted">(WISP shows its water stress, not when to irrigate)</span></span>
+          </label>
+        </div>
+      </fieldset>
+
       <section class="space-y-4" aria-labelledby="planting-season-heading">
         <h3 id="planting-season-heading" class="border-t border-line pt-4 font-display text-sm font-semibold">
           Season
@@ -797,16 +828,21 @@
             </fieldset>
           {/if}
           <div class="grid gap-4 sm:grid-cols-2">
-            <NumberField
-              label="Target allowable depletion (AD)"
-              name="planting[target_ad_pct]"
-              unitLabel="%"
-              bind:value={targetAd}
-              hint="Irrigate before allowable depletion falls below this share of its maximum."
-              info="planting.target_ad"
-              error={errors.target_ad_pct}
-              optional
-            />
+            {#if rainfed}
+              <!-- Kept so a target typed before stays; a rainfed crop has none to irrigate to -->
+              <input type="hidden" name="planting[target_ad_pct]" value={targetAd ?? ''} />
+            {:else}
+              <NumberField
+                label="Target allowable depletion (AD)"
+                name="planting[target_ad_pct]"
+                unitLabel="%"
+                bind:value={targetAd}
+                hint="Irrigate before allowable depletion falls below this share of its maximum."
+                info="planting.target_ad"
+                error={errors.target_ad_pct}
+                optional
+              />
+            {/if}
             <NumberField
               label="Starting soil moisture"
               name="planting[initial_moisture_pct]"

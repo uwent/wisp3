@@ -61,6 +61,9 @@
     ok: 'bg-status-ok',
     caution: 'bg-status-caution',
     irrigate: 'bg-status-irrigate',
+    no_stress: 'bg-status-ok',
+    stress_coming: 'bg-status-caution',
+    stressed: 'bg-status-irrigate',
   }
   const ended = (p: T) => p.end_date < today
   // A bar's menu opens under the bar where it was clicked (a bar can span the whole season), centred
@@ -113,7 +116,7 @@
           {#if verb}<span class="sr-only">{verb}</span>{/if}
           {#if status[p.id]}<span class="size-2 shrink-0 rounded-full {dots[status[p.id]!]}" aria-hidden="true"
             ></span>{/if}
-          <span class="truncate">{p.plant_name}</span>
+          <span class="truncate" data-search-text>{p.plant_name}</span>
           <span class="truncate text-xs text-ink-muted">{plantingWhen(p, today)}</span>
           <span class="sr-only">{`, ${more(p)}`}</span>
         {/snippet}

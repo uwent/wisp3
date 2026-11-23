@@ -1,5 +1,7 @@
 import type { PlantingSummary } from '@/types/serializers'
 
+import { fieldMatches, searchText } from './search'
+
 // The operation's farms, pivots and field cards (OperationOverview), as the dashboard and the map
 // get them, and how the map orders and picks them
 
@@ -29,8 +31,17 @@ export type FarmGroup<P extends OverviewSystem = OverviewSystem> = {
 
 export type Status = NonNullable<PlantingSummary['status']>
 
-/** Most urgent first */
-export const STATUSES: Status[] = ['irrigate', 'caution', 'needs_canopy', 'ok', 'full']
+/** Most urgent first: irrigated crops by what they need, then rainfed ones by their stress (FieldStatuses::RANK) */
+export const STATUSES: Status[] = [
+  'irrigate',
+  'caution',
+  'needs_canopy',
+  'ok',
+  'full',
+  'stressed',
+  'stress_coming',
+  'no_stress',
+]
 
 /** The pivots whose weather is being updated, so the page waits for it to land (lib/poll.ts) */
 export const updatingIds = (farms: FarmGroup[]) =>
@@ -52,9 +63,9 @@ export function summaryUrgency(summary: PlantingSummary | null): number {
   return summaryActive(summary) ? STATUSES.indexOf(summary.status!) : n
 }
 
-/** Days until the planting needs water (0 when it does now), or null if not within the forecast */
+/** Days until the planting needs water (0 when it does now), or null if not within the forecast or rainfed */
 function summaryDaysToIrrigate(summary: PlantingSummary | null): number | null {
-  if (!summaryActive(summary)) return null
+  if (!summaryActive(summary) || summary!.rainfed) return null
   if (summary!.status === 'irrigate') return 0
   return summary!.crossing?.days ?? null
 }
@@ -97,7 +108,7 @@ export type FarmNode<P> = { kind: 'farm'; id: number; name: string; children: (G
 
 export type TreeOptions = {
   order: SortOrder
-  /** Text to match in a field's, system's, group's or farm's name; a match keeps its parents, and everything under it */
+  /** Text to match in a field's, system's, group's or farm's name, or a field's crops (lib/search.ts); a match keeps its parents, and everything under it */
   query?: string
   /** Only fields needing water within these days (0: today), and the parents left with any; null for all */
   windowDays?: number | null
@@ -149,7 +160,7 @@ export function buildTree<P extends OverviewSystem & { latitude: number }>(
   farms: FarmGroup<P>[],
   { order, query = '', windowDays = null, growing = false }: TreeOptions,
 ): FarmNode<P>[] {
-  const text = query.trim().toLowerCase()
+  const text = searchText(query)
   const matches = (name: string) => !text || name.toLowerCase().includes(text)
   const filtering = text !== '' || windowDays !== null || growing
 
@@ -166,7 +177,7 @@ export function buildTree<P extends OverviewSystem & { latitude: number }>(
     const within = matched || matches(pivot.name)
     const fields = pivot.fields.filter(
       (card) =>
-        (within || matches(card.name)) &&
+        (within || fieldMatches(card, text)) &&
         (windowDays === null || needsWaterWithin(card, windowDays)) &&
         (!growing || card.plantings.some((summary) => summary.phase === 'active')),
     )

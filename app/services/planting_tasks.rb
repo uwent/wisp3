@@ -28,10 +28,13 @@ class PlantingTasks
   end
 
   # In season, every reading with whether it's due, and the canopy check; once the season has ended,
-  # the readings with their last dates only (the planting page lists them), none of them due
+  # the readings with their last dates only (the planting page lists them), none of them due. A
+  # rainfed crop's readings are optional: its balance follows the weather, and they only correct it.
   def all
     case @status.phase
-    when :active then [irrigation_check, soil_moisture, canopy, canopy_check].compact
+    when :active
+      return [soil_moisture, canopy].compact.map { |task| optional(task) } + [canopy_check].compact if @status.rainfed?
+      [irrigation_check, soil_moisture, canopy, canopy_check].compact
     when :ended
       [soil_moisture, canopy].compact.map { |task| task.with(due: false, note: (task.note unless task.due), todo: nil) }
     else []
@@ -93,6 +96,12 @@ class PlantingTasks
   end
 
   def reading(kind, label, last, todo) = self.class.reading(kind, label, last, todo, @today)
+
+  # A rainfed crop's reading isn't due, but for the canopy reading a crop with no curve needs to have any ET
+  def optional(task)
+    return task if !task.due || (task.kind == :canopy && @status.needs_canopy?)
+    task.with(due: false, note: "optional", todo: nil)
+  end
 
   # Due when the balance has been at or below the threshold (status irrigate, or below the target)
   # for IRRIGATION_CHECK_DAYS or more days in a row ending today, with no irrigation entered (an

@@ -34,6 +34,10 @@
       `${fieldCount(count)} with no canopy curve or reading, so WISP can't estimate water use yet`,
     ok: (count) => `${fieldCount(count)} with enough water for now`,
     full: (count) => `${fieldCount(count)} near field capacity`,
+    stressed: (count) => `${fieldCount(count)} of rainfed crops short of water today`,
+    stress_coming: (count) =>
+      `${fieldCount(count)} of rainfed crops projected to run short of water within ${LEAD_DAYS} days`,
+    no_stress: (count) => `${fieldCount(count)} of rainfed crops with enough water`,
     ended: (count) => `${fieldCount(count)} whose season has ended`,
   }
   const toggle = (filter: StatusFilter) => onselect?.(selected === filter ? null : filter)

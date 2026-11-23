@@ -16,6 +16,12 @@ FactoryBot.define do
       kc_mid { 1.2 }
       crop_height_m { 2.0 }
     end
+
+    # FAO-56's basal coefficients, so the balance runs the dual crop coefficient and water stress (C22, C26)
+    trait :dual do
+      kcb_mid { 1.05 }
+      kcb_end { 0.5 }
+    end
   end
 
   factory :soil_type do
