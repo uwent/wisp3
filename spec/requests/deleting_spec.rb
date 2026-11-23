@@ -7,8 +7,8 @@ RSpec.describe "Deleting as a member", type: :request do
   let(:group) { owner.groups.first }
   let(:member) { create(:user) }
   let(:farm) { create(:farm, group:) }
-  let(:pivot) { create(:pivot, farm:) }
-  let(:field) { create(:field, pivot:) }
+  let(:system) { create(:system, farm:) }
+  let(:field) { create(:field, system:) }
   let(:potato) { create(:plant, key: "potato", name: "Potato") }
 
   before do
@@ -22,10 +22,10 @@ RSpec.describe "Deleting as a member", type: :request do
 
   it "can't delete a farm, an irrigation system or a field" do
     delete field_path(field)
-    delete pivot_path(pivot)
+    delete system_path(system)
     delete farm_path(farm)
     expect(flash[:alert]).to include("Only an owner")
-    expect([farm, pivot, field].map { |record| record.class.exists?(record.id) }).to all(be(true))
+    expect([farm, system, field].map { |record| record.class.exists?(record.id) }).to all(be(true))
   end
 
   it "deletes the plantings they added, not others'" do
@@ -46,14 +46,14 @@ RSpec.describe "Deleting as a member", type: :request do
   end
 
   it "deletes the irrigation groups they added, not others'" do
-    post pivot_groups_path, params: {pivot_group: {farm_id: farm.id, name: "Mine", pivot_ids: [""]}}
-    mine = farm.pivot_groups.find_by!(name: "Mine")
+    post irrigation_groups_path, params: {irrigation_group: {farm_id: farm.id, name: "Mine", system_ids: [""]}}
+    mine = farm.irrigation_groups.find_by!(name: "Mine")
     expect(mine.created_by).to eq(member)
-    theirs = create(:pivot_group, farm:, name: "Theirs", created_by: owner)
+    theirs = create(:irrigation_group, farm:, name: "Theirs", created_by: owner)
 
-    delete pivot_group_path(theirs)
-    delete pivot_group_path(mine)
-    expect(farm.pivot_groups.reload).to eq([theirs])
+    delete irrigation_group_path(theirs)
+    delete irrigation_group_path(mine)
+    expect(farm.irrigation_groups.reload).to eq([theirs])
   end
 
   it "records who copied last season" do

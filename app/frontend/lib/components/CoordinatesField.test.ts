@@ -6,11 +6,11 @@ vi.mock('@inertiajs/svelte', () => import('@/test/page.svelte'))
 import CoordinatesField from './CoordinatesField.svelte'
 
 const hidden = (container: HTMLElement, name: string) =>
-  (container.querySelector(`input[name="pivot[${name}]"]`) as HTMLInputElement).value
+  (container.querySelector(`input[name="system[${name}]"]`) as HTMLInputElement).value
 
 describe('CoordinatesField', () => {
   it('reads what is pasted into the two numbers, and writes it the one way once left', async () => {
-    const { container } = render(CoordinatesField, { prefix: 'pivot', latitude: null, longitude: null })
+    const { container } = render(CoordinatesField, { prefix: 'system', latitude: null, longitude: null })
     const box = screen.getByLabelText('Coordinates') as HTMLInputElement
 
     await fireEvent.input(box, { target: { value: `44°07'24.2"N 89°34'04.1"W` } })
@@ -23,7 +23,7 @@ describe('CoordinatesField', () => {
   })
 
   it("says when it read them the other way round, or the place isn't in the US", async () => {
-    render(CoordinatesField, { prefix: 'pivot', latitude: null, longitude: null })
+    render(CoordinatesField, { prefix: 'system', latitude: null, longitude: null })
     const box = screen.getByLabelText('Coordinates') as HTMLInputElement
 
     await fireEvent.input(box, { target: { value: '-89.5, 44.1' } })
@@ -34,7 +34,7 @@ describe('CoordinatesField', () => {
   })
 
   it("won't let the form submit what it can't read (the last location read stays in the hidden inputs)", async () => {
-    const { container } = render(CoordinatesField, { prefix: 'pivot', latitude: 44.1, longitude: -89.5 })
+    const { container } = render(CoordinatesField, { prefix: 'system', latitude: 44.1, longitude: -89.5 })
     const box = screen.getByLabelText('Coordinates') as HTMLInputElement
     expect(box.value).toBe('44.1, -89.5')
 

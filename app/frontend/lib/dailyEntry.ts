@@ -1,8 +1,8 @@
-import type { PivotKind } from '@/lib/geo'
+import type { SystemKind } from '@/lib/geo'
 import { common } from '@/lib/irrigation'
 
 // Daily entry's rows: one table per farm, its levels as indented rows
-// (irrigation group, irrigation system ("pivot" in code), field, plot). Rain is entered on group and
+// (irrigation group, irrigation system ("system" in code), field, plot). Rain is entered on group and
 // system rows and fills their fields in season (stored per field). Irrigation is each field's and
 // plot's own (D15): a system's row fills its fields and their plots, a field's row its plots, and a
 // parent shows their shared amount or "varies". Readings belong to one planting.
@@ -43,13 +43,13 @@ export type DayField = {
   /** In season that day, whole field first */
   plantings: DayPlanting[]
 }
-export type DayPivot = {
+export type DaySystem = {
   id: number
   name: string
-  kind: PivotKind
+  kind: SystemKind
   /** "Pivot", "Traveler" */
   kind_name: string
-  pivot_group_id: number | null
+  irrigation_group_id: number | null
   pump_capacity_gpm: number | null
   /** The percent timer's depth at 100%, for the calculator */
   inches_at_100: number | null
@@ -63,8 +63,8 @@ export type DayFarm = {
   /** The farm's rainfall setting, which its groups follow unless they have their own (Q7) */
   use_model_precip: boolean
   /** use_model_precip: the group's own rainfall setting, null following the farm's (Q7) */
-  pivot_groups: { id: number; name: string; use_model_precip: boolean | null }[]
-  pivots: DayPivot[]
+  irrigation_groups: { id: number; name: string; use_model_precip: boolean | null }[]
+  systems: DaySystem[]
 }
 
 /** A field with something growing on it that day */
@@ -79,28 +79,31 @@ export const plots = (field: DayField) => field.plantings.filter((planting) => p
 export const fieldHasEntry = (field: DayField) =>
   field.entry !== null || field.plantings.some((planting) => planting.entry !== null || planting.cover?.value != null)
 
-export const pivotHasEntry = (pivot: DayPivot) => pivot.fields.some(fieldHasEntry)
+export const systemHasEntry = (system: DaySystem) => system.fields.some(fieldHasEntry)
 
 export type FarmRows = {
-  /** Pivot groups with a pivot in season, and those pivots */
-  groups: { id: number; name: string; use_model_precip: boolean | null; pivots: DayPivot[] }[]
-  /** Pivots in season and in no group */
-  pivots: DayPivot[]
-  /** Pivots with no field in season that day, at the end of the farm */
-  idle: DayPivot[]
+  /** Irrigation groups with a system in season, and those systems */
+  groups: { id: number; name: string; use_model_precip: boolean | null; systems: DaySystem[] }[]
+  /** Systems in season and in no group */
+  systems: DaySystem[]
+  /** Systems with no field in season that day, at the end of the farm */
+  idle: DaySystem[]
 }
 
-/** A farm's pivots in the order daily entry lists them */
+/** A farm's systems in the order daily entry lists them */
 export function farmRows(farm: DayFarm): FarmRows {
-  const active = (pivot: DayPivot) => pivot.fields.some(inSeason)
-  const groups = farm.pivot_groups
-    .map((group) => ({ ...group, pivots: farm.pivots.filter((p) => p.pivot_group_id === group.id && active(p)) }))
-    .filter((group) => group.pivots.length > 0)
-  const grouped = new Set(groups.flatMap((group) => group.pivots.map((p) => p.id)))
+  const active = (system: DaySystem) => system.fields.some(inSeason)
+  const groups = farm.irrigation_groups
+    .map((group) => ({
+      ...group,
+      systems: farm.systems.filter((p) => p.irrigation_group_id === group.id && active(p)),
+    }))
+    .filter((group) => group.systems.length > 0)
+  const grouped = new Set(groups.flatMap((group) => group.systems.map((p) => p.id)))
   return {
     groups,
-    pivots: farm.pivots.filter((p) => active(p) && !grouped.has(p.id)),
-    idle: farm.pivots.filter((p) => !active(p)),
+    systems: farm.systems.filter((p) => active(p) && !grouped.has(p.id)),
+    idle: farm.systems.filter((p) => !active(p)),
   }
 }
 
@@ -110,8 +113,8 @@ export function rainNote(group: { use_model_precip: boolean | null }, farm: DayF
   return group.use_model_precip ? ' · modeled rain counts' : ' · only entered rain counts'
 }
 
-/** The fields a pivot's or group's rain fills: those in season */
-export const rainFields = (pivots: DayPivot[]) => pivots.flatMap((pivot) => pivot.fields.filter(inSeason))
+/** The fields a system's or group's rain fills: those in season */
+export const rainFields = (systems: DaySystem[]) => systems.flatMap((system) => system.fields.filter(inSeason))
 
 /**
  * A group's or system's rain: the fields' entered amount when all have the same, and for the
@@ -151,17 +154,17 @@ export const fieldBoxes = (field: DayField) => [
  * The boxes a system's row fills: its fields in season and their plots, but none rainfed (a
  * rainfed field's plots that are irrigated still are)
  */
-export const systemBoxes = (pivot: DayPivot) =>
-  pivot.fields
+export const systemBoxes = (system: DaySystem) =>
+  system.fields
     .filter(inSeason)
     .flatMap((field) =>
       rainfedField(field) ? irrigatedPlots(field).map((plot) => plotBox(plot.id)) : fieldBoxes(field),
     )
 
 /** Irrigation as saved, by box, for every field and plot */
-export function savedIrrigation(pivots: DayPivot[]): Record<string, number | null> {
+export function savedIrrigation(systems: DaySystem[]): Record<string, number | null> {
   const boxes: Record<string, number | null> = {}
-  for (const field of pivots.flatMap((pivot) => pivot.fields)) {
+  for (const field of systems.flatMap((system) => system.fields)) {
     boxes[fieldBox(field.id)] = field.entry?.irrigation_in ?? null
     for (const plot of plots(field)) boxes[plotBox(plot.id)] = plot.entry?.irrigation_in ?? null
   }
@@ -186,12 +189,12 @@ export const fieldRowBoxes = (field: DayField) =>
     : irrigatedPlots(field).map((plot) => plotBox(plot.id))
 
 /** "Same as yesterday": the day before's amounts for the boxes a system's row fills (systemBoxes), by box */
-export function yesterdayBoxes(pivot: DayPivot): Record<string, number | null> | null {
-  if (!pivot.yesterday) return null
-  const before = pivot.yesterday
+export function yesterdayBoxes(system: DaySystem): Record<string, number | null> | null {
+  if (!system.yesterday) return null
+  const before = system.yesterday
   const boxes: Record<string, number | null> = {}
-  const filled = new Set(systemBoxes(pivot))
-  for (const field of pivot.fields.filter(inSeason)) {
+  const filled = new Set(systemBoxes(system))
+  for (const field of system.fields.filter(inSeason)) {
     boxes[fieldBox(field.id)] = before.fields[field.id] ?? null
     for (const plot of plots(field)) boxes[plotBox(plot.id)] = before.plantings[plot.id] ?? null
   }

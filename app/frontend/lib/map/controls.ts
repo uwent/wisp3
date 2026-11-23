@@ -1,6 +1,6 @@
 import type { IControl } from 'maplibre-gl'
 
-/** A MapLibre control with one button, styled like the built-in ones (e.g. "fit all pivots") */
+/** A MapLibre control with one button, styled like the built-in ones (e.g. "fit all systems") */
 export class ButtonControl implements IControl {
   private container?: HTMLDivElement
 
@@ -31,7 +31,7 @@ export class ButtonControl implements IControl {
   }
 }
 
-/** A pivot framed by corners: fit every pivot in view */
+/** A system framed by corners: fit every system in view */
 export const FIT_ICON =
   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" ' +
   'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +

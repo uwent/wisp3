@@ -7,7 +7,7 @@
   import { currentYear, today as todayDate } from '@/lib/dates'
   import { cropName, plantingWhen } from '@/lib/plantings'
   import { formatNumber, type Units } from '@/lib/units'
-  import { fieldOutline, fields, planting as plantingRoute, pivots } from '@/routes'
+  import { fieldOutline, fields, planting as plantingRoute, systems } from '@/routes'
   import type { Field } from '@/types/serializers'
 
   // The top of the field page and its plantings' pages: where the field is,
@@ -16,7 +16,7 @@
   // planting whose page this is. actions: buttons at the right of the title row.
   let {
     field,
-    pivot,
+    system,
     farm,
     units,
     year,
@@ -24,7 +24,7 @@
     actions,
   }: {
     field: Field
-    pivot: { id: number; name: string; kind_name: string }
+    system: { id: number; name: string; kind_name: string }
     farm: { id: number; name: string }
     units: Units
     year: number
@@ -54,7 +54,7 @@
     <div class="min-w-0">
       <nav aria-label="Breadcrumb" class="text-sm text-ink-muted">
         {farm.name} ›
-        <Link href={pivots.show(pivot.id)} class="underline underline-offset-2">{systemName(pivot)}</Link>
+        <Link href={systems.show(system.id)} class="underline underline-offset-2">{systemName(system)}</Link>
       </nav>
       <h1 class="text-2xl font-semibold">{field.name}</h1>
       <p class="text-sm text-ink-muted">

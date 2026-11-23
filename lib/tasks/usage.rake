@@ -11,7 +11,7 @@ namespace :usage do
     year = Integer(ENV.fetch("YEAR", Date.current.year))
     random = Random.new(2026)
     demo_groups = Group.joins(memberships: :user).where("users.email ILIKE ?", "%@example.com")
-      .where(id: Farm.joins(pivots: :plantings).select(:group_id)).distinct.to_a
+      .where(id: Farm.joins(systems: :plantings).select(:group_id)).distinct.to_a
     abort "Run bin/rails demo:seed first: the sample accounts join its farms" if demo_groups.empty?
 
     areas = ActivityDay::AREA_NAMES

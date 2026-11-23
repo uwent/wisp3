@@ -10,7 +10,7 @@
   import { currentYear, formatDate } from '@/lib/dates'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { currentUnits, type Units } from '@/lib/units'
-  import { fields as fieldRoutes, pivots as pivotRoutes, weatherZones } from '@/routes'
+  import { fields as fieldRoutes, systems as systemRoutes, weatherZones } from '@/routes'
   import { fileLocation, weatherZone, weatherZoneExport } from '@/lib/weatherZones'
   import type { ForecastDay, WeatherPanelDay, WeatherZone } from '@/types/serializers'
 
@@ -24,7 +24,7 @@
     weather,
     plantings,
     forecast,
-    updating_pivot_ids,
+    updating_system_ids,
   }: {
     zone: WeatherZone
     zones: { id: number; name: string; coordinates: string; location: string }[]
@@ -34,7 +34,7 @@
     weather: WeatherPanelDay[]
     plantings: { id: number; label: string; planted: string }[]
     forecast: ForecastDay[]
-    updating_pivot_ids: number[]
+    updating_system_ids: number[]
   } = $props()
 
   const units = $derived(currentUnits())
@@ -42,8 +42,8 @@
   const zoneFields = $derived(
     [...zone.fields].sort(
       (a, b) =>
-        zone.pivots.findIndex((pivot) => pivot.id === a.pivot_id) -
-          zone.pivots.findIndex((pivot) => pivot.id === b.pivot_id) || a.name.localeCompare(b.name),
+        zone.systems.findIndex((system) => system.id === a.system_id) -
+          zone.systems.findIndex((system) => system.id === b.system_id) || a.name.localeCompare(b.name),
     ),
   )
 
@@ -70,8 +70,8 @@
   }
 
   // While the zone's weather is being fetched, reload until it lands
-  const weatherWait = pollWeather(() => updating_pivot_ids)
-  const weatherState = $derived(weatherWait.state(updating_pivot_ids.length > 0))
+  const weatherWait = pollWeather(() => updating_system_ids)
+  const weatherState = $derived(weatherWait.state(updating_system_ids.length > 0))
 </script>
 
 <svelte:head><title>Weather: {zone.coordinates} · WISP</title></svelte:head>
@@ -91,13 +91,13 @@
         : `, elevation ${units.format('distance', zone.elevation_ft)}`}
     </p>
     <!-- Its systems, then their fields in the same order, each a link to its page -->
-    {#if zone.pivots.length}
+    {#if zone.systems.length}
       <p class="text-sm">
-        <span class="text-ink-muted">{zone.pivots.length === 1 ? 'Irrigation system' : 'Irrigation systems'}:</span>
-        {#each zone.pivots as pivot, i (pivot.id)}{i ? ', ' : ''}<Link
-            href={pivotRoutes.show(pivot.id)}
-            class="text-brand-600 underline underline-offset-2">{systemName(pivot)}</Link
-          >{` (${pivot.farm})`}{/each}
+        <span class="text-ink-muted">{zone.systems.length === 1 ? 'Irrigation system' : 'Irrigation systems'}:</span>
+        {#each zone.systems as system, i (system.id)}{i ? ', ' : ''}<Link
+            href={systemRoutes.show(system.id)}
+            class="text-brand-600 underline underline-offset-2">{systemName(system)}</Link
+          >{` (${system.farm})`}{/each}
       </p>
     {/if}
     {#if zoneFields.length}
@@ -106,7 +106,7 @@
         {#each zoneFields as field, i (field.id)}{i ? ', ' : ''}<Link
             href={fieldRoutes.show(field.id)}
             class="text-brand-600 underline underline-offset-2">{field.name}</Link
-          >{` (${field.pivot})`}{/each}
+          >{` (${field.system})`}{/each}
       </p>
     {/if}
   </div>

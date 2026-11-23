@@ -5,8 +5,8 @@ import {
   isPoint,
   KIND_NAMES,
   type LngLat,
-  type PivotShape,
-  pivotOutline,
+  type SystemShape,
+  shapeOutline,
   pointInPolygon,
   systemName,
 } from '@/lib/geo'
@@ -27,7 +27,7 @@ export const NEARBY_M = 805
 
 export type OutlineProblem = { fieldId: number; message: string }
 
-type System = PivotShape & { name: string }
+type System = SystemShape & { name: string }
 type Outlined = { id: number; name: string; boundary: Boundary | null }
 
 const rad = (deg: number) => (deg * Math.PI) / 180
@@ -116,9 +116,9 @@ const along = (ring: LngLat[], { edge, t }: { edge: number; t: number }): LngLat
  * with its length in meters. Both are projected once onto a plane around the shape, so the many
  * corner-to-edge distances are plain arithmetic (an import's thousands of shapes).
  */
-export function reachLine(boundary: Boundary, system: PivotShape): { from: LngLat; to: LngLat; meters: number } {
+export function reachLine(boundary: Boundary, system: SystemShape): { from: LngLat; to: LngLat; meters: number } {
   const outline = boundaryRing(boundary)
-  const ring = isPoint(system.kind) ? null : pivotOutline(system)
+  const ring = isPoint(system.kind) ? null : shapeOutline(system)
   const origin = outline[0]
   const shapeXY = projected(outline, origin)
   if (!ring) {
@@ -141,10 +141,10 @@ export function reachLine(boundary: Boundary, system: PivotShape): { from: LngLa
 }
 
 /** The box a system covers: a center pivot's whole circle (an arc's too), a linear's shape, a point kind's location */
-function systemBox(system: PivotShape): [LngLat, LngLat] {
+function systemBox(system: SystemShape): [LngLat, LngLat] {
   const at: LngLat = [system.longitude, system.latitude]
   if (isPoint(system.kind)) return [at, at]
-  if (system.kind === 'linear') return boundsOf(pivotOutline(system)!)!
+  if (system.kind === 'linear') return boundsOf(shapeOutline(system)!)!
   const meters = (system.radius_ft ?? DEFAULT_RADIUS_FT) / FEET_PER_METER
   const [dLng, dLat] = [meters / (Math.cos(rad(at[1])) * M_PER_DEG), meters / M_PER_DEG]
   return [
@@ -169,7 +169,7 @@ function boxGapM([aMin, aMax]: [LngLat, LngLat], [bMin, bMax]: [LngLat, LngLat])
  * systems are tried nearest box first, stopping once a box is farther than the best distance found,
  * so a county file's shapes each measure only a few.
  */
-export function nearestSystemM(boundary: Boundary, systems: PivotShape[]): number | null {
+export function nearestSystemM(boundary: Boundary, systems: SystemShape[]): number | null {
   if (!systems.length) return null
   const box = boundaryBounds(boundary)
   const ordered = systems
@@ -184,27 +184,27 @@ export function nearestSystemM(boundary: Boundary, systems: PivotShape[]): numbe
 }
 
 /**
- * Whether a field's shape sits with a system: overlapping a pivot's or linear's shape, or within a
+ * Whether a field's shape sits with a system: overlapping a system's or linear's shape, or within a
  * quarter mile of a point kind's location
  */
-export function touchesSystem(boundary: Boundary, system: PivotShape): boolean {
-  const ring = isPoint(system.kind) ? null : pivotOutline(system)
+export function touchesSystem(boundary: Boundary, system: SystemShape): boolean {
+  const ring = isPoint(system.kind) ? null : shapeOutline(system)
   if (ring) return overlaps(boundary, ring)
   return distanceToBoundaryM([system.longitude, system.latitude], boundary) <= POINT_REACH_M
 }
 
 /**
- * Meters from a field's shape to a system: 0 when a pivot's or linear's shape overlaps it or a
+ * Meters from a field's shape to a system: 0 when a system's or linear's shape overlaps it or a
  * point kind is inside it, else the length of reachLine
  */
-export function systemDistanceM(boundary: Boundary, system: PivotShape): number {
-  const ring = isPoint(system.kind) ? null : pivotOutline(system)
+export function systemDistanceM(boundary: Boundary, system: SystemShape): number {
+  const ring = isPoint(system.kind) ? null : shapeOutline(system)
   if (!ring) return distanceToBoundaryM([system.longitude, system.latitude], boundary)
   return overlaps(boundary, ring) ? 0 : reachLine(boundary, system).meters
 }
 
 /** The systems within NEARBY_M of a shape, nearest first, with how far each is */
-export function systemsNear<T extends PivotShape>(boundary: Boundary, systems: T[]): { system: T; meters: number }[] {
+export function systemsNear<T extends SystemShape>(boundary: Boundary, systems: T[]): { system: T; meters: number }[] {
   return systems
     .map((system) => ({ system, meters: systemDistanceM(boundary, system) }))
     .filter(({ meters }) => meters <= NEARBY_M)
@@ -223,7 +223,7 @@ export function formatReach(meters: number, system: UnitSystem): string {
 }
 
 /** How far a system is from a field's shape: "0.5 mi away", "overlaps this field" (a pivot or linear) or "in this field" (a point kind) */
-export function systemReach(system: PivotShape, meters: number, unitSystem: UnitSystem): string {
+export function systemReach(system: SystemShape, meters: number, unitSystem: UnitSystem): string {
   if (meters > 0) return `${formatReach(meters, unitSystem)} away`
   return isPoint(system.kind) ? 'in this field' : 'overlaps this field'
 }
@@ -231,7 +231,7 @@ export function systemReach(system: PivotShape, meters: number, unitSystem: Unit
 /** The fields whose outline doesn't sit with their irrigation system, worded for Setup */
 export function outlineProblems(system: System, fields: Outlined[], unitSystem: UnitSystem): OutlineProblem[] {
   const label = systemName({ name: system.name, kind_name: KIND_NAMES[system.kind] })
-  const shaped = !isPoint(system.kind) && pivotOutline(system) !== null
+  const shaped = !isPoint(system.kind) && shapeOutline(system) !== null
   return fields.flatMap((field) => {
     if (!field.boundary || touchesSystem(field.boundary, system)) return []
     const away = formatReach(reachLine(field.boundary, system).meters, unitSystem)

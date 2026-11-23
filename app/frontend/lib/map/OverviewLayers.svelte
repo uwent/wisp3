@@ -1,6 +1,6 @@
 <script lang="ts">
   import KindIcon from '@/lib/components/KindIcon.svelte'
-  import { KIND_NAMES, type PivotKind } from '@/lib/geo'
+  import { KIND_NAMES, type SystemKind } from '@/lib/geo'
   import type { Units } from '@/lib/units'
 
   import type { MapOverlays } from './mapOverlays.svelte'
@@ -117,7 +117,7 @@
   </p>
   <ul class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs" aria-label="Irrigation system kinds">
     {#each Object.entries(KIND_NAMES) as [kind, name] (kind)}
-      <li class="flex items-center gap-1.5"><KindIcon kind={kind as PivotKind} />{name}</li>
+      <li class="flex items-center gap-1.5"><KindIcon kind={kind as SystemKind} />{name}</li>
     {/each}
   </ul>
 </div>

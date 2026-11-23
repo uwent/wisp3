@@ -7,19 +7,19 @@
   import type { Selection } from '@/lib/overview'
   import type { Units } from '@/lib/units'
   import type { ZoneWeather } from '@/lib/weatherSummary'
-  import { pivots } from '@/routes'
+  import { systems } from '@/routes'
 
   import MapPanel from './MapPanel.svelte'
-  import type { MapPivot } from './pivots'
+  import type { MapSystem } from './systems'
   import WeatherLines from './WeatherLines.svelte'
 
-  // The selected pivot's details over the map: its farm and irrigation group, which select
+  // The selected system's details over the map: its farm and irrigation group, which select
   // themselves as in the list (ScopePanel), its View and Edit links, its weather zone's last week
   // and the week ahead in brief (weatherLines), extra lines from the overlays (the drought category
   // there), and its fields' cards, each selecting its field like the list's with View and Edit
   // links.
   let {
-    pivot,
+    system,
     farm,
     group = null,
     today,
@@ -31,7 +31,7 @@
     onselect,
     onclose,
   }: {
-    pivot: MapPivot
+    system: MapSystem
     farm: { id: number; name: string }
     group?: { id: number; name: string } | null
     today: string
@@ -63,7 +63,7 @@
   >
 {/snippet}
 
-<MapPanel titleId="pivot-panel-title" {onclose}>
+<MapPanel titleId="system-panel-title" {onclose}>
   {#snippet header()}
     <p class="flex min-w-0 items-center gap-1 text-xs text-ink-muted">
       {@render crumb('farm', farm, 'Farm')}
@@ -72,17 +72,17 @@
         {@render crumb('group', group, 'Group')}
       {/if}
     </p>
-    <h2 id="pivot-panel-title" class="truncate font-medium">
+    <h2 id="system-panel-title" class="truncate font-medium">
       <span class="font-normal text-ink-muted">System:</span>
-      {systemName(pivot)}
+      {systemName(system)}
     </h2>
     <div class="flex items-center gap-2 text-xs font-medium">
-      <Link href={pivots.show(pivot.id)} class="text-brand-600 hover:underline" aria-label="View {pivot.name}"
+      <Link href={systems.show(system.id)} class="text-brand-600 hover:underline" aria-label="View {system.name}"
         >View</Link
       >
       {#if !isExample(page.props)}
         <span class="text-ink-muted" aria-hidden="true">·</span>
-        <Link href={pivots.edit(pivot.id)} class="text-brand-600 hover:underline" aria-label="Edit {pivot.name}"
+        <Link href={systems.edit(system.id)} class="text-brand-600 hover:underline" aria-label="Edit {system.name}"
           >Edit</Link
         >
       {/if}
@@ -100,9 +100,9 @@
       {/each}
     </dl>
   {/if}
-  {#if pivot.fields.length}
+  {#if system.fields.length}
     <ul class="space-y-2">
-      {#each pivot.fields as card (card.id)}
+      {#each system.fields as card (card.id)}
         <li data-field={card.id} aria-current={card.id === fieldId ? 'true' : undefined}>
           <FieldCard
             {card}
@@ -117,6 +117,6 @@
       {/each}
     </ul>
   {:else}
-    <p class="text-sm text-ink-muted">No fields on this {KIND_NOUNS[pivot.kind]} yet. Add them in Setup.</p>
+    <p class="text-sm text-ink-muted">No fields on this {KIND_NOUNS[system.kind]} yet. Add them in Setup.</p>
   {/if}
 </MapPanel>

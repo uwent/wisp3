@@ -40,7 +40,7 @@ class FieldBoundary
     if vertex_count(geometry) > MAX_VERTICES
       errors << "has too many corners (at most #{MAX_VERTICES.to_fs(:delimited)}; simplify it)"
     end
-    unless ring.all? { |lng, lat| Pivot::LATITUDES.cover?(lat) && Pivot::LONGITUDES.cover?(lng) }
+    unless ring.all? { |lng, lat| IrrigationSystem::LATITUDES.cover?(lat) && IrrigationSystem::LONGITUDES.cover?(lng) }
       errors << "must be in the US or Canada"
     end
     return errors if errors.any?

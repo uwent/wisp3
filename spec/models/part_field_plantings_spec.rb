@@ -3,8 +3,8 @@ require "rails_helper"
 # A field is the land, a planting what grows on it, on the whole field or on
 # part of it, with part-field plantings' own irrigation and readings first in their balance.
 RSpec.describe "Part-field plantings" do
-  let(:pivot) { create(:pivot, pump_capacity_gpm: 900) }
-  let(:field) { create(:field, pivot:, area_acres: 10) }
+  let(:system) { create(:system, pump_capacity_gpm: 900) }
+  let(:field) { create(:field, system:, area_acres: 10) }
   let(:season) { {season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 5, 15), end_date: Date.new(2026, 9, 30)} }
 
   def plot(length: 100, width: 20, **attributes)
@@ -68,7 +68,7 @@ RSpec.describe "Part-field plantings" do
       part = plot
       part.update!(partial: false)
       expect(part).to have_attributes(plot_length_ft: nil, area_acres: 10)
-      other = create(:field, pivot:, area_acres: 10)
+      other = create(:field, system:, area_acres: 10)
       entered = create(:planting, field: other, partial: true, area_acres: 1, **season)
       entered.planting_entries.create!(date: Date.new(2026, 6, 1), irrigation_in: 0.3)
       expect(entered.update(partial: false)).to be(false)
@@ -76,7 +76,7 @@ RSpec.describe "Part-field plantings" do
 
     it "keeps a plot's area when the field's area changes" do
       part = plot
-      whole_field = create(:field, pivot:, area_acres: 10)
+      whole_field = create(:field, system:, area_acres: 10)
       whole = create(:planting, field: whole_field, **season)
       field.update!(area_acres: 12)
       whole_field.update!(area_acres: 12)
@@ -86,7 +86,7 @@ RSpec.describe "Part-field plantings" do
 
     it "copies plots to the next season with their size" do
       plot
-      SeasonCopy.new(field.pivot.farm.group, 2027).run
+      SeasonCopy.new(field.system.farm.group, 2027).run
       copied = field.plantings.reload.find { |planting| planting.season_year == 2027 }
       expect(copied).to have_attributes(partial: true, plot_length_ft: 100, plot_width_ft: 20)
       expect(copied.area_acres).to be_within(1e-6).of(2000 / 43_560.0)
@@ -113,7 +113,7 @@ RSpec.describe "Part-field plantings" do
     end
 
     it "keeps a whole-field planting on the field's soil" do
-      whole = create(:planting, field: create(:field, pivot:), own_soil: true, **season)
+      whole = create(:planting, field: create(:field, system:), own_soil: true, **season)
       expect(whole.own_soil).to be(false)
       part = plot(soil_type: loam)
       part.update!(partial: false)
@@ -122,7 +122,7 @@ RSpec.describe "Part-field plantings" do
 
     it "copies a plot's own soil to the next season, and the field's to the rest" do
       plot(soil_type: loam)
-      SeasonCopy.new(field.pivot.farm.group, 2027).run
+      SeasonCopy.new(field.system.farm.group, 2027).run
       copied = field.plantings.reload.find { |planting| planting.season_year == 2027 }
       expect(copied).to have_attributes(own_soil: true, soil_type: loam)
     end
@@ -161,7 +161,7 @@ RSpec.describe "Part-field plantings" do
     it "leave the field's other plantings and a whole-field planting as before" do
       other = plot(length: 50)
       expect(days(other)[dates[1]]).to have_attributes(irrigation: 0.0, irrigation_source: :none)
-      whole_field = create(:field, pivot:)
+      whole_field = create(:field, system:)
       whole = create(:planting, field: whole_field, **season)
       whole_field.field_entries.create!(date: dates[0], irrigation_in: 0.5, soil_moisture_pct: 12)
       inputs = DailyInputs.new(whole_field, dates, planting: whole).days.index_by(&:date)
@@ -169,7 +169,7 @@ RSpec.describe "Part-field plantings" do
     end
 
     it "belong only to part-field plantings" do
-      whole = create(:planting, field: create(:field, pivot:), **season)
+      whole = create(:planting, field: create(:field, system:), **season)
       expect(whole.planting_entries.build(date: dates[0], irrigation_in: 0.2)).not_to be_valid
     end
 

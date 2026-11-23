@@ -62,7 +62,7 @@
       firstDirection: 'desc',
     },
     { key: 'farms', label: 'Farms', value: (u) => u.farms_count, align: 'center', firstDirection: 'desc' },
-    { key: 'pivots', label: 'Systems', value: (u) => u.pivots_count, align: 'center', firstDirection: 'desc' },
+    { key: 'systems', label: 'Systems', value: (u) => u.systems_count, align: 'center', firstDirection: 'desc' },
     { key: 'fields', label: 'Fields', value: (u) => u.fields_count, align: 'center', firstDirection: 'desc' },
     {
       key: 'plantings',

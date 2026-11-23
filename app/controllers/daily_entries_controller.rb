@@ -7,7 +7,7 @@ class DailyEntriesController < AuthenticatedController
   def show
     date = parse_date(params[:date]) || DailyEntryPage.default_date
     page = DailyEntryPage.new(Current.group, date)
-    WeatherCell.keep_current(page.pivots.map(&:weather_cell_id))
+    WeatherCell.keep_current(page.systems.map(&:weather_cell_id))
     render inertia: "DailyEntries/Show", props: page.props
   end
 

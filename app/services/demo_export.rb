@@ -27,13 +27,13 @@ class DemoExport
   end
 
   def data
-    {"farms" => @group.farms.order(:id).includes(pivot_groups: :pivots).map do |farm|
+    {"farms" => @group.farms.order(:id).includes(irrigation_groups: :systems).map do |farm|
       # Its rainfall setting only when it isn't the default, modeled rain
       {"name" => farm.name, "notes" => farm.notes, "use_model_precip" => (false unless farm.use_model_precip),
-       "systems" => farm.pivots.reorder(:id).map { |pivot| system(pivot) },
-       "irrigation_groups" => farm.pivot_groups.order(:id).map do |pivot_group|
-         {"name" => pivot_group.name, "use_model_precip" => pivot_group.use_model_precip,
-          "systems" => pivot_group.pivots.sort_by(&:id).map(&:name)}.compact
+       "systems" => farm.systems.reorder(:id).map { |system| system(system) },
+       "irrigation_groups" => farm.irrigation_groups.order(:id).map do |irrigation_group|
+         {"name" => irrigation_group.name, "use_model_precip" => irrigation_group.use_model_precip,
+          "systems" => irrigation_group.systems.sort_by(&:id).map(&:name)}.compact
        end.presence}.compact
     end}
   end
@@ -42,17 +42,17 @@ class DemoExport
 
   # A day the system's fields got one amount is written as the system's irrigation (DemoSeed spreads
   # it again, with their plots) and left out of their entries; other days stay on the fields
-  def system(pivot)
-    fields = pivot.fields.reorder(:id).to_a
+  def system(system)
+    fields = system.fields.reorder(:id).to_a
     @spread = {}
-    irrigation = pivot.irrigation_on(Date.new(@year).all_year).filter_map do |date, watered|
+    irrigation = system.irrigation_on(Date.new(@year).all_year).filter_map do |date, watered|
       amounts = watered.values.map(&:irrigation_in).uniq
       next unless amounts.one?
       watered.each_key { |field| (@spread[field.id] ||= {})[date] = amounts.first }
-      named = (watered.keys.map(&:id).sort == pivot.fields_on(date).map(&:id).sort) ? nil : watered.keys.map(&:name)
+      named = (watered.keys.map(&:id).sort == system.fields_on(date).map(&:id).sort) ? nil : watered.keys.map(&:name)
       {"date" => month_day(date), "inches" => amounts.first, "fields" => named}.compact
     end
-    values(pivot, SYSTEM_ATTRIBUTES).merge("irrigation" => irrigation.presence, "fields" => fields.map { |field| field(field) }).compact
+    values(system, SYSTEM_ATTRIBUTES).merge("irrigation" => irrigation.presence, "fields" => fields.map { |field| field(field) }).compact
   end
 
   def field(field)

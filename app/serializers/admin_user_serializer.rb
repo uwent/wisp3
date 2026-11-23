@@ -8,7 +8,7 @@ class AdminUserSerializer < ApplicationSerializer
   attribute :display_name, &:display_name
   attribute :confirmed, &:confirmed?
 
-  %i[farms pivots fields plantings_season].each do |kind|
+  %i[farms systems fields plantings_season].each do |kind|
     attribute :"#{kind}_count" do |user|
       params[:stats][user.id][kind]
     end
@@ -19,6 +19,6 @@ class AdminUserSerializer < ApplicationSerializer
   end
 
   typelize display_name: :string, confirmed: :boolean, created_at: :string, current_sign_in_at: "string | null",
-    farms_count: :number, pivots_count: :number, fields_count: :number, plantings_season_count: :number,
+    farms_count: :number, systems_count: :number, fields_count: :number, plantings_season_count: :number,
     last_active_on: "string | null"
 end

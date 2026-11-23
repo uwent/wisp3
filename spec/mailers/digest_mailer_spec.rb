@@ -2,15 +2,15 @@ require "rails_helper"
 
 RSpec.describe DigestMailer do
   let(:user) { create(:user, email: "pat@example.com", digest_frequency: "daily") }
-  let(:pivot) { create(:pivot, farm: create(:farm, group: user.groups.first, name: "Home"), name: "Pivot 1") }
+  let(:system) { create(:system, farm: create(:farm, group: user.groups.first, name: "Home"), name: "Pivot 1") }
 
-  before { digest_weather(pivot) }
+  before { digest_weather(system) }
 
   around { |example| travel_to(digest_today) { example.run } }
 
-  it "lists fields needing attention first, then every field by weather zone and pivot, with one operation and farm on a line" do
-    soon = digest_field(pivot, "Soon", 12)
-    digest_field(pivot, "Fine", 15)
+  it "lists fields needing attention first, then every field by weather zone and system, with one operation and farm on a line" do
+    soon = digest_field(system, "Soon", 12)
+    digest_field(system, "Fine", 15)
 
     mail = described_class.daily(DailyDigest.new(user))
     expect(mail.to).to eq(["pat@example.com"])
@@ -18,7 +18,7 @@ RSpec.describe DigestMailer do
 
     text = mail.text_part.body.decoded
     expect(text).to match(/NEEDS ATTENTION\n\n- Field: Soon \[! Caution\] Home › Pivot 1: Irrigate by Wed, Jul 22 · about [\d.]+ in refills it\n/)
-    cell = pivot.weather_cell
+    cell = system.weather_cell
     zone = format("Weather zone 1 (%.2f°N, %.2f°W)", cell.latitude, -cell.longitude)
     expect(text).to start_with("Your fields this morning, Monday, July 20\nOperation: #{user.groups.first.name} · Farm: Home\n")
     expect(text).not_to include("OPERATION:", "FARM:")
@@ -26,7 +26,7 @@ RSpec.describe DigestMailer do
       "   Past 7 days: 0.00 in rain · 1.40 in ET · highs 85°F, lows 60°F\n" \
       "   Next 7 days: 0.00 in rain · 1.40 in ET · highs 88°F, lows 62°F\n" \
       "   Irrigation systems in this zone: Pivot 1\n\n   Irrigation system: Pivot 1\n")
-    expect(text).to include("This email lists 2 fields on 1 pivot, out of the 2 fields on 1 pivot in your alert settings (2 have a crop this season).")
+    expect(text).to include("This email lists 2 fields on 1 system, out of the 2 fields on 1 system in your alert settings (2 have a crop this season).")
     expect(text).to match(/     Field: Fine \[✓ OK\] Potato · [\d.]+% soil moisture · AD 1.00 in\n     Irrigate by Sat, Jul 25 · about [\d.]+ in refills it\n/)
     expect(text).to match(/     Field: Soon \[! Caution\] Potato · 11.2% soil moisture · AD 0.28 in of 1.20 in\n     Irrigate by Wed, Jul 22 · about [\d.]+ in refills it\. Projected/)
     expect(text).to include("Last rain: none recorded · Last irrigation: none recorded")
@@ -37,12 +37,12 @@ RSpec.describe DigestMailer do
     html = mail.html_part.body.decoded
     expect(html).to include("ses:no-track")
     expect(html).to include("http://example.com/plantings/#{soon.plantings.sole.id}?operation=#{user.groups.first.id}")
-    expect(html).to include("http://example.com/pivots/#{pivot.id}?operation=#{user.groups.first.id}")
+    expect(html).to include("http://example.com/systems/#{system.id}?operation=#{user.groups.first.id}")
     expect(html).to include("http://example.com/alerts")
   end
 
   it "gathers rainfed crops short of water in a section of their own, marked rainfed" do
-    dry = digest_field(pivot, "Dry", 7)
+    dry = digest_field(system, "Dry", 7)
     dry.plantings.sole.update!(rainfed: true, plant: create(:plant, :dual))
 
     mail = described_class.daily(DailyDigest.new(user))
@@ -55,7 +55,7 @@ RSpec.describe DigestMailer do
   end
 
   it "is a document in English titled by its subject, whose headings don't skip a level" do
-    digest_field(pivot, "Soon", 12)
+    digest_field(system, "Soon", 12)
 
     mail = described_class.daily(DailyDigest.new(user))
     html = Nokogiri::HTML(mail.html_part.body.decoded)
@@ -67,7 +67,7 @@ RSpec.describe DigestMailer do
   end
 
   it "lists each field's readings to enter and checks to make" do
-    field = digest_field(pivot, "Stale", 15)
+    field = digest_field(system, "Stale", 15)
     field.field_entries.update_all(date: Date.new(2026, 7, 10))
     field.plantings.sole.canopy_observations.update_all(pct_cover: 40)
 
@@ -85,10 +85,10 @@ RSpec.describe DigestMailer do
   end
 
   it "gives each operation its own section, and each its weather zones" do
-    digest_field(pivot, "Fine", 15)
+    digest_field(system, "Fine", 15)
     partners = create(:group, name: "Partners")
     create(:membership, user:, group: partners)
-    digest_field(create(:pivot, farm: create(:farm, group: partners, name: "Far"), weather_cell: pivot.weather_cell), "Away", 15)
+    digest_field(create(:system, farm: create(:farm, group: partners, name: "Far"), weather_cell: system.weather_cell), "Away", 15)
     text = described_class.daily(DailyDigest.new(user)).text_part.body.decoded
     expect(text).to include("=== OPERATION: PARTNERS ===\n\n== FARM: FAR ==")
     expect(text).to include("=== OPERATION: #{user.groups.first.name.upcase} ===\n\n== FARM: HOME ==")
@@ -105,7 +105,7 @@ RSpec.describe DigestMailer do
   end
 
   it "marks a test email, and says how often the real one comes" do
-    digest_field(pivot, "Soon", 12)
+    digest_field(system, "Soon", 12)
     user.update!(digest_frequency: "needed")
     mail = described_class.test_daily(user)
     expect(mail.subject).to eq("[Test] WISP: 1 field to watch (Mon, Jul 20)")
@@ -114,7 +114,7 @@ RSpec.describe DigestMailer do
   end
 
   it "has an unsubscribe link and one-click List-Unsubscribe headers" do
-    digest_field(pivot, "Fine", 15)
+    digest_field(system, "Fine", 15)
     mail = described_class.daily(DailyDigest.new(user))
     url = mail.header["List-Unsubscribe"].value[/<(.+)>/, 1]
     token = CGI.unescape(url[%r{/digest/unsubscribe\?token=(.+)\z}, 1])
@@ -123,17 +123,17 @@ RSpec.describe DigestMailer do
     expect(mail.text_part.body.decoded).to include("Unsubscribe: #{url}")
   end
 
-  it "says when a new pivot's weather hasn't arrived yet" do
-    digest_field(pivot, "Fine", 15)
-    new_pivot = create(:pivot, farm: pivot.farm, name: "Pivot 2", latitude: 45.5, longitude: -91.5) # no weather yet
-    digest_field(new_pivot, "New", 15)
+  it "says when a new system's weather hasn't arrived yet" do
+    digest_field(system, "Fine", 15)
+    new_system = create(:system, farm: system.farm, name: "Pivot 2", latitude: 45.5, longitude: -91.5) # no weather yet
+    digest_field(new_system, "New", 15)
     text = described_class.daily(DailyDigest.new(user)).text_part.body.decoded
-    expect(text).to match(/     Field: New .*\n     Weather for this pivot is on its way\.\n/)
+    expect(text).to match(/     Field: New .*\n     Weather for this system is on its way\.\n/)
     expect(text.scan("on its way").size).to eq(1)
   end
 
   it "says when nothing needs doing" do
-    digest_field(pivot, "Fine", 15)
+    digest_field(system, "Fine", 15)
     user.update!(digest_scope: "needs_irrigation")
     mail = described_class.daily(DailyDigest.new(user))
     expect(mail.text_part.body.decoded).to include("Nothing needs your attention today. No field needs irrigation now or within 3 days.")
@@ -143,7 +143,7 @@ RSpec.describe DigestMailer do
 
   it "uses the reader's units" do
     user.update!(unit_system: "metric")
-    digest_field(pivot, "Fine", 15)
+    digest_field(system, "Fine", 15)
     expect(described_class.daily(DailyDigest.new(user)).text_part.body.decoded).to include("AD 25.4 mm")
   end
 end

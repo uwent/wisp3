@@ -22,7 +22,7 @@ class SoilEvaporation
   DEFAULT_REW_IN = 9.0 / 25.4
   # Rain from which the whole surface counts as wetted (FAO-56 suggests about 3–4 mm)
   WETTING_RAIN_IN = 0.1
-  # FAO-56 Table 20, by irrigation system kind (Pivot::KINDS): trickle 0.3–0.4; sprinklers 1.0. A
+  # FAO-56 Table 20, by irrigation system kind (IrrigationSystem::KINDS): trickle 0.3–0.4; sprinklers 1.0. A
   # location (point) is taken as sprinklers.
   WETTED_FRACTIONS = {"drip" => 0.35}.freeze
   FEW_RANGE = (0.01..1.0)

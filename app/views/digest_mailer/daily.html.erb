@@ -83,16 +83,16 @@
             <%= content_tag "h#{zone_level}", digest_zone(zone), style: "font-size:14px;line-height:1.3;margin:0 0 4px" %>
             <p style="margin:0;font-size:12px;line-height:1.5;<%= muted %>">
               <%= safe_join(digest_weather(zone, @digest), tag.br) %><br>
-              Irrigation systems in this zone: <%= digest_zone_pivots(zone) %>
+              Irrigation systems in this zone: <%= digest_zone_systems(zone) %>
             </p>
           </td>
         </tr>
         <tr>
           <td style="<%= email_style(:card_body) %>">
-            <% zone.pivots.select { |pivot_section| pivot_section.entries.any? }.each do |pivot_section| %>
-              <%= content_tag "h#{zone_level + 1}", style: "font-size:15px;line-height:1.3;margin:12px 0 4px" do %><span style="font-weight:400;<%= muted %>">Irrigation system:</span> <%= email_link_to pivot_section.pivot.label, pivot_link(pivot_section.pivot) %><% end %>
+            <% zone.systems.select { |system_section| system_section.entries.any? }.each do |system_section| %>
+              <%= content_tag "h#{zone_level + 1}", style: "font-size:15px;line-height:1.3;margin:12px 0 4px" do %><span style="font-weight:400;<%= muted %>">Irrigation system:</span> <%= email_link_to system_section.system.label, system_link(system_section.system) %><% end %>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px">
-                <% pivot_section.entries.each do |entry| %>
+                <% system_section.entries.each do |entry| %>
                   <tr>
                     <td width="1" style="padding:10px 10px 8px 0;<%= rule %>;white-space:nowrap;vertical-align:top"><span style="<%= status_style(entry_status(entry)) %>"><%= status_label(entry_status(entry)) %></span></td>
                     <td style="padding:8px 0;<%= rule %>">

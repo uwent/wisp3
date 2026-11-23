@@ -13,12 +13,12 @@
   import type { OverviewSystem } from '../overview'
   import { nextRainLine } from '../rain'
   import type { Units } from '../units'
-  import { pivotIrrigations } from '@/routes'
+  import { systemIrrigations } from '@/routes'
   import type { ForecastDay } from '@/types/serializers'
 
   // Log a system's irrigation from the dashboard, for the common case of
   // one system that ran: a day (yesterday or today, or another within dates), an amount (with the
-  // calculator) on the fields chosen, or an amount each. Saved through PivotIrrigationsController
+  // calculator) on the fields chosen, or an amount each. Saved through SystemIrrigationsController
   // (D15: each field's own inches; fields not sent are left as they are). It says when the system
   // last irrigated and when rain is next, and warns before replacing a day's irrigation. field:
   // opened from a field's card ("Irrigated since …?"), which starts as the only one chosen.
@@ -103,7 +103,7 @@
 
   const yesterday = $derived(addDays(today, -1))
   // The system's fields that day: a field whose season that day ran on another system isn't its
-  // (fieldsOn; PivotIrrigationsController#create saves only these)
+  // (fieldsOn; SystemIrrigationsController#create saves only these)
   const fields = $derived(fieldsOn(system.log_fields, date))
   const chosenFields = $derived(fields.filter((f) => chosen.includes(f.id)))
   /** What each chosen field gets: the shared amount, or its own box */
@@ -136,7 +136,7 @@
 
 <Dialog bind:open title="Log irrigation on {systemName(system)}" guard>
   <Form
-    action={pivotIrrigations.create(system.id)}
+    action={systemIrrigations.create(system.id)}
     class="space-y-4"
     options={{ preserveScroll: true }}
     onSuccess={() => {

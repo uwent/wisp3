@@ -1,5 +1,5 @@
 # A user's place in a group (Q8): owners manage the group (its name, its
-# members, deleting farms, pivots and fields, and deleting the group); members do everything else.
+# members, deleting farms, systems and fields, and deleting the group); members do everything else.
 class Membership < ApplicationRecord
   belongs_to :user
   belongs_to :group

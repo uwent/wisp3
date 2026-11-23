@@ -33,7 +33,7 @@ class WeatherCsv
     generate do |csv|
       frontmatter(csv, "WISP weather, #{@zone.name}, #{@year}", {
         "Operation" => @group.name,
-        "Irrigation systems" => @zone.pivots.map { |pivot| "#{pivot.farm.name} / #{pivot.label}" }.join("; ").presence,
+        "Irrigation systems" => @zone.systems.map { |system| "#{system.farm.name} / #{system.label}" }.join("; ").presence,
         "Location" => cell && "the weather grid cell centered at #{cell.latitude}, #{cell.longitude}" \
           "#{", elevation #{cell.elevation_ft} ft" if cell.elevation_m}",
         "Days" => days_line,

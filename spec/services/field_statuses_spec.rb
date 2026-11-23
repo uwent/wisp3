@@ -5,10 +5,10 @@ RSpec.describe FieldStatuses do
   # FieldStatuses loaded for every field rather than its own
   describe "as of a day" do
     let(:as_of) { Date.new(2026, 7, 20) }
-    let(:pivot) { create(:pivot) }
+    let(:system) { create(:system) }
 
     def add_field
-      field = create(:field, pivot:)
+      field = create(:field, system:)
       create(:planting, field:, season_start: Date.new(2026, 5, 1), emergence_date: Date.new(2026, 5, 10),
         end_date: Date.new(2026, 9, 15))
       field.field_entries.create!(date: as_of - 3, irrigation_in: 0.5)
@@ -18,8 +18,8 @@ RSpec.describe FieldStatuses do
     end
 
     def statuses_for(fields)
-      scope = Field.where(id: fields.map(&:id)).includes(:soil_type, pivot: :weather_cell,
-        plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell, :pivot])
+      scope = Field.where(id: fields.map(&:id)).includes(:soil_type, system: :weather_cell,
+        plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type, :weather_cell, :system])
       count = 0
       counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
       statuses = ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
@@ -30,7 +30,7 @@ RSpec.describe FieldStatuses do
 
     before do
       (Date.new(2026, 5, 1)..as_of + PlantingStatus::HORIZON).each do |date|
-        pivot.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: 0.0, model: "m", hours: 24, fetched_at: Time.current)
+        system.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: 0.0, model: "m", hours: 24, fetched_at: Time.current)
       end
     end
 

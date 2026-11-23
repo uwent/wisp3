@@ -1,8 +1,8 @@
 # A realistic demo account for development, staging, the beta and the example farm (bin/rails
 # demo:seed), built from db/demo/farms.yml: three farms on real fields seen on
-# the imagery (Arlington's silt loams, mostly rainfed; Coloma's pivot-scale potatoes and processing
+# the imagery (Arlington's silt loams, mostly rainfed; Coloma's system-scale potatoes and processing
 # vegetables on sand, outlines from a field map; Hancock Agricultural Research Station's K fields
-# under a linear and R fields under a pivot). Between them they show split pivots, a linear, a
+# under a linear and R fields under a system). Between them they show split systems, a linear, a
 # traveler set up at two fields, a solid set over research plots, drip on a vegetable garden, a
 # location-only rainfed field, double crops, alfalfa cuttings, both ET methods, irrigation by system
 # (all fields and a subset), soil moisture readings, rain gauges shared by irrigation groups, and
@@ -63,7 +63,7 @@ class DemoSeed
       farm = group.farms.create!(name: farm_data.fetch("name"), notes: farm_data["notes"], use_model_precip: farm_data.fetch("use_model_precip", true))
       systems = farm_data.fetch("systems").to_h { |system_data| [system_data.fetch("name").to_s, system(farm, system_data)] }
       Array(farm_data["irrigation_groups"]).each do |group_data|
-        farm.pivot_groups.create!(name: group_data.fetch("name"), use_model_precip: group_data["use_model_precip"]).pivots << systems.fetch_values(*group_data.fetch("systems").map(&:to_s))
+        farm.irrigation_groups.create!(name: group_data.fetch("name"), use_model_precip: group_data["use_model_precip"]).systems << systems.fetch_values(*group_data.fetch("systems").map(&:to_s))
       end
     end
   end
@@ -73,23 +73,23 @@ class DemoSeed
   def date(month_day) = Date.strptime("#{@year}-#{month_day}", "%Y-%m-%d")
 
   def system(farm, data)
-    pivot = farm.pivots.create!(data.slice(*DemoExport::SYSTEM_ATTRIBUTES))
-    fields = data.fetch("fields").to_h { |field_data| [field_data.fetch("name").to_s, field(pivot, field_data)] }
+    system = farm.systems.create!(data.slice(*DemoExport::SYSTEM_ATTRIBUTES))
+    fields = data.fetch("fields").to_h { |field_data| [field_data.fetch("name").to_s, field(system, field_data)] }
     # A system's irrigation (D15: stored per field) goes on each field it lists, else each on it that
     # day, and their plots; a field's own amount that day (its entries) stays
     Array(data["irrigation"]).each do |irrigation|
       day = date(irrigation.fetch("date"))
-      watered = irrigation["fields"] ? fields.fetch_values(*irrigation["fields"].map(&:to_s)) : pivot.fields_on(day)
+      watered = irrigation["fields"] ? fields.fetch_values(*irrigation["fields"].map(&:to_s)) : system.fields_on(day)
       watered.each do |field|
         next if field.field_entries.find_by(date: day)&.irrigation_in
         field.record_entry(day, irrigation.slice("notes").merge(irrigation_in: irrigation.fetch("inches")))
       end
     end
-    pivot
+    system
   end
 
-  def field(pivot, data)
-    field = pivot.fields.create!(data.slice(*DemoExport::FIELD_ATTRIBUTES)
+  def field(system, data)
+    field = system.fields.create!(data.slice(*DemoExport::FIELD_ATTRIBUTES)
       .merge(name: data.fetch("name").to_s, soil_type: SoilType.find_by!(key: data.fetch("soil")),
         boundary: data["boundary"] && {"type" => "Polygon", "coordinates" => [data["boundary"]]}))
     Array(data["entries"]).each { |entry| field.field_entries.create!(entry(entry)) }

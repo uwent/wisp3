@@ -5,21 +5,21 @@
 # touch its system can move the field to a system it does touch, or to a new Location
 # at the shape, with the save.
 class FieldOutlinesController < AuthenticatedController
-  SYSTEM = [:id, :name, :kind_name, :weather_cell_id, *PivotSerializer::SHAPE].freeze
+  SYSTEM = [:id, :name, :kind_name, :weather_cell_id, *IrrigationSystemSerializer::SHAPE].freeze
 
   def show
-    field = Current.group.fields.includes(:soil_type, pivot: :farm, plantings: :plant).find(params[:field_id])
-    others = Current.group.fields.includes(:pivot).where.not(id: field.id).where.not(boundary: nil)
-    cell = Weather::Grid.cell_for(field.pivot.latitude, field.pivot.longitude)
+    field = Current.group.fields.includes(:soil_type, system: :farm, plantings: :plant).find(params[:field_id])
+    others = Current.group.fields.includes(:system).where.not(id: field.id).where.not(boundary: nil)
+    cell = Weather::Grid.cell_for(field.system.latitude, field.system.longitude)
     render inertia: "Fields/Outline", props: {
       field: FieldSerializer.new(field).to_h,
-      pivot: field.pivot.slice(*SYSTEM),
+      system: field.system.slice(*SYSTEM),
       # Its weather cell's edges, to say whether a Location at the shape would change the weather
       cell: {north: cell.lat_north, south: cell.lat_south, west: cell.lng_west, east: cell.lng_east},
       # The years of its seasons that haven't ended, which follow a move
       open_years: field.plantings.reject(&:ended?).map(&:season_year).uniq.sort,
       # Nearby systems and other fields' outlines, drawn for reference
-      other_pivots: Current.group.pivots.where.not(id: field.pivot_id).order(:name).map { |pivot| pivot.slice(*SYSTEM) },
+      other_systems: Current.group.systems.where.not(id: field.system_id).order(:name).map { |system| system.slice(*SYSTEM) },
       other_fields: others.map { |other| {id: other.id, name: other.name, boundary: other.boundary} },
       soil_types: ReferenceProps.soil_types,
       from: (params[:from] == "setup") ? "setup" : "field"
@@ -27,10 +27,10 @@ class FieldOutlinesController < AuthenticatedController
   end
 
   # outline: boundary (GeoJSON as JSON, blank to remove), and optionally area_acres and soil_type_id
-  # from the page's offers; and pivot_id to move the field to another system, or new_location=1
+  # from the page's offers; and system_id to move the field to another system, or new_location=1
   # with latitude and longitude (the shape's center) to move it to a new Location there
   def update
-    field = Current.group.fields.includes(pivot: :farm).find(params[:field_id])
+    field = Current.group.fields.includes(system: :farm).find(params[:field_id])
     values = outline_params
     field.assign_attributes(values.slice(:area_acres, :soil_type_id).compact_blank)
     field.boundary = values[:boundary] if values.key?(:boundary)
@@ -40,7 +40,7 @@ class FieldOutlinesController < AuthenticatedController
     end
 
     destination = (params[:from] == "setup") ? setup_path : field_path(field)
-    moved = " and moved it to #{field.pivot.label}" if system
+    moved = " and moved it to #{field.system.label}" if system
     redirect_to destination, notice: "Saved the shape of #{field.name}#{moved}"
   end
 
@@ -49,15 +49,15 @@ class FieldOutlinesController < AuthenticatedController
   # The system the field moves to, if it moves: one of the group's, or a new Location (a point
   # system named after the field) on its farm
   def system_for(field, values)
-    if values[:pivot_id].present?
-      system = Current.group.pivots.find(values[:pivot_id])
-      system unless system.id == field.pivot_id
+    if values[:system_id].present?
+      system = Current.group.systems.find(values[:system_id])
+      system unless system.id == field.system_id
     elsif values[:new_location] == "1"
-      field.pivot.farm.pivots.build(kind: "point", name: field.name, latitude: values[:latitude], longitude: values[:longitude])
+      field.system.farm.systems.build(kind: "point", name: field.name, latitude: values[:latitude], longitude: values[:longitude])
     end
   end
 
   def outline_params
-    params.expect(outline: [:boundary, :area_acres, :soil_type_id, :pivot_id, :new_location, :latitude, :longitude])
+    params.expect(outline: [:boundary, :area_acres, :soil_type_id, :system_id, :new_location, :latitude, :longitude])
   end
 end

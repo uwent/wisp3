@@ -42,21 +42,21 @@ Rails.application.routes.draw do
   get "announcements/unsubscribe", to: "announcement_unsubscribes#show", as: :announcement_unsubscribe
   post "announcements/unsubscribe", to: "announcement_unsubscribes#create"
 
-  # Setup: farms → pivots → fields → plantings, the guided first run, and copying last season
+  # Setup: farms → systems → fields → plantings, the guided first run, and copying last season
   resource :setup, only: :show, controller: "setup"
   resource :quick_setup, only: [:new, :create], path: "setup/start", path_names: {new: ""}
   resource :season_copy, only: :create, path: "setup/copy_season"
   # Field outlines for many fields from one file
   resource :outline_import, only: [:new, :create], path: "setup/outlines", path_names: {new: "import"}
-  # The operation's season as one CSV (?year=): its fields' totals, irrigation by pivot, weather by zone
+  # The operation's season as one CSV (?year=): its fields' totals, irrigation by system, weather by zone
   resource :season_report, only: :show, path: "setup/report", defaults: {format: :csv}
   resources :farms, only: [:create, :update, :destroy]
-  resources :pivots, only: [:show, :new, :create, :edit, :update, :destroy] do
-    # Its irrigation list (index) is a CSV; /pivots/:id/weather (the old weather CSV) redirects to its zone's
+  resources :systems, only: [:show, :new, :create, :edit, :update, :destroy] do
+    # Its irrigation list (index) is a CSV; /systems/:id/weather (the old weather CSV) redirects to its zone's
     get :weather, on: :member, defaults: {format: :csv}
     # The pump capacity or depth at 100%, from the irrigation calculator
     patch :equipment, on: :member
-    resources :irrigations, only: [:index, :create, :destroy], controller: "pivot_irrigations", param: :date
+    resources :irrigations, only: [:index, :create, :destroy], controller: "system_irrigations", param: :date
   end
   resources :fields, only: [:show, :create, :update, :destroy] do
     resources :days, only: :update, controller: "field_days", param: :date
@@ -67,11 +67,11 @@ Rails.application.routes.draw do
     get :export, on: :member, defaults: {format: :csv}
     resources :cuttings, only: [:create, :destroy], controller: "canopy_cuttings"
   end
-  resources :pivot_groups, only: [:create, :update, :destroy]
+  resources :irrigation_groups, only: [:create, :update, :destroy]
   resource :daily_entry, only: [:show, :update], path: "daily"
   # Its week view: rain and irrigation for the seven days ending on ?date=
   resource :daily_entry_week, only: [:show, :update], path: "daily/week"
-  # Every pivot on a map with its fields' status, and optional weather and drought layers
+  # Every system on a map with its fields' status, and optional weather and drought layers
   resource :map, only: :show, controller: "map"
   # Weather by zone: the operation's zones with the week ahead, a zone's season of weather
   # (?year=) and that as CSV. A zone's address is its cell's center, /weather/44.12,-89.54;
@@ -83,7 +83,7 @@ Rails.application.routes.draw do
   get "weather/:id", to: "weather_zones#legacy", constraints: {id: /\d+/}, as: :legacy_weather_zone
   get "weather/:id/export", to: "weather_zones#legacy", constraints: {id: /\d+/}, defaults: {export: true, format: :csv},
     as: :legacy_export_weather_zone
-  # The group's pivots whose weather is updating (JSON), for pages waiting on it
+  # The group's systems whose weather is updating (JSON), for pages waiting on it
   resource :weather_updates, only: :show
 
   namespace :admin do

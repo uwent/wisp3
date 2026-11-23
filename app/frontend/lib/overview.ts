@@ -2,7 +2,7 @@ import type { PlantingSummary } from '@/types/serializers'
 
 import { fieldMatches, searchText } from './search'
 
-// The operation's farms, pivots and field cards (OperationOverview), as the dashboard and the map
+// The operation's farms, systems and field cards (OperationOverview), as the dashboard and the map
 // get them, and how the map orders and picks them
 
 /**
@@ -14,10 +14,10 @@ export type FieldCard = { id: number; name: string; plantings: PlantingSummary[]
 export type OverviewSystem = {
   id: number
   name: string
-  /** "Pivot", "Traveler" (Pivot::KIND_NAMES) */
+  /** "Pivot", "Traveler" (IrrigationSystem::KIND_NAMES) */
   kind_name: string
-  /** Its irrigation group (PivotGroup), if any */
-  pivot_group_id: number | null
+  /** Its irrigation group (IrrigationGroup), if any */
+  irrigation_group_id: number | null
   weather_updating: boolean
   fields: FieldCard[]
 }
@@ -25,8 +25,8 @@ export type FarmGroup<P extends OverviewSystem = OverviewSystem> = {
   id: number
   name: string
   /** Its irrigation groups */
-  pivot_groups: { id: number; name: string }[]
-  pivots: P[]
+  irrigation_groups: { id: number; name: string }[]
+  systems: P[]
 }
 
 export type Status = NonNullable<PlantingSummary['status']>
@@ -43,9 +43,9 @@ export const STATUSES: Status[] = [
   'no_stress',
 ]
 
-/** The pivots whose weather is being updated, so the page waits for it to land (lib/poll.ts) */
+/** The systems whose weather is being updated, so the page waits for it to land (lib/poll.ts) */
 export const updatingIds = (farms: FarmGroup[]) =>
-  farms.flatMap((farm) => farm.pivots.filter((pivot) => pivot.weather_updating).map((pivot) => pivot.id))
+  farms.flatMap((farm) => farm.systems.filter((system) => system.weather_updating).map((system) => system.id))
 
 /** In season, with a status (not upcoming, ended, or waiting for weather) */
 export const summaryActive = (summary: PlantingSummary | null) =>
@@ -88,8 +88,8 @@ export function needsWaterWithin(card: FieldCard, days: number): boolean {
   return due !== null && due <= days
 }
 
-/** The most urgent status among a pivot's fields in season, or null if none is */
-export function pivotStatus(fields: FieldCard[]): Status | null {
+/** The most urgent status among a system's fields in season, or null if none is */
+export function systemStatus(fields: FieldCard[]): Status | null {
   const active = fields.flatMap((card) => card.plantings.filter(summaryActive).map((summary) => summary.status!))
   return STATUSES.find((status) => active.includes(status)) ?? null
 }
@@ -102,7 +102,7 @@ export type SortOrder = 'urgent' | 'north'
 /** What's selected on the map page: one card in the list, and its system or field on the map */
 export type Selection = { level: 'farm' | 'group' | 'system' | 'field' | 'zone'; id: number }
 
-export type SystemNode<P> = { kind: 'system'; pivot: P; fields: FieldCard[] }
+export type SystemNode<P> = { kind: 'system'; system: P; fields: FieldCard[] }
 export type GroupNode<P> = { kind: 'group'; id: number; name: string; systems: SystemNode<P>[] }
 export type FarmNode<P> = { kind: 'farm'; id: number; name: string; children: (GroupNode<P> | SystemNode<P>)[] }
 
@@ -166,39 +166,43 @@ export function buildTree<P extends OverviewSystem & { latitude: number }>(
 
   const systemKey = (node: SystemNode<P>) =>
     parentKey(
-      node.fields.map((card) => fieldKey(card, node.pivot.latitude)),
-      node.pivot.name,
-      node.pivot.latitude,
+      node.fields.map((card) => fieldKey(card, node.system.latitude)),
+      node.system.name,
+      node.system.latitude,
     )
   const keyOf = (node: GroupNode<P> | SystemNode<P>): SortKey =>
     node.kind === 'system' ? systemKey(node) : parentKey(node.systems.map(systemKey), node.name)
 
-  const system = (pivot: P, matched: boolean): SystemNode<P> | null => {
-    const within = matched || matches(pivot.name)
-    const fields = pivot.fields.filter(
+  const systemNode = (system: P, matched: boolean): SystemNode<P> | null => {
+    const within = matched || matches(system.name)
+    const fields = system.fields.filter(
       (card) =>
         (within || fieldMatches(card, text)) &&
         (windowDays === null || needsWaterWithin(card, windowDays)) &&
         (!growing || card.plantings.some((summary) => summary.phase === 'active')),
     )
     if (filtering && !fields.length && !(within && windowDays === null && !growing)) return null
-    const sorted = sortByKey(fields, (card) => fieldKey(card, pivot.latitude), order)
-    return { kind: 'system', pivot, fields: sorted }
+    const sorted = sortByKey(fields, (card) => fieldKey(card, system.latitude), order)
+    return { kind: 'system', system, fields: sorted }
   }
 
   const tree = farms.flatMap((farm): FarmNode<P>[] => {
     const farmMatched = matches(farm.name) && text !== ''
-    const groups = farm.pivot_groups.flatMap((group): GroupNode<P>[] => {
+    const groups = farm.irrigation_groups.flatMap((group): GroupNode<P>[] => {
       const matched = farmMatched || (text !== '' && matches(group.name))
-      const systems = farm.pivots
-        .filter((pivot) => pivot.pivot_group_id === group.id)
-        .flatMap((pivot) => system(pivot, matched) ?? [])
+      const systems = farm.systems
+        .filter((system) => system.irrigation_group_id === group.id)
+        .flatMap((system) => systemNode(system, matched) ?? [])
       if (!systems.length) return []
       return [{ kind: 'group', id: group.id, name: group.name, systems: sortByKey(systems, systemKey, order) }]
     })
-    const ungrouped = farm.pivots
-      .filter((pivot) => pivot.pivot_group_id === null || !farm.pivot_groups.some((g) => g.id === pivot.pivot_group_id))
-      .flatMap((pivot) => system(pivot, farmMatched) ?? [])
+    const ungrouped = farm.systems
+      .filter(
+        (system) =>
+          system.irrigation_group_id === null ||
+          !farm.irrigation_groups.some((g) => g.id === system.irrigation_group_id),
+      )
+      .flatMap((system) => systemNode(system, farmMatched) ?? [])
     const children = sortByKey<GroupNode<P> | SystemNode<P>>([...groups, ...ungrouped], keyOf, order)
     if (!children.length && filtering) return []
     return [{ kind: 'farm', id: farm.id, name: farm.name, children }]
@@ -232,16 +236,16 @@ export function matchesStatus(card: FieldCard, filter: StatusFilter | null): boo
 export function filterByStatus<P extends OverviewSystem>(farms: FarmGroup<P>[], filter: StatusFilter | null) {
   if (filter === null) return farms
   return farms.flatMap((farm) => {
-    const pivots = farm.pivots.flatMap((pivot) => {
-      const fields = pivot.fields.filter((card) => matchesStatus(card, filter))
-      return fields.length ? [{ ...pivot, fields }] : []
+    const systems = farm.systems.flatMap((system) => {
+      const fields = system.fields.filter((card) => matchesStatus(card, filter))
+      return fields.length ? [{ ...system, fields }] : []
     })
-    return pivots.length ? [{ ...farm, pivots }] : []
+    return systems.length ? [{ ...farm, systems }] : []
   })
 }
 
 /** A field with the system and farm it's under */
-export type PlacedField<P extends OverviewSystem = OverviewSystem> = { card: FieldCard; pivot: P; farm: FarmGroup<P> }
+export type PlacedField<P extends OverviewSystem = OverviewSystem> = { card: FieldCard; system: P; farm: FarmGroup<P> }
 
 /**
  * "Needs water first": every field across farms and systems, most urgent first (urgency, then the
@@ -249,7 +253,7 @@ export type PlacedField<P extends OverviewSystem = OverviewSystem> = { card: Fie
  */
 export function needsWaterFirst<P extends OverviewSystem>(farms: FarmGroup<P>[]): PlacedField<P>[] {
   const placed = farms.flatMap((farm) =>
-    farm.pivots.flatMap((pivot) => pivot.fields.map((card) => ({ card, pivot, farm }))),
+    farm.systems.flatMap((system) => system.fields.map((card) => ({ card, system, farm }))),
   )
   const keyed = placed.map((item) => ({
     item,

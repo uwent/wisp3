@@ -14,7 +14,7 @@
     fieldHasEntry,
     fieldRowBoxes,
     inSeason,
-    pivotHasEntry,
+    systemHasEntry,
     plotBox,
     plots,
     rainFields,
@@ -27,7 +27,7 @@
     yesterdayBoxes,
     type DayFarm,
     type DayField,
-    type DayPivot,
+    type DaySystem,
     type DayPlanting,
   } from '@/lib/dailyEntry'
   import { addDays, formatDate, today as todayDate } from '@/lib/dates'
@@ -60,15 +60,15 @@
     return true
   }
 
-  const allPivots = $derived(farms.flatMap((farm) => farm.pivots))
-  const allFields = $derived(allPivots.flatMap((pivot) => pivot.fields))
+  const allSystems = $derived(farms.flatMap((farm) => farm.systems))
+  const allFields = $derived(allSystems.flatMap((system) => system.fields))
 
   // Each field's rain and each field's and plot's irrigation, as saved: what the rows show and
   // fill, submitted from here. Reset for another date and after a save, not whenever the page's
   // data changes (a reload for another reason keeps what's typed).
   const savedRain = (fields: DayField[]) => Object.fromEntries(fields.map((f) => [f.id, f.entry?.rain_in ?? null]))
   let rain = $state<Record<number, number | null>>(untrack(() => savedRain(allFields)))
-  let irrigation = $state<Record<string, number | null>>(untrack(() => savedIrrigation(allPivots)))
+  let irrigation = $state<Record<string, number | null>>(untrack(() => savedIrrigation(allSystems)))
   let saves = $state(0)
   // Only another date or a save resets them: props reloaded for anything else (the calculator saving
   // a pump capacity) re-run effects that read the props directly, and a derived string doesn't change
@@ -77,7 +77,7 @@
     void resetKey
     untrack(() => {
       rain = savedRain(allFields)
-      irrigation = savedIrrigation(allPivots)
+      irrigation = savedIrrigation(allSystems)
       varied = {}
     })
   })
@@ -120,16 +120,16 @@
         name: field.name,
         acres: wholeField(field)?.area_acres ?? field.area_acres,
       }))
-  function applyToFields(pivot: DayPivot, inches: number, fieldIds: number[]) {
-    for (const field of pivot.fields.filter((f) => fieldIds.includes(f.id))) fillIrrigation(fieldBoxes(field), inches)
+  function applyToFields(system: DaySystem, inches: number, fieldIds: number[]) {
+    for (const field of system.fields.filter((f) => fieldIds.includes(f.id))) fillIrrigation(fieldBoxes(field), inches)
   }
 
   // "Same as yesterday": the day before's amounts, while nothing is entered for the system this day
   const dayBefore = $derived(date === today ? 'yesterday' : 'the day before')
-  const offersYesterday = (pivot: DayPivot) =>
-    pivot.yesterday !== null && systemBoxes(pivot).every((box) => irrigation[box] == null)
-  function sameAsYesterday(pivot: DayPivot) {
-    const boxes = yesterdayBoxes(pivot)
+  const offersYesterday = (system: DaySystem) =>
+    system.yesterday !== null && systemBoxes(system).every((box) => irrigation[box] == null)
+  function sameAsYesterday(system: DaySystem) {
+    const boxes = yesterdayBoxes(system)
     if (!boxes) return
     Object.assign(irrigation, boxes)
     dirty = true
@@ -148,8 +148,8 @@
   const firstError = (errs: Record<string, string | string[]>, keys: string[]) =>
     keys.map((key) => errs[key]).find(Boolean)
 
-  // Collapsed rows. A pivot group's or pivot's choice is remembered in this browser; the rest
-  // (fields with no crop, plots, pivots with nothing in season) start closed unless something was
+  // Collapsed rows. A system group's or system's choice is remembered in this browser; the rest
+  // (fields with no crop, plots, systems with nothing in season) start closed unless something was
   // entered there that day
   const STORAGE_KEY = 'wisp.dailyEntry.collapsed'
   const stored = readStored(STORAGE_KEY)
@@ -224,7 +224,7 @@
 
 <!-- A field's row, and its plots under it -->
 {#snippet fieldRows(
-  pivot: DayPivot,
+  system: DaySystem,
   field: DayField,
   depth: number,
   hidden: boolean,
@@ -235,7 +235,7 @@
   {@const plotsKey = `plots-${field.id}`}
   {@const plotsOpen = shown(plotsKey, plotsOpenByDefault(field))}
   {@const amount = rowAmount(fieldRowBoxes(field), irrigation)}
-  {@const rainVaries = inSeason(field) && rainView(pivot.fields.filter(inSeason), rain).varies}
+  {@const rainVaries = inSeason(field) && rainView(system.fields.filter(inSeason), rain).varies}
   <tr class="align-top" {hidden}>
     <th scope="row" class="{nameCell} bg-surface-raised font-normal {indent[depth]}">
       <span class="flex items-start gap-1">
@@ -345,23 +345,23 @@
   {/each}
 {/snippet}
 
-<!-- A pivot's row (its irrigation, and rain for all its fields), its fields, then those with no crop -->
-{#snippet pivotRows(pivot: DayPivot, depth: number, hidden: boolean, errs: Record<string, string | string[]>)}
-  {@const key = `pivot-${pivot.id}`}
+<!-- A system's row (its irrigation, and rain for all its fields), its fields, then those with no crop -->
+{#snippet systemRows(system: DaySystem, depth: number, hidden: boolean, errs: Record<string, string | string[]>)}
+  {@const key = `system-${system.id}`}
   {@const open = isOpen(key)}
-  {@const growing = pivot.fields.filter(inSeason)}
-  {@const idle = pivot.fields.filter((f) => !inSeason(f))}
-  {@const idleKey = `idle-${pivot.id}`}
+  {@const growing = system.fields.filter(inSeason)}
+  {@const idle = system.fields.filter((f) => !inSeason(f))}
+  {@const idleKey = `idle-${system.id}`}
   {@const idleOpen = shown(idleKey, idle.some(fieldHasEntry))}
   {@const rainShared = rainView(growing, rain)}
-  {@const amount = rowAmount(systemBoxes(pivot), irrigation)}
+  {@const amount = rowAmount(systemBoxes(system), irrigation)}
   <tr class="border-t border-line bg-surface align-top" {hidden}>
     <th scope="row" class="{nameCell} bg-surface {indent[depth]}">
       <span class="flex items-start gap-1">
-        {@render toggle(`Fields on ${pivot.name}`, open, () => remember(key, open))}
+        {@render toggle(`Fields on ${system.name}`, open, () => remember(key, open))}
         <span>
-          <span class="font-medium">{systemName(pivot)}</span>
-          <span class="block text-xs font-normal text-ink-muted">{count(pivot.fields.length, 'field')}</span>
+          <span class="font-medium">{systemName(system)}</span>
+          <span class="block text-xs font-normal text-ink-muted">{count(system.fields.length, 'field')}</span>
         </span>
       </span>
     </th>
@@ -370,15 +370,15 @@
         <NumberField
           hideLabel
           center
-          id="pivot-{pivot.id}-rain"
-          label="Rain on {pivot.name}"
+          id="system-{system.id}-rain"
+          label="Rain on {system.name}"
           quantity="depth"
           precision={units.digits('depth')}
           bind:value={
             () => rainShared.value,
             (value) =>
               fillRow(
-                `rain-pivot-${pivot.id}`,
+                `rain-system-${system.id}`,
                 rain,
                 growing.map((f) => f.id),
                 value,
@@ -400,31 +400,31 @@
             <NumberField
               hideLabel
               center
-              id="pivot-{pivot.id}-irrigation"
-              label="Irrigation by {pivot.name}"
+              id="system-{system.id}-irrigation"
+              label="Irrigation by {system.name}"
               quantity="depth"
               precision={units.digits('depth')}
               bind:value={
-                () => amount.value, (value) => fillRow(`pivot-${pivot.id}`, irrigation, systemBoxes(pivot), value)
+                () => amount.value, (value) => fillRow(`system-${system.id}`, irrigation, systemBoxes(system), value)
               }
               placeholder={amount.varies ? 'varies' : ''}
             >
               {#snippet trailing()}
                 <IrrigationCalculatorDialog
-                  system={pivot}
+                  {system}
                   fields={calculatorFields(growing)}
                   {date}
-                  onapply={(inches, fieldIds) => applyToFields(pivot, inches, fieldIds)}
+                  onapply={(inches, fieldIds) => applyToFields(system, inches, fieldIds)}
                 />
               {/snippet}
             </NumberField>
           </div>
-          {#if offersYesterday(pivot)}
+          {#if offersYesterday(system)}
             <button
               type="button"
               class="py-2 text-xs text-brand-600 hover:underline"
-              aria-label="Same as {dayBefore} for {pivot.name}"
-              onclick={() => sameAsYesterday(pivot)}>Same as {dayBefore}</button
+              aria-label="Same as {dayBefore} for {system.name}"
+              onclick={() => sameAsYesterday(system)}>Same as {dayBefore}</button
             >
           {/if}
         </div>
@@ -432,19 +432,19 @@
     </td>
   </tr>
   {#each growing as field (field.id)}
-    {@render fieldRows(pivot, field, depth + 1, hidden || !open, errs)}
+    {@render fieldRows(system, field, depth + 1, hidden || !open, errs)}
   {/each}
   {#if idle.length}
     <tr hidden={hidden || !open}>
       <td colspan={columns} class="py-1.5 {indent[depth + 1]}">
         <span class="flex items-center gap-1 text-xs text-ink-muted">
-          {@render toggle(`Fields with no crop on ${pivot.name}`, idleOpen, () => (opened[idleKey] = !idleOpen))}
+          {@render toggle(`Fields with no crop on ${system.name}`, idleOpen, () => (opened[idleKey] = !idleOpen))}
           {growing.length ? `${count(idle.length, 'field')} with no crop this season` : 'No crop this season'}
         </span>
       </td>
     </tr>
     {#each idle as field (field.id)}
-      {@render fieldRows(pivot, field, depth + 1, hidden || !open || !idleOpen, errs)}
+      {@render fieldRows(system, field, depth + 1, hidden || !open || !idleOpen, errs)}
     {/each}
   {/if}
 {/snippet}
@@ -482,7 +482,7 @@
   </div>
 </div>
 
-{#if allPivots.length === 0}
+{#if allSystems.length === 0}
   <section
     class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted"
   >
@@ -524,8 +524,8 @@
         {#each farms as farm (farm.id)}
           {@const rows = farmRows(farm)}
           {@const idleKey = `idle-farm-${farm.id}`}
-          {@const idleOpen = shown(idleKey, rows.idle.some(pivotHasEntry))}
-          {#if farm.pivots.length}
+          {@const idleOpen = shown(idleKey, rows.idle.some(systemHasEntry))}
+          {#if farm.systems.length}
             <section class="space-y-2" aria-labelledby="farm-{farm.id}">
               <h3 id="farm-{farm.id}" class="font-medium text-ink-muted">
                 {farm.name}{#if !farm.use_model_precip}<span class="text-xs font-normal"
@@ -547,7 +547,7 @@
                     {#each rows.groups as group (group.id)}
                       {@const key = `group-${group.id}`}
                       {@const open = isOpen(key)}
-                      {@const fields = rainFields(group.pivots)}
+                      {@const fields = rainFields(group.systems)}
                       {@const rainShared = rainView(fields, rain)}
                       <tr class="border-t border-line bg-brand-50 align-top">
                         <th scope="row" class="{nameCell} bg-brand-50 {indent[0]}">
@@ -556,7 +556,7 @@
                             <span>
                               <span class="font-medium">{group.name}</span>
                               <span class="block text-xs font-normal text-ink-muted"
-                                >{`Irrigation group · ${count(group.pivots.length, 'system')}`}{rainNote(
+                                >{`Irrigation group · ${count(group.systems.length, 'system')}`}{rainNote(
                                   group,
                                   farm,
                                 )}</span
@@ -588,12 +588,12 @@
                         </td>
                         <td colspan={columns - 2}></td>
                       </tr>
-                      {#each group.pivots as pivot (pivot.id)}
-                        {@render pivotRows(pivot, 1, !open, errs)}
+                      {#each group.systems as system (system.id)}
+                        {@render systemRows(system, 1, !open, errs)}
                       {/each}
                     {/each}
-                    {#each rows.pivots as pivot (pivot.id)}
-                      {@render pivotRows(pivot, 0, false, errs)}
+                    {#each rows.systems as system (system.id)}
+                      {@render systemRows(system, 0, false, errs)}
                     {/each}
                     {#if rows.idle.length}
                       <tr class="border-t border-line">
@@ -608,8 +608,8 @@
                           </span>
                         </td>
                       </tr>
-                      {#each rows.idle as pivot (pivot.id)}
-                        {@render pivotRows(pivot, 0, !idleOpen, errs)}
+                      {#each rows.idle as system (system.id)}
+                        {@render systemRows(system, 0, !idleOpen, errs)}
                       {/each}
                     {/if}
                   </tbody>

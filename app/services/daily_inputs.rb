@@ -107,7 +107,7 @@ class DailyInputs
 
   # The planting's system's setting, or for the field as a whole its system's now (Q7)
   def use_model_precip?
-    @use_model_precip = (@planting || @field.pivot).use_model_precip? if @use_model_precip.nil?
+    @use_model_precip = (@planting || @field.system).use_model_precip? if @use_model_precip.nil?
     @use_model_precip
   end
 end

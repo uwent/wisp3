@@ -9,11 +9,11 @@
   import NumberField from '@/lib/components/NumberField.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
-  import type { PivotShape } from '@/lib/geo'
+  import type { SystemShape } from '@/lib/geo'
   import { systemDistanceM, systemReach } from '@/lib/outlines/problems'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { fieldOutline, fields } from '@/routes'
-  import type { Field, Pivot, SoilType } from '@/types/serializers'
+  import type { Field, IrrigationSystem, SoilType } from '@/types/serializers'
 
   import FieldLabel from '@/lib/components/FieldLabel.svelte'
 
@@ -22,21 +22,23 @@
   import ShapeThumbnail from './ShapeThumbnail.svelte'
   import { lastSoil, rememberSoil } from './lastChoices'
 
-  // Create a field under a pivot, or edit one (including moving it to another pivot, which its
+  // Create a field under a system, or edit one (including moving it to another system, which its
   // seasons that haven't ended follow; ended ones keep theirs).
   // Its shape (the outline) is shown small and edited on its own page.
   let {
     field,
-    pivotId,
-    pivots,
+    systemId,
+    systems,
     soilTypes,
     ondone,
     ondelete,
   }: {
     field?: Field
-    pivotId: number
-    /** With their location, a new field gets the soil survey's suggestion for its pivot */
-    pivots: (Pick<Pivot, 'id' | 'name'> & Partial<Pick<Pivot, 'kind_name'>> & Partial<PivotShape>)[]
+    systemId: number
+    /** With their location, a new field gets the soil survey's suggestion for its system */
+    systems: (Pick<IrrigationSystem, 'id' | 'name'> &
+      Partial<Pick<IrrigationSystem, 'kind_name'>> &
+      Partial<SystemShape>)[]
     soilTypes: SoilType[]
     ondone: () => void
     /** Deletes the field (asking first); left out for a new field or someone who isn't an owner */
@@ -65,29 +67,29 @@
   )
   const soil = $derived(soilTypes.find((s) => String(s.id) === soilTypeId))
 
-  // The soil survey reads the field's shape, or for a new field its pivot's, whose suggestion it
+  // The soil survey reads the field's shape, or for a new field its system's, whose suggestion it
   // takes until the user picks a soil
-  let pivotChoice = $state(untrack(() => String(field?.pivot_id ?? pivotId)))
-  const pivot = $derived(pivots.find((p) => String(p.id) === pivotChoice))
-  const system = $derived(
-    !field && pivot?.latitude != null && pivot.longitude != null
-      ? ({ kind: 'center', ...pivot } as PivotShape & { name: string })
+  let systemChoice = $state(untrack(() => String(field?.system_id ?? systemId)))
+  const system = $derived(systems.find((p) => String(p.id) === systemChoice))
+  const surveyPoint = $derived(
+    !field && system?.latitude != null && system.longitude != null
+      ? ({ kind: 'center', ...system } as SystemShape & { name: string })
       : null,
   )
   // With a shape, each system says how far it is from the field (as on the shape page): the field's
   // own first, then the nearest
-  const shaped = (p: (typeof pivots)[number]): p is (typeof pivots)[number] & PivotShape =>
+  const shaped = (p: (typeof systems)[number]): p is (typeof systems)[number] & SystemShape =>
     p.latitude != null && p.longitude != null && p.kind != null
   const systemOptions = $derived.by(() => {
     const boundary = field?.boundary
     const unitSystem = page.props.auth.user?.unit_system ?? 'imperial'
-    const options = pivots.map((p) => {
+    const options = systems.map((p) => {
       const meters = boundary && shaped(p) ? systemDistanceM(boundary, p) : null
       const name = p.kind_name ? systemName({ name: p.name, kind_name: p.kind_name }) : p.name
       return {
         value: String(p.id),
-        label: meters === null ? name : `${name} – ${systemReach(p as PivotShape, meters, unitSystem)}`,
-        own: p.id === field?.pivot_id,
+        label: meters === null ? name : `${name} – ${systemReach(p as SystemShape, meters, unitSystem)}`,
+        own: p.id === field?.system_id,
         meters,
       }
     })
@@ -134,11 +136,11 @@
       <TextField label="Name" name="field[name]" value={field?.name ?? ''} error={errors.name} required />
       <SelectField
         label="Irrigation system"
-        name="field[pivot_id]"
-        bind:value={pivotChoice}
+        name="field[system_id]"
+        bind:value={systemChoice}
         options={systemOptions.map(({ value, label }) => ({ value, label }))}
-        info="field.pivot"
-        error={errors.pivot_id}
+        info="field.system"
+        error={errors.system_id}
         required
       />
       <fieldset class="space-y-2">
@@ -180,7 +182,7 @@
         {soilTypes}
         saved={field ? field.soil_type_id : undefined}
         boundary={field?.boundary ?? null}
-        {system}
+        system={surveyPoint}
         suggest={!field}
         error={errors.soil_type}
         info="field.soil"

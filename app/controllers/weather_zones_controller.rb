@@ -1,7 +1,7 @@
 # The operation's weather by zone (WeatherZone): /weather lists the zones with the week ahead,
 # /weather/44.12,-89.54 has a zone's season of weather panels (?year=), and export its CSV. A zone's
 # address is its cell's center; any point in one of the group's cells finds it, and a point
-# outside them goes back to the list. Cells are reached only through the group's pivots and plantings.
+# outside them goes back to the list. Cells are reached only through the group's systems and plantings.
 class WeatherZonesController < AuthenticatedController
   before_action :find_zone, only: [:show, :export]
   allow_example :index, :show, :export, :legacy
@@ -14,7 +14,7 @@ class WeatherZonesController < AuthenticatedController
       zones: zones.map do |zone|
         WeatherZoneSerializer.new(zone).to_h.merge(forecast: ForecastDaySerializer.new(forecasts.fetch(zone.id)).to_h)
       end,
-      updating_pivot_ids: updating_pivot_ids(zones)
+      updating_system_ids: updating_system_ids(zones)
     }
   end
 
@@ -40,7 +40,7 @@ class WeatherZonesController < AuthenticatedController
         {id: planting.id, label: "#{planting.field.name} #{planting.plant.name}", planted: planting.season_start}
       end,
       forecast: current ? ForecastDaySerializer.new(ForecastDays.for(zone.cell)).to_h : [],
-      updating_pivot_ids: current ? updating_pivot_ids([zone]) : []
+      updating_system_ids: current ? updating_system_ids([zone]) : []
     }
   end
 
@@ -91,10 +91,10 @@ class WeatherZonesController < AuthenticatedController
     (year == today.year) ? from..(today + Weather::Fetcher::FORECAST_DAYS) : from..Date.new(year, 12, 31)
   end
 
-  # Keeps the zones' cells current (WeatherCell.keep_current), and returns their pivots whose cell
+  # Keeps the zones' cells current (WeatherCell.keep_current), and returns their systems whose cell
   # has a weather update showing (lib/poll.ts reloads when they land)
-  def updating_pivot_ids(zones)
+  def updating_system_ids(zones)
     updating = WeatherCell.keep_current_updating_ids(zones.map(&:id)).to_set
-    zones.select { |zone| updating.include?(zone.id) }.flat_map { |zone| zone.pivots.map(&:id) }
+    zones.select { |zone| updating.include?(zone.id) }.flat_map { |zone| zone.systems.map(&:id) }
   end
 end

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { isPoint, KIND_NOUNS, type PivotShape, surveyRing } from '@/lib/geo'
+  import { isPoint, KIND_NOUNS, type SystemShape, surveyRing } from '@/lib/geo'
   import { type Boundary } from '@/lib/boundary'
   import { fetchSoilSurvey, type MapUnit, soilKeyFor, soilShares, type SoilSuggestion, suggestSoil } from '@/lib/soils'
   import type { SoilType } from '@/types/serializers'
@@ -15,9 +15,9 @@
     onsuggest,
     onuse,
   }: {
-    /** The pivot, or null until it's placed */
-    shape?: PivotShape | null
-    /** A field's outline, read in place of a pivot */
+    /** The system, or null until it's placed */
+    shape?: SystemShape | null
+    /** A field's outline, read in place of a system */
     boundary?: Boundary | null
     soilTypes: SoilType[]
     /** The suggested soil type (or null for none) and each soil type's share of the area, each time
@@ -33,7 +33,7 @@
   let lookup = $state<'idle' | 'loading' | 'done' | 'error'>('idle')
   let suggestion = $state<SoilSuggestion | null>(null)
 
-  // "of the pivot", "around this spot"
+  // "of the system", "around this spot"
   const where = $derived(
     boundary
       ? 'of the field'
@@ -49,7 +49,7 @@
     return `${unit.name} (${pct(unit.share)})${type ? `, counted as ${type.name}` : ''}`
   }
 
-  // Look the pivot up again when it moves or changes size, once it settles
+  // Look the system up again when it moves or changes size, once it settles
   $effect(() => {
     if (!boundary && !shape) {
       lookup = 'idle'

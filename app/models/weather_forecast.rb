@@ -5,7 +5,7 @@
 #   {"et0_in" => [...], "precip_in" => [...]} by date.
 class WeatherForecast < ApplicationRecord
   KEEP = 14
-  # A forecast older than this is refetched when someone opens a page showing the cell's pivots
+  # A forecast older than this is refetched when someone opens a page showing the cell's systems
   STALE_AFTER = 3.hours
 
   scope :deterministic, -> { where(kind: "deterministic") }

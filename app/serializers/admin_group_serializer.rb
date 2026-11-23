@@ -1,4 +1,4 @@
-# One of a user's groups on the admin user page: its members and its farms, pivots and fields
+# One of a user's groups on the admin user page: its members and its farms, systems and fields
 class AdminGroupSerializer < ApplicationSerializer
   typelize_from Group
 

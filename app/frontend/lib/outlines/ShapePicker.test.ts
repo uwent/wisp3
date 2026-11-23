@@ -45,7 +45,7 @@ const county: PickerShape = {
   problems: ['is larger than a field (at most 1,500 acres)'],
 }
 const context: PickerContext = {
-  field: { id: 1, name: 'Home South', pivot_id: 5, boundary: null },
+  field: { id: 1, name: 'Home South', system_id: 5, boundary: null },
   system: {
     id: 5,
     name: 'Pivot 1',
@@ -103,7 +103,7 @@ describe('ShapePicker', () => {
     expect(headings(table())).toEqual(['Name', 'Area', 'Distance'])
     expect(nameButtons()).toEqual(['Home South', 'Home North'])
     expect(within(table()).queryByText('Dane')).toBeNull()
-    // About 113 km from the pivot, as miles
+    // About 113 km from the system, as miles
     expect(within(table()).getAllByText(/^\d+\.\d mi$/)).toHaveLength(2)
 
     await fireEvent.click(within(table()).getByRole('button', { name: 'Home South' }))

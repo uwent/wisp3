@@ -183,7 +183,7 @@
                 </div>
               {/if}
             </td>
-            <td class="px-3 py-2">{cell.pivot_count}</td>
+            <td class="px-3 py-2">{cell.system_count}</td>
             <td class="px-3 py-2 whitespace-nowrap">
               <div>{cell.days_stored} days this year, through {cell.latest_date ?? '—'}</div>
               <div class="text-xs text-ink-muted">

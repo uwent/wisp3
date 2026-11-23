@@ -19,7 +19,7 @@
   }: {
     members: Member[]
     membership_id: number
-    counts: { farms: number; pivots: number; fields: number }
+    counts: { farms: number; systems: number; fields: number }
     operations: { id: number; name: string; owner: boolean; members: number }[]
   } = $props()
 
@@ -28,7 +28,7 @@
   const ownerCount = $derived(members.filter((member) => member.owner).length)
 
   const setupSummary = $derived(
-    `${count(counts.farms, 'farm')}, ${count(counts.pivots, 'pivot')} and ${count(counts.fields, 'field')}`,
+    `${count(counts.farms, 'farm')}, ${count(counts.systems, 'system')} and ${count(counts.fields, 'field')}`,
   )
 
   // Matches Membership#removal_error and #demotion_error, which the server checks
@@ -110,7 +110,7 @@
     <h2 class="text-lg font-medium">Members</h2>
     <p class="text-sm text-ink-muted">
       Everyone here sees and works on the same farms. Owners can also change the settings above, add and remove members,
-      and delete farms, pivots, fields or the whole operation. An operation always has at least one owner.
+      and delete farms, systems, fields or the whole operation. An operation always has at least one owner.
     </p>
   </div>
 

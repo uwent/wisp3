@@ -5,8 +5,8 @@ require "rails_helper"
 RSpec.describe "Fields with several plantings", type: :request do
   let(:user) { create(:user) }
   let(:group) { user.groups.first }
-  let(:pivot) { create(:pivot, farm: create(:farm, group:)) }
-  let(:field) { create(:field, pivot:, name: "Arlington 525", area_acres: 2) }
+  let(:system) { create(:system, farm: create(:farm, group:)) }
+  let(:field) { create(:field, system:, name: "Arlington 525", area_acres: 2) }
   let(:season) { {season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30)} }
 
   def plot(name = "Soybean", length: 100, width: 20, **attributes)
@@ -17,7 +17,7 @@ RSpec.describe "Fields with several plantings", type: :request do
   before do
     sign_in user
     (Date.new(2026, 7, 1)..Date.new(2026, 7, 19)).each do |date|
-      pivot.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: (date.day == 5) ? 0.4 : 0.0, tmax_f: 85,
+      system.weather_cell.weather_days.create!(date:, et0_in: 0.2, precip_in: (date.day == 5) ? 0.4 : 0.0, tmax_f: 85,
         tmin_f: 60, model: "ncep_nbm_conus", hours: 24, fetched_at: Time.current)
     end
   end
@@ -93,7 +93,7 @@ RSpec.describe "Fields with several plantings", type: :request do
     it "gives a field of plots a summary per planting" do
       soy, corn = plot("Soybean"), plot("Corn", length: 50)
       get root_path
-      card = inertia.props[:farms].sole[:pivots].sole[:fields].sole
+      card = inertia.props[:farms].sole[:systems].sole[:fields].sole
       expect(card[:name]).to eq("Arlington 525")
       expect(card[:plantings].map { |s| s[:planting_id] }).to eq([soy.id, corn.id])
       expect(card[:plantings].map { |s| s[:area_acres] }).to all(be > 0)
@@ -101,11 +101,11 @@ RSpec.describe "Fields with several plantings", type: :request do
 
     it "lists the plots together once their season has ended, but only the nearest of a succession" do
       soy, corn = plot("Soybean"), plot("Corn", length: 50, end_date: Date.new(2026, 8, 31))
-      garden = create(:field, pivot:, name: "Garden")
+      garden = create(:field, system:, name: "Garden")
       create(:planting, field: garden, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 4, 10), end_date: Date.new(2026, 6, 30))
       squash = create(:planting, field: garden, season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 8),
         end_date: Date.new(2026, 9, 30))
-      statuses = FieldStatuses.for(Field.where(id: [field.id, garden.id]).includes(:soil_type, pivot: :weather_cell,
+      statuses = FieldStatuses.for(Field.where(id: [field.id, garden.id]).includes(:soil_type, system: :weather_cell,
         plantings: [:plant, :canopy_observations, :soil_type]), today: Date.new(2026, 11, 10))
       expect(statuses[field.id].map(&:planting)).to eq([soy, corn])
       expect(statuses[garden.id].map(&:planting)).to eq([squash])
@@ -133,11 +133,11 @@ RSpec.describe "Fields with several plantings", type: :request do
       post plantings_path, params: {planting: {field_id: field.id, plant_id: plant.id, rainfed: "true", **season}}
       expect(field.plantings.sole).to be_rainfed
 
-      location = create(:pivot, farm: pivot.farm, kind: "point", radius_ft: nil, pump_capacity_gpm: nil)
-      dry = create(:field, pivot: location)
+      location = create(:system, farm: system.farm, kind: "point", radius_ft: nil, pump_capacity_gpm: nil)
+      dry = create(:field, system: location)
       post plantings_path, params: {planting: {field_id: dry.id, plant_id: plant.id, **season}}
       expect(dry.plantings.sole).to be_rainfed
-      pumped = create(:field, pivot: create(:pivot, farm: pivot.farm, kind: "point", radius_ft: nil, pump_capacity_gpm: 300))
+      pumped = create(:field, system: create(:system, farm: system.farm, kind: "point", radius_ft: nil, pump_capacity_gpm: 300))
       post plantings_path, params: {planting: {field_id: pumped.id, plant_id: plant.id, **season}}
       expect(pumped.plantings.sole).not_to be_rainfed
     end

@@ -13,9 +13,9 @@ describe('CSV files', () => {
   })
 
   it('opens with a title, the details that have a value, and a blank line', () => {
-    expect(frontmatter('WISP weather', { Pivot: 'North', Operation: null, Units: 'in' })).toEqual([
+    expect(frontmatter('WISP weather', { System: 'North', Operation: null, Units: 'in' })).toEqual([
       ['WISP weather'],
-      ['Pivot: North'],
+      ['System: North'],
       ['Units: in'],
       [],
     ])

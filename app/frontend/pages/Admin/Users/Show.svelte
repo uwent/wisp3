@@ -25,12 +25,12 @@
   const deletedGroups = $derived(groups.filter((group) => group.members.length === 1))
   const counts = (list: AdminGroup[]) => {
     const farms = list.flatMap((group) => group.farms)
-    const pivots = farms.flatMap((farm) => farm.pivots)
-    return { farms: farms.length, pivots: pivots.length, fields: pivots.flatMap((pivot) => pivot.fields).length }
+    const systems = farms.flatMap((farm) => farm.systems)
+    return { farms: farms.length, systems: systems.length, fields: systems.flatMap((system) => system.fields).length }
   }
   const summary = (list: AdminGroup[]) => {
-    const { farms, pivots, fields } = counts(list)
-    return `${count(farms, 'farm')}, ${count(pivots, 'pivot')}, ${count(fields, 'field')}`
+    const { farms, systems, fields } = counts(list)
+    return `${count(farms, 'farm')}, ${count(systems, 'system')}, ${count(fields, 'field')}`
   }
 
   const digestFrequencies = {
@@ -151,27 +151,27 @@
                 <div class="font-medium">
                   Farm: {farm.name} <span class="font-normal text-ink-muted">(#{farm.id})</span>
                 </div>
-                {#if farm.pivots.length === 0}
+                {#if farm.systems.length === 0}
                   <p class="ml-4 text-ink-muted">No irrigation systems.</p>
                 {:else}
                   <ul class="ml-4 space-y-2 border-l border-line pl-3">
-                    {#each farm.pivots as pivot (pivot.id)}
+                    {#each farm.systems as system (system.id)}
                       <li>
                         <div>
-                          {systemName(pivot)}
+                          {systemName(system)}
                           <a
                             class="font-mono text-xs text-brand-600 hover:underline"
-                            href="https://www.openstreetmap.org/?mlat={pivot.latitude}&mlon={pivot.longitude}#map=15/{pivot.latitude}/{pivot.longitude}"
+                            href="https://www.openstreetmap.org/?mlat={system.latitude}&mlon={system.longitude}#map=15/{system.latitude}/{system.longitude}"
                             target="_blank"
-                            rel="noopener noreferrer">{pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}</a
+                            rel="noopener noreferrer">{system.latitude.toFixed(4)}, {system.longitude.toFixed(4)}</a
                           >
-                          <span class="text-xs text-ink-muted">(#{pivot.id})</span>
+                          <span class="text-xs text-ink-muted">(#{system.id})</span>
                         </div>
-                        {#if pivot.fields.length === 0}
+                        {#if system.fields.length === 0}
                           <p class="ml-4 text-ink-muted">No fields.</p>
                         {:else}
                           <ul class="ml-4 border-l border-line pl-3">
-                            {#each pivot.fields as field (field.id)}
+                            {#each system.fields as field (field.id)}
                               <li>
                                 Field: {field.name} · {crop(field)}
                                 <span class="text-xs text-ink-muted">

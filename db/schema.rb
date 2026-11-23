@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -35,7 +35,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
     t.index ["announcement_id", "status"], name: "index_announcement_deliveries_on_announcement_id_and_status"
     t.index ["announcement_id", "user_id"], name: "index_announcement_deliveries_on_announcement_id_and_user_id", unique: true
     t.index ["user_id"], name: "index_announcement_deliveries_on_user_id"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'sending'::character varying, 'sent'::character varying, 'failed'::character varying, 'skipped'::character varying]::text[])", name: "announcement_deliveries_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'sending'::character varying::text, 'sent'::character varying::text, 'failed'::character varying::text, 'skipped'::character varying::text])", name: "announcement_deliveries_status"
   end
 
   create_table "announcements", force: :cascade do |t|
@@ -52,8 +52,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
     t.datetime "updated_at", null: false
     t.index ["created_by_id"], name: "index_announcements_on_created_by_id"
     t.index ["sent_by_id"], name: "index_announcements_on_sent_by_id"
-    t.check_constraint "audience::text = ANY (ARRAY['all'::character varying, 'active_since'::character varying, 'joined_since'::character varying, 'no_farms'::character varying]::text[])", name: "announcements_audience"
-    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying, 'sending'::character varying, 'sent'::character varying, 'incomplete'::character varying]::text[])", name: "announcements_status"
+    t.check_constraint "audience::text = ANY (ARRAY['all'::character varying::text, 'active_since'::character varying::text, 'joined_since'::character varying::text, 'no_farms'::character varying::text])", name: "announcements_audience"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying::text, 'sending'::character varying::text, 'sent'::character varying::text, 'incomplete'::character varying::text])", name: "announcements_status"
   end
 
   create_table "canopy_cuttings", force: :cascade do |t|
@@ -114,7 +114,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
   end
 
   create_table "fields", force: :cascade do |t|
-    t.bigint "pivot_id", null: false
+    t.bigint "system_id", null: false
     t.bigint "soil_type_id", null: false
     t.string "name", null: false
     t.float "area_acres"
@@ -124,8 +124,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["pivot_id"], name: "index_fields_on_pivot_id"
     t.index ["soil_type_id"], name: "index_fields_on_soil_type_id"
+    t.index ["system_id"], name: "index_fields_on_system_id"
     t.check_constraint "area_acres IS NULL OR area_acres > 0::double precision", name: "fields_area_positive"
     t.check_constraint "boundary IS NULL OR jsonb_typeof(boundary) = 'object'::text", name: "fields_boundary_object"
   end
@@ -138,30 +138,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
     t.index ["example_as_of"], name: "index_groups_one_example", unique: true, where: "(example_as_of IS NOT NULL)"
   end
 
-  create_table "memberships", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.bigint "group_id", null: false
-    t.boolean "owner", default: false, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["group_id"], name: "index_memberships_on_group_id"
-    t.index ["user_id", "group_id"], name: "index_memberships_on_user_id_and_group_id", unique: true
-    t.index ["user_id"], name: "index_memberships_on_user_id"
-  end
-
-  create_table "pivot_groups", force: :cascade do |t|
+  create_table "irrigation_groups", force: :cascade do |t|
     t.bigint "farm_id", null: false
     t.string "name", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "created_by_id"
     t.boolean "use_model_precip"
-    t.index ["created_by_id"], name: "index_pivot_groups_on_created_by_id"
-    t.index ["farm_id"], name: "index_pivot_groups_on_farm_id"
-    t.index ["id", "farm_id"], name: "index_pivot_groups_on_id_and_farm_id", unique: true
+    t.index ["created_by_id"], name: "index_irrigation_groups_on_created_by_id"
+    t.index ["farm_id"], name: "index_irrigation_groups_on_farm_id"
+    t.index ["id", "farm_id"], name: "index_irrigation_groups_on_id_and_farm_id", unique: true
   end
 
-  create_table "pivots", force: :cascade do |t|
+  create_table "irrigation_systems", force: :cascade do |t|
     t.bigint "farm_id", null: false
     t.string "name", null: false
     t.float "latitude", null: false
@@ -179,21 +168,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
     t.float "length_ft"
     t.float "travel_ft"
     t.integer "travel_bearing_deg"
-    t.bigint "pivot_group_id"
+    t.bigint "irrigation_group_id"
     t.float "inches_at_100"
-    t.index ["farm_id"], name: "index_pivots_on_farm_id"
-    t.index ["pivot_group_id"], name: "index_pivots_on_pivot_group_id"
-    t.index ["weather_cell_id"], name: "index_pivots_on_weather_cell_id"
-    t.check_constraint "(arc_start_deg IS NULL) = (arc_end_deg IS NULL)", name: "pivots_arc_both_or_neither"
-    t.check_constraint "(kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying]::text[])) OR radius_ft IS NULL AND arc_start_deg IS NULL", name: "pivots_point_shape"
-    t.check_constraint "inches_at_100 IS NULL OR (kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying]::text[]))", name: "pivots_inches_at_100_kind"
-    t.check_constraint "inches_at_100 IS NULL OR inches_at_100 > 0::double precision", name: "pivots_inches_at_100_positive"
-    t.check_constraint "kind::text <> 'linear'::text OR radius_ft IS NULL AND arc_start_deg IS NULL AND length_ft IS NOT NULL AND travel_ft IS NOT NULL AND travel_bearing_deg IS NOT NULL AND length_ft > 0::double precision AND length_ft <= 3300::double precision AND travel_ft > 0::double precision AND travel_ft <= 5280::double precision AND travel_bearing_deg >= 0 AND travel_bearing_deg <= 179", name: "pivots_linear_shape"
-    t.check_constraint "kind::text = 'linear'::text OR length_ft IS NULL AND travel_ft IS NULL AND travel_bearing_deg IS NULL", name: "pivots_center_shape"
-    t.check_constraint "kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying, 'traveler'::character varying, 'solid_set'::character varying, 'drip'::character varying, 'point'::character varying]::text[])", name: "pivots_kind"
-    t.check_constraint "pump_capacity_gpm IS NULL OR pump_capacity_gpm > 0::double precision", name: "pivots_pump_capacity_positive"
-    t.check_constraint "radius_ft IS NULL OR radius_ft <= 3000::double precision", name: "pivots_radius_max"
-    t.check_constraint "radius_ft IS NULL OR radius_ft > 0::double precision", name: "pivots_radius_positive"
+    t.index ["farm_id"], name: "index_irrigation_systems_on_farm_id"
+    t.index ["irrigation_group_id"], name: "index_irrigation_systems_on_irrigation_group_id"
+    t.index ["weather_cell_id"], name: "index_irrigation_systems_on_weather_cell_id"
+    t.check_constraint "(arc_start_deg IS NULL) = (arc_end_deg IS NULL)", name: "irrigation_systems_arc_both_or_neither"
+    t.check_constraint "(kind::text = ANY (ARRAY['center'::character varying::text, 'linear'::character varying::text])) OR radius_ft IS NULL AND arc_start_deg IS NULL", name: "irrigation_systems_point_shape"
+    t.check_constraint "inches_at_100 IS NULL OR (kind::text = ANY (ARRAY['center'::character varying::text, 'linear'::character varying::text]))", name: "irrigation_systems_inches_at_100_kind"
+    t.check_constraint "inches_at_100 IS NULL OR inches_at_100 > 0::double precision", name: "irrigation_systems_inches_at_100_positive"
+    t.check_constraint "kind::text <> 'linear'::text OR radius_ft IS NULL AND arc_start_deg IS NULL AND length_ft IS NOT NULL AND travel_ft IS NOT NULL AND travel_bearing_deg IS NOT NULL AND length_ft > 0::double precision AND length_ft <= 3300::double precision AND travel_ft > 0::double precision AND travel_ft <= 5280::double precision AND travel_bearing_deg >= 0 AND travel_bearing_deg <= 179", name: "irrigation_systems_linear_shape"
+    t.check_constraint "kind::text = 'linear'::text OR length_ft IS NULL AND travel_ft IS NULL AND travel_bearing_deg IS NULL", name: "irrigation_systems_center_shape"
+    t.check_constraint "kind::text = ANY (ARRAY['center'::character varying::text, 'linear'::character varying::text, 'traveler'::character varying::text, 'solid_set'::character varying::text, 'drip'::character varying::text, 'point'::character varying::text])", name: "irrigation_systems_kind"
+    t.check_constraint "pump_capacity_gpm IS NULL OR pump_capacity_gpm > 0::double precision", name: "irrigation_systems_pump_capacity_positive"
+    t.check_constraint "radius_ft IS NULL OR radius_ft <= 3000::double precision", name: "irrigation_systems_radius_max"
+    t.check_constraint "radius_ft IS NULL OR radius_ft > 0::double precision", name: "irrigation_systems_radius_positive"
+  end
+
+  create_table "memberships", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "group_id", null: false
+    t.boolean "owner", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["group_id"], name: "index_memberships_on_group_id"
+    t.index ["user_id", "group_id"], name: "index_memberships_on_user_id_and_group_id", unique: true
+    t.index ["user_id"], name: "index_memberships_on_user_id"
   end
 
   create_table "planting_entries", force: :cascade do |t|
@@ -236,15 +236,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
     t.float "plot_width_ft"
     t.boolean "own_soil", default: false, null: false
     t.string "canopy_curve_key"
-    t.bigint "pivot_id", null: false
+    t.bigint "system_id", null: false
     t.integer "season_days"
     t.bigint "created_by_id"
     t.boolean "rainfed", default: false, null: false
     t.index ["created_by_id"], name: "index_plantings_on_created_by_id"
     t.index ["field_id"], name: "index_plantings_on_field_id"
-    t.index ["pivot_id"], name: "index_plantings_on_pivot_id"
     t.index ["plant_id"], name: "index_plantings_on_plant_id"
     t.index ["soil_type_id"], name: "index_plantings_on_soil_type_id"
+    t.index ["system_id"], name: "index_plantings_on_system_id"
     t.index ["weather_cell_id"], name: "index_plantings_on_weather_cell_id"
     t.check_constraint "(plot_length_ft IS NULL) = (plot_width_ft IS NULL)", name: "plantings_plot_both"
     t.check_constraint "NOT partial OR area_acres IS NOT NULL", name: "plantings_partial_area"
@@ -426,18 +426,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
   add_foreign_key "digest_exclusions", "users", on_delete: :cascade
   add_foreign_key "farms", "groups"
   add_foreign_key "field_entries", "fields"
-  add_foreign_key "fields", "pivots"
+  add_foreign_key "fields", "irrigation_systems", column: "system_id"
   add_foreign_key "fields", "soil_types"
+  add_foreign_key "irrigation_groups", "farms", on_delete: :cascade
+  add_foreign_key "irrigation_groups", "users", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "irrigation_systems", "farms"
+  add_foreign_key "irrigation_systems", "irrigation_groups", column: ["irrigation_group_id", "farm_id"], primary_key: ["id", "farm_id"], name: "irrigation_systems_group_same_farm"
+  add_foreign_key "irrigation_systems", "weather_cells"
   add_foreign_key "memberships", "groups", on_delete: :cascade
   add_foreign_key "memberships", "users", on_delete: :cascade
-  add_foreign_key "pivot_groups", "farms", on_delete: :cascade
-  add_foreign_key "pivot_groups", "users", column: "created_by_id", on_delete: :nullify
-  add_foreign_key "pivots", "farms"
-  add_foreign_key "pivots", "pivot_groups", column: ["pivot_group_id", "farm_id"], primary_key: ["id", "farm_id"], name: "pivots_pivot_group_same_farm"
-  add_foreign_key "pivots", "weather_cells"
   add_foreign_key "planting_entries", "plantings"
   add_foreign_key "plantings", "fields"
-  add_foreign_key "plantings", "pivots"
+  add_foreign_key "plantings", "irrigation_systems", column: "system_id"
   add_foreign_key "plantings", "plants"
   add_foreign_key "plantings", "soil_types"
   add_foreign_key "plantings", "users", column: "created_by_id", on_delete: :nullify

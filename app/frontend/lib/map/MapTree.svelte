@@ -4,10 +4,10 @@
   import KindIcon from '@/lib/components/KindIcon.svelte'
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
   import type { WeatherUpdate } from '@/lib/poll'
-  import { type FarmNode, type GroupNode, pivotStatus, type Selection, type SystemNode } from '@/lib/overview'
+  import { type FarmNode, type GroupNode, systemStatus, type Selection, type SystemNode } from '@/lib/overview'
   import type { Units } from '@/lib/units'
 
-  import type { MapPivot } from './pivots'
+  import type { MapSystem } from './systems'
 
   // The map's list: farm › irrigation group › system › field as nested
   // cards, each inset in its parent, as on the dashboard and Setup. Every card selects its item: a
@@ -21,11 +21,11 @@
     weatherFor,
     onselect,
   }: {
-    tree: FarmNode<MapPivot>[]
+    tree: FarmNode<MapSystem>[]
     selection: Selection | null
     today: string
     units: Units
-    weatherFor: (pivot: MapPivot) => WeatherUpdate
+    weatherFor: (system: MapSystem) => WeatherUpdate
     onselect: (selection: Selection) => void
   } = $props()
 
@@ -37,21 +37,21 @@
     'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500'
 </script>
 
-{#snippet systemCard(node: SystemNode<MapPivot>)}
-  {@const { pivot } = node}
-  {@const status = pivotStatus(pivot.fields)}
-  <li class="rounded-lg border bg-surface {frame('system', pivot.id)}" data-node="system-{pivot.id}">
+{#snippet systemCard(node: SystemNode<MapSystem>)}
+  {@const { system } = node}
+  {@const status = systemStatus(system.fields)}
+  <li class="rounded-lg border bg-surface {frame('system', system.id)}" data-node="system-{system.id}">
     <button
       type="button"
       class={header}
-      aria-pressed={isSelected('system', pivot.id)}
-      aria-label="Show system {systemName(pivot)} on the map"
-      onclick={() => onselect({ level: 'system', id: pivot.id })}
+      aria-pressed={isSelected('system', system.id)}
+      aria-label="Show system {systemName(system)} on the map"
+      onclick={() => onselect({ level: 'system', id: system.id })}
     >
-      <KindIcon kind={pivot.kind} />
+      <KindIcon kind={system.kind} />
       <span class="min-w-0 flex-1 truncate">
         <span class="text-ink-muted">System:</span>
-        <span class="font-medium" data-search-text>{systemName(pivot)}</span>
+        <span class="font-medium" data-search-text>{systemName(system)}</span>
       </span>
       {#if status}<StatusBadge {status} size="icon" />{/if}
     </button>
@@ -64,7 +64,7 @@
               {today}
               {units}
               compact
-              weather={weatherFor(pivot)}
+              weather={weatherFor(system)}
               selected={isSelected('field', card.id)}
               onselect={() => onselect({ level: 'field', id: card.id })}
             />
@@ -77,7 +77,7 @@
   </li>
 {/snippet}
 
-{#snippet groupCard(node: GroupNode<MapPivot>)}
+{#snippet groupCard(node: GroupNode<MapSystem>)}
   <li class="rounded-lg border border-dashed bg-surface-raised {frame('group', node.id)}" data-node="group-{node.id}">
     <button
       type="button"
@@ -92,7 +92,7 @@
       </span>
     </button>
     <ul class="space-y-1.5 p-1.5 pt-0">
-      {#each node.systems as system (system.pivot.id)}
+      {#each node.systems as system (system.system.id)}
         {@render systemCard(system)}
       {/each}
     </ul>
@@ -116,7 +116,7 @@
       </button>
       {#if farm.children.length}
         <ul class="space-y-1.5 p-1.5 pt-0">
-          {#each farm.children as child (`${child.kind}-${child.kind === 'group' ? child.id : child.pivot.id}`)}
+          {#each farm.children as child (`${child.kind}-${child.kind === 'group' ? child.id : child.system.id}`)}
             {#if child.kind === 'group'}
               {@render groupCard(child)}
             {:else}

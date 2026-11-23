@@ -16,13 +16,13 @@ RSpec.describe "Farm operations", type: :request do
 
   describe "the page" do
     it "shows the members, the setup counts and the user's operations" do
-      create(:field, pivot: create(:pivot, farm: create(:farm, group:)))
+      create(:field, system: create(:system, farm: create(:farm, group:)))
       sign_in_to(member, group)
       get group_path
       expect_inertia.to render_component("Groups/Show")
       expect(inertia.props[:members].map { |m| [m[:email], m[:owner]] }).to eq([["olive@example.com", true], ["max@example.com", false]])
       expect(inertia.props[:membership_id]).to eq(member_membership.id)
-      expect(inertia.props[:counts]).to eq("farms" => 1, "pivots" => 1, "fields" => 1)
+      expect(inertia.props[:counts]).to eq("farms" => 1, "systems" => 1, "fields" => 1)
       expect(inertia.props[:operations].map { |o| o[:name] }).to contain_exactly(group.name, member.groups.where.not(id: group.id).sole.name)
       expect(inertia.props[:auth][:owner]).to be(false)
     end
@@ -142,7 +142,7 @@ RSpec.describe "Farm operations", type: :request do
     end
 
     it "lets an owner delete the operation with its farms" do
-      create(:field, pivot: create(:pivot, farm: create(:farm, group:)))
+      create(:field, system: create(:system, farm: create(:farm, group:)))
       sign_in_to(owner, group)
       expect { delete group_path }.to change(Group, :count).by(-1).and change(Field, :count).by(-1)
       expect(response).to redirect_to(root_path)
@@ -156,13 +156,13 @@ RSpec.describe "Farm operations", type: :request do
     end
   end
 
-  describe "deleting farms, pivots and fields" do
-    let!(:field) { create(:field, pivot: create(:pivot, farm: create(:farm, group:))) }
+  describe "deleting farms, systems and fields" do
+    let!(:field) { create(:field, system: create(:system, farm: create(:farm, group:))) }
 
     it "is for owners only" do
       sign_in_to(member, group)
       expect { delete field_path(field) }.not_to change(Field, :count)
-      expect { delete pivot_path(field.pivot) }.not_to change(Pivot, :count)
+      expect { delete system_path(field.system) }.not_to change(IrrigationSystem, :count)
       expect { delete farm_path(field.farm) }.not_to change(Farm, :count)
       expect(flash[:alert]).to include("Only an owner")
 

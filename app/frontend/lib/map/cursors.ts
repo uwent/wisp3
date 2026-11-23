@@ -1,4 +1,4 @@
-// Mouse cursors for the pivot picker's handles, as SVG data URLs (CSS has no cursor for turning,
+// Mouse cursors for the system picker's handles, as SVG data URLs (CSS has no cursor for turning,
 // and only four angles of resize arrow). Each is drawn black with a white outline so it shows on
 // imagery and streets alike, with its hotspot at the center.
 

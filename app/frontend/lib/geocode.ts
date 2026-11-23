@@ -1,6 +1,6 @@
-// Place search for the pivot map ("hancock wi"), from OpenStreetMap's Nominatim. Its usage policy
+// Place search for the system map ("hancock wi"), from OpenStreetMap's Nominatim. Its usage policy
 // allows occasional searches from a browser but not search-as-you-type, so the map searches only
-// when the user submits. Results are limited to the US and Canada, like pivot locations.
+// when the user submits. Results are limited to the US and Canada, like system locations.
 
 export type Place = {
   label: string

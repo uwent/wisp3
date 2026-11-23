@@ -1,6 +1,6 @@
 <script lang="ts">
   import BadgeRows from './BadgeRows.svelte'
-  import type { FieldBadges } from './pivots'
+  import type { FieldBadges } from './systems'
 
   // An outlined field's plantings on the map: a badge each at the field's center, packed like
   // a system's marker. Hidden zoomed out (the map sets data-far), where its system's dot stands for it.

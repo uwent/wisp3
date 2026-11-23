@@ -5,7 +5,7 @@
 class DailyEntryWeeksController < AuthenticatedController
   def show
     week = DailyEntryWeek.new(Current.group, parse_date(params[:date]) || DailyEntryPage.default_date)
-    WeatherCell.keep_current(week.pivots.map(&:weather_cell_id))
+    WeatherCell.keep_current(week.systems.map(&:weather_cell_id))
     render inertia: "DailyEntries/Week", props: week.props
   end
 

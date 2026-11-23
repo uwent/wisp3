@@ -1,7 +1,7 @@
 // Irrigation is stored in inches, per field and per plot (D15). A system's row fills its fields'
 // boxes; the calculator works the inches out from run hours or the percent timer.
 
-// The fields a system's irrigation can apply to on a date, mirroring Pivot#fields_on:
+// The fields a system's irrigation can apply to on a date, mirroring IrrigationSystem#fields_on:
 // a field whose season that day ran on the system, or one of its fields with nothing planted then.
 // A season keeps the system it ran on, so a field moved away is still on it for its earlier
 // seasons, and a field moved here isn't for seasons that ran elsewhere.
@@ -29,7 +29,7 @@ export function fieldsOn<T extends FieldSeasons>(fields: T[], date: string): T[]
 /** 1 acre-inch of water, in gallons */
 export const GALLONS_PER_ACRE_INCH = 27_154
 
-/** The kinds with a percent timer (Pivot::TIMER_KINDS) */
+/** The kinds with a percent timer (IrrigationSystem::TIMER_KINDS) */
 export const hasTimer = (kind: string): boolean => kind === 'center' || kind === 'linear'
 
 /** "circle" for a center pivot, "pass" for a linear */
@@ -49,7 +49,7 @@ export const calculatorMethods = (system: { kind: string }): CalculatorMethod[] 
 
 /**
  * What the calculator takes (stored units), past which a value is a typo or another unit: a pump
- * of more than 5,000 gpm; more than a day's hours; a depth at 100% over Pivot::MAX_INCHES_AT_100; a
+ * of more than 5,000 gpm; more than a day's hours; a depth at 100% over IrrigationSystem::MAX_INCHES_AT_100; a
  * timer outside 1–100%; more than 5 circles (a circle at 100% takes most systems 12 hours or more);
  * and more than 5 inches put on in a day (a heavy irrigation is 1–2 inches)
  */

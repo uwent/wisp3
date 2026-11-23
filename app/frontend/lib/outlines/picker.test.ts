@@ -37,9 +37,9 @@ const shape = (name: string, boundary: Boundary | null, problems: string[] = [])
   problems,
 })
 
-// The field's pivot at -89.5, 44.1, a quarter mile long
+// The field's system at -89.5, 44.1, a quarter mile long
 const context: PickerContext = {
-  field: { id: 1, name: 'Home South', pivot_id: 5, boundary: null },
+  field: { id: 1, name: 'Home South', system_id: 5, boundary: null },
   system: {
     id: 5,
     name: 'Pivot 1',
@@ -86,7 +86,7 @@ describe('picking a field shape', () => {
   })
 
   it("measures from each shape's nearest edge to the system, 0 overlapping it", () => {
-    // 0.01° of latitude (1,112 m) south of the pivot's edge, a quarter mile (402 m) from its center
+    // 0.01° of latitude (1,112 m) south of the system's edge, a quarter mile (402 m) from its center
     const south = squareAt(-89.505, 44.1 - 402 / 111_320 - 0.01 - 1112 / 111_320)
     const [under, away, none] = shapeDistances(
       [shape('Under', squareAt(-89.505, 44.095)), shape('South', south), shape('Too big', null, ['is too big'])],

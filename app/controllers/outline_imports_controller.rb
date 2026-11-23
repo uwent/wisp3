@@ -5,11 +5,11 @@
 # to it and a new field overlapping one is pointed out.
 class OutlineImportsController < AuthenticatedController
   def new
-    pivots = Current.group.pivots.includes(:farm).sort_by { |pivot| [pivot.farm.name, pivot.name] }
+    systems = Current.group.systems.includes(:farm).sort_by { |system| [system.farm.name, system.name] }
     render inertia: "Setup/ImportOutlines", props: {
-      pivots: pivots.map { |pivot| pivot.slice(:id, :name, :kind_name, *PivotSerializer::SHAPE).merge(farm: pivot.farm.name) },
+      systems: systems.map { |system| system.slice(:id, :name, :kind_name, *IrrigationSystemSerializer::SHAPE).merge(farm: system.farm.name) },
       fields: Current.group.fields.order(:name).map do |field|
-        field.slice(:id, :name, :pivot_id, :area_acres, :boundary)
+        field.slice(:id, :name, :system_id, :area_acres, :boundary)
       end,
       soil_types: ReferenceProps.soil_types,
       default_soil_type_id: ReferenceProps.default_soil_type_id
@@ -17,7 +17,7 @@ class OutlineImportsController < AuthenticatedController
   end
 
   # outline_import: rows, each a boundary (GeoJSON as JSON) and either field_id (an existing field)
-  # or pivot_id, name, soil_type_id and area_acres (a new field); use_area sets existing fields' area
+  # or system_id, name, soil_type_id and area_acres (a new field); use_area sets existing fields' area
   # from their outlines too (OutlineImport). Errors come back keyed by row ("rows.2.name").
   def create
     values = import_params
@@ -33,6 +33,6 @@ class OutlineImportsController < AuthenticatedController
   private
 
   def import_params
-    params.expect(outline_import: [:use_area, rows: [[:boundary, :field_id, :pivot_id, :name, :soil_type_id, :area_acres]]])
+    params.expect(outline_import: [:use_area, rows: [[:boundary, :field_id, :system_id, :name, :soil_type_id, :area_acres]]])
   end
 end

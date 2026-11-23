@@ -5,35 +5,35 @@ RSpec.describe "Weather jobs" do
 
   around { |example| travel_to(Time.zone.parse("2026-07-20 12:00")) { example.run } }
 
-  describe Pivot do
+  describe IrrigationSystem do
     it "gets its weather cell, and a weather update, when created or moved" do
-      pivot = nil
-      expect { pivot = create(:pivot, latitude: 44.12, longitude: -89.53) }.to have_enqueued_job(WeatherUpdateJob)
-      expect(pivot.weather_cell).to have_attributes(latitude: be_within(1e-5).of(44.112477), longitude: be_within(1e-5).of(-89.589041))
+      system = nil
+      expect { system = create(:system, latitude: 44.12, longitude: -89.53) }.to have_enqueued_job(WeatherUpdateJob)
+      expect(system.weather_cell).to have_attributes(latitude: be_within(1e-5).of(44.112477), longitude: be_within(1e-5).of(-89.589041))
 
-      expect { pivot.update!(name: "Renamed", latitude: 44.121) }.not_to have_enqueued_job(WeatherUpdateJob) # same cell
-      expect { pivot.update!(latitude: 44.5) }.to have_enqueued_job(WeatherUpdateJob)
+      expect { system.update!(name: "Renamed", latitude: 44.121) }.not_to have_enqueued_job(WeatherUpdateJob) # same cell
+      expect { system.update!(latitude: 44.5) }.to have_enqueued_job(WeatherUpdateJob)
       expect(WeatherCell.count).to eq(2)
     end
   end
 
   describe WeatherCell do
-    it "is active while a planting on one of its pivots is in this season" do
-      field = create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53))
+    it "is active while a planting on one of its systems is in this season" do
+      field = create(:field, system: create(:system, latitude: 44.12, longitude: -89.53))
       expect(WeatherCell.active).to be_empty
       create(:planting, field:, season_start: Date.new(2026, 4, 1), end_date: Date.new(2026, 9, 30))
-      expect(WeatherCell.active).to eq([field.pivot.weather_cell])
-      expect(field.pivot.weather_cell.season_start).to eq(Date.new(2026, 4, 1))
+      expect(WeatherCell.active).to eq([field.system.weather_cell])
+      expect(field.system.weather_cell.season_start).to eq(Date.new(2026, 4, 1))
     end
 
-    it "is active out of season for a digest that shows its pivots' weather then" do
+    it "is active out of season for a digest that shows its systems' weather then" do
       user = create(:user, digest_frequency: "daily")
-      field = create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53, farm: create(:farm, group: user.groups.first)))
+      field = create(:field, system: create(:system, latitude: 44.12, longitude: -89.53, farm: create(:farm, group: user.groups.first)))
       expect(WeatherCell.active).to be_empty
       user.update!(digest_frequency: "daily_all_year")
-      expect(WeatherCell.active).to eq([field.pivot.weather_cell])
+      expect(WeatherCell.active).to eq([field.system.weather_cell])
       user.update!(digest_frequency: "daily", digest_scope: "all")
-      expect(WeatherCell.active).to eq([field.pivot.weather_cell])
+      expect(WeatherCell.active).to eq([field.system.weather_cell])
       user.update!(digest_frequency: "never")
       expect(WeatherCell.active).to be_empty
     end
@@ -41,14 +41,14 @@ RSpec.describe "Weather jobs" do
     it "leaves out what a digest leaves out, in one query however many digest users" do
       users = Array.new(3) { create(:user, digest_frequency: "daily_all_year") }
       fields = users.each_with_index.map do |user, i|
-        create(:field, pivot: create(:pivot, latitude: 44.12 + i, longitude: -89.53, farm: create(:farm, group: user.groups.first)))
+        create(:field, system: create(:system, latitude: 44.12 + i, longitude: -89.53, farm: create(:farm, group: user.groups.first)))
       end
-      users[1].digest_exclusions.create!(subject: fields[1].pivot.farm)
+      users[1].digest_exclusions.create!(subject: fields[1].system.farm)
       users[2].digest_exclusions.create!(subject: fields[2])
       count = 0
       counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
       ids = ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { WeatherCell.digest_cell_ids }
-      expect(ids).to eq([fields[0].pivot.weather_cell_id])
+      expect(ids).to eq([fields[0].system.weather_cell_id])
       expect(count).to eq(1)
     end
 
@@ -74,7 +74,7 @@ RSpec.describe "Weather jobs" do
 
       cell.weather_days.find_by(date: Date.new(2026, 7, 1)).destroy
       expect(cell).to be_incomplete
-      create(:planting, field: create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53)),
+      create(:planting, field: create(:field, system: create(:system, latitude: 44.12, longitude: -89.53)),
         season_start: Date.new(2026, 5, 1), end_date: Date.new(2026, 9, 30))
       cell.weather_days.create!(date: Date.new(2026, 7, 1), et0_in: 0.2, precip_in: 0, model: "ncep_nbm_conus", hours: 24, fetched_at: Time.current)
       expect(cell).to be_incomplete # the season starts May 1
@@ -91,7 +91,7 @@ RSpec.describe "Weather jobs" do
 
   describe WeatherRefreshJob do
     it "refreshes active cells and their ensembles, then queues a backfill for each" do
-      create(:planting, field: create(:field, pivot: create(:pivot, latitude: 44.12, longitude: -89.53)))
+      create(:planting, field: create(:field, system: create(:system, latitude: 44.12, longitude: -89.53)))
       fetcher = instance_double(Weather::Fetcher, refresh: nil, refresh_ensemble: 0)
       allow(Weather::Fetcher).to receive(:new).and_return(fetcher)
       expect { described_class.perform_now }.to have_enqueued_job(WeatherBackfillJob).with(WeatherCell.sole.id)
@@ -104,15 +104,15 @@ RSpec.describe "Weather jobs" do
       expect { described_class.perform_now }.not_to have_enqueued_job(WeatherNormalsJob)
     end
 
-    it "refreshes every cell with a pivot when asked for all" do
-      create(:pivot, latitude: 44.12, longitude: -89.53)
-      WeatherCell.for(36.7, -119.8) # no pivot
+    it "refreshes every cell with a system when asked for all" do
+      create(:system, latitude: 44.12, longitude: -89.53)
+      WeatherCell.for(36.7, -119.8) # no system
       fetcher = instance_double(Weather::Fetcher, refresh: nil, refresh_ensemble: 0)
       allow(Weather::Fetcher).to receive(:new).and_return(fetcher)
       described_class.perform_now
       expect(fetcher).to have_received(:refresh).with([])
       described_class.perform_now(all: true)
-      expect(fetcher).to have_received(:refresh).with([WeatherCell.find_by!(pivots: Pivot.all)])
+      expect(fetcher).to have_received(:refresh).with([WeatherCell.find_by!(systems: IrrigationSystem.all)])
     end
   end
 
@@ -200,7 +200,7 @@ RSpec.describe "Weather jobs" do
       described_class.perform_now(cell.id)
       expect(fetcher).to have_received(:backfill).with(cell, from: Date.new(2026, 1, 1))
 
-      create(:planting, field: create(:field, pivot: create(:pivot, latitude: cell.latitude, longitude: cell.longitude)),
+      create(:planting, field: create(:field, system: create(:system, latitude: cell.latitude, longitude: cell.longitude)),
         season_start: Date.new(2025, 11, 1), emergence_date: Date.new(2025, 11, 10), end_date: Date.new(2026, 8, 1))
       described_class.perform_now(cell.id)
       expect(fetcher).to have_received(:backfill).with(cell, from: Date.new(2025, 11, 1))

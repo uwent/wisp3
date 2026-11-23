@@ -4,7 +4,7 @@
 
   import Button from '@/lib/components/Button.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
-  import { type PivotShape, systemName } from '@/lib/geo'
+  import { type SystemShape, systemName } from '@/lib/geo'
   import { type Boundary, boundaryAcres, boundaryCenter, boundaryErrors } from '@/lib/boundary'
   import OutlineMap, { type DrawMode } from '@/lib/outlines/OutlineMap.svelte'
   import { forgetKept, keepShapes, readKept } from '@/lib/outlines/kept'
@@ -27,7 +27,7 @@
   import { fieldOutlines, fields, newOutlineImport, setup } from '@/routes'
   import type { Field, SoilType } from '@/types/serializers'
 
-  type System = PivotShape & { id: number; name: string; kind_name: string; weather_cell_id: number | null }
+  type System = SystemShape & { id: number; name: string; kind_name: string; weather_cell_id: number | null }
 
   // A field's outline, called its shape on the page: drawn or read from a
   // file; its acres are offered for the field's area and the soil survey under it labels the soil
@@ -35,19 +35,19 @@
   // balance doesn't use it.
   let {
     field,
-    pivot,
+    system,
     cell,
     open_years,
-    other_pivots,
+    other_systems,
     other_fields,
     soil_types,
     from,
   }: {
     field: Field
-    pivot: System
+    system: System
     cell: { north: number; south: number; west: number; east: number }
     open_years: number[]
-    other_pivots: System[]
+    other_systems: System[]
     other_fields: { id: number; name: string; boundary: Boundary }[]
     soil_types: SoilType[]
     from: 'setup' | 'field'
@@ -77,11 +77,11 @@
     if (mode === 'view') settled = boundary
   })
   const settledProblems = $derived(settled ? boundaryErrors(settled) : [])
-  const away = $derived(settled !== null && !settledProblems.length && !touchesSystem(settled, pivot))
-  const nearby = $derived(settled && away ? systemsNear(settled, other_pivots) : [])
-  const ownMeters = $derived(settled && away ? systemDistanceM(settled, pivot) : 0)
+  const away = $derived(settled !== null && !settledProblems.length && !touchesSystem(settled, system))
+  const nearby = $derived(settled && away ? systemsNear(settled, other_systems) : [])
+  const ownMeters = $derived(settled && away ? systemDistanceM(settled, system) : 0)
   let systemChoice = $state('keep')
-  const moveTo = $derived(nearby.find(({ system }) => `pivot-${system.id}` === systemChoice)?.system)
+  const moveTo = $derived(nearby.find(({ system }) => `system-${system.id}` === systemChoice)?.system)
   const howFar = (system: System, meters: number) => systemReach(system, meters, units.system)
   const toLocation = $derived(away && systemChoice === 'location')
   const location = $derived(settled && toLocation ? boundaryCenter(settled) : null)
@@ -89,7 +89,7 @@
   // Location outside this system's cell
   const newWeather = $derived(
     moveTo
-      ? moveTo.weather_cell_id !== pivot.weather_cell_id
+      ? moveTo.weather_cell_id !== system.weather_cell_id
       : location
         ? location[1] > cell.north || location[1] <= cell.south || location[0] < cell.west || location[0] >= cell.east
         : false,
@@ -101,7 +101,7 @@
   )
   // The line to the system chosen (its own, or one switched to), drawn while they don't touch and
   // the shape isn't being drawn or edited (not for a new system, which is made at the shape)
-  const target = $derived(toLocation ? null : (moveTo ?? pivot))
+  const target = $derived(toLocation ? null : (moveTo ?? system))
   const reach = $derived(
     settled && away && target && mode === 'view' && !touchesSystem(settled, target) ? reachLine(settled, target) : null,
   )
@@ -111,8 +111,8 @@
 
   // The map shows the field's own system first, then the others and the other fields' outlines
   const references = $derived<Reference[]>([
-    { name: systemName(pivot), shape: pivot },
-    ...other_pivots.map((other) => ({ name: other.name, shape: other })),
+    { name: systemName(system), shape: system },
+    ...other_systems.map((other) => ({ name: other.name, shape: other })),
     ...other_fields.map((other) => ({ name: other.name, boundary: other.boundary })),
   ])
 
@@ -210,8 +210,8 @@
   // What the list matches the shapes against: the field (its name, system and saved shape) and the
   // other fields' shapes
   const pickerContext = $derived({
-    field: { id: field.id, name: field.name, pivot_id: field.pivot_id, boundary: field.boundary },
-    system: pivot,
+    field: { id: field.id, name: field.name, system_id: field.system_id, boundary: field.boundary },
+    system: system,
     otherFields: other_fields,
   })
 
@@ -230,7 +230,7 @@
   >
   <h1 class="text-2xl font-semibold">Field shape: {field.name}</h1>
   <p class="text-sm text-ink-muted">
-    Irrigation system: {systemName(pivot)}. The shape draws the field on the map and measures its area, and the soil
+    Irrigation system: {systemName(system)}. The shape draws the field on the map and measures its area, and the soil
     survey under it suggests its soil; the water balance doesn't use the shape itself.
   </p>
 </div>
@@ -279,7 +279,7 @@
           savedAt={choices.savedAt}
           skipped={choices.skipped}
           context={pickerContext}
-          systemLabel={systemName(pivot)}
+          systemLabel={systemName(system)}
           current={boundary}
           onpick={useShape}
           onclose={() => (choicesOpen = false)}
@@ -327,7 +327,7 @@
       <section class="space-y-3 rounded-lg border border-status-caution/60 bg-status-caution/10 p-4 text-sm">
         <p>
           This field is {formatReach(ownMeters, units.system)} away from its assigned irrigation system, {systemName(
-            pivot,
+            system,
           )}. All fields must have an assigned irrigation system, and a field's weather and irrigation inputs come from
           its system. You can keep the existing system for now, switch to another nearby system, or create a new system
           from the menu below.
@@ -338,21 +338,21 @@
           options={[
             {
               value: 'keep',
-              label: `Keep with ${systemName(pivot)} – ${howFar(pivot, ownMeters)}`,
+              label: `Keep with ${systemName(system)} – ${howFar(system, ownMeters)}`,
             },
             ...nearby.map(({ system, meters }) => ({
-              value: `pivot-${system.id}`,
+              value: `system-${system.id}`,
               label: `Switch to ${systemName(system)} – ${howFar(system, meters)}`,
             })),
             { value: 'location', label: 'Create a new system' },
           ]}
-          error={errors.pivot_id}
+          error={errors.system_id}
           hint={toLocation
             ? `This will create a new location-only system named ${field.name} at the center of this field when you save your changes. You will need to configure this system later in Setup.`
             : undefined}
         />
         {#if moveTo}
-          <input type="hidden" name="outline[pivot_id]" value={moveTo.id} />
+          <input type="hidden" name="outline[system_id]" value={moveTo.id} />
         {:else if location}
           <input type="hidden" name="outline[new_location]" value="1" />
           <input type="hidden" name="outline[longitude]" value={location[0].toFixed(6)} />

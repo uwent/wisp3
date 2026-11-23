@@ -16,7 +16,7 @@ import {
   yesterdayBoxes,
   type DayFarm,
   type DayField,
-  type DayPivot,
+  type DaySystem,
   type DayPlanting,
 } from './dailyEntry'
 
@@ -41,12 +41,12 @@ const field = (id: number, plantings: DayPlanting[] = [planting(id * 10)]): DayF
   entry: null,
   plantings,
 })
-const pivot = (id: number, fields: DayField[], pivot_group_id: number | null = null): DayPivot => ({
+const daySystem = (id: number, fields: DayField[], irrigation_group_id: number | null = null): DaySystem => ({
   id,
   name: `Pivot ${id}`,
   kind: 'center',
   kind_name: 'Pivot',
-  pivot_group_id,
+  irrigation_group_id,
   pump_capacity_gpm: null,
   inches_at_100: null,
   yesterday: null,
@@ -54,24 +54,24 @@ const pivot = (id: number, fields: DayField[], pivot_group_id: number | null = n
 })
 
 describe('farmRows', () => {
-  it('lists pivot groups, then other pivots, then pivots with nothing in season', () => {
-    const grouped = pivot(1, [field(1)], 7)
-    const alone = pivot(2, [field(2)])
-    const idle = pivot(3, [field(3, [])])
-    const idleInGroup = pivot(4, [field(4, [])], 8)
+  it('lists system groups, then other systems, then systems with nothing in season', () => {
+    const grouped = daySystem(1, [field(1)], 7)
+    const alone = daySystem(2, [field(2)])
+    const idle = daySystem(3, [field(3, [])])
+    const idleInGroup = daySystem(4, [field(4, [])], 8)
     const farm: DayFarm = {
       id: 1,
       name: 'Home',
       use_model_precip: true,
-      pivot_groups: [
+      irrigation_groups: [
         { id: 7, name: 'Gauge', use_model_precip: null },
         { id: 8, name: 'Idle gauge', use_model_precip: null },
       ],
-      pivots: [grouped, alone, idle, idleInGroup],
+      systems: [grouped, alone, idle, idleInGroup],
     }
     const rows = farmRows(farm)
-    expect(rows.groups).toEqual([{ id: 7, name: 'Gauge', use_model_precip: null, pivots: [grouped] }])
-    expect(rows.pivots).toEqual([alone])
+    expect(rows.groups).toEqual([{ id: 7, name: 'Gauge', use_model_precip: null, systems: [grouped] }])
+    expect(rows.systems).toEqual([alone])
     expect(rows.idle).toEqual([idle, idleInGroup])
   })
 })
@@ -81,8 +81,8 @@ describe('rainNote', () => {
     id: 1,
     name: 'Home',
     use_model_precip,
-    pivot_groups: [],
-    pivots: [],
+    irrigation_groups: [],
+    systems: [],
   })
 
   it("notes a group's own setting only where it differs from its farm's", () => {
@@ -96,7 +96,7 @@ describe('rainNote', () => {
 describe('rain fill-down', () => {
   it('fills only fields in season', () => {
     const growing = field(1)
-    expect(rainFields([pivot(1, [growing, field(2, [])])])).toEqual([growing])
+    expect(rainFields([daySystem(1, [growing, field(2, [])])])).toEqual([growing])
   })
 
   it("shows the fields' entered value when all agree, else their shared amount entered or modeled, or varies", () => {
@@ -123,7 +123,7 @@ describe('irrigation boxes', () => {
   const withPlots = field(2, [planting(20), plot(21, 0.8), plot(22, 0.5)])
   const plotsOnly = field(3, [plot(31, 0.6), plot(32, 0.6)])
   const idle = field(4, [])
-  const system = pivot(1, [whole, withPlots, plotsOnly, idle])
+  const system = daySystem(1, [whole, withPlots, plotsOnly, idle])
 
   it("fills a field's and its plots' boxes, and a system's fields in season with their plots", () => {
     expect(fieldBoxes(withPlots)).toEqual(['field-2', 'plot-21', 'plot-22'])
@@ -133,7 +133,7 @@ describe('irrigation boxes', () => {
   it("leaves a rainfed field or plot out of a system's or field's fill, and Same as yesterday", () => {
     const rainfed = field(5, [planting(50, { rainfed: true }), plot(51)])
     const mixed = field(6, [planting(60), plot(61), { ...plot(62), rainfed: true }])
-    const dry = pivot(2, [rainfed, mixed])
+    const dry = daySystem(2, [rainfed, mixed])
     expect(systemBoxes(dry)).toEqual(['plot-51', 'field-6', 'plot-61'])
     expect(fieldBoxes(mixed)).toEqual(['field-6', 'plot-61'])
     // Its own box still takes what's typed in it

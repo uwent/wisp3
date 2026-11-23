@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe ForecastDays do
-  let(:cell) { create(:pivot).weather_cell }
+  let(:cell) { create(:system).weather_cell }
   let(:today) { Date.new(2026, 7, 20) }
   let(:dates) { (today - 2..today + 9).to_a }
 
@@ -29,7 +29,7 @@ RSpec.describe ForecastDays do
   end
 
   it "is empty without a forecast or a cell" do
-    expect(described_class.by_cell([create(:pivot, latitude: 45.5).weather_cell_id], today:).values).to eq([[]])
+    expect(described_class.by_cell([create(:system, latitude: 45.5).weather_cell_id], today:).values).to eq([[]])
     expect(described_class.for(nil, today:)).to eq([])
   end
 end

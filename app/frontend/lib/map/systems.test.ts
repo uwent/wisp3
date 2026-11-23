@@ -10,12 +10,12 @@ import {
   fieldFeatures,
   fieldBadges,
   groupFeatures,
-  type MapPivot,
+  type MapSystem,
   packRows,
-  pivotBounds,
-  pivotFeatures,
+  systemBounds,
+  systemFeatures,
   systemOutline,
-} from './pivots'
+} from './systems'
 import { badgeFit, glyphProperties, MIN_POINT_PX } from './systemLayers'
 
 const field = (status: PlantingSummary['status'], phase: PlantingSummary['phase'] = 'active'): FieldCard => ({
@@ -24,11 +24,16 @@ const field = (status: PlantingSummary['status'], phase: PlantingSummary['phase'
   plantings: [{ phase, status, weather_pending: false, crossing: null } as PlantingSummary],
 })
 
-const pivot = (id: number, latitude: number, fields: FieldCard[] = [], radius_ft: number | null = 1300): MapPivot => ({
+const system = (
+  id: number,
+  latitude: number,
+  fields: FieldCard[] = [],
+  radius_ft: number | null = 1300,
+): MapSystem => ({
   id,
   name: `Pivot ${id}`,
   kind_name: 'Pivot',
-  pivot_group_id: null,
+  irrigation_group_id: null,
   weather_updating: false,
   latitude,
   longitude: -89.5,
@@ -57,11 +62,11 @@ const square = (lng: number, lat: number): Boundary => ({
   ],
 })
 
-describe('pivotFeatures', () => {
-  it('gives each pivot its most urgent field in season, and marks the selection and the window', () => {
-    const pivots = [pivot(1, 44.1, [field('ok'), field('caution')]), pivot(2, 44.2, [field('irrigate', 'ended')])]
-    const { features } = pivotFeatures(pivots, 2, new Set([1]))
-    // Each pivot is its circle and a point for its glyph, with the same properties
+describe('systemFeatures', () => {
+  it('gives each system its most urgent field in season, and marks the selection and the window', () => {
+    const systems = [system(1, 44.1, [field('ok'), field('caution')]), system(2, 44.2, [field('irrigate', 'ended')])]
+    const { features } = systemFeatures(systems, 2, new Set([1]))
+    // Each system is its circle and a point for its glyph, with the same properties
     expect(features.map((f) => [f.id, f.geometry.type])).toEqual([
       [1, 'Polygon'],
       [1, 'Point'],
@@ -87,8 +92,8 @@ describe('pivotFeatures', () => {
   })
 
   it('gives each kind its glyph, point kinds marked as points', () => {
-    expect(glyphProperties(pivot(1, 44.1))).toMatchObject({ glyph: 'circle', point: false })
-    const traveler = { ...pivot(2, 44.1), kind: 'traveler' as const, radius_ft: null }
+    expect(glyphProperties(system(1, 44.1))).toMatchObject({ glyph: 'circle', point: false })
+    const traveler = { ...system(2, 44.1), kind: 'traveler' as const, radius_ft: null }
     expect(glyphProperties(traveler)).toMatchObject({ glyph: 'diamond', point: true, rotate: 0 })
     expect(glyphProperties({ ...traveler, kind: 'point' }).glyph).toBe('triangle')
   })
@@ -100,8 +105,8 @@ describe('pivotFeatures', () => {
     expect(badgeFit('triangle', [1])).toBeGreaterThan(badgeFit('circle', [1]))
     expect(badgeFit('circle', [])).toBe(0)
     const fields = [field('ok'), field('ok'), field('ok'), field('ok')].map((card, i) => ({ ...card, id: i + 1 }))
-    const traveler = { ...pivot(1, 44.1, fields), kind: 'traveler' as const, radius_ft: null }
-    const props = pivotFeatures([traveler], null, null).features[0].properties
+    const traveler = { ...system(1, 44.1, fields), kind: 'traveler' as const, radius_ft: null }
+    const props = systemFeatures([traveler], null, null).features[0].properties
     expect(props.near_px).toBe(badgeFit('diamond', [2, 2]))
     expect(props.far_px).toBe(badgeFit('diamond', [1]))
     // No fields: the smallest glyph
@@ -109,8 +114,8 @@ describe('pivotFeatures', () => {
   })
 
   it('draws a point kind whose fields have outlines as the area around them, 50 ft out', () => {
-    const traveler: MapPivot = {
-      ...pivot(2, 44.1, [{ ...field('ok'), id: 10, name: 'East' }]),
+    const traveler: MapSystem = {
+      ...system(2, 44.1, [{ ...field('ok'), id: 10, name: 'East' }]),
       kind: 'traveler',
       radius_ft: null,
       outlines: [{ field_id: 10, boundary: square(-89.5, 44.1) }],
@@ -118,15 +123,15 @@ describe('pivotFeatures', () => {
     const ring = systemOutline(traveler)!
     expect(pointInPolygon([-89.5001, 44.0999], [ring])).toBe(true) // 11 m outside the field's corner
     expect(pointInPolygon([-89.501, 44.099], [ring])).toBe(false)
-    const [shape, point] = pivotFeatures([traveler], null, null).features
+    const [shape, point] = systemFeatures([traveler], null, null).features
     expect(shape.geometry.type).toBe('Polygon')
     expect(point.properties).toMatchObject({ point: false, glyph: 'diamond' })
     expect(systemOutline({ ...traveler, outlines: [] })).toBeNull()
   })
 
   it("takes a point kind's own location into its outline when it sits off its fields", () => {
-    const traveler: MapPivot = {
-      ...pivot(2, 44.1, [{ ...field('ok'), id: 10, name: 'East' }]),
+    const traveler: MapSystem = {
+      ...system(2, 44.1, [{ ...field('ok'), id: 10, name: 'East' }]),
       kind: 'traveler',
       radius_ft: null,
       longitude: -89.505,
@@ -139,25 +144,25 @@ describe('pivotFeatures', () => {
   })
 
   it('dims nothing without a window', () => {
-    expect(pivotFeatures([pivot(1, 44.1)], null, null).features[0].properties.dimmed).toBe(false)
+    expect(systemFeatures([system(1, 44.1)], null, null).features[0].properties.dimmed).toBe(false)
   })
 
   it('draws the circle at its radius, or the default without one', () => {
-    const [feature] = pivotFeatures([pivot(1, 44.1, [], null)], null, null).features
+    const [feature] = systemFeatures([system(1, 44.1, [], null)], null, null).features
     const ring = feature.geometry.coordinates as LngLat[][]
     expect(distanceM([-89.5, 44.1], ring[0][0])).toBeCloseTo(1300 / 3.28084, 0)
   })
 
   it('draws a linear as its rectangle', () => {
     const linear = {
-      ...pivot(1, 44.1),
+      ...system(1, 44.1),
       kind: 'linear' as const,
       radius_ft: null,
       length_ft: 1300,
       travel_ft: 2640,
       travel_bearing_deg: 45,
     }
-    const [feature] = pivotFeatures([linear], null, null).features
+    const [feature] = systemFeatures([linear], null, null).features
     const corners = (feature.geometry.coordinates as LngLat[][])[0]
     expect(corners).toHaveLength(5)
     expect(distanceM(corners[0], corners[1]) * 3.28084).toBeCloseTo(1300, 0)
@@ -166,8 +171,8 @@ describe('pivotFeatures', () => {
   })
 
   it('draws a point kind at its location', () => {
-    const traveler = { ...pivot(1, 44.1), kind: 'traveler' as const, radius_ft: null }
-    expect(pivotFeatures([traveler], null, null).features[0].geometry).toEqual({
+    const traveler = { ...system(1, 44.1), kind: 'traveler' as const, radius_ft: null }
+    expect(systemFeatures([traveler], null, null).features[0].geometry).toEqual({
       type: 'Point',
       coordinates: [-89.5, 44.1],
     })
@@ -175,21 +180,21 @@ describe('pivotFeatures', () => {
 })
 
 describe('groupFeatures', () => {
-  const grouped = (id: number, latitude: number, group: number | null, kind: MapPivot['kind'] = 'center') => ({
-    ...pivot(id, latitude),
+  const grouped = (id: number, latitude: number, group: number | null, kind: MapSystem['kind'] = 'center') => ({
+    ...system(id, latitude),
     kind,
     radius_ft: kind === 'center' ? 1300 : null,
-    pivot_group_id: group,
+    irrigation_group_id: group,
   })
 
   it('outlines each group around its systems shown, with a margin', () => {
-    const pivots = [grouped(1, 44.1, 7), grouped(2, 44.12, 7, 'drip'), grouped(3, 44.3, null)]
-    const farms = [{ id: 1, name: 'Farm', pivot_groups: [{ id: 7, name: 'East gauge' }], pivots }]
-    const { features } = groupFeatures(farms, pivots)
+    const systems = [grouped(1, 44.1, 7), grouped(2, 44.12, 7, 'drip'), grouped(3, 44.3, null)]
+    const farms = [{ id: 1, name: 'Farm', irrigation_groups: [{ id: 7, name: 'East gauge' }], systems }]
+    const { features } = groupFeatures(farms, systems)
     expect(features).toHaveLength(1)
     expect(features[0].properties).toEqual({ name: 'East gauge' })
     const outline = features[0].geometry.coordinates as LngLat[][]
-    // The pivot's far edge and the drip block, but not the ungrouped pivot
+    // The system's far edge and the drip block, but not the ungrouped system
     const north = (1300 / 3.28084 + GROUP_MARGIN_M / 2) / 111_000
     expect(pointInPolygon([-89.5, 44.1 - north], outline)).toBe(true)
     expect(pointInPolygon([-89.5, 44.12], outline)).toBe(true)
@@ -197,22 +202,22 @@ describe('groupFeatures', () => {
   })
 
   it("reaches around its systems' field outlines too", () => {
-    const pivots = [{ ...grouped(1, 44.1, 7), outlines: [{ field_id: 1, boundary: square(-89.44, 44.1) }] }]
-    const farms = [{ id: 1, name: 'Farm', pivot_groups: [{ id: 7, name: 'East gauge' }], pivots }]
-    const outline = groupFeatures(farms, pivots).features[0].geometry.coordinates as LngLat[][]
+    const systems = [{ ...grouped(1, 44.1, 7), outlines: [{ field_id: 1, boundary: square(-89.44, 44.1) }] }]
+    const farms = [{ id: 1, name: 'Farm', irrigation_groups: [{ id: 7, name: 'East gauge' }], systems }]
+    const outline = groupFeatures(farms, systems).features[0].geometry.coordinates as LngLat[][]
     expect(pointInPolygon([-89.438, 44.102], outline)).toBe(true)
   })
 
   it('leaves out a group with none of its systems shown', () => {
-    const pivots = [grouped(1, 44.1, 7)]
-    const farms = [{ id: 1, name: 'Farm', pivot_groups: [{ id: 7, name: 'East gauge' }], pivots }]
+    const systems = [grouped(1, 44.1, 7)]
+    const farms = [{ id: 1, name: 'Farm', irrigation_groups: [{ id: 7, name: 'East gauge' }], systems }]
     expect(groupFeatures(farms, []).features).toEqual([])
   })
 })
 
-describe('pivotBounds', () => {
-  it('covers every pivot to its edge', () => {
-    const [[west, south], [east, north]] = pivotBounds([pivot(1, 44.1), pivot(2, 44.3)])!
+describe('systemBounds', () => {
+  it('covers every system to its edge', () => {
+    const [[west, south], [east, north]] = systemBounds([system(1, 44.1), system(2, 44.3)])!
     expect(south).toBeLessThan(44.1)
     expect(north).toBeGreaterThan(44.3)
     expect(west).toBeLessThan(-89.5)
@@ -220,12 +225,12 @@ describe('pivotBounds', () => {
   })
 
   it('includes a point kind', () => {
-    const drip = { ...pivot(2, 44.5), kind: 'drip' as const, radius_ft: null }
-    expect(pivotBounds([pivot(1, 44.1), drip])![1][1]).toBe(44.5)
+    const drip = { ...system(2, 44.5), kind: 'drip' as const, radius_ft: null }
+    expect(systemBounds([system(1, 44.1), drip])![1][1]).toBe(44.5)
   })
 
-  it('is null without pivots', () => {
-    expect(pivotBounds([])).toBeNull()
+  it('is null without systems', () => {
+    expect(systemBounds([])).toBeNull()
   })
 })
 
@@ -251,8 +256,8 @@ describe('fields with outlines and pinned plots', () => {
     { planting_id: 110, status: 'ok', plant_name: 'Soybean' },
     { planting_id: 111, status: 'caution', plant_name: 'Corn', phase: 'ended', end_date: '2026-07-01' },
   ])
-  const outlined: MapPivot = {
-    ...pivot(1, 44.1, [north, plots]),
+  const outlined: MapSystem = {
+    ...system(1, 44.1, [north, plots]),
     outlines: [{ field_id: 10, boundary: square(-89.501, 44.1) }],
   }
 
@@ -264,7 +269,7 @@ describe('fields with outlines and pinned plots', () => {
     ])
     expect(features[0].properties).toEqual({
       id: 10,
-      pivot_id: 1,
+      system_id: 1,
       name: 'Home North',
       status: 'irrigate',
       selected: true,
@@ -279,7 +284,7 @@ describe('fields with outlines and pinned plots', () => {
   it('gives each outlined field a badge per planting at its center, named for the hover label', () => {
     const both = { ...outlined, outlines: [...outlined.outlines, { field_id: 11, boundary: square(-89.6, 44.2) }] }
     const [home, plotted] = fieldBadges([both], '2026-07-19')
-    expect(home).toMatchObject({ field_id: 10, pivot_id: 1, field_name: 'Home North' })
+    expect(home).toMatchObject({ field_id: 10, system_id: 1, field_name: 'Home North' })
     expect(home.badges).toEqual([{ key: 100, status: 'irrigate', lines: ['Planting: Potato (May 15, 65 days)'] }])
     expect(plotted.badges).toEqual([
       { key: 110, status: 'ok', lines: ['Planting: Soybean (May 15, 65 days)'] },
@@ -292,12 +297,12 @@ describe('fields with outlines and pinned plots', () => {
   })
 
   it('draws a system with outlined fields as a line', () => {
-    expect(pivotFeatures([outlined], null, null).features[0].properties.outlined).toBe(true)
+    expect(systemFeatures([outlined], null, null).features[0].properties.outlined).toBe(true)
   })
 
   it('fits the map around outlines that reach past the system', () => {
     const far = { ...outlined, outlines: [{ field_id: 10, boundary: square(-89.45, 44.1) }] }
-    expect(pivotBounds([far])![1][0]).toBeCloseTo(-89.448, 3)
+    expect(systemBounds([far])![1][0]).toBeCloseTo(-89.448, 3)
   })
 })
 

@@ -4,9 +4,9 @@ import {
   FEET_PER_METER,
   isPoint,
   type LngLat,
-  pivotOutline,
+  shapeOutline,
   systemName,
-  type PivotShape,
+  type SystemShape,
 } from '@/lib/geo'
 import { type Boundary, boundaryBounds, boundaryCenter, boundaryRing, boundaryTop, groupOutline } from '@/lib/boundary'
 import {
@@ -14,7 +14,7 @@ import {
   type FieldCard,
   primary,
   type OverviewSystem,
-  pivotStatus,
+  systemStatus,
   type Status,
   summaryActive,
 } from '@/lib/overview'
@@ -23,7 +23,7 @@ import type { PlantingSummary } from '@/types/serializers'
 
 import { glyphProperties, type GlyphProperties } from './systemLayers'
 
-// The map page's irrigation systems (MapController): the dashboard's pivot with its location and
+// The map page's irrigation systems (MapController): the dashboard's system with its location and
 // its weather zone's id, drawn as GeoJSON. Pivots and linears are their outline and a point
 // for their glyph (drawn when they're too small to see); the other kinds (a traveler, drip, a
 // location) are a point for their glyph. Each irrigation group is a light outline around its
@@ -33,14 +33,14 @@ import { glyphProperties, type GlyphProperties } from './systemLayers'
 /** A field's outline */
 export type MapOutline = { field_id: number; boundary: Boundary }
 
-export type MapPivot = OverviewSystem &
-  PivotShape & {
+export type MapSystem = OverviewSystem &
+  SystemShape & {
     /** Its weather zone's id (MapZone), or null before its weather cell is known */
     weather_cell_id: number | null
     outlines: MapOutline[]
   }
 
-export type PivotProperties = GlyphProperties & {
+export type SystemProperties = GlyphProperties & {
   id: number
   name: string
   /** "East gun (traveler)" (systemName) */
@@ -57,7 +57,7 @@ export type PivotProperties = GlyphProperties & {
 export type FieldProperties = {
   /** The field's id */
   id: number
-  pivot_id: number
+  system_id: number
   name: string
   /** Its most urgent planting's status in season, or none */
   status: Status | 'none'
@@ -75,78 +75,78 @@ export type FeatureCollection<P> = { type: 'FeatureCollection'; features: MapFea
 export const POINT_OUTLINE_MARGIN_M = 50 / FEET_PER_METER
 
 /**
- * A system's outline on the map: a pivot's or linear's shape, or for a point kind whose fields have
+ * A system's outline on the map: a system's or linear's shape, or for a point kind whose fields have
  * outlines, the area around them and its own location, so the dot at the place it was put is
  * always inside, even off its fields; null for a point kind without
  */
-export function systemOutline(pivot: MapPivot): LngLat[] | null {
-  if (!isPoint(pivot.kind)) return pivotOutline(pivot)
-  if (!pivot.outlines.length) return null
+export function systemOutline(system: MapSystem): LngLat[] | null {
+  if (!isPoint(system.kind)) return shapeOutline(system)
+  if (!system.outlines.length) return null
   return bufferedHull(
-    [[pivot.longitude, pivot.latitude], ...pivot.outlines.flatMap(({ boundary }) => boundaryRing(boundary))],
+    [[system.longitude, system.latitude], ...system.outlines.flatMap(({ boundary }) => boundaryRing(boundary))],
     POINT_OUTLINE_MARGIN_M,
   )
 }
 
 /** A system's fields without an outline, which its marker badges */
-export const unoutlinedFields = (pivot: MapPivot) =>
-  pivot.fields.filter((card) => !pivot.outlines.some((outline) => outline.field_id === card.id))
+export const unoutlinedFields = (system: MapSystem) =>
+  system.fields.filter((card) => !system.outlines.some((outline) => outline.field_id === card.id))
 
 /** Where a system is on the map: its outline (systemOutline) and its location, for its glyph */
-export function geometries(pivot: MapPivot): Geometry[] {
-  const ring = systemOutline(pivot)
-  const point: Geometry = { type: 'Point', coordinates: [pivot.longitude, pivot.latitude] }
+export function geometries(system: MapSystem): Geometry[] {
+  const ring = systemOutline(system)
+  const point: Geometry = { type: 'Point', coordinates: [system.longitude, system.latitude] }
   return ring ? [{ type: 'Polygon', coordinates: [ring] }, point] : [point]
 }
 
-/** highlighted: the pivots the list's filters keep (the others are muted), or null when nothing's filtered */
-export function pivotFeatures(
-  pivots: MapPivot[],
+/** highlighted: the systems the list's filters keep (the others are muted), or null when nothing's filtered */
+export function systemFeatures(
+  systems: MapSystem[],
   selectedId: number | null,
   highlighted: Set<number> | null,
-): FeatureCollection<PivotProperties> {
+): FeatureCollection<SystemProperties> {
   return {
     type: 'FeatureCollection',
-    features: pivots.flatMap((pivot) => {
-      const properties: PivotProperties = {
-        id: pivot.id,
-        name: pivot.name,
-        label: systemName(pivot),
-        status: pivotStatus(pivot.fields) ?? 'none',
-        selected: pivot.id === selectedId,
-        dimmed: highlighted !== null && !highlighted.has(pivot.id),
-        outlined: pivot.outlines.length > 0,
-        ...glyphProperties(pivot, badgeRows(unoutlinedFields(pivot).length), pivot.outlines.length > 0),
+    features: systems.flatMap((system) => {
+      const properties: SystemProperties = {
+        id: system.id,
+        name: system.name,
+        label: systemName(system),
+        status: systemStatus(system.fields) ?? 'none',
+        selected: system.id === selectedId,
+        dimmed: highlighted !== null && !highlighted.has(system.id),
+        outlined: system.outlines.length > 0,
+        ...glyphProperties(system, badgeRows(unoutlinedFields(system).length), system.outlines.length > 0),
       }
-      return geometries(pivot).map((geometry) => ({ type: 'Feature' as const, id: pivot.id, properties, geometry }))
+      return geometries(system).map((geometry) => ({ type: 'Feature' as const, id: system.id, properties, geometry }))
     }),
   }
 }
 
 /**
  * The fields with outlines, each with a point on its top edge for its name; muted outside the
- * highlighted pivots or, given them, the highlighted fields (the list's filters)
+ * highlighted systems or, given them, the highlighted fields (the list's filters)
  */
 export function fieldFeatures(
-  pivots: MapPivot[],
+  systems: MapSystem[],
   selectedFieldId: number | null,
   highlighted: Set<number> | null,
   highlightedFields: Set<number> | null = null,
 ): FeatureCollection<FieldProperties> {
   return {
     type: 'FeatureCollection',
-    features: pivots.flatMap((pivot) =>
-      pivot.outlines.flatMap(({ field_id, boundary }) => {
-        const card = pivot.fields.find((field) => field.id === field_id)
+    features: systems.flatMap((system) =>
+      system.outlines.flatMap(({ field_id, boundary }) => {
+        const card = system.fields.find((field) => field.id === field_id)
         const summary = card ? primary(card) : null
         const properties = {
           id: field_id,
-          pivot_id: pivot.id,
+          system_id: system.id,
           name: card?.name ?? '',
           status: summaryActive(summary) ? summary!.status! : ('none' as const),
           selected: field_id === selectedFieldId,
           dimmed:
-            (highlighted !== null && !highlighted.has(pivot.id)) ||
+            (highlighted !== null && !highlighted.has(system.id)) ||
             (highlightedFields !== null && !highlightedFields.has(field_id)),
         }
         return [
@@ -199,17 +199,17 @@ export function fieldBadge(card: FieldCard, today: string): Badge {
 /** An outlined field's plantings as badges at its center */
 export type FieldBadges = {
   field_id: number
-  pivot_id: number
+  system_id: number
   field_name: string
   center: LngLat
   badges: Badge[]
 }
 
 /** The outlined fields, each with a badge per planting (a gray dot when it has none) */
-export function fieldBadges(pivots: MapPivot[], today: string): FieldBadges[] {
-  return pivots.flatMap((pivot) =>
-    pivot.outlines.flatMap(({ field_id, boundary }) => {
-      const card = pivot.fields.find((field) => field.id === field_id)
+export function fieldBadges(systems: MapSystem[], today: string): FieldBadges[] {
+  return systems.flatMap((system) =>
+    system.outlines.flatMap(({ field_id, boundary }) => {
+      const card = system.fields.find((field) => field.id === field_id)
       if (!card) return []
       const badges: Badge[] = card.plantings.length
         ? card.plantings.map((summary) => ({
@@ -218,19 +218,22 @@ export function fieldBadges(pivots: MapPivot[], today: string): FieldBadges[] {
             lines: [plantingLine(summary, today)],
           }))
         : [{ key: 0, status: null, lines: ['No crop this season'] }]
-      return [{ field_id, pivot_id: pivot.id, field_name: card.name, center: boundaryCenter(boundary), badges }]
+      return [{ field_id, system_id: system.id, field_name: card.name, center: boundaryCenter(boundary), badges }]
     }),
   )
 }
 
-/** The irrigation groups among these pivots, each outlined around its systems shown and their fields */
-export function groupFeatures(farms: FarmGroup<MapPivot>[], pivots: MapPivot[]): FeatureCollection<{ name: string }> {
-  const shown = new Set(pivots.map((pivot) => pivot.id))
+/** The irrigation groups among these systems, each outlined around its systems shown and their fields */
+export function groupFeatures(
+  farms: FarmGroup<MapSystem>[],
+  systems: MapSystem[],
+): FeatureCollection<{ name: string }> {
+  const shown = new Set(systems.map((system) => system.id))
   return {
     type: 'FeatureCollection',
     features: farms.flatMap((farm) =>
-      farm.pivot_groups.flatMap((group) => {
-        const members = farm.pivots.filter((pivot) => pivot.pivot_group_id === group.id && shown.has(pivot.id))
+      farm.irrigation_groups.flatMap((group) => {
+        const members = farm.systems.filter((system) => system.irrigation_group_id === group.id && shown.has(system.id))
         if (!members.length) return []
         return [
           {
@@ -242,7 +245,7 @@ export function groupFeatures(farms: FarmGroup<MapPivot>[], pivots: MapPivot[]):
               coordinates: [
                 groupOutline(
                   members,
-                  members.flatMap((pivot) => pivot.outlines.map((o) => o.boundary)),
+                  members.flatMap((system) => system.outlines.map((o) => o.boundary)),
                 ),
               ],
             },
@@ -253,12 +256,12 @@ export function groupFeatures(farms: FarmGroup<MapPivot>[], pivots: MapPivot[]):
   }
 }
 
-/** [[west, south], [east, north]] around the pivots' whole outlines (or points), or null without pivots */
-export function pivotBounds(pivots: MapPivot[]): [LngLat, LngLat] | null {
+/** [[west, south], [east, north]] around the systems' whole outlines (or points), or null without systems */
+export function systemBounds(systems: MapSystem[]): [LngLat, LngLat] | null {
   return boundsOf(
-    pivots.flatMap((pivot) => [
-      ...(pivotOutline(pivot) ?? [[pivot.longitude, pivot.latitude] as LngLat]),
-      ...pivot.outlines.flatMap(({ boundary }) => boundaryBounds(boundary)),
+    systems.flatMap((system) => [
+      ...(shapeOutline(system) ?? [[system.longitude, system.latitude] as LngLat]),
+      ...system.outlines.flatMap(({ boundary }) => boundaryBounds(boundary)),
     ]),
   )
 }

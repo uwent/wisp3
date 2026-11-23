@@ -1,4 +1,4 @@
-import { boundsOf, distanceM, isPoint, type LngLat, type PivotShape, pivotOutline, pointInPolygon } from '@/lib/geo'
+import { boundsOf, distanceM, isPoint, type LngLat, type SystemShape, shapeOutline, pointInPolygon } from '@/lib/geo'
 import { type Boundary, boundaryBounds, boundaryCenter, inBoundary } from '@/lib/boundary'
 
 import { outlineDifferenceM, overlapShare, SAME_FIELD_SHARE, SAME_OUTLINE_M, withBoxes } from './overlap'
@@ -6,8 +6,8 @@ import { outlineDifferenceM, overlapShare, SAME_FIELD_SHARE, SAME_OUTLINE_M, wit
 // Matching imported outlines to the operation: each shape to the field of the same name, or the
 // field whose outline it mostly covers, or else a new field under the irrigation system it sits under
 
-export type ImportSystem = PivotShape & { id: number; name: string }
-export type ImportField = { id: number; name: string; pivot_id: number; boundary?: Boundary | null }
+export type ImportSystem = SystemShape & { id: number; name: string }
+export type ImportField = { id: number; name: string; system_id: number; boundary?: Boundary | null }
 
 /** How near a point kind (a traveler, drip) a shape must be to suggest it: half a mile */
 export const POINT_SYSTEM_REACH_M = 805
@@ -18,7 +18,7 @@ export const POINT_SYSTEM_REACH_M = 805
  */
 export function systemSuggester(systems: ImportSystem[]): (boundary: Boundary) => number | null {
   const shaped = systems.flatMap((system) => {
-    const ring = pivotOutline(system)
+    const ring = shapeOutline(system)
     return ring ? [{ system, ring, box: boundsOf(ring)! }] : []
   })
   const points = systems.filter((system) => isPoint(system.kind))
@@ -49,7 +49,7 @@ export function matchField(name: string, fields: ImportField[], systemId: number
   if (!name.trim()) return null
   const named = fields.filter((field) => normalized(field.name) === normalized(name))
   if (named.length === 1) return named[0].id
-  return named.find((field) => field.pivot_id === systemId)?.id ?? null
+  return named.find((field) => field.system_id === systemId)?.id ?? null
 }
 
 /** Where a shape goes: nowhere, an existing field, or a new field under a system */

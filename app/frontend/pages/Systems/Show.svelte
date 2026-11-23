@@ -11,14 +11,14 @@
   import { isExample } from '@/lib/permissions'
   import { currentUnits } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
-  import { dashboard, fields as fieldRoutes, pivotIrrigations, pivots } from '@/routes'
-  import type { ForecastDay, Pivot } from '@/types/serializers'
+  import { dashboard, fields as fieldRoutes, systemIrrigations, systems } from '@/routes'
+  import type { ForecastDay, IrrigationSystem } from '@/types/serializers'
 
   /** A day's irrigation: each field's amount (D15: stored per field) */
   type IrrigationDay = { date: string; fields: Record<string, number> }
 
   let {
-    pivot,
+    system,
     farm,
     year,
     irrigations,
@@ -26,7 +26,7 @@
     weather_zone,
     forecast,
   }: {
-    pivot: Pivot
+    system: IrrigationSystem
     farm: { id: number; name: string }
     year: number
     /** The year's irrigation by date, newest first */
@@ -37,8 +37,8 @@
   } = $props()
 
   const units = $derived(currentUnits())
-  // "pivot", "drip block"
-  const noun = $derived(KIND_NOUNS[pivot.kind])
+  // "system", "drip block"
+  const noun = $derived(KIND_NOUNS[system.kind])
   const today = todayDate()
 
   // The form edits a new irrigation, or a day's picked from the list: the date and each field's amount
@@ -107,7 +107,7 @@
     dirty = true
   }
 
-  const areas = $derived(Object.fromEntries(pivot.fields.map((field) => [field.id, field.area_acres])))
+  const areas = $derived(Object.fromEntries(system.fields.map((field) => [field.id, field.area_acres])))
   const calculatorFields = $derived(
     filledFields.map((field) => ({ id: field.id, name: field.name, acres: areas[field.id] ?? null })),
   )
@@ -131,7 +131,7 @@
 
   function remove(irrigation: IrrigationDay) {
     if (confirm(`Delete the ${formatDate(irrigation.date)} irrigation on every field?`)) {
-      router.delete(pivotIrrigations.destroy({ pivotId: pivot.id, date: irrigation.date }).url, {
+      router.delete(systemIrrigations.destroy({ systemId: system.id, date: irrigation.date }).url, {
         preserveScroll: true,
       })
     }
@@ -141,23 +141,23 @@
   const readOnly = $derived(isExample(page.props))
 </script>
 
-<svelte:head><title>{systemName(pivot)} · WISP</title></svelte:head>
+<svelte:head><title>{systemName(system)} · WISP</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-3">
   <div>
     <Link href={dashboard.show()} class="text-sm text-brand-600 hover:underline">← Dashboard</Link>
     <h1 class="text-2xl font-semibold">
       <span class="font-normal text-ink-muted">Irrigation system:</span>
-      {systemName(pivot)}
+      {systemName(system)}
     </h1>
     <p class="text-sm text-ink-muted">
       Farm: {farm.name} · Fields:
-      {#each pivot.fields as field, i (field.id)}{i ? ', ' : ''}<Link
+      {#each system.fields as field, i (field.id)}{i ? ', ' : ''}<Link
           href={fieldRoutes.show(field.id)}
           class="text-brand-600 underline underline-offset-2">{field.name}</Link
         >{:else}no fields yet{/each}
       {#if !readOnly}
-        · <Link href={pivots.edit(pivot.id)} class="text-brand-600 underline underline-offset-2">Edit {noun}</Link>
+        · <Link href={systems.edit(system.id)} class="text-brand-600 underline underline-offset-2">Edit {noun}</Link>
       {/if}
     </p>
   </div>
@@ -171,7 +171,7 @@
         return
       }
       dirty = false
-      router.get(pivots.show(pivot.id).url, { year: e.currentTarget.value })
+      router.get(systems.show(system.id).url, { year: e.currentTarget.value })
     }}
   >
     {#each [year - 2, year - 1, year, year + 1] as y (y)}<option value={y}>{y}</option>{/each}
@@ -188,7 +188,7 @@
     </div>
     <Form
       id="irrigation-form"
-      action={pivotIrrigations.create(pivot.id)}
+      action={systemIrrigations.create(system.id)}
       class="space-y-4"
       options={{ preserveScroll: true }}
       oninput={() => (dirty = true)}
@@ -243,7 +243,7 @@
               >
                 {#snippet trailing()}
                   <IrrigationCalculatorDialog
-                    system={pivot}
+                    {system}
                     fields={calculatorFields}
                     {date}
                     onapply={(inches, ids) => fill(ids, inches)}
@@ -301,7 +301,7 @@
 {#if irrigations.length}
   <div class="flex justify-end text-sm">
     <a
-      href={pivotIrrigations.index(pivot.id, { query: { year } }).url}
+      href={systemIrrigations.index(system.id, { query: { year } }).url}
       class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
       download
     >

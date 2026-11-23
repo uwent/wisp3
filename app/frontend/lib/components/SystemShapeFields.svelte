@@ -5,7 +5,7 @@
   import FieldLabel from '@/lib/components/FieldLabel.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import KindIcon from '@/lib/components/KindIcon.svelte'
-  import PivotMap from '@/lib/components/PivotMap.svelte'
+  import SystemMap from '@/lib/components/SystemMap.svelte'
   import type { FileShapes } from '@/lib/outlines/fileShapes'
   import type { SavedField } from '@/lib/outlines/layers'
   import SectionHeading from '@/lib/components/SectionHeading.svelte'
@@ -15,8 +15,8 @@
     isPoint,
     KIND_NOUNS,
     type LngLat,
-    type PivotKind,
-    type PivotShape,
+    type SystemKind,
+    type SystemShape,
     shapeAcres,
     type ShapeDraft,
   } from '@/lib/geo'
@@ -24,7 +24,7 @@
   import type { SoilType } from '@/types/serializers'
 
   // An irrigation system's kind, location and size: the map picker and the inputs that edit the same
-  // values, for the pivot form and the guided setup. A point kind (a traveler, solid set, drip, a
+  // values, for the system form and the guided setup. A point kind (a traveler, solid set, drip, a
   // location only) has only its location. Inputs are named `${prefix}[attribute]`. `children` (the
   // setup's pump capacity) ends the coordinates' row; the soil survey comes last. In sections, each
   // under a heading: the kind, the location and size, and the soil survey; a saved
@@ -46,10 +46,10 @@
   }: {
     shape: ShapeDraft
     prefix: string
-    /** The server's error for one of the pivot's attributes */
+    /** The server's error for one of the system's attributes */
     error: (attribute: string) => string | string[] | undefined
-    others?: (PivotShape & { id: number; name: string })[]
-    /** What the map opens on while the system has no location (PivotMap) */
+    others?: (SystemShape & { id: number; name: string })[]
+    /** What the map opens on while the system has no location (SystemMap) */
     frame?: [LngLat, LngLat] | null
     soilTypes: SoilType[]
     onsuggest?: (soilType: SoilType | null, shares: Map<string, number>) => void
@@ -66,7 +66,7 @@
     fields?: SavedField[]
   } = $props()
 
-  let pivotMap = $state<PivotMap>()
+  let systemMap = $state<SystemMap>()
 
   // A saved system's kind is shown as one line until Change (or an error in it) shows the choices
   let kindOpen = $state(untrack(() => !locked))
@@ -93,7 +93,7 @@
   const area = $derived(outline ? shapeAcres(outline) : null)
   const areaHint = $derived(area ? `Irrigates about ${units.format('area', area)}` : undefined)
 
-  const KINDS: { value: PivotKind; label: string; hint: string }[] = [
+  const KINDS: { value: SystemKind; label: string; hint: string }[] = [
     { value: 'center', label: 'Center pivot', hint: 'A circle, or part of one.' },
     { value: 'linear', label: 'Linear', hint: 'A rectangle the machine travels along.' },
     {
@@ -107,8 +107,8 @@
   ]
 </script>
 
-<section class="space-y-3" aria-labelledby="pivot-kind">
-  <SectionHeading label="Kind of system" id="pivot-kind" level={headingLevel} info="pivot.kind" />
+<section class="space-y-3" aria-labelledby="system-kind">
+  <SectionHeading label="Kind of system" id="system-kind" level={headingLevel} info="system.kind" />
   <input type="hidden" name="{prefix}[kind]" value={shape.kind} />
   {#if showKinds}
     <fieldset class="relative space-y-2">
@@ -150,20 +150,20 @@
   {#if error('kind')}<p class="text-sm text-status-irrigate-ink">{error('kind')}</p>{/if}
 </section>
 
-<section class="space-y-4" aria-labelledby="pivot-location">
+<section class="space-y-4" aria-labelledby="system-location">
   <SectionHeading
     label={isPoint(shape.kind) ? 'Location' : 'Location and size'}
-    id="pivot-location"
+    id="system-location"
     level={headingLevel}
   />
-  <PivotMap bind:this={pivotMap} bind:shape {others} {frame} {soilTypes} {locked} {fileShapes} {fields} />
+  <SystemMap bind:this={systemMap} bind:shape {others} {frame} {soilTypes} {locked} {fileShapes} {fields} />
 
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <CoordinatesField
       {prefix}
       bind:latitude={shape.latitude}
       bind:longitude={shape.longitude}
-      info="pivot.coordinates"
+      info="system.coordinates"
       error={error('latitude') ?? error('longitude')}
       required
     />
@@ -175,7 +175,7 @@
         bind:value={
           () => (sized('radius') ? shape.radiusFt : null), (v) => ((typed.radius = true), (shape.radiusFt = v))
         }
-        info="pivot.radius"
+        info="system.radius"
         error={error('radius_ft')}
         optional
         hint={areaHint}
@@ -193,7 +193,7 @@
         bind:value={
           () => (sized('length') ? shape.lengthFt : null), (v) => ((typed.length = true), (shape.lengthFt = v))
         }
-        info="pivot.length"
+        info="system.length"
         error={error('length_ft')}
         required
       />
@@ -204,7 +204,7 @@
         bind:value={
           () => (sized('travel') ? shape.travelFt : null), (v) => ((typed.travel = true), (shape.travelFt = v))
         }
-        info="pivot.travel"
+        info="system.travel"
         error={error('travel_ft')}
         required
         hint={areaHint}
@@ -215,7 +215,7 @@
         unitLabel="° from north"
         bind:value={shape.travelBearing}
         error={error('travel_bearing_deg')}
-        info="pivot.bearing"
+        info="system.bearing"
         required
       />
     </div>
@@ -224,11 +224,11 @@
   {#if shape.kind === 'center'}
     <div class="flex flex-wrap items-start gap-x-6 gap-y-4">
       <div class="space-y-1">
-        <FieldLabel as="span" label="Pivot sweep" labelId="pivot-sweep" info="pivot.sweep" />
+        <FieldLabel as="span" label="Pivot sweep" labelId="system-sweep" info="system.sweep" />
         <div
           class="flex overflow-hidden rounded-md border border-line text-sm sm:w-fit"
           role="radiogroup"
-          aria-labelledby="pivot-sweep"
+          aria-labelledby="system-sweep"
         >
           {#each SWEEPS as [value, label] (label)}
             <label
@@ -238,7 +238,7 @@
               <input
                 type="radio"
                 class="sr-only"
-                name="pivot-sweep"
+                name="system-sweep"
                 checked={shape.partial === value}
                 onchange={() => (shape.partial = value)}
               />
@@ -254,7 +254,7 @@
             name="{prefix}[arc_start_deg]"
             unitLabel="° from north"
             bind:value={shape.arcStart}
-            info="pivot.arc_start"
+            info="system.arc_start"
             error={error('arc_start_deg')}
             required
           />
@@ -263,7 +263,7 @@
             name="{prefix}[arc_end_deg]"
             unitLabel="° (clockwise)"
             bind:value={shape.arcEnd}
-            info="pivot.arc_end"
+            info="system.arc_end"
             error={error('arc_end_deg')}
             required
           />
@@ -280,13 +280,13 @@
 {#if onsuggest}
   <section class="space-y-2" aria-labelledby="soil-survey">
     <SectionHeading label="Soil survey" id="soil-survey" level={headingLevel}>
-      {#if pivotMap}
+      {#if systemMap}
         <button
           type="button"
           class="text-sm text-brand-600 hover:underline"
-          aria-pressed={pivotMap.soil.on}
-          onclick={() => pivotMap?.soil.toggle()}
-          >{pivotMap.soil.on ? 'Hide soil types on the map' : 'Show soil types on the map'}</button
+          aria-pressed={systemMap.soil.on}
+          onclick={() => systemMap?.soil.toggle()}
+          >{systemMap.soil.on ? 'Hide soil types on the map' : 'Show soil types on the map'}</button
         >
       {/if}
     </SectionHeading>

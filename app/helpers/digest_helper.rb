@@ -10,7 +10,7 @@ module DigestHelper
 
   # "Home farm › Pivot 1", with the operation when the digest spans several
   def digest_place(entry, digest)
-    [(entry.group.name if digest.several_groups?), entry.farm.name, entry.pivot.name].compact.join(" › ")
+    [(entry.group.name if digest.several_groups?), entry.farm.name, entry.system.name].compact.join(" › ")
   end
 
   # "Weather zone 1 (44.13°N, 89.52°W)"
@@ -20,8 +20,8 @@ module DigestHelper
       "#{format("%.2f", cell.longitude.abs)}°#{cell.longitude.negative? ? "W" : "E"})"
   end
 
-  # The pivots of a weather zone in this email: "North 160, South 80"
-  def digest_zone_pivots(zone) = zone.pivots.map { |section| section.pivot.label }.join(", ")
+  # The systems of a weather zone in this email: "North 160, South 80"
+  def digest_zone_systems(zone) = zone.systems.map { |section| section.system.label }.join(", ")
 
   # "9.5% soil moisture · AD 0.45 in of 1.20 in", or short "9.5% soil moisture · AD 0.45 in"
   def digest_ad(entry, digest, short: false)
@@ -59,18 +59,18 @@ module DigestHelper
   # Farm: Hancock"
   def digest_context(digest) = digest.context.map { |label, name| "#{label}: #{name}" }.join(" · ")
 
-  # "This email lists 2 fields on 2 pivots, out of the 13 fields on 8 pivots in your alert settings (5
+  # "This email lists 2 fields on 2 systems, out of the 13 fields on 8 systems in your alert settings (5
   # have a crop this season)."
   def digest_counts(digest)
     c = digest.counts
-    "This email lists #{pluralize(c.fields, "field")} on #{pluralize(c.pivots, "pivot")}, out of the " \
-      "#{pluralize(c.covered_fields, "field")} on #{pluralize(c.covered_pivots, "pivot")} in your alert " \
+    "This email lists #{pluralize(c.fields, "field")} on #{pluralize(c.systems, "system")}, out of the " \
+      "#{pluralize(c.covered_fields, "field")} on #{pluralize(c.covered_systems, "system")} in your alert " \
       "settings (#{c.planted} have a crop this season)."
   end
 
   # The one-line outlook for a field that's fine, or why there isn't one
   def digest_summary(entry)
-    if entry.status.weather_pending? then "Weather for this pivot is on its way."
+    if entry.status.weather_pending? then "Weather for this system is on its way."
     elsif entry.outlook then entry.outlook.headline
     else "No forecast is available for this field yet."
     end
@@ -88,7 +88,7 @@ module DigestHelper
         temps.compact.join(", ").presence].compact
       "#{label} #{span.days} #{"day".pluralize(span.days)}: #{parts.any? ? parts.join(" · ") : "not available yet"}"
     end
-    lines.presence || ["Weather for these pivots is on the way."]
+    lines.presence || ["Weather for these systems is on the way."]
   end
 
   # Why the reader gets this email, and how often

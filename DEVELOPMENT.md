@@ -88,7 +88,7 @@ bin/dev                                                # http://localhost:3000
 
 - **A demo account:** `bin/rails demo:seed` builds the demo operation from `db/demo/farms.yml` (farms on real fields, every kind of irrigation system, plantings and a season of entries) and prints the sign-in. It takes `EMAIL=`, `PASSWORD=` and `YEAR=`, and rerunning it rebuilds the account (keeping the password). After editing the demo in the app, `bin/rails demo:export` writes it back to `db/demo/farms.yml`; the browser tests find the demo by the names in `e2e/demo.json`, so a rename goes there too.
 - **The example farm:** `bin/rails demo:example` builds the public, read-only example (`/example`, shown as of July 20 of `YEAR`) from the same file.
-- **Weather:** in development, jobs run inside the web server (Active Job's async adapter). Creating a pivot queues its weather backfill from Open-Meteo, which needs network access. `bin/rails weather:refresh` fetches weather for every active cell now.
+- **Weather:** in development, jobs run inside the web server (Active Job's async adapter). Creating a system queues its weather backfill from Open-Meteo, which needs network access. `bin/rails weather:refresh` fetches weather for every active cell now.
 - **Email:** mail opens in the browser at http://localhost:3000/letter_opener, so you can sign up and use sign-in links without a mail server.
 - **An admin:** `bin/rails runner 'User.find_by!(email: "you@example.com").update!(admin: true)'` opens the admin pages (users, weather status, health check).
 

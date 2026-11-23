@@ -4,11 +4,11 @@ require "rails_helper"
 # it never reaches another group's records and never writes
 RSpec.describe "Example mode", type: :request do
   let(:example) { create(:group, name: "Example farm", example_as_of: Date.new(2026, 7, 20)) }
-  let(:example_pivot) { create(:pivot, farm: create(:farm, group: example)) }
-  let(:example_field) { create(:field, pivot: example_pivot) }
+  let(:example_system) { create(:system, farm: create(:farm, group: example)) }
+  let(:example_field) { create(:field, system: example_system) }
   let!(:example_planting) { create(:planting, field: example_field) }
   let(:user) { create(:user) }
-  let(:their_field) { create(:field, pivot: create(:pivot, farm: create(:farm, group: user.groups.first))) }
+  let(:their_field) { create(:field, system: create(:system, farm: create(:farm, group: user.groups.first))) }
 
   before { travel_to Date.new(2026, 11, 17) }
 
@@ -37,8 +37,8 @@ RSpec.describe "Example mode", type: :request do
     get planting_path(example_planting)
     expect(inertia.props[:as_of]).to eq("2026-07-20")
     expect(inertia.props[:travel_dates]).to be_nil
-    get pivot_path(example_pivot)
-    expect_inertia.to render_component("Pivots/Show")
+    get system_path(example_system)
+    expect_inertia.to render_component("Systems/Show")
     get weather_zones_path
     expect_inertia.to render_component("WeatherZones/Index")
     get about_path
@@ -58,9 +58,9 @@ RSpec.describe "Example mode", type: :request do
     patch field_path(example_field), params: {field: {name: "Mine now"}}
     expect(response).to redirect_to(root_path)
     expect(flash[:alert]).to include("can only be viewed")
-    post pivot_irrigations_path(example_pivot), params: {irrigation: {date: "2026-07-01", fields: {example_field.id => "1"}}}
+    post system_irrigations_path(example_system), params: {irrigation: {date: "2026-07-01", fields: {example_field.id => "1"}}}
     expect(response).to redirect_to(root_path)
-    delete pivot_irrigation_path(example_pivot, "2026-07-01")
+    delete system_irrigation_path(example_system, "2026-07-01")
     expect(response).to redirect_to(root_path)
     expect(example_field.field_entries).to be_empty
     expect(example_field.reload.name).not_to eq("Mine now")

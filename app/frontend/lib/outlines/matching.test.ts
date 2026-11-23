@@ -49,9 +49,9 @@ describe('the system an imported shape sits under', () => {
 
 describe('matching shapes to fields', () => {
   const fields = [
-    { id: 10, name: 'Home North', pivot_id: 1 },
-    { id: 11, name: 'River', pivot_id: 1 },
-    { id: 12, name: 'River', pivot_id: 2 },
+    { id: 10, name: 'Home North', system_id: 1 },
+    { id: 11, name: 'River', system_id: 1 },
+    { id: 12, name: 'River', system_id: 2 },
   ]
 
   it('matches a name ignoring case and spacing, and a repeated name by system', () => {
@@ -81,8 +81,8 @@ describe('matching shapes to fields', () => {
 
   it('starts a shape covering most of an outlined field at that field, the largest overlap winning', () => {
     const outlined = [
-      { id: 20, name: 'East 40', pivot_id: 1, boundary: square(-89.5, 44.1) },
-      { id: 21, name: 'West 40', pivot_id: 1, boundary: square(-89.51, 44.1) },
+      { id: 20, name: 'East 40', system_id: 1, boundary: square(-89.5, 44.1) },
+      { id: 21, name: 'West 40', system_id: 1, boundary: square(-89.51, 44.1) },
     ]
     const choices = initialChoices(
       [
@@ -101,8 +101,8 @@ describe('matching shapes to fields', () => {
 
   it("skips a shape that's already its field's, by name or by overlap, saying whose", () => {
     const outlined = [
-      { id: 20, name: 'East 40', pivot_id: 1, boundary: square(-89.5, 44.1) },
-      { id: 21, name: 'West 40', pivot_id: 1, boundary: square(-89.51, 44.1) },
+      { id: 20, name: 'East 40', system_id: 1, boundary: square(-89.5, 44.1) },
+      { id: 21, name: 'West 40', system_id: 1, boundary: square(-89.51, 44.1) },
     ]
     // The same corners from another starting corner, running the other way
     const [ring] = square(-89.51, 44.1).coordinates
@@ -123,7 +123,7 @@ describe('matching shapes to fields', () => {
   it('updates the field of its name when that field has no outline yet', () => {
     const choices = initialChoices(
       [{ name: 'East 40', systemId: 1, problems: [], boundary: square(-89.5, 44.1) }],
-      [{ id: 20, name: 'East 40', pivot_id: 1, boundary: null }],
+      [{ id: 20, name: 'East 40', system_id: 1, boundary: null }],
     )
     expect(choices).toEqual([{ choice: { kind: 'field', fieldId: 20 }, same: null }])
   })

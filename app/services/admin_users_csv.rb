@@ -41,7 +41,7 @@ class AdminUsersCsv
       user.id, text(user.email), text(user.first_name), text(user.last_name), yes_no(user.admin?),
       date(user.created_at), user.confirmed_at && date(user.confirmed_at), user.current_sign_in_at && date(user.current_sign_in_at),
       stats.last_active_on&.iso8601, stats.days_active_season || 0, user.digest_frequency,
-      stats.groups, stats.owned_groups, stats.farms, stats.pivots, stats.fields, stats.plantings_season, stats.plantings,
+      stats.groups, stats.owned_groups, stats.farms, stats.systems, stats.fields, stats.plantings_season, stats.plantings,
       num(stats.south), num(stats.west), num(stats.north), num(stats.east)
     ]
   end

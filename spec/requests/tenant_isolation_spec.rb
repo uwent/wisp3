@@ -6,12 +6,12 @@ RSpec.describe "Tenant isolation", type: :request do
   let(:user) { create(:user) }
   let(:outsider) { create(:user) }
   let(:their_farm) { create(:farm, group: outsider.groups.first) }
-  let(:their_pivot) { create(:pivot, farm: their_farm) }
-  let(:their_field) { create(:field, pivot: their_pivot) }
+  let(:their_system) { create(:system, farm: their_farm) }
+  let(:their_field) { create(:field, system: their_system) }
   let(:their_planting) { create(:planting, field: their_field) }
   let(:my_farm) { create(:farm, group: user.groups.first) }
-  let(:my_pivot) { create(:pivot, farm: my_farm) }
-  let(:my_field) { create(:field, pivot: my_pivot) }
+  let(:my_system) { create(:system, farm: my_farm) }
+  let(:my_field) { create(:field, system: my_system) }
 
   before do
     sign_in user
@@ -30,29 +30,29 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_farm.reload.name).not_to eq("Mine now")
   end
 
-  it "hides other groups' pivots" do
-    get pivot_path(their_pivot)
+  it "hides other groups' systems" do
+    get system_path(their_system)
     expect_not_found
-    get edit_pivot_path(their_pivot)
+    get edit_system_path(their_system)
     expect_not_found
-    get new_pivot_path(copy_of: their_pivot.id)
+    get new_system_path(copy_of: their_system.id)
     expect_not_found
-    patch pivot_path(their_pivot), params: {pivot: {name: "Mine now"}}
+    patch system_path(their_system), params: {system: {name: "Mine now"}}
     expect_not_found
-    delete pivot_path(their_pivot)
+    delete system_path(their_system)
     expect_not_found
-    patch equipment_pivot_path(their_pivot), params: {pivot: {pump_capacity_gpm: 999}}
+    patch equipment_system_path(their_system), params: {system: {pump_capacity_gpm: 999}}
     expect_not_found
-    expect(their_pivot.reload.name).not_to eq("Mine now")
-    expect(their_pivot.pump_capacity_gpm).not_to eq(999)
+    expect(their_system.reload.name).not_to eq("Mine now")
+    expect(their_system.pump_capacity_gpm).not_to eq(999)
   end
 
-  it "won't create a pivot on, or move one to, another group's farm" do
-    post pivots_path, params: {pivot: {farm_id: their_farm.id, name: "Sneaky", latitude: 44, longitude: -89}}
+  it "won't create a system on, or move one to, another group's farm" do
+    post systems_path, params: {system: {farm_id: their_farm.id, name: "Sneaky", latitude: 44, longitude: -89}}
     expect_not_found
-    patch pivot_path(my_pivot), params: {pivot: {farm_id: their_farm.id}}
+    patch system_path(my_system), params: {system: {farm_id: their_farm.id}}
     expect_not_found
-    expect(my_pivot.reload.farm).to eq(my_farm)
+    expect(my_system.reload.farm).to eq(my_farm)
   end
 
   it "hides other groups' fields" do
@@ -68,12 +68,12 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_field.field_entries).to be_empty
   end
 
-  it "won't create a field under, or move one to, another group's pivot" do
-    post fields_path, params: {field: {pivot_id: their_pivot.id, name: "Sneaky", soil_type_id: my_field.soil_type_id}}
+  it "won't create a field under, or move one to, another group's system" do
+    post fields_path, params: {field: {system_id: their_system.id, name: "Sneaky", soil_type_id: my_field.soil_type_id}}
     expect_not_found
-    patch field_path(my_field), params: {field: {pivot_id: their_pivot.id}}
+    patch field_path(my_field), params: {field: {system_id: their_system.id}}
     expect_not_found
-    expect(my_field.reload.pivot).to eq(my_pivot)
+    expect(my_field.reload.system).to eq(my_system)
   end
 
   it "won't record canopy on another group's planting through my field" do
@@ -83,7 +83,7 @@ RSpec.describe "Tenant isolation", type: :request do
   end
 
   it "won't record another group's part-field planting's own entries through my field" do
-    their_plot = create(:planting, field: create(:field, pivot: their_pivot), partial: true, area_acres: 1)
+    their_plot = create(:planting, field: create(:field, system: their_system), partial: true, area_acres: 1)
     patch field_day_path(my_field, "2026-07-01"), params: {day: {irrigation_in: 0.5}, planting_id: their_plot.id}
     expect_not_found
     expect(their_plot.planting_entries).to be_empty
@@ -103,29 +103,29 @@ RSpec.describe "Tenant isolation", type: :request do
     post outline_import_path, params: {outline_import: {rows: [{boundary: square, field_id: their_field.id}]}}
     expect_not_found
     expect(their_field.reload.boundary).to be_nil
-    post outline_import_path, params: {outline_import: {rows: [{boundary: square, pivot_id: their_pivot.id, name: "Sneaky",
+    post outline_import_path, params: {outline_import: {rows: [{boundary: square, system_id: their_system.id, name: "Sneaky",
                                                                 soil_type_id: their_field.soil_type_id, area_acres: "5"}]}}
     expect_not_found
-    expect(their_pivot.fields.where(name: "Sneaky")).to be_empty
-    my_pivot
+    expect(their_system.fields.where(name: "Sneaky")).to be_empty
+    my_system
     get new_outline_import_path
-    expect(inertia.props[:pivots].map { |p| p["id"] }).to eq([my_pivot.id])
+    expect(inertia.props[:systems].map { |p| p["id"] }).to eq([my_system.id])
     expect(inertia.props[:fields]).to be_empty
   end
 
   it "won't move a field to another group's system from its shape page" do
     square = {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.31], [-89.35, 43.3]]]}
-    patch field_outline_path(my_field), params: {outline: {boundary: square.to_json, pivot_id: their_pivot.id}}
+    patch field_outline_path(my_field), params: {outline: {boundary: square.to_json, system_id: their_system.id}}
     expect_not_found
-    expect(my_field.reload).to have_attributes(pivot: my_pivot, boundary: nil)
+    expect(my_field.reload).to have_attributes(system: my_system, boundary: nil)
   end
 
   it "shows only my group's other fields and systems on a field's outline page" do
     their_field.update!(boundary: {type: "Polygon", coordinates: [[[-89.35, 43.3], [-89.34, 43.3], [-89.34, 43.31], [-89.35, 43.3]]]})
-    their_pivot
+    their_system
     get field_outline_path(my_field)
     expect(inertia.props[:other_fields]).to be_empty
-    expect(inertia.props[:other_pivots]).to be_empty
+    expect(inertia.props[:other_systems]).to be_empty
   end
 
   it "hides other groups' plantings" do
@@ -141,18 +141,18 @@ RSpec.describe "Tenant isolation", type: :request do
   end
 
   it "hides other groups' weather zones and irrigation exports" do
-    get weather_pivot_path(their_pivot)
+    get weather_system_path(their_system)
     expect_not_found
-    get "/weather/#{their_pivot.weather_cell_id}"
+    get "/weather/#{their_system.weather_cell_id}"
     expect_not_found
-    get "/weather/#{their_pivot.weather_cell_id}/export"
+    get "/weather/#{their_system.weather_cell_id}/export"
     expect_not_found
     # By location, their cell is a place this operation has no zone
-    get weather_zone_path(their_pivot.weather_cell.location)
+    get weather_zone_path(their_system.weather_cell.location)
     expect(response).to redirect_to(weather_zones_path)
-    get export_weather_zone_path(their_pivot.weather_cell.location)
+    get export_weather_zone_path(their_system.weather_cell.location)
     expect(response).to redirect_to(weather_zones_path)
-    get pivot_irrigations_path(their_pivot)
+    get system_irrigations_path(their_system)
     expect_not_found
   end
 
@@ -166,11 +166,11 @@ RSpec.describe "Tenant isolation", type: :request do
 
   it "hides other groups' irrigation systems' irrigation" do
     their_field.field_entries.create!(date: Date.new(2026, 7, 2), irrigation_in: 0.75)
-    post pivot_irrigations_path(their_pivot), params: {irrigation: {date: "2026-07-02", fields: {their_field.id => "9"}}}
+    post system_irrigations_path(their_system), params: {irrigation: {date: "2026-07-02", fields: {their_field.id => "9"}}}
     expect_not_found
-    delete pivot_irrigation_path(their_pivot, "2026-07-02")
+    delete system_irrigation_path(their_system, "2026-07-02")
     expect_not_found
-    post pivot_irrigations_path(their_pivot), params: {irrigation: {date: "2026-07-03", from: "2026-07-02", fields: {their_field.id => "9"}}}
+    post system_irrigations_path(their_system), params: {irrigation: {date: "2026-07-03", from: "2026-07-02", fields: {their_field.id => "9"}}}
     expect_not_found
     expect(their_field.field_entries.sole).to have_attributes(date: Date.new(2026, 7, 2), irrigation_in: 0.75)
   end
@@ -198,13 +198,13 @@ RSpec.describe "Tenant isolation", type: :request do
 
   it "won't write another group's field through my system's irrigation (it isn't on my system)" do
     my_field
-    post pivot_irrigations_path(my_pivot), params: {irrigation: {date: "2026-07-02", fields: {their_field.id => "2"}}}
-    expect(response).to redirect_to(pivot_path(my_pivot))
+    post system_irrigations_path(my_system), params: {irrigation: {date: "2026-07-02", fields: {their_field.id => "2"}}}
+    expect(response).to redirect_to(system_path(my_system))
     expect(their_field.field_entries).to be_empty
 
     their_field.field_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.75)
-    post pivot_irrigations_path(my_pivot), params: {irrigation: {date: "2026-07-04", from: "2026-07-03", fields: {}}}
-    delete pivot_irrigation_path(my_pivot, "2026-07-03")
+    post system_irrigations_path(my_system), params: {irrigation: {date: "2026-07-04", from: "2026-07-03", fields: {}}}
+    delete system_irrigation_path(my_system, "2026-07-03")
     expect(their_field.field_entries.sole.irrigation_in).to eq(0.75)
   end
 
@@ -237,10 +237,10 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(their_planting.reload.end_date).to eq(their_planting.end_date)
   end
 
-  it "won't preselect another group's farm on the pivot form" do
+  it "won't preselect another group's farm on the system form" do
     my_farm
-    get new_pivot_path(farm_id: their_farm.id)
-    expect(inertia.props[:pivot]["farm_id"]).to be_nil
+    get new_system_path(farm_id: their_farm.id)
+    expect(inertia.props[:system]["farm_id"]).to be_nil
     expect(inertia.props[:farms].pluck(:id)).to eq([my_farm.id])
   end
 
@@ -252,23 +252,23 @@ RSpec.describe "Tenant isolation", type: :request do
   end
 
   it "won't use another group's farm in the guided setup" do
-    post quick_setup_path, params: {setup: {farm_id: their_farm.id, pivot: {name: "P", latitude: 44, longitude: -89}}}
+    post quick_setup_path, params: {setup: {farm_id: their_farm.id, system: {name: "P", latitude: 44, longitude: -89}}}
     expect_not_found
   end
 
-  it "lists only my pivots whose weather is updating" do
-    [my_pivot, their_pivot].each { |pivot| Rails.cache.write(WeatherUpdateJob.updating_key(pivot.weather_cell_id), true) }
+  it "lists only my systems whose weather is updating" do
+    [my_system, their_system].each { |system| Rails.cache.write(WeatherUpdateJob.updating_key(system.weather_cell_id), true) }
     get weather_updates_path
-    expect(response.parsed_body).to eq("pivot_ids" => [my_pivot.id])
+    expect(response.parsed_body).to eq("system_ids" => [my_system.id])
   end
 
   it "shows only the user's own records on the dashboard, map, setup and daily entry pages" do
     their_field
     my_field
     get root_path
-    expect(inertia.props[:farms].flat_map { |farm| farm[:pivots].flat_map { |pivot| pivot[:fields].pluck(:id) } }).to eq([my_field.id])
+    expect(inertia.props[:farms].flat_map { |farm| farm[:systems].flat_map { |system| system[:fields].pluck(:id) } }).to eq([my_field.id])
     get map_path
-    expect(inertia.props[:farms].flat_map { |farm| farm[:pivots].pluck(:id) }).to eq([my_pivot.id])
+    expect(inertia.props[:farms].flat_map { |farm| farm[:systems].pluck(:id) }).to eq([my_system.id])
     get setup_path
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
     get daily_entry_path

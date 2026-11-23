@@ -6,12 +6,12 @@ require "rails_helper"
 RSpec.describe "Planting the same crop on several fields", type: :request do
   let(:user) { create(:user) }
   let(:group) { user.groups.first }
-  let(:pivot) { create(:pivot, farm: create(:farm, group:)) }
+  let(:system) { create(:system, farm: create(:farm, group:)) }
   let(:sand) { create(:soil_type, name: "Sand", field_capacity: 0.12, perm_wilting_pt: 0.04) }
   let(:loam) { create(:soil_type, name: "Loam", field_capacity: 0.3, perm_wilting_pt: 0.12) }
-  let(:north) { create(:field, pivot:, name: "North 40", soil_type: sand, area_acres: 40) }
-  let(:east) { create(:field, pivot:, name: "East 40", soil_type: loam, area_acres: 35, field_capacity: 0.28) }
-  let(:west) { create(:field, pivot:, name: "West 40", soil_type: loam, area_acres: 38) }
+  let(:north) { create(:field, system:, name: "North 40", soil_type: sand, area_acres: 40) }
+  let(:east) { create(:field, system:, name: "East 40", soil_type: loam, area_acres: 35, field_capacity: 0.28) }
+  let(:west) { create(:field, system:, name: "West 40", soil_type: loam, area_acres: 38) }
   let(:corn) { create(:plant, name: "Corn") }
   let(:values) do
     {field_id: north.id, plant_id: corn.id, variety: "P1185", season_start: "2026-04-20", emergence_date: "2026-05-05",
@@ -36,8 +36,8 @@ RSpec.describe "Planting the same crop on several fields", type: :request do
       expect(copy).to have_attributes(original.attributes.slice(*%w[plant_id variety season_start emergence_date end_date
         max_root_zone_depth mad_frac et_method canopy_interpolation target_ad_pct initial_moisture_pct]))
       expect(copy).to have_attributes(soil_type_id: loam.id, field_capacity: field.field_capacity, perm_wilting_pt: nil,
-        area_acres: field.area_acres, partial: false, own_soil: false, pivot_id: pivot.id,
-        weather_cell_id: pivot.weather_cell_id, notes: nil, created_by_id: user.id)
+        area_acres: field.area_acres, partial: false, own_soil: false, system_id: system.id,
+        weather_cell_id: system.weather_cell_id, notes: nil, created_by_id: user.id)
     end
     expect(original).to have_attributes(soil_type_id: sand.id, area_acres: 40, notes: "North only")
   end

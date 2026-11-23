@@ -11,7 +11,7 @@
 # its own field capacity and wilting point (NULL follows the soil type, as on fields), the field's
 # area, its irrigation system (the one it ran on, for the season's records) and that system's weather cell. They're copied when the
 # planting is created; editing the field, moving it to another system or moving the system changes
-# them on plantings that haven't ended (Field, Pivot), so earlier seasons keep what they ran with.
+# them on plantings that haven't ended (Field, IrrigationSystem), so earlier seasons keep what they ran with.
 class Planting < ApplicationRecord
   ET_METHODS = %w[pct_cover lai].freeze
   CANOPY_INTERPOLATIONS = %w[linear curve].freeze
@@ -23,7 +23,7 @@ class Planting < ApplicationRecord
   belongs_to :plant
   belongs_to :soil_type
   # The irrigation system the season ran on: its field's, kept when an ended season's field moves
-  belongs_to :pivot
+  belongs_to :system, class_name: "IrrigationSystem"
   belongs_to :weather_cell, optional: true
   # Who added it, who may delete it as well as the owners; NULL for those made before
   belongs_to :created_by, class_name: "User", optional: true
@@ -70,7 +70,7 @@ class Planting < ApplicationRecord
   before_validation :copy_from_field, on: :create
   before_create :copy_from_field
 
-  # Plantings whose season hasn't ended: they follow edits to their field and pivot
+  # Plantings whose season hasn't ended: they follow edits to their field and system
   scope :open, ->(today = Current.today) { where(end_date: today..) }
   # Plantings whose season includes date
   scope :on, ->(date) { where(season_start: ..date, end_date: date..) }
@@ -123,7 +123,7 @@ class Planting < ApplicationRecord
   end
 
   # A new planting is rainfed when its field's system is a location with no pump: nothing to irrigate with
-  def self.rainfed_default(field) = field.pivot&.kind == "point" && field.pivot.pump_capacity_gpm.nil?
+  def self.rainfed_default(field) = field.system&.kind == "point" && field.system.pump_capacity_gpm.nil?
 
   # The suggested harvest date for plant emerging on emergence: its season's length later (the
   # planting's own, season_days, else the crop's typical CanopyCurve#season_days), but no later than
@@ -188,10 +188,13 @@ class Planting < ApplicationRecord
   def effective_field_capacity = field_capacity || soil_type.field_capacity
   def effective_perm_wilting_pt = perm_wilting_pt || soil_type.perm_wilting_pt
 
-  # The system the season ran on, its field's (already loaded) while it's still there
-  def system = (pivot_id == field.pivot_id) ? field.pivot : pivot
+  # The system the season ran on: its field's (when the field is loaded) while it's still there
+  def system
+    loaded_field = field if association(:field).loaded?
+    (loaded_field && system_id == loaded_field.system_id) ? loaded_field.system : super
+  end
 
-  # Whether days without entered rain take the model's: its system's setting (Q7, Pivot#use_model_precip?)
+  # Whether days without entered rain take the model's: its system's setting (Q7, IrrigationSystem#use_model_precip?)
   def use_model_precip? = system.use_model_precip?
 
   def ended?(today = Current.today) = end_date < today
@@ -258,8 +261,8 @@ class Planting < ApplicationRecord
         perm_wilting_pt != field.perm_wilting_pt
     end
     self.area_acres ||= field.area_acres unless partial?
-    self.pivot ||= field.pivot
-    self.weather_cell ||= field.pivot&.weather_cell
+    self.system ||= field.system
+    self.weather_cell ||= field.system&.weather_cell
   end
 
   def fit_area

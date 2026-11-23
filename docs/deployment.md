@@ -373,7 +373,7 @@ Then check the app's own mail: sign up with a second address and receive the con
      ```bash
      docker compose run --rm --no-deps -T web bin/rails runner '
        puts ActiveRecord::Base.connection_pool.migration_context.current_version
-       [User, Group, Farm, Pivot, Field, Planting, FieldEntry, PlantingEntry, WeatherDay].each { |m|
+       [User, Group, Farm, IrrigationSystem, Field, Planting, FieldEntry, PlantingEntry, WeatherDay].each { |m|
          puts "#{m.name}: #{m.count}  latest #{m.maximum(:updated_at)}" }'
      ```
   3. Delete `wisp-restore-test` (it's billed while it runs). The cache and queue databases come back with it, on the same instance.

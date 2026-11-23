@@ -20,10 +20,10 @@ namespace :weather do
     WeatherCell.active.each { |cell| WeatherBackfillJob.perform_now(cell.id) }
     puts "Refreshed #{WeatherCell.active.count} cells"
   end
-  desc "Fetch temperature normals (C23) for every cell with a pivot that has none; NOW=yes " \
+  desc "Fetch temperature normals (C23) for every cell with a system that has none; NOW=yes " \
     "fetches them here instead of queueing a job per cell"
   task normals: :environment do
-    cells = WeatherCell.without_normals(WeatherCell.with_pivots.select(:id)).order(:id).to_a
+    cells = WeatherCell.without_normals(WeatherCell.with_systems.select(:id)).order(:id).to_a
     if ENV["NOW"] == "yes"
       cells.each { |cell| WeatherNormalsJob.perform_now(cell.id) }
       puts "Fetched normals for #{cells.size} cells"
@@ -34,11 +34,11 @@ namespace :weather do
   end
 
   desc "Refetch stored weather through the current corrections: counts the days and " \
-    "Open-Meteo calls; CONFIRM=yes queues a job per cell with a pivot"
+    "Open-Meteo calls; CONFIRM=yes queues a job per cell with a system"
   task recorrect: :environment do
     fetcher = Weather::Fetcher.new
     # Cells with any stored day not on the current corrections, the last week's included
-    plan = WeatherCell.with_pivots.order(:id).filter_map do |cell|
+    plan = WeatherCell.with_systems.order(:id).filter_map do |cell|
       next unless fetcher.stale_days(cell).exists?
       [cell, fetcher.recorrect_runs(cell).sum(&:size), fetcher.recorrect_calls(cell)]
     end

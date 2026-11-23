@@ -1,14 +1,14 @@
 require "rails_helper"
 
 RSpec.describe PlantingTasks do
-  let(:pivot) { create(:pivot) }
-  let(:field) { create(:field, pivot:) }
+  let(:system) { create(:system) }
+  let(:field) { create(:field, system:) }
   let(:planting) do
     create(:planting, field:, season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1),
       end_date: Date.new(2026, 9, 30))
   end
 
-  before { digest_weather(pivot) }
+  before { digest_weather(system) }
 
   around { |example| travel_to(digest_today) { example.run } }
 

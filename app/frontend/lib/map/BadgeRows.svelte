@@ -1,7 +1,7 @@
 <script lang="ts">
   import StatusBadge from '@/lib/components/StatusBadge.svelte'
 
-  import { type Badge, packRows } from './pivots'
+  import { type Badge, packRows } from './systems'
 
   // Badges packed in rows of about √n (three make a triangle, four a square), on a dark
   // backing. Each carries its hover label's lines (data-hover, read by OverviewMap under the

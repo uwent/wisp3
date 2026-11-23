@@ -9,8 +9,8 @@ RSpec.describe DigestHelper, type: :helper do
       end_date: Date.new(2027, 9, 15))
   end
 
-  def entry(status: double(planting:), farm: "Home", pivot: "Pivot 1", group: "Sands Farms")
-    double(status:, group: double(name: group), farm: double(name: farm), pivot: double(name: pivot))
+  def entry(status: double(planting:), farm: "Home", system: "Pivot 1", group: "Sands Farms")
+    double(status:, group: double(name: group), farm: double(name: farm), system: double(name: system))
   end
 
   it "names the crop with its variety when there is one" do
@@ -48,7 +48,7 @@ RSpec.describe DigestHelper, type: :helper do
     span = ->(**values) { WeatherSummary::Span.new(days: 7, precip: nil, et0: nil, tmax: nil, tmin: nil, **values) }
     section = double(weather: {past: span.call(precip: 0.4, tmin: 50.0..60.0), ahead: span.call(days: 1)})
     expect(helper.digest_weather(section, digest)).to eq(["Past 7 days: 0.40 in rain · lows 50–60°F", "Next 1 day: not available yet"])
-    expect(helper.digest_weather(double(weather: {past: nil, ahead: nil}), digest)).to eq(["Weather for these pivots is on the way."])
+    expect(helper.digest_weather(double(weather: {past: nil, ahead: nil}), digest)).to eq(["Weather for these systems is on the way."])
   end
 
   it "says how often the email comes, for each frequency" do

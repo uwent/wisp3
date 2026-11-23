@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe WeatherSummary do
-  let(:cell) { create(:pivot).weather_cell }
+  let(:cell) { create(:system).weather_cell }
   let(:today) { Date.new(2026, 7, 20) }
 
   def store(date, **values)

@@ -1,5 +1,5 @@
 # The daily digest email's contents: the fields the user includes, by operation,
-# farm, weather zone (the weather grid cell its pivots share, with a summary of its weather), pivot
+# farm, weather zone (the weather grid cell its systems share, with a summary of its weather), system
 # and field. users.digest_scope chooses which included fields are listed: all of them, those with a
 # crop in season, those needing irrigation or a reading, or only those needing irrigation. Fields
 # needing attention (irrigate, or caution) are also listed first, soonest crossing first, and
@@ -14,18 +14,18 @@ class DailyDigest
     def rainfed_stress? = active? && RAINFED_STRESS.include?(status.status)
     # Needs irrigation (attention) or has a reading or check due
     def action? = attention? || (active? && status.tasks.any?(&:due))
-    def pivot = field.pivot
-    def farm = pivot.farm
+    def system = field.system
+    def farm = system.farm
     def group = farm.group
   end
 
   OperationSection = Data.define(:group, :farms)
   FarmSection = Data.define(:farm, :zones)
-  # A weather grid cell and the farm's pivots in it; weather: {past:, ahead:} WeatherSummary::Spans.
+  # A weather grid cell and the farm's systems in it; weather: {past:, ahead:} WeatherSummary::Spans.
   # number counts zones within the farm, from 1.
-  ZoneSection = Data.define(:cell, :number, :weather, :pivots)
-  # entries is empty when nothing is listed and the pivot is shown only for its weather
-  PivotSection = Data.define(:pivot, :entries)
+  ZoneSection = Data.define(:cell, :number, :weather, :systems)
+  # entries is empty when nothing is listed and the system is shown only for its weather
+  SystemSection = Data.define(:system, :entries)
 
   ATTENTION = %i[irrigate caution].freeze
   RAINFED_STRESS = %i[stressed stress_coming].freeze
@@ -40,7 +40,7 @@ class DailyDigest
   def all_entries
     @all_entries ||= begin
       fields = user.digest_fields
-        .includes(:soil_type, pivot: [:weather_cell, :pivot_group, {farm: :group}], plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type]).to_a
+        .includes(:soil_type, system: [:weather_cell, :irrigation_group, {farm: :group}], plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type]).to_a
       statuses = FieldStatuses.for(fields, today:)
       fields.flat_map do |field|
         (statuses[field.id].presence || [nil]).map do |status|
@@ -79,20 +79,20 @@ class DailyDigest
     end
   end
 
-  # The listed fields by operation, farm, weather zone and pivot, in name order (zones in the order
-  # of their first pivot). With nothing listed, the in-season fields' pivots (or, with none in
-  # season, every included pivot), for their weather only.
+  # The listed fields by operation, farm, weather zone and system, in name order (zones in the order
+  # of their first system). With nothing listed, the in-season fields' systems (or, with none in
+  # season, every included system), for their weather only.
   def operations
     @operations ||= begin
       shown = listed.presence || entries.presence || all_entries
-      weather = WeatherSummary.by_cell(shown.map { |entry| entry.pivot.weather_cell_id }.uniq, today:)
+      weather = WeatherSummary.by_cell(shown.map { |entry| entry.system.weather_cell_id }.uniq, today:)
       shown.sort_by { |entry| place_order(entry) }.group_by(&:group).map do |group, group_entries|
         OperationSection.new(group:, farms: group_entries.group_by(&:farm).map do |farm, farm_entries|
-          zones = farm_entries.group_by { |entry| entry.pivot.weather_cell }.each_with_index.map do |(cell, cell_entries), i|
-            pivots = cell_entries.group_by(&:pivot).map do |pivot, pivot_entries|
-              PivotSection.new(pivot:, entries: listed.any? ? pivot_entries : [])
+          zones = farm_entries.group_by { |entry| entry.system.weather_cell }.each_with_index.map do |(cell, cell_entries), i|
+            systems = cell_entries.group_by(&:system).map do |system, system_entries|
+              SystemSection.new(system:, entries: listed.any? ? system_entries : [])
             end
-            ZoneSection.new(cell:, number: i + 1, weather: weather.fetch(cell.id, {}), pivots:)
+            ZoneSection.new(cell:, number: i + 1, weather: weather.fetch(cell.id, {}), systems:)
           end
           FarmSection.new(farm:, zones:)
         end)
@@ -112,11 +112,11 @@ class DailyDigest
   end
 
   # How much the email lists of what it covers
-  Counts = Data.define(:fields, :pivots, :covered_fields, :covered_pivots, :planted)
+  Counts = Data.define(:fields, :systems, :covered_fields, :covered_systems, :planted)
 
   def counts
-    Counts.new(fields: listed.map(&:field).uniq.size, pivots: listed.map(&:pivot).uniq.size,
-      covered_fields: all_entries.map(&:field).uniq.size, covered_pivots: all_entries.map(&:pivot).uniq.size,
+    Counts.new(fields: listed.map(&:field).uniq.size, systems: listed.map(&:system).uniq.size,
+      covered_fields: all_entries.map(&:field).uniq.size, covered_systems: all_entries.map(&:system).uniq.size,
       planted: all_entries.select(&:status).map(&:field).uniq.size)
   end
 
@@ -192,8 +192,8 @@ class DailyDigest
   def metric? = user.unit_system == "metric"
 
   def place_order(entry)
-    [entry.group.name.downcase, entry.group.id, entry.farm.name.downcase, entry.farm.id, entry.pivot.name.downcase,
-      entry.pivot.id, entry.field.name.downcase, entry.field.id, entry.status&.planting&.partial? ? 1 : 0,
+    [entry.group.name.downcase, entry.group.id, entry.farm.name.downcase, entry.farm.id, entry.system.name.downcase,
+      entry.system.id, entry.field.name.downcase, entry.field.id, entry.status&.planting&.partial? ? 1 : 0,
       entry.status&.planting&.season_start || today, entry.status&.planting&.id || 0]
   end
 

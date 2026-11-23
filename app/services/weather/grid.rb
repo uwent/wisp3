@@ -1,8 +1,8 @@
 module Weather
   # The ECMWF IFS O1280 octahedral reduced Gaussian grid (~9 km), which Open-Meteo's ecmwf_ifs
   # model uses: 2N = 2560 latitude rings at the Gauss–Legendre nodes, ring k from the nearest pole
-  # holding 20 + 4(k − 1) evenly spaced points starting at longitude 0. Pivots are grouped into
-  # its cells, and requests are made at the cell center, so every pivot in a cell gets the same
+  # holding 20 + 4(k − 1) evenly spaced points starting at longitude 0. Systems are grouped into
+  # its cells, and requests are made at the cell center, so every system in a cell gets the same
   # series. Ported from Ben's R client (get_o1280_cells); only the rings near a point are computed.
   module Grid
     N = 1280

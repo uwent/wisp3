@@ -3,8 +3,8 @@
 
   import Button from '@/lib/components/Button.svelte'
   import { systemName } from '@/lib/geo'
-  import { root, newOutlineImport, pivots as pivotRoutes, setup } from '@/routes'
-  import type { Farm, Field, Pivot } from '@/types/serializers'
+  import { root, newOutlineImport, systems as systemRoutes, setup } from '@/routes'
+  import type { Farm, Field, IrrigationSystem } from '@/types/serializers'
 
   // Quick setup's next steps on Setup, for what it just made: an irrigation system for a
   // farm saved alone; fields for a system without them; then a planting on each field this season.
@@ -16,20 +16,22 @@
     onaddfield,
     onaddplanting,
   }: {
-    started: { farm_id: number; pivot_id: number | null }
+    started: { farm_id: number; system_id: number | null }
     farms: Farm[]
     year: number
-    onaddfield: (pivot: Pivot) => void
+    onaddfield: (system: IrrigationSystem) => void
     onaddplanting: (field: Field) => void
   } = $props()
 
   const farm = $derived(farms.find((f) => f.id === started.farm_id))
-  const pivot = $derived(started.pivot_id === null ? undefined : farm?.pivots.find((p) => p.id === started.pivot_id))
+  const system = $derived(
+    started.system_id === null ? undefined : farm?.systems.find((p) => p.id === started.system_id),
+  )
   const unplanted = $derived(
-    (pivot?.fields ?? []).filter((field) => !field.plantings.some((planting) => planting.year === year)),
+    (system?.fields ?? []).filter((field) => !field.plantings.some((planting) => planting.year === year)),
   )
   // A farm saved alone that has since got a system needs nothing more from this box
-  const shown = $derived(farm && (pivot || farm.pivots.length === 0))
+  const shown = $derived(farm && (system || farm.systems.length === 0))
   const link = 'text-brand-600 underline underline-offset-2'
 </script>
 
@@ -40,27 +42,27 @@
   >
     <div class="flex flex-wrap items-start justify-between gap-2">
       <h2 id="next-steps" class="text-lg font-medium">
-        {#if pivot && pivot.fields.length && !unplanted.length}Set up{:else}Next steps{/if}
+        {#if system && system.fields.length && !unplanted.length}Set up{:else}Next steps{/if}
       </h2>
       <Link href={setup.show({ query: { year } })} class="text-sm {link}">Hide</Link>
     </div>
 
-    {#if !pivot}
+    {#if !system}
       <p class="text-sm">
         Add an irrigation system to {farm.name}: WISP gets weather from its location, and its fields hang off it.
       </p>
       <Link
-        href={pivotRoutes.new({ query: { farm_id: farm.id } })}
+        href={systemRoutes.new({ query: { farm_id: farm.id } })}
         class="inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface"
         >Add an irrigation system</Link
       >
-    {:else if pivot.fields.length === 0}
+    {:else if system.fields.length === 0}
       <p class="text-sm">
-        Add the fields {systemName(pivot)} waters. Type each one in, or import their shapes from a shapefile, KML or GeoJSON
+        Add the fields {systemName(system)} waters. Type each one in, or import their shapes from a shapefile, KML or GeoJSON
         file to make them from those.
       </p>
       <div class="flex flex-wrap gap-2">
-        <Button onclick={() => onaddfield(pivot)}>Add a field</Button>
+        <Button onclick={() => onaddfield(system)}>Add a field</Button>
         <Link
           href={newOutlineImport()}
           class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
@@ -84,7 +86,7 @@
       </ul>
     {:else}
       <p class="text-sm">
-        {systemName(pivot)} and its fields are set up, and WISP is tracking each planting's soil water.
+        {systemName(system)} and its fields are set up, and WISP is tracking each planting's soil water.
         <Link href={root()} class={link}>See them on the dashboard</Link>, or draw each field's shape from its page when
         you're ready.
       </p>

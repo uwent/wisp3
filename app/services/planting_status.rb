@@ -149,7 +149,7 @@ class PlantingStatus
 
   def ensemble_size = ensemble.any? ? ensemble_members.size : 0
 
-  # The season has started but no weather has arrived for it yet (a new pivot, before its backfill)
+  # The season has started but no weather has arrived for it yet (a new system, before its backfill)
   def weather_pending? = days.any? && days.none? { |day| day.inputs.et0 }
 
   def last_rain = days.rfind { |day| day.inputs.rain.to_f.positive? }
@@ -199,7 +199,7 @@ class PlantingStatus
   def sum(days, &) = days.sum { |day| yield(day).to_f }.round(WaterBalance::PRECISION)
 
   # A total of what comes from the weather, over the days that have it; nil (missing, not zero)
-  # when none does, e.g. a new pivot before its weather arrives
+  # when none does, e.g. a new system before its weather arrives
   def measured(days, &)
     values = days.filter_map(&)
     values.sum.round(WaterBalance::PRECISION) if values.any?

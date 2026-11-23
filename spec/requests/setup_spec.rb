@@ -6,20 +6,20 @@ RSpec.describe "Setup", type: :request do
   let(:sand) { create(:soil_type, key: "sand", name: "Sand", field_capacity: 0.10, perm_wilting_pt: 0.04) }
   let(:potato) { create(:plant, key: "potato", name: "Potato", default_max_root_zone_depth: 16.0) }
   let(:farm) { create(:farm, group:, name: "Hancock") }
-  let(:pivot) { create(:pivot, farm:, name: "North") }
+  let(:system) { create(:system, farm:, name: "North") }
 
   before { sign_in user }
 
   around { |example| travel_to(Date.new(2026, 7, 20)) { example.run } }
 
   describe "the setup page" do
-    it "shows farms, pivots, fields and plantings, with reference data" do
-      field = create(:field, pivot:, soil_type: sand)
+    it "shows farms, systems, fields and plantings, with reference data" do
+      field = create(:field, system:, soil_type: sand)
       create(:planting, field:, plant: potato)
       get setup_path
       expect_inertia.to render_component("Setup/Show")
       farm_props = inertia.props[:farms].sole
-      expect(farm_props[:pivots].sole[:fields].sole[:plantings].sole).to include(plant_name: "Potato", year: 2026)
+      expect(farm_props[:systems].sole[:fields].sole[:plantings].sole).to include(plant_name: "Potato", year: 2026)
       expect(inertia.props[:plants].map { |plant| plant[:name] }).to include("Potato")
       expect(inertia.props[:year]).to eq(2026)
     end
@@ -60,137 +60,137 @@ RSpec.describe "Setup", type: :request do
     end
   end
 
-  describe "pivots" do
-    it "creates a pivot at a location and assigns its weather cell" do
-      post pivots_path, params: {pivot: {farm_id: farm.id, name: "South", latitude: 44.11, longitude: -89.54, radius_ft: 950,
-                                         arc_start_deg: "", arc_end_deg: ""}}
-      pivot = farm.pivots.sole
-      expect(pivot).to have_attributes(name: "South", radius_ft: 950, arc_start_deg: nil)
-      expect(pivot.weather_cell).to be_present
-      expect(WeatherUpdateJob).to have_been_enqueued.with(pivot.weather_cell_id)
+  describe "systems" do
+    it "creates a system at a location and assigns its weather cell" do
+      post systems_path, params: {system: {farm_id: farm.id, name: "South", latitude: 44.11, longitude: -89.54, radius_ft: 950,
+                                           arc_start_deg: "", arc_end_deg: ""}}
+      system = farm.systems.sole
+      expect(system).to have_attributes(name: "South", radius_ft: 950, arc_start_deg: nil)
+      expect(system.weather_cell).to be_present
+      expect(WeatherUpdateJob).to have_been_enqueued.with(system.weather_cell_id)
     end
 
     it "creates a linear" do
-      post pivots_path, params: {pivot: {farm_id: farm.id, name: "Ditch linear", kind: "linear", latitude: 44.11,
-                                         longitude: -89.54, length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30,
-                                         radius_ft: 1300}}
-      expect(farm.pivots.sole).to have_attributes(kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30,
+      post systems_path, params: {system: {farm_id: farm.id, name: "Ditch linear", kind: "linear", latitude: 44.11,
+                                           longitude: -89.54, length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30,
+                                           radius_ft: 1300}}
+      expect(farm.systems.sole).to have_attributes(kind: "linear", length_ft: 1300, travel_ft: 2640, travel_bearing_deg: 30,
         radius_ft: nil)
     end
 
     it "creates a traveler at a field, keeping no dimensions" do
-      post pivots_path, params: {pivot: {farm_id: farm.id, name: "Lane 3", kind: "traveler", latitude: 44.11,
-                                         longitude: -89.54, radius_ft: 1300, pump_capacity_gpm: 250,
-                                         equipment: "Hard hose reel #2"}}
-      expect(farm.pivots.sole).to have_attributes(kind: "traveler", radius_ft: nil, pump_capacity_gpm: 250,
+      post systems_path, params: {system: {farm_id: farm.id, name: "Lane 3", kind: "traveler", latitude: 44.11,
+                                           longitude: -89.54, radius_ft: 1300, pump_capacity_gpm: 250,
+                                           equipment: "Hard hose reel #2"}}
+      expect(farm.systems.sole).to have_attributes(kind: "traveler", radius_ft: nil, pump_capacity_gpm: 250,
         equipment: "Hard hose reel #2")
       expect(response).to redirect_to(setup_path)
     end
 
-    it "sends back a pivot too large to be real" do
-      post pivots_path, params: {pivot: {farm_id: farm.id, name: "Huge", latitude: 44.11, longitude: -89.54, radius_ft: 4000}}
+    it "sends back a system too large to be real" do
+      post systems_path, params: {system: {farm_id: farm.id, name: "Huge", latitude: 44.11, longitude: -89.54, radius_ft: 4000}}
       follow_redirect!
       expect(inertia.props[:errors]).to include("radius_ft")
     end
 
     it "requires a location" do
-      post pivots_path, params: {pivot: {farm_id: farm.id, name: "Nowhere"}}
-      expect(response).to redirect_to(new_pivot_path(farm_id: farm.id))
+      post systems_path, params: {system: {farm_id: farm.id, name: "Nowhere"}}
+      expect(response).to redirect_to(new_system_path(farm_id: farm.id))
       follow_redirect!
       expect(inertia.props[:errors]).to include("latitude", "longitude")
     end
 
-    it "edits a pivot and moves it to another farm" do
+    it "edits a system and moves it to another farm" do
       other = create(:farm, group:)
-      get edit_pivot_path(pivot)
-      expect(inertia.props[:pivot]).to include(name: "North")
-      patch pivot_path(pivot), params: {pivot: {farm_id: other.id, name: "North 160", pump_capacity_gpm: 900}}
-      expect(pivot.reload).to have_attributes(farm: other, name: "North 160", pump_capacity_gpm: 900)
+      get edit_system_path(system)
+      expect(inertia.props[:system]).to include(name: "North")
+      patch system_path(system), params: {system: {farm_id: other.id, name: "North 160", pump_capacity_gpm: 900}}
+      expect(system.reload).to have_attributes(farm: other, name: "North 160", pump_capacity_gpm: 900)
     end
 
     it "sends an invalid edit back to the edit page" do
-      patch pivot_path(pivot), params: {pivot: {radius_ft: 4000}}
-      expect(response).to redirect_to(edit_pivot_path(pivot))
+      patch system_path(system), params: {system: {radius_ft: 4000}}
+      expect(response).to redirect_to(edit_system_path(system))
       follow_redirect!
       expect(inertia.props[:errors]).to include("radius_ft")
-      expect(pivot.reload.radius_ft).not_to eq(4000)
+      expect(system.reload.radius_ft).not_to eq(4000)
     end
 
-    it "deletes a pivot with its fields and their irrigation" do
-      field = create(:field, pivot:, soil_type: sand)
+    it "deletes a system with its fields and their irrigation" do
+      field = create(:field, system:, soil_type: sand)
       field.field_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.5)
-      delete pivot_path(pivot)
+      delete system_path(system)
       expect(response).to redirect_to(setup_path)
       expect(flash[:notice]).to eq("Deleted North")
-      expect([Pivot.exists?(pivot.id), Field.exists?(field.id), FieldEntry.exists?(field_id: field.id)]).to eq([false, false, false])
+      expect([IrrigationSystem.exists?(system.id), Field.exists?(field.id), FieldEntry.exists?(field_id: field.id)]).to eq([false, false, false])
     end
 
     describe "duplicating" do
-      let(:pivot_group) { create(:pivot_group, farm:, name: "River") }
+      let(:irrigation_group) { create(:irrigation_group, farm:, name: "River") }
       let(:source) do
-        create(:pivot, farm:, pivot_group:, name: "North", kind: "center", radius_ft: 1100, arc_start_deg: 30,
+        create(:system, farm:, irrigation_group:, name: "North", kind: "center", radius_ft: 1100, arc_start_deg: 30,
           arc_end_deg: 300, pump_capacity_gpm: 850, equipment: "Valley 8000", notes: "Leaks")
       end
 
       it "starts the new system's form from another, without its location" do
-        create(:field, pivot: source)
-        get new_pivot_path(copy_of: source.id)
-        expect_inertia.to render_component("Pivots/Form")
-        expect(inertia.props[:pivot]).to eq("name" => "North copy", "farm_id" => farm.id, "pivot_group_id" => pivot_group.id,
+        create(:field, system: source)
+        get new_system_path(copy_of: source.id)
+        expect_inertia.to render_component("Systems/Form")
+        expect(inertia.props[:system]).to eq("name" => "North copy", "farm_id" => farm.id, "irrigation_group_id" => irrigation_group.id,
           "kind" => "center", "radius_ft" => 1100, "arc_start_deg" => 30, "arc_end_deg" => 300, "pump_capacity_gpm" => 850,
           "equipment" => "Valley 8000")
         expect(inertia.props[:copy_of]).to eq("id" => source.id, "name" => "North")
-        expect(inertia.props[:pivot_group]).to include("name" => "River")
+        expect(inertia.props[:irrigation_group]).to include("name" => "River")
       end
 
       it "saves the copy in the source's group, with no fields" do
-        create(:field, pivot: source)
-        post pivots_path, params: {copy_of: source.id, pivot: {farm_id: farm.id, pivot_group_id: pivot_group.id,
-                                                               name: "North 2", latitude: 44.12, longitude: -89.55, radius_ft: 1100}}
-        copy = farm.pivots.find_by!(name: "North 2")
-        expect(copy).to have_attributes(pivot_group:, radius_ft: 1100)
+        create(:field, system: source)
+        post systems_path, params: {copy_of: source.id, system: {farm_id: farm.id, irrigation_group_id: irrigation_group.id,
+                                                                 name: "North 2", latitude: 44.12, longitude: -89.55, radius_ft: 1100}}
+        copy = farm.systems.find_by!(name: "North 2")
+        expect(copy).to have_attributes(irrigation_group:, radius_ft: 1100)
         expect(copy.fields).to be_empty
       end
 
       it "keeps the copy's form when it's sent back" do
-        post pivots_path, params: {copy_of: source.id, pivot: {farm_id: farm.id, name: "North 2"}}
-        expect(response).to redirect_to(new_pivot_path(farm_id: farm.id, copy_of: source.id))
+        post systems_path, params: {copy_of: source.id, system: {farm_id: farm.id, name: "North 2"}}
+        expect(response).to redirect_to(new_system_path(farm_id: farm.id, copy_of: source.id))
       end
 
       it "leaves the group out on another farm, or another account's group" do
         other_farm = create(:farm, group:)
-        post pivots_path, params: {pivot: {farm_id: other_farm.id, pivot_group_id: pivot_group.id, name: "Away",
-                                           latitude: 44.12, longitude: -89.55}}
-        expect(other_farm.pivots.sole.pivot_group).to be_nil
+        post systems_path, params: {system: {farm_id: other_farm.id, irrigation_group_id: irrigation_group.id, name: "Away",
+                                             latitude: 44.12, longitude: -89.55}}
+        expect(other_farm.systems.sole.irrigation_group).to be_nil
 
-        stranger_group = create(:pivot_group, farm: create(:farm))
-        post pivots_path, params: {pivot: {farm_id: farm.id, pivot_group_id: stranger_group.id, name: "Mine",
-                                           latitude: 44.12, longitude: -89.55}}
-        expect(farm.pivots.find_by!(name: "Mine").pivot_group).to be_nil
+        stranger_group = create(:irrigation_group, farm: create(:farm))
+        post systems_path, params: {system: {farm_id: farm.id, irrigation_group_id: stranger_group.id, name: "Mine",
+                                             latitude: 44.12, longitude: -89.55}}
+        expect(farm.systems.find_by!(name: "Mine").irrigation_group).to be_nil
       end
 
       it "can't copy another account's system" do
         get setup_path
-        stranger = create(:pivot, name: "Theirs")
-        get new_pivot_path(copy_of: stranger.id)
+        stranger = create(:system, name: "Theirs")
+        get new_system_path(copy_of: stranger.id)
         expect(response).to have_http_status(:not_found)
       end
     end
 
-    it "shows other pivots on the map picker" do
-      create(:pivot, farm:, name: "Neighbor")
-      get new_pivot_path(farm_id: farm.id)
-      expect_inertia.to render_component("Pivots/Form")
-      expect(inertia.props[:other_pivots].map { |p| p["name"] }).to eq(["Neighbor"])
+    it "shows other systems on the map picker" do
+      create(:system, farm:, name: "Neighbor")
+      get new_system_path(farm_id: farm.id)
+      expect_inertia.to render_component("Systems/Form")
+      expect(inertia.props[:other_systems].map { |p| p["name"] }).to eq(["Neighbor"])
     end
 
     it "gives each other system's farm and its fields' extent, for the map to open on the new system's farm" do
-      neighbor = create(:pivot, farm:, name: "Neighbor")
+      neighbor = create(:system, farm:, name: "Neighbor")
       ring = [[-89.5, 44.1], [-89.49, 44.1], [-89.49, 44.11], [-89.5, 44.11], [-89.5, 44.1]]
-      create(:field, pivot: neighbor, boundary: {"type" => "Polygon", "coordinates" => [ring]})
-      create(:pivot, farm:, name: "Bare")
-      get new_pivot_path(farm_id: farm.id)
-      others = inertia.props[:other_pivots].index_by { |p| p["name"] }
+      create(:field, system: neighbor, boundary: {"type" => "Polygon", "coordinates" => [ring]})
+      create(:system, farm:, name: "Bare")
+      get new_system_path(farm_id: farm.id)
+      others = inertia.props[:other_systems].index_by { |p| p["name"] }
       expect(others["Neighbor"]).to include("farm_id" => farm.id, "fields_extent" => [[-89.5, 44.1], [-89.49, 44.11]])
       expect(others["Bare"]["fields_extent"]).to be_nil
     end
@@ -198,12 +198,12 @@ RSpec.describe "Setup", type: :request do
     it "gives the operation's field outlines to the system form and quick setup, for the map, and only its own" do
       ring = [[-89.5, 44.1], [-89.49, 44.1], [-89.49, 44.11], [-89.5, 44.11], [-89.5, 44.1]]
       boundary = {"type" => "Polygon", "coordinates" => [ring]}
-      create(:field, pivot: create(:pivot, farm:), name: "East 40", boundary:)
-      create(:field, pivot: create(:pivot, farm: create(:farm)), boundary:)
-      get new_pivot_path(farm_id: farm.id)
+      create(:field, system: create(:system, farm:), name: "East 40", boundary:)
+      create(:field, system: create(:system, farm: create(:farm)), boundary:)
+      get new_system_path(farm_id: farm.id)
       expect(inertia.props[:field_outlines]).to eq([{"name" => "East 40", "boundary" => boundary}])
 
-      get edit_pivot_path(farm.pivots.first)
+      get edit_system_path(farm.systems.first)
       expect(inertia.props[:field_outlines]).to eq([{"name" => "East 40", "boundary" => boundary}])
 
       get new_quick_setup_path
@@ -213,33 +213,33 @@ RSpec.describe "Setup", type: :request do
 
   describe "fields" do
     it "creates a field, overrides its soil values, and deletes it" do
-      post fields_path, params: {field: {pivot_id: pivot.id, name: "North potatoes", area_acres: 70, soil_type_id: sand.id}}
-      field = pivot.fields.sole
+      post fields_path, params: {field: {system_id: system.id, name: "North potatoes", area_acres: 70, soil_type_id: sand.id}}
+      field = system.fields.sole
       patch field_path(field), params: {field: {field_capacity: 0.12, perm_wilting_pt: ""}}
       expect(field.reload).to have_attributes(field_capacity: 0.12, perm_wilting_pt: nil, effective_perm_wilting_pt: 0.04)
       delete field_path(field)
-      expect(pivot.fields).to be_empty
+      expect(system.fields).to be_empty
     end
 
     it "rejects a wilting point above field capacity" do
-      field = create(:field, pivot:, soil_type: sand)
+      field = create(:field, system:, soil_type: sand)
       patch field_path(field), params: {field: {perm_wilting_pt: 0.2}}
       expect(field.reload.perm_wilting_pt).to be_nil
     end
 
     it "moves a field with an ended season, which keeps its system" do
-      field = create(:field, pivot:, soil_type: sand)
+      field = create(:field, system:, soil_type: sand)
       ended = create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 1),
         end_date: Date.new(2025, 9, 30))
-      other = create(:pivot, farm:, name: "South")
-      patch field_path(field), params: {field: {pivot_id: other.id}}, headers: {"HTTP_REFERER" => setup_url}
-      expect(field.reload.pivot).to eq(other)
-      expect(ended.reload.pivot).to eq(pivot)
+      other = create(:system, farm:, name: "South")
+      patch field_path(field), params: {field: {system_id: other.id}}, headers: {"HTTP_REFERER" => setup_url}
+      expect(field.reload.system).to eq(other)
+      expect(ended.reload.system).to eq(system)
     end
   end
 
   describe "plantings" do
-    let(:field) { create(:field, pivot:, soil_type: sand) }
+    let(:field) { create(:field, system:, soil_type: sand) }
 
     it "creates a planting with the crop's defaults for the season" do
       post plantings_path(year: 2027), params: {planting: {field_id: field.id, plant_id: potato.id, emergence_date: "2027-05-20"}}
@@ -248,13 +248,13 @@ RSpec.describe "Setup", type: :request do
 
       # A crop without a typical season ends Nov 30, as in legacy
       alfalfa = create(:plant, key: "alfalfa", name: "Alfalfa")
-      other = create(:field, pivot:, soil_type: sand)
+      other = create(:field, system:, soil_type: sand)
       post plantings_path(year: 2027), params: {planting: {field_id: other.id, plant_id: alfalfa.id, emergence_date: "2027-05-20"}}
       expect(other.plantings.sole.end_date).to eq(Date.new(2027, 11, 30))
 
       # A crop without its own curve takes its generic curve's season, or the one picked
       onion = create(:plant, key: "onion", name: "Onion")
-      third = create(:field, pivot:, soil_type: sand)
+      third = create(:field, system:, soil_type: sand)
       post plantings_path(year: 2027), params: {planting: {field_id: third.id, plant_id: onion.id, emergence_date: "2027-05-20",
                                                            canopy_curve_key: "leafy_fast"}}
       expect(third.plantings.sole).to have_attributes(canopy_curve_key: "leafy_fast", end_date: Date.new(2027, 7, 19))
@@ -306,7 +306,7 @@ RSpec.describe "Setup", type: :request do
       expect(planting.reload.canopy_interpolation).to eq("linear")
       patch planting_path(planting), params: {planting: {canopy_interpolation: "sideways"}}
       expect(planting.reload.canopy_interpolation).to eq("linear")
-      expect(SeasonCopy.new(field.pivot.farm.group, planting.season_year + 1).run.copied.sole.canopy_interpolation)
+      expect(SeasonCopy.new(field.system.farm.group, planting.season_year + 1).run.copied.sole.canopy_interpolation)
         .to eq("linear")
     end
 
@@ -340,13 +340,13 @@ RSpec.describe "Setup", type: :request do
     end
 
     # Each file's contents are in its *_csv_spec.rb; these check what the request adds
-    it "downloads the field's season, the operation's season, a zone's weather and a pivot's irrigation as CSV" do
+    it "downloads the field's season, the operation's season, a zone's weather and a system's irrigation as CSV" do
       planting = create(:planting, field:, plant: potato, season_start: Date.new(2026, 7, 1))
       {
         export_planting_path(planting) => ["wisp-field-", "WISP daily report, 2026 season"],
         season_report_path(year: 2026) => ["wisp-season-", "WISP season report, 2026"],
-        export_weather_zone_path(pivot.weather_cell.location, year: 2026) => ["wisp-weather-#{pivot.weather_cell.file_location}-2026.csv", "WISP weather, North, 2026"],
-        pivot_irrigations_path(pivot, year: 2026) => ["wisp-irrigation-north-2026.csv", "WISP irrigation, North (pivot), 2026"]
+        export_weather_zone_path(system.weather_cell.location, year: 2026) => ["wisp-weather-#{system.weather_cell.file_location}-2026.csv", "WISP weather, North, 2026"],
+        system_irrigations_path(system, year: 2026) => ["wisp-irrigation-north-2026.csv", "WISP irrigation, North (pivot), 2026"]
       }.each do |path, (filename, title)|
         get path
         expect(response.media_type).to eq("text/csv"), path
@@ -368,21 +368,21 @@ RSpec.describe "Setup", type: :request do
 
       post quick_setup_path, params: {setup: {
         farm: {name: "Hancock Sands"},
-        pivot: {name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300, arc_start_deg: 30,
-                arc_end_deg: 300},
+        system: {name: "North 160", latitude: 44.1335, longitude: -89.5213, radius_ft: 1300, arc_start_deg: 30,
+                 arc_end_deg: 300},
         fields: {
           "0" => {name: "North potatoes", area_acres: 70, soil_type_id: sand.id},
           "1" => {name: "North corn", area_acres: 55, soil_type_id: sand.id}
         }
       }}
-      pivot = group.farms.sole.pivots.sole
-      expect(response).to redirect_to(setup_path(started_pivot: pivot.id))
-      expect(pivot).to have_attributes(kind: "center", arc_start_deg: 30, arc_end_deg: 300)
-      expect(pivot.fields.map(&:name)).to contain_exactly("North corn", "North potatoes")
+      system = group.farms.sole.systems.sole
+      expect(response).to redirect_to(setup_path(started_system: system.id))
+      expect(system).to have_attributes(kind: "center", arc_start_deg: 30, arc_end_deg: 300)
+      expect(system.fields.map(&:name)).to contain_exactly("North corn", "North potatoes")
       expect(Planting.count).to eq(0)
 
       follow_redirect!
-      expect(inertia.props[:started]).to eq("farm_id" => pivot.farm_id, "pivot_id" => pivot.id)
+      expect(inertia.props[:started]).to eq("farm_id" => system.farm_id, "system_id" => system.id)
     end
 
     it "asks which season from November, next year's by default, and opens Setup on it" do
@@ -412,23 +412,23 @@ RSpec.describe "Setup", type: :request do
       post quick_setup_path, params: {setup: {farm: {name: "Hancock"}}}
       farm = group.farms.sole
       expect(response).to redirect_to(setup_path(started_farm: farm.id))
-      expect(farm.pivots).to be_empty
+      expect(farm.systems).to be_empty
       follow_redirect!
-      expect(inertia.props[:started]).to eq("farm_id" => farm.id, "pivot_id" => nil)
+      expect(inertia.props[:started]).to eq("farm_id" => farm.id, "system_id" => nil)
     end
 
     it "saves an irrigation system without fields, skipping blank rows" do
-      post quick_setup_path, params: {setup: {farm: {name: "Hancock"}, pivot: {name: "North", latitude: 44.1, longitude: -89.5},
+      post quick_setup_path, params: {setup: {farm: {name: "Hancock"}, system: {name: "North", latitude: 44.1, longitude: -89.5},
                                               fields: {"0" => {name: "", area_acres: "", soil_type_id: sand.id}}}}
-      pivot = group.farms.sole.pivots.sole
-      expect(response).to redirect_to(setup_path(started_pivot: pivot.id))
-      expect(pivot.fields).to be_empty
+      system = group.farms.sole.systems.sole
+      expect(response).to redirect_to(setup_path(started_system: system.id))
+      expect(system.fields).to be_empty
     end
 
     it "saves nothing and reports every problem by input, keeping each row's own index" do
       post quick_setup_path, params: {setup: {
         farm: {name: "Hancock"},
-        pivot: {name: "North", latitude: 44.1, longitude: -89.5},
+        system: {name: "North", latitude: 44.1, longitude: -89.5},
         fields: {"0" => {name: "", soil_type_id: sand.id}, "1" => {name: "", area_acres: "-3", soil_type_id: sand.id}}
       }}
       follow_redirect!
@@ -437,21 +437,21 @@ RSpec.describe "Setup", type: :request do
     end
 
     it "keys the farm's and system's errors by their inputs" do
-      post quick_setup_path, params: {setup: {farm: {name: ""}, pivot: {name: "North"}, fields: {}}}
+      post quick_setup_path, params: {setup: {farm: {name: ""}, system: {name: "North"}, fields: {}}}
       follow_redirect!
-      expect(inertia.props[:errors].keys).to include("farm.name", "pivot.latitude", "pivot.longitude")
+      expect(inertia.props[:errors].keys).to include("farm.name", "system.latitude", "system.longitude")
       expect(group.farms).to be_empty
     end
 
     it "adds to an existing farm" do
-      post quick_setup_path, params: {setup: {farm_id: farm.id, pivot: {name: "East", latitude: 44.1, longitude: -89.5},
+      post quick_setup_path, params: {setup: {farm_id: farm.id, system: {name: "East", latitude: 44.1, longitude: -89.5},
                                               fields: {"0" => {name: "East", soil_type_id: sand.id}}}}
-      expect(farm.pivots.sole.fields.sole.name).to eq("East")
+      expect(farm.systems.sole.fields.sole.name).to eq("East")
     end
 
     it "shows no next steps for another group's farm or system" do
-      other = create(:pivot)
-      get setup_path(started_pivot: other.id)
+      other = create(:system)
+      get setup_path(started_system: other.id)
       expect(inertia.props[:started]).to be_nil
       get setup_path(started_farm: other.farm_id)
       expect(inertia.props[:started]).to be_nil
@@ -460,7 +460,7 @@ RSpec.describe "Setup", type: :request do
 
   describe "copying last season" do
     it "copies each field's plantings forward a year" do
-      field = create(:field, pivot:, soil_type: sand)
+      field = create(:field, system:, soil_type: sand)
       create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 18),
         end_date: Date.new(2025, 9, 20), target_ad_pct: 40)
       post season_copy_path(year: 2026)
@@ -474,7 +474,7 @@ RSpec.describe "Setup", type: :request do
     end
 
     it "reports plantings it couldn't copy" do
-      field = create(:field, pivot:, name: "West", soil_type: sand)
+      field = create(:field, system:, name: "West", soil_type: sand)
       # A season running into the next year, saved before seasons were limited to a year: its copy
       # would overlap it, and runs too long
       create(:planting, field:, plant: potato, season_start: Date.new(2025, 4, 1), emergence_date: Date.new(2025, 5, 15),

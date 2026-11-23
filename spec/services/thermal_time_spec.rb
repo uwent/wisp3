@@ -161,26 +161,26 @@ RSpec.describe ThermalTime do
   end
 
   describe "a planting's canopy" do
-    let(:pivot) { create(:pivot, latitude: 44.12, longitude: -89.53) }
-    let(:planting) { create(:planting, field: create(:field, pivot:), plant: create(:plant, key: "potato")) }
+    let(:system) { create(:system, latitude: 44.12, longitude: -89.53) }
+    let(:planting) { create(:planting, field: create(:field, system:), plant: create(:plant, key: "potato")) }
 
     it "runs in degree days at a cell with normals, and by calendar days until it has them" do
       calendar = Canopy.for(planting)
       expect(calendar).not_to be_thermal
-      give_normals(pivot.weather_cell, *steady(8, 2)) # a cold year: about half the curve's typical warmth
+      give_normals(system.weather_cell, *steady(8, 2)) # a cold year: about half the curve's typical warmth
       thermal = Canopy.for(planting.reload)
       expect(thermal).to be_thermal
       expect(thermal.on(emergence + 31)).to be < calendar.on(emergence + 31) - 30
       expect(Canopy.for(planting, temperatures: CellTemperatures.new({}, nil))).not_to be_thermal
 
-      lai = create(:planting, field: create(:field, pivot:), plant: create(:plant, key: "field_corn", canopy_model: "field_corn"),
+      lai = create(:planting, field: create(:field, system:), plant: create(:plant, key: "field_corn", canopy_model: "field_corn"),
         et_method: "lai")
       expect(Canopy.for(lai)).not_to be_thermal # LAI curves stay in calendar days
     end
 
     it "refits its readings when the weather behind them changes" do
-      give_normals(pivot.weather_cell, *steady(14, 2))
-      day = store_day(pivot.weather_cell, emergence + 3, 70.0, 50.0)
+      give_normals(system.weather_cell, *steady(14, 2))
+      day = store_day(system.weather_cell, emergence + 3, 70.0, 50.0)
       create(:canopy_observation, planting:, date: emergence + 20, pct_cover: 30.0)
       create(:canopy_observation, planting:, date: emergence + 27, pct_cover: 60.0)
       allow(CanopyFit).to receive(:run).and_call_original
@@ -194,16 +194,16 @@ RSpec.describe ThermalTime do
     it "preloads every planting's temperatures on pages running many (FieldStatuses), in the same queries for one or several cells" do
       plant = create(:plant, key: "potato")
       queries = lambda do |n|
-        fields = (1...n).map { |i| create(:field, pivot: create(:pivot, latitude: 44.12 + i, longitude: -89.53)) }
-        fields << create(:field, pivot:)
+        fields = (1...n).map { |i| create(:field, system: create(:system, latitude: 44.12 + i, longitude: -89.53)) }
+        fields << create(:field, system:)
         fields.each do |field|
-          give_normals(field.pivot.weather_cell, *steady(14, 2)) unless field.pivot.weather_cell.normals?
+          give_normals(field.system.weather_cell, *steady(14, 2)) unless field.system.weather_cell.normals?
           create(:planting, field:, plant:)
         end
         count = 0
         counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
         statuses = ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
-          scope = Field.where(id: fields.map(&:id)).includes(:soil_type, pivot: :weather_cell,
+          scope = Field.where(id: fields.map(&:id)).includes(:soil_type, system: :weather_cell,
             plantings: [:plant, :canopy_observations, :canopy_cuttings, :soil_type])
           FieldStatuses.for(scope.to_a, today: Date.new(2026, 7, 1)).values.flatten.each { |status| status.canopy.on(Date.new(2026, 6, 15)) }
         end

@@ -13,10 +13,10 @@ import {
   MAX_LINEAR_LENGTH_FT,
   MAX_LINEAR_TRAVEL_FT,
   isPoint,
-  pivotAcres,
-  pivotOutline,
+  systemAcres,
+  shapeOutline,
   POINT_SURVEY_RADIUS_FT,
-  pivotRing,
+  systemRing,
   pointInPolygon,
   surveyRing,
   resizeLinear,
@@ -46,13 +46,13 @@ describe('geo', () => {
   })
 
   it('draws a closed circle at the radius', () => {
-    const ring = pivotRing(center, 1300)
+    const ring = systemRing(center, 1300)
     expect(ring[0]).toEqual(ring[ring.length - 1])
     for (const point of ring) expect(distanceM(center, point)).toBeCloseTo(1300 / 3.28084, 1)
   })
 
   it('draws an arc as a sector through the center', () => {
-    const ring = pivotRing(center, 1300, 0, 90)
+    const ring = systemRing(center, 1300, 0, 90)
     expect(ring[0]).toEqual(center)
     expect(ring[ring.length - 1]).toEqual(center)
     expect(bearing(center, ring[1])).toBeCloseTo(0, 1)
@@ -60,8 +60,8 @@ describe('geo', () => {
   })
 
   it('computes irrigated acres', () => {
-    expect(pivotAcres(1300)).toBeCloseTo(121.9, 1)
-    expect(pivotAcres(1300, 0, 180)).toBeCloseTo(60.9, 1)
+    expect(systemAcres(1300)).toBeCloseTo(121.9, 1)
+    expect(systemAcres(1300, 0, 180)).toBeCloseTo(60.9, 1)
   })
 })
 
@@ -138,7 +138,7 @@ describe('linears', () => {
 
   it('outlines and measures either kind', () => {
     const linear = draftShape(shapeDraft({ latitude: center[1], longitude: center[0], kind: 'linear' }))!
-    expect(pivotOutline(linear)).toHaveLength(5)
+    expect(shapeOutline(linear)).toHaveLength(5)
     expect(shapeAcres(linear)).toBeCloseTo((1300 * 2640) / 43_560, 6)
     const arc = draftShape({ ...shapeDraft({ latitude: center[1], longitude: center[0] }), partial: true })!
     expect(arc).toMatchObject({
@@ -149,7 +149,7 @@ describe('linears', () => {
       length_ft: null,
       travel_bearing_deg: null,
     })
-    expect(shapeAcres(arc)).toBeCloseTo(pivotAcres(1300) * 0.75, 6)
+    expect(shapeAcres(arc)).toBeCloseTo(systemAcres(1300) * 0.75, 6)
   })
 
   it('drafts a shape without a location as nothing to draw', () => {
@@ -180,7 +180,7 @@ describe('point kinds', () => {
   })
 
   it('have no outline or area of their own', () => {
-    expect(pivotOutline(traveler)).toBeNull()
+    expect(shapeOutline(traveler)).toBeNull()
     expect(shapeAcres(traveler)).toBeNull()
   })
 
@@ -188,7 +188,7 @@ describe('point kinds', () => {
     const ring = surveyRing(traveler)
     expect(distanceM([-89.5, 44.1], ring[0]) * 3.28084).toBeCloseTo(POINT_SURVEY_RADIUS_FT, 0)
     expect(surveyRing({ ...traveler, kind: 'center', radius_ft: 1300 })).toEqual(
-      pivotOutline({ ...traveler, kind: 'center', radius_ft: 1300 }, 48),
+      shapeOutline({ ...traveler, kind: 'center', radius_ft: 1300 }, 48),
     )
   })
 
@@ -254,7 +254,7 @@ describe('edgePointer', () => {
 })
 
 describe('systemName', () => {
-  it('adds the kind unless the name already says it, as Pivot#label does', () => {
+  it('adds the kind unless the name already says it, as IrrigationSystem#label does', () => {
     expect(systemName({ name: 'East gun', kind_name: 'Traveler' })).toBe('East gun (traveler)')
     expect(systemName({ name: 'Home pivot', kind_name: 'Pivot' })).toBe('Home pivot')
     expect(systemName({ name: 'NORTH PIVOT 2', kind_name: 'Pivot' })).toBe('NORTH PIVOT 2')
@@ -275,8 +275,8 @@ describe('systemsFrame', () => {
     travel_bearing_deg: null,
   }
 
-  it('covers each system and its fields, a pivot by its whole circle', () => {
-    const pivot = { ...traveler, kind: 'center' as const, latitude: 44.2, radius_ft: 1300 }
+  it('covers each system and its fields, a system by its whole circle', () => {
+    const system = { ...traveler, kind: 'center' as const, latitude: 44.2, radius_ft: 1300 }
     const [[west, south], [east, north]] = systemsFrame([
       {
         ...traveler,
@@ -285,7 +285,7 @@ describe('systemsFrame', () => {
           [-89.505, 44.095],
         ],
       },
-      pivot,
+      system,
     ])!
     expect([west, south]).toEqual([-89.51, 44.09])
     expect(north).toBeCloseTo(44.2 + 1300 / 3.28084 / 111_195, 4)

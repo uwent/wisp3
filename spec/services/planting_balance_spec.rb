@@ -50,7 +50,7 @@ RSpec.describe PlantingBalance do
 
     it "takes the soil's readily evaporable water and the irrigation system's wetted fraction" do
       soil_type.update!(rew_in: 0.2)
-      planting.pivot.update!(kind: "drip")
+      planting.system.update!(kind: "drip")
       params = described_class.new(planting.reload).params
       expect(params).to have_attributes(rew: 0.2, irrigation_fw: 0.35)
       expect(params.evaporation.tew).to be_within(1e-9).of((0.15 - 0.025) / 0.254)
@@ -59,7 +59,7 @@ RSpec.describe PlantingBalance do
   end
 
   it "reads wind and minimum humidity from stored days and the forecast" do
-    cell = field.pivot.reload.weather_cell
+    cell = field.system.reload.weather_cell
     cell.weather_days.create!(date: Date.new(2026, 6, 1), et0_in: 0.2, precip_in: 0.0, wind_speed_mph: 9.0, rh_min_pct: 40.0,
       model: "best_match", hours: 24, fetched_at: Time.current)
     inputs = WeatherDay.balance_inputs(cell, [Date.new(2026, 6, 1)])
@@ -72,7 +72,7 @@ RSpec.describe PlantingBalance do
   end
 
   it "uses the stored weather for the field's cell by default" do
-    cell = field.pivot.reload.weather_cell
+    cell = field.system.reload.weather_cell
     weather.each do |date, values|
       cell.weather_days.create!(date:, et0_in: values[:et0], precip_in: values[:precip], model: "best_match", hours: 24,
         fetched_at: Time.current)

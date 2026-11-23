@@ -6,7 +6,7 @@ describe('poll', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
-  it('reloads only when one of the pending pivots has landed, once per landing', async () => {
+  it('reloads only when one of the pending systems has landed, once per landing', async () => {
     let updating = [1, 2, 3]
     let pending = [1, 2]
     const check = vi.fn(async () => updating)
@@ -24,7 +24,7 @@ describe('poll', () => {
     await vi.advanceTimersByTimeAsync(1000)
     expect(reload).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(2000)
-    expect(reload).toHaveBeenCalledTimes(1) // pivot 3 isn't on this page
+    expect(reload).toHaveBeenCalledTimes(1) // system 3 isn't on this page
 
     stop()
     updating = []
