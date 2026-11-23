@@ -21,5 +21,6 @@
   "shapeField": "Home East",
   "shapeFieldSystem": "Home pivot",
   "awayField": "South Center",
-  "awaySystem": "South Center (traveler)"
+  "awaySystem": "South Center (traveler)",
+  "coveredField": "Veggie garden"
 }

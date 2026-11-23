@@ -10,6 +10,7 @@
   import { readStored, writeStored } from '@/lib/storage'
   import { count } from '@/lib/text'
   import { currentUnits } from '@/lib/units'
+  import { overlappingPairs, sharePercent } from '@/lib/outlines/overlap'
   import { outlineProblems } from '@/lib/outlines/problems'
   import FarmForm from '@/lib/setup/FarmForm.svelte'
   import FieldForm from '@/lib/setup/FieldForm.svelte'
@@ -100,10 +101,21 @@
     allPivots.some((p) => p.fields.some((f) => f.plantings.some((pl) => pl.year === year - 1))),
   )
 
-  // Fields whose outline isn't with their irrigation system, to fix by hand
-  const outlineIssues = $derived(
-    allPivots.flatMap((pivot) => outlineProblems(pivot, pivot.fields, page.props.auth.user?.unit_system ?? 'imperial')),
-  )
+  // Fields whose outline isn't with their irrigation system, and fields whose outlines overlap (a
+  // duplicate, or one drawn over its neighbor), to fix by hand
+  const outlineIssues = $derived([
+    ...allPivots.flatMap((pivot) =>
+      outlineProblems(pivot, pivot.fields, page.props.auth.user?.unit_system ?? 'imperial'),
+    ),
+    ...overlappingPairs(
+      allPivots.flatMap((pivot) =>
+        pivot.fields.flatMap((field) => (field.boundary ? [{ ...field, boundary: field.boundary }] : [])),
+      ),
+    ).map(({ a, b, share }) => ({
+      fieldId: a.id,
+      message: `${a.name}'s shape overlaps ${b.name}'s (${sharePercent(share)} of the smaller)`,
+    })),
+  ])
 
   type DialogState =
     | { kind: 'farm'; farm?: Farm }
@@ -341,11 +353,11 @@
   >
     <h2 id="outline-issues" class="font-medium">Field shapes to check</h2>
     <p class="text-ink-muted">
-      An irrigation system doesn't move with its field's shape, since its location sets the weather. Move the shape, or
-      the system if it's in the wrong place.
+      A field's shape belongs under its irrigation system, which doesn't move with it, since its location sets the
+      weather; and two fields' shapes shouldn't overlap. Move the shape, or the system if it's in the wrong place.
     </p>
     <ul class="list-disc pl-5">
-      {#each outlineIssues as issue (issue.fieldId)}
+      {#each outlineIssues as issue, position (`${position}:${issue.message}`)}
         <li>
           {issue.message}.
           <Link href={fieldOutline(issue.fieldId, { query: { from: 'setup' } })} class="underline underline-offset-2"

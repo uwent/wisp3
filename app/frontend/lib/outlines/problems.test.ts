@@ -7,6 +7,7 @@ import {
   distanceToBoundaryM,
   formatReach,
   nearestOnSegment,
+  nearestSystemM,
   outlineProblems,
   reachLine,
   systemDistanceM,
@@ -124,5 +125,19 @@ describe('a shape away from its system', () => {
     expect(line.from[0]).toBeCloseTo(-89.49, 6) // the shape's west edge
     expect(line.to[0]).toBeGreaterThan(-89.5)
     expect(line.meters).toBeCloseTo(800 - 396, -1)
+  })
+  it('finds the nearest system as measuring every one would, and none among none', () => {
+    const shape = square(-89.49, 44.0985, 0.003)
+    const systems = [
+      system('center', -89.5, 44.1),
+      system('linear', -89.47, 44.11),
+      system('traveler', -89.6, 44.2),
+      system('drip', -89.488, 44.0995),
+      system('center', -90.5, 45),
+    ]
+    const each = systems.map((s) => systemDistanceM(shape, s))
+    expect(nearestSystemM(shape, systems)).toBe(Math.min(...each))
+    expect(nearestSystemM(shape, systems.slice(1, 3))).toBe(Math.min(...each.slice(1, 3)))
+    expect(nearestSystemM(shape, [])).toBeNull()
   })
 })

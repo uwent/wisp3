@@ -1,19 +1,14 @@
-<script lang="ts" module>
-  /** The daily entry view last chosen in this browser: 'week' takes /daily (the nav's link) to the week */
-  export const DAILY_VIEW_KEY = 'wisp:daily-view'
-</script>
-
 <script lang="ts">
   import { Link } from '@inertiajs/svelte'
 
   import { dailyEntries, dailyEntryWeeks } from '@/routes'
 
-  // Daily entry's Day | Week switch, keeping the date: the day shown, or the week's last
-  // day. The Day link says view=day, which the day page remembers (and never sends on to the week).
+  // Daily entry's Day | Week switch, keeping the date: the day shown, or the week's last day.
+  // Neither is remembered: the nav's Daily entry always opens the day.
   let { view, date }: { view: 'day' | 'week'; date: string } = $props()
 
   const options = $derived([
-    { key: 'day', name: 'Day', href: dailyEntries.show({ query: { date, view: 'day' } }) },
+    { key: 'day', name: 'Day', href: dailyEntries.show({ query: { date } }) },
     { key: 'week', name: 'Week', href: dailyEntryWeeks.show({ query: { date } }) },
   ])
 </script>

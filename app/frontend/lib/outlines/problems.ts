@@ -1,4 +1,6 @@
 import {
+  boundsOf,
+  DEFAULT_RADIUS_FT,
   FEET_PER_METER,
   isPoint,
   KIND_NAMES,
@@ -8,7 +10,7 @@ import {
   pointInPolygon,
   systemName,
 } from '@/lib/geo'
-import { type Boundary, boundaryRing, inBoundary } from '@/lib/boundary'
+import { type Boundary, boundaryBounds, boundaryRing, inBoundary } from '@/lib/boundary'
 import { nearestT, segmentsCross } from '@/lib/planar'
 import type { UnitSystem } from '@/lib/units'
 
@@ -29,6 +31,7 @@ type System = PivotShape & { name: string }
 type Outlined = { id: number; name: string; boundary: Boundary | null }
 
 const rad = (deg: number) => (deg * Math.PI) / 180
+const M_PER_DEG = 111_320
 
 export type Nearest = { point: LngLat; meters: number }
 
@@ -77,27 +80,105 @@ function crosses(a: LngLat[], b: LngLat[]): boolean {
   return false
 }
 
+/** Positions as flat x, y pairs in meters on a plane around an origin (plenty within a few miles; farther, a close estimate) */
+function projected(ring: LngLat[], origin: LngLat): Float64Array {
+  const kx = Math.cos(rad(origin[1])) * M_PER_DEG
+  const xy = new Float64Array(ring.length * 2)
+  ring.forEach(([lng, lat], i) => {
+    xy[2 * i] = (lng - origin[0]) * kx
+    xy[2 * i + 1] = (lat - origin[1]) * M_PER_DEG
+  })
+  return xy
+}
+
+/** The nearest point of a projected ring's edges to x, y: its edge, how far along it, and the squared distance */
+function nearestEdge(x: number, y: number, xy: Float64Array): { edge: number; t: number; d2: number } {
+  let best = { edge: 0, t: 0, d2: Infinity }
+  for (let i = 0; i + 3 < xy.length; i += 2) {
+    const [ax, ay, dx, dy] = [xy[i], xy[i + 1], xy[i + 2] - xy[i], xy[i + 3] - xy[i + 1]]
+    const length2 = dx * dx + dy * dy
+    const t = length2 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / length2)) : 0
+    const [ex, ey] = [ax + t * dx - x, ay + t * dy - y]
+    const d2 = ex * ex + ey * ey
+    if (d2 < best.d2) best = { edge: i / 2, t, d2 }
+  }
+  return best
+}
+
+const along = (ring: LngLat[], { edge, t }: { edge: number; t: number }): LngLat => {
+  const [a, b] = [ring[edge], ring[edge + 1]]
+  return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]
+}
+
 /**
  * The shortest line from a field's shape to its system: from the nearest point of the shape's edge
  * to the system's location (a point kind) or the nearest point of its shape (a pivot or linear),
- * with its length in meters
+ * with its length in meters. Both are projected once onto a plane around the shape, so the many
+ * corner-to-edge distances are plain arithmetic (an import's thousands of shapes).
  */
 export function reachLine(boundary: Boundary, system: PivotShape): { from: LngLat; to: LngLat; meters: number } {
   const outline = boundaryRing(boundary)
   const ring = isPoint(system.kind) ? null : pivotOutline(system)
+  const origin = outline[0]
+  const shapeXY = projected(outline, origin)
   if (!ring) {
     const to: LngLat = [system.longitude, system.latitude]
-    const near = nearestOnRing(to, outline)
-    return { from: near.point, to, meters: near.meters }
+    const point = projected([to], origin)
+    const near = nearestEdge(point[0], point[1], shapeXY)
+    return { from: along(outline, near), to, meters: Math.sqrt(near.d2) }
   }
-  let best = { from: outline[0], to: ring[0], meters: Infinity }
-  for (const corner of ring) {
-    const near = nearestOnRing(corner, outline)
-    if (near.meters < best.meters) best = { from: near.point, to: corner, meters: near.meters }
+  const ringXY = projected(ring, origin)
+  let best = { from: outline[0], to: ring[0], d2: Infinity }
+  for (let k = 0; k < ring.length; k++) {
+    const near = nearestEdge(ringXY[2 * k], ringXY[2 * k + 1], shapeXY)
+    if (near.d2 < best.d2) best = { from: along(outline, near), to: ring[k], d2: near.d2 }
   }
-  for (const corner of outline) {
-    const near = nearestOnRing(corner, ring)
-    if (near.meters < best.meters) best = { from: corner, to: near.point, meters: near.meters }
+  for (let k = 0; k < outline.length; k++) {
+    const near = nearestEdge(shapeXY[2 * k], shapeXY[2 * k + 1], ringXY)
+    if (near.d2 < best.d2) best = { from: outline[k], to: along(ring, near), d2: near.d2 }
+  }
+  return { from: best.from, to: best.to, meters: Math.sqrt(best.d2) }
+}
+
+/** The box a system covers: a center pivot's whole circle (an arc's too), a linear's shape, a point kind's location */
+function systemBox(system: PivotShape): [LngLat, LngLat] {
+  const at: LngLat = [system.longitude, system.latitude]
+  if (isPoint(system.kind)) return [at, at]
+  if (system.kind === 'linear') return boundsOf(pivotOutline(system)!)!
+  const meters = (system.radius_ft ?? DEFAULT_RADIUS_FT) / FEET_PER_METER
+  const [dLng, dLat] = [meters / (Math.cos(rad(at[1])) * M_PER_DEG), meters / M_PER_DEG]
+  return [
+    [at[0] - dLng, at[1] - dLat],
+    [at[0] + dLng, at[1] + dLat],
+  ]
+}
+
+/**
+ * Meters between two boxes (0 where they meet), never more than between anything inside them: a
+ * degree of longitude is taken at the latitude farthest from the equator, where it's shortest
+ */
+function boxGapM([aMin, aMax]: [LngLat, LngLat], [bMin, bMax]: [LngLat, LngLat]): number {
+  const farthest = Math.max(...[aMin[1], aMax[1], bMin[1], bMax[1]].map(Math.abs))
+  const dx = Math.max(0, bMin[0] - aMax[0], aMin[0] - bMax[0]) * Math.cos(rad(farthest)) * M_PER_DEG
+  const dy = Math.max(0, bMin[1] - aMax[1], aMin[1] - bMax[1]) * M_PER_DEG
+  return Math.hypot(dx, dy)
+}
+
+/**
+ * Meters from a shape to the nearest of the systems (systemDistanceM), or null with none. The
+ * systems are tried nearest box first, stopping once a box is farther than the best distance found,
+ * so a county file's shapes each measure only a few.
+ */
+export function nearestSystemM(boundary: Boundary, systems: PivotShape[]): number | null {
+  if (!systems.length) return null
+  const box = boundaryBounds(boundary)
+  const ordered = systems
+    .map((system) => ({ system, gap: boxGapM(box, systemBox(system)) }))
+    .sort((a, b) => a.gap - b.gap)
+  let best = Infinity
+  for (const { system, gap } of ordered) {
+    if (gap >= best) break
+    best = Math.min(best, systemDistanceM(boundary, system))
   }
   return best
 }

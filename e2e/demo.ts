@@ -11,7 +11,8 @@ import names from './demo.json' with { type: 'json' }
 // gaugeFieldSystem). splitPivot: a pivot split into two outlined
 // halves, splitWest and splitEast. shapeField: a field whose shape the tests replace, away from
 // the KML and shapefile fixtures (near Arlington). awayField: a field on a traveler more than a
-// kilometer from the KML fixture's field.
+// kilometer from the KML fixture's field. coveredField: an outlined field the shapefile fixture's
+// first shape (Home North) covers, so the import starts it as an update.
 export const DEMO = names
 
 /** A name as it reads inside a RegExp */

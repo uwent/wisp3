@@ -1,14 +1,15 @@
 # Field outlines for many fields at once: a file of shapes is read in the
 # browser (a zipped shapefile, GeoJSON or KML), and each shape is matched to one of the operation's
 # fields or makes a new field under an irrigation system (OutlineImport). Only the outlines and the
-# new fields' values are sent.
+# new fields' values are sent. The fields' outlines come along, so a shape covering one is matched
+# to it and a new field overlapping one is pointed out.
 class OutlineImportsController < AuthenticatedController
   def new
     pivots = Current.group.pivots.includes(:farm).sort_by { |pivot| [pivot.farm.name, pivot.name] }
     render inertia: "Setup/ImportOutlines", props: {
       pivots: pivots.map { |pivot| pivot.slice(:id, :name, :kind_name, *PivotSerializer::SHAPE).merge(farm: pivot.farm.name) },
       fields: Current.group.fields.order(:name).map do |field|
-        field.slice(:id, :name, :pivot_id, :area_acres).merge(outlined: !field.boundary.nil?)
+        field.slice(:id, :name, :pivot_id, :area_acres, :boundary)
       end,
       soil_types: ReferenceProps.soil_types,
       default_soil_type_id: ReferenceProps.default_soil_type_id

@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte'
+  import { untrack } from 'svelte'
   import { Form, Link, router } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
-  import DailyViewSwitch, { DAILY_VIEW_KEY } from '@/lib/components/DailyViewSwitch.svelte'
+  import DailyViewSwitch from '@/lib/components/DailyViewSwitch.svelte'
   import IrrigationCalculatorDialog from '@/lib/components/IrrigationCalculatorDialog.svelte'
   import NumberField from '@/lib/components/NumberField.svelte'
   import {
@@ -37,27 +37,12 @@
   import { count } from '@/lib/text'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { currentUnits } from '@/lib/units'
-  import {
-    dailyEntries,
-    dailyEntryWeeks,
-    fields as fieldRoutes,
-    newQuickSetup,
-    plantings as plantingRoutes,
-  } from '@/routes'
+  import { dailyEntries, fields as fieldRoutes, newQuickSetup, plantings as plantingRoutes } from '@/routes'
 
   let { date, farms }: { date: string; farms: DayFarm[] } = $props()
 
   const units = $derived(currentUnits())
   const today = todayDate()
-
-  // Day | Week: the Day switch (view=day) remembers the day view; daily entry reached
-  // with no date or view (the nav's link) goes on to the week when that was the last chosen
-  onMount(() => {
-    const query = new URLSearchParams(location.search)
-    if (query.get('view') === 'day') writeStored(DAILY_VIEW_KEY, 'day')
-    else if (!query.has('date') && readStored(DAILY_VIEW_KEY) === 'week')
-      router.visit(dailyEntryWeeks.show().url, { replace: true })
-  })
 
   // Typed values not yet saved: set by any input, cleared by a successful save
   let dirty = $state(false)

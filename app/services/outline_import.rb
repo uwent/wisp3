@@ -20,7 +20,7 @@ class OutlineImport
       @rows.each_with_index do |row, index|
         field = field_for(row)
         if row[:field_id].present? && seen.key?(field.id)
-          @errors["rows.#{index}.field_id"] = ["is also in row #{seen[field.id] + 1}"]
+          @errors["rows.#{index}.field_id"] = ["is chosen for another shape too"]
           next
         end
         seen[field.id] = index if field.persisted?

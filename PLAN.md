@@ -18,32 +18,36 @@ This file is where things stand and what's next. Rewrite the handoff at the end 
 
 Code comments say what the code is for; they cite a doc only for a decision or legacy ID (`D15`, `C22`, `Q10`) or a design doc, never a phase.
 
-## Handoff (2026-11-22)
+## Handoff (2026-11-23)
 
-**Where things stand.** Production is `https://wisp.cals.wisc.edu` (EC2 t3.medium and RDS db.t4g.small, mail through SES); staging is `dev.wisp.cals.wisc.edu`. Legacy is at `https://old.wisp.cals.wisc.edu` until it's deleted on December 31, 2027. Growers set up their operations over the winter; Ben sends the announcement email and holds a training session. Production runs `main` as of `dae08af`; `main` has moved on with C22–C25, the rainfall setting's move, the admin tools, the polish before grower feedback (`docs/plans/8-polish.md`) and D15. The planned work is done; what remains of launch preparation is Ben's (TODO.md: the screen reader walkthrough, the wording review, the RDS restore test).
+**Where things stand.** Production is `https://wisp.cals.wisc.edu` (EC2 t3.medium and RDS db.t4g.small, mail through SES); staging is `dev.wisp.cals.wisc.edu`. Legacy is at `https://old.wisp.cals.wisc.edu` until it's deleted on December 31, 2027. Growers set up their operations over the winter; Ben sends the announcement email and holds a training session. Production runs `main` as of `dae08af`; `main` has moved on with C22–C25, the rainfall setting's move, the admin tools, the polish before grower feedback (`docs/plans/8-polish.md`), D15 and the outline import's rework. The planned work is done; what remains of launch preparation is Ben's (TODO.md: the screen reader walkthrough, the wording review, the RDS restore test).
 
-**This session (2026-11-22):** the docs were reorganized (branch `docs-reorg`, merged to `main`): `PLAN.md` became this status file; its decisions and questions moved to `docs/decisions.md`, the legacy audit to `docs/legacy-audit.md`, the original design and the phase plans to `docs/plans/` (frozen, regrouped from phases 0–9 into eight phases by theme, with a README mapping the old numbers; the earlier handoffs' session notes are at the end of `8-polish.md`); `docs/engine.md` describes the balance as it works now. Code comments no longer cite phases or `PLAN.md` sections: they describe the code, and point to `docs/decisions.md`, `docs/legacy-audit.md`, `docs/engine.md` or `docs/architecture.md` where the reason lives there.
+**This session (2026-11-22 to 23):** Ben's open choices were settled (below), and Setup's outline import was reworked (`docs/architecture.md`, Field outlines): shapes match fields by overlap as well as name, cards (Skip | New field | Update field) only for shapes going somewhere, the rest skipped in a searchable table, overlaps with existing fields or other shapes warned of, dropdowns nearest first, the map beside the cards, at most a file's first 1,000 shapes, and the geometry made fast enough for a county file (shapes kept out of deep `$state`; a 38-shape file took 6 s to show, now well under a second). Setup also lists saved fields whose shapes overlap. Daily entry no longer remembers Day or Week. Before that, the docs were reorganized (`PLAN.md` as status; decisions, the legacy audit, the plans and the engine in `docs/`).
 
 **Next:**
 1. **Deploy `main`** (`bin/production deploy`) before the announcement: C22–C25 and the About page, the rainfall setting's migration, the admin tools (a migration), the polish before grower feedback (`docs/plans/8-polish.md`), and D15's two migrations (the second reports any irrigation it couldn't move).
 2. **Legacy:** commit, push and `cap production deploy` the retirement changes; take the archive `pg_dump` before it's deleted (TODO.md).
 3. **Ben** (TODO.md): the RDS restore test; the announcement email and training session; GA's settings and the privacy wording; the wording review (C21's included) and the screen reader walkthrough.
-4. **Code during the winter beta:** Ben's open choices (below); Wisconsin season lengths for the warm-climate crops (needs extension sources; `docs/plans/4-crop-and-weather-science.md`, Season end dates); whatever the beta and training session turn up.
+4. **Code during the winter beta:** the bulk import that makes irrigation systems too (backlog, first); Wisconsin season lengths for the warm-climate crops (needs extension sources; `docs/plans/4-crop-and-weather-science.md`, Season end dates); whatever the beta and training session turn up.
 
 ## Ben's open choices
 
-From the polish before grower feedback (`docs/plans/8-polish.md`):
-- The remembered Week view redirects from the day page after it loads (a brief flash). Keep, server-side instead (a cookie), or don't remember at all?
-- Setup's import still gives every *usable* shape a card and a soil survey (a large CLU export of thousands of usable shapes); cap it, or start unmatched shapes as Skip?
-- The home-screen icon's phone bar is the branding bar's red (`theme-color` in `application.html.erb`); the brand blue instead?
-- Duplicate (an irrigation system, in Setup) is open to any member, as Add is; owners only?
-- Needs water first applies to cards as well as the list (one flat grid). Keep, or list only?
-- With growers: check the irrigation calculator against a real sprinkler chart, and ask the beta whether they know their pivot's depth at 100% or its circle hours.
+None at the moment.
+
+Settled 2026-11-22 (from `docs/plans/8-polish.md`): Setup's import gives cards only to matched and new shapes, the rest skipped in one searchable table with Add, matches shapes to fields by overlap as well as name, warns of overlaps, and sits beside its map (done); the Day | Week choice isn't remembered (done: no redirect, the nav opens the day); the phone bar stays the branding bar's red (the manifest's `theme_color` now matches); Duplicate stays open to any member, as Add is; Needs water first stays on cards and the list.
+
+## Beta feedback prompts
+
+Questions to put to growers during the winter beta and the training session.
+
+- Check the irrigation calculator against a real sprinkler chart.
+- Do they know their pivot's depth at 100%, or its circle hours?
 
 ## Backlog
 
 After launch, roughly in order of value; check with the beta before building most of it. Phase references use the old numbers, which `docs/plans/README.md` maps; § numbers point into `docs/plans/design.md`.
 
+- **Next (Ben, 2026-11-22): a fuller bulk import that makes irrigation systems as well as fields.** Setup's import can only put a new field under an existing system, so a grower has to set up every system first. Make a system from the import, at least a Location to finish later in Setup. To design: several shapes sharing one new system (two half sections under one pivot), where the system's location goes (the shapes' center, or a pin the grower places), and its kind and size.
 - Forecast accuracy tracking (stored forecasts vs finalized weather), from the daily archive started in Phase 8 E: by lead time, for ET0 and rain, and whether the ensemble's spread covers what happened. Part of the evaluation pages below.
 - **Model evaluation and usage insights (admin pages; Ben, 2026-11-10; ideas, not designed).** After a season of data, an admin section that shows how WISP's models compare with what happened and with what growers entered, as anonymised statistics and charts, and how WISP is used:
   - **Forecasts:** the archived forecasts (Phase 8 E) against the finalized weather, by lead time, for ET0 and rain; the ensemble band's coverage (how often the outcome fell inside P10–P90), which decides Q10's revisit (ratio scaling vs per member).

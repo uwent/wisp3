@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte'
+  import { untrack } from 'svelte'
   import { Form, Link } from '@inertiajs/svelte'
 
   import Button from '@/lib/components/Button.svelte'
-  import DailyViewSwitch, { DAILY_VIEW_KEY } from '@/lib/components/DailyViewSwitch.svelte'
+  import DailyViewSwitch from '@/lib/components/DailyViewSwitch.svelte'
   import IrrigationCalculatorDialog from '@/lib/components/IrrigationCalculatorDialog.svelte'
   import {
     cellErrors,
@@ -24,7 +24,6 @@
   } from '@/lib/dailyWeek'
   import { addDays, formatDate, today as todayDate } from '@/lib/dates'
   import { systemName } from '@/lib/geo'
-  import { writeStored } from '@/lib/storage'
   import { count } from '@/lib/text'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { currentUnits } from '@/lib/units'
@@ -40,8 +39,6 @@
   const after = $derived(weekOf(addDays(date, 7)))
   // One week ahead at most: planned irrigation
   const canGoOn = $derived(date < today)
-
-  onMount(() => writeStored(DAILY_VIEW_KEY, 'week'))
 
   // What's typed in every cell; set from what's saved, again after a save, not whenever the page's
   // data changes

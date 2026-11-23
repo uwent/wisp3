@@ -26,6 +26,8 @@
     actions,
     searchAlso,
     selected,
+    showSelected = false,
+    rowId,
   }: {
     rows: T[]
     columns: Column<T>[]
@@ -49,6 +51,10 @@
     searchAlso?: (row: T) => string[]
     /** The row to highlight (the one chosen), across its pinned cells too */
     selected?: (row: T) => boolean
+    /** The selected row is drawn first when the search or limit would leave it out (a shape picked on a map) */
+    showSelected?: boolean
+    /** An id for each row's element, to scroll to it */
+    rowId?: (row: T) => string
   } = $props()
 
   let query = $state('')
@@ -63,13 +69,15 @@
   )
   const sortColumn = $derived(sort && columns.find((column) => column.key === sort!.key))
   const ordered = $derived(sortColumn && sort ? sortRows(filtered, sortColumn.value, sort.direction) : filtered)
-  const shown = $derived(limit !== undefined && ordered.length > limit ? ordered.slice(0, limit) : ordered)
+  const limited = $derived(limit !== undefined && ordered.length > limit ? ordered.slice(0, limit) : ordered)
+  const chosenRow = $derived(showSelected && selected ? rows.find(selected) : undefined)
+  const shown = $derived(chosenRow && !limited.includes(chosenRow) ? [chosenRow, ...limited] : limited)
   const count = (n: number) => n.toLocaleString('en-US')
   const status = $derived(
-    shown.length < ordered.length
-      ? `Showing ${count(shown.length)} of ${count(ordered.length)}${query.trim() ? ` matching (${count(rows.length)} in all)` : ''}: search to narrow`
+    limited.length < ordered.length
+      ? `Showing ${count(limited.length)} of ${count(ordered.length)}${query.trim() ? ` matching (${count(rows.length)} in all)` : ''}: search to narrow`
       : query.trim()
-        ? `${count(shown.length)} of ${count(rows.length)} shown`
+        ? `${count(limited.length)} of ${count(rows.length)} shown`
         : '',
   )
 
@@ -184,7 +192,7 @@
       <tbody class="divide-y divide-line">
         {#each shown as row (rowKey(row))}
           {@const chosen = selected?.(row) ?? false}
-          <tr class="{chosen ? 'bg-brand-50' : ''} {rowClass?.(row) ?? ''}">
+          <tr id={rowId?.(row)} class="{chosen ? 'bg-brand-50' : ''} {rowClass?.(row) ?? ''}">
             {#each columns as column (column.key)}
               <td
                 class="px-3 py-2 {alignClass[column.align ?? 'left']} {nowrap ? 'whitespace-nowrap' : ''} {pinClass(

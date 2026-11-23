@@ -1,31 +1,49 @@
 <script lang="ts">
+  import { tick } from 'svelte'
   import { Form, Link, page } from '@inertiajs/svelte'
-  import { systemName } from '@/lib/geo'
+  import { isPoint, systemName } from '@/lib/geo'
 
   import Button from '@/lib/components/Button.svelte'
+  import DataTable from '@/lib/components/DataTable.svelte'
+  import SegmentedChoice from '@/lib/components/SegmentedChoice.svelte'
+  import Spinner from '@/lib/components/Spinner.svelte'
   import SelectField from '@/lib/components/SelectField.svelte'
   import TextField from '@/lib/components/TextField.svelte'
+  import { type Boundary, boundaryCenter } from '@/lib/boundary'
   import type { PivotShape } from '@/lib/geo'
+  import { type FieldCandidate, fieldCandidates, systemCandidates } from '@/lib/outlines/candidates'
   import ImportMap from '@/lib/outlines/ImportMap.svelte'
-  import { type Choice, initialChoices, suggestSystem } from '@/lib/outlines/matching'
+  import { ImportRow } from '@/lib/outlines/importRow.svelte'
+  import { type Choice, initialChoices, systemSuggester } from '@/lib/outlines/matching'
   import { forgetKept, type KeptFile, type KeptShape, keepShapes, readAt, readKept } from '@/lib/outlines/kept'
-  import { unusableSummary } from '@/lib/outlines/picker'
+  import { attributeValue, unusableSummary } from '@/lib/outlines/picker'
+  import { OVERLAP_WARNING_SHARE, overlappingPairs, sharePercent } from '@/lib/outlines/overlap'
+  import { formatReach, nearestSystemM } from '@/lib/outlines/problems'
   import { ACCEPT, type ImportedShape, readOutlineFileResult, shapeName, shapeNotes } from '@/lib/outlines/read'
   import type { Reference } from '@/lib/outlines/references'
   import { formatArea } from '@/lib/plantings'
   import { fetchSoilSurvey, suggestSoil } from '@/lib/soils'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { currentUnits } from '@/lib/units'
+  import type { Column } from '@/lib/table'
   import { outlineImport, setup } from '@/routes'
   import type { SoilType } from '@/types/serializers'
 
   type System = PivotShape & { id: number; name: string; kind_name: string; farm: string }
-  type ExistingField = { id: number; name: string; pivot_id: number; area_acres: number | null; outlined: boolean }
+  type ExistingField = {
+    id: number
+    name: string
+    pivot_id: number
+    area_acres: number | null
+    boundary: Boundary | null
+  }
 
-  // Field outlines for many fields from one file: read in the browser, each
-  // shape matched to a field of the same name or made a new field under the system it sits under,
-  // the grower adjusting either, then saved together. New fields take their outline's acres and the
-  // soil survey's main soil.
+  // Field outlines for many fields from one file: read in the browser, each shape matched to the
+  // field of the same name or whose outline it covers, or made a new field under the system it sits
+  // under, the grower adjusting any (Skip | New field | Update field), then saved together. A shape
+  // overlapping a field, or another shape going in, says so, to keep duplicates out. New fields take
+  // their outline's acres and the soil survey's main soil. Only the shapes going somewhere get a card; the rest (a county file's
+  // thousands) start as Skip in one searchable list, from which the grower adds any that are theirs.
   let {
     pivots,
     fields,
@@ -40,23 +58,14 @@
 
   const units = $derived(currentUnits())
 
-  type Row = {
-    shape: ImportedShape
-    systemId: number | null
-    choice: Choice
-    name: string
-    soilTypeId: number
-    soil: 'default' | 'survey' | 'chosen'
-  }
-
   let fileName = $state<string | null>(null)
   let fileKey = $state(0)
-  let reading = $state(false)
   let fileError = $state<string | null>(null)
   let skipped = $state(0)
   let keys = $state<string[]>([])
   let nameKey = $state<string | null>(null)
-  let rows = $state<Row[]>([])
+  // Replaced whole, never changed in place; each row's own state is reactive (ImportRow)
+  let rows = $state.raw<ImportRow[]>([])
   let selected = $state<number | null>(null)
   let useArea = $state(false)
   let saved = $state(false)
@@ -66,21 +75,47 @@
   )
 
   const systemLabel = (system: System) => `${system.farm} › ${systemName(system)}`
-  const systemOptions = $derived([
+  const fieldsById = $derived(new Map(fields.map((field) => [field.id, field])))
+  const systemsById = $derived(new Map(pivots.map((system) => [system.id, system])))
+
+  // Where a shape goes, in the map's colors
+  const CHOICES: { kind: Choice['kind']; label: string; color: string }[] = [
+    { kind: 'skip', label: 'Skip', color: 'var(--color-ink-muted)' },
+    { kind: 'new', label: 'New field', color: 'var(--color-status-ok)' },
+    { kind: 'field', label: 'Update field', color: 'var(--color-chart-depth-2)' },
+  ]
+
+  // Each shape's fields and systems, nearest first, worked out once per shape (lib/outlines/candidates.ts)
+  const fieldsNear = new WeakMap<object, FieldCandidate[]>()
+  function fieldsFor(shape: ImportedShape) {
+    if (!fieldsNear.has(shape)) fieldsNear.set(shape, fieldCandidates(shape.boundary, fields, pivots))
+    return fieldsNear.get(shape)!
+  }
+  const systemsNear = new WeakMap<object, { id: number; meters: number }[]>()
+  function systemsFor(shape: ImportedShape) {
+    if (!systemsNear.has(shape)) systemsNear.set(shape, systemCandidates(shape.boundary, pivots))
+    return systemsNear.get(shape)!
+  }
+  const SHOWN_SHARE = 0.01
+  const reach = (meters: number) => (Number.isFinite(meters) ? formatReach(meters, units.system) : '')
+  const fieldOptionsFor = (shape: ImportedShape) =>
+    fieldsFor(shape).map(({ id, share, meters }) => {
+      const field = fieldsById.get(id)!
+      const system = systemsById.get(field.pivot_id)
+      const where = share >= SHOWN_SHARE ? `overlaps ${sharePercent(share)}` : reach(meters)
+      return {
+        value: String(id),
+        label: `${field.name}${system ? ` (${system.name})` : ''}${where ? ` · ${where}` : ''}`,
+      }
+    })
+  const systemOptionsFor = (shape: ImportedShape) => [
     { value: '', label: 'Choose an irrigation system' },
-    ...pivots.map((system) => ({ value: String(system.id), label: systemLabel(system) })),
-  ])
-  const fieldOptions = $derived([
-    { value: 'skip', label: 'Skip this shape' },
-    { value: 'new', label: 'New field' },
-    ...fields.map((field) => {
-      const system = pivots.find((p) => p.id === field.pivot_id)
-      return { value: `field:${field.id}`, label: system ? `${field.name} (${system.name})` : field.name }
+    ...systemsFor(shape).map(({ id, meters }) => {
+      const system = systemsById.get(id)!
+      const where = meters > 0 ? reach(meters) : isPoint(system.kind) ? 'inside' : 'overlaps'
+      return { value: String(id), label: `${systemLabel(system)} · ${where}` }
     }),
-  ])
-  const choiceValue = (choice: Choice) => (choice.kind === 'field' ? `field:${choice.fieldId}` : choice.kind)
-  const parseChoice = (value: string): Choice =>
-    value.startsWith('field:') ? { kind: 'field', fieldId: Number(value.slice(6)) } : { kind: value as 'skip' | 'new' }
+  ]
 
   const references = $derived<Reference[]>(pivots.map((system) => ({ name: system.name, shape: system })))
 
@@ -93,29 +128,55 @@
   // file's thousands are one line saying why
   let unusable = $state<KeptShape[]>([])
   const UNUSABLE_LISTED = 200
+  // Only a file's first shapes are read: even a large operation has at most a few hundred fields, and
+  // a file of thousands (a county's or a state's field boundaries) is better cut down where it came from
+  const MAX_SHAPES = 1000
+  let discarded = $state(0)
+  const OTHERS_LISTED = 200
+
+  // What's in progress (reading the file, matching its shapes), shown with a spinner. Each step
+  // waits for a frame first, so the message is on screen before the work holds up the page.
+  let busy = $state<string | null>(null)
+  const painted = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve)))
+  const count = (n: number, one: string, many: string) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
 
   async function readFile(event: Event) {
     const input = event.currentTarget as HTMLInputElement
     const file = input.files?.[0]
     input.value = ''
     if (!file) return
-    reading = true
     fileError = null
+    busy = `Reading ${file.name}…`
+    await painted()
     const read = await readOutlineFileResult(file)
-    reading = false
-    if ('error' in read) return (fileError = read.error)
+    if ('error' in read) {
+      busy = null
+      fileError = read.error
+      return
+    }
     const { result } = read
     // This file is kept in place of the last one
     if (result.shapes.length > 1) keepShapes(groupId, { fileName: file.name, ...result })
     else forgetKept(groupId)
     kept = null
-    load({ fileName: file.name, ...result })
+    await loadShowing({ fileName: file.name, ...result })
   }
 
-  function useKept() {
+  async function useKept() {
     if (!kept) return
-    load(kept)
+    const file = kept
     kept = null
+    await loadShowing(file)
+  }
+
+  async function loadShowing(file: Parameters<typeof load>[0]) {
+    busy = `Matching ${count(Math.min(file.shapes.length, MAX_SHAPES), 'shape', 'shapes')} to your fields and irrigation systems…`
+    await painted()
+    try {
+      load(file)
+    } finally {
+      busy = null
+    }
   }
 
   function forgetShapes() {
@@ -124,47 +185,59 @@
   }
 
   function load(file: { fileName: string; nameKey: string | null; skipped: number; shapes: KeptShape[] }) {
+    const shapes = file.shapes.slice(0, MAX_SHAPES)
     fileName = file.fileName
     skipped = file.skipped
-    keys = [...new Set(file.shapes.flatMap((shape) => Object.keys(shape.properties)))]
+    discarded = file.shapes.length - shapes.length
+    keys = [...new Set(shapes.flatMap((shape) => Object.keys(shape.properties)))]
     nameKey = file.nameKey
-    unusable = file.shapes.filter((shape) => shape.problems.length || !shape.boundary)
-    startRows(file.shapes.filter((shape): shape is ImportedShape => !shape.problems.length && shape.boundary !== null))
+    unusable = shapes.filter((shape) => shape.problems.length || !shape.boundary)
+    startRows(shapes.filter((shape): shape is ImportedShape => !shape.problems.length && shape.boundary !== null))
     fileKey++
   }
 
   function startRows(shapes: ImportedShape[]) {
+    const suggest = systemSuggester(pivots)
     const named = shapes.map((shape) => ({
       shape,
       name: shapeName(shape, nameKey),
-      systemId: suggestSystem(shape.boundary, pivots),
+      systemId: suggest(shape.boundary),
     }))
     const choices = initialChoices(
-      named.map(({ name, systemId, shape }) => ({ name, systemId, problems: shape.problems })),
+      named.map(({ name, systemId, shape }) => ({
+        name,
+        systemId,
+        problems: shape.problems,
+        boundary: shape.boundary,
+      })),
       fields,
     )
-    rows = named.map(({ shape, name, systemId }, index) => ({
-      shape,
-      systemId,
-      choice: choices[index],
-      name: name || `Field ${index + 1}`,
-      soilTypeId: default_soil_type_id ?? soil_types[0]?.id,
-      soil: 'default',
-    }))
+    rows = named.map(
+      ({ shape, name, systemId }, index) =>
+        new ImportRow(shape, {
+          systemId,
+          choice: choices[index],
+          name: name || `Field ${index + 1}`,
+          soilTypeId: default_soil_type_id ?? soil_types[0]?.id,
+        }),
+    )
     selected = null
     surveyNewRows()
   }
 
-  // A different name attribute renames the shapes and matches them again
+  // A different name attribute renames the shapes: the cards stay as they are (a name the grower
+  // typed for a new field too), re-sorted by the new names; nothing is matched again
   function changeNameKey(key: string) {
     nameKey = key || null
-    startRows(rows.map((row) => row.shape))
+    rows.forEach((row, index) => {
+      if (!row.nameEdited) row.name = shapeName(row.shape, nameKey) || `Field ${index + 1}`
+    })
   }
 
   // The soil survey's main soil for each new field, one at a time, until the grower picks one. A call
-  // while a run is going (a row made new, another file or name attribute) has the run start over once
-  // it's through, so rows behind it aren't missed. Each shape's answer is kept (null: none, or the
-  // survey couldn't be reached), so rows made again for another name attribute don't ask twice.
+  // while a run is going (a row made new, another file) has the run start over once it's through, so
+  // rows behind it aren't missed. Each shape's answer is kept (null: none, or the survey couldn't be
+  // reached), so a shape skipped and made new again doesn't ask twice.
   let surveying = false
   let again = false
   const surveyed = new WeakMap<object, number | null>()
@@ -205,9 +278,134 @@
     }
   }
 
-  function choose(index: number, value: string) {
-    rows[index].choice = parseChoice(value)
-    if (rows[index].choice.kind === 'new') surveyNewRows()
+  // The cards in order: by name, or north to south (by the shape's center)
+  let cardOrder = $state<'name' | 'north'>('north')
+  const titleOf = (row: ImportRow) => shapeName(row.shape, nameKey) || 'Unnamed shape'
+  const cards = $derived.by(() => {
+    const carded = rows.flatMap((row, index) => (row.carded ? [{ row, index }] : []))
+    return cardOrder === 'name'
+      ? carded.toSorted((a, b) => titleOf(a.row).localeCompare(titleOf(b.row), undefined, { numeric: true }))
+      : carded
+          .map((card) => ({ card, latitude: boundaryCenter(card.row.shape.boundary)[1] }))
+          .toSorted((a, b) => b.latitude - a.latitude)
+          .map(({ card }) => card)
+  })
+
+  // The shapes without a card, nearest the operation's systems first. Each shape's distance is worked
+  // out once (null with no systems), not again for another name attribute.
+  type OtherRow = { index: number; name: string; acres: number; meters: number | null; shape: ImportedShape }
+  const nearest = new WeakMap<object, number | null>()
+  function nearestM(shape: ImportedShape) {
+    if (!nearest.has(shape)) {
+      nearest.set(shape, nearestSystemM(shape.boundary, pivots))
+    }
+    return nearest.get(shape) ?? null
+  }
+  const others = $derived(
+    rows.flatMap((row, index): OtherRow[] =>
+      row.carded
+        ? []
+        : [
+            {
+              index,
+              name: shapeName(row.shape, nameKey),
+              acres: row.shape.acres,
+              meters: nearestM(row.shape),
+              shape: row.shape,
+            },
+          ],
+    ),
+  )
+  let othersSort = $state<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'distance', direction: 'asc' })
+  const otherColumns = $derived<Column<OtherRow>[]>([
+    {
+      key: 'name',
+      label: 'Name',
+      value: (row) => row.name || null,
+      text: (row) => row.name || 'Unnamed shape',
+      searchable: true,
+    },
+    {
+      key: 'area',
+      label: 'Area',
+      value: (row) => row.acres,
+      text: (row) => formatArea(units, row.acres),
+      align: 'right',
+      firstDirection: 'desc',
+    },
+    {
+      key: 'distance',
+      label: 'Nearest system',
+      value: (row) => row.meters,
+      text: (row) => (row.meters === null ? '' : formatReach(row.meters, units.system)),
+      align: 'right',
+    },
+    { key: 'add', label: '', value: () => null, sortable: false },
+  ])
+  // The search also finds the attributes not shown, so a CLU number finds its shape
+  const otherAttributes = (row: OtherRow) =>
+    keys.filter((key) => key !== nameKey).map((key) => String(attributeValue(row.shape.properties[key]) ?? ''))
+
+  /** Gives a shape a card as a new field (asking the soil survey), and shows it */
+  function add(index: number) {
+    rows[index].carded = true
+    rows[index].choice = { kind: 'new' }
+    surveyNewRows()
+    pick(index)
+  }
+
+  // Update picks the field last chosen, else the nearest no other shape updates
+  function setKind(index: number, kind: Choice['kind']) {
+    const row = rows[index]
+    if (kind === 'field') {
+      const taken = (id: number) =>
+        rows.some((other, i) => i !== index && other.choice.kind === 'field' && other.choice.fieldId === id)
+      const candidates = fieldsFor(row.shape)
+      const id = row.lastFieldId ?? (candidates.find((c) => !taken(c.id)) ?? candidates[0])?.id
+      if (id === undefined) return
+      row.choice = { kind: 'field', fieldId: id }
+    } else {
+      row.choice = { kind }
+    }
+    if (kind === 'new') surveyNewRows()
+  }
+
+  function chooseField(index: number, id: number) {
+    rows[index].choice = { kind: 'field', fieldId: id }
+    rows[index].lastFieldId = id
+  }
+
+  // Shapes going in that overlap each other, by row
+  const shapeOverlaps = $derived.by(() => {
+    const byRow: Record<number, { other: number; share: number }[]> = {}
+    const outlines = included.map(({ row, index }) => ({ id: index, boundary: row.shape.boundary }))
+    for (const { a, b, share } of overlappingPairs(outlines)) {
+      ;(byRow[a.id] ??= []).push({ other: b.id, share })
+      ;(byRow[b.id] ??= []).push({ other: a.id, share })
+    }
+    return byRow
+  })
+
+  type Warning = { text: string; update?: ExistingField }
+  /** What a card warns of: fields its shape overlaps (but the one it updates), other shapes going in it overlaps, and an update far from the field's shape now */
+  function warningsFor(row: ImportRow, index: number): Warning[] {
+    if (row.choice.kind === 'skip') return []
+    const target = row.choice.kind === 'field' ? row.choice.fieldId : null
+    const warnings: Warning[] = fieldsFor(row.shape)
+      .filter(({ id, share }) => share >= OVERLAP_WARNING_SHARE && id !== target)
+      .map(({ id, share }) => {
+        const field = fieldsById.get(id)!
+        return { text: `Overlaps ${field.name} (${sharePercent(share)})`, update: field }
+      })
+    for (const { other, share } of shapeOverlaps[index] ?? [])
+      warnings.push({ text: `Overlaps the shape ${titleOf(rows[other])} (${sharePercent(share)})` })
+    if (target !== null) {
+      const field = fieldsById.get(target)
+      const candidate = fieldsFor(row.shape).find(({ id }) => id === target)
+      if (field?.boundary && candidate && candidate.share < SHOWN_SHARE)
+        warnings.push({ text: `${reach(candidate.meters)} from ${field.name}'s shape now` })
+    }
+    return warnings
   }
 
   // A field chosen in two rows: each later row, by the earlier row it repeats
@@ -242,9 +440,15 @@
     return error === undefined ? undefined : [error].flat()[0]
   }
 
-  function pick(index: number) {
+  // A shape picked on the map, or added: its card, or for a skipped shape its row in the skipped
+  // shapes' table (opened, the row drawn even if the search or limit would leave it out), scrolled to
+  let othersOpen = $state(false)
+  async function pick(index: number) {
     selected = index
-    document.getElementById(`shape-${index}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    if (!rows[index].carded) othersOpen = true
+    await tick()
+    const id = rows[index].carded ? `shape-${index}` : `other-${index}`
+    document.getElementById(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }
 </script>
 
@@ -262,28 +466,39 @@
   </p>
 </div>
 
-<div class="flex flex-wrap items-center gap-3">
+{#snippet filePicker(label: string, variant: 'primary' | 'secondary')}
   <label
-    class="inline-flex cursor-pointer items-center rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white
-      focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 hover:bg-brand-700
-      dark:text-surface"
+    class="inline-flex cursor-pointer items-center rounded-md text-sm font-medium focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500
+      {variant === 'primary'
+      ? 'bg-brand-600 px-4 py-2 text-white hover:bg-brand-700 dark:text-surface'
+      : 'border border-line bg-surface-raised px-3 py-1 text-ink hover:bg-surface'}
+      {busy ? 'pointer-events-none opacity-60' : ''}"
   >
-    {reading ? 'Reading…' : fileName ? 'Choose another file' : 'Choose a file'}
-    <input type="file" accept={ACCEPT} class="sr-only" disabled={reading} onchange={readFile} />
+    {label}
+    <input type="file" accept={ACCEPT} class="sr-only" disabled={!!busy} onchange={readFile} />
   </label>
-  {#if fileName}<span class="text-sm text-ink-muted">{fileName}</span>{/if}
-</div>
-{#if fileError}<p class="text-sm text-status-irrigate-ink" role="alert">{fileError}</p>{/if}
+{/snippet}
 
-{#if kept && !fileName}
+{#if kept && !fileName && !busy}
   <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line bg-surface-raised p-4 text-sm">
-    <p>
-      {`The ${kept.shapes.length.toLocaleString('en-US')} shapes from ${kept.fileName} (${readAt(kept.savedAt)}) are still here.`}
+    <p class="basis-full">
+      {`The ${count(kept.shapes.length, 'shape', 'shapes')} from ${kept.fileName} (${readAt(kept.savedAt)}) are still here.`}
     </p>
-    <Button type="button" variant="secondary" class="px-3 py-1" onclick={useKept}>Use these shapes</Button>
-    <Button type="button" variant="ghost" class="px-3 py-1" onclick={forgetShapes}>Forget these shapes</Button>
+    <Button type="button" class="px-3 py-1" onclick={useKept}>Use these shapes</Button>
+    <Button type="button" variant="ghost" class="px-3 py-1" onclick={forgetShapes}>Forget this file</Button>
+    {@render filePicker('Upload a new file', 'secondary')}
+  </div>
+{:else}
+  <div class="flex flex-wrap items-center gap-3">
+    {@render filePicker(fileName ? 'Choose another file' : 'Choose a file', 'primary')}
+    {#if fileName && !busy}<span class="text-sm text-ink-muted">{fileName}</span>{/if}
   </div>
 {/if}
+<!-- Always there, so screen readers announce its text when it changes -->
+<p class="flex items-center gap-2 text-sm {busy ? 'pt-2' : 'sr-only'}" role="status">
+  {#if busy}<Spinner />{busy}{/if}
+</p>
+{#if fileError}<p class="text-sm text-status-irrigate-ink" role="alert">{fileError}</p>{/if}
 
 {#if unusable.length}
   <details class="rounded-lg border border-line bg-surface-raised p-4 text-sm">
@@ -305,160 +520,280 @@
   </details>
 {/if}
 
+{#if discarded}
+  <p class="text-sm text-status-caution-ink" role="alert">
+    {`This file has ${count(discarded + MAX_SHAPES, 'shape', 'shapes')}. WISP read the first ${MAX_SHAPES.toLocaleString('en-US')} and discarded the other ${discarded.toLocaleString('en-US')}; to import fields among those, export a file of just your farm's fields.`}
+  </p>
+{/if}
+
 {#if rows.length}
   <div class="space-y-3">
     <p class="text-sm" aria-live="polite">
       {rows.length === 1 ? 'One shape' : `${rows.length.toLocaleString('en-US')} shapes`}{unusable.length
         ? ' that can be used'
         : ''}{skipped ? `, and ${skipped} ${skipped === 1 ? 'point or line' : 'points or lines'} left out` : ''}. Each
-      goes to the field of the same name, or becomes a new field under the irrigation system it's under; change any of
-      them below.
+      updates the field of the same name or whose shape it covers, or becomes a new field under the irrigation system
+      it's under; change any of them beside the map.
     </p>
-    {#if keys.length > 1}
-      <div class="max-w-xs">
-        <SelectField
-          label="Names from"
-          value={nameKey ?? ''}
-          options={[{ value: '', label: 'No names' }, ...keys.map((key) => ({ value: key, label: key }))]}
-          onchange={(event) => changeNameKey((event.currentTarget as HTMLSelectElement).value)}
-          info="field.shape_names"
-        />
-      </div>
-    {/if}
+  </div>
 
+  <!-- Side by side on a wide screen, as tall as the window: picking a shape on the map scrolls only
+       the cards, so the map stays in view -->
+  <div class="grid grid-cols-[minmax(0,1fr)] gap-4 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
     <ImportMap
-      shapes={rows.map((row, index) => ({
+      shapes={rows.map((row) => ({
         boundary: row.shape.boundary,
-        label: `${index + 1}${row.name ? ` ${row.name}` : ''}`,
+        label: shapeName(row.shape, nameKey),
         state: row.choice.kind,
       }))}
       {references}
       {selected}
       {fileKey}
       onselect={pick}
+      fill
     />
-  </div>
 
-  <Form
-    id="outline-import-form"
-    action={outlineImport()}
-    class="space-y-4"
-    options={{ preserveScroll: true }}
-    onSuccess={() => (saved = true)}
-  >
-    {#snippet children({ errors, processing })}
-      {#each included as { row }, position (row)}
-        <input
-          type="hidden"
-          name="outline_import[rows][{position}][boundary]"
-          value={JSON.stringify(row.shape.boundary)}
-        />
-        {#if row.choice.kind === 'field'}
-          <input type="hidden" name="outline_import[rows][{position}][field_id]" value={row.choice.fieldId} />
-        {:else}
-          <input type="hidden" name="outline_import[rows][{position}][pivot_id]" value={row.systemId ?? ''} />
-          <input type="hidden" name="outline_import[rows][{position}][name]" value={row.name} />
-          <input type="hidden" name="outline_import[rows][{position}][soil_type_id]" value={row.soilTypeId} />
+    <Form
+      id="outline-import-form"
+      action={outlineImport()}
+      class="flex min-h-0 min-w-0 flex-col gap-3"
+      options={{ preserveScroll: true }}
+      onSuccess={() => (saved = true)}
+    >
+      {#snippet children({ errors, processing })}
+        {#each included as { row }, position (row)}
           <input
             type="hidden"
-            name="outline_import[rows][{position}][area_acres]"
-            value={Math.round(row.shape.acres * 100) / 100}
+            name="outline_import[rows][{position}][boundary]"
+            value={JSON.stringify(row.shape.boundary)}
           />
-        {/if}
-      {/each}
-      <input type="hidden" name="outline_import[use_area]" value={useArea ? '1' : '0'} />
-
-      <ol class="space-y-3">
-        {#each rows as row, index (row)}
-          {@const existing =
-            row.choice.kind === 'field'
-              ? fields.find((f) => f.id === (row.choice as { fieldId: number }).fieldId)
-              : null}
-          <li
-            id="shape-{index}"
-            class="rounded-lg border bg-surface-raised p-4 text-sm
-              {selected === index ? 'border-brand-500' : 'border-line'}"
-          >
-            <div class="flex flex-wrap items-baseline gap-x-3">
-              <button type="button" class="font-medium hover:underline" onclick={() => (selected = index)}
-                >{index + 1}. {shapeName(row.shape, nameKey) || 'Unnamed shape'}</button
-              >
-              <span class="text-ink-muted">{formatArea(units, row.shape.acres)}</span>
-              {#if row.shape.notes.length}<span class="text-xs text-ink-muted">{shapeNotes(row.shape)}</span>{/if}
-            </div>
-            {#if row.shape.problems.length}
-              <p class="mt-1 text-status-irrigate-ink">
-                This shape {row.shape.problems.join('; ')}, so it can't be saved.
-              </p>
-            {:else}
-              <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                <SelectField
-                  label="Field"
-                  id="shape-{index}-field"
-                  value={choiceValue(row.choice)}
-                  options={fieldOptions}
-                  onchange={(event) => choose(index, (event.currentTarget as HTMLSelectElement).value)}
-                  error={usedBy[index] !== undefined
-                    ? `Also chosen for shape ${usedBy[index] + 1}`
-                    : rowError(errors, index, 'field_id')}
-                  hint={existing?.outlined ? 'Replaces its shape' : undefined}
-                />
-                {#if row.choice.kind === 'new'}
-                  <SelectField
-                    label="Irrigation system"
-                    id="shape-{index}-system"
-                    value={row.systemId === null ? '' : String(row.systemId)}
-                    options={systemOptions}
-                    onchange={(event) => {
-                      const value = (event.currentTarget as HTMLSelectElement).value
-                      row.systemId = value ? Number(value) : null
-                    }}
-                    error={row.systemId === null
-                      ? 'Choose the system that waters it'
-                      : rowError(errors, index, 'pivot')}
-                  />
-                  <TextField
-                    label="New field's name"
-                    name="shape-{index}-name"
-                    bind:value={row.name}
-                    error={row.name.trim() ? rowError(errors, index, 'name') : 'Give the field a name'}
-                  />
-                  <SelectField
-                    label="Soil"
-                    id="shape-{index}-soil"
-                    value={String(row.soilTypeId)}
-                    options={soil_types.map((soil) => ({ value: String(soil.id), label: soil.name }))}
-                    onchange={(event) => {
-                      row.soilTypeId = Number((event.currentTarget as HTMLSelectElement).value)
-                      row.soil = 'chosen'
-                    }}
-                    hint={row.soil === 'survey' ? 'The main soil in the shape, from the soil survey' : undefined}
-                    error={rowError(errors, index, 'soil_type')}
-                  />
-                {/if}
-              </div>
-              {#if rowError(errors, index, 'boundary')}
-                <p class="mt-2 text-status-irrigate-ink">The shape {rowError(errors, index, 'boundary')}</p>
-              {/if}
-            {/if}
-          </li>
+          {#if row.choice.kind === 'field'}
+            <input type="hidden" name="outline_import[rows][{position}][field_id]" value={row.choice.fieldId} />
+          {:else}
+            <input type="hidden" name="outline_import[rows][{position}][pivot_id]" value={row.systemId ?? ''} />
+            <input type="hidden" name="outline_import[rows][{position}][name]" value={row.name} />
+            <input type="hidden" name="outline_import[rows][{position}][soil_type_id]" value={row.soilTypeId} />
+            <input
+              type="hidden"
+              name="outline_import[rows][{position}][area_acres]"
+              value={Math.round(row.shape.acres * 100) / 100}
+            />
+          {/if}
         {/each}
-      </ol>
+        <input type="hidden" name="outline_import[use_area]" value={useArea ? '1' : '0'} />
 
-      <label class="flex items-start gap-2 text-sm">
-        <input type="checkbox" class="mt-0.5 rounded" bind:checked={useArea} />
-        <span>Set existing fields' area from their shapes (seasons that have ended keep theirs)</span>
-      </label>
-      {#if errors.rows}<p class="text-sm text-status-irrigate-ink">{[errors.rows].flat()[0]}</p>{/if}
-      <div class="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={processing || !included.length || unready.length > 0}
-          >Save {included.length === 1 ? 'the shape' : `${included.length} shapes`}</Button
-        >
-        <span class="text-sm text-ink-muted">
-          {counts.existing} existing {counts.existing === 1 ? 'field' : 'fields'}, {counts.added} new
-        </span>
-        <Link href={setup.show()} class="text-sm text-brand-600 hover:underline">Cancel</Link>
-      </div>
-    {/snippet}
-  </Form>
+        <h2 class="font-medium">Fields to import</h2>
+
+        <div class="min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
+          {#if keys.length > 1}
+            <div>
+              <SelectField
+                label="Names from"
+                value={nameKey ?? ''}
+                options={[{ value: '', label: 'No names' }, ...keys.map((key) => ({ value: key, label: key }))]}
+                onchange={(event) => changeNameKey((event.currentTarget as HTMLSelectElement).value)}
+                info="field.shape_names"
+              />
+            </div>
+          {/if}
+
+          <div class="space-y-2">
+            <SegmentedChoice
+              legend="Sort by"
+              name="card-order"
+              showLegend
+              options={[
+                { value: 'name', label: 'Name' },
+                { value: 'north', label: 'N–S' },
+              ]}
+              value={cardOrder}
+              onchange={(order) => (cardOrder = order)}
+            />
+          </div>
+
+          <ol class="space-y-2">
+            {#each cards as { row, index } (row)}
+              {@const title = titleOf(row)}
+              {@const updating = row.choice.kind === 'field' ? fieldsById.get(row.choice.fieldId) : undefined}
+              {@const warnings = warningsFor(row, index)}
+              <li
+                id="shape-{index}"
+                class="rounded-lg border bg-surface-raised p-3 text-sm
+                    {selected === index ? 'border-brand-500' : 'border-line'}"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex min-w-0 items-baseline gap-x-2">
+                    <button
+                      type="button"
+                      class="truncate font-medium hover:underline"
+                      onclick={() => (selected = index)}>{title}</button
+                    >
+                    <span class="shrink-0 text-ink-muted">{formatArea(units, row.shape.acres)}</span>
+                  </div>
+                  <SegmentedChoice
+                    legend="Where {title} goes"
+                    name="shape-{index}-choice"
+                    options={CHOICES.map((option) => ({
+                      value: option.kind,
+                      label: option.label,
+                      color: option.color,
+                      disabled: option.kind === 'field' && !fields.length,
+                    }))}
+                    value={row.choice.kind}
+                    onchange={(kind) => setKind(index, kind)}
+                  />
+                </div>
+                {#if row.shape.notes.length}<p class="mt-1 text-xs text-ink-muted">{shapeNotes(row.shape)}</p>{/if}
+
+                {#if row.choice.kind === 'field'}
+                  <div class="mt-2">
+                    <SelectField
+                      label="Field to update"
+                      id="shape-{index}-field"
+                      value={String(row.choice.fieldId)}
+                      options={fieldOptionsFor(row.shape)}
+                      onchange={(event) => chooseField(index, Number((event.currentTarget as HTMLSelectElement).value))}
+                      error={usedBy[index] !== undefined
+                        ? `Also chosen for ${titleOf(rows[usedBy[index]])}`
+                        : rowError(errors, index, 'field_id')}
+                      hint={updating?.boundary ? 'Replaces its shape' : undefined}
+                    />
+                  </div>
+                {:else if row.choice.kind === 'new'}
+                  <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                      <TextField
+                        label="New field's name"
+                        name="shape-{index}-name"
+                        bind:value={row.name}
+                        oninput={() => (row.nameEdited = true)}
+                        error={row.name.trim() ? rowError(errors, index, 'name') : 'Give the field a name'}
+                      />
+                    </div>
+                    <SelectField
+                      label="Irrigation system"
+                      id="shape-{index}-system"
+                      value={row.systemId === null ? '' : String(row.systemId)}
+                      options={systemOptionsFor(row.shape)}
+                      onchange={(event) => {
+                        const value = (event.currentTarget as HTMLSelectElement).value
+                        row.systemId = value ? Number(value) : null
+                      }}
+                      error={row.systemId === null
+                        ? 'Choose the system that waters it'
+                        : rowError(errors, index, 'pivot')}
+                    />
+                    <SelectField
+                      label="Soil"
+                      id="shape-{index}-soil"
+                      value={String(row.soilTypeId)}
+                      options={soil_types.map((soil) => ({ value: String(soil.id), label: soil.name }))}
+                      onchange={(event) => {
+                        row.soilTypeId = Number((event.currentTarget as HTMLSelectElement).value)
+                        row.soil = 'chosen'
+                      }}
+                      hint={row.soil === 'survey' ? 'From the soil survey' : undefined}
+                      error={rowError(errors, index, 'soil_type')}
+                    />
+                  </div>
+                {/if}
+
+                {#if warnings.length}
+                  <ul class="mt-2 space-y-1 text-status-caution-ink">
+                    {#each warnings as warning, position (position)}
+                      <li class="flex flex-wrap items-center gap-x-2">
+                        <span>{warning.text}</span>
+                        {#if warning.update}
+                          <button
+                            type="button"
+                            class="underline underline-offset-2 hover:text-ink"
+                            onclick={() => chooseField(index, warning.update!.id)}
+                            >Update {warning.update.name} instead</button
+                          >
+                        {/if}
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+                {#if rowError(errors, index, 'boundary')}
+                  <p class="mt-2 text-status-irrigate-ink">The shape {rowError(errors, index, 'boundary')}</p>
+                {/if}
+              </li>
+            {/each}
+          </ol>
+
+          {#if others.length}
+            <!-- Enter in its search mustn't save the import -->
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+            <details
+              bind:open={othersOpen}
+              class="rounded-lg border border-line bg-surface-raised p-3 text-sm"
+              onkeydown={(event) => {
+                if (event.key === 'Enter' && event.target instanceof HTMLInputElement) event.preventDefault()
+              }}
+            >
+              <summary class="cursor-pointer">
+                {`${others.length.toLocaleString('en-US')} ${others.length === 1 ? 'shape matches' : 'shapes match'} no field and ${others.length === 1 ? "isn't" : "aren't"} under your irrigation systems, so ${others.length === 1 ? "it's" : "they're"} skipped. Add any that are your fields.`}
+              </summary>
+              <div class="mt-3">
+                <DataTable
+                  rows={others}
+                  columns={otherColumns}
+                  searchAlso={otherAttributes}
+                  bind:sort={othersSort}
+                  rowKey={(row) => row.index}
+                  label="Skipped shapes from {fileName}"
+                  searchPlaceholder="Search the skipped shapes"
+                  maxHeight="22rem"
+                  limit={OTHERS_LISTED}
+                  selected={(row) => row.index === selected}
+                  showSelected
+                  rowId={(row) => `other-${row.index}`}
+                  nowrap
+                >
+                  {#snippet cell(row, column)}
+                    {#if column.key === 'add'}
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        class="px-2 py-0.5"
+                        aria-label="Add {row.name || 'Unnamed shape'}"
+                        onclick={() => add(row.index)}>Add</Button
+                      >
+                    {:else if column.key === 'name'}
+                      <button
+                        type="button"
+                        class="font-medium hover:underline"
+                        aria-current={row.index === selected ? 'true' : undefined}
+                        onclick={() => (selected = row.index)}>{row.name || 'Unnamed shape'}</button
+                      >
+                    {:else}
+                      {column.text ? column.text(row) : (column.value(row) ?? '')}
+                    {/if}
+                  {/snippet}
+                </DataTable>
+              </div>
+            </details>
+          {/if}
+        </div>
+
+        <div class="space-y-2 border-t border-line pt-3">
+          <label class="flex items-start gap-2 text-sm">
+            <input type="checkbox" class="mt-0.5 rounded" bind:checked={useArea} />
+            <span>Set existing fields' area from their shapes (seasons that have ended keep theirs)</span>
+          </label>
+          {#if errors.rows}<p class="text-sm text-status-irrigate-ink">{[errors.rows].flat()[0]}</p>{/if}
+          <div class="flex flex-wrap items-center gap-3">
+            <Button type="submit" disabled={processing || !included.length || unready.length > 0}
+              >Save {included.length === 1 ? 'the shape' : `${included.length} shapes`}</Button
+            >
+            <span class="text-sm text-ink-muted">
+              {counts.existing} to update, {counts.added} new
+            </span>
+            <Link href={setup.show()} class="text-sm text-brand-600 hover:underline">Cancel</Link>
+          </div>
+        </div>
+      {/snippet}
+    </Form>
+  </div>
 {/if}

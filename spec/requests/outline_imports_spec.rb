@@ -22,7 +22,7 @@ RSpec.describe "Outline imports", type: :request do
     expect_inertia.to render_component("Setup/ImportOutlines")
     expect(inertia.props[:pivots].sole).to include("id" => pivot.id, "name" => "North 160", "farm" => "Home",
       "kind" => "center", "kind_name" => "Pivot")
-    expect(inertia.props[:fields].map { |f| [f["name"], f["outlined"]] }).to eq([["Home North", false], ["Home South", true]])
+    expect(inertia.props[:fields].map { |f| [f["name"], f["boundary"]&.fetch("type")] }).to eq([["Home North", nil], ["Home South", "Polygon"]])
   end
 
   it "outlines existing fields and adds new ones with the outline's acres, in one save" do
@@ -52,7 +52,7 @@ RSpec.describe "Outline imports", type: :request do
     ]}}
     expect(response).to redirect_to(new_outline_import_path)
     follow_redirect!
-    expect(inertia.props[:errors]).to include("rows.1.name" => ["can't be blank"], "rows.2.field_id" => ["is also in row 1"])
+    expect(inertia.props[:errors]).to include("rows.1.name" => ["can't be blank"], "rows.2.field_id" => ["is chosen for another shape too"])
     expect(field.reload.boundary).to be_nil
     expect(pivot.fields.count).to eq(1)
   end

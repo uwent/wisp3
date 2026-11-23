@@ -1139,18 +1139,18 @@ test("daily entry's week saves rain for a group's fields and a system's irrigati
   await expect(irrigation).toHaveValue('')
 })
 
-test('daily entry remembers the week view, and the Day switch goes back to the day', async ({ page }) => {
+test('daily entry switches between day and week, keeping the date', async ({ page }) => {
   await page.goto(midSeason)
   await page.getByRole('link', { name: 'Week', exact: true }).click()
   await expect(page).toHaveURL(/\/daily\/week\?date=\d{4}-07-15$/)
   await expect(page.getByText(/Jul 9–15/).first()).toBeVisible()
 
-  // The nav's Daily entry now opens the week
-  await page.getByRole('link', { name: 'Daily entry', exact: true }).click()
-  await expect(page).toHaveURL(/\/daily\/week$/)
-
   await page.getByRole('link', { name: 'Day', exact: true }).click()
+  await expect(page).toHaveURL(/\/daily\?date=\d{4}-07-15$/)
   await expect(page.getByLabel('Date', { exact: true })).toBeVisible()
+
+  // Not remembered: the nav's Daily entry opens the day
+  await page.goto('/daily/week')
   await page.getByRole('link', { name: 'Daily entry', exact: true }).click()
   await expect(page).toHaveURL(/\/daily$/)
   await expect(page.getByLabel('Date', { exact: true })).toBeVisible()
@@ -1518,6 +1518,8 @@ test('a field shape is drawn corner by corner, or picked from a file of several'
   // The file's shapes are kept for the session: Setup's import offers them without reading it again
   await page.getByRole('link', { name: 'Import field shapes' }).click()
   await expect(page.getByText(/^The 2 shapes from clu_utm\.zip \(read at .*\) are still here\.$/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Forget this file' })).toBeVisible()
+  await expect(page.getByLabel('Upload a new file')).toBeAttached()
   await page.getByRole('button', { name: 'Use these shapes' }).click()
   await expect(page.getByText(/^2 shapes\./)).toBeVisible()
   expect(errors).toEqual([])
@@ -1572,26 +1574,39 @@ test('field shapes are imported from a shapefile, matched to fields or new ones'
   await expect(page.getByRole('heading', { name: 'Import field shapes', level: 1 })).toBeVisible()
   await page.getByLabel('Choose a file').setInputFiles('spec/fixtures/files/outlines/clu_utm.zip')
 
-  // Two shapes, named from FIELD_NAME, matching no field: near Arlington's systems, each is offered
-  // as a new field on the nearest
+  // Two shapes, named from FIELD_NAME, matching no field's name. The first covers an outlined field,
+  // so it starts as that field's update; made a new field instead, it says it overlaps that field
   await expect(page.getByText(/^2 shapes\./)).toBeVisible()
   await expect(page.getByLabel('Names from', { exact: true })).toHaveValue('FIELD_NAME')
   const first = page.locator('#shape-0')
   const second = page.locator('#shape-1')
-  await expect(first.getByRole('button', { name: '1. Home North' })).toBeVisible()
-  await expect(page.locator('#shape-0-field')).toHaveValue('new')
+  await expect(first.getByRole('button', { name: 'Home North', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Fields to import' })).toBeVisible()
+  await expect(page.getByRole('radio', { name: 'N–S' })).toBeChecked()
+  await expect(first.getByRole('radio', { name: 'Update field' })).toBeChecked()
+  await expect(first.getByRole('combobox', { name: 'Field to update' })).toContainText(
+    new RegExp(`^${literal(DEMO.coveredField)} \\(.*\\) · overlaps 100%`),
+  )
+  await first.getByText('New field', { exact: true }).click()
+  await expect(first.getByText(`Overlaps ${DEMO.coveredField} (100%)`)).toBeVisible()
+  await expect(first.getByRole('button', { name: `Update ${DEMO.coveredField} instead` })).toBeVisible()
 
   // A new field takes another system, and offers the outline's name
-  await page.locator('#shape-0-system').selectOption({ label: `${DEMO.researchFarm} › ${DEMO.researchSystemLabel}` })
+  const research = await page
+    .locator('#shape-0-system option', { hasText: `${DEMO.researchFarm} › ${DEMO.researchSystemLabel} · ` })
+    .getAttribute('value')
+  await page.locator('#shape-0-system').selectOption(research!)
   await expect(first.getByLabel("New field's name")).toHaveValue('Home North')
-  await page.locator('#shape-0-field').selectOption('skip')
+  await first.getByText('Skip', { exact: true }).click()
+  await expect(first.getByRole('radio', { name: 'Skip' })).toBeChecked()
 
   // The second outlines an existing field
+  await second.getByText('Update field', { exact: true }).click()
   const garden = await page
     .locator('#shape-1-field option', { hasText: new RegExp(`^${literal(DEMO.shapeField)}`) })
     .getAttribute('value')
   await page.locator('#shape-1-field').selectOption(garden!)
-  await expect(second.getByRole('combobox', { name: 'Field' })).toHaveValue(/^field:/)
+  await expect(second.getByRole('combobox', { name: 'Field to update' })).toHaveValue(garden!)
   await page.getByRole('button', { name: 'Save the shape' }).click()
   await expect(page.getByText('Saved a field shape')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Setup', level: 1 })).toBeVisible()
@@ -1604,6 +1619,87 @@ test('field shapes are imported from a shapefile, matched to fields or new ones'
   await expect(issues).toContainText(
     new RegExp(`${literal(DEMO.shapeField)}'s shape isn't under ${literal(DEMO.shapeFieldSystem)}, \\d+\\.\\d mi away`),
   )
+  expect(errors).toEqual([])
+})
+
+test("field shapes under none of the operation's systems start skipped, without a card, and can be added", async ({
+  page,
+}) => {
+  const errors = watchErrors(page)
+  // A field near Superior, far from every demo system
+  const far = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { NAME: 'Far Forty', CLU: 'A-123' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [-92.1, 46.7],
+              [-92.095, 46.7],
+              [-92.095, 46.703],
+              [-92.1, 46.703],
+              [-92.1, 46.7],
+            ],
+          ],
+        },
+      },
+    ],
+  }
+  await page.goto('/setup/outlines/import')
+  await page
+    .getByLabel('Choose a file')
+    .setInputFiles({ name: 'far.geojson', mimeType: 'application/geo+json', buffer: Buffer.from(JSON.stringify(far)) })
+
+  const skipped = page.getByText("1 shape matches no field and isn't under your irrigation systems, so it's skipped.")
+  await expect(skipped).toBeVisible()
+  await expect(page.locator('#shape-0')).toBeHidden()
+
+  // Found by an attribute the table doesn't show, then added as a new field
+  await skipped.click()
+  await page.getByPlaceholder('Search the skipped shapes').fill('A-123')
+  await page.getByRole('button', { name: 'Add Far Forty', exact: true }).click()
+  await expect(page.locator('#shape-0').getByRole('button', { name: 'Far Forty', exact: true })).toBeVisible()
+  await expect(page.locator('#shape-0').getByRole('radio', { name: 'New field' })).toBeChecked()
+  await expect(page.getByText('Choose the system that waters it')).toBeVisible()
+  await expect(skipped).toBeHidden()
+  expect(errors).toEqual([])
+})
+
+test('a field shape file of more than 1,000 shapes is read as its first 1,000', async ({ page }) => {
+  const errors = watchErrors(page)
+  // 1,003 small squares in a grid near Superior, far from every demo system
+  const features = Array.from({ length: 1003 }, (_, i) => {
+    const [lng, lat] = [-92.2 + (i % 40) * 0.005, 46.6 + Math.floor(i / 40) * 0.005]
+    return {
+      type: 'Feature',
+      properties: { NAME: `Square ${i + 1}` },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [lng, lat],
+            [lng + 0.003, lat],
+            [lng + 0.003, lat + 0.003],
+            [lng, lat + 0.003],
+            [lng, lat],
+          ],
+        ],
+      },
+    }
+  })
+  await page.goto('/setup/outlines/import')
+  await page.getByLabel('Choose a file').setInputFiles({
+    name: 'many.geojson',
+    mimeType: 'application/geo+json',
+    buffer: Buffer.from(JSON.stringify({ type: 'FeatureCollection', features })),
+  })
+  await expect(
+    page.getByText('This file has 1,003 shapes. WISP read the first 1,000 and discarded the other 3;'),
+  ).toBeVisible()
+  await expect(page.getByText(/^1,000 shapes\./)).toBeVisible()
   expect(errors).toEqual([])
 })
 

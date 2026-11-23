@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { LngLat } from '@/lib/geo'
 import type { Boundary } from '@/lib/boundary'
 
-import { type ImportSystem, initialChoices, matchField, suggestSystem } from './matching'
+import { type ImportSystem, initialChoices, matchField, systemSuggester } from './matching'
 
 const square = (lng: number, lat: number, size = 0.002): Boundary => ({
   type: 'Polygon',
@@ -37,12 +37,13 @@ describe('the system an imported shape sits under', () => {
   const traveler = system(2, 'traveler', -89.4, 44.1)
 
   it('is the pivot whose circle holds its center', () => {
-    expect(suggestSystem(square(-89.501, 44.099), [traveler, pivot])).toBe(1)
+    expect(systemSuggester([traveler, pivot])(square(-89.501, 44.099))).toBe(1)
   })
 
   it('is a point kind within half a mile, the nearest first', () => {
-    expect(suggestSystem(square(-89.405, 44.1), [pivot, traveler])).toBe(2) // about 300 m away
-    expect(suggestSystem(square(-89.42, 44.1), [pivot, traveler])).toBeNull() // about 1.5 km
+    const suggest = systemSuggester([pivot, traveler])
+    expect(suggest(square(-89.405, 44.1))).toBe(2) // about 300 m away
+    expect(suggest(square(-89.42, 44.1))).toBeNull() // about 1.5 km
   })
 })
 
@@ -71,5 +72,21 @@ describe('matching shapes to fields', () => {
       fields,
     )
     expect(choices).toEqual([{ kind: 'field', fieldId: 10 }, { kind: 'new' }, { kind: 'skip' }, { kind: 'skip' }])
+  })
+
+  it('starts a shape covering most of an outlined field at that field, the largest overlap winning', () => {
+    const outlined = [
+      { id: 20, name: 'East 40', pivot_id: 1, boundary: square(-89.5, 44.1) },
+      { id: 21, name: 'West 40', pivot_id: 1, boundary: square(-89.51, 44.1) },
+    ]
+    const choices = initialChoices(
+      [
+        { name: 'CLU 7', systemId: 1, problems: [], boundary: square(-89.4996, 44.1) }, // about 80% of East 40
+        { name: 'CLU 8', systemId: 1, problems: [], boundary: square(-89.5, 44.1) }, // all of it: wins
+        { name: 'CLU 9', systemId: 1, problems: [], boundary: square(-89.5088, 44.1) }, // about 40% of West 40
+      ],
+      outlined,
+    )
+    expect(choices).toEqual([{ kind: 'new' }, { kind: 'field', fieldId: 20 }, { kind: 'new' }])
   })
 })

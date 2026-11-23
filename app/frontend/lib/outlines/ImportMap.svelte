@@ -18,7 +18,7 @@
 
   export type ShapeOnMap = { boundary: Boundary; label: string; state: 'skip' | 'field' | 'new' }
 
-  // The shapes from an outline file, numbered as in the list below the map
+  // The shapes from an outline file, named as in the list beside the map
   // and colored by where each goes (an existing field, a new one, or skipped), over the operation's
   // systems and outlined fields, with a legend of the colors below. Clicking a shape picks its row.
   let {
@@ -28,6 +28,7 @@
     onselect,
     fileKey = 0,
     height = '28rem',
+    fill = false,
   }: {
     shapes: ShapeOnMap[]
     /** Changes with each file read, to fit the map to its shapes */
@@ -36,6 +37,8 @@
     selected?: number | null
     onselect?: (index: number) => void
     height?: string
+    /** Fills its box's height (at least 24rem) in place of a fixed height */
+    fill?: boolean
   } = $props()
 
   // An existing field in a depth blue, a new one in the ok status green, a skipped shape muted; read
@@ -47,9 +50,9 @@
   })
   let colors = $state(colorsFrom(readPalette()))
   const LEGEND: { state: ShapeOnMap['state']; label: string }[] = [
-    { state: 'field', label: 'An existing field' },
-    { state: 'new', label: 'A new field' },
-    { state: 'skip', label: 'Skipped' },
+    { state: 'skip', label: 'Skip' },
+    { state: 'new', label: 'New field' },
+    { state: 'field', label: 'Update field' },
   ]
   const colorExpression = (): ExpressionSpecification => [
     'match',
@@ -83,10 +86,11 @@
     ]),
   })
 
-  /** Fit the map to every shape */
+  /** Fit the map to the shapes going somewhere, or every shape when none is (a county file's skipped thousands) */
   export function fit() {
     if (!map || !shapes.length) return
-    const bounds = boundsOf(shapes.flatMap((shape) => boundaryBounds(shape.boundary)))!
+    const going = shapes.filter((shape) => shape.state !== 'skip')
+    const bounds = boundsOf((going.length ? going : shapes).flatMap((shape) => boundaryBounds(shape.boundary)))!
     map.fitBounds(bounds, { padding: 48, maxZoom: 16, duration: 0 })
   }
 
@@ -162,15 +166,26 @@
     void fileKey
     untrack(fit)
   })
+  // A shape picked from its card, out of view, is brought into it
+  $effect(() => {
+    if (selected === null) return
+    const shape = untrack(() => shapes[selected])
+    if (!map || !shape) return
+    const center = boundaryCenter(shape.boundary)
+    if (!map.getBounds().contains(center)) map.easeTo({ center })
+  })
 </script>
 
-<div class="space-y-3">
-  <div class="relative overflow-hidden rounded-lg border border-line" style:height>
+<div class="flex flex-col gap-3 {fill ? 'h-full' : ''}">
+  <div
+    class="relative overflow-hidden rounded-lg border border-line {fill ? 'min-h-[24rem] flex-1' : ''}"
+    style:height={fill ? undefined : height}
+  >
     <div
       bind:this={container}
       class="h-full w-full"
       role="img"
-      aria-label="Map of the file's shapes, numbered as in the list below"
+      aria-label="Map of the file's shapes, named as in the list beside it"
     ></div>
     <div class="absolute top-2 left-2 flex gap-2">
       <BasemapToggle value={basemap} onchange={(to) => basemapSwitch.change(to)} />
