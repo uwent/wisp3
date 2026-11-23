@@ -75,7 +75,7 @@ test('selecting a pivot from the keyboard moves to its panel, and Escape comes b
   const show = page.getByRole('button', { name: /on the map$/ }).first()
   await show.focus()
   await page.keyboard.press('Enter')
-  const panel = page.locator('[data-pivot-panel]')
+  const panel = page.locator('[data-map-panel]')
   await expect(panel).toBeFocused()
   await page.keyboard.press('Tab')
   // First its farm, which selects the farm
@@ -92,7 +92,7 @@ test("the map list's cards select from the keyboard, and Escape clears the selec
   await page.keyboard.press('Enter')
   await expect(farm).toHaveAttribute('aria-pressed', 'true')
   // Its panel takes focus, and Escape returns it
-  await expect(page.locator('[data-pivot-panel]')).toBeFocused()
+  await expect(page.locator('[data-map-panel]')).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(farm).toHaveAttribute('aria-pressed', 'false')
   await expect(farm).toBeFocused()

@@ -1,6 +1,9 @@
 <script module lang="ts">
-  /** Our sources (irrigation groups, fields, pivots, and overlays named overlay-*), carried over when the basemap changes */
-  export const isOwnSource = (id: string) => ['pivots', 'groups', 'fields'].includes(id) || id.startsWith('overlay-')
+  import { ZONE_SOURCES } from './zones'
+
+  /** Our sources (weather zones, irrigation groups, fields, pivots, and overlays named overlay-*), carried over when the basemap changes */
+  export const isOwnSource = (id: string) =>
+    ['pivots', 'groups', 'fields', ...ZONE_SOURCES].includes(id) || id.startsWith('overlay-')
 </script>
 
 <script lang="ts">
@@ -13,7 +16,9 @@
   import type { LngLat } from '@/lib/geo'
   import type { FieldCard } from '@/lib/overview'
   import { onThemeChange } from '@/lib/theme'
-  import type { UnitSystem } from '@/lib/units'
+  import { units as unitsFor, type UnitSystem } from '@/lib/units'
+  import { weatherLines } from '@/lib/weatherSummary'
+  import type { MapZone } from '@/types/serializers'
 
   import { type Basemap, BasemapSwitch, LABEL_FONT, labelPaint } from './basemaps'
   import { createMap, DEFAULT_VIEW } from './createMap'
@@ -21,9 +26,10 @@
   import MapLayersButton from './MapLayersButton.svelte'
   import { followRoads } from './roads.svelte'
   import { ButtonControl, FIT_ICON } from './controls'
-  import { loadMapLibre } from './maplibre'
   import PivotMarker from './PivotMarker.svelte'
   import FieldMarker from './FieldMarker.svelte'
+  import HoverLabel from './HoverLabel.svelte'
+  import { flipsAt, type HoverLabelState } from './hover.svelte'
   import {
     type FeatureCollection,
     type FieldBadges,
@@ -45,6 +51,8 @@
     SYSTEM_LAYERS,
     systemHit,
   } from './systemLayers'
+  import { loadMapLibre, showLayers } from './maplibre'
+  import { addZoneLayers, setZones, showZones as showZoneLayers, zoneAt } from './zones'
 
   // The operation's irrigation systems on a map: each drawn in the system
   // color, a pivot or linear to scale and a point kind as its glyph (systemLayers.ts), with a marker
@@ -54,7 +62,9 @@
   // its name along its top. Clicking a system selects it, and clicking a field or its badges selects
   // its system with that field; the page shows its details in the panel (children) and adds its own
   // layers to the Layers panel (layers). Beside the pointer, the hover label names what's under it, down the stack
-  // (group, system, field, then a marker's badge).
+  // (group, system, field, then a marker's badge). Under them, the weather zones of the operation's
+  // systems are outlined (zones): with nothing else under the pointer, the label has the zone's
+  // weather, and a click there selects the zone (onselectzone).
   let {
     pivots,
     groups,
@@ -64,6 +74,10 @@
     highlighted,
     highlightedFields = null,
     showSystems = true,
+    zones = [],
+    showZones = true,
+    selectedZoneId = null,
+    onselectzone,
     basemap,
     view,
     unitSystem = 'imperial',
@@ -89,6 +103,13 @@
     highlightedFields?: Set<number> | null
     /** Draw the systems' shapes and dots (the Irrigation systems layer) */
     showSystems?: boolean
+    /** The weather zones of the operation's systems */
+    zones?: MapZone[]
+    /** Draw them, and say their weather on hover (the Weather zones layer) */
+    showZones?: boolean
+    /** The zone selected (its panel open), outlined more strongly */
+    selectedZoneId?: number | null
+    onselectzone?: (zoneId: number) => void
     basemap: Basemap
     /** Where to start; without one the map fits every pivot */
     view: { center: LngLat; zoom: number } | null
@@ -108,7 +129,6 @@
   // marker shows badges without the pivot's name.
   const NAME_ZOOM = 13
   const PIVOT_ZOOM = 14
-  // Wisconsin's Central Sands, where most WISP pivots are
 
   let wrapper: HTMLDivElement
   let container: HTMLDivElement
@@ -116,9 +136,8 @@
   followRoads(() => map)
   let zoom = $state(DEFAULT_VIEW.zoom)
   let placeSearch = $state<PlaceSearch>()
-  // What's under the pointer, named beside it
   // What's under the pointer, named beside it; flipped to its left near the map's right edge
-  let hover = $state<{ x: number; y: number; lines: string[]; flip: boolean } | null>(null)
+  let hover = $state<HoverLabelState | null>(null)
 
   type MarkerProps = {
     pivot: MapPivot
@@ -159,19 +178,36 @@
       .elementsFromPoint(event.clientX, event.clientY)
       .filter((element): element is HTMLElement => element instanceof HTMLElement && !!element.dataset.hover)
       .flatMap((element) => element.dataset.hover!.split('\n'))
-    const lines = [...new Set([...hoverLines(m, point), ...badges])]
+    let lines = [...new Set([...hoverLines(m, point), ...badges])]
+    // With nothing else there, the weather zone's weather
+    const zone = lines.length ? null : zoneUnder(m, point)
+    if (zone) {
+      const weather = weatherLines(zone.weather, unitsFor(unitSystem))
+      lines = weather.length ? weather : ['No weather for this zone yet']
+    }
     const frameBox = wrapper.getBoundingClientRect()
     const x = event.clientX - frameBox.left
-    hover = lines.length ? { x, y: event.clientY - frameBox.top, lines, flip: x > frameBox.width - 340 } : null
+    hover = lines.length ? { x, y: event.clientY - frameBox.top, lines, flip: flipsAt(x, frameBox.width) } : null
     // A pointer where a click selects something
-    const selectable = badges.length > 0 || lines.some((line) => !line.startsWith('Group:'))
+    const selectable = !!zone || badges.length > 0 || lines.some((line) => !line.startsWith('Group:'))
     m.getCanvas().style.cursor = selectable ? 'pointer' : ''
   }
+
+  /** The shown weather zone at a point of the map, or null */
+  const zoneUnder = (m: MapLibreMap, point: [number, number]) => {
+    if (!showZones) return null
+    const { lng, lat } = m.unproject(point)
+    return zoneAt(zones, [lng, lat])
+  }
+  const selectedZone = () => zones.find((zone) => zone.id === selectedZoneId) ?? null
 
   const features = () => pivotFeatures(pivots, selectedId, highlighted)
   const fields = () => fieldFeatures(pivots, selectedFieldId, highlighted, highlightedFields)
 
   function addPivotLayers(m: MapLibreMap) {
+    // Weather zones, under everything else of ours (the public overlays go under them)
+    addZoneLayers(m, zones, selectedZone(), showZones)
+
     // Irrigation groups: a light shade inside a dashed line in the system color, named along it
     const palette = readPalette()
     m.addSource('groups', { type: 'geojson', data: groups })
@@ -261,7 +297,7 @@
     })
 
     addSystemLayers(m, features() as never, palette)
-    for (const layer of SYSTEM_LAYERS) m.setLayoutProperty(layer, 'visibility', showSystems ? 'visible' : 'none')
+    showLayers(m, SYSTEM_LAYERS, showSystems)
   }
 
   async function syncMarkers() {
@@ -338,13 +374,12 @@
     map?.getSource<GeoJSONSource>('fields')?.setData(fields() as never)
     syncMarkers()
   })
-  $effect(() => {
-    const visibility = showSystems ? 'visible' : 'none'
-    for (const layer of SYSTEM_LAYERS) if (map?.getLayer(layer)) map.setLayoutProperty(layer, 'visibility', visibility)
-  })
+  $effect(() => showLayers(map, SYSTEM_LAYERS, showSystems))
   $effect(() => {
     map?.getSource<GeoJSONSource>('groups')?.setData(groups)
   })
+  $effect(() => setZones(map, zones, selectedZone()))
+  $effect(() => showZoneLayers(map, showZones))
 
   /** Fits the map to these pivots (all of them by default) */
   export function fit(some: MapPivot[] = pivots, animate = true) {
@@ -389,7 +424,10 @@
     if (!map) return
     // A pin or a field selects its system with that field; else a system, or nothing
     const hit = systemHit(map, event.point)
-    if (!hit) return onselect(null)
+    if (!hit) {
+      const zone = onselectzone && zoneUnder(map, [event.point.x, event.point.y])
+      return zone ? onselectzone!(zone.id) : onselect(null)
+    }
     if (hit.kind === 'system') onselect(hit.pivotId)
     else onselect(hit.pivotId, hit.fieldId)
   }
@@ -421,9 +459,8 @@
         m.on('click', onClick)
         // A style image dropped with the old style (a basemap change) comes back
         m.on('styleimagemissing', () => addGlyphImages(m))
-        // Over a system, field, plot or group: say what it is beside the pointer, and point at what
-        // a click would select
-        // The hover label: over the map and its markers, cleared on leaving, recomputed as the map moves
+        // The hover label, over the map and its markers: what's under the pointer, with a pointer
+        // cursor where a click would select it; cleared on leaving, recomputed as the map moves
         // under a still pointer
         const canvasContainer = m.getCanvasContainer()
         canvasContainer.addEventListener('pointermove', onPointer)
@@ -496,20 +533,7 @@
     </div>
   </div>
 
-  {#if hover}
-    <!-- Pointer users only: the list and the markers name everything for keyboards and screen readers -->
-    <div
-      class="pointer-events-none absolute z-10 w-max max-w-80 space-y-0.5 rounded-md bg-surface-raised px-2 py-1 text-xs
-        text-ink shadow-md ring-1 ring-line {hover.flip ? '-translate-x-full' : ''}"
-      style:left="{hover.flip ? hover.x - 12 : hover.x + 14}px"
-      style:top="{hover.y + 16}px"
-      aria-hidden="true"
-    >
-      {#each hover.lines as line, index (index)}
-        <p>{line}</p>
-      {/each}
-    </div>
-  {/if}
+  <HoverLabel label={hover} />
 
   {@render children?.()}
 </div>

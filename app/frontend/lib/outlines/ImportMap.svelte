@@ -25,10 +25,10 @@
     savedFieldData,
     type ShapeState,
     shapeTierLayers,
-    showLayers,
     swatches,
   } from './layers'
   import { addReferenceLayers, type Reference, SYSTEM_HOVER_LAYERS } from './references'
+  import { showLayers } from '@/lib/map/maplibre'
 
   export type ShapeOnMap = {
     boundary: Boundary
@@ -246,6 +246,6 @@
         ],
       ]}
     />
-    <HoverLabel {hover} />
+    <HoverLabel label={hover.label} />
   </div>
 </div>

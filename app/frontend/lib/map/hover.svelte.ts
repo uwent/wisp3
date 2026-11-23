@@ -5,6 +5,15 @@ export type HoverLines = (map: MapLibreMap, point: PointLike) => string[]
 /** A muted last line for the label: what a click at the point would do, or null */
 export type HoverHint = (map: MapLibreMap, point: [number, number]) => string | null
 
+/** A hover label (HoverLabel.svelte): its lines and muted hint, at x and y in the map's box */
+export type HoverLabelState = { x: number; y: number; lines: string[]; hint?: string | null; flip: boolean }
+
+/** The label goes to the pointer's left this near the right edge (it's at most 20rem wide) */
+const FLIP_PX = 340
+
+/** Whether a label at x flips to the pointer's left in a box this wide */
+export const flipsAt = (x: number, width: number) => x > width - FLIP_PX
+
 /**
  * A setup map's hover label (HoverLabel.svelte): what's under the pointer, a line each, worked out
  * once a frame from the last pointer event, cleared on leaving or while dragging, and again as the
@@ -13,7 +22,7 @@ export type HoverHint = (map: MapLibreMap, point: [number, number]) => string | 
  * adds a muted last line under the others, what a click there would do.
  */
 export class MapHover {
-  label = $state<{ x: number; y: number; lines: string[]; hint: string | null; flip: boolean } | null>(null)
+  label = $state<HoverLabelState | null>(null)
   #lastPointer: PointerEvent | null = null
   #frame = 0
   #map: MapLibreMap | undefined
@@ -77,7 +86,7 @@ export class MapHover {
     const frameBox = box.getBoundingClientRect()
     const x = event.clientX - frameBox.left
     this.label = lines.length
-      ? { x, y: event.clientY - frameBox.top, lines, hint: this.#hint(map, point), flip: x > frameBox.width - 340 }
+      ? { x, y: event.clientY - frameBox.top, lines, hint: this.#hint(map, point), flip: flipsAt(x, frameBox.width) }
       : null
   }
 }

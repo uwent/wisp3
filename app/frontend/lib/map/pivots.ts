@@ -24,19 +24,21 @@ import type { PlantingSummary } from '@/types/serializers'
 import { glyphProperties, type GlyphProperties } from './systemLayers'
 
 // The map page's irrigation systems (MapController): the dashboard's pivot with its location and
-// its weather zone's rain and ET, drawn as GeoJSON. Pivots and linears are their outline and a point
+// its weather zone's id, drawn as GeoJSON. Pivots and linears are their outline and a point
 // for their glyph (drawn when they're too small to see); the other kinds (a traveler, drip, a
 // location) are a point for their glyph. Each irrigation group is a light outline around its
 // systems and their fields. Fields with an outline are drawn in their status, named along
 // their top, with a badge per planting at their center.
 
-export type WeatherTotals = { days: number; precip: number | null; et0: number | null }
-export type PivotWeather = { past: WeatherTotals | null; ahead: WeatherTotals | null }
-
 /** A field's outline */
 export type MapOutline = { field_id: number; boundary: Boundary }
 
-export type MapPivot = OverviewSystem & PivotShape & { weather: PivotWeather | null; outlines: MapOutline[] }
+export type MapPivot = OverviewSystem &
+  PivotShape & {
+    /** Its weather zone's id (MapZone), or null before its weather cell is known */
+    weather_cell_id: number | null
+    outlines: MapOutline[]
+  }
 
 export type PivotProperties = GlyphProperties & {
   id: number

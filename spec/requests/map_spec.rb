@@ -21,18 +21,32 @@ RSpec.describe "Map", type: :request do
 
   around { |example| travel_to(Time.zone.local(2026, 7, 20, 9)) { example.run } }
 
-  it "gives each pivot its location, its weather zone's last week and its fields' cards" do
+  it "gives each pivot its location, its weather zone and its fields' cards" do
     get map_path
     expect_inertia.to render_component("Map/Show")
     shown = inertia.props[:farms].sole[:pivots].sole
     expect(shown).to include(id: pivot.id, name: "North 160", latitude: 44.1335, longitude: -89.5213, kind: "center",
       radius_ft: 1300, arc_start_deg: 30, arc_end_deg: 300, length_ft: nil, travel_ft: nil, travel_bearing_deg: nil)
-    expect(shown[:weather][:past]).to include(days: 7, precip: 0.5)
-    expect(shown[:weather][:past][:et0]).to be_within(1e-9).of(1.4)
-    expect(shown[:weather][:ahead]).to be_nil # no forecast stored
+    expect(shown[:weather_cell_id]).to eq(pivot.weather_cell_id)
     card = shown[:fields].sole
     expect(card).to include(id: field.id, name: "North potatoes")
     expect(card[:plantings].sole).to include(phase: "active")
+  end
+
+  it "gives the systems' weather zones their grid cell, last week and week ahead" do
+    other = create(:pivot, farm:, name: "Next door", latitude: 44.134, longitude: -89.521)
+    get map_path
+    zone = inertia.props[:zones].sole
+    cell = pivot.weather_cell
+    expect(other.weather_cell_id).to eq(cell.id)
+    expect(zone).to include(id: cell.id, location: cell.location, coordinates: "44.11°N, 89.59°W")
+    grid = Weather::Grid.cell_for(cell.latitude, cell.longitude)
+    expect(zone[:bounds]).to eq("north" => grid.lat_north, "south" => grid.lat_south, "west" => grid.lng_west, "east" => grid.lng_east)
+    expect(zone[:bounds]["south"]).to be < 44.1335
+    expect(zone[:weather][:past]).to include(days: 7, precip: 0.5, tmax: [85, 85], tmin: [60, 60])
+    expect(zone[:weather][:past][:et0]).to be_within(1e-9).of(1.4)
+    expect(zone[:weather][:ahead]).to be_nil # no forecast stored
+    expect(zone[:forecast]).to eq([])
   end
 
   it "gives each pivot its fields' outlines" do

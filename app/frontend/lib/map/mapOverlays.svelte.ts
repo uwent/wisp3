@@ -3,6 +3,7 @@ import type { Map as MapLibreMap, MapMouseEvent, MapSourceDataEvent, RasterTileS
 import { type LngLat, pointInPolygon } from '@/lib/geo'
 
 import { FIELD_LAYER, PIVOT_LAYER, systemHit } from './systemLayers'
+import { ZONE_LAYER } from './zones'
 import {
   type Bounds,
   DROUGHT_CATEGORIES,
@@ -182,10 +183,13 @@ export class MapOverlays {
     return this.#opacity[id] ?? OVERLAYS.find((overlay) => overlay.id === id)!.opacity
   }
 
-  /** The layer to insert under: the next overlay up that's shown, or the fields and pivots */
+  /** The layer to insert under: the next overlay up that's shown, or the weather zones, fields and pivots */
   #before(map: MapLibreMap, id: OverlayId) {
     const above = OVERLAY_ORDER.slice(OVERLAY_ORDER.indexOf(id) + 1).map(sourceId)
-    return above.find((layer) => map.getLayer(layer)) ?? [FIELD_LAYER, PIVOT_LAYER].find((layer) => map.getLayer(layer))
+    return (
+      above.find((layer) => map.getLayer(layer)) ??
+      [ZONE_LAYER, FIELD_LAYER, PIVOT_LAYER].find((layer) => map.getLayer(layer))
+    )
   }
 
   #showRaster(map: MapLibreMap, overlay: RasterOverlay) {

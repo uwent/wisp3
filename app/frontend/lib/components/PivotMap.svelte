@@ -46,7 +46,6 @@
     SAVED_FIELD_SOURCE,
     savedFieldData,
     shapeTierLayers,
-    showLayers,
     type Swatch,
     type SavedField,
     swatches,
@@ -54,6 +53,7 @@
   import { addReferenceLayers, SYSTEM_HOVER_LAYERS } from '@/lib/outlines/references'
   import HoverLabel from '@/lib/map/HoverLabel.svelte'
   import { MapHover, propertiesAt } from '@/lib/map/hover.svelte'
+  import { showLayers } from '@/lib/map/maplibre'
   import MapLegend from '@/lib/map/MapLegend.svelte'
   import { newOutlineImport } from '@/routes'
   import { SOIL_SOURCE, SoilTypesLayer } from '@/lib/map/soilTypes.svelte'
@@ -726,7 +726,7 @@
     {/if}
 
     {#if !hover.label}<SoilTypesHover layer={soilLayer} />{/if}
-    <HoverLabel {hover} />
+    <HoverLabel label={hover.label} />
 
     <MapLegend rows={legendRows} />
   </div>

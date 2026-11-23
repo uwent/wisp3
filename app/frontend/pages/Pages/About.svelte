@@ -412,9 +412,10 @@
         at the center of its shape if it has one, and each irrigation group is outlined. Beside the map the operation is
         listed farm by farm, most urgent first or north to south; <strong>Irrigate: Soon</strong> or
         <strong>Now</strong> narrows it to fields needing water within 3 days or today. Choose a farm or group to zoom to
-        it, or a system or field, on the map or in the list, to see its plantings and weather. Layers add radar, rain over
-        the last 24 or 72 hours, the National Weather Service's forecast rain, and the U.S. Drought Monitor; point at the
-        map, or tap it, to see their values at that spot.
+        it, or a system or field, on the map or in the list, to see its plantings and weather. The weather zones your systems
+        are in are outlined: point at one for its rain, reference ET and temperatures over the last week and the next, or
+        select it for its forecast. Layers add radar, rain over the last 24 or 72 hours, the National Weather Service's forecast
+        rain, and the U.S. Drought Monitor; point at the map, or tap it, to see their values at that spot.
       </li>
       <li>
         <strong>Daily entry:</strong> rain, irrigation, soil moisture and percent cover for every field on one day, a table

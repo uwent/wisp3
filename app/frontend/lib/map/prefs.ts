@@ -5,9 +5,9 @@ import { readStored, writeStored } from '@/lib/storage'
 import type { Basemap } from './basemaps'
 import { OVERLAYS } from './overlays'
 
-// The map page's settings, remembered per operation in this browser: the view, basemap, overlays,
-// list order and whether the list is open. Storage can be blocked or cleared, so every read and
-// write is guarded and the page works without it.
+// The map page's settings, remembered per operation in this browser: the view, basemap, overlays
+// and layers, list order and whether the list is open. Storage can be blocked or cleared, so every
+// read and write is guarded and the page works without it.
 
 export type MapPrefs = {
   view: { center: LngLat; zoom: number } | null
@@ -22,6 +22,8 @@ export type MapPrefs = {
   opacity: Record<string, number>
   /** Draw the irrigation systems' shapes (off to see outlined fields alone) */
   systems: boolean
+  /** Outline the weather zones of the operation's systems, with their weather on hover */
+  zones: boolean
 }
 
 export const DEFAULT_PREFS: MapPrefs = {
@@ -33,6 +35,7 @@ export const DEFAULT_PREFS: MapPrefs = {
   overlays: [],
   opacity: {},
   systems: true,
+  zones: true,
 }
 
 const key = (groupId: number | undefined) => `wisp-map:${groupId ?? 'none'}`

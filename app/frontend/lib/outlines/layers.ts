@@ -123,11 +123,6 @@ export function addSavedFieldLayers(map: MapLibreMap, palette: Palette, fields: 
   })
 }
 
-/** Shows or hides a map's layers (those it has) */
-export function showLayers(map: MapLibreMap | undefined, ids: string[], visible: boolean) {
-  for (const id of ids) if (map?.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
-}
-
 /** A legend entry (MapLegend), drawn as the map draws it */
 export type Swatch = {
   label: string

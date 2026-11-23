@@ -39,7 +39,7 @@ const pivot = (id: number, latitude: number, fields: FieldCard[] = [], radius_ft
   length_ft: null,
   travel_ft: null,
   travel_bearing_deg: null,
-  weather: null,
+  weather_cell_id: null,
   fields,
   outlines: [],
 })

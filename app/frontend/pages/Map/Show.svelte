@@ -12,6 +12,7 @@
   import OverviewMap from '@/lib/map/OverviewMap.svelte'
   import PivotPanel from '@/lib/map/PivotPanel.svelte'
   import ScopePanel from '@/lib/map/ScopePanel.svelte'
+  import ZonePanel from '@/lib/map/ZonePanel.svelte'
   import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
   import { groupFeatures, type MapPivot } from '@/lib/map/pivots'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
@@ -20,15 +21,22 @@
   import { count } from '@/lib/text'
   import { currentUnits } from '@/lib/units'
   import { map as mapRoute, newQuickSetup } from '@/routes'
+  import type { MapZone } from '@/types/serializers'
 
   // Every pivot on a map with its fields' status, beside a list of the operation as a tree of cards.
   // One selection, at any level, is shared by the list, the map and the
   // panel: a farm or irrigation group zooms the map to its systems; a system or field opens its
   // system's panel and is marked on the map. A click on the map selects the system or field there.
   // A season (?year=) shows that year's plantings; this year's can be narrowed to those
-  // growing now.
-  let { today, year, years, farms }: { today: string; year: number; years: number[]; farms: FarmGroup<MapPivot>[] } =
-    $props()
+  // growing now. The weather zones of the operation's systems are outlined on the map; a click
+  // in one (on nothing else) selects it, and its weather takes the panel. The list doesn't have them.
+  let {
+    today,
+    year,
+    years,
+    farms,
+    zones,
+  }: { today: string; year: number; years: number[]; farms: FarmGroup<MapPivot>[]; zones: MapZone[] } = $props()
 
   const auth = $derived(page.props.auth)
   const units = $derived(currentUnits())
@@ -140,6 +148,8 @@
       ? farms.find((farm) => farm.pivot_groups.some((g) => g.id === selection!.id))
       : undefined,
   )
+  const zoneOf = (cellId: number | null) => zones.find((zone) => zone.id === cellId) ?? null
+  const selectedZone = $derived(selection?.level === 'zone' ? zoneOf(selection.id) : null)
   const anyPivots = $derived(farms.some((farm) => farm.pivots.length))
   // The Drought Monitor's category at the selected pivot, when that layer is on
   const panelNotes = $derived.by(() => {
@@ -165,6 +175,7 @@
   function selectionFarm({ level, id }: Selection): number | undefined {
     if (level === 'farm') return id
     if (level === 'group') return farms.find((farm) => farm.pivot_groups.some((group) => group.id === id))?.id
+    if (level === 'zone') return undefined
     return farmOf.get(level === 'system' ? id : (pivotOfField.get(id) ?? -1))?.id
   }
 
@@ -188,7 +199,7 @@
   function focusPanel() {
     if (!keyboard) return
     opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    tick().then(() => document.querySelector<HTMLElement>('[data-pivot-panel]')?.focus())
+    tick().then(() => document.querySelector<HTMLElement>('[data-map-panel]')?.focus())
   }
 
   // From the list (or the panel's cards): a farm or group zooms the map to its systems; a system or
@@ -223,8 +234,14 @@
     )
   }
 
+  // From the map: a weather zone, where nothing else was clicked
+  function selectZone(id: number) {
+    selection = { level: 'zone', id }
+    focusPanel()
+  }
+
   function clearSelection() {
-    const fromPanel = document.querySelector('[data-pivot-panel]')?.contains(document.activeElement)
+    const fromPanel = document.querySelector('[data-map-panel]')?.contains(document.activeElement)
     selection = null
     if (fromPanel) opener?.focus()
     opener = null
@@ -444,6 +461,10 @@
         {highlighted}
         {highlightedFields}
         showSystems={prefs.systems}
+        {zones}
+        showZones={prefs.zones}
+        selectedZoneId={selectedZone?.id ?? null}
+        onselectzone={selectZone}
         layersCount={(prefs.rain ? 1 : 0) + prefs.overlays.length}
         basemap={prefs.basemap}
         view={prefs.view}
@@ -485,12 +506,14 @@
             >
           </div>
         {/if}
-        {#if scopeNode || selectedPivot}
+        {#if scopeNode || selectedPivot || selectedZone}
           <div
             class="pointer-events-none absolute inset-x-2 bottom-8 z-10 flex max-h-[60%] flex-col sm:inset-x-auto sm:top-2
               sm:right-12 sm:bottom-auto sm:max-h-[calc(100%-3rem)] sm:w-80"
           >
-            {#if scopeNode}
+            {#if selectedZone}
+              <ZonePanel zone={selectedZone} {today} {units} onclose={clearSelection} />
+            {:else if scopeNode}
               <ScopePanel node={scopeNode} farm={scopeFarm} onselect={select} onclose={clearSelection} />
             {:else if selectedPivot && selectedFarm}
               <PivotPanel
@@ -499,6 +522,7 @@
                 group={selectedFarm.pivot_groups.find((group) => group.id === selectedPivot.pivot_group_id) ?? null}
                 {today}
                 {units}
+                weather={zoneOf(selectedPivot.weather_cell_id)?.weather ?? null}
                 fieldId={selectedFieldId}
                 onselectfield={(id) => select({ level: 'field', id })}
                 onselect={select}

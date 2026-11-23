@@ -89,7 +89,7 @@ export type SortOrder = 'urgent' | 'north'
 // › system › field, as on the dashboard and Setup (a system in no group sits under its farm).
 
 /** What's selected on the map page: one card in the list, and its system or field on the map */
-export type Selection = { level: 'farm' | 'group' | 'system' | 'field'; id: number }
+export type Selection = { level: 'farm' | 'group' | 'system' | 'field' | 'zone'; id: number }
 
 export type SystemNode<P> = { kind: 'system'; pivot: P; fields: FieldCard[] }
 export type GroupNode<P> = { kind: 'group'; id: number; name: string; systems: SystemNode<P>[] }

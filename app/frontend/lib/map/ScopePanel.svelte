@@ -8,6 +8,7 @@
   import { isExample } from '@/lib/permissions'
   import { editLink } from '@/lib/setup/links'
 
+  import MapPanel from './MapPanel.svelte'
   import type { MapPivot } from './pivots'
 
   // A selected farm or irrigation group over the map (Ben, 2026-11-17), as PivotPanel is a system's:
@@ -53,74 +54,58 @@
   </button>
 {/snippet}
 
-<section
-  class="pointer-events-auto flex max-h-full flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-xl
-    focus-visible:outline-2 focus-visible:outline-brand-500"
-  aria-labelledby="scope-panel-title"
-  tabindex="-1"
-  data-pivot-panel
->
-  <header class="flex items-start justify-between gap-2 border-b border-line bg-surface-raised px-3 py-2">
-    <div class="min-w-0">
-      {#if farm}
-        <button
-          type="button"
-          class="block max-w-full truncate text-xs text-ink-muted hover:text-ink hover:underline"
-          aria-label="Show the farm {farm.name}"
-          onclick={() => onselect({ level: 'farm', id: farm.id })}>Farm: {farm.name}</button
+<MapPanel titleId="scope-panel-title" {onclose}>
+  {#snippet header()}
+    {#if farm}
+      <button
+        type="button"
+        class="block max-w-full truncate text-xs text-ink-muted hover:text-ink hover:underline"
+        aria-label="Show the farm {farm.name}"
+        onclick={() => onselect({ level: 'farm', id: farm.id })}>Farm: {farm.name}</button
+      >
+    {/if}
+    <h2 id="scope-panel-title" class="truncate font-medium">
+      <span class="font-normal text-ink-muted">{noun}:</span>
+      {node.name}
+    </h2>
+    {#if !isExample(page.props)}
+      <div class="flex gap-3 text-xs">
+        <Link href={editLink(level, node.id)} class="text-brand-600 hover:underline" aria-label="Edit {node.name}"
+          >Edit</Link
         >
-      {/if}
-      <h2 id="scope-panel-title" class="truncate font-medium">
-        <span class="font-normal text-ink-muted">{noun}:</span>
-        {node.name}
-      </h2>
-      {#if !isExample(page.props)}
-        <div class="flex gap-3 text-xs">
-          <Link href={editLink(level, node.id)} class="text-brand-600 hover:underline" aria-label="Edit {node.name}"
-            >Edit</Link
-          >
-        </div>
-      {/if}
-    </div>
-    <button
-      type="button"
-      class="-mr-1 rounded-md px-2 py-1 text-lg leading-none text-ink-muted hover:bg-surface hover:text-ink"
-      aria-label="Close"
-      onclick={onclose}>×</button
-    >
-  </header>
-  <div class="overflow-y-auto p-3">
-    <ul class="space-y-1.5">
-      {#if node.kind === 'farm'}
-        {#each node.children as child (`${child.kind}-${child.kind === 'group' ? child.id : child.pivot.id}`)}
-          <li>
-            {#if child.kind === 'group'}
-              <button
-                type="button"
-                class="{row} border-dashed"
-                aria-label="Show the irrigation group {child.name}"
-                onclick={() => onselect({ level: 'group', id: child.id })}
+      </div>
+    {/if}
+  {/snippet}
+  <ul class="space-y-1.5">
+    {#if node.kind === 'farm'}
+      {#each node.children as child (`${child.kind}-${child.kind === 'group' ? child.id : child.pivot.id}`)}
+        <li>
+          {#if child.kind === 'group'}
+            <button
+              type="button"
+              class="{row} border-dashed"
+              aria-label="Show the irrigation group {child.name}"
+              onclick={() => onselect({ level: 'group', id: child.id })}
+            >
+              <span class="min-w-0 flex-1 truncate">
+                <span class="text-ink-muted">Group:</span>
+                <span class="font-medium">{child.name}</span>
+              </span>
+              <span class="shrink-0 text-xs text-ink-muted"
+                >{child.systems.length === 1 ? '1 system' : `${child.systems.length} systems`}</span
               >
-                <span class="min-w-0 flex-1 truncate">
-                  <span class="text-ink-muted">Group:</span>
-                  <span class="font-medium">{child.name}</span>
-                </span>
-                <span class="shrink-0 text-xs text-ink-muted"
-                  >{child.systems.length === 1 ? '1 system' : `${child.systems.length} systems`}</span
-                >
-              </button>
-            {:else}
-              {@render systemRow(child)}
-            {/if}
-          </li>
-        {:else}
-          <li class="text-sm text-ink-muted">No irrigation systems shown.</li>
-        {/each}
+            </button>
+          {:else}
+            {@render systemRow(child)}
+          {/if}
+        </li>
       {:else}
-        {#each node.systems as system (system.pivot.id)}
-          <li>{@render systemRow(system)}</li>
-        {/each}
-      {/if}
-    </ul>
-  </div>
-</section>
+        <li class="text-sm text-ink-muted">No irrigation systems shown.</li>
+      {/each}
+    {:else}
+      {#each node.systems as system (system.pivot.id)}
+        <li>{@render systemRow(system)}</li>
+      {/each}
+    {/if}
+  </ul>
+</MapPanel>

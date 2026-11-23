@@ -2,6 +2,8 @@
 // worker's URL at run time, which Vite can't follow, so Vite bundles the worker itself and MapLibre
 // is told where it is.
 
+import type { Map as MapLibreMap } from 'maplibre-gl'
+
 type MapLibre = typeof import('maplibre-gl')
 
 let loading: Promise<MapLibre> | undefined
@@ -17,4 +19,9 @@ export function loadMapLibre(): Promise<MapLibre> {
       throw error
     })
   return loading
+}
+
+/** Shows or hides a map's layers (those it has) */
+export function showLayers(map: MapLibreMap | undefined, ids: string[], visible: boolean) {
+  for (const id of ids) if (map?.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
 }

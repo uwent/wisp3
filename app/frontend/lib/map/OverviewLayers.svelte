@@ -10,7 +10,7 @@
 
   // The Map tab's own layers, in its Layers panel (MapLayersButton) after the base map: one rain
   // layer at a time (radar, recent rain, forecast rain) and the Drought Monitor, each with its
-  // legend, time, opacity and source, and the irrigation systems' shapes
+  // legend, time, opacity and source, the weather zones and the irrigation systems' shapes
   let { prefs = $bindable(), overlays, units }: { prefs: MapPrefs; overlays: MapOverlays; units: Units } = $props()
 
   const rain = $derived(RAIN_OVERLAYS.find((overlay) => overlay.id === prefs.rain) ?? null)
@@ -94,6 +94,17 @@
     {#if on}{@render details(overlay)}{/if}
   </div>
 {/each}
+
+<div>
+  <label class="flex items-center gap-2">
+    <input type="checkbox" bind:checked={prefs.zones} />
+    Weather zones
+  </label>
+  <p class="mt-1 text-xs text-ink-muted">
+    The weather grid cells your irrigation systems are in, about 9 km across, each with its own weather. Point at one to
+    see its last week and the week ahead, or select it for its forecast.
+  </p>
+</div>
 
 <div>
   <label class="flex items-center gap-2">

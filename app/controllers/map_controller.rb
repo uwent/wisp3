@@ -1,6 +1,7 @@
-# The map: the dashboard's farms, pivots and field cards, with each pivot's
-# location and its weather zone's rain and ET over the last 7 days and the next 7, and its fields'
-# outlines, for a season (?year=; this year by default).
+# The map: the dashboard's farms, pivots and field cards, with each pivot's location, its weather
+# zone and its fields' outlines, for a season (?year=; this year by default), and the weather zones of
+# the operation's systems (as /weather lists them: only those cells are kept current) with their
+# weather over the last 7 days and the next 7 and the week ahead.
 class MapController < AuthenticatedController
   allow_example :show
 
@@ -8,7 +9,9 @@ class MapController < AuthenticatedController
     today = Current.today
     year = requested_year
     overview = OperationOverview.new(Current.group, today:, year:)
-    weather = WeatherSummary.by_cell(overview.pivots.map(&:weather_cell_id).uniq, today: overview.today)
+    zones = overview.pivots.select(&:weather_cell).group_by(&:weather_cell)
+      .map { |cell, pivots| WeatherZone.new(cell, pivots) }.sort_by(&:sort_key)
+    cell_ids = zones.map(&:id)
 
     render inertia: "Map/Show", props: {
       today: overview.today,
@@ -16,14 +19,14 @@ class MapController < AuthenticatedController
       years: overview.years,
       farms: overview.props do |pivot|
         pivot.slice(*PivotSerializer::SHAPE).symbolize_keys.merge(
-          weather: weather[pivot.weather_cell_id]&.transform_values { |span| span && totals(span) },
+          weather_cell_id: pivot.weather_cell_id,
           outlines: pivot.fields.select(&:boundary).map { |field| {field_id: field.id, boundary: field.boundary} }
         )
-      end
+      end,
+      zones: MapZoneSerializer.new(zones, params: {
+        weather: WeatherSummary.by_cell(cell_ids, today: overview.today),
+        forecasts: ForecastDays.by_cell(cell_ids, today: overview.today)
+      }).to_h
     }
   end
-
-  private
-
-  def totals(span) = {days: span.days, precip: span.precip, et0: span.et0}
 end

@@ -212,12 +212,64 @@ test('the map lists the fields and selects a pivot from the list', async ({ page
   expect(errors).toEqual([])
 })
 
+test("the map outlines the systems' weather zones, with their weather on hover and in a panel", async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/map')
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible()
+  // The map flies the system to 170 px left of center beside its panel, at zoom 13.5 or more, where
+  // its zone is about a thousand pixels across: somewhere to the left of the system is in it with
+  // nothing else there
+  await page
+    .getByRole('complementary', { name: 'Fields' })
+    .getByRole('button', { name: `Show system ${DEMO.splitPivot} on the map` })
+    .click()
+  const box = (await page.locator('.maplibregl-canvas').boundingBox())!
+  const [x, y] = [box.x + box.width / 2 - 170, box.y + box.height / 2]
+  const label = page.locator('div[aria-hidden="true"]').filter({ hasText: /^(Past|Next) \d+ days?:|^No weather/ })
+  const spots = [-160, -200, -240].flatMap((dx) => [0, -120, 120].map((dy) => [x + dx, y + dy] as const))
+  let spot: readonly [number, number] | undefined
+  await expect(async () => {
+    for (const at of spots) {
+      await page.mouse.move(...at)
+      if (await label.isVisible({ timeout: 300 }).catch(() => false)) return void (spot = at)
+    }
+    throw new Error('no spot in a zone with nothing else there')
+  }).toPass({ timeout: 10_000 })
+
+  // A click there selects the zone: its weather, the week ahead and a link to its weather page
+  await page.mouse.click(...spot!)
+  const panel = page.getByRole('region', { name: /^Weather zone: \d+\.\d\d°N, \d+\.\d\d°W$/ })
+  await expect(panel).toBeVisible()
+  await expect(panel.getByRole('link', { name: 'View its weather' })).toHaveAttribute(
+    'href',
+    /\/weather\/[\d.-]+,[\d.-]+$/,
+  )
+  await expect(page.getByRole('region', { name: /^System: / })).toBeHidden()
+  await page.keyboard.press('Escape')
+  await expect(panel).toBeHidden()
+
+  // The layer can be switched off: no zone's weather on hover, and a click there selects nothing
+  await page.getByRole('button', { name: /^Layers/ }).click()
+  const zones = page.getByRole('checkbox', { name: 'Weather zones' })
+  await expect(zones).toBeChecked()
+  await zones.uncheck()
+  await page.keyboard.press('Escape')
+  await page.mouse.move(...spot!)
+  await page.mouse.move(spot![0] + 1, spot![1])
+  await expect(label).toBeHidden()
+  await page.mouse.click(...spot!)
+  await expect(panel).toBeHidden()
+  await page.getByRole('button', { name: /^Layers/ }).click()
+  await page.getByRole('checkbox', { name: 'Weather zones' }).check()
+  expect(errors).toEqual([])
+})
+
 test("the map's list is the operation as a tree, selected at any level", { tag: '@phone' }, async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/map')
   await expect(page.locator('.maplibregl-canvas')).toBeVisible()
   const list = page.getByRole('complementary', { name: 'Fields' })
-  const panel = page.locator('[data-pivot-panel]')
+  const panel = page.locator('[data-map-panel]')
 
   // A farm or an irrigation group zooms the map to its systems, and opens its panel: its Edit, and
   // what's in it, each selecting itself
