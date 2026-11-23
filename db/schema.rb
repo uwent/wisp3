@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -35,7 +35,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_130000) do
     t.index ["announcement_id", "status"], name: "index_announcement_deliveries_on_announcement_id_and_status"
     t.index ["announcement_id", "user_id"], name: "index_announcement_deliveries_on_announcement_id_and_user_id", unique: true
     t.index ["user_id"], name: "index_announcement_deliveries_on_user_id"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'sending'::character varying, 'sent'::character varying, 'failed'::character varying, 'skipped'::character varying]::text[])", name: "announcement_deliveries_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'sending'::character varying::text, 'sent'::character varying::text, 'failed'::character varying::text, 'skipped'::character varying::text])", name: "announcement_deliveries_status"
   end
 
   create_table "announcements", force: :cascade do |t|
@@ -52,8 +52,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_130000) do
     t.datetime "updated_at", null: false
     t.index ["created_by_id"], name: "index_announcements_on_created_by_id"
     t.index ["sent_by_id"], name: "index_announcements_on_sent_by_id"
-    t.check_constraint "audience::text = ANY (ARRAY['all'::character varying, 'active_since'::character varying, 'joined_since'::character varying, 'no_farms'::character varying]::text[])", name: "announcements_audience"
-    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying, 'sending'::character varying, 'sent'::character varying, 'incomplete'::character varying]::text[])", name: "announcements_status"
+    t.check_constraint "audience::text = ANY (ARRAY['all'::character varying::text, 'active_since'::character varying::text, 'joined_since'::character varying::text, 'no_farms'::character varying::text])", name: "announcements_audience"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying::text, 'sending'::character varying::text, 'sent'::character varying::text, 'incomplete'::character varying::text])", name: "announcements_status"
   end
 
   create_table "canopy_cuttings", force: :cascade do |t|
@@ -185,12 +185,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_130000) do
     t.index ["pivot_group_id"], name: "index_pivots_on_pivot_group_id"
     t.index ["weather_cell_id"], name: "index_pivots_on_weather_cell_id"
     t.check_constraint "(arc_start_deg IS NULL) = (arc_end_deg IS NULL)", name: "pivots_arc_both_or_neither"
-    t.check_constraint "(kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying]::text[])) OR radius_ft IS NULL AND arc_start_deg IS NULL", name: "pivots_point_shape"
-    t.check_constraint "inches_at_100 IS NULL OR (kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying]::text[]))", name: "pivots_inches_at_100_kind"
+    t.check_constraint "(kind::text = ANY (ARRAY['center'::character varying::text, 'linear'::character varying::text])) OR radius_ft IS NULL AND arc_start_deg IS NULL", name: "pivots_point_shape"
+    t.check_constraint "inches_at_100 IS NULL OR (kind::text = ANY (ARRAY['center'::character varying::text, 'linear'::character varying::text]))", name: "pivots_inches_at_100_kind"
     t.check_constraint "inches_at_100 IS NULL OR inches_at_100 > 0::double precision", name: "pivots_inches_at_100_positive"
     t.check_constraint "kind::text <> 'linear'::text OR radius_ft IS NULL AND arc_start_deg IS NULL AND length_ft IS NOT NULL AND travel_ft IS NOT NULL AND travel_bearing_deg IS NOT NULL AND length_ft > 0::double precision AND length_ft <= 3300::double precision AND travel_ft > 0::double precision AND travel_ft <= 5280::double precision AND travel_bearing_deg >= 0 AND travel_bearing_deg <= 179", name: "pivots_linear_shape"
     t.check_constraint "kind::text = 'linear'::text OR length_ft IS NULL AND travel_ft IS NULL AND travel_bearing_deg IS NULL", name: "pivots_center_shape"
-    t.check_constraint "kind::text = ANY (ARRAY['center'::character varying, 'linear'::character varying, 'traveler'::character varying, 'solid_set'::character varying, 'drip'::character varying, 'point'::character varying]::text[])", name: "pivots_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['center'::character varying::text, 'linear'::character varying::text, 'traveler'::character varying::text, 'solid_set'::character varying::text, 'drip'::character varying::text, 'point'::character varying::text])", name: "pivots_kind"
     t.check_constraint "pump_capacity_gpm IS NULL OR pump_capacity_gpm > 0::double precision", name: "pivots_pump_capacity_positive"
     t.check_constraint "radius_ft IS NULL OR radius_ft <= 3000::double precision", name: "pivots_radius_max"
     t.check_constraint "radius_ft IS NULL OR radius_ft > 0::double precision", name: "pivots_radius_positive"
@@ -239,6 +239,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_130000) do
     t.bigint "pivot_id", null: false
     t.integer "season_days"
     t.bigint "created_by_id"
+    t.boolean "rainfed", default: false, null: false
     t.index ["created_by_id"], name: "index_plantings_on_created_by_id"
     t.index ["field_id"], name: "index_plantings_on_field_id"
     t.index ["pivot_id"], name: "index_plantings_on_pivot_id"

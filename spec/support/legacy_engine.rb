@@ -18,7 +18,9 @@ module LegacyEngine
       "is, against AgWeather's ET, and 1.1)",
     c22: "crop ET by FAO-56's dual crop coefficient: a basal Kcb from the canopy (eqs. 97–98), easing to Kcb end over " \
       "the late season, plus soil evaporation Ke from the surface layer's wetting and drying (eqs. 71–77), in place " \
-      "of the percent cover table (legacy: the table, whose bare soil evaporates 0–0.02 in a day)"
+      "of the percent cover table (legacy: the table, whose bare soil evaporates 0–0.02 in a day)",
+    c26: "with C22, water stress below the MAD trigger: Kcb scaled by FAO-56's Ks (eq. 84), 1 at AD 0 down to 0 at " \
+      "the wilting point, from the day's starting AD (legacy: full crop ET however dry the soil)"
   }.freeze
 
   # Fixes that change the canopy series rather than the balance
@@ -58,8 +60,9 @@ module LegacyEngine
       ref_et = day[:et0] || 0.0
       kc = kc_mid && fixes.include?(:c21) && fao56_kc_mid(kc_mid, crop_height_m, day[:wind_mph], day[:rh_min_pct])
       if dual
+        ks = (fixes.include?(:c26) && ad < 0) ? [1 - ad / ad_pwp, 0.0].max : 1.0
         adj_et, new_de, new_fw = dual_et(ref_et, day, et_method:, height: crop_height_m, de:, fw:, tew:, rew:, irrigation_fw:,
-          kcb: late_kcb(kcb_mid, kcb_end, crop_height_m, late_start, end_date, day))
+          kcb: late_kcb(kcb_mid, kcb_end, crop_height_m, late_start, end_date, day), ks:)
       end
       adj_et ||= if et_method == "lai"
         lai_et(ref_et, day[:canopy], kc || 1.1)
@@ -142,8 +145,8 @@ module LegacyEngine
     mid * (1 - share) + last * share
   end
 
-  # C22: [crop ET, De, fw] for one day: FAO-56 eqs. 97–98 for Kcb, 71–77 for Ke
-  def dual_et(ref_et, day, et_method:, height:, kcb:, de:, fw:, tew:, rew:, irrigation_fw:)
+  # C22: [crop ET, De, fw] for one day: FAO-56 eqs. 97–98 for Kcb, 71–77 for Ke; with C26, Kcb × ks
+  def dual_et(ref_et, day, et_method:, height:, kcb:, de:, fw:, tew:, rew:, irrigation_fw:, ks: 1.0)
     canopy = [day[:canopy] || 0.0, 0.0].max
     if et_method == "lai"
       fc = 1 - Math.exp(-0.7 * canopy)
@@ -162,7 +165,7 @@ module LegacyEngine
     few = [1 - fc, fw].min.clamp(0.01, 1.0)
     ke = [kr * (kc_max - basal), few * kc_max].min
     de = (de + ke * ref_et / few).clamp(0.0, tew)
-    [(basal + ke) * ref_et, de, fw]
+    [(ks * basal + ke) * ref_et, de, fw]
   end
 
   # FAO-56 eq. 62, written out independently of CropEt.kc_mid

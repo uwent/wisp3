@@ -20,7 +20,7 @@
   import { KIND_NOUNS, type PivotKind } from '@/lib/geo'
   import { isExample } from '@/lib/permissions'
   import { guidance as guidanceFor } from '@/lib/guidance'
-  import { outlook as outlookFor } from '@/lib/outlook'
+  import { outlook as outlookFor, waterUsePct } from '@/lib/outlook'
   import { plotSize } from '@/lib/plantings'
   import { cellValue, type DayColumn } from '@/lib/fieldDays'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
@@ -123,6 +123,8 @@
   const weatherState = $derived(weatherWait.state(weather_updating))
   const lai = $derived(planting?.et_method === 'lai')
   const outlook = $derived(summary && outlookFor(summary, units))
+  // Short of water (C26): the share of its normal water use the crop manages today, or null
+  const waterUse = $derived(summary && waterUsePct(summary.ks))
   // A field using only entered rain also has a projection with no rain (Q7)
   const hasDry = $derived(summary?.projection.some((day) => day.dry_ad !== null) ?? false)
   const stats = $derived(days.length ? seasonStats(days) : null)
@@ -357,7 +359,7 @@
       {#if summary.phase === 'active'}<StatusBadge status={summary.status} />{/if}
     </div>
     <p class="text-sm text-ink-muted">
-      Emerged {formatDate(planting.emergence_date)}{planting.vine_kill_date
+      {planting.rainfed ? 'Rainfed · ' : ''}Emerged {formatDate(planting.emergence_date)}{planting.vine_kill_date
         ? ` · vine kill ${formatDate(planting.vine_kill_date)}`
         : ''} · season {formatDate(planting.season_start)} – {formatDate(planting.end_date, { year: true })}
     </p>
@@ -401,7 +403,7 @@
           </p>
           {#if outlook.dry}<p class="text-ink-muted">{outlook.dry}</p>{/if}
         </div>
-      {:else if summary.phase === 'active' && refill !== null && refill > 0.005}
+      {:else if summary.phase === 'active' && !summary.rainfed && refill !== null && refill > 0.005}
         <p class="text-sm">
           Refilling to field capacity takes about <strong>{units.format('depth', refill)}</strong>.
         </p>
@@ -422,16 +424,18 @@
         {formatNumber(summary.field_capacity_pct, 1)}% moisture (AD {units.format('depth', summary.ad_max)})
       </dd>
     </div>
+    {#if !summary.rainfed}
+      <div>
+        <dt class="text-ink-muted">Target</dt>
+        <dd class="tabular-nums">
+          {summary.target_in === null
+            ? 'Not set'
+            : `${formatNumber(moistureAt(summary.target_in), 1)}% moisture (AD ${units.format('depth', summary.target_in)})`}
+        </dd>
+      </div>
+    {/if}
     <div>
-      <dt class="text-ink-muted">Target</dt>
-      <dd class="tabular-nums">
-        {summary.target_in === null
-          ? 'Not set'
-          : `${formatNumber(moistureAt(summary.target_in), 1)}% moisture (AD ${units.format('depth', summary.target_in)})`}
-      </dd>
-    </div>
-    <div>
-      <dt class="text-ink-muted">Irrigation point</dt>
+      <dt class="text-ink-muted">{summary.rainfed ? 'Stress begins' : 'Irrigation point'}</dt>
       <dd class="tabular-nums">{formatNumber(summary.pct_at_ad_zero, 1)}% moisture (AD 0)</dd>
     </div>
     <div>
@@ -449,14 +453,22 @@
           : 'None'}
       </dd>
     </div>
-    <div>
-      <dt class="text-ink-muted">Last irrigation</dt>
-      <dd>
-        {summary.last_irrigation
-          ? `${units.format('depth', summary.last_irrigation.inches)}, ${when(summary.last_irrigation.date)}`
-          : 'None'}
-      </dd>
-    </div>
+    {#if !summary.rainfed}
+      <div>
+        <dt class="text-ink-muted">Last irrigation</dt>
+        <dd>
+          {summary.last_irrigation
+            ? `${units.format('depth', summary.last_irrigation.inches)}, ${when(summary.last_irrigation.date)}`
+            : 'None'}
+        </dd>
+      </div>
+    {/if}
+    {#if summary.phase === 'active' && (summary.rainfed || waterUse !== null)}
+      <div>
+        <dt class="text-ink-muted"><Term id="water_stress">Water use</Term></dt>
+        <dd>{waterUse === null ? 'Not short of water' : `About ${waterUse}% of normal`}</dd>
+      </div>
+    {/if}
   </dl>
 
   <div class="text-sm">
@@ -464,14 +476,16 @@
     <dl class="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 tabular-nums">
       <dt class="text-ink-muted">Rain</dt>
       <dd>{units.format('depth', summary.totals.rain)}{counted(summary.totals.rain_days)}</dd>
-      <dt class="text-ink-muted">Irrigation</dt>
-      <dd>{units.format('depth', summary.totals.irrigation)}{counted(summary.totals.irrigation_days)}</dd>
+      {#if !summary.rainfed || summary.totals.irrigation_days}
+        <dt class="text-ink-muted">Irrigation</dt>
+        <dd>{units.format('depth', summary.totals.irrigation)}{counted(summary.totals.irrigation_days)}</dd>
+      {/if}
       <dt class="text-ink-muted"><Term id="crop_et">Crop ET</Term></dt>
       <dd>{units.format('depth', summary.totals.adj_et)}</dd>
       <dt class="text-ink-muted"><Term id="deep_drainage">Deep drainage</Term></dt>
       <dd>{units.format('depth', summary.totals.deep_drainage)}{counted(summary.totals.drainage_days)}</dd>
       {#if summary.phase === 'ended'}
-        <dt class="text-ink-muted">Below the irrigation point</dt>
+        <dt class="text-ink-muted">{summary.rainfed ? 'Short of water' : 'Below the irrigation point'}</dt>
         <dd>{summary.totals.stress_days ? count(summary.totals.stress_days, 'day') : 'Never'}</dd>
       {/if}
     </dl>

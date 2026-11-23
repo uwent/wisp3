@@ -61,6 +61,9 @@
     ok: 'bg-status-ok',
     caution: 'bg-status-caution',
     irrigate: 'bg-status-irrigate',
+    no_stress: 'bg-status-ok',
+    stress_coming: 'bg-status-caution',
+    stressed: 'bg-status-irrigate',
   }
   const ended = (p: T) => p.end_date < today
   // A bar's menu opens under the bar where it was clicked (a bar can span the whole season), centred

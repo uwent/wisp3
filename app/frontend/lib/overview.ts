@@ -29,8 +29,17 @@ export type FarmGroup<P extends OverviewSystem = OverviewSystem> = {
 
 export type Status = NonNullable<PlantingSummary['status']>
 
-/** Most urgent first */
-export const STATUSES: Status[] = ['irrigate', 'caution', 'needs_canopy', 'ok', 'full']
+/** Most urgent first: irrigated crops by what they need, then rainfed ones by their stress (FieldStatuses::RANK) */
+export const STATUSES: Status[] = [
+  'irrigate',
+  'caution',
+  'needs_canopy',
+  'ok',
+  'full',
+  'stressed',
+  'stress_coming',
+  'no_stress',
+]
 
 /** The pivots whose weather is being updated, so the page waits for it to land (lib/poll.ts) */
 export const updatingIds = (farms: FarmGroup[]) =>
@@ -52,9 +61,9 @@ export function summaryUrgency(summary: PlantingSummary | null): number {
   return summaryActive(summary) ? STATUSES.indexOf(summary.status!) : n
 }
 
-/** Days until the planting needs water (0 when it does now), or null if not within the forecast */
+/** Days until the planting needs water (0 when it does now), or null if not within the forecast or rainfed */
 function summaryDaysToIrrigate(summary: PlantingSummary | null): number | null {
-  if (!summaryActive(summary)) return null
+  if (!summaryActive(summary) || summary!.rainfed) return null
   if (summary!.status === 'irrigate') return 0
   return summary!.crossing?.days ?? null
 }

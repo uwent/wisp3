@@ -205,6 +205,7 @@ farms:
         emergence: 04-05
         end: 07-15
         variety: Winter wheat
+        rainfed: true
         canopy:
         - {date: 04-19, pct_cover: 10}
         - {date: 05-03, pct_cover: 35}
@@ -215,6 +216,7 @@ farms:
         emergence: 07-24
         end: 10-10
         variety: Double crop
+        rainfed: true
         canopy:
         - {date: 08-07, pct_cover: 10}
         - {date: 08-21, pct_cover: 35}

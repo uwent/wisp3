@@ -11,6 +11,7 @@ RSpec.describe Outlook do
     today = summary["date"] && Date.parse(summary["date"])
     double(PlantingStatus, phase: summary["phase"].to_sym, today:, current: today && :today,
       status: summary["status"]&.to_sym, planting: double(plant: double(name: summary["plant_name"])),
+      rainfed?: summary["rainfed"], ks: summary["ks"],
       params: double(target_in: summary["target_in"]), crossing: crossing.call(summary["crossing"]),
       dry_crossing: crossing.call(summary["dry_crossing"]), ensemble_size: summary["ensemble_size"],
       forecast_days: projection.map { |day| double(inputs: double(date: day["date"])) },

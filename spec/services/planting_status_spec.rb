@@ -120,6 +120,17 @@ RSpec.describe PlantingStatus, "projection" do
     expect(status.crossing).to have_attributes(date: today, days: 0)
   end
 
+  it "gives a rainfed crop its water stress: stress coming, then stressed, with no target and no irrigation check" do
+    planting.update!(rainfed: true, target_ad_pct: 50)
+    expect(status).to have_attributes(status: :stress_coming, threshold: 0.0, ks: 1.0)
+    expect(status.crossing).to have_attributes(date: today + 2, days: 2)
+    later = described_class.new(planting, today: today + 5, weather:, ensemble: [])
+    expect(later.status).to eq(:stressed)
+    expect(later.ks).to be < 1.0
+    expect(later.tasks.map(&:kind)).not_to include(:irrigation_check)
+    expect(later.tasks.select(&:due)).to be_empty
+  end
+
   it "counts a crossing 3 days out as caution, and 4 days out as OK" do
     # A reading today sets AD, then 0.25 in/day ahead: 0.72 in reaches 0 in 3 days, 0.78 in in 4
     hot = weather.to_h { |date, values| [date, (date > today) ? values.merge(et0: 0.25) : values] }

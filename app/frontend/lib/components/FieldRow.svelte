@@ -46,7 +46,9 @@
     {#if name && context}<span class="block truncate text-xs text-ink-muted">{context}</span>{/if}
     {#if summary}
       <span class="block truncate text-xs {name ? 'text-ink-muted' : 'text-sm'}"
-        >{cropName(summary)}<span class="text-ink-muted">{` · ${cardWhen(summary, today)}`}</span></span
+        >{cropName(summary)}{summary.rainfed ? ' · Rainfed' : ''}<span class="text-ink-muted"
+          >{` · ${cardWhen(summary, today)}`}</span
+        ></span
       >
     {/if}
     {#if !summary}

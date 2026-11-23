@@ -21,6 +21,10 @@
     ok: { label: 'OK', icon: '✓', class: 'bg-status-ok text-white' },
     caution: { label: 'Caution', icon: '!', class: 'bg-status-caution text-on-caution' },
     irrigate: { label: 'Irrigate', icon: '▲', class: 'bg-status-irrigate text-white' },
+    // A rainfed crop's water stress (C26)
+    no_stress: { label: 'No stress', icon: '✓', class: 'bg-status-ok text-white' },
+    stress_coming: { label: 'Stress coming', icon: '!', class: 'bg-status-caution text-on-caution' },
+    stressed: { label: 'Stressed', icon: '▼', class: 'bg-status-irrigate text-white' },
     // No curve and no reading: outlined, so it doesn't read as a water status
     needs_canopy: {
       label: 'No canopy data',

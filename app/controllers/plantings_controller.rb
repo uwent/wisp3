@@ -120,7 +120,7 @@ class PlantingsController < AuthenticatedController
 
   # The values a planting on several fields shares; the rest (soil, area, plot, notes) is each field's
   COPIED = %w[plant_id variety season_start emergence_date end_date vine_kill_date max_root_zone_depth mad_frac et_method
-    canopy_interpolation canopy_curve_key season_days target_ad_pct initial_moisture_pct].freeze
+    canopy_interpolation canopy_curve_key season_days target_ad_pct initial_moisture_pct rainfed].freeze
 
   # The same planting on the other fields chosen (also_field_ids), built from its values (its crop's
   # defaults and suggested harvest already filled in); none for part of a field. nil if a field
@@ -166,6 +166,6 @@ class PlantingsController < AuthenticatedController
     params.expect(planting: [:field_id, :plant_id, :variety, :season_start, :emergence_date, :end_date, :vine_kill_date,
       :max_root_zone_depth, :mad_frac, :et_method, :canopy_interpolation, :target_ad_pct, :initial_moisture_pct, :notes,
       :soil_type_id, :field_capacity, :perm_wilting_pt, :area_acres,
-      :partial, :plot_length_ft, :plot_width_ft, :own_soil, :canopy_curve_key, :season_days])
+      :partial, :plot_length_ft, :plot_width_ft, :own_soil, :canopy_curve_key, :season_days, :rainfed])
   end
 end

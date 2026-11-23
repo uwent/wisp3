@@ -115,11 +115,15 @@ class Planting < ApplicationRecord
     rescue Date::Error
       nil
     end
+    defaults[:rainfed] = rainfed_default(field) unless given.key?(:rainfed)
     if plant && emergence && given[:end_date].blank?
       defaults[:end_date] = typical_end(plant, emergence, given[:canopy_curve_key], given[:season_days])
     end
     field.plantings.build(defaults.merge(given).merge(created_by:))
   end
+
+  # A new planting is rainfed when its field's system is a location with no pump: nothing to irrigate with
+  def self.rainfed_default(field) = field.pivot&.kind == "point" && field.pivot.pump_capacity_gpm.nil?
 
   # The suggested harvest date for plant emerging on emergence: its season's length later (the
   # planting's own, season_days, else the crop's typical CanopyCurve#season_days), but no later than

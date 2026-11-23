@@ -115,6 +115,15 @@ RSpec.describe WaterBalance do
     it "uses half of AD_max without a target" do
       expect(described_class.status(params.with(target_ad_pct: nil), 0.5)).to eq(:caution)
     end
+
+    it "gives a rainfed crop its water stress, with no irrigation target" do
+      rainfed = params.with(rainfed: true)
+      expect(rainfed.target_in).to be_nil
+      expect(described_class.status(rainfed, 1.2)).to eq(:no_stress)
+      expect(described_class.status(rainfed, 0.01)).to eq(:no_stress)
+      expect(described_class.status(rainfed, 0.0)).to eq(:stressed)
+      expect(described_class.status(rainfed, -1.0)).to eq(:stressed)
+    end
   end
 
   describe "with a crop: FAO-56's dual crop coefficient (C22)" do
@@ -172,6 +181,39 @@ RSpec.describe WaterBalance do
       windy = {wind_mph: 15.0, rh_min_pct: 25.0}
       expect(late.kcb_full(Date.new(2026, 9, 3), **windy)).to be_within(1e-12).of(CropEt.kc_mid(0.65, 0.6, **windy))
       expect(late.with(kcb_end: 0.25).kcb_full(Date.new(2026, 9, 3), **windy)).to be_within(1e-12).of(0.25)
+    end
+
+    describe "water stress (C26)" do
+      def full(offset, **inputs) = day(offset, canopy: 100.0, et0: 0.25, **inputs)
+
+      it "is 1 down to the trigger, then falls in a straight line to 0 at the wilting point" do
+        expect(params.ks(params.ad_max)).to eq(1.0)
+        expect(params.ks(0.0)).to eq(1.0)
+        expect(params.ks(params.ad_pwp / 2)).to be_within(1e-12).of(0.5)
+        expect(params.ks(params.ad_pwp)).to eq(0.0)
+      end
+
+      it "scales the crop's transpiration by the day's starting AD, not its soil evaporation" do
+        dry = SoilEvaporation::State.new(depletion: params.evaporation.tew, fw: 1.0)
+        unstressed = run([full(0)], initial_ad: 0.0, evaporation: dry).first
+        half = run([full(0)], initial_ad: params.ad_pwp / 2, evaporation: dry).first
+        wilted = run([full(0)], initial_ad: params.ad_pwp, evaporation: dry).first
+        expect(half.adj_et).to be_within(1e-4).of(unstressed.adj_et / 2)
+        expect(wilted.adj_et).to eq(0.0)
+        # wet soil evaporates whatever the crop's stress
+        wet = run([full(0, rain: 0.1)], initial_ad: params.ad_pwp).first
+        expect(wet.adj_et).to be > 0
+        expect(half.ks).to be_within(1e-4).of(params.ks(half.ad))
+      end
+
+      it "slows the drawdown below the trigger, so a dry spell reaches the wilting point later" do
+        days = (0..20).map { |i| full(i) }
+        results = run(days)
+        below = results.index { |r| r.ad.negative? }
+        expect(results.drop(below + 1).map(&:adj_et).each_cons(2)).to all(satisfy { |a, b| b <= a + 1e-9 })
+        expect(results.last.ad).to be > params.ad_pwp
+        expect(run(days, initial_ad: 0.0).first.adj_et).to be > run(days, initial_ad: -0.6).first.adj_et
+      end
     end
 
     it "keeps AD in range and conserves water over random seasons" do

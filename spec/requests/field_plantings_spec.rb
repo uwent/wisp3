@@ -129,6 +129,19 @@ RSpec.describe "Fields with several plantings", type: :request do
   describe "the planting form" do
     let(:plant) { create(:plant) }
 
+    it "makes a planting rainfed as chosen, and by default on a location with no pump" do
+      post plantings_path, params: {planting: {field_id: field.id, plant_id: plant.id, rainfed: "true", **season}}
+      expect(field.plantings.sole).to be_rainfed
+
+      location = create(:pivot, farm: pivot.farm, kind: "point", radius_ft: nil, pump_capacity_gpm: nil)
+      dry = create(:field, pivot: location)
+      post plantings_path, params: {planting: {field_id: dry.id, plant_id: plant.id, **season}}
+      expect(dry.plantings.sole).to be_rainfed
+      pumped = create(:field, pivot: create(:pivot, farm: pivot.farm, kind: "point", radius_ft: nil, pump_capacity_gpm: 300))
+      post plantings_path, params: {planting: {field_id: pumped.id, plant_id: plant.id, **season}}
+      expect(pumped.plantings.sole).not_to be_rainfed
+    end
+
     it "refuses part of a field larger than the field" do
       post plantings_path, params: {planting: {field_id: field.id, plant_id: plant.id, partial: "true", area_acres: 3, **season}},
         headers: {"HTTP_REFERER" => setup_url}

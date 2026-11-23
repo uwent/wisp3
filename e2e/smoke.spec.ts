@@ -40,6 +40,8 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   const rows = page.locator('[data-field-row]')
   await expect(rows.first()).toBeVisible()
   await expect(page.getByText(/% soil moisture · AD /)).toHaveCount(0)
+  // A rainfed planting says so in its row, as on its card
+  await expect(rows.filter({ hasText: DEMO.rainfedField }).first()).toContainText('Rainfed')
   await page.reload()
   await expect(rows.first()).toBeVisible()
   const fieldCount = await rows.count()
@@ -51,7 +53,7 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   const statuses = page.getByRole('group', { name: 'Show fields by status' })
   const first = statuses.getByRole('button').first()
   const [, label, count] = (await first.textContent())!.match(
-    /(Irrigate|Caution|No canopy data|OK|Full|Season ended)\s*(\d+) fields?/,
+    /(Irrigate|Caution|No canopy data|OK|Full|Stressed|Stress coming|No stress|Season ended)\s*(\d+) fields?/,
   )!
   await expect(rows.first()).toContainText(label)
 

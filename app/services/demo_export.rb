@@ -7,7 +7,7 @@ class DemoExport
     travel_bearing_deg pump_capacity_gpm inches_at_100 equipment notes].freeze
   FIELD_ATTRIBUTES = %w[area_acres field_capacity perm_wilting_pt notes].freeze
   PLANTING_ATTRIBUTES = %w[variety et_method target_ad_pct initial_moisture_pct max_root_zone_depth mad_frac
-    canopy_interpolation canopy_curve_key season_days partial plot_length_ft plot_width_ft own_soil notes].freeze
+    canopy_interpolation canopy_curve_key season_days partial plot_length_ft plot_width_ft own_soil rainfed notes].freeze
   ENTRY_VALUES = %w[rain_in irrigation_in soil_moisture_pct notes].freeze
 
   HEADER = <<~YAML
@@ -68,6 +68,7 @@ class DemoExport
     attributes = values(planting, PLANTING_ATTRIBUTES).reject { |key, value| defaults[key] == value }
     attributes.delete("partial") unless planting.partial?
     attributes.delete("own_soil") unless planting.own_soil?
+    attributes.delete("rainfed") unless planting.rainfed?
     {"crop" => planting.plant.key, "season_start" => month_day(planting.season_start),
      "emergence" => month_day(planting.emergence_date), "end" => month_day(planting.end_date),
      "vine_kill" => planting.vine_kill_date && month_day(planting.vine_kill_date), **attributes,

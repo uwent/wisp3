@@ -173,7 +173,7 @@
                 {look.headline}
               </p>{/if}
             {#if summary.phase === 'ended' && !summary.weather_pending}
-              <p class="text-xs text-ink-muted">{seasonLine(summary.totals, units)}</p>
+              <p class="text-xs text-ink-muted">{seasonLine(summary.totals, units, summary.rainfed)}</p>
             {:else if summary.phase === 'active' && !summary.weather_pending}
               <p class="text-xs text-ink-muted tabular-nums">
                 {#if summary.pct_moisture !== null}{summary.pct_moisture.toFixed(1)}% soil moisture ·{' '}{/if}AD
