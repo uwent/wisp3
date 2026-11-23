@@ -124,6 +124,20 @@ describe('pivotFeatures', () => {
     expect(systemOutline({ ...traveler, outlines: [] })).toBeNull()
   })
 
+  it("takes a point kind's own location into its outline when it sits off its fields", () => {
+    const traveler: MapPivot = {
+      ...pivot(2, 44.1, [{ ...field('ok'), id: 10, name: 'East' }]),
+      kind: 'traveler',
+      radius_ft: null,
+      longitude: -89.505,
+      outlines: [{ field_id: 10, boundary: square(-89.5, 44.1) }],
+    }
+    const ring = systemOutline(traveler)!
+    expect(pointInPolygon([-89.505, 44.1], [ring])).toBe(true)
+    expect(pointInPolygon([-89.5051, 44.1], [ring])).toBe(true) // within the 50 ft margin
+    expect(pointInPolygon([-89.506, 44.1], [ring])).toBe(false)
+  })
+
   it('dims nothing without a window', () => {
     expect(pivotFeatures([pivot(1, 44.1)], null, null).features[0].properties.dimmed).toBe(false)
   })

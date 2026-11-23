@@ -183,6 +183,17 @@ RSpec.describe "Setup", type: :request do
       expect_inertia.to render_component("Pivots/Form")
       expect(inertia.props[:other_pivots].map { |p| p["name"] }).to eq(["Neighbor"])
     end
+
+    it "gives each other system's farm and its fields' extent, for the map to open on the new system's farm" do
+      neighbor = create(:pivot, farm:, name: "Neighbor")
+      ring = [[-89.5, 44.1], [-89.49, 44.1], [-89.49, 44.11], [-89.5, 44.11], [-89.5, 44.1]]
+      create(:field, pivot: neighbor, boundary: {"type" => "Polygon", "coordinates" => [ring]})
+      create(:pivot, farm:, name: "Bare")
+      get new_pivot_path(farm_id: farm.id)
+      others = inertia.props[:other_pivots].index_by { |p| p["name"] }
+      expect(others["Neighbor"]).to include("farm_id" => farm.id, "fields_extent" => [[-89.5, 44.1], [-89.49, 44.11]])
+      expect(others["Bare"]["fields_extent"]).to be_nil
+    end
   end
 
   describe "fields" do

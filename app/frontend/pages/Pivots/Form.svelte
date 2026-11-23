@@ -15,11 +15,13 @@
     isPoint,
     KIND_NAMES,
     KIND_NOUNS,
+    type LngLat,
     type PivotKind,
     type PivotShape,
     shapeAcres,
     shapeDraft,
     systemName,
+    systemsFrame,
   } from '@/lib/geo'
   import { circleNoun, hasTimer } from '@/lib/irrigation'
   import { currentUnits } from '@/lib/units'
@@ -27,7 +29,11 @@
   import { pivots, setup } from '@/routes'
   import type { Pivot, SoilType } from '@/types/serializers'
 
-  type Outline = PivotShape & Pick<Pivot, 'id' | 'name'>
+  type Outline = PivotShape &
+    Pick<Pivot, 'id' | 'name' | 'farm_id'> & {
+      /** Its fields' outlines' extent, [[west, south], [east, north]] */
+      fields_extent: [LngLat, LngLat] | null
+    }
 
   let {
     pivot,
@@ -50,6 +56,8 @@
   const editing = $derived(pivot.id !== undefined)
   let farmId = $state(untrack(() => String(pivot.farm_id ?? farms[0]?.id ?? '')))
   const joinsGroup = $derived(!editing && pivot_group && String(pivot_group.farm_id) === farmId ? pivot_group : null)
+  // The map opens on the chosen farm's systems and their fields (all of the operation's when it has none)
+  const frame = $derived(systemsFrame(other_pivots.filter((other) => String(other.farm_id) === farmId)))
 
   // The map and the inputs edit the same values
   let shape = $state(untrack(() => shapeDraft(pivot)))
@@ -153,6 +161,7 @@
           prefix="pivot"
           error={(attribute) => errors[attribute]}
           others={other_pivots}
+          {frame}
           soilTypes={soil_types}
           headingLevel="h2"
           locked={editing}

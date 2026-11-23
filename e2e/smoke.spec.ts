@@ -765,13 +765,13 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
   await expect(timeline.getByRole('link')).toHaveCount(4)
   await expect(page.getByRole('button', { name: 'Rain and irrigation on the field' })).toBeVisible()
 
-  // A plot's page: its size, and its own irrigation from the drip
+  // A plot's page, named by its crop and variety: its size
   const tabs = page.getByRole('navigation', { name: 'Field and plantings' })
-  const drip = new RegExp(`^${literal(DEMO.dripPlot.replace(/\)$/, ''))}`)
-  await tabs.getByRole('link', { name: drip }).click()
+  const plot = new RegExp(`^${literal(DEMO.namedPlot.replace(/\)$/, ''))}`)
+  await tabs.getByRole('link', { name: plot }).click()
   await expect(page).toHaveURL(/\/plantings\/\d+/)
   await expect(page.getByText('Part of the field: 300 × 60 ft (0.41 ac)')).toBeVisible()
-  await expect(tabs.getByRole('link', { name: drip })).toHaveAttribute('aria-current', 'page')
+  await expect(tabs.getByRole('link', { name: plot })).toHaveAttribute('aria-current', 'page')
 
   // Setup: each level labelled, the field's plantings on a timeline, each opening its form, with its size
   await page.goto('/setup')
@@ -960,10 +960,10 @@ test("daily entry fills an irrigation group's rain into its systems, and saves a
 
   const plots = page.getByRole('button', { name: `Plots on ${DEMO.researchField}` })
   if ((await plots.getAttribute('aria-expanded')) === 'false') await plots.click()
-  const drip = page.getByLabel(
-    new RegExp(`^Irrigation on ${literal(DEMO.dripPlot)}, .* on ${literal(DEMO.researchField)}`),
+  const plot = page.getByLabel(
+    new RegExp(`^Irrigation on ${literal(DEMO.namedPlot)}, .* on ${literal(DEMO.researchField)}`),
   )
-  await drip.fill('0.3')
+  await plot.fill('0.3')
   const cover = page.getByLabel(new RegExp(`^Percent cover on ${literal(DEMO.hayField)}`))
   await cover.fill('30')
   await page.getByRole('button', { name: /^Save / }).click()
@@ -971,7 +971,7 @@ test("daily entry fills an irrigation group's rain into its systems, and saves a
   await expect(rain(DEMO.hayField)).toHaveValue('0.40')
   await expect(rain(DEMO.gaugeFieldSystem)).toHaveValue('0.50')
   await expect(gauge).toHaveAttribute('placeholder', 'varies')
-  await expect(drip).toHaveValue('0.30')
+  await expect(plot).toHaveValue('0.30')
   await expect(cover).toHaveValue('30')
 
   // Collapsing the group is remembered
@@ -990,7 +990,7 @@ test("daily entry fills an irrigation group's rain into its systems, and saves a
 
   // Leave the day as it was for other tests: one value from the group, saved, then cleared from there
   await gauge.fill('0.4')
-  await drip.fill('')
+  await plot.fill('')
   await cover.fill('')
   await page.getByRole('button', { name: /^Save / }).click()
   await expect(page.getByText(/^Saved /)).toBeVisible()
@@ -1002,13 +1002,13 @@ test("daily entry fills an irrigation group's rain into its systems, and saves a
 })
 
 test("daily entry offers the day before's irrigation, filled in only when chosen", async ({ page }) => {
-  // The demo's pivot ran on July 19 and has nothing on the 20th
-  await page.goto(midSeason.replace('-07-15', '-07-20'))
+  // The demo's pivot ran on July 18 and has nothing on the 19th
+  await page.goto(midSeason.replace('-07-15', '-07-19'))
   const amount = page.getByLabel(`Irrigation by ${DEMO.otherPivot}`, { exact: true })
   await expect(amount).toHaveValue('')
   const same = page.getByRole('button', { name: `Same as the day before for ${DEMO.otherPivot}` })
   await same.click()
-  await expect(amount).toHaveValue('0.80')
+  await expect(amount).toHaveValue('0.40')
   await expect(same).toBeHidden()
 })
 
@@ -1018,16 +1018,16 @@ test("daily entry's calculator works out a system's irrigation and fills its fie
   const dialog = page.getByRole('dialog', {
     name: new RegExp(`^Irrigation for ${literal(DEMO.splitPivot)} on Jul 15$`),
   })
-  // The demo's split pivot puts on 0.17 in a circle at 100%: at 20%, 0.85 in
+  // The demo's split pivot puts on 0.21 in a circle at 100%: at 20%, 1.05 in
   await dialog.getByRole('radio', { name: '% timer' }).check({ force: true })
-  await expect(dialog.getByLabel('Depth at 100%')).toHaveAttribute('placeholder', '0.17')
+  await expect(dialog.getByLabel('Depth at 100%')).toHaveAttribute('placeholder', '0.21')
   await dialog.getByLabel('Timer', { exact: true }).fill('20')
-  await expect(dialog.getByText('0.85 in')).toBeVisible()
+  await expect(dialog.getByText('1.05 in')).toBeVisible()
   await dialog.getByRole('radio', { name: 'Specific fields' }).check()
   await dialog.getByRole('checkbox', { name: DEMO.splitEast }).uncheck()
   await dialog.getByRole('button', { name: 'Apply to 1 field' }).click()
 
-  await expect(page.getByLabel(`Irrigation on ${DEMO.splitWest}`, { exact: true })).toHaveValue('0.85')
+  await expect(page.getByLabel(`Irrigation on ${DEMO.splitWest}`, { exact: true })).toHaveValue('1.05')
   await expect(page.getByLabel(`Irrigation on ${DEMO.splitEast}`, { exact: true })).toHaveValue('')
   await expect(page.getByLabel(`Irrigation by ${DEMO.splitPivot}`, { exact: true })).toHaveAttribute(
     'placeholder',

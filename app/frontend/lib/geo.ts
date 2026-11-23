@@ -233,6 +233,19 @@ export function pivotOutline(shape: PivotShape, steps = 96): LngLat[] | null {
   return pivotRing(center, shape.radius_ft ?? DEFAULT_RADIUS_FT, shape.arc_start_deg, shape.arc_end_deg, steps)
 }
 
+/**
+ * The area systems cover, [[west, south], [east, north]]: their shapes (a point kind's location) and
+ * their fields' outlines' extents; null for none (the pivot picker opens on a farm's, Pivots/Form)
+ */
+export function systemsFrame(systems: (PivotShape & { fields_extent?: [LngLat, LngLat] | null })[]) {
+  return boundsOf(
+    systems.flatMap((system) => [
+      ...(pivotOutline(system) ?? [[system.longitude, system.latitude] as LngLat]),
+      ...(system.fields_extent ?? []),
+    ]),
+  )
+}
+
 /** How far around a point kind the soil survey is read: a circle about 100 m across */
 export const POINT_SURVEY_RADIUS_FT = 165
 

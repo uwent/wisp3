@@ -12,6 +12,7 @@
     draftShape,
     isPoint,
     KIND_NOUNS,
+    type LngLat,
     type PivotKind,
     type PivotShape,
     shapeAcres,
@@ -31,6 +32,7 @@
     prefix,
     error,
     others = [],
+    frame = null,
     soilTypes,
     onsuggest,
     children,
@@ -43,6 +45,8 @@
     /** The server's error for one of the pivot's attributes */
     error: (attribute: string) => string | string[] | undefined
     others?: (PivotShape & { id: number; name: string })[]
+    /** What the map opens on while the system has no location (PivotMap) */
+    frame?: [LngLat, LngLat] | null
     soilTypes: SoilType[]
     onsuggest?: (soilType: SoilType | null, shares: Map<string, number>) => void
     children?: Snippet
@@ -144,7 +148,7 @@
     id="pivot-location"
     level={headingLevel}
   />
-  <PivotMap bind:this={pivotMap} bind:shape {others} {soilTypes} {locked} />
+  <PivotMap bind:this={pivotMap} bind:shape {others} {frame} {soilTypes} {locked} />
 
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <CoordinatesField

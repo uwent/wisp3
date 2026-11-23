@@ -3,10 +3,12 @@
 # the imagery (Arlington's silt loams, mostly rainfed; Coloma's pivot-scale potatoes and processing
 # vegetables on sand, outlines from a field map; Hancock Agricultural Research Station's K fields
 # under a linear and R fields under a pivot). Between them they show split pivots, a linear, a
-# traveler set up at two fields, a solid set over research plots (one plot with its own drip
-# irrigation and readings), a location-only rainfed field, double crops, alfalfa cuttings, both ET
-# methods, irrigation by system (all fields and a subset) and by field, soil
-# moisture readings, rain gauges shared by irrigation groups, and outlines for every field.
+# traveler set up at two fields, a solid set over research plots, drip on a vegetable garden, a
+# location-only rainfed field, double crops, alfalfa cuttings, both ET methods, irrigation by system
+# (all fields and a subset), soil moisture readings, rain gauges shared by irrigation groups, and
+# outlines for every field. Its irrigation follows WISP through the season, and on the example
+# farm's day (July 20) a few fields are due: one past its irrigation point and two in caution, the
+# rest fine.
 #
 # The file holds month-day dates, placed in the year seeded. To change the layout, edit the demo
 # account in the app (move systems, redraw outlines, rename) and write it back with bin/rails

@@ -74,13 +74,14 @@ export const POINT_OUTLINE_MARGIN_M = 50 / FEET_PER_METER
 
 /**
  * A system's outline on the map: a pivot's or linear's shape, or for a point kind whose fields have
- * outlines, the area around them (G.14); null for a point kind without
+ * outlines, the area around them and its own location (G.14), so the dot at the place it was put is
+ * always inside, even off its fields; null for a point kind without
  */
 export function systemOutline(pivot: MapPivot): LngLat[] | null {
   if (!isPoint(pivot.kind)) return pivotOutline(pivot)
   if (!pivot.outlines.length) return null
   return bufferedHull(
-    pivot.outlines.flatMap(({ boundary }) => boundaryRing(boundary)),
+    [[pivot.longitude, pivot.latitude], ...pivot.outlines.flatMap(({ boundary }) => boundaryRing(boundary))],
     POINT_OUTLINE_MARGIN_M,
   )
 }

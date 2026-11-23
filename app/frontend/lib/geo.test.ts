@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   systemName,
+  systemsFrame,
   bearing,
   convexHull,
   destination,
@@ -258,5 +259,44 @@ describe('systemName', () => {
     expect(systemName({ name: 'Home pivot', kind_name: 'Pivot' })).toBe('Home pivot')
     expect(systemName({ name: 'NORTH PIVOT 2', kind_name: 'Pivot' })).toBe('NORTH PIVOT 2')
     expect(systemName({ name: 'Block A', kind_name: 'Solid set' })).toBe('Block A (solid set)')
+  })
+})
+
+describe('systemsFrame', () => {
+  const traveler = {
+    kind: 'traveler' as const,
+    latitude: 44.1,
+    longitude: -89.5,
+    radius_ft: null,
+    arc_start_deg: null,
+    arc_end_deg: null,
+    length_ft: null,
+    travel_ft: null,
+    travel_bearing_deg: null,
+  }
+
+  it('covers each system and its fields, a pivot by its whole circle', () => {
+    const pivot = { ...traveler, kind: 'center' as const, latitude: 44.2, radius_ft: 1300 }
+    const [[west, south], [east, north]] = systemsFrame([
+      {
+        ...traveler,
+        fields_extent: [
+          [-89.51, 44.09],
+          [-89.505, 44.095],
+        ],
+      },
+      pivot,
+    ])!
+    expect([west, south]).toEqual([-89.51, 44.09])
+    expect(north).toBeCloseTo(44.2 + 1300 / 3.28084 / 111_195, 4)
+    expect(east).toBeGreaterThan(-89.5)
+  })
+
+  it('is a point for a lone point kind, and null for no systems', () => {
+    expect(systemsFrame([traveler])).toEqual([
+      [-89.5, 44.1],
+      [-89.5, 44.1],
+    ])
+    expect(systemsFrame([])).toBeNull()
   })
 })

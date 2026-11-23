@@ -103,11 +103,21 @@ class PivotsController < AuthenticatedController
       # The group a duplicate joins, named in the form
       pivot_group: pivot.pivot_group&.slice(:id, :name, :farm_id),
       farms: Current.group.farms.order(:name).map { |farm| {id: farm.id, name: farm.name} },
-      other_pivots: Current.group.pivots.where.not(id: pivot.id).map do |other|
-        other.slice(:id, :name, *PivotSerializer::SHAPE)
+      # The group's other systems, drawn for reference; the map opens on the new system's farm's,
+      # their fields' outlines included (fields_extent: [[west, south], [east, north]], or nil)
+      other_pivots: Current.group.pivots.where.not(id: pivot.id).includes(:fields).map do |other|
+        other.slice(:id, :name, :farm_id, *PivotSerializer::SHAPE).merge(fields_extent: fields_extent(other))
       end,
       soil_types: ReferenceProps.soil_types
     }
+  end
+
+  # Its fields' outlines' bounding box, [[west, south], [east, north]]; nil with none outlined
+  def fields_extent(pivot)
+    points = pivot.fields.flat_map { |field| FieldBoundary.ring(field.boundary) }
+    return if points.empty?
+    lngs, lats = points.map(&:first), points.map(&:last)
+    [[lngs.min, lats.min], [lngs.max, lats.max]]
   end
 
   # A new system's starting values: its farm, or everything copied from a duplicated one

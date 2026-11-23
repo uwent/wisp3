@@ -59,12 +59,15 @@
   let {
     shape = $bindable(),
     others = [],
+    frame = null,
     soilTypes = [],
     height = 'min(36rem, 60vh)',
     locked = false,
   }: {
     shape: ShapeDraft
     others?: Outline[]
+    /** [[west, south], [east, north]]: what the map opens on while the system has no location (its farm's systems and fields), else all of others */
+    frame?: [LngLat, LngLat] | null
     /** Names for the soil types layer */
     soilTypes?: { key: string; name: string }[]
     height?: string
@@ -127,6 +130,15 @@
     if (before) Object.assign(shape, { ...before, kind: shape.kind })
     doneEditing()
   }
+
+  // A new frame (another farm chosen) moves the map there, until the system has a location
+  let framed = ''
+  $effect(() => {
+    const key = JSON.stringify(frame)
+    if (!map || !frame || center || key === framed) return
+    framed = key
+    map.fitBounds(frame, { padding: 60, maxZoom: PIVOT_ZOOM, duration: 600 })
+  })
 
   const linear = $derived(shape.kind === 'linear')
   const point = $derived(isPoint(shape.kind))
@@ -482,6 +494,9 @@
       Marker = maplibre.Marker
       if (center) {
         m.jumpTo({ center, zoom: PIVOT_ZOOM })
+      } else if (frame) {
+        m.fitBounds(frame, { padding: 60, maxZoom: PIVOT_ZOOM, duration: 0 })
+        framed = JSON.stringify(frame)
       } else if (others.length) {
         const bounds = new LngLatBounds()
         others.forEach((other) => bounds.extend([other.longitude, other.latitude]))
