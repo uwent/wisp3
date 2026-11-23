@@ -41,6 +41,19 @@ RSpec.describe DigestMailer do
     expect(html).to include("http://example.com/alerts")
   end
 
+  it "gathers rainfed crops short of water in a section of their own, marked rainfed" do
+    dry = digest_field(pivot, "Dry", 7)
+    dry.plantings.sole.update!(rainfed: true, plant: create(:plant, :dual))
+
+    mail = described_class.daily(DailyDigest.new(user))
+    expect(mail.subject).to eq("WISP: 1 field rainfed stressed (Mon, Jul 20)")
+    text = mail.text_part.body.decoded
+    expect(text).to match(/RAINFED CROPS SHORT OF WATER\n\n- Field: Dry \[▼ Stressed\] Potato, rainfed · Home › Pivot 1: Stressed · water use about \d+%\n/)
+    expect(text).not_to include("NEEDS ATTENTION")
+    html = mail.html_part.body.decoded
+    expect(html).to include("Rainfed crops short of water", "▼ Stressed")
+  end
+
   it "is a document in English titled by its subject, whose headings don't skip a level" do
     digest_field(pivot, "Soon", 12)
 

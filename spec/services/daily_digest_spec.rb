@@ -30,7 +30,7 @@ RSpec.describe DailyDigest do
   it "lists rainfed crops short of water in their own section, not as needing attention" do
     field_at("Irrigated", 9)
     dry = field_at("Dry", 7)
-    dry.plantings.sole.update!(rainfed: true)
+    dry.plantings.sole.update!(rainfed: true, plant: create(:plant, :dual))
     fine = field_at("Fine", 15)
     fine.plantings.sole.update!(rainfed: true)
 
@@ -42,6 +42,16 @@ RSpec.describe DailyDigest do
     expect(entry.outlook).to have_attributes(urgent: false, headline: start_with("Stressed · water use about "))
     expect(digest.entries.last.status.status).to eq(:no_stress)
     expect(digest.subject).to eq("WISP: 1 field to irrigate, 1 rainfed stressed (Mon, Jul 20)")
+  end
+
+  it "counts rainfed fields apart from irrigated ones in the subject" do
+    fine = field_at("Fine", 15)
+    fine.plantings.sole.update!(rainfed: true)
+    expect(described_class.new(user).subject).to eq("WISP: 1 field rainfed, no stress (Mon, Jul 20)")
+    field_at("Watered", 15)
+    expect(described_class.new(user).subject).to eq("WISP: 1 field OK (Mon, Jul 20)")
+    field_at("Dry", 7).plantings.sole.update!(rainfed: true)
+    expect(described_class.new(user).subject).to eq("WISP: 1 field OK, 1 rainfed stressed (Mon, Jul 20)")
   end
 
   it "moves \"Irrigate by\" back for planned irrigation, and forward for heat" do

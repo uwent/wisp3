@@ -1,5 +1,7 @@
 import type { PlantingSummary } from '@/types/serializers'
 
+import { fieldMatches, searchText } from './search'
+
 // The operation's farms, pivots and field cards (OperationOverview), as the dashboard and the map
 // get them, and how the map orders and picks them
 
@@ -106,7 +108,7 @@ export type FarmNode<P> = { kind: 'farm'; id: number; name: string; children: (G
 
 export type TreeOptions = {
   order: SortOrder
-  /** Text to match in a field's, system's, group's or farm's name; a match keeps its parents, and everything under it */
+  /** Text to match in a field's, system's, group's or farm's name, or a field's crops (lib/search.ts); a match keeps its parents, and everything under it */
   query?: string
   /** Only fields needing water within these days (0: today), and the parents left with any; null for all */
   windowDays?: number | null
@@ -158,7 +160,7 @@ export function buildTree<P extends OverviewSystem & { latitude: number }>(
   farms: FarmGroup<P>[],
   { order, query = '', windowDays = null, growing = false }: TreeOptions,
 ): FarmNode<P>[] {
-  const text = query.trim().toLowerCase()
+  const text = searchText(query)
   const matches = (name: string) => !text || name.toLowerCase().includes(text)
   const filtering = text !== '' || windowDays !== null || growing
 
@@ -175,7 +177,7 @@ export function buildTree<P extends OverviewSystem & { latitude: number }>(
     const within = matched || matches(pivot.name)
     const fields = pivot.fields.filter(
       (card) =>
-        (within || matches(card.name)) &&
+        (within || fieldMatches(card, text)) &&
         (windowDays === null || needsWaterWithin(card, windowDays)) &&
         (!growing || card.plantings.some((summary) => summary.phase === 'active')),
     )

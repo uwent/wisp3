@@ -116,7 +116,7 @@
           {#if verb}<span class="sr-only">{verb}</span>{/if}
           {#if status[p.id]}<span class="size-2 shrink-0 rounded-full {dots[status[p.id]!]}" aria-hidden="true"
             ></span>{/if}
-          <span class="truncate">{p.plant_name}</span>
+          <span class="truncate" data-search-text>{p.plant_name}</span>
           <span class="truncate text-xs text-ink-muted">{plantingWhen(p, today)}</span>
           <span class="sr-only">{`, ${more(p)}`}</span>
         {/snippet}

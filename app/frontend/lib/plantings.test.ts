@@ -151,6 +151,19 @@ describe('an ended season on its card', () => {
     expect(endedSeasonStats(quiet, imperial).map((stat) => stat.value)).toEqual(['Never', 'No data', 'None', 'Never'])
     expect(seasonLine(quiet, imperial)).toBe('No irrigation · never below the irrigation point')
   })
+
+  it('words a rainfed season by its water stress, leaving out irrigation it never had', () => {
+    const dry = { ...totals, irrigation: 0, irrigation_days: 0 }
+    expect(endedSeasonStats(dry, imperial, true).map((stat) => stat.label)).toEqual([
+      'Rain',
+      'Deep drainage',
+      'Short of water',
+    ])
+    expect(seasonLine(dry, imperial, true)).toBe('Rainfed · rain 11.80 in · 3 days short of water')
+    // Watered after all: it says so
+    expect(endedSeasonStats(totals, imperial, true)[0]).toEqual({ label: 'Irrigated', value: '9 times, 7.20 in' })
+    expect(seasonLine(totals, imperial, true)).toBe('Irrigated 7.20 in · rain 11.80 in · 3 days short of water')
+  })
 })
 
 describe('dateProblems', () => {

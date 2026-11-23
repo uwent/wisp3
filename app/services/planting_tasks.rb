@@ -97,7 +97,11 @@ class PlantingTasks
 
   def reading(kind, label, last, todo) = self.class.reading(kind, label, last, todo, @today)
 
-  def optional(task) = task.due ? task.with(due: false, note: "optional", todo: nil) : task
+  # A rainfed crop's reading isn't due, but for the canopy reading a crop with no curve needs to have any ET
+  def optional(task)
+    return task if !task.due || (task.kind == :canopy && @status.needs_canopy?)
+    task.with(due: false, note: "optional", todo: nil)
+  end
 
   # Due when the balance has been at or below the threshold (status irrigate, or below the target)
   # for IRRIGATION_CHECK_DAYS or more days in a row ending today, with no irrigation entered (an

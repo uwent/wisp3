@@ -78,11 +78,13 @@
   <div class="min-w-0">
     <h4 class="truncate font-medium">
       <span class="font-normal text-ink-muted">Field:</span>
-      {card.name}
+      <span data-search-text>{card.name}</span>
     </h4>
-    {#if context}<p class="truncate text-xs text-ink-muted">{context}</p>{/if}
+    {#if context}<p class="truncate text-xs text-ink-muted" data-search-text>{context}</p>{/if}
     {#if single && !several}
-      <p class="truncate text-xs text-ink-muted">{cropName(single)}{single.rainfed ? ' · Rainfed' : ''}</p>
+      <p class="truncate text-xs text-ink-muted">
+        <span data-search-text>{cropName(single)}</span>{single.rainfed ? ' · Rainfed' : ''}
+      </p>
       <p class="truncate text-[0.7rem] text-ink-muted">{cardWhen(single, today)}</p>
     {:else if several}
       <p class="truncate text-xs text-ink-muted">{card.plantings.length} plantings</p>
@@ -216,7 +218,7 @@
         <li>
           {#snippet row()}
             <span class="min-w-0 flex-1">
-              <span class="block">{cropName(summary)}</span>
+              <span class="block" data-search-text>{cropName(summary)}</span>
               <span class="block text-xs text-ink-muted">{cardWhen(summary, today)}</span>
               {#if look}<span
                   class="block text-xs {look.urgent ? 'font-medium text-status-irrigate-ink' : 'text-ink-muted'}"
@@ -248,7 +250,7 @@
           {#snippet brief()}
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
-                <p class="truncate text-sm font-medium">{cropName(summary)}</p>
+                <p class="truncate text-sm font-medium" data-search-text>{cropName(summary)}</p>
                 <p class="truncate text-xs text-ink-muted">{cardWhen(summary, today)}</p>
               </div>
               {@render badge(summary)}

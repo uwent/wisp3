@@ -72,6 +72,16 @@ describe('needing water', () => {
     expect(needsWaterWithin(soon, 0)).toBe(false)
     expect(needsWaterWithin(card('wet'), 7)).toBe(false)
   })
+
+  it("never counts a rainfed crop, however dry: there's nothing to irrigate", () => {
+    const stressed = card('dry', { status: 'stressed', rainfed: true, crossing: crossing(0) })
+    expect(daysToIrrigate(stressed)).toBeNull()
+    expect(needsWaterWithin(card('soon', { status: 'stress_coming', rainfed: true, crossing: crossing(2) }), 3)).toBe(
+      false,
+    )
+    // After every irrigated status
+    expect(urgency(stressed)).toBeGreaterThan(urgency(card('full', { status: 'full' })))
+  })
 })
 
 describe('pivotStatus', () => {
@@ -119,7 +129,9 @@ describe('buildTree', () => {
       name: 'Hancock',
       pivot_groups: [],
       pivots: [
-        pivot('Middle', 44.2, [field('C sooner', { status: 'caution', crossing: crossing(1) })]),
+        pivot('Middle', 44.2, [
+          field('C sooner', { status: 'caution', crossing: crossing(1), plant_name: 'Potato', variety: 'Russet' }),
+        ]),
         pivot('Empty', 44.3, []),
       ],
     },
@@ -191,6 +203,12 @@ describe('buildTree', () => {
     // A system matched by name stays without fields
     expect(outline(buildTree(farms, { order: 'urgent', query: 'empty' }))).toEqual(['Hancock', '  Empty'])
     expect(buildTree(farms, { order: 'urgent', query: 'nothing' })).toEqual([])
+    // A field by its crop or variety
+    expect(outline(buildTree(farms, { order: 'urgent', query: 'russet' }))).toEqual([
+      'Hancock',
+      '  Middle',
+      '    C sooner',
+    ])
   })
 
   it('keeps the fields needing water within the window, and the parents left with any', () => {

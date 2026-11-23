@@ -3,10 +3,12 @@
 
   import Button from '@/lib/components/Button.svelte'
   import Dialog from '@/lib/components/Dialog.svelte'
+  import SearchFilter from '@/lib/components/SearchFilter.svelte'
   import SeasonTimeline from '@/lib/components/SeasonTimeline.svelte'
   import { today as todayDate } from '@/lib/dates'
   import { isPoint, KIND_NOUNS, shapeAcres, systemName } from '@/lib/geo'
   import { mayDelete } from '@/lib/permissions'
+  import { searchFarms } from '@/lib/search'
   import { readStored, writeStored } from '@/lib/storage'
   import { count } from '@/lib/text'
   import { currentUnits } from '@/lib/units'
@@ -93,7 +95,12 @@
   $effect(() => {
     writeStored(ORDER_KEY, order)
   })
-  const orderedFarms = $derived(orderFarms(farms, order))
+  // Name and crop search (this season's crops), for this visit
+  let query = $state('')
+  const searching = $derived(query.trim() !== '')
+  const orderedFarms = $derived(orderFarms(searchFarms(farms, query, seasonPlantings), order))
+  // A farm as saved, whatever the search shows: a group's form lists (and saves) all its systems
+  const unfiltered = (farm: Farm) => farms.find((saved) => saved.id === farm.id) ?? farm
   const used = (pivot: Pivot) => orderFields(pivot, order).filter(inSeason)
   const unused = (pivot: Pivot) => orderFields(pivot, order).filter((field) => !inSeason(field))
   const hasSeason = $derived(allPivots.some((p) => p.fields.some((f) => seasonPlantings(f).length)))
@@ -199,7 +206,7 @@
     <div class="min-w-40 flex-1">
       <p>
         <span class="text-ink-muted">Field:</span>
-        <span class="font-medium">{field.name}</span>
+        <span class="font-medium" data-search-text>{field.name}</span>
       </p>
       <p class="text-xs text-ink-muted">
         {fieldArea(field)} · {field.soil_type_name}
@@ -250,7 +257,7 @@
       <div>
         <h3 class="font-medium">
           <span class="font-normal text-ink-muted">Irrigation system:</span>
-          {systemName(pivot)}
+          <span data-search-text>{systemName(pivot)}</span>
         </h3>
         <p class="text-xs text-ink-muted">
           {pivot.latitude.toFixed(4)}, {pivot.longitude.toFixed(4)}
@@ -298,7 +305,7 @@
     {/if}
     {#if unused(pivot).length}
       <!-- Fields used only in other seasons (rotated out, or set up for a later one) -->
-      <details class="border-t border-line first:border-t-0">
+      <details class="border-t border-line first:border-t-0" open={searching || undefined}>
         <summary class="cursor-pointer px-3 py-2 text-xs text-ink-muted hover:text-ink">
           {count(unused(pivot).length, 'field')} not used in {year - 1} or {year}
         </summary>
@@ -320,6 +327,7 @@
     </p>
   </div>
   <div class="flex flex-wrap items-center gap-2">
+    <SearchFilter bind:value={query} placeholder="Search" class="w-full sm:w-48" />
     <label for="season" class="text-sm text-ink-muted">Season</label>
     <select
       id="season"
@@ -388,7 +396,9 @@
   <section id="setup-farm-{farm.id}" class="space-y-4 rounded-lg border border-line bg-surface-raised p-4 sm:p-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div class="min-w-0">
-        <h2 class="text-lg font-medium"><span class="font-normal text-ink-muted">Farm:</span> {farm.name}</h2>
+        <h2 class="text-lg font-medium">
+          <span class="font-normal text-ink-muted">Farm:</span> <span data-search-text>{farm.name}</span>
+        </h2>
         {#if !farm.use_model_precip}<p class="text-xs text-ink-muted">Rain: only what you enter</p>{/if}
         {#if farm.notes}<p class="text-sm whitespace-pre-line text-ink-muted">{farm.notes}</p>{/if}
       </div>
@@ -398,12 +408,12 @@
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
           aria-label="Add irrigation system to {farm.name}">Add irrigation system</Link
         >
-        {#if farm.pivots.length > 1}
+        {#if unfiltered(farm).pivots.length > 1}
           <Button
             variant="ghost"
             class="px-3 py-1.5"
             aria-label="Group systems on {farm.name}"
-            onclick={() => open({ kind: 'pivotGroup', farm })}>Group systems</Button
+            onclick={() => open({ kind: 'pivotGroup', farm: unfiltered(farm) })}>Group systems</Button
           >
         {/if}
         <Button
@@ -428,7 +438,7 @@
             <div>
               <h3 class="font-medium">
                 <span class="font-normal text-ink-muted">Irrigation group:</span>
-                {pivotGroup.name}
+                <span data-search-text>{pivotGroup.name}</span>
               </h3>
               <p class="text-xs text-ink-muted">
                 Rain entered for the group on Daily entry fills into all its fields{pivotGroup.use_model_precip === null
@@ -443,7 +453,7 @@
                 variant="ghost"
                 class="px-3 py-1.5"
                 aria-label="Edit {pivotGroup.name}"
-                onclick={() => open({ kind: 'pivotGroup', farm, group: pivotGroup })}>Edit</Button
+                onclick={() => open({ kind: 'pivotGroup', farm: unfiltered(farm), group: pivotGroup })}>Edit</Button
               >
             </div>
           </div>
@@ -462,9 +472,13 @@
   <section
     class="rounded-lg border border-dashed border-line bg-surface-raised px-6 py-10 text-center text-sm text-ink-muted"
   >
-    No farms yet. <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2"
-      >Set up your first irrigation system</Link
-    >.
+    {#if searching}
+      Nothing matches "{query.trim()}".
+    {:else}
+      No farms yet. <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2"
+        >Set up your first irrigation system</Link
+      >.
+    {/if}
   </section>
 {/each}
 

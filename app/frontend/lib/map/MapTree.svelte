@@ -51,7 +51,7 @@
       <KindIcon kind={pivot.kind} />
       <span class="min-w-0 flex-1 truncate">
         <span class="text-ink-muted">System:</span>
-        <span class="font-medium">{systemName(pivot)}</span>
+        <span class="font-medium" data-search-text>{systemName(pivot)}</span>
       </span>
       {#if status}<StatusBadge {status} size="icon" />{/if}
     </button>
@@ -88,7 +88,7 @@
     >
       <span class="min-w-0 flex-1 truncate">
         <span class="text-ink-muted">Group:</span>
-        <span class="font-medium">{node.name}</span>
+        <span class="font-medium" data-search-text>{node.name}</span>
       </span>
     </button>
     <ul class="space-y-1.5 p-1.5 pt-0">
@@ -111,7 +111,7 @@
       >
         <span class="min-w-0 flex-1 truncate">
           <span class="text-ink-muted">Farm:</span>
-          <span class="font-medium">{farm.name}</span>
+          <span class="font-medium" data-search-text>{farm.name}</span>
         </span>
       </button>
       {#if farm.children.length}

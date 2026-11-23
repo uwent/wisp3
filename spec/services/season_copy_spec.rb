@@ -20,6 +20,11 @@ RSpec.describe SeasonCopy do
     expect(result.copied.first).to have_attributes(plant_id: peas.plant_id, variety: "Early", mad_frac: 0.4)
   end
 
+  it "keeps a rainfed planting rainfed" do
+    planting(Date.new(2027, 5, 1), Date.new(2027, 5, 15), Date.new(2027, 9, 30), rainfed: true)
+    expect(described_class.new(group, 2028).run.copied.sole).to be_rainfed
+  end
+
   it "copies a vine kill date a year later, and leaves it empty where there's none" do
     potato = create(:plant, key: "potato")
     planting(Date.new(2027, 4, 1), Date.new(2027, 5, 15), Date.new(2027, 9, 30), plant: potato,

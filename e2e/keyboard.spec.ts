@@ -19,7 +19,7 @@ test('the first Tab offers a skip link to the main content', async ({ page }) =>
   await expect(skip).toBeVisible()
   await page.keyboard.press('Enter')
   await page.keyboard.press('Tab')
-  await expect(page.getByLabel('Season')).toBeFocused()
+  await expect(page.getByRole('searchbox', { name: 'Search fields' })).toBeFocused()
 })
 
 test('a grid is one tab stop: arrows move inside it, Tab moves past it', async ({ page }) => {

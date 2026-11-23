@@ -139,25 +139,30 @@ class DailyDigest
 
   def deliverable? = skip_reason.nil?
 
-  # "WISP: 2 fields to irrigate, 1 to watch (Sun, Oct 4)", "WISP: 5 fields OK (…)", or "WISP: no
-  # crops in season (…)"
+  # "WISP: 2 fields to irrigate, 1 to watch (Sun, Oct 4)", "WISP: 5 fields OK, 1 rainfed stressed (…)",
+  # "WISP: 2 fields rainfed, no stress (…)", or "WISP: no crops in season (…)". Irrigated and rainfed
+  # crops are counted apart, each by field (a field of plots once, at its most urgent)
   def subject
-    # Fields, not plantings: a field of plots counts once, at its most urgent
-    worst = entries.group_by(&:field).transform_values { |list| FieldStatuses.most_urgent(list.map(&:status)).status }
+    irrigated, rainfed = entries.partition { |entry| !entry.status.rainfed? }
+    worst = irrigated.group_by(&:field).transform_values { |list| FieldStatuses.most_urgent(list.map(&:status)).status }
     irrigate = worst.count { |_, status| status == :irrigate }
     caution = worst.count { |_, status| status == :caution }
-    stressed = worst.count { |_, status| status == :stressed }
-    summary = if irrigate.positive?
-      ["#{fields(irrigate)} to irrigate", ("#{caution} to watch" if caution.positive?)].compact.join(", ")
+    stressed = rainfed.select { |entry| entry.status.status == :stressed }.map(&:field).uniq.size
+    parts = if irrigate.positive?
+      ["#{fields(irrigate)} to irrigate", ("#{caution} to watch" if caution.positive?)]
     elsif caution.positive?
-      "#{fields(caution)} to watch"
-    elsif entries.any?
-      "#{fields(worst.size)} OK"
+      ["#{fields(caution)} to watch"]
+    elsif worst.any?
+      ["#{fields(worst.size)} OK"]
     else
-      "no crops in season"
+      []
     end
-    summary += ", #{stressed} rainfed stressed" if stressed.positive? && entries.any?
-    "WISP: #{summary} (#{Outlook.day(today)})"
+    if stressed.positive?
+      parts << "#{parts.empty? ? fields(stressed) : stressed} rainfed stressed"
+    elsif parts.empty? && rainfed.any?
+      parts << "#{fields(rainfed.map(&:field).uniq.size)} rainfed, no stress"
+    end
+    "WISP: #{parts.compact.presence&.join(", ") || "no crops in season"} (#{Outlook.day(today)})"
   end
 
   # Inches in the user's units, as the app shows them: "0.75 in", "19.1 mm"

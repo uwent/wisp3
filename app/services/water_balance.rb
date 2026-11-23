@@ -112,7 +112,7 @@ module WaterBalance
   # the day then has no ET). moisture_reset: AD came from a soil moisture reading. evaporation: the
   # soil surface's SoilEvaporation::State at the end of the day (nil without a crop), for a run
   # resuming from it. ks: the water stress coefficient at the day's end AD (Params#ks), what the
-  # crop manages the next day: 1 unstressed.
+  # crop manages the next day: 1 unstressed, and always 1 without a crop, whose table ET isn't reduced.
   Result = Data.define(:date, :adj_et, :et_source, :ad, :deep_drainage, :pct_moisture, :moisture_reset,
     :evaporation, :ks) do
     def initialize(evaporation: nil, ks: 1.0, **) = super
@@ -148,7 +148,8 @@ module WaterBalance
 
       Result.new(date: day.date, adj_et: adj_et&.round(PRECISION), et_source:, ad: ad.round(PRECISION),
         deep_drainage: drainage.round(PRECISION), pct_moisture: params.pct_moisture(ad).round(PRECISION),
-        moisture_reset: !day.soil_moisture_pct.nil?, evaporation: surface, ks: params.ks(ad).round(PRECISION))
+        moisture_reset: !day.soil_moisture_pct.nil?, evaporation: surface,
+        ks: layer ? params.ks(ad).round(PRECISION) : 1.0)
     end
   end
 

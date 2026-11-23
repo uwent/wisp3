@@ -68,7 +68,7 @@ type SeasonTotals = {
 const times = (n: number) => (n === 1 ? 'once' : `${n} times`)
 
 /**
- * An ended season in four stats, for its card: irrigation (a rainfed crop's left out), rain, deep
+ * An ended season in four stats, for its card: irrigation (left out for a rainfed crop never watered), rain, deep
  * drainage, and the days spent below the irrigation point (rainfed: short of water)
  */
 export function endedSeasonStats(
@@ -78,7 +78,7 @@ export function endedSeasonStats(
 ): { label: string; value: string }[] {
   const depth = (inches: number) => units.format('depth', inches)
   return [
-    rainfed
+    rainfed && !totals.irrigation_days
       ? null
       : {
           label: 'Irrigated',
@@ -109,7 +109,7 @@ export function seasonLine(totals: SeasonTotals, units: Units, rainfed = false):
   const depth = (inches: number) => units.format('depth', inches)
   const below = rainfed ? 'short of water' : 'below the irrigation point'
   return [
-    rainfed ? 'Rainfed' : totals.irrigation_days ? `Irrigated ${depth(totals.irrigation)}` : 'No irrigation',
+    totals.irrigation_days ? `Irrigated ${depth(totals.irrigation)}` : rainfed ? 'Rainfed' : 'No irrigation',
     totals.rain === null ? null : `rain ${depth(totals.rain)}`,
     totals.stress_days ? `${count(totals.stress_days, 'day')} ${below}` : `never ${below}`,
   ]

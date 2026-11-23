@@ -8,6 +8,7 @@
   import GettingStarted from '@/lib/components/GettingStarted.svelte'
   import LogIrrigationDialog from '@/lib/components/LogIrrigationDialog.svelte'
   import RainAhead, { type RainZone } from '@/lib/components/RainAhead.svelte'
+  import SearchFilter from '@/lib/components/SearchFilter.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
   import type { LogSystemProps } from '@/lib/logIrrigation'
@@ -20,6 +21,7 @@
     type OverviewSystem,
     type StatusFilter,
   } from '@/lib/overview'
+  import { searchFarms } from '@/lib/search'
   import { readStored, writeStored } from '@/lib/storage'
   import { pollWeather } from '@/lib/weatherPolling.svelte'
   import { currentUnits } from '@/lib/units'
@@ -55,6 +57,8 @@
   let view = $state<View>(readStored(VIEW_KEY) === 'list' ? 'list' : 'cards')
   let order = $state<Order>(readStored(ORDER_KEY) === 'urgent' ? 'urgent' : 'system')
   let statusFilter = $state<StatusFilter | null>(null)
+  // Name and crop search, for this visit: the status counts count what it leaves
+  let query = $state('')
   const VIEWS: { key: View; name: string }[] = [
     { key: 'cards', name: 'Cards' },
     { key: 'list', name: 'List' },
@@ -88,16 +92,23 @@
     ),
   )
 
-  const shown = $derived(sorted.filter((farm) => farmId === 'all' || farm.id === farmId))
+  const shown = $derived(
+    searchFarms(
+      sorted.filter((farm) => farmId === 'all' || farm.id === farmId),
+      query,
+    ),
+  )
   const cards = $derived(shown.flatMap((farm) => farm.pivots.flatMap((pivot) => pivot.fields)))
   const filtered = $derived(filterByStatus(shown, statusFilter))
   const flat = $derived(order === 'urgent' ? needsWaterFirst(filtered) : [])
   // Where a field is, when the list isn't under its farm and system
   const place = (pivot: OverviewSystem, farm: FarmGroup) =>
     farms.length > 1 && farmId === 'all' ? `${systemName(pivot)} · ${farm.name}` : systemName(pivot)
-  // The zones of the farm chosen's systems
+  // The zones of the farm chosen's systems (whatever the search)
   const rainZones = $derived.by(() => {
-    const systemIds = new Set(shown.flatMap((farm) => farm.pivots.map((pivot) => pivot.id)))
+    const systemIds = new Set(
+      sorted.filter((farm) => farmId === 'all' || farm.id === farmId).flatMap((farm) => farm.pivots.map((p) => p.id)),
+    )
     return rain.filter((zone) => zone.pivot_ids.some((id) => systemIds.has(id)))
   })
   // Log irrigation: one dialog, for the system (and field) it was opened
@@ -183,7 +194,8 @@
       <span class="font-normal text-ink-muted">Irrigation system:</span>
       <Link
         href={pivots.show(pivot.id)}
-        class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current">{systemName(pivot)}</Link
+        class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current"
+        data-search-text>{systemName(pivot)}</Link
       >
     </h3>
     <div class="flex shrink-0 items-center gap-2 text-sm">
@@ -233,10 +245,16 @@
 {#if farms.length}
   {#if anyFields && !getting_started}
     <RainAhead zones={rainZones} {units} {today} />
-    <StatusCounts {cards} selected={statusFilter} onselect={(filter) => (statusFilter = filter)} />
+    <!-- Search and the status counts: both narrow the fields shown -->
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <SearchFilter bind:value={query} class="w-full sm:w-72" />
+      <StatusCounts {cards} selected={statusFilter} onselect={(filter) => (statusFilter = filter)} />
+    </div>
   {/if}
 
-  {#if statusFilter && !filtered.length}
+  {#if query.trim() && !shown.length}
+    <p class="text-sm text-ink-muted">Nothing matches "{query.trim()}".</p>
+  {:else if statusFilter && !filtered.length}
     <p class="text-sm text-ink-muted">No fields at this status.</p>
   {:else if order === 'urgent'}
     <!-- Needs water first: every field in one list or grid, each naming its system -->
@@ -266,7 +284,7 @@
       <section class="space-y-3" aria-labelledby="farm-{farm.id}">
         <h2 id="farm-{farm.id}" class="text-lg font-medium">
           <span class="font-normal text-ink-muted">Farm:</span>
-          {farm.name}
+          <span data-search-text>{farm.name}</span>
         </h2>
         {#each farm.pivots as pivot (pivot.id)}
           {#if view === 'list'}

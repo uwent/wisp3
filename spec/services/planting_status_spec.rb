@@ -121,7 +121,7 @@ RSpec.describe PlantingStatus, "projection" do
   end
 
   it "gives a rainfed crop its water stress: stress coming, then stressed, with no target and no irrigation check" do
-    planting.update!(rainfed: true, target_ad_pct: 50)
+    planting.update!(rainfed: true, target_ad_pct: 50, plant: create(:plant, :dual))
     expect(status).to have_attributes(status: :stress_coming, threshold: 0.0, ks: 1.0)
     expect(status.crossing).to have_attributes(date: today + 2, days: 2)
     later = described_class.new(planting, today: today + 5, weather:, ensemble: [])
