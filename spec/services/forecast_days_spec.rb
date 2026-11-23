@@ -18,11 +18,11 @@ RSpec.describe ForecastDays do
       precip_chance: nil)
   end
 
-  it "takes the chance of precipitation from the ensemble's members" do
+  it "takes the chance of 0.1 in or more from the ensemble's members" do
     cell.weather_forecasts.create!(kind: "ensemble", issued_at: 1.hour.ago, model: "gfs_seamless", payload: {
       dates: [today.iso8601, (today + 1).iso8601],
       members: [{et0_in: [0.2, 0.2], precip_in: [0.5, 0.0]}, {et0_in: [0.2, 0.2], precip_in: [0.0, 0.0]},
-        {et0_in: [0.2, 0.2], precip_in: [0.02, nil]}, {et0_in: [0.2, 0.2], precip_in: [0.005, nil]}]
+        {et0_in: [0.2, 0.2], precip_in: [0.1, nil]}, {et0_in: [0.2, 0.2], precip_in: [0.09, nil]}]
     })
     days = described_class.for(cell, today:)
     expect(days.first(3).map(&:precip_chance)).to eq([50, 0, nil])

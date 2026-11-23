@@ -159,14 +159,19 @@ test('a field viewed on an earlier date (time travel)', { tag: '@phone' }, async
   expect(errors).toEqual([])
 })
 
-test("the dashboard's list, by system and most urgent first", { tag: '@phone' }, async ({ page }) => {
+test("the dashboard's list, by system and most urgent first, with rain ahead", { tag: '@phone' }, async ({ page }) => {
   await signIn(page)
   // The choices are remembered in this browser, so set them before the scan loads the page
   await page.goto('/')
-  await page.evaluate(() => localStorage.setItem('wisp:dashboard-view', JSON.stringify('list')))
+  // Rain ahead open, so its days are scanned too (it starts closed)
+  await page.evaluate(() => {
+    localStorage.setItem('wisp:dashboard-view', JSON.stringify('list'))
+    localStorage.setItem('wisp:section:rain-ahead', JSON.stringify(true))
+  })
   const errors = watchErrors(page)
   await scan(page, '/')
   await expect(page.locator('[data-field-row]').first()).toBeVisible()
+  await expect(page.getByRole('list', { name: /^Rain ahead at / }).first()).toBeVisible()
   await page.evaluate(() => localStorage.setItem('wisp:dashboard-order', JSON.stringify('urgent')))
   await scan(page, '/')
   await expect(page.getByRole('region', { name: 'Fields, most urgent first' })).toBeVisible()

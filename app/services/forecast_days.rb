@@ -1,13 +1,16 @@
 # The week ahead for a cell in brief (the forecast strip, G.12), from what's already stored: the
 # latest deterministic forecast (corrected as stored days are) for each day's sky, temperatures,
-# precipitation, ET and wind, and the latest ensemble for the chance of precipitation (the share of
-# its members with at least WET_IN that day). Values as stored (inches, °F, mph); missing is nil.
+# precipitation, ET and wind, and the latest ensemble for the chance of rain (the share of its
+# members with at least WET_IN that day: model agreement at the zone's grid point, not the NWS's
+# PoP; docs/plans/phase-9.md §9). Values as stored (inches, °F, mph); missing is nil.
 #
 # For the example farm (Current.as_of, PLAN.md G.8) the week is the stored days that followed its
 # day, with no sky (stored days have no weather code) or chance of precipitation.
 class ForecastDays
   DAYS = 7
-  WET_IN = 0.01
+  # Rain that counts: enough to wet the soil surface (SoilEvaporation), and leaving out the drizzle
+  # a coarse ensemble spreads over its whole cell on showery days
+  WET_IN = 0.1
 
   Day = Data.define(:date, :weather_code, :tmax_f, :tmin_f, :precip_in, :snowfall_in, :precip_chance, :et0_in,
     :cloud_cover_pct, :wind_speed_max_mph, :wind_gust_max_mph)

@@ -6,6 +6,7 @@
   import FieldCard from '@/lib/components/FieldCard.svelte'
   import FieldRow from '@/lib/components/FieldRow.svelte'
   import GettingStarted from '@/lib/components/GettingStarted.svelte'
+  import RainAhead, { type RainZone } from '@/lib/components/RainAhead.svelte'
   import StatusCounts from '@/lib/components/StatusCounts.svelte'
   import { formatDate } from '@/lib/dates'
   import {
@@ -26,11 +27,14 @@
     today,
     farms,
     getting_started,
+    rain,
   }: {
     today: string
     farms: FarmGroup[]
     /** Until the operation has any planting: what's set up so far (PLAN.md G.6) */
     getting_started: { farms: number; systems: number; fields: number } | null
+    /** The week's rain in each weather zone of the operation's systems */
+    rain: RainZone[]
   } = $props()
 
   const units = $derived(currentUnits())
@@ -55,7 +59,7 @@
   }
 
   // While a pivot's weather is on its way, reload the cards until it lands
-  const weatherWait = pollWeather(() => updatingIds(farms), ['farms'])
+  const weatherWait = pollWeather(() => updatingIds(farms), ['farms', 'rain'])
   const weatherFor = (pivot: { weather_updating: boolean }) => weatherWait.state(pivot.weather_updating)
 
   // Fields whose season has ended go after the rest, and so do pivots and farms with only ended fields
@@ -85,6 +89,11 @@
   // Where a field is, when the list isn't under its farm and system
   const place = (pivot: OverviewSystem, farm: FarmGroup) =>
     farms.length > 1 && farmId === 'all' ? `${systemName(pivot)} · ${farm.name}` : systemName(pivot)
+  // The zones of the farm chosen's systems
+  const rainZones = $derived.by(() => {
+    const systemIds = new Set(shown.flatMap((farm) => farm.pivots.map((pivot) => pivot.id)))
+    return rain.filter((zone) => zone.pivot_ids.some((id) => systemIds.has(id)))
+  })
   const anyFields = $derived(farms.some((farm) => farm.pivots.some((pivot) => pivot.fields.length)))
 </script>
 
@@ -172,6 +181,7 @@
 
 {#if farms.length}
   {#if anyFields && !getting_started}
+    <RainAhead zones={rainZones} {units} {today} />
     <StatusCounts {cards} selected={statusFilter} onselect={(filter) => (statusFilter = filter)} />
   {/if}
 

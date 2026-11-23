@@ -22,6 +22,18 @@ test('the dashboard shows field cards with a status', { tag: '@phone' }, async (
   await expect(page.getByRole('heading', { name: /^Farm: / }).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: /^Field: / }).first()).toBeVisible()
 
+  // Rain ahead (Phase 9): closed to start, its title saying when rain comes; open, a week per zone
+  const rain = page.getByRole('button', { name: /^Rain ahead · (Rain (likely|possible)|No rain expected)/ })
+  await expect(rain).toHaveAttribute('aria-expanded', 'false')
+  await rain.click()
+  await expect(
+    page
+      .getByRole('list', { name: /^Rain ahead at / })
+      .first()
+      .getByRole('listitem'),
+  ).toHaveCount(7)
+  await page.getByRole('button', { name: 'Rain ahead', exact: true }).click()
+
   // The list (Phase 9): a row per field without the cards' moisture lines, remembered in this browser
   await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'List' }).click()
   await expect(page.getByRole('button', { name: 'List' })).toHaveAttribute('aria-pressed', 'true')

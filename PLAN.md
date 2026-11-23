@@ -31,11 +31,11 @@ Read this first; rewrite it at the end of each session. (The per-feature handoff
 **Then (2026-11-22), the demo and example farm, and two map fixes, on `main`:** `db/demo/farms.yml`'s irrigation was rescheduled by running the balance the way a grower following WISP would, so on the example's July 20 one field needs water (Kim), two are in caution (Powell West, Jacobs North E Half) and the other 26 are fine, with no stress earlier in the season; pumps are sized at about 6.3 gpm per field acre and each pivot's and linear's depth at 100% is worked out over its fields' acres (corner arms and end guns water the whole field), so the % timer and run hours agree. Ben's additions came with it: a Garden drip system (Veggie garden), the experimental soybean plot no longer called drip, East 9 rainfed with no pump; point systems sit at their fields' centroids. On the map, a point system's outline now takes in its own location as well as its fields (`systemOutline`), and the pivot picker for a new system opens on its farm's systems and fields (`systemsFrame`, `fields_extent`). `bin/ci` and `bin/e2e` pass (one phone flake in quick setup, passing on rerun). Staging and production need `demo:example YEAR=2026` after the next deploy.
 
 **Next:**
-0. **Merge `percent-timer`** (looked at, reviewed, `bin/ci` and `bin/e2e` pass, `46340de`); production needs both migrations, and the second reports any irrigation it couldn't move.
+0. ~~Merge `percent-timer`~~ (merged, `661905c`); production needs both migrations on the next deploy, and the second reports any irrigation it couldn't move.
 1. **Legacy:** commit, push and `cap production deploy` the retirement changes; take the archive `pg_dump` before it's deleted on December 31, 2027 (TODO.md).
 2. **Ben** (TODO.md): the RDS restore test; the announcement email and training session; GA's settings and the privacy wording; the wording review (C21's included) and the screen reader walkthrough.
 3. **Code during the winter beta:** G.2's Wisconsin season lengths for the warm-climate crops (needs extension sources); whatever the beta and training session turn up.
-4. **`docs/plans/phase-9.md`**: the percent timer next; and Ben's decisions there.
+4. **`docs/plans/phase-9.md`**: section 9 next (log irrigation from the dashboard, a rain forecast strip); and Ben's decisions there.
 5. **Deploy `main`** (`bin/production deploy`) before the announcement: `et-season`'s C22–C25 and About page, the rainfall setting's migration, the admin tools (users CSV, announcements; a migration), the review's fixes and simplifications (the job queues among them; no migrations of their own), and `phase-9-catchup` (the week grid, Also plant this on, kept shapes and the field import card).
 
 ---

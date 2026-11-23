@@ -124,6 +124,13 @@ export const GLOSSARY: GlossaryEntry[] = [
       'Water that drains below the root zone when rain or irrigation fills it past field capacity. It carries nutrients toward groundwater, so keeping it low saves water and fertilizer.',
   },
   {
+    id: 'rain_chance',
+    term: 'Chance of rain',
+    matches: ['chance of rain'],
+    definition:
+      "The share of a forecast's 31 runs (the GFS ensemble) that give 0.1 in or more that day in the weather zone. It says how much the runs agree, not the National Weather Service's chance of rain at your spot. The runs see the weather in squares about 15 miles across, so on a day of scattered storms most runs can bring rain to the zone while your field stays dry. Likely means 50% or more, possible 20% or more. The amount shown is the main forecast's.",
+  },
+  {
     id: 'entered_rain_only',
     term: 'Entered rain only',
     matches: ['only the rain you enter', 'only the rain we enter'],

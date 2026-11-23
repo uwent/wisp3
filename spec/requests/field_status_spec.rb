@@ -418,6 +418,23 @@ RSpec.describe "Field status and daily entry", type: :request do
       get root_path
       expect(inertia.props[:getting_started]).to be_nil
     end
+
+    # RainAhead: the week's rain per weather zone of the operation's systems, never another's
+    it "gives the week's rain in each of the operation's weather zones" do
+      dates = (Date.new(2026, 7, 20)..Date.new(2026, 7, 29)).to_a
+      pivot.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
+        payload: {days: dates.map { |date| {date: date.iso8601, precip_in: (date.day == 22) ? 0.4 : 0.0} }})
+      elsewhere = create(:pivot, latitude: 45.5)
+      elsewhere.weather_cell.weather_forecasts.create!(issued_at: 1.hour.ago, model: "ncep_nbm_conus",
+        payload: {days: dates.map { |date| {date: date.iso8601, precip_in: 1.0} }})
+
+      get root_path
+      rain = inertia.props[:rain]
+      expect(rain.size).to eq(1)
+      expect(rain.first).to include("id" => pivot.weather_cell_id, "name" => pivot.name, "systems" => [pivot.name],
+        "pivot_ids" => [pivot.id], "coordinates" => WeatherZone.new(pivot.weather_cell, [pivot]).coordinates)
+      expect(rain.first["days"].map { |day| day["precip_in"] }).to eq([0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0])
+    end
   end
 
   describe "the irrigation calculator's equipment (PivotsController#equipment)" do
