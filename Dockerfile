@@ -4,7 +4,7 @@
 # config/deploy/compose.production.yaml; see docs/deployment.md, Production.
 
 # bin/production passes RUBY_VERSION from .ruby-version; this default is for a plain `docker build`.
-ARG RUBY_VERSION=4.0.9
+ARG RUBY_VERSION=4.0.10
 ARG NODE_VERSION=24
 
 FROM docker.io/library/node:${NODE_VERSION}-slim AS node
