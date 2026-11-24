@@ -344,7 +344,7 @@
         <strong>Irrigation system:</strong> a place watered one way, placed on the map. Its location sets its weather,
         so put it where it really is. It's one of these:
         <ul>
-          <li><strong>IrrigationSystem</strong> (center pivot): a circle, or part of one.</li>
+          <li><strong>Pivot</strong> (center pivot): a circle, or part of one.</li>
           <li><strong>Linear</strong>: the rectangle the machine travels along.</li>
           <li>
             <strong>Traveler:</strong> a hard hose reel or big gun moved between fields. Set up a traveler at each field (or
