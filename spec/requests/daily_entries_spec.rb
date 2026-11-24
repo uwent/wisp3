@@ -17,7 +17,7 @@ RSpec.describe "Daily entry", type: :request do
 
   around { |example| travel_to(Date.new(2026, 7, 20)) { example.run } }
 
-  describe "the page", :inertia do
+  describe "the page" do
     it "opens on yesterday before noon (this morning's gauge reading) and on today from noon" do
       travel_to(Time.zone.parse("2026-07-20 11:59"))
       get daily_entry_path
@@ -143,7 +143,7 @@ RSpec.describe "Daily entry", type: :request do
       expect(PlantingEntry.count).to eq(0)
     end
 
-    it "saves nothing when a value is invalid", :inertia do
+    it "saves nothing when a value is invalid" do
       patch daily_entry_path, params: {date: date.iso8601, fields: {field.id => {rain_in: "0.4"}},
                                        canopy: {whole.id => "140"}}
       expect(field.field_entries).to be_empty
@@ -151,7 +151,7 @@ RSpec.describe "Daily entry", type: :request do
       expect(inertia.props[:errors]).to include("canopy.#{whole.id}" => ["Percent cover must be between 0 and 100"])
     end
 
-    it "takes planned irrigation ahead, but not rain, soil moisture or readings, as the field grid does", :inertia do
+    it "takes planned irrigation ahead, but not rain, soil moisture or readings, as the field grid does" do
       ahead = Date.new(2026, 7, 25)
       patch daily_entry_path, params: {date: ahead.iso8601, fields: {field.id => {rain_in: "0.4", soil_moisture_pct: "20"}},
                                        canopy: {whole.id => "50"}}
@@ -164,7 +164,7 @@ RSpec.describe "Daily entry", type: :request do
       expect(field.field_entries.sole).to have_attributes(date: ahead, irrigation_in: 1.0)
     end
 
-    it "refuses a reading outside the planting's season", :inertia do
+    it "refuses a reading outside the planting's season" do
       before_season = Date.new(2026, 4, 10)
       patch daily_entry_path, params: {date: before_season.iso8601, canopy: {whole.id => "5"}}
       follow_redirect!

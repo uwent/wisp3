@@ -53,12 +53,16 @@ fi
 git -C src show "$sha:config/deploy/compose.production.yaml" > compose.yaml
 
 # Migrations run with the new image; if they fail, wisp3:deployed goes back to the running one.
+# Each migration commits as it finishes, so the ones before a failure have run: the old containers
+# keep running, on a schema that may be partly migrated (docs/deployment.md, Migrations).
 # This script arrives on stdin, so `run` gets none (-T, /dev/null), or it reads the rest of it
 previous=$(docker image inspect --format '{{.Id}}' wisp3:deployed 2>/dev/null || true)
 docker tag "wisp3:$tag" wisp3:deployed
 if ! docker compose run --rm -T web bin/rails db:prepare db:seed </dev/null; then
   [ -n "$previous" ] && docker tag "$previous" wisp3:deployed
-  echo "Migrations failed; the running containers are unchanged." >&2
+  echo "Migrations or the reference data failed. The old containers are still running, but any migration listed" >&2
+  echo "above as migrated has been applied: if the old version can't run on it, fix and deploy again, or restore" >&2
+  echo "the database (docs/deployment.md, Migrations)." >&2
   exit 1
 fi
 docker compose up -d --remove-orphans

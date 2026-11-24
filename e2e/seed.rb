@@ -1,5 +1,7 @@
 # Data for the browser smoke tests (bin/e2e): the demo account, and synthetic weather for every cell
-# from April 1 through today, so pages render with a full season and no network.
+# through today, so pages render with a full season and no network. Today is the tests' day
+# (E2E_NOW from e2e/clock.json, config/initializers/e2e_clock.rb), not the real one, so the season
+# seeded and where today falls in it are the same on every run.
 EMAIL = "e2e@example.com"
 PASSWORD = "e2e-password-1"
 GROWER_EMAIL = "jane@example.com"
@@ -29,7 +31,7 @@ Announcement.find_or_create_by!(subject: "E2E sent announcement") do |announceme
 end
 
 # Keep the first field's season (the planting the tests open, firstPlantingPath; e2e/demo.json)
-# running past today, so it has a projection whenever the tests run between April and the fall
+# running past today, so it has a projection
 first_field = JSON.parse(File.read(File.join(__dir__, "demo.json"))).fetch("firstField")
 demo.fields.find_by!(name: first_field).plantings.each do |planting|
   planting.update!(end_date: [planting.end_date, today + 30].max)
@@ -38,6 +40,10 @@ end
 # year's once it's past, else last year's
 example_year = (today >= Date.new(today.year, 7, 20) + PlantingStatus::HORIZON) ? today.year : today.year - 1
 DemoSeed.example!(year: example_year)
+
+# A database last seeded on a later day (another E2E_NOW, or before the day was fixed) has stored
+# weather ahead of today, where the forecast belongs
+WeatherDay.where(date: (today + 1)..).delete_all
 
 WeatherCell.find_each do |cell|
   # From January 1 (of the example's season, if that's last year), so the weather pages have days

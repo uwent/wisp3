@@ -60,7 +60,7 @@ RSpec.describe "Irrigation groups", type: :request do
     expect(north.reload.irrigation_group).to be_nil
   end
 
-  it "shows the groups in Setup", :inertia do
+  it "shows the groups in Setup" do
     group = create(:irrigation_group, farm:, name: "Home gauge")
     north.update!(irrigation_group: group)
     get setup_path

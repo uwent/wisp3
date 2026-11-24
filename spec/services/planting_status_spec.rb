@@ -198,6 +198,35 @@ RSpec.describe PlantingStatus, "projection" do
       irrigation_group.update!(use_model_precip: nil)
       expect([status.dry_projection, status.dry_crossing]).to eq([[], nil])
     end
+
+    it "replays the days that followed a past day with the rain entered or none, as the balance had them then" do
+      past = weather.transform_values { |values| values.merge(forecast: false) } # stored, with 1 in on each of two days
+      field.field_entries.create!(date: today + 3, rain_in: 0.3)
+      travel_to(today + 20) do
+        replay = described_class.new(planting, as_of: today, weather: past)
+        rain = replay.forecast_days.first(4).map { |day| [day.inputs.rain, day.inputs.rain_source] }
+        expect(rain).to eq([[0.0, :none], [0.0, :none], [0.3, :entered], [0.0, :none]])
+        # The same balance as the season ran on, so nothing to show beside it
+        live = described_class.new(planting, today: today + 20, weather: past, ensemble: [])
+        then_ad = live.days.to_h { |day| [day.inputs.date, day.result.ad] }
+        expect(replay.forecast_days.map { |day| day.result.ad }).to eq(replay.forecast_days.map { |day| then_ad[day.inputs.date] })
+        expect([replay.dry_projection, replay.dry_crossing]).to eq([[], nil])
+
+        irrigation_group.update!(use_model_precip: nil) # a field using modeled rain replays that
+        modeled = described_class.new(planting.reload, as_of: today, weather: past)
+        expect(modeled.forecast_days.first.inputs).to have_attributes(rain: 1.0, rain_source: :model)
+      end
+    end
+
+    it "takes the forecast's rain for days still ahead when travelling back a day or two" do
+      travel_to(today + 1) do
+        ahead = weather.to_h { |date, values| [date, values.merge(forecast: date >= today + 1)] }
+        replay = described_class.new(planting, as_of: today, weather: ahead)
+        # Tomorrow (the real today) has happened: no rain entered; the day after is the forecast's
+        expect(replay.forecast_days.first(2).map { |day| day.inputs.rain_source }).to eq(%i[none forecast])
+        expect(replay.dry_projection).not_to be_empty
+      end
+    end
   end
 
   describe "ensemble" do

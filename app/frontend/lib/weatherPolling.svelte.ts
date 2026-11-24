@@ -14,9 +14,14 @@ export function pollWeather(pending: () => number[], only?: string[]) {
   $effect(() => {
     if (!active) return
     timedOut = false
-    return poll(pending, (done) => router.reload({ ...(only && { only }), onFinish: done }), {
-      ongiveup: () => (timedOut = true),
-    })
+    // A reload that can't reach WISP is tried again on the next check, without a notice
+    return poll(
+      pending,
+      (done) => router.reload({ ...(only && { only }), onFinish: done, onNetworkError: () => false }),
+      {
+        ongiveup: () => (timedOut = true),
+      },
+    )
   })
   return { state: (updating: boolean) => weatherUpdate(updating, timedOut) }
 }

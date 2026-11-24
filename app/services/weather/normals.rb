@@ -27,7 +27,9 @@ module Weather
         {weather_cell_id: cell.id, day_of_year:, tmax_f:, tmin_f:, first_year:, last_year:, model: MODEL,
          fetched_at: now, created_at: now, updated_at: now}
       end
-      WeatherNormal.transaction do
+      # The cell's row is locked so two fetches for one cell (a refresh and an update can each queue
+      # one for a new cell) replace its normals in turn, not both insert
+      cell.with_lock do
         WeatherNormal.where(weather_cell_id: cell.id).delete_all
         WeatherNormal.insert_all!(rows)
       end

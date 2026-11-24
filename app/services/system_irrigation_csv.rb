@@ -18,7 +18,7 @@ class SystemIrrigationCsv
         "Irrigation system" => "#{@system.farm.name} / #{@system.label}",
         "Equipment" => @system.equipment,
         "Days" => "#{days.size}, #{entries.size} field entries totaling #{format("%.2f", entries.sum(&:irrigation_in))} in",
-        "Not included" => "a plot's own irrigation (each planting's export has it), except under a rainfed crop, where the field's row is its irrigated plots'"
+        "Not included" => "a plot's own irrigation (each planting's export has it), except on a field with nothing of its own to water (a rainfed crop, or only plots), where the field's row is its irrigated plots'"
       }, exported_by: @exported_by, about_url: @about_url)
       csv << ["Date", "Field", "Irrigation (in)", "Notes"]
       days.each do |date, fields|

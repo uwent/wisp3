@@ -3,6 +3,14 @@
 class Rack::Attack
   Rack::Attack.cache.store = Rails.cache
 
+  # req.ip reads X-Forwarded-For only, which the proxy in front sets. Rack would otherwise put the
+  # Forwarded header first, and a proxy that passes it through (staging's nginx; Thruster drops
+  # it) lets a client name any address, localhost included.
+  Rack::Request.forwarded_priority = [:x_forwarded]
+
+  # The longest body sign_in_email will read: a sign-in form is a few hundred bytes
+  SIGN_IN_BODY_BYTES = 4096
+
   AUTH_POSTS = %r{\A/account(/sign_in|/sign_in_link|/sign_in_code|/password|/confirmation)?\z}
 
   safelist("allow from localhost") do |req|
@@ -40,8 +48,10 @@ class Rack::Attack
   # The email in a sign-in POST, normalized. Inertia sends forms as JSON, which Rack doesn't parse.
   def self.sign_in_email(req)
     params = if req.media_type == "application/json"
-      body = req.body.read
+      body = req.body.read(SIGN_IN_BODY_BYTES + 1).to_s
       req.body.rewind
+      # Longer bodies aren't parsed, and share one count so padding can't get around the limit
+      return "oversized-body" if req.content_length.to_i > SIGN_IN_BODY_BYTES || body.bytesize > SIGN_IN_BODY_BYTES
       JSON.parse(body)
     else
       req.POST

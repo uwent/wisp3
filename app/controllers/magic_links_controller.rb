@@ -7,10 +7,13 @@ class MagicLinksController < InertiaController
 
   # Limits on sign-in emails per address (lifted when that account signs in, see
   # config/initializers/warden_hooks.rb) and per IP, and on code tries per IP; codes also die
-  # after User::SIGN_IN_CODE_ATTEMPTS wrong tries
+  # after User::SIGN_IN_CODE_ATTEMPTS wrong tries. Each new code brings new tries, so wrong tries
+  # at one address are limited per day too, whatever addresses they come from (also lifted when
+  # the account signs in; the emailed link works meanwhile).
   def self.email_limit(email) = WindowLimit.new("sign-in-emails:#{email}", limit: 5, window: 1.hour)
   def self.ip_limit(ip) = WindowLimit.new("sign-in-emails-ip:#{ip}", limit: 20, window: 1.hour)
   def self.verify_limit(ip) = WindowLimit.new("sign-in-codes-ip:#{ip}", limit: 20, window: 15.minutes)
+  def self.wrong_code_limit(email) = WindowLimit.new("sign-in-wrong-codes:#{email}", limit: 20, window: 1.day)
 
   def create
     email = params[:email].to_s.strip.downcase
@@ -60,8 +63,15 @@ class MagicLinksController < InertiaController
       return redirect_to sign_in_code_path, alert: "There have been several sign-in attempts. #{limit.retry_message}"
     end
 
+    wrong_codes = self.class.wrong_code_limit(session[:sign_in_email])
+    if wrong_codes.exceeded?
+      return redirect_to sign_in_code_path, alert: "There have been too many wrong codes for this address. " \
+        "Use the link in the email instead, or sign in with your password. #{wrong_codes.retry_message}"
+    end
+
     user = User.find_by(email: session[:sign_in_email])
     unless user&.redeem_sign_in_code!(params[:code])
+      wrong_codes.allow!
       return redirect_to sign_in_code_path, inertia: {errors: {code: [
         "That code didn't work. It may have a typo, or it may have expired. Codes expire after " \
         "#{User::MAGIC_LINK_TTL.in_minutes.to_i} minutes and stop working after #{User::SIGN_IN_CODE_ATTEMPTS} " \

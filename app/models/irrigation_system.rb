@@ -100,7 +100,8 @@ class IrrigationSystem < ApplicationRecord
 
   # The irrigation on the fields this system watered (D15: stored per field), by date: {date =>
   # {Field => entry}} for the days in dates with any, each field as fields_on places it. A field
-  # whose rainfed crop has irrigated plots shows their amount (Field.system_irrigation).
+  # with nothing of its own to water (a rainfed crop, or only plots) shows its irrigated plots'
+  # amount (Field.system_irrigation).
   def irrigation_on(dates)
     fields = Field.where(system_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
       .index_by(&:id)

@@ -1,6 +1,6 @@
 # The status of many fields at once (the dashboard, the map, the daily digest): each field's
 # plantings in season today (several on a field of plots), or with none, the
-# nearest one this year, with entries, weather and ensembles for every field loaded in a few
+# nearest one this year (or the next to start), with entries, weather and ensembles for every field loaded in a few
 # queries, not several per field, through the projection's days. Fields need their system and
 # plantings (with plant and canopy observations) and soil type loaded.
 class FieldStatuses
@@ -8,7 +8,7 @@ class FieldStatuses
   RANK = {irrigate: 0, caution: 1, needs_canopy: 2, ok: 3, full: 4, stressed: 5, stress_coming: 6, no_stress: 7}.freeze
 
   # {field_id => [PlantingStatus, …]}, whole-field planting first, then by season start; empty for a
-  # field with no planting this year. Another year (the map's season) gives every planting
+  # field with no planting this year or ahead. Another year (the map's season) gives every planting
   # that started in it, as they ended (or stand, or will start). as_of: the example farm's day
   # (Current.as_of), today for every planting (status).
   def self.for(fields, today: Current.today, year: today.year, as_of: Current.as_of)
@@ -48,16 +48,18 @@ class FieldStatuses
   end
 
   # The plantings in season today; with none, the one this year nearest today and those it shares
-  # days with (so a field of plots shows them all out of season, and a succession just the one); in
-  # another year, all of that year's
+  # days with (so a field of plots shows them all out of season, and a succession just the one);
+  # with none this year, the next to start (next season's, set up over the winter); in another
+  # year, all of that year's
   def self.plantings_for(field, today, year = today.year)
     return field.plantings.select { |p| p.season_year == year }.sort_by(&:order_key) unless year == today.year
 
     on = field.plantings_on(today)
     if on.empty?
-      this_year = field.plantings.select { |p| p.season_year == today.year }
-      nearest = this_year.min_by { |p| (p.season_start - today).abs }
-      on = nearest ? this_year.select { |p| p.overlaps?(nearest) } : []
+      near = field.plantings.select { |p| p.season_year == today.year }.presence ||
+        field.plantings.select { |p| p.season_start > today }
+      nearest = near.min_by { |p| (p.season_start - today).abs }
+      on = nearest ? near.select { |p| p.overlaps?(nearest) } : []
     end
     on.sort_by(&:order_key)
   end

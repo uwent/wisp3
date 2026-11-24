@@ -108,11 +108,20 @@ export function currentUnits(): Units {
   return units(page?.props?.auth?.user?.unit_system)
 }
 
-/** A plain number (percent, fraction) typed by the user: blank is null */
+// Commas grouping thousands ("1,250", "12,500.5"); any other comma ("12,5") isn't read as one
+const GROUPED = /^[+-]?\d{1,3}(,\d{3})+(\.\d*)?$/
+
+/**
+ * A plain number (percent, fraction) typed by the user: blank is null. A comma is read only where it
+ * groups thousands: "12,5" typed for 12.5 would otherwise be taken as 125.
+ */
 export function parseNumber(text: string): ParseResult {
-  const trimmed = text.trim().replace(/,/g, '')
+  const trimmed = text.trim()
   if (trimmed === '') return { ok: true, value: null }
-  const value = Number(trimmed)
+  if (trimmed.includes(',') && !GROUPED.test(trimmed)) {
+    return { ok: false, error: 'Use a point for decimals, such as 12.5' }
+  }
+  const value = Number(trimmed.replace(/,/g, ''))
   if (!Number.isFinite(value)) return { ok: false, error: 'Enter a number, such as 0.5' }
   return { ok: true, value }
 }

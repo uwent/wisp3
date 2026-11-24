@@ -19,7 +19,8 @@ module Admin
       request.env["devise.skip_trackable"] = true
       sign_in(:user, user)
       Rails.logger.info("Impersonation started: admin #{admin.id} as user #{user.id}")
-      redirect_to root_path, notice: "You're signed in as #{user.email}.", status: :see_other
+      redirect_to root_path, notice: "You're signed in as #{user.email}.", status: :see_other,
+        inertia: {clear_history: true}
     end
   end
 end

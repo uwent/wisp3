@@ -18,6 +18,7 @@ class ImpersonationsController < AuthenticatedController
     sign_in(:user, admin)
     session[:group_id] = group_id
     Rails.logger.info("Impersonation ended: admin #{admin.id} as user #{user.id}")
-    redirect_to admin_user_path(user), notice: "You're back as #{admin.email}.", status: :see_other
+    redirect_to admin_user_path(user), notice: "You're back as #{admin.email}.", status: :see_other,
+      inertia: {clear_history: true}
   end
 end

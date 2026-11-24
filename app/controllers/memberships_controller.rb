@@ -5,14 +5,23 @@ class MembershipsController < AuthenticatedController
   # Adding a member emails them in the user's name
   before_action :forbid_while_impersonating, only: :create
 
+  # Anyone with an account owns an operation and can add people to it, which emails them and says
+  # whether an address has an account. So the tries one user makes are limited, and the emails
+  # to one address (added, removed and added again), from any operation.
+  def self.tries_limit(user) = WindowLimit.new("member-adds:#{user.id}", limit: 20, window: 1.hour)
+  def self.emails_limit(email) = WindowLimit.new("member-add-emails:#{email}", limit: 3, window: 1.day)
+
   def create
     email = params.expect(membership: [:email])[:email].to_s.strip.downcase
     user = User.find_by(email:)
+    tries, emails = self.class.tries_limit(current_user), self.class.emails_limit(email)
     error =
       if email.blank? then "Enter the email address they use to sign in to WISP."
+      elsif !tries.allow! then "You've added several people already. #{tries.retry_message}"
       elsif user.nil? then "No WISP account uses #{email}. Ask them to create one, then add them."
       elsif !user.confirmed? then "#{email} hasn't confirmed their email address yet. Ask them to open the confirmation link, then add them again."
       elsif Current.group.users.include?(user) then "#{user.display_name} is already a member"
+      elsif !emails.allow! then "#{user.display_name} has been added to operations several times today. #{emails.retry_message}"
       end
     return redirect_with_errors(group_path, {email: [error]}) if error
 

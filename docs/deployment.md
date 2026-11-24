@@ -176,13 +176,21 @@ On the server, `deploy`:
 1. Checks `.env` has the required settings.
 2. Fetches the repo, checks out the commit and builds its image, tagged `wisp3:<commit>`. Docker's cache skips the gem and pnpm installs when the lockfiles haven't changed, so most builds take a few minutes. A commit already built is reused.
 3. Points `wisp3:deployed`, the image the compose file runs, at it.
-4. Runs `db:prepare db:seed` (migrations, then the reference data) with the new image. If that fails, `wisp3:deployed` goes back to the previous image and the running site is untouched.
+4. Runs `db:prepare db:seed` (migrations, then the reference data) with the new image. If that fails, `wisp3:deployed` goes back to the previous image and the old containers keep running, on whatever migrations finished before the failure (Migrations, below).
 5. Replaces the containers. The site is down for a few seconds while `web` restarts.
 6. Keeps the newest 5 images and a week of build cache.
 
 Then check it with `bin/production status`: both containers up, `web` "healthy" after about 30 seconds, and `/up`'s `version` the commit you deployed.
 
 **Rolling back:** `bin/production deploy <earlier commit>`. It reuses that image if it's still on the server (`bin/production images`), or builds it again. Migrations aren't rolled back, so a rollback past a migration needs that migration to be backward compatible.
+
+**Migrations:** the old containers keep serving while step 4 migrates, and each migration commits as it finishes. A migration that only adds (a table, a nullable column, an index) is safe under the old version and to roll back past. One that renames or drops what the old version reads isn't: the old version errors from the moment it runs until step 5 (seconds when all goes well; until you fix it if a later migration or the reference data fails), and rolling back the image doesn't bring the old schema back. For a deploy with such a migration:
+
+1. Take an RDS snapshot first (the console's Take snapshot, or `aws rds create-db-snapshot`); restoring it, with the earlier image, is the only way back.
+2. Stop the old version before deploying, so nothing reads or writes a half-migrated schema: `bin/production ssh`, then `docker compose stop web jobs`. The site is down from then until the deploy's step 5: a few minutes while the image builds, so pick a quiet hour.
+3. `bin/production deploy`, and keep its output: a data migration reports what it couldn't move there.
+
+The settings Thruster reads are in the compose file: `LOG_REQUESTS` is off, because its request log includes the query string and so the tokens of emailed links (Rails logs every request with them filtered), and `MAX_REQUEST_BODY` is 10 MB, as staging's nginx.
 
 **Changing a setting or secret:** edit `/opt/wisp/.env` on the server (`bin/production ssh`, then `nano .env`), then `bin/production reload` from your machine so the containers read it (on the server, that's `docker compose up -d --force-recreate` in `/opt/wisp`). Update the password manager too. `APP_HOST` is covered in step 3.
 
@@ -209,7 +217,7 @@ It asks for the `wisp3` password (in `.env` and the password manager).
 
 ### Troubleshooting
 
-- **The deploy fails:** its output names the step. `.env has no …` is a missing setting (step 4); `isn't on GitHub` means push first; a build killed with exit code 137 ran out of memory (step 1, swap). A failed migration leaves the old version running; fix it and deploy again.
+- **The deploy fails:** its output names the step. `.env has no …` is a missing setting (step 4); `isn't on GitHub` means push first; a build killed with exit code 137 ran out of memory (step 1, swap). A failed migration leaves the old version running on the migrations that finished before it (Migrations, above); fix it and deploy again.
 - **`web` isn't running or isn't healthy:** `docker compose ps -a` on the server shows each container's state and exit code, and `bin/production logs web` the error. Rails refusing to boot is usually a setting: a wrong `RAILS_MASTER_KEY` (`ActiveSupport::MessageEncryptor::InvalidMessage`), or the database password or host (`PG::ConnectionBad`). If there are no containers at all, `docker events --since 1h --filter type=container` shows what was created and when it exited.
 - **HTTPS fails:** Thruster asks Let's Encrypt for the certificate on the first HTTPS request, which needs `APP_HOST` to resolve to 54.159.70.187 publicly and ports 80 and 443 open (step 3). `bin/production logs web` shows the certificate errors, including Let's Encrypt's rate limits.
 - **A page is a blank 403:** the request was addressed to a name other than `APP_HOST`, such as the bare IP address. Rails answers only that name (`/up` excepted).

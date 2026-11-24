@@ -283,6 +283,23 @@ RSpec.describe "Sign-in links and codes", type: :request do
       expect(response).to redirect_to(sign_in_code_path)
     end
 
+    it "limits wrong tries at one address in a day across new codes and IP addresses, until the account signs in" do
+      20.times { |n| MagicLinksController.wrong_code_limit(user.email).allow! }
+      request_email
+      post sign_in_code_path, params: {code: emailed_code}
+      expect(response).to redirect_to(sign_in_code_path)
+      expect(flash[:alert]).to match(/too many wrong codes for this address. Use the link in the email instead.* Please try again in \d+ (minutes|hours)\./)
+
+      post redeem_magic_link_path(token: emailed_token) # the link still works, and lifts the limit
+      expect(MagicLinksController.wrong_code_limit(user.email)).not_to be_exceeded
+    end
+
+    it "counts each wrong try toward the day's limit" do
+      request_email
+      expect { 2.times { post sign_in_code_path, params: {code: wrong_code} } }
+        .to change { Rails.cache.read("window-limit:sign-in-wrong-codes:#{user.email}:#{Time.current.to_i / 1.day.to_i}", raw: true).to_i }.by(2)
+    end
+
     it "works only once, and signing in with the link spends it too" do
       request_email
       code = emailed_code

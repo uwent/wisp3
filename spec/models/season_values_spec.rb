@@ -45,6 +45,14 @@ RSpec.describe "Season values on plantings" do
     expect(WaterBalance::Params.for(this_year).field_capacity).to eq(0.32)
   end
 
+  it "applies the field's soil as a whole, so a season corrected on its own never keeps part of it" do
+    this_year.update!(soil_type: loam, field_capacity: 0.28, perm_wilting_pt: 0.14) # corrected for this season
+    field.update!(field_capacity: 0.11)
+    expect(this_year.reload).to have_attributes(soil_type: sand, field_capacity: 0.11, perm_wilting_pt: nil)
+    expect { WaterBalance::Params.for(this_year) }.not_to raise_error
+    expect(WaterBalance::Params.for(this_year)).to have_attributes(field_capacity: 0.11, perm_wilting_pt: 0.04)
+  end
+
   it "moves seasons that haven't ended with the system, and leaves earlier ones on their weather" do
     old_cell = system.weather_cell
     system.update!(latitude: 45.6, longitude: -91.2)

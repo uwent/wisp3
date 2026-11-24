@@ -45,12 +45,13 @@ module DigestHelper
 
   def due_tasks(entry) = entry.active? ? entry.status.tasks.select(&:due) : []
 
-  # A field out of season: "Potato · season starts Apr 1", "Potato · season ended Sep 15", or "No
-  # crop this season"
+  # A field out of season: "Potato · season starts Apr 1" (next year's with its year), "Potato ·
+  # season ended Sep 15", or "No crop this season"
   def digest_off_season(entry)
     status = entry.status or return "No crop this season"
     planting = status.planting
-    when_text = (status.phase == :upcoming) ? "season starts #{planting.season_start.strftime("%b %-d")}" :
+    starts = planting.season_start.strftime((planting.season_start.year == status.today.year) ? "%b %-d" : "%b %-d, %Y")
+    when_text = (status.phase == :upcoming) ? "season starts #{starts}" :
       "season ended #{planting.end_date.strftime("%b %-d")}"
     "#{digest_crop(entry)} · #{when_text}"
   end

@@ -64,12 +64,23 @@ RSpec.describe SeasonReportCsv do
     expect(section("Irrigation by irrigation system").sole).to include("Area (acres)" => nil, "Irrigation (in)" => "0.8000")
   end
 
-  it "counts a field of plots at the field's area, not its largest plot's" do
+  it "counts a field of plots at the field's area in the operation's acres, and at the plots' ground in its system's irrigation" do
     west.plantings.sole.update!(partial: true, area_acres: 5)
     create(:planting, field: west, partial: true, area_acres: 8, season_start: Date.new(2026, 7, 1),
       emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30))
     expect(rows).to include(["Fields: 2 fields on 1 system across 1 farm, 120.0 acres"])
-    expect(section("Irrigation by irrigation system").sole).to include("Area (acres)" => "120.0")
+    # East's 30 acres and the 13 the plots covered, not West's 90
+    expect(section("Irrigation by irrigation system").sole).to include("Area (acres)" => "43.0")
+  end
+
+  it "weights a rainfed crop's irrigated corner by the corner, not the field" do
+    west.plantings.sole.update!(rainfed: true)
+    west.field_entries.destroy_all # the rainfed crop itself wasn't irrigated
+    corner = create(:planting, field: west, partial: true, area_acres: 1, season_start: Date.new(2026, 7, 1),
+      emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30))
+    corner.planting_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 4.0)
+    # (30 acres × 1.0 + 1 × 4.0) / 31, where West's 90 acres as the corner's weight gave 3.25 in
+    expect(section("Irrigation by irrigation system").sole).to include("Fields" => "2", "Area (acres)" => "31.0", "Irrigation (in)" => "1.0968")
   end
 
   it "counts a field's whole-field planting, not a plot within it, in the spreads and averages (D19)" do

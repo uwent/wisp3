@@ -132,6 +132,18 @@
         saveError =
           [Object.values(errors)[0]].flat()[0] ?? "Couldn't save your settings. Check your connection and try again."
       },
+      // Neither of those is called when the request never arrives or the server answers with an
+      // error page
+      onNetworkError: () => {
+        saveState = 'failed'
+        saveError = "Couldn't save your settings. Check your connection and try again."
+        return false
+      },
+      onFinish: () => {
+        if (saveState !== 'saving') return
+        saveState = 'failed'
+        saveError = "Couldn't save your settings. Try again in a moment."
+      },
     })
   }
   let loaded = false

@@ -27,6 +27,22 @@ RSpec.describe "Request limits (Rack::Attack)", type: :request do
     expect(response).not_to have_http_status(:too_many_requests)
   end
 
+  it "counts a body too long to be a sign-in form without parsing it, so padding doesn't get around the limit" do
+    padded = {user: {email: "grower@example.com", password: "wrong-password"}, padding: "x" * 5000}.to_json
+    11.times do |n|
+      post user_session_path, params: padded,
+        headers: {"CONTENT_TYPE" => "application/json"}, env: {"REMOTE_ADDR" => addresses[n], "HTTP_USER_AGENT" => "Mozilla/5.0"}
+    end
+    expect(response).to have_http_status(:too_many_requests)
+  end
+
+  it "takes the client's address from X-Forwarded-For only, so a Forwarded header can't claim to be localhost" do
+    headers = {"REMOTE_ADDR" => "127.0.0.1", "HTTP_X_FORWARDED_FOR" => "203.0.113.5", "HTTP_FORWARDED" => "for=127.0.0.1",
+               "HTTP_USER_AGENT" => "Mozilla/5.0"}
+    6.times { post user_session_path, params: {user: {email: "grower@example.com", password: "wrong-password"}}, env: headers }
+    expect(response).to have_http_status(:too_many_requests) # auth/ip: 5 in 20 seconds
+  end
+
   it "lifts the limit after 15 minutes" do
     11.times { |n| sign_in_from(addresses[n], email: "grower@example.com") }
     travel 16.minutes do

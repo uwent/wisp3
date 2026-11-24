@@ -3,6 +3,7 @@
   import { Dialog } from 'bits-ui'
 
   import { type Change, ChangeTracker, describeChanges } from '@/lib/formChanges'
+  import { changesMessage, confirmHistoryMoves } from '@/lib/unsaved.svelte'
 
   import Button from './Button.svelte'
 
@@ -40,7 +41,10 @@
     if (!guard || !open) return
     tracker.reset()
     tracker.start()
+    // The browser's Back would take the page, and the dialog's changes with it
+    const offHistory = confirmHistoryMoves(() => changesMessage(tracker.changes()))
     return () => {
+      offHistory()
       tracker.stop()
       asking = null
     }

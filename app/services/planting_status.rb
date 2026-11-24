@@ -8,7 +8,9 @@
 # as_of: time travel: the season as it stood on that day (entries as they are
 # now; edits keep no history). The projection is what happened in the days that followed: their
 # stored weather instead of a forecast, with no ensemble, and the rain, irrigation and soil moisture
-# entered for them. Canopy readings after the date are left out, since they'd refit the curve
+# entered for them. A day with no rain entered takes what the live balance gave it: the modeled
+# rain, or on a field using only entered rain, none (Q7); only days still ahead of the real today
+# take the forecast's. Canopy readings after the date are left out, since they'd refit the curve
 # before it too.
 class PlantingStatus
   # The season so far: amounts, and (for an ended season's card) the days with irrigation, rain
@@ -40,7 +42,10 @@ class PlantingStatus
       records ||= DailyInputs.preload([planting.field], planting.season_start..through).fetch(planting.field.id)
     end
     @planting, @today, @ensemble_members, @as_of = planting, today, ensemble, as_of
-    @balance = PlantingBalance.new(planting, weather:, records:, today:, canopy_through: as_of, temperatures:)
+    # The days that followed as_of have happened, so their rain goes by the rain setting, as it did
+    # in the balance then. Date.current, not Current.today: the example farm's today is its as_of.
+    rain_ahead_from = as_of ? [as_of, Date.current].max : today
+    @balance = PlantingBalance.new(planting, weather:, records:, today: rain_ahead_from, canopy_through: as_of, temperatures:)
   end
 
   # Where the projection's weather comes from: the forecast, or (time travelling) what followed
@@ -115,11 +120,13 @@ class PlantingStatus
   def use_model_precip? = planting.use_model_precip?
 
   # For a field using only entered rain: the projection's balance (WaterBalance::Results) with no
-  # forecast rain, keeping planned irrigation and any rain entered ahead. Empty otherwise.
+  # forecast rain, keeping planned irrigation and any rain entered ahead. Empty otherwise, and when
+  # no day of the projection has modeled rain to leave out (time travel to days that have all
+  # happened): it would be the projection over again.
   def dry_projection
-    @dry_projection ||= if !use_model_precip? && phase == :active && current && forecast_days.any?
+    @dry_projection ||= if !use_model_precip? && phase == :active && current && forecast_days.any? { |day| modeled_rain?(day) }
       dry_days = forecast_days.map do |day|
-        rain = %i[forecast model].include?(day.inputs.rain_source) ? 0.0 : day.inputs.rain
+        rain = modeled_rain?(day) ? 0.0 : day.inputs.rain
         WaterBalance::Day.new(date: day.inputs.date, et0: day.inputs.et0, rain:, irrigation: day.inputs.irrigation,
           soil_moisture_pct: day.inputs.soil_moisture_pct, canopy: day.canopy,
           wind_mph: day.inputs.wind_mph, rh_min_pct: day.inputs.rh_min_pct)
@@ -170,6 +177,9 @@ class PlantingStatus
   end
 
   private
+
+  # Whether a projected day's rain is the model's or the forecast's, not entered
+  def modeled_rain?(day) = %i[forecast model].include?(day.inputs.rain_source)
 
   # The first of results (today's, then the projection's) at or below the threshold, while the season is on
   def first_crossing(results)

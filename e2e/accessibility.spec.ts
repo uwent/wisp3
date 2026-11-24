@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { type Page } from '@playwright/test'
 
+import { YEAR } from './clock'
 import { DEMO, literal } from './demo'
 import { firstPlantingPath, firstZonePath, impersonateGrower, signedInPages, signIn, watchErrors } from './session'
 import { expect, test } from './test'
@@ -147,9 +148,6 @@ test('a field viewed on an earlier date (time travel)', { tag: '@phone' }, async
   await signIn(page)
   await page.goto(await firstPlantingPath(page))
   const rewind = page.getByRole('button', { name: 'View this field on an earlier date' })
-  // Once the page is drawn, or the button's absence means nothing
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  test.skip(!(await rewind.isVisible()), "the field's season has no earlier days on this date")
   await rewind.click()
   await page.getByRole('button', { name: 'View', exact: true }).click()
   await expect(page).toHaveURL(/as_of=/)
@@ -184,7 +182,7 @@ test('the bar shown while signed in as someone else', { tag: '@phone' }, async (
 test("daily entry's irrigation calculator", { tag: '@phone' }, async ({ page }) => {
   await signIn(page)
   const errors = watchErrors(page)
-  await page.goto(`/daily?date=${new Date().getFullYear()}-07-15`)
+  await page.goto(`/daily?date=${YEAR}-07-15`)
   await page.getByRole('button', { name: `Work out ${DEMO.splitSystem}'s irrigation` }).click()
   const dialog = page.getByRole('dialog', { name: new RegExp(`^Irrigation for ${literal(DEMO.splitSystem)} on `) })
   // Out of range, so its messages and the blank result are scanned too

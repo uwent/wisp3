@@ -71,6 +71,61 @@ RSpec.describe "Example mode", type: :request do
     end
   end
 
+  # Every signed-in route, read from the routes, so a new one is covered as soon as it's added: only
+  # the GET actions a controller lists with allow_example answer; the rest go back to the dashboard
+  # having written nothing
+  describe "every route" do
+    routes = Rails.application.routes.routes.filter_map do |route|
+      controller = route.defaults[:controller] or next
+      klass = "#{controller}_controller".camelize.safe_constantize
+      next unless klass && klass < AuthenticatedController
+      {verb: route.verb.downcase.to_sym, spec: route.path.spec.to_s.delete_suffix("(.:format)"), controller:,
+       action: route.defaults[:action], allowed: route.verb == "GET" && klass.example_actions.include?(route.defaults[:action])}
+    end.uniq.freeze
+
+    # The example's own records, so a write that got through would have something to change
+    def path_for(route)
+      ids = {"farms" => example_system.farm_id, "systems" => example_system.id, "fields" => example_field.id,
+             "plantings" => example_planting.id, "weather_zones" => example_system.weather_cell_id}
+      route[:spec].gsub(":date", "2026-07-01").gsub(":location", example_system.weather_cell.location)
+        .gsub(":system_id", example_system.id.to_s).gsub(":field_id", example_field.id.to_s)
+        .gsub(":planting_id", example_planting.id.to_s).gsub(":id", ids.fetch(route[:controller], 1).to_s).gsub(/:\w+/, "1")
+    end
+
+    def counts = [Farm, IrrigationSystem, Field, Planting, FieldEntry, PlantingEntry, IrrigationGroup, Group, Membership, User].map(&:count)
+
+    it "finds the routes, and every action allowed is a GET route's" do
+      expect(routes.size).to be > 60
+      expect(routes.count { |route| route[:allowed] }).to be >= 12
+      listed = AuthenticatedController.descendants.flat_map { |klass| klass.example_actions.map { |action| [klass.controller_path, action] } }
+      expect(listed - routes.select { |route| route[:allowed] }.map { |route| [route[:controller], route[:action]] }).to be_empty
+    end
+
+    it "sends everything not allowed back to the dashboard, writing nothing" do
+      enter
+      example_field.update_columns(name: "As seeded")
+      refused = routes.reject { |route| route[:allowed] }
+      expect { refused.each { |route| public_send(route[:verb], path_for(route)) } }.not_to change { counts }
+      refused.each do |route|
+        public_send(route[:verb], path_for(route))
+        expect(response).to redirect_to(root_path), "#{route[:verb].upcase} #{path_for(route)}: #{response.status}"
+        expect(flash[:alert]).to include("can only be viewed")
+      end
+      expect(example_field.reload.name).to eq("As seeded")
+      expect(example.reload.name).to eq("Example farm")
+    end
+
+    it "answers the allowed pages and downloads" do
+      enter
+      routes.select { |route| route[:allowed] }.each do |route|
+        get path_for(route)
+        label = "GET #{path_for(route)}: #{response.status}"
+        expect(response.status).to be < 400, label
+        expect(flash[:alert].to_s).not_to include("can only be viewed"), label
+      end
+    end
+  end
+
   it "shows the example to a signed-in user until they leave it or sign in again" do
     sign_in user
     get root_path

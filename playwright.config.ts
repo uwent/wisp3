@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
+import { NOW } from './e2e/clock'
+
 // Browser smoke tests; run with bin/e2e, which prepares the wisp3_e2e database and seeds it
 const port = 3200
 
@@ -27,7 +29,7 @@ export default defineConfig({
   webServer: {
     command: `bin/rails server -p ${port}`,
     url: `http://localhost:${port}/up`,
-    env: { RAILS_ENV: 'test', E2E: '1' },
+    env: { RAILS_ENV: 'test', E2E: '1', E2E_NOW: NOW },
     reuseExistingServer: false,
     timeout: 120_000,
   },

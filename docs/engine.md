@@ -106,7 +106,7 @@ The **threshold** is the target, or AD = 0 without one (always 0 for a rainfed p
 - **Forecast days** (`forecast_days`): the days after today with forecast ET0. Planned irrigation is an irrigation entry on a future date (a future day takes only irrigation and notes). On a field using only entered rain, the projection still takes the forecast's rain (nobody enters rain ahead), and `dry_projection` runs the same days with no forecast rain, shown beside it (Q7).
 - **Crossing** (`crossing`): the first day, today or ahead, at or below the threshold, and the refill to field capacity then (AD_max − AD). Pages show it as "Irrigate by".
 - **Ensemble** (`EnsembleProjection`): the balance once per GFS ensemble member (31) from today's AD and soil surface, each with its own ET0 and, where the day's rain is the forecast's, its own rain; entered values kept. The members' ET0 is scaled by the deterministic forecast's correction ratio (`Weather::Ensemble.corrected`, Q10). Each day gives P10, P50 and P90 of AD and the share of members that have reached the threshold by then.
-- **Time travel** (`as_of`): the season as it stood on a past day, with the days that followed as the projection, from stored weather and what was entered for them; no ensemble.
+- **Time travel** (`as_of`): the season as it stood on a past day, with the days that followed as the projection, from stored weather and what was entered for them; no ensemble. Rain on those days is as the live balance had it: entered, else by the rain setting (the modeled rain, or none on a field using only entered rain, which then has no separate no-rain projection); only days still ahead of the real today take the forecast's.
 
 ## Testing
 

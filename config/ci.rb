@@ -1,5 +1,5 @@
 # The same checks run locally (bin/ci) and on GitHub Actions (.github/workflows/ci.yml).
-# The browser tests are separate (bin/e2e, about 7 minutes), in their own job on GitHub Actions.
+# The browser tests are separate (bin/e2e, about 3 minutes), in their own job on GitHub Actions.
 CI.run do
   step "Setup", "bin/setup --skip-server"
 

@@ -71,6 +71,25 @@ RSpec.describe "Farm operations", type: :request do
       newcomer
       expect { post memberships_path, params: {membership: {email: "new@example.com"}} }.not_to change(Membership, :count)
     end
+
+    it "limits the emails to one address, added and removed again and again, from any operation" do
+      3.times do
+        post memberships_path, params: {membership: {email: newcomer.email}}
+        delete membership_path(group.memberships.find_by!(user: newcomer))
+      end
+      expect { post memberships_path, params: {membership: {email: newcomer.email}} }.not_to have_enqueued_mail(MembershipMailer, :added)
+      expect(group.users).not_to include(newcomer)
+      follow_redirect!
+      expect(inertia.props.dig(:errors, :email)).to include(a_string_matching(/added to operations several times today. Please try again in \d+ (minutes|hours)\./))
+    end
+
+    it "limits how many addresses one user tries in an hour" do
+      20.times { |n| post memberships_path, params: {membership: {email: "nobody#{n}@example.com"}} }
+      newcomer
+      expect { post memberships_path, params: {membership: {email: newcomer.email}} }.not_to change(Membership, :count)
+      follow_redirect!
+      expect(inertia.props.dig(:errors, :email)).to include(a_string_matching(/You've added several people already. Please try again in \d+ minutes?\./))
+    end
   end
 
   describe "roles" do

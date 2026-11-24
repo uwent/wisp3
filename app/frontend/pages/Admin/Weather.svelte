@@ -35,7 +35,10 @@
   // While weather jobs are queued or running, reload usage and cells so fetches show up as they land
   $effect(() => {
     if (pending_jobs === 0) return
-    const timer = setInterval(() => router.reload({ only: ['api', 'cells', 'pending_jobs'] }), 3000)
+    const timer = setInterval(
+      () => router.reload({ only: ['api', 'cells', 'pending_jobs'], onNetworkError: () => false }),
+      3000,
+    )
     return () => clearInterval(timer)
   })
 

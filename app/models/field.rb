@@ -68,10 +68,11 @@ class Field < ApplicationRecord
   end
 
   # The plots an irrigation system's amount goes to that day in place of the field: its irrigated
-  # plots, when its whole-field crop is rainfed (D17, D19), as daily entry fills them; none otherwise
+  # plots, when the field has nothing of its own to water (its whole-field crop is rainfed, D17 and
+  # D19, or it's growing only plots), as daily entry and its week fill them; none otherwise
   def system_plots_on(date)
     plantings = plantings_on(date)
-    return [] unless plantings.any? { |planting| !planting.partial? && planting.rainfed? }
+    return [] if plantings.any? { |planting| !planting.partial? && !planting.rainfed? }
     plantings.select { |planting| planting.partial? && !planting.rainfed? }.sort_by(&:order_key)
   end
 
@@ -91,8 +92,7 @@ class Field < ApplicationRecord
   def self.system_irrigation(fields, dates)
     entries = FieldEntry.where(field_id: fields.map(&:id), date: dates).where.not(irrigation_in: nil)
       .index_by { |entry| [entry.field_id, entry.date] }
-    plots = fields.select { |field| field.plantings.any? { |planting| !planting.partial? && planting.rainfed? } }
-      .flat_map { |field| field.plantings.select { |planting| planting.partial? && !planting.rainfed? } }
+    plots = fields.flat_map { |field| field.plantings.select { |planting| planting.partial? && !planting.rainfed? } }
     return entries if plots.empty?
 
     plot_entries = PlantingEntry.where(planting_id: plots.map(&:id), date: dates).where.not(irrigation_in: nil)
@@ -139,9 +139,10 @@ class Field < ApplicationRecord
       values[:system_id] = system_id
       values[:weather_cell_id] = system.weather_cell_id
     end
-    soil = values.slice(:soil_type_id, :field_capacity, :perm_wilting_pt)
-    # Plots on their own soil keep it
-    plantings.open.where(own_soil: false).update_all(soil) if soil.any?
+    # Plots on their own soil keep it. The soil type and its two overrides go together, so a
+    # planting whose soil was corrected for its season never ends up with part of each
+    soil = slice(:soil_type_id, :field_capacity, :perm_wilting_pt)
+    plantings.open.where(own_soil: false).update_all(soil) if values.keys.intersect?(soil.keys.map(&:to_sym))
     plantings.open.update_all(values.slice(:system_id, :weather_cell_id)) if values.key?(:system_id)
     # Part-field plantings keep their own area
     plantings.open.where(partial: false).update_all(area_acres:) if values.key?(:area_acres)

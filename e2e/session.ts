@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import { expect, type Page } from '@playwright/test'
 
+import { YEAR } from './clock'
 import { DEMO } from './demo'
 
 // The demo account seeded by e2e/seed.rb, and getting around it
@@ -135,9 +136,9 @@ export async function signedInPages(page: Page): Promise<string[]> {
     '/setup/start',
     '/setup/outlines/import',
     // Mid-season, so its rows are open (in November nothing is in season and they're collapsed)
-    `/daily?date=${new Date().getFullYear()}-07-15`,
+    `/daily?date=${YEAR}-07-15`,
     // Its week view
-    `/daily/week?date=${new Date().getFullYear()}-07-15`,
+    `/daily/week?date=${YEAR}-07-15`,
     system,
     `${system}/edit`,
     traveler,

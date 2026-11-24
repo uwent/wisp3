@@ -5,7 +5,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 export RAILS_ENV=test E2E=1
-bin/rails db:prepare
+# The day the tests run on, for the seed and the server (config/initializers/e2e_clock.rb). Not for
+# db:prepare: Rails refuses migrations dated after its clock's tomorrow.
+now=${E2E_NOW:-$(ruby -rjson -e 'print JSON.parse(File.read("e2e/clock.json")).fetch("now")')}
+E2E_NOW= bin/rails db:prepare
+export E2E_NOW=$now
 bin/rails runner e2e/seed.rb
 # The test build, unless it's newer than everything it's built from
 manifest=public/vite-test/.vite/manifest.json

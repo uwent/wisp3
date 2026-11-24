@@ -25,10 +25,12 @@ class WindowLimit
     (@window.to_i - Time.current.to_i % @window.to_i)
   end
 
-  # "Please try again in 12 minutes."
+  # "Please try again in 12 minutes.", or "in 5 hours" for a long window
   def retry_message
     minutes = (retry_in / 60.0).ceil
-    "Please try again in #{minutes} #{"minute".pluralize(minutes)}."
+    return "Please try again in #{minutes} #{"minute".pluralize(minutes)}." if minutes <= 90
+    hours = (minutes / 60.0).ceil
+    "Please try again in #{hours} hours."
   end
 
   private

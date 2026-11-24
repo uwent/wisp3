@@ -89,4 +89,9 @@ RSpec.configure do |config|
   #   # test failures related to randomization by passing the same `--seed` value
   #   # as the one that triggered the failure.
   #   Kernel.srand config.seed
+
+  # Random order, so a spec that depends on another's leftovers shows up; the seed printed after a
+  # run repeats it (--seed 1234)
+  config.order = :random
+  Kernel.srand config.seed
 end

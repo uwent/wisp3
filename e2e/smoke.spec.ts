@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { type Page } from '@playwright/test'
 
+import { YEAR } from './clock'
 import { DEMO, literal } from './demo'
 import { firstPlantingPath, firstZonePath, researchFieldPath, signIn, watchErrors } from './session'
 import { expect, test } from './test'
@@ -677,8 +678,8 @@ test(
 test('planned irrigation updates the projection', async ({ page }) => {
   await page.goto(await firstPlantingPath(page))
   await expect(page.locator('main h1')).toBeVisible()
-  const forecast = page.getByRole('heading', { name: /^Next \d+ days$/ })
-  test.skip(!(await forecast.isVisible()), 'the season has no projection on this date')
+  // The seed keeps this season running past the tests' day (e2e/clock.ts), so it has a projection
+  await expect(page.getByRole('heading', { name: /^Next \d+ days$/ })).toBeVisible()
 
   const plan = page.locator('[data-grid="forecast"][data-row="1"][data-col="0"]')
   // The projected AD the day after
@@ -713,9 +714,7 @@ test('planned irrigation updates the projection', async ({ page }) => {
 test('time travel shows a field on an earlier day, read-only, and returns to today', async ({ page }) => {
   await page.goto(await firstPlantingPath(page))
   const rewind = page.getByRole('button', { name: 'View this field on an earlier date' })
-  // Once the page is drawn, or the button's absence means nothing
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  test.skip(!(await rewind.isVisible()), "the field's season has no earlier days on this date")
+  await expect(rewind).toBeVisible()
 
   // The date picker flies out to the clock's left, leaving the clock where it was
   const at = async () => (await rewind.boundingBox())!.x
@@ -875,7 +874,7 @@ test('a field of plots lists each planting, on the dashboard, its page and Setup
 })
 
 test("a new planting's harvest follows the crop, emergence and season length until one is typed", async ({ page }) => {
-  const year = new Date().getFullYear()
+  const year = YEAR
   await page.goto('/setup')
   await page.getByRole('button', { name: `Add a planting to ${DEMO.firstField}` }).click()
   const dialog = page.getByRole('dialog', { name: new RegExp(`^Add a \\d{4} planting to ${literal(DEMO.firstField)}`) })
@@ -898,7 +897,7 @@ test("a new planting's harvest follows the crop, emergence and season length unt
 })
 
 test('a crop without its own canopy curve follows a generic one, or readings only', async ({ page }) => {
-  const year = new Date().getFullYear()
+  const year = YEAR
   await page.goto('/setup')
   await page.getByRole('button', { name: `Add a planting to ${DEMO.firstField}` }).click()
   const dialog = page.getByRole('dialog', { name: new RegExp(`^Add a \\d{4} planting to ${literal(DEMO.firstField)}`) })
@@ -927,7 +926,7 @@ test("a perennial's cuttings restart its canopy, and are added and removed on it
   const cuttings = page.getByRole('region', { name: 'Cuttings' })
   await expect(cuttings.getByRole('list', { name: 'Cuttings' }).getByRole('listitem')).toHaveCount(3)
 
-  const year = new Date().getFullYear()
+  const year = YEAR
   await cuttings.getByLabel('Cut on').fill(`${year}-09-20`)
   await cuttings.getByRole('button', { name: 'Add cutting' }).click()
   await expect(cuttings.getByRole('listitem')).toHaveCount(4)
@@ -948,7 +947,7 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   await dialog.getByLabel('Crop', { exact: true }).selectOption({ label: 'Soybean' })
   await expect(dialog.getByRole('radio', { name: /^Whole field/ })).toBeChecked()
   await expect(dialog.getByText(`This overlaps: ${DEMO.firstCrop}`)).toBeVisible()
-  await dialog.getByLabel('Season start', { exact: true }).fill(`${new Date().getFullYear()}-08-01`)
+  await dialog.getByLabel('Season start', { exact: true }).fill(`${YEAR}-08-01`)
   await expect(
     dialog.getByRole('checkbox', { name: new RegExp(`^Replace: end ${literal(DEMO.firstCrop)} on Jul 31`) }),
   ).toBeVisible()
@@ -984,8 +983,8 @@ test("a new whole-field planting offers the system's other fields free for its d
   await expect(also).toHaveCount(0)
 })
 
-// Mid-season, so the demo's fields are in season whatever today's date (in November they're collapsed)
-const midSeason = `/daily?date=${new Date().getFullYear()}-07-15`
+// Mid-season, where the demo's fields are in season (on the tests' day, in November, they're collapsed)
+const midSeason = `/daily?date=${YEAR}-07-15`
 
 test("daily entry saves an irrigation system's rain", { tag: '@phone' }, async ({ page }) => {
   // The phone project runs beside the desktop one (two workers): its own day, so the desktop tests
@@ -1128,7 +1127,7 @@ test('daily entry asks before changing the date with unsaved values', async ({ p
 })
 
 // Late August: a week no other test enters or reads (the desktop project only)
-const lateAugust = `/daily/week?date=${new Date().getFullYear()}-08-30`
+const lateAugust = `/daily/week?date=${YEAR}-08-30`
 const weekCell = (row: string, kind: 'rain' | 'irrigation', day: string) =>
   new RegExp(`^${literal(row)} ${kind}, \\w{3}, ${day}$`)
 

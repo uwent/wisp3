@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# The jobs only read the repository
+permissions:
+  contents: read
+
 # Two jobs side by side: bin/ci (lint, types, vitest, rspec) and the browser tests (bin/e2e)
 jobs:
   ci:

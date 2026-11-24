@@ -84,6 +84,9 @@ RSpec.describe "Field outlines", type: :request do
   end
 
   describe "a shape away from its system" do
+    # The factory's season is 2026's, so "open" and "ended" are fixed against a day in it
+    around { |example| travel_to(Time.zone.local(2026, 7, 20, 9)) { example.run } }
+
     let!(:open_season) { create(:planting, field:, end_date: Date.current + 30) }
     let!(:ended) do
       create(:planting, field:, season_start: Date.current.prev_year.beginning_of_year + 90,

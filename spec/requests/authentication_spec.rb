@@ -152,6 +152,17 @@ RSpec.describe "Authentication", type: :request do
       expect_inertia.to render_component("Pages/Home")
     end
 
+    it "clears the pages kept in the browser's history on signing out" do
+      sign_in_with(email: user.email, password:)
+      delete destroy_user_session_path
+      follow_redirect!
+      expect_inertia.to render_component("Pages/Home")
+      expect(response.body).to include('"clearHistory":true')
+
+      get root_path # only the page after signing out
+      expect(response.body).not_to include("clearHistory")
+    end
+
     it "rejects a wrong password without saying whether the account exists" do
       sign_in_with(email: user.email, password: "wrong")
       wrong_password = flash[:alert]
@@ -165,6 +176,23 @@ RSpec.describe "Authentication", type: :request do
       expect(flash[:alert]).to match(/confirm your email/i)
       get setup_path
       expect(response).to redirect_to(new_user_session_path)
+    end
+
+    it "answers a save from a page whose session has ended with a 401, which leaves the page and what's typed in place" do
+      inertia = {"X-Inertia" => "true", "X-Requested-With" => "XMLHttpRequest", "ACCEPT" => "text/html, application/xhtml+xml"}
+      sign_in_with(email: user.email, password:)
+      travel 31.hours do
+        patch daily_entry_path, params: {date: "2026-07-01"}, headers: inertia
+        expect(response).to have_http_status(:unauthorized)
+        expect(response.headers["WWW-Authenticate"]).to be_nil # no browser password prompt
+        delete farm_path(1), headers: inertia
+        expect(response).to have_http_status(:unauthorized)
+
+        get daily_entry_path, headers: inertia # a page is still sent to sign in
+        expect(response).to redirect_to(new_user_session_path)
+        patch daily_entry_path, params: {date: "2026-07-01"} # as is a plain form
+        expect(response).to redirect_to(new_user_session_path)
+      end
     end
 
     it "redirects Inertia (XHR) requests to sign in instead of returning a bare 401" do

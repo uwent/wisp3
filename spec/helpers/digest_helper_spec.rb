@@ -27,8 +27,12 @@ RSpec.describe DigestHelper, type: :helper do
   end
 
   it "says when a field's season starts, or ended, or that it has no crop" do
-    expect(helper.digest_off_season(entry(status: double(planting:, phase: :upcoming)))).to eq("Potato · season starts Apr 1")
-    expect(helper.digest_off_season(entry(status: double(planting:, phase: :ended)))).to eq("Potato · season ended Sep 15")
+    spring, winter_before = Date.new(2027, 3, 1), Date.new(2026, 11, 24)
+    expect(helper.digest_off_season(entry(status: double(planting:, phase: :upcoming, today: spring)))).to eq("Potato · season starts Apr 1")
+    expect(helper.digest_off_season(entry(status: double(planting:, phase: :upcoming, today: winter_before))))
+      .to eq("Potato · season starts Apr 1, 2027")
+    expect(helper.digest_off_season(entry(status: double(planting:, phase: :ended, today: Date.new(2027, 10, 1)))))
+      .to eq("Potato · season ended Sep 15")
     expect(helper.digest_off_season(entry(status: nil))).to eq("No crop this season")
   end
 

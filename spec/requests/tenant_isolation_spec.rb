@@ -27,7 +27,7 @@ RSpec.describe "Tenant isolation", type: :request do
     expect_not_found
     delete farm_path(their_farm)
     expect_not_found
-    expect(their_farm.reload.name).not_to eq("Mine now")
+    expect(their_farm.reload.name).not_to eq("Mine now") # still there, unchanged
   end
 
   it "hides other groups' systems" do
@@ -210,6 +210,9 @@ RSpec.describe "Tenant isolation", type: :request do
 
   it "won't show another group's planting on my field's page, or its own page" do
     their_planting
+    mine = create(:planting, field: my_field)
+    get field_path(my_field, planting_id: mine.id)
+    expect(response).to redirect_to(planting_path(mine)) # the parameter picks a planting of the field's
     get field_path(my_field, planting_id: their_planting.id)
     expect(response).to have_http_status(:ok)
     expect(inertia.props[:planting]).to be_nil
@@ -254,6 +257,34 @@ RSpec.describe "Tenant isolation", type: :request do
   it "won't use another group's farm in the guided setup" do
     post quick_setup_path, params: {setup: {farm_id: their_farm.id, system: {name: "P", latitude: 44, longitude: -89}}}
     expect_not_found
+    expect(their_farm.systems).to be_empty
+  end
+
+  it "won't put my system in another group's irrigation group" do
+    theirs = create(:irrigation_group, farm: their_farm)
+    patch system_path(my_system), params: {system: {name: "Renamed", irrigation_group_id: theirs.id}}
+    expect(my_system.reload).to have_attributes(irrigation_group_id: nil)
+    expect(theirs.systems).to be_empty
+
+    mine = create(:irrigation_group, farm: my_farm)
+    patch system_path(my_system), params: {system: {irrigation_group_id: mine.id}}
+    expect(my_system.reload.irrigation_group).to eq(mine)
+  end
+
+  it "shows a weather zone shared with another group's systems with only my own" do
+    their_system.update!(name: "Their pivot", latitude: my_system.latitude, longitude: my_system.longitude)
+    their_field.update!(name: "Their field")
+    create(:planting, field: their_field)
+    create(:planting, field: my_field)
+    expect(their_system.reload.weather_cell).to eq(my_system.weather_cell)
+
+    [weather_zones_path, weather_zone_path(my_system.weather_cell.location), export_weather_zone_path(my_system.weather_cell.location)].each do |path|
+      get path
+      expect(response).to have_http_status(:ok), path
+      expect(response.body).to include(my_system.name), path
+      expect(response.body).not_to include("Their pivot"), path
+      expect(response.body).not_to include("Their field"), path
+    end
   end
 
   it "lists only my systems whose weather is updating" do
@@ -273,7 +304,9 @@ RSpec.describe "Tenant isolation", type: :request do
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
     get daily_entry_path
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
-    [my_field, their_field].each { |field| create(:planting, field:, season_start: Date.current - 30, end_date: Date.current + 30) }
+    [my_field, their_field].each do |field|
+      create(:planting, field:, season_start: Date.current - 30, emergence_date: Date.current - 20, end_date: Date.current + 30)
+    end
     get daily_entry_week_path
     expect(inertia.props[:farms].map { |farm| farm[:id] }).to eq([my_farm.id])
   end

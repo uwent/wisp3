@@ -130,11 +130,16 @@
   }
 
   function remove(irrigation: IrrigationDay) {
-    if (confirm(`Delete the ${formatDate(irrigation.date)} irrigation on every field?`)) {
-      router.delete(systemIrrigations.destroy({ systemId: system.id, date: irrigation.date }).url, {
-        preserveScroll: true,
-      })
-    }
+    if (!confirm(`Delete the ${formatDate(irrigation.date)} irrigation on every field?`)) return
+    // The form lets go of the deleted day's amounts (being edited, or shown as saved on its
+    // date): left there, saving would put the irrigation back
+    const held = editing?.date === irrigation.date || (!dirty && date === irrigation.date)
+    router.delete(systemIrrigations.destroy({ systemId: system.id, date: irrigation.date }).url, {
+      preserveScroll: true,
+      onSuccess: () => {
+        if (held) edit(null, false)
+      },
+    })
   }
 
   // The example farm is only viewed

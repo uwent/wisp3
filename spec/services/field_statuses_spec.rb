@@ -1,6 +1,37 @@
 require "rails_helper"
 
 RSpec.describe FieldStatuses do
+  describe "a field's plantings out of season" do
+    let(:field) { create(:field) }
+    let(:winter) { Date.new(2026, 11, 24) }
+
+    def planting(start, finish, **attributes)
+      create(:planting, field:, season_start: start, emergence_date: start + 10, end_date: finish, **attributes)
+    end
+
+    def shown(today) = described_class.for([field.reload], today:)[field.id].map { |status| [status.planting, status.phase] }
+
+    it "shows next season's planting, set up over the winter, on a field with nothing this year" do
+      expect(shown(winter)).to eq([])
+      next_season = planting(Date.new(2027, 5, 1), Date.new(2027, 9, 15))
+      planting(Date.new(2028, 5, 1), Date.new(2028, 9, 15))
+      expect(shown(winter)).to eq([[next_season, :upcoming]])
+    end
+
+    it "keeps this year's ended season until the year turns" do
+      ended = planting(Date.new(2026, 5, 1), Date.new(2026, 9, 15))
+      next_season = planting(Date.new(2027, 5, 1), Date.new(2027, 9, 15))
+      expect(shown(winter)).to eq([[ended, :ended]])
+      expect(shown(Date.new(2027, 1, 15))).to eq([[next_season, :upcoming]])
+    end
+
+    it "shows a season that runs over the new year as in season on both sides of it" do
+      winter_crop = planting(Date.new(2026, 9, 15), Date.new(2027, 7, 1))
+      expect(shown(Date.new(2026, 12, 31))).to eq([[winter_crop, :active]])
+      expect(shown(Date.new(2027, 1, 15))).to eq([[winter_crop, :active]])
+    end
+  end
+
   # The example farm (Current.as_of): each planting as time travel sees it, from the records
   # FieldStatuses loaded for every field rather than its own
   describe "as of a day" do

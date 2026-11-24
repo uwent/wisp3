@@ -1,7 +1,8 @@
 # An irrigation system's irrigation on its page: one date's amounts on the fields it watered that
 # day (IrrigationSystem#fields_on), saved as each field's own (D15: irrigation is stored per field and plot;
-# Field#record_entry also sets the field's plots that had its amount), or under a rainfed crop, its
-# irrigated plots' (Field#record_system_irrigation). The list is the fields'
+# Field#record_entry also sets the field's plots that had its amount), or on a field with nothing of
+# its own to water (a rainfed crop, or only plots), its irrigated plots'
+# (Field#record_system_irrigation). The list is the fields'
 # entries by date (SystemsController#show); the export is SystemIrrigationCsv.
 class SystemIrrigationsController < AuthenticatedController
   allow_example :index

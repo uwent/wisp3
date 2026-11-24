@@ -23,6 +23,12 @@ services:
     environment:
       <<: *env
       TLS_DOMAIN: ${APP_HOST:?set APP_HOST in .env}
+      # Thruster's request log includes the query string, so the tokens in emailed links (sign-in,
+      # password reset, confirmation, unsubscribe) would be in it. Rails logs every request with
+      # them filtered (filter_parameters).
+      LOG_REQUESTS: "false"
+      # 10 MB, as staging's nginx (client_max_body_size); Thruster's default is no limit
+      MAX_REQUEST_BODY: "10485760"
     ports:
       - "80:80"
       - "443:443"

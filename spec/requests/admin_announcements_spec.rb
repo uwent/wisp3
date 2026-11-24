@@ -59,6 +59,24 @@ RSpec.describe "Admin announcements", type: :request do
     expect(AnnouncementJob).to have_been_enqueued.once
   end
 
+  it "sends again to those a stopped send missed, but not while it's still sending" do
+    announcement = Announcement.create!(params[:announcement])
+    post deliver_admin_announcement_path(announcement)
+    announcement.deliveries.find_by!(user: grower).update!(status: "failed", error: "SMTP")
+    announcement.deliveries.find_by!(user: admin).update!(status: "sent")
+
+    post resume_admin_announcement_path(announcement) # sending, and moved a moment ago
+    expect(flash[:alert]).to eq("It's still sending.")
+    expect(AnnouncementJob).to have_been_enqueued.once
+
+    announcement.update!(status: "incomplete")
+    post resume_admin_announcement_path(announcement)
+    expect(flash[:notice]).to eq("Sending again to those it missed")
+    expect(announcement.reload.status).to eq("sending")
+    expect(announcement.deliveries.order(:status).pluck(:status)).to eq(%w[pending sent]) # never again to those it reached
+    expect(AnnouncementJob).to have_been_enqueued.twice
+  end
+
   it "edits and deletes drafts" do
     announcement = Announcement.create!(params[:announcement])
     patch admin_announcement_path(announcement), params: {announcement: {subject: "Changed", audience: "joined_since", audience_date: "2026-01-01"}}

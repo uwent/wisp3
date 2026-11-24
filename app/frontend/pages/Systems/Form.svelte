@@ -23,7 +23,7 @@
     systemName,
     systemsFrame,
   } from '@/lib/geo'
-  import { circleNoun, hasTimer } from '@/lib/irrigation'
+  import { circleNoun, hasTimer, hoursInches } from '@/lib/irrigation'
   import { currentUnits } from '@/lib/units'
   import { confirmUnsavedChanges } from '@/lib/unsaved.svelte'
   import { systems, setup } from '@/routes'
@@ -116,10 +116,7 @@
     const outline = draftShape(shape)
     return outline ? shapeAcres(outline) : null
   })
-  const GALLONS_PER_ACRE_INCH = 27_154
-  const workedOut = $derived(
-    pumpGpm && circleHours && mappedAcres ? (pumpGpm * circleHours * 60) / (GALLONS_PER_ACRE_INCH * mappedAcres) : null,
-  )
+  const workedOut = $derived(pumpGpm && circleHours ? hoursInches(pumpGpm, circleHours, [mappedAcres]) : null)
 
   // Only owners delete (Q8); the system's fields and their seasons go with it
   function destroy() {

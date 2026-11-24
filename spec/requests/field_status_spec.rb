@@ -529,6 +529,24 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(plot.planting_entries.reload).to be_empty
     end
 
+    it "shows and clears what a field growing only plots got, wherever it was entered (the week view saves the plots' own)" do
+      plotted = create(:field, system:, name: "Plots", area_acres: 10)
+      season = {season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30)}
+      plots = Array.new(2) { create(:planting, field: plotted, partial: true, area_acres: 1, **season) }
+      dryland_plot = create(:planting, field: plotted, partial: true, area_acres: 1, rainfed: true, **season)
+      patch daily_entry_week_path, params: {date: "2026-07-12", days: {"2026-07-10" => {plantings: plots.to_h { |plot| [plot.id, {irrigation_in: "0.6"}] }}}}
+      expect(irrigation_on(Date.new(2026, 7, 10))).to eq("Plots" => 0.6)
+      get root_path
+      expect(inertia.props[:farms].first["systems"].first["recent_irrigation"]).to include("2026-07-10" => {plotted.id.to_s => 0.6})
+
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-10", fields: {plotted.id => "0.9"}}}
+      expect(plots.map { |plot| plot.planting_entries.sole.irrigation_in }).to eq([0.9, 0.9])
+      expect(dryland_plot.planting_entries).to be_empty
+      delete system_irrigation_path(system, "2026-07-10")
+      expect(plots.flat_map { |plot| plot.planting_entries.reload }).to be_empty
+      expect(irrigation_on(Date.new(2026, 7, 10))).to be_nil
+    end
+
     it "waters a rainfed crop's irrigated plots in its place, shows their amount, and clears them (D19)" do
       dry = create(:field, system:, name: "Dry", area_acres: 10)
       season = {season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30)}

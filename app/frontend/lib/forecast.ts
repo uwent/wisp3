@@ -2,6 +2,7 @@
 // day's most severe WMO weather code (Open-Meteo's weather_code, stored per day as its highest
 // hour), with what's stored to fall back on when a day has no code.
 
+import { addDays } from '@/lib/dates'
 import type { ForecastDay } from '@/types/serializers'
 
 export type Sky =
@@ -70,8 +71,6 @@ const weekdays = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 's
 /** "Today", "Tomorrow" or "Thu" ("Today" or "Thu" when short) */
 export function dayName(iso: string, today: string, { short = false }: { short?: boolean } = {}): string {
   if (iso === today) return 'Today'
-  const next = new Date(`${today}T00:00:00Z`)
-  next.setUTCDate(next.getUTCDate() + 1)
-  if (!short && iso === next.toISOString().slice(0, 10)) return 'Tomorrow'
+  if (!short && iso === addDays(today, 1)) return 'Tomorrow'
   return weekdays.format(new Date(`${iso}T00:00:00Z`))
 }

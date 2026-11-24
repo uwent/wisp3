@@ -4,6 +4,8 @@ Things only you can do, roughly in order. Done items are removed (their record i
 
 ## Now (launched 2026-11-19; the winter is the beta)
 
+- [ ] **Deploy the review's fixes** (`bin/production deploy`): no migrations; the compose file's `LOG_REQUESTS` and `MAX_REQUEST_BODY` come with it. Afterwards `bin/production logs web` should show no request lines from Thruster, only Rails' own.
+- [ ] **Ruby 4.0.9:** Brakeman reports a security release (4.0.10); check ruby-lang.org's security news and, if it's real, bump `.ruby-version` (the Dockerfile reads it).
 - [ ] **Restore an RDS snapshot** to a scratch instance once and check the app against it (docs/deployment.md, Production step 8; IT may need to do the restore).
 - [ ] **Announcement email** to legacy users from the legacy app (new address, create a new account, sign-in links, the training session), its links tagged `utm_source=legacy&utm_medium=email&utm_campaign=launch` so GA credits it. **Training session.**
 - [ ] **Screen reader walkthrough** (`docs/plans/7-launch.md`, Accessibility): the checklist in `docs/accessibility.md`, about an hour, with NVDA or Orca and VoiceOver on a phone. You or a tester.

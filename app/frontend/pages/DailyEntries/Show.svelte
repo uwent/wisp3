@@ -624,7 +624,7 @@
         >
           <Button type="submit" disabled={processing}>Save {formatDate(date)}</Button>
           <p class="text-sm text-ink-muted">
-            {#if Object.keys(errs).length}<span class="text-status-irrigate-ink"
+            {#if Object.keys(errs).length}<span class="text-status-irrigate-ink" role="alert"
                 >Nothing was saved. Please correct the highlighted entries and save again.</span
               >
             {:else if isDirty || dirty}You have unsaved changes{:else}Leave rain blank to use the modeled rain. Enter 0

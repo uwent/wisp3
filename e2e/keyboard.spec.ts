@@ -1,3 +1,4 @@
+import { YEAR } from './clock'
 import { DEMO, literal } from './demo'
 import { firstPlantingPath, signIn } from './session'
 import { expect, test } from './test'
@@ -47,7 +48,7 @@ test('a grid is one tab stop: arrows move inside it, Tab moves past it', async (
 })
 
 test("daily entry's week moves between cells with the arrow keys and Enter", async ({ page }) => {
-  await page.goto(`/daily/week?date=${new Date().getFullYear()}-07-15`)
+  await page.goto(`/daily/week?date=${YEAR}-07-15`)
   // The farm with the irrigation group of five systems: a rain row, then a row per system
   const table = page
     .locator('main table')

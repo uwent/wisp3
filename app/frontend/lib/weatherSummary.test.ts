@@ -12,7 +12,7 @@ const span = {
 }
 
 describe('weatherLines', () => {
-  it('words the last week and the next as the daily email does', () => {
+  it("words the last week and the next like the daily email's lines, with reference ET named in full", () => {
     expect(weatherLines({ past: span, ahead: { ...span, days: 6, tmin: [55, 55] } }, units('imperial'))).toEqual([
       'Past 7 days: 0.85 in rain · 1.12 in reference ET · highs 68–82°F, lows 48–60°F',
       'Next 6 days: 0.85 in rain · 1.12 in reference ET · highs 68–82°F, lows 55°F',

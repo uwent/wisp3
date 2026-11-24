@@ -104,7 +104,12 @@
       <span>Weather for this location is on its way. The water balance will appear when it arrives.</span>
     </p>
   {:else if summary.phase === 'upcoming'}
-    <p class="text-sm text-ink-muted">The season starts {formatDate(summary.season_start)}.</p>
+    <!-- Next season's, set up over the winter, with its year -->
+    <p class="text-sm text-ink-muted">
+      The season starts {formatDate(summary.season_start, {
+        year: summary.season_start.slice(0, 4) !== today.slice(0, 4),
+      })}.
+    </p>
   {:else if summary.phase === 'ended'}
     <!-- An ended season in brief: what it took, in place of AD and the outlook -->
     {#if small}

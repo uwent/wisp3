@@ -36,7 +36,16 @@ describe('units', () => {
 
   it('rejects text that is not a number', () => {
     expect(imperial.parse('depth', 'lots')).toEqual({ ok: false, error: 'Enter a number, such as 0.5' })
+  })
+
+  it('reads a comma only where it groups thousands, never as a decimal point', () => {
     expect(parseNumber('1,250')).toEqual({ ok: true, value: 1250 })
+    expect(parseNumber('12,500.5')).toEqual({ ok: true, value: 12500.5 })
+    // 12.5 mm typed the European way was taken as 125 mm
+    const comma = { ok: false, error: 'Use a point for decimals, such as 12.5' }
+    expect(metric.parse('depth', '12,5')).toEqual(comma)
+    expect(parseNumber('0,5')).toEqual(comma)
+    expect(parseNumber('1,25')).toEqual(comma)
   })
 
   it('round-trips through input boxes', () => {
