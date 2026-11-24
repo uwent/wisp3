@@ -67,7 +67,7 @@ class SeasonReportCsv
     csv << ["Farm", "Irrigation system", "Kind", "Equipment", "Fields", "Area (acres)", "Days irrigated", "Irrigation (in)"]
     irrigated.group_by { |status| status.planting.system }.each do |system, system_statuses|
       by_field = system_statuses.group_by { |status| status.planting.field }
-        .transform_values { |field_statuses| field_statuses.sum { |status| status.totals.irrigation } }
+        .transform_values { |field_statuses| counted(field_statuses).sum { |status| status.totals.irrigation } }
       areas = by_field.keys.map { |field| field_areas[field] }
       average = if areas.all?
         by_field.sum { |field, inches| field_areas[field] * inches } / areas.sum
@@ -132,9 +132,16 @@ class SeasonReportCsv
   # nil for a field none of whose plantings has one
   def by_field(over = statuses)
     over.group_by { |status| status.planting.field }.values.map do |field_statuses|
-      values = field_statuses.filter_map { |status| yield status.totals }
+      values = counted(field_statuses).filter_map { |status| yield status.totals }
       values.sum if values.any?
     end
+  end
+
+  # The plantings a field's season totals add up: its whole-field ones when it has any, so a plot
+  # within one isn't counted again (D19), else its plots
+  def counted(field_statuses)
+    whole = field_statuses.reject { |status| status.planting.partial? }
+    whole.any? ? whole : field_statuses
   end
 
   # Each field's area that year, as its whole-field plantings kept it (the

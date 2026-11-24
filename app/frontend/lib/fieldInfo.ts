@@ -126,7 +126,7 @@ export const FIELD_INFO = {
     text: 'The day the vines are killed before harvest. From it the canopy ramps down to nothing over two weeks, while WISP keeps the water balance going until harvest so you can keep the soil moist through skin set.',
   },
   'planting.size': {
-    text: "Whole field for one crop on all of it; part of the field for a plot or bed, so several plantings can grow side by side. A part has its own irrigation and soil moisture readings, and shares the field's rain.",
+    text: "Whole field for one crop on all of it; part of the field for a plot or bed, so several plantings can grow side by side, or a corner of a whole-field crop in another crop or variety. A part has its own irrigation and soil moisture readings, and shares the field's rain.",
   },
   'planting.field_capacity': fieldCapacity,
   'planting.wilting_point': wiltingPoint,

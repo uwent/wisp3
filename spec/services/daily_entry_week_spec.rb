@@ -99,6 +99,16 @@ RSpec.describe DailyEntryWeek do
     expect(farm_props[:rain_rows].find { |row| row[:name] == "Lane 3" }[:days][0]).to include(active: true)
   end
 
+  it "takes a rainfed crop's irrigated plots as their own, as on the day page" do
+    dry = field_on(north, "Dry")
+    dry.plantings.sole.update!(rainfed: true)
+    corner = create(:planting, field: dry, partial: true, area_acres: 1, season_start: Date.new(2026, 4, 20),
+      emergence_date: Date.new(2026, 4, 30), end_date: Date.new(2026, 9, 30))
+    corner.planting_entries.create!(date: week[0], irrigation_in: 0.4)
+    expect(farm_props[:irrigation_rows].sole[:days][0][:fields])
+      .to eq([{id: corner.id, name: "Dry: #{corner.plant.name}", value: 0.4, acres: 1.0, plot: true}])
+  end
+
   it "gives no common value on a day some fields have an amount and others none" do
     n1 = field_on(north, "N1")
     field_on(north, "N2")

@@ -65,6 +65,14 @@ RSpec.describe "Planting the same crop on several fields", type: :request do
     expect(inertia.props[:errors]).to eq("also.#{west.id}.season_start" => ["West 40: overlaps its Soybean planting"])
   end
 
+  it "plants on a field growing only plots, whose plots stay (D19)" do
+    create(:planting, field: west, plant: create(:plant, name: "Soybean"), partial: true, area_acres: 1)
+    plant_on(west)
+
+    expect(west.plantings.count).to eq(2)
+    expect(west.plantings.where(partial: false).sole.plant).to eq(corn)
+  end
+
   it "replaces only on the original's field, and undoes that too when a copy can't be saved" do
     early = create(:planting, field: north, season_start: Date.new(2026, 3, 1), emergence_date: Date.new(2026, 3, 10),
       end_date: Date.new(2026, 9, 30))

@@ -34,7 +34,7 @@ class PlantingsController < AuthenticatedController
     }
   end
 
-  # replace: end the plantings this one overlaps the day before it starts ("Replace" on the form),
+  # replace: end the whole-field plantings this one overlaps the day before it starts ("Replace" on the form),
   # in the same transaction. also_field_ids: other fields to plant the same on (a new
   # whole-field planting only), each an independent planting on its own field's soil and area,
   # saved with this one or not at all; replace applies only to this one.
@@ -47,6 +47,7 @@ class PlantingsController < AuthenticatedController
     saved = Planting.transaction do
       planting.replace_overlapping! if params[:replace].present?
       planting.save || raise(ActiveRecord::Rollback)
+      planting.take_field_irrigation!
       copies.each { |copy| copy.save || errors.merge!(copy_errors(copy)) }
       errors.empty? || raise(ActiveRecord::Rollback)
     end
@@ -62,6 +63,7 @@ class PlantingsController < AuthenticatedController
   def update
     planting = Current.group.plantings.find(params[:id])
     if planting.update(planting_params.except(:field_id))
+      planting.take_field_irrigation! if planting.saved_change_to_partial?
       redirect_back_or_to setup_path(year: planting.season_year), notice: "Saved #{planting.plant.name} on #{planting.field.name}."
     else
       redirect_with_errors(request.referer || setup_path, planting)
@@ -142,7 +144,7 @@ class PlantingsController < AuthenticatedController
   def copy_errors(copy)
     field = copy.field
     copy.errors.each_with_object({}) do |error, errors|
-      overlapping = field.plantings.select { |other| other.persisted? && other.overlaps?(copy) }
+      overlapping = field.plantings.select { |other| other.persisted? && !other.partial? && other.overlaps?(copy) }
       message = if error.attribute == :season_start && overlapping.any?
         "#{field.name}: overlaps its #{overlapping.map { |other| other.plant.name }.to_sentence} planting"
       else

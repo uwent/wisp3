@@ -72,6 +72,15 @@ RSpec.describe SeasonReportCsv do
     expect(section("Irrigation by irrigation system").sole).to include("Area (acres)" => "120.0")
   end
 
+  it "counts a field's whole-field planting, not a plot within it, in the spreads and averages (D19)" do
+    corner = create(:planting, field: west, partial: true, area_acres: 1, season_start: Date.new(2026, 7, 1),
+      emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30))
+    corner.planting_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.6)
+    expect(section("Fields").size).to eq(3)
+    expect(rows).to include(["Irrigation: 0.60 to 1.00 in by field, 0.80 in on average"], ["Rainfall: 1.00 in on every field"])
+    expect(section("Irrigation by irrigation system").sole).to include("Irrigation (in)" => "0.7000")
+  end
+
   it "leaves a field whose season hasn't started blank, not zero" do
     later = create(:field, system:, name: "Later", area_acres: 10)
     create(:planting, field: later, season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 1),

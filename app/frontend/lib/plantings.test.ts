@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { units } from '@/lib/units'
 
 import {
+  alongside,
   cardWhen,
   canReplace,
   clashes,
@@ -49,15 +50,31 @@ describe('clashes', () => {
   const whole = { id: 1, season_start: '2026-04-01', end_date: '2026-09-30', partial: false }
   const plot = { id: 2, season_start: '2026-05-01', end_date: '2026-08-31', partial: true }
 
-  it('finds every overlap for a whole-field planting, and only whole-field ones for a plot', () => {
+  it('finds the whole-field plantings a whole-field one overlaps, and none for a plot', () => {
     const fresh = { season_start: '2026-06-01', end_date: '2026-10-31', partial: false }
-    expect(clashes(fresh, [whole, plot])).toEqual([whole, plot])
-    expect(clashes({ ...fresh, partial: true }, [whole, plot])).toEqual([whole])
+    expect(clashes(fresh, [whole, plot])).toEqual([whole])
+    expect(clashes({ ...fresh, partial: true }, [whole, plot])).toEqual([])
   })
 
   it('leaves out the planting itself and ones in other dates', () => {
     expect(clashes(whole, [whole])).toEqual([])
     expect(clashes({ season_start: '2026-10-01', end_date: '2026-11-30', partial: false }, [whole])).toEqual([])
+  })
+})
+
+describe('alongside', () => {
+  const whole = { id: 1, season_start: '2026-04-01', end_date: '2026-09-30', partial: false }
+  const plot = { id: 2, season_start: '2026-05-01', end_date: '2026-08-31', partial: true }
+
+  it('finds the whole-field plantings a plot grows within, and the plots in a whole-field one', () => {
+    const fresh = { season_start: '2026-06-01', end_date: '2026-10-31' }
+    expect(alongside({ ...fresh, partial: true }, [whole, plot])).toEqual([whole])
+    expect(alongside({ ...fresh, partial: false }, [whole, plot])).toEqual([plot])
+  })
+
+  it('leaves out the planting itself and ones in other dates', () => {
+    expect(alongside({ ...whole, partial: true }, [whole])).toEqual([])
+    expect(alongside({ season_start: '2026-10-01', end_date: '2026-11-30', partial: true }, [whole])).toEqual([])
   })
 })
 
@@ -72,9 +89,8 @@ describe('freeFields', () => {
   }
   const bare = { name: 'Bare', plantings: [] }
 
-  it('keeps the fields with nothing on them for the dates, a plot counting too', () => {
-    expect(freeFields({ season_start: '2026-06-01', end_date: '2026-10-31' }, [east, west, bare])).toEqual([bare])
-    expect(freeFields({ season_start: '2026-07-01', end_date: '2026-10-31' }, [east, west, bare])).toEqual([west, bare])
+  it('keeps the fields with no whole-field planting for the dates, plots or not', () => {
+    expect(freeFields({ season_start: '2026-06-01', end_date: '2026-10-31' }, [east, west, bare])).toEqual([west, bare])
   })
 
   it('frees a field once the dates move past its planting, the last day counting', () => {

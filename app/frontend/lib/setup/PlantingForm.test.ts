@@ -194,19 +194,20 @@ describe('PlantingForm also plant this on', () => {
   it("offers a new whole-field planting the system's other fields free for its dates, as they change", () => {
     showNew()
     expect(screen.getByText('Also plant this on')).toBeInTheDocument()
-    expect(screen.getByText('1 other field free')).toBeInTheDocument()
-    expect(checkboxNames()).toEqual(['West 40'])
+    // A field growing only plots is free: the planting can cover it with them (D19)
+    expect(screen.getByText('2 other fields free')).toBeInTheDocument()
+    expect(checkboxNames()).toEqual(['West 40', 'Plots'])
 
     setDate('planting-season_start', '2026-07-01')
-    expect(screen.getByText('2 other fields free')).toBeInTheDocument()
-    expect(checkboxNames()).toEqual(['East 40', 'West 40'])
+    expect(screen.getByText('3 other fields free')).toBeInTheDocument()
+    expect(checkboxNames()).toEqual(['East 40', 'West 40', 'Plots'])
   })
 
   it('counts the fields chosen, and says so when none is free', () => {
     showNew()
     screen.getByRole('checkbox', { name: /West 40/ }).click()
     flushSync()
-    expect(screen.getByText('1 of 1 chosen')).toBeInTheDocument()
+    expect(screen.getByText('1 of 2 chosen')).toBeInTheDocument()
     document.body.innerHTML = ''
 
     showNew({ systemFields: [field, east] })

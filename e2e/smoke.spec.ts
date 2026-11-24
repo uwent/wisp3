@@ -952,12 +952,13 @@ test('a new whole-field planting over another offers to replace it', async ({ pa
   await expect(
     dialog.getByRole('checkbox', { name: new RegExp(`^Replace: end ${literal(DEMO.firstCrop)} on Jul 31`) }),
   ).toBeVisible()
-  // Part of the field leaves the cabbage alone, but can't overlap a planting covering the whole field
+  // Part of the field may grow within it, with a warning and no Replace
   await dialog
     .locator('label')
     .filter({ hasText: /^\s*Part of the field\s*$/ })
     .click()
-  await expect(dialog.getByText('This overlaps a planting covering the whole field')).toBeVisible()
+  await expect(dialog.getByText(/which covers the whole field\. Both are kept/)).toBeVisible()
+  await expect(dialog.getByRole('checkbox', { name: /^Replace/ })).toHaveCount(0)
 })
 
 test("a new whole-field planting offers the system's other fields free for its dates", async ({ page }) => {
@@ -971,7 +972,9 @@ test("a new whole-field planting offers the system's other fields free for its d
   await expect(also.locator('summary')).toContainText(/other fields? free|None free for these dates/)
   await also.locator('summary').click()
   await expect(
-    also.getByText(/Fields on this irrigation system with nothing planted|all have a planting on these dates/),
+    also.getByText(
+      /Fields on this irrigation system with no whole-field planting|all have a whole-field planting on these dates/,
+    ),
   ).toBeVisible()
   // Not for part of the field
   await dialog

@@ -1,8 +1,9 @@
 # One crop on one field for one season. A planting covers the whole field (the usual case) or part
 # of it (partial: a plot of plot_length_ft × plot_width_ft, or just its acres;
-# it has no place in the field). A whole-field planting can't overlap another planting on its field, which
-# allows double cropping (legacy picked the crop with the latest emergence, C10); part-field ones may
-# overlap each other (a research field or market garden growing several crops at once). A
+# it has no place in the field). Whole-field plantings can't overlap each other, which allows double
+# cropping (legacy picked the crop with the latest emergence, C10); part-field ones may overlap
+# anything (a research field or market garden growing several crops at once, or a corner of a
+# whole-field crop in another crop or variety, D19). A
 # part-field planting can have its own irrigation, soil moisture readings and notes
 # (PlantingEntry), which come before the field's for its balance (DailyInputs), and its own soil
 # (own_soil), which edits to the field's soil leave alone.
@@ -224,17 +225,31 @@ class Planting < ApplicationRecord
 
   def overlaps?(other) = season_start <= other.end_date && end_date >= other.season_start
 
-  # "Replace" on the form: ends the plantings on the field this one can't overlap (any, for a
-  # whole-field planting; whole-field ones, for a plot) the day before it starts, when that leaves
+  # "Replace" on the form, for a whole-field planting: ends the other whole-field plantings on the
+  # field it overlaps (the ones it can't, D19) the day before it starts, when that leaves
   # each at least a day after its start and emergence (dates_in_order; lib/plantings.ts canReplace
   # offers Replace only then). One that starts the same day or later stays, and the overlap error
   # with it. Run it in the transaction that saves this one.
   def replace_overlapping!
-    return unless season_start && end_date
+    return if partial? || !season_start || !end_date
     last_day = season_start - 1
     field.plantings.each do |other|
-      next if other == self || !other.overlaps?(self) || (partial? && other.partial?)
+      next if other == self || other.partial? || !other.overlaps?(self)
       other.update!(end_date: last_day) if other.season_start < last_day && other.emergence_date < last_day
+    end
+  end
+
+  # A new plot, or a planting made part of the field, starts with the field's irrigation over its
+  # season (planned days too), as a plot that had the field's amount follows it (D15,
+  # Field#record_entry): one added partway through a whole-field crop's season keeps the
+  # irrigation it got with it (D19). Days it has its own irrigation are left alone; a rainfed
+  # plot takes only what's entered for it (D17).
+  def take_field_irrigation!
+    return unless partial? && !rainfed?
+    own = planting_entries.where.not(irrigation_in: nil).pluck(:date).to_set
+    field.field_entries.where(date: season_range).where.not(irrigation_in: nil).each do |entry|
+      next if own.include?(entry.date)
+      PlantingEntry.record(planting_entries, entry.date, irrigation_in: entry.irrigation_in)
     end
   end
 
@@ -356,13 +371,11 @@ class Planting < ApplicationRecord
     errors.add(:vine_kill_date, "must be on or before the harvest date") if vine_kill_date > end_date
   end
 
-  # Part-field plantings may overlap each other; nothing may overlap a whole-field one
+  # Whole-field plantings can't overlap each other; a part-field one may overlap anything (D19)
   def no_overlap
-    overlapping = Planting.where(field_id:).where.not(id:)
+    return if partial?
+    overlapping = Planting.where(field_id:, partial: false).where.not(id:)
       .where("season_start <= ? AND end_date >= ?", end_date, season_start)
-    overlapping = overlapping.where(partial: false) if partial?
-    return unless overlapping.exists?
-    message = partial? ? "overlaps a planting covering the whole field" : "overlaps another planting on this field"
-    errors.add(:season_start, message)
+    errors.add(:season_start, "overlaps another planting covering the whole field") if overlapping.exists?
   end
 end

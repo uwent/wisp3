@@ -138,19 +138,29 @@ export const overlaps = (
 ) => a.season_start <= b.end_date && a.end_date >= b.season_start
 
 /**
- * The plantings a new or edited one would clash with: any, for a whole-field planting; whole-field
- * ones, for part of the field (Planting#no_overlap)
+ * The plantings a new or edited one would clash with: other whole-field ones, for a whole-field
+ * planting; none, for part of the field (Planting#no_overlap, D19)
  */
 export function clashes<T extends Dated>(planting: Dated, others: T[]): T[] {
   return others.filter(
-    (other) => other.id !== planting.id && overlaps(planting, other) && !(planting.partial && other.partial),
+    (other) => other.id !== planting.id && !planting.partial && !other.partial && overlaps(planting, other),
+  )
+}
+
+/**
+ * The plantings a new or edited one would grow alongside, allowed but worth a warning: the
+ * whole-field ones its season overlaps, for a plot; the plots, for a whole-field planting
+ */
+export function alongside<T extends Dated>(planting: Dated, others: T[]): T[] {
+  return others.filter(
+    (other) => other.id !== planting.id && planting.partial !== other.partial && overlaps(planting, other),
   )
 }
 
 /**
  * The fields a new whole-field planting could also go on for these dates ("Also plant
- * this on"): those with no planting sharing a day of its season, whole field or part, as
- * Planting#no_overlap holds a whole-field one. Fields in the order given.
+ * this on"): those with no whole-field planting sharing a day of its season, as
+ * Planting#no_overlap holds it (plots may be there). Fields in the order given.
  */
 export function freeFields<F extends { plantings: Dated[] }>(
   season: { season_start: string; end_date: string },

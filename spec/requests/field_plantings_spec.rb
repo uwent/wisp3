@@ -177,6 +177,48 @@ RSpec.describe "Fields with several plantings", type: :request do
       expect(field.plantings.count).to eq(1)
     end
 
+    it "adds a plot within a whole-field planting, leaving that one as it was even with replace (D19)" do
+      corn = create(:planting, field:, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 4, 15),
+        end_date: Date.new(2026, 9, 30))
+      post plantings_path, params: {planting: {field_id: field.id, plant_id: plant.id, partial: "true", area_acres: 0.1,
+                                               season_start: "2026-07-01", emergence_date: "2026-07-08", end_date: "2026-09-30"}, replace: "1"}
+      expect(corn.reload.end_date).to eq(Date.new(2026, 9, 30))
+      expect(field.plantings.count).to eq(2)
+    end
+
+    it "gives a new plot the field's irrigation over its season, but not a rainfed one" do
+      create(:planting, field:, season_start: Date.new(2026, 4, 1), emergence_date: Date.new(2026, 4, 15),
+        end_date: Date.new(2026, 9, 30))
+      field.field_entries.create!(date: Date.new(2026, 5, 10), irrigation_in: 0.5)
+      field.field_entries.create!(date: Date.new(2026, 6, 10), irrigation_in: 0.7)
+      field.field_entries.create!(date: Date.new(2026, 6, 11), soil_moisture_pct: 20)
+      corner = {plant_id: plant.id, partial: "true", area_acres: 0.1, season_start: "2026-05-15",
+                emergence_date: "2026-05-20", end_date: "2026-09-30"}
+      post plantings_path, params: {planting: {field_id: field.id, **corner}}
+      plot = field.plantings.find_by(partial: true)
+      expect(plot.planting_entries.pluck(:date, :irrigation_in)).to eq([[Date.new(2026, 6, 10), 0.7]])
+
+      post plantings_path, params: {planting: {field_id: field.id, **corner, rainfed: "true"}}
+      expect(field.plantings.where(rainfed: true).sole.planting_entries).to be_empty
+    end
+
+    it "gives a planting made part of the field the field's irrigation" do
+      soy = create(:planting, field:, **season)
+      field.field_entries.create!(date: Date.new(2026, 7, 10), irrigation_in: 0.6)
+      patch planting_path(soy), params: {planting: {partial: "true", area_acres: 0.5}}
+      expect(soy.reload.planting_entries.pluck(:irrigation_in)).to eq([0.6])
+      patch planting_path(soy), params: {planting: {notes: "Corner"}}
+      expect(soy.reload.planting_entries.count).to eq(1)
+    end
+
+    it "adds a whole-field planting over a plot, ending nothing" do
+      soy = plot
+      post plantings_path, params: {planting: {field_id: field.id, plant_id: plant.id, season_start: "2026-07-01",
+                                               emergence_date: "2026-07-08", end_date: "2026-09-30"}, replace: "1"}
+      expect(soy.reload.end_date).to eq(Date.new(2026, 9, 30))
+      expect(field.plantings.count).to eq(2)
+    end
+
     it "doesn't end a plot when adding another plot" do
       soy = plot
       post plantings_path, params: {planting: {field_id: field.id, plant_id: plant.id, partial: "true", area_acres: 0.5,

@@ -57,8 +57,8 @@ class DailyEntryWeek
 
   # attribute: :rain_in or :irrigation_in; irrigation's fields carry the acres the calculator spreads
   # run hours over (the whole-field planting's area that day, else the field's). For irrigation, a
-  # field growing only plots that day is its plots (it has nothing of its own to water, as on the day
-  # page), each saved as the plot's own (plot: true)
+  # field growing only plots that day, or a rainfed crop with plots, is its irrigated plots (it has
+  # nothing of its own to water, as on the day page), each saved as the plot's own (plot: true)
   def row(key, name, systems, attribute)
     {key:, name:, days: dates.map { |date| day(systems.flat_map { |system| growing(system, date) }, date, attribute) }}
   end
@@ -69,8 +69,7 @@ class DailyEntryWeek
       next [{id: field.id, name: field.name, value:}] unless attribute == :irrigation_in
       plantings = field.plantings_on(date)
       whole = plantings.find { |planting| !planting.partial? }
-      next [] if whole&.rainfed?
-      next [{id: field.id, name: field.name, value:, acres: whole&.area_acres || field.area_acres}] if whole || plantings.empty?
+      next [{id: field.id, name: field.name, value:, acres: whole&.area_acres || field.area_acres}] if (whole && !whole.rainfed?) || plantings.empty?
       plantings.reject(&:rainfed?).sort_by(&:order_key).map do |plot|
         {id: plot.id, name: "#{field.name}: #{plot.plant.name}", value: planting_entries[[plot.id, date]]&.irrigation_in,
          acres: plot.area_acres, plot: true}

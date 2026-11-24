@@ -31,7 +31,7 @@ RSpec.describe "Domain models" do
       overlapping = build(:planting, field:, season_start: Date.new(2026, 7, 15), emergence_date: Date.new(2026, 7, 20),
         end_date: Date.new(2026, 9, 30))
       expect(overlapping).not_to be_valid
-      expect(overlapping.errors[:season_start]).to include("overlaps another planting on this field")
+      expect(overlapping.errors[:season_start]).to include("overlaps another planting covering the whole field")
       expect { overlapping.save!(validate: false) }.to raise_error(ActiveRecord::StatementInvalid, /plantings_no_overlap/)
     end
 

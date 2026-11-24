@@ -11,6 +11,7 @@
   import { addDays, formatDate } from '@/lib/dates'
   import type { FieldInfoKey } from '@/lib/fieldInfo'
   import {
+    alongside,
     canReplace,
     clashes,
     cropName,
@@ -95,13 +96,17 @@
   const clashing = $derived(
     seasonStart && endDate ? clashes({ season_start: seasonStart, end_date: endDate, partial }, others) : [],
   )
+  // Plantings it may overlap but would grow alongside (a plot within a whole-field crop), worth a warning
+  const sharing = $derived(
+    seasonStart && endDate ? alongside({ season_start: seasonStart, end_date: endDate, partial }, others) : [],
+  )
   // Replace ends each the day before this one starts, still after its start and emergence
   const replaceable = $derived(
     !planting && clashing.length > 0 && clashing.every((other) => canReplace(other, seasonStart)),
   )
   let replace = $state(false)
 
-  // Also plant this on: the system's other fields with nothing on them for these dates, for a new
+  // Also plant this on: the system's other fields with no whole-field planting for these dates, for a new
   // whole-field planting. A field checked stays checked if the dates take it out of the list and
   // back, but is sent only while it's listed.
   const otherFields = $derived(systemFields.filter((other) => other.id !== field.id))
@@ -604,12 +609,11 @@
               class="space-y-2 rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2 text-sm"
             >
               <p>
-                {partial ? 'This overlaps a planting covering the whole field' : 'This overlaps'}:
-                {clashing.map((other) => `${cropName(other)} (${seasonDates(other)})`).join(', ')}.
-                {#if partial}Make that one part of the field too, or change the dates.{:else}Choose Part of the field if
-                  they grow side by side{replaceable ? ', or replace it.' : '.'}{/if}
+                This overlaps:
+                {clashing.map((other) => `${cropName(other)} (${seasonDates(other)})`).join(', ')}. Choose Part of the
+                field if they grow side by side{replaceable ? ', or replace it.' : '.'}
               </p>
-              {#if replaceable && !partial}
+              {#if replaceable}
                 <label class="flex items-start gap-2">
                   <input type="checkbox" class="mt-0.5" bind:checked={replace} />
                   {#if replace}<input type="hidden" name="replace" value="1" />{/if}
@@ -621,6 +625,16 @@
                 </label>
               {/if}
             </div>
+          {/if}
+          {#if sharing.length}
+            <p role="status" class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2 text-sm">
+              {partial ? 'This overlaps' : 'This overlaps plots on this field'}:
+              {sharing.map((other) => `${cropName(other)} (${seasonDates(other)})`).join(', ')}{partial
+                ? sharing.length > 1
+                  ? ', each covering the whole field'
+                  : ', which covers the whole field'
+                : ''}. {sharing.length > 1 ? 'All' : 'Both'} are kept, each with its own water balance.
+            </p>
           {/if}
         </fieldset>
         {#if offerOthers}
@@ -634,8 +648,8 @@
               {#if free.length}
                 <fieldset class="space-y-2">
                   <legend class="mb-2 text-sm text-ink-muted">
-                    Fields on this irrigation system with nothing planted on these dates. Each gets its own planting
-                    with these dates and settings, on its own soil and area.
+                    Fields on this irrigation system with no whole-field planting on these dates. Each gets its own
+                    planting with these dates and settings, on its own soil and area.
                   </legend>
                   <div class="grid gap-x-4 gap-y-2 sm:grid-cols-2">
                     {#each free as other (other.id)}
@@ -659,7 +673,7 @@
                 </fieldset>
               {:else}
                 <p class="text-sm text-ink-muted">
-                  The other fields on this irrigation system all have a planting on these dates.
+                  The other fields on this irrigation system all have a whole-field planting on these dates.
                 </p>
               {/if}
               {#each messages as message, i (i)}

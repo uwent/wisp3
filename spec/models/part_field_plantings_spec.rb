@@ -35,26 +35,22 @@ RSpec.describe "Part-field plantings" do
       expect(build(:planting, field:, partial: true, **season)).not_to be_valid
     end
 
-    it "lets part-field plantings overlap each other, but not a whole-field one" do
+    it "lets part-field plantings overlap each other and a whole-field one, either added first (D19)" do
       plot
       expect(plot(length: 50)).to be_persisted
-      whole = build(:planting, field:, **season)
-      expect(whole).not_to be_valid
-      expect(whole.errors[:season_start]).to include("overlaps another planting on this field")
+      expect(create(:planting, field:, **season)).to be_persisted
+      expect(create(:planting, field:, partial: true, area_acres: 0.01, **season)).to be_persisted
+      expect(field.planting_on(Date.new(2026, 7, 1))).not_to be_partial
     end
 
-    it "keeps a part-field planting off a field with a whole-field one" do
-      create(:planting, field:, **season)
-      part = build(:planting, field:, partial: true, area_acres: 1, **season)
-      expect(part).not_to be_valid
-      expect(part.errors[:season_start]).to include("overlaps a planting covering the whole field")
-    end
-
-    it "is enforced by the database too" do
+    it "keeps whole-field plantings from overlapping each other, in the model and the database" do
       plot
+      create(:planting, field:, **season)
+      second = build(:planting, field:, **season)
+      expect(second).not_to be_valid
+      expect(second.errors[:season_start]).to include("overlaps another planting covering the whole field")
+      expect { second.save!(validate: false) }.to raise_error(ActiveRecord::StatementInvalid, /plantings_no_overlap/)
       expect(build(:planting, field:, partial: true, area_acres: 1, **season).tap { |p| p.save!(validate: false) }).to be_persisted
-      expect { build(:planting, field:, **season).save!(validate: false) }
-        .to raise_error(ActiveRecord::StatementInvalid, /plantings_no_overlap/)
     end
 
     it "warns when plots in season together add up to more than the field" do

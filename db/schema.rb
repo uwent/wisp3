@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -260,7 +260,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_130000) do
     t.check_constraint "season_start <= end_date AND emergence_date <= end_date", name: "plantings_date_order"
     t.check_constraint "target_ad_pct IS NULL OR target_ad_pct >= 0::double precision AND target_ad_pct <= 100::double precision", name: "plantings_target_range"
     t.check_constraint "vine_kill_date IS NULL OR emergence_date <= vine_kill_date AND vine_kill_date <= end_date", name: "plantings_vine_kill_order"
-    t.exclusion_constraint "field_id WITH =, daterange(season_start, end_date, '[]'::text) WITH &&, (\nCASE\n    WHEN partial THEN int8range(id, (id + 1))\n    ELSE int8range(NULL::bigint, NULL::bigint)\nEND) WITH &&", using: :gist, name: "plantings_no_overlap"
+    t.exclusion_constraint "field_id WITH =, daterange(season_start, end_date, '[]'::text) WITH &&", where: "NOT partial", using: :gist, name: "plantings_no_overlap"
   end
 
   create_table "plants", force: :cascade do |t|
