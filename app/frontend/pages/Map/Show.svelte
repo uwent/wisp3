@@ -479,7 +479,7 @@
         <button
           type="button"
           class="absolute top-1/2 left-0 hidden -translate-y-1/2 rounded-r-md border border-l-0 border-line bg-surface-raised
-            px-1 py-4 text-ink-muted shadow hover:text-ink md:block"
+            px-1 py-4 text-ink-muted shadow-sm hover:text-ink md:block"
           aria-label={prefs.listOpen ? 'Hide the field list' : 'Show the field list'}
           aria-expanded={prefs.listOpen}
           onclick={() => (prefs.listOpen = !prefs.listOpen)}>{prefs.listOpen ? '‹' : '›'}</button

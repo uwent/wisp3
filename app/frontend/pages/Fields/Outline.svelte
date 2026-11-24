@@ -293,7 +293,7 @@
         </ShapePicker>
       {/key}
     {/if}
-    <div bind:this={mapBox} class="h-[32rem] scroll-mt-4 {choices && choicesOpen ? 'lg:h-auto lg:min-h-[32rem]' : ''}">
+    <div bind:this={mapBox} class="h-128 scroll-mt-4 {choices && choicesOpen ? 'lg:h-auto lg:min-h-128' : ''}">
       <OutlineMap
         bind:this={map}
         bind:boundary

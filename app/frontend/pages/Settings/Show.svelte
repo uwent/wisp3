@@ -86,7 +86,13 @@
         <legend class="text-sm font-medium">Email</legend>
         <input type="hidden" name="user[announcements]" value="0" />
         <label class="flex items-start gap-3 text-sm">
-          <input type="checkbox" name="user[announcements]" value="1" checked={announcements} class="mt-0.5 rounded" />
+          <input
+            type="checkbox"
+            name="user[announcements]"
+            value="1"
+            checked={announcements}
+            class="mt-0.5 rounded-sm"
+          />
           <span
             ><span class="font-medium">Announcements from WISP</span>
             <span class="block text-ink-muted"

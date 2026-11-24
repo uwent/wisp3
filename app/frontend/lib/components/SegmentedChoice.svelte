@@ -28,8 +28,8 @@
       {@const chosen = value === option.value}
       <label
         class="relative flex cursor-pointer items-center gap-1.5 border-line px-2 py-1 not-first:border-l
-          has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2
-          has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-brand-500
+          has-focus-visible:outline-2 has-focus-visible:-outline-offset-2 has-focus-visible:outline-brand-500
+          has-disabled:cursor-not-allowed has-disabled:opacity-50
           {chosen ? 'font-medium' : 'text-ink-muted hover:bg-surface'}
           {chosen && !option.color ? 'bg-brand-50' : ''}"
         style:background-color={chosen && option.color

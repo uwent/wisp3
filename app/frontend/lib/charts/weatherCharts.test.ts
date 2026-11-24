@@ -49,6 +49,7 @@ const palette: Palette = {
   shapeNew: '#ff8a1f',
   shapeUpdate: '#e05ce6',
   shapeSkip: '#c3c8cf',
+  handle: '#1c5cab',
   depths: ['#1', '#2', '#3', '#4'],
   status: { full: '#00f', ok: '#0f0', caution: '#fa0', irrigate: '#f00' },
   dark: false,

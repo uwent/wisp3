@@ -211,7 +211,7 @@
 <div class="flex flex-col {fill ? 'h-full' : ''}">
   <div
     bind:this={wrapper}
-    class="relative overflow-hidden rounded-lg border border-line {fill ? 'min-h-[24rem] flex-1' : ''}"
+    class="relative overflow-hidden rounded-lg border border-line {fill ? 'min-h-96 flex-1' : ''}"
     style:height={fill ? undefined : height}
   >
     <div

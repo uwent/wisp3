@@ -95,6 +95,9 @@
      that), a thin black edge keeping the line visible on the light streets basemap */
   --color-map-field: #f0e442;
   --color-map-field-casing: #000000;
+  /* The pin and drag handles for placing and sizing an irrigation system: a dark blue that stands
+     out on imagery and against the light cyan system, with a white edge */
+  --color-map-handle: #1c5cab;
   /* A file's shapes on Setup's import, filled (what's saved in WISP is only outlined) */
   --color-map-shape-new: #009e73;
   --color-map-shape-update: #d55e00;

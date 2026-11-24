@@ -75,7 +75,7 @@
       <!-- Focusable so keyboard users can scroll it (WCAG 2.1.1) -->
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div
-        class="max-h-[60dvh] overflow-auto rounded border border-line text-xs"
+        class="max-h-[60dvh] overflow-auto rounded-sm border border-line text-xs"
         tabindex="0"
         role="region"
         aria-label="{label} by day"

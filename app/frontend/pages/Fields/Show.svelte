@@ -217,7 +217,7 @@
       <!-- Read-only, the grid has no cells to tab to, so the scrolling box takes focus -->
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div
-        class="max-h-[36rem] overflow-auto rounded-lg border border-line bg-surface-raised"
+        class="max-h-144 overflow-auto rounded-lg border border-line bg-surface-raised"
         tabindex={readOnly ? 0 : undefined}
         role={readOnly ? 'region' : undefined}
         aria-label={readOnly ? 'Rain and irrigation by day' : undefined}

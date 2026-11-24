@@ -18,7 +18,7 @@
       <p class="flex flex-wrap gap-x-3">
         {#each row as swatch (swatch.label)}
           <span class="inline-flex items-center gap-1">
-            <svg viewBox="0 0 22 16" class="h-4 w-[1.375rem] shrink-0" aria-hidden="true">
+            <svg viewBox="0 0 22 16" class="h-4 w-5.5 shrink-0" aria-hidden="true">
               <rect width="22" height="16" rx="2" fill="#2f3a2c" />
               {#if swatch.round}
                 <circle cx="11" cy="8" r="5" fill="none" stroke="#0c2d48" stroke-width={swatch.width + 1.5} />

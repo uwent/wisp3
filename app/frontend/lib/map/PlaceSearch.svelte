@@ -77,10 +77,12 @@
     </ul>
   {/if}
   {#if searchError}
-    <p class="mb-1 rounded-md bg-surface-raised px-3 py-1.5 text-xs text-status-irrigate-ink shadow">{searchError}</p>
+    <p class="mb-1 rounded-md bg-surface-raised px-3 py-1.5 text-xs text-status-irrigate-ink shadow-sm">
+      {searchError}
+    </p>
   {/if}
   <!-- 90% opaque: the most see-through that keeps the placeholder and "Go" at 4.5:1 over any imagery -->
-  <div class="flex overflow-hidden rounded-md border border-line bg-surface-raised/90 shadow backdrop-blur-sm">
+  <div class="flex overflow-hidden rounded-md border border-line bg-surface-raised/90 shadow-sm backdrop-blur-sm">
     <input
       type="search"
       bind:value={query}

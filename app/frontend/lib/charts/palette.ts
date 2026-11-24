@@ -21,6 +21,8 @@ export type Palette = {
   /** Outlined fields on the map: one color, not a status (their badges carry that) */
   field: string
   fieldCasing: string
+  /** The pin and drag handles for placing and sizing an irrigation system */
+  handle: string
   /** A file's shapes on Setup's import, by where each goes */
   shapeNew: string
   shapeUpdate: string
@@ -46,6 +48,7 @@ const TOKENS = {
   systemCasing: '--color-map-system-casing',
   field: '--color-map-field',
   fieldCasing: '--color-map-field-casing',
+  handle: '--color-map-handle',
   shapeNew: '--color-map-shape-new',
   shapeUpdate: '--color-map-shape-update',
   shapeSkip: '--color-map-shape-skip',

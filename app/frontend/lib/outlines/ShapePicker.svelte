@@ -189,7 +189,7 @@
     </div>
     <button
       type="button"
-      class="-mt-1 -mr-1 rounded p-1 text-ink-muted hover:text-ink"
+      class="-mt-1 -mr-1 rounded-sm p-1 text-ink-muted hover:text-ink"
       aria-label="Close the field import"
       onclick={onclose}>✕</button
     >
@@ -255,7 +255,7 @@
   <div class="space-y-3 text-sm">
     {#if unusableCount && usable.length}
       <label class="flex items-center gap-2">
-        <input type="checkbox" class="rounded" bind:checked={showUnusable} />
+        <input type="checkbox" class="rounded-sm" bind:checked={showUnusable} />
         <span>Show the {count(unusableCount)} that can't be used</span>
       </label>
     {/if}

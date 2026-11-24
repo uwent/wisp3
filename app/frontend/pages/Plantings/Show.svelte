@@ -317,7 +317,7 @@
   </div>
   {#if cardGone}
     <div
-      class="fixed inset-x-0 top-[var(--app-bar-h,0px)] z-40 border-b border-brand-500/40 bg-brand-50 shadow-sm"
+      class="fixed inset-x-0 top-(--app-bar-h,0px) z-40 border-b border-brand-500/40 bg-brand-50 shadow-sm"
       {@attach stickyHeight('--page-bar-h')}
       data-testid="time-travel-bar"
     >

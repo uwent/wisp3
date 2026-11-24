@@ -202,7 +202,7 @@
                       <th scope="col" class="px-1 py-1.5 text-center font-medium">
                         <Link
                           href={dailyEntries.show({ query: { date: day } })}
-                          class="inline-block rounded px-1 hover:text-ink hover:underline {day === today
+                          class="inline-block rounded-sm px-1 hover:text-ink hover:underline {day === today
                             ? 'text-ink'
                             : ''}"
                           title="Open {dayName(day)} in the Day view"
@@ -347,7 +347,7 @@
           </section>
         {/each}
 
-        <div class="sticky bottom-0 z-20 -mx-4 space-y-2 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur">
+        <div class="sticky bottom-0 z-20 -mx-4 space-y-2 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur-sm">
           {#if Object.keys(problems).length}
             <div class="text-sm text-status-irrigate-ink" role="alert">
               <p>Nothing was saved. Please correct these and save again:</p>

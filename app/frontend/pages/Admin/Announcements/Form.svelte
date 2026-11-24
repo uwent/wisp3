@@ -188,7 +188,7 @@
               {#each tools as tool (tool.label)}
                 <button
                   type="button"
-                  class="rounded border border-line px-2 py-0.5 text-sm hover:bg-surface {tool.class ?? ''}"
+                  class="rounded-sm border border-line px-2 py-0.5 text-sm hover:bg-surface {tool.class ?? ''}"
                   onclick={() => apply(tool.make)}>{tool.label}</button
                 >
               {/each}
@@ -216,14 +216,14 @@
             <h2 class="text-sm font-medium">Placeholders</h2>
             <p class="text-sm text-ink-muted">
               Filled in for each person. Give a fallback after a bar for accounts without one, as in
-              <code class="rounded bg-surface px-1">{'{{first_name|there}}'}</code>. They work in the subject too.
+              <code class="rounded-sm bg-surface px-1">{'{{first_name|there}}'}</code>. They work in the subject too.
             </p>
             <ul class="space-y-1 text-sm">
               {#each placeholders as placeholder (placeholder.key)}
                 <li class="flex flex-wrap items-baseline gap-2">
                   <button
                     type="button"
-                    class="rounded border border-line px-2 py-0.5 font-mono text-xs hover:bg-surface"
+                    class="rounded-sm border border-line px-2 py-0.5 font-mono text-xs hover:bg-surface"
                     aria-label="Insert {placeholder.description.toLowerCase()} placeholder"
                     onclick={() => apply((t, s, e) => insert(t, s, e, `{{${placeholder.key}}}`))}
                     >{`{{${placeholder.key}}}`}</button

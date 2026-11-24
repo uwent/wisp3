@@ -72,7 +72,7 @@
 
 <button
   type="button"
-  class="relative flex size-7 items-center justify-center rounded text-ink-muted hover:bg-surface hover:text-ink"
+  class="relative flex size-7 items-center justify-center rounded-sm text-ink-muted hover:bg-surface hover:text-ink"
   aria-label="Work out {system.name}'s irrigation"
   title="Work out inches from {methods.map((m) => names[m].toLowerCase()).join(' or ')}"
   onclick={start}
@@ -130,7 +130,7 @@
         <div class="flex flex-wrap gap-x-4 gap-y-1 pl-1">
           {#each dayFields as field (field.id)}
             <label class="flex items-center gap-1.5 text-sm">
-              <input type="checkbox" class="rounded" value={field.id} bind:group={chosen} />
+              <input type="checkbox" class="rounded-sm" value={field.id} bind:group={chosen} />
               {field.name}
             </label>
           {/each}

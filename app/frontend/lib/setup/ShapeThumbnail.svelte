@@ -31,7 +31,7 @@
   height={size}
   role="img"
   aria-label={label}
-  class="shrink-0 rounded border border-line bg-surface"
+  class="shrink-0 rounded-sm border border-line bg-surface"
 >
   <path
     d={drawing}

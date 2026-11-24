@@ -200,7 +200,7 @@
             {#snippet trailing()}
               <button
                 type="button"
-                class="relative flex size-7 items-center justify-center rounded text-ink-muted hover:bg-surface hover:text-ink {working
+                class="relative flex size-7 items-center justify-center rounded-sm text-ink-muted hover:bg-surface hover:text-ink {working
                   ? 'bg-surface text-ink'
                   : ''}"
                 aria-label="Work out {system.name}'s irrigation"
@@ -233,7 +233,7 @@
               <label class="flex min-w-0 flex-1 items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  class="rounded"
+                  class="rounded-sm"
                   checked={on}
                   onchange={(e) => toggle(f.id, e.currentTarget.checked)}
                 />

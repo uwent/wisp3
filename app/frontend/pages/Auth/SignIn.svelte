@@ -23,7 +23,7 @@
       type="button"
       role="tab"
       aria-selected={mode === value}
-      class="rounded px-3 py-1.5 font-medium {mode === value ? 'bg-brand-50 text-brand-700' : 'text-ink-muted'}"
+      class="rounded-sm px-3 py-1.5 font-medium {mode === value ? 'bg-brand-50 text-brand-700' : 'text-ink-muted'}"
       onclick={() => (mode = value as typeof mode)}>{label}</button
     >
   {/each}
@@ -35,7 +35,7 @@
       <TextField label="Email" name="user[email]" type="email" autocomplete="email" required bind:value={emailValue} />
       <TextField label="Password" name="user[password]" type="password" autocomplete="current-password" required />
       <label class="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="user[remember_me]" value="1" class="rounded" />
+        <input type="checkbox" name="user[remember_me]" value="1" class="rounded-sm" />
         Keep me signed in on this device
       </label>
       <Button type="submit" class="w-full" disabled={processing}>Sign in</Button>

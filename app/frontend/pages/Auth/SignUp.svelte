@@ -28,7 +28,7 @@
   {#snippet children({ errors, processing })}
     <!-- Bot checks (SignUpGuard): when the page was shown, and a field only bots fill in -->
     <input type="hidden" name="form_token" value={form_token} />
-    <div class="absolute -left-[10000px] h-px w-px overflow-hidden" aria-hidden="true">
+    <div class="absolute left-[-10000px] h-px w-px overflow-hidden" aria-hidden="true">
       <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
     </div>
     <div class="grid gap-4 sm:grid-cols-2">

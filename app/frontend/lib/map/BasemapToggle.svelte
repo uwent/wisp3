@@ -6,7 +6,7 @@
 </script>
 
 <div
-  class="flex overflow-hidden rounded-md border border-line bg-surface-raised text-xs shadow"
+  class="flex overflow-hidden rounded-md border border-line bg-surface-raised text-xs shadow-sm"
   role="group"
   aria-label="Basemap"
 >

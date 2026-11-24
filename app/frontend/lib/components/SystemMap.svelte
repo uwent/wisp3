@@ -313,11 +313,11 @@
   }
 
   const HANDLE_STYLE: Record<Handle, { className: string; title: string }> = {
-    radius: { className: 'rounded-full bg-[#1c5cab]', title: 'Drag to set the radius' },
+    radius: { className: 'rounded-full bg-map-handle', title: 'Drag to set the radius' },
     start: { className: 'rounded-full bg-white', title: 'Drag to set where the arc starts' },
     end: { className: 'rounded-full bg-white', title: 'Drag to set where the arc ends' },
-    frontLeft: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear' },
-    backRight: { className: 'rounded-sm bg-[#1c5cab]', title: 'Drag to resize the linear' },
+    frontLeft: { className: 'rounded-sm bg-map-handle', title: 'Drag to resize the linear' },
+    backRight: { className: 'rounded-sm bg-map-handle', title: 'Drag to resize the linear' },
     rotate: { className: 'rounded-full bg-white', title: 'Drag to turn the linear' },
   }
 
@@ -410,7 +410,7 @@
       handleSet = ''
     }
     if (!centerMarker) {
-      centerMarker = new Marker({ draggable: editing, color: '#1c5cab' }).setLngLat(center).addTo(map)
+      centerMarker = new Marker({ draggable: editing, color: readPalette().handle }).setLngLat(center).addTo(map)
       centerMarker.on('drag', () => {
         const { lng, lat } = centerMarker!.getLngLat()
         setCenter([lng, lat])
@@ -432,7 +432,7 @@
       const element = document.createElement('div')
       element.className = `size-4 touch-none border-2 border-white shadow ${HANDLE_STYLE[name].className}`
       if (name === 'start' || name === 'end' || name === 'rotate')
-        element.classList.replace('border-white', 'border-[#1c5cab]')
+        element.classList.replace('border-white', 'border-map-handle')
       element.title = HANDLE_STYLE[name].title
       element.style.cursor = cursor
       followPointer(element, name)
@@ -702,7 +702,7 @@
     {#if pointer}
       <button
         type="button"
-        class="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#1c5cab] text-white shadow-lg hover:scale-110"
+        class="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-map-handle text-white shadow-lg hover:scale-110"
         style:left="{pointer.x}px"
         style:top="{pointer.y}px"
         aria-label="The {noun} is off the map: show it"

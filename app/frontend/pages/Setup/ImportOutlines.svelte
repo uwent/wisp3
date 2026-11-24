@@ -873,7 +873,7 @@
                     {:else if column.key === 'name'}
                       <button
                         type="button"
-                        class="text-left font-medium [overflow-wrap:anywhere] hover:underline"
+                        class="text-left font-medium wrap-anywhere hover:underline"
                         aria-current={row.index === selected ? 'true' : undefined}
                         onclick={() => (selected = row.index)}>{row.name || 'Unnamed shape'}</button
                       >{#if row.already}<span class="block text-xs text-ink-muted">{row.already}</span>{/if}
@@ -889,7 +889,7 @@
 
         <div class="space-y-2 border-t border-line pt-3">
           <label class="flex items-start gap-2 text-sm">
-            <input type="checkbox" class="mt-0.5 rounded" bind:checked={useArea} />
+            <input type="checkbox" class="mt-0.5 rounded-sm" bind:checked={useArea} />
             <span>Set existing fields' area from their shapes (seasons that have ended keep theirs)</span>
           </label>
           {#if errors.rows}<p class="text-sm text-status-irrigate-ink">{[errors.rows].flat()[0]}</p>{/if}

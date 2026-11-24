@@ -35,7 +35,7 @@
   <div class="relative">
     <button
       type="button"
-      class="flex items-center gap-1.5 rounded-md border border-line bg-surface-raised px-2.5 py-1.5 text-xs shadow
+      class="flex items-center gap-1.5 rounded-md border border-line bg-surface-raised px-2.5 py-1.5 text-xs shadow-sm
       hover:bg-surface {open ? 'ring-2 ring-brand-500' : ''}"
       bind:this={button}
       aria-expanded={open}
@@ -71,7 +71,7 @@
           <h2 class="font-medium">Map layers</h2>
           <button
             type="button"
-            class="rounded px-1.5 text-lg leading-none text-ink-muted hover:text-ink"
+            class="rounded-sm px-1.5 text-lg leading-none text-ink-muted hover:text-ink"
             aria-label="Close map layers"
             onclick={close}>×</button
           >

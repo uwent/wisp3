@@ -210,7 +210,7 @@
     </p>
     {#if newGpm !== null}
       <label class="flex items-start gap-2 text-sm">
-        <input type="checkbox" class="mt-0.5 rounded" bind:checked={saveToSystem} />
+        <input type="checkbox" class="mt-0.5 rounded-sm" bind:checked={saveToSystem} />
         {`Save ${units.format('flow', newGpm)} as ${system.name}'s pump capacity`}
       </label>
     {/if}
@@ -241,7 +241,7 @@
     </p>
     {#if newDepth !== null}
       <label class="flex items-start gap-2 text-sm">
-        <input type="checkbox" class="mt-0.5 rounded" bind:checked={saveToSystem} />
+        <input type="checkbox" class="mt-0.5 rounded-sm" bind:checked={saveToSystem} />
         {`Save ${units.format('depth', newDepth)} as ${system.name}'s depth at 100%`}
       </label>
     {/if}

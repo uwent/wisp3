@@ -163,14 +163,14 @@
       aria-label={label}
       aria-invalid={error ? 'true' : undefined}
       disabled={saving}
-      class="absolute inset-0 size-full min-w-0 rounded border-brand-500 px-1.5 py-0 text-sm tabular-nums focus:ring-brand-500
+      class="absolute inset-0 size-full min-w-0 rounded-sm border-brand-500 px-1.5 py-0 text-sm tabular-nums focus:ring-brand-500
         {align === 'right' ? 'text-right' : 'text-left'}
         {error ? 'border-status-irrigate' : ''}"
     />
     {#if error}
       <p
         role="alert"
-        class="absolute top-full right-0 z-10 mt-1 w-max max-w-56 rounded bg-status-irrigate px-2 py-1 text-xs text-white shadow"
+        class="absolute top-full right-0 z-10 mt-1 w-max max-w-56 rounded-sm bg-status-irrigate px-2 py-1 text-xs text-white shadow-sm"
       >
         {error}
       </p>
@@ -185,7 +185,7 @@
     {@attach rove}
     onclick={() => start()}
     onkeydown={onCellKey}
-    class="relative block w-full min-w-16 rounded px-1.5 py-1 tabular-nums hover:bg-brand-50
+    class="relative block w-full min-w-16 rounded-sm px-1.5 py-1 tabular-nums hover:bg-brand-50
       {align === 'right' ? 'text-right' : 'text-left'}
       focus-visible:outline-2 focus-visible:outline-brand-500 {className}"
   >

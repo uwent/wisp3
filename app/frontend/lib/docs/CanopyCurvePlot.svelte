@@ -72,7 +72,7 @@
   </svg>
   {#if day !== null}
     <div
-      class="pointer-events-none absolute top-0 z-10 rounded border border-line bg-surface-raised px-2 py-1 text-xs whitespace-nowrap shadow-sm"
+      class="pointer-events-none absolute top-0 z-10 rounded-sm border border-line bg-surface-raised px-2 py-1 text-xs whitespace-nowrap shadow-sm"
       style:left="{tipLeft}%"
       style:transform="translateX({tipLeft > 60 ? '-105%' : '5%'})"
       aria-hidden="true"

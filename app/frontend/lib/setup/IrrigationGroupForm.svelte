@@ -64,7 +64,7 @@
         <label class="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
-            class="rounded"
+            class="rounded-sm"
             name="irrigation_group[system_ids][]"
             value={system.id}
             checked={group !== undefined && system.irrigation_group_id === group.id}

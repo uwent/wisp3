@@ -187,7 +187,7 @@
 {#snippet toggle(label: string, expanded: boolean, onclick: () => void)}
   <button
     type="button"
-    class="relative -ml-5 inline-flex size-5 items-center justify-center rounded text-ink-muted hover:bg-surface hover:text-ink"
+    class="relative -ml-5 inline-flex size-5 items-center justify-center rounded-sm text-ink-muted hover:bg-surface hover:text-ink"
     aria-expanded={expanded}
     aria-label={label}
     {onclick}
@@ -620,7 +620,7 @@
         {/each}
 
         <div
-          class="sticky bottom-0 z-20 -mx-4 flex items-center gap-3 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur"
+          class="sticky bottom-0 z-20 -mx-4 flex items-center gap-3 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur-sm"
         >
           <Button type="submit" disabled={processing}>Save {formatDate(date)}</Button>
           <p class="text-sm text-ink-muted">
