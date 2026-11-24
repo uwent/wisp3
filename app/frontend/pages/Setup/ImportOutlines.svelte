@@ -865,7 +865,7 @@
                       <Button
                         type="button"
                         variant="secondary"
-                        class="px-2 py-0 text-base leading-6"
+                        class="px-2 py-0 text-base/6"
                         aria-label="Add {row.name || 'Unnamed shape'}"
                         title="Add to the fields to import"
                         onclick={() => add(row.index)}>+</Button

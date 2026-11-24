@@ -487,13 +487,13 @@
 
 <div
   bind:this={wrapper}
-  class="group/map relative h-full w-full overflow-hidden bg-surface"
+  class="group/map relative size-full overflow-hidden bg-surface"
   data-far={zoom < FAR_ZOOM ? '' : undefined}
   data-mid={zoom >= FAR_ZOOM && zoom < NAME_ZOOM ? '' : undefined}
 >
   <div
     bind:this={container}
-    class="h-full w-full"
+    class="size-full"
     role="application"
     aria-label="Map of the operation's systems. Select a system to see its fields."
   ></div>

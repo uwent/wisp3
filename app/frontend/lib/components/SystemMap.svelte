@@ -634,7 +634,7 @@
   >
     <div
       bind:this={container}
-      class="h-full w-full"
+      class="size-full"
       aria-label={editing
         ? `Map: click to place the ${noun}, or enter its coordinates${point ? '' : ' and size'} in the fields below`
         : `Map of the ${noun}: Edit on the map to move${point ? '' : ' or resize'} it`}
@@ -702,7 +702,7 @@
     {#if pointer}
       <button
         type="button"
-        class="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-map-handle text-white shadow-lg hover:scale-110"
+        class="absolute flex size-9 -translate-1/2 items-center justify-center rounded-full border-2 border-white bg-map-handle text-white shadow-lg hover:scale-110"
         style:left="{pointer.x}px"
         style:top="{pointer.y}px"
         aria-label="The {noun} is off the map: show it"

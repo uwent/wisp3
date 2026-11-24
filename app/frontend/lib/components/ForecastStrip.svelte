@@ -65,7 +65,7 @@
         <span class="text-xs text-ink-muted" aria-hidden="true">{formatDate(day.date)}</span>
         {#if sky}
           <WeatherIcon sky={sky.sky} class="my-0.5 size-8" />
-          <span class="text-xs leading-tight">{sky.label}</span>
+          <span class="text-xs/tight">{sky.label}</span>
         {/if}
         <span class="text-sm">
           <span class="font-semibold"><span class="sr-only">High </span>{degrees(day.tmax_f)}</span>

@@ -230,15 +230,15 @@
                 >Date</th
               >
               <th
-                class="sticky top-0 z-20 w-px bg-surface-raised px-2 py-2 font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
+                class="sticky top-0 z-20 w-px bg-surface-raised p-2 font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
                 >Rain</th
               >
               <th
-                class="sticky top-0 z-20 w-px bg-surface-raised px-2 py-2 font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
+                class="sticky top-0 z-20 w-px bg-surface-raised p-2 font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
                 >Irrigation</th
               >
               <th
-                class="sticky top-0 z-20 bg-surface-raised px-2 py-2 text-left font-medium shadow-[inset_0_-1px_0_var(--color-line)]"
+                class="sticky top-0 z-20 bg-surface-raised p-2 text-left font-medium shadow-[inset_0_-1px_0_var(--color-line)]"
                 >Notes</th
               >
             </tr>

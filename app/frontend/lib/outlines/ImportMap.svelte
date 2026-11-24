@@ -216,7 +216,7 @@
   >
     <div
       bind:this={container}
-      class="h-full w-full"
+      class="size-full"
       role="img"
       aria-label="Map of the file's shapes, named as in the list beside it"
     ></div>

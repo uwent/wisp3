@@ -242,7 +242,7 @@
                         {@const replacing = cell.varies && changedKeys.has(key)}
                         {@const problem = problems[key]}
                         {@const id = `cell-${key.replaceAll(':', '-')}`}
-                        <td class="px-1 py-1">
+                        <td class="p-1">
                           <input
                             {id}
                             type="text"
@@ -306,7 +306,7 @@
                         {@const replacing = cell.varies && changedKeys.has(key)}
                         {@const problem = problems[key]}
                         {@const id = `cell-${key.replaceAll(':', '-')}`}
-                        <td class="px-1 py-1">
+                        <td class="p-1">
                           <input
                             {id}
                             type="text"

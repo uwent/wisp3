@@ -39,17 +39,20 @@ export default ts.config(
   {
     // Tailwind classes in the frontend. Prettier's Tailwind plugin sorts them, so only the rules
     // about the classes themselves are on: Tailwind v4's own spelling of a class (h-128, not
-    // h-[32rem]; the editor's Tailwind extension makes the same check), its renamed classes (rounded
-    // is rounded-sm), and duplicates or conflicts. Pairs like px-2 py-2 aren't collapsed into p-2,
-    // and unknown classes aren't checked: WISP's own classes (keep-motion, countdown) look unknown
+    // h-[32rem]; the editor's Tailwind extension makes the same check), pairs one class covers
+    // (p-2, not px-2 py-2), its renamed classes (rounded is rounded-sm), and duplicates or
+    // conflicts. Unknown classes aren't checked: WISP's own classes (keep-motion, countdown) look
+    // unknown
     files: ['app/frontend/**/*.{svelte,ts}'],
     plugins: { 'better-tailwindcss': betterTailwindcss },
     settings: { 'better-tailwindcss': { entryPoint: 'app/frontend/entrypoints/application.css' } },
     rules: {
-      'better-tailwindcss/enforce-canonical-classes': ['error', { collapse: false }],
+      'better-tailwindcss/enforce-canonical-classes': 'error',
       'better-tailwindcss/no-deprecated-classes': 'error',
       'better-tailwindcss/no-duplicate-classes': 'error',
       'better-tailwindcss/no-conflicting-classes': 'error',
+      // Merging a pair leaves a gap where the class was, which Prettier keeps
+      'better-tailwindcss/no-unnecessary-whitespace': 'error',
     },
   },
 )

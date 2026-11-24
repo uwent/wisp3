@@ -64,7 +64,7 @@
           <ol class="grid grid-cols-7 gap-1" aria-label="Rain ahead at {zone.name}">
             {#each zone.days as day (day.date)}
               {@const odds = rainOdds(day)}
-              <li class="rounded-md border px-0.5 py-1 text-center text-xs leading-snug {FILL[odds ?? 'none']}">
+              <li class="rounded-md border px-0.5 py-1 text-center text-xs/snug {FILL[odds ?? 'none']}">
                 <span class="block font-medium"
                   >{dayName(day.date, today, { short: true })}<span class="sr-only">{`, ${formatDate(day.date)}`}</span
                   ></span

@@ -71,14 +71,14 @@
         <thead class="border-b border-line text-xs text-ink-muted">
           <tr class="text-right">
             <th class="px-3 py-2 text-left font-medium">Date</th>
-            <th class="px-2 py-2 font-medium">Crop ET</th>
-            <th class="px-2 py-2 font-medium">Rain</th>
-            <th class="px-2 py-2 font-medium">{replay ? 'Irrigation' : 'Planned irrigation'}</th>
-            <th class="px-2 py-2 font-medium">AD</th>
-            {#if hasDry}<th class="px-2 py-2 font-medium">AD if no rain</th>{/if}
+            <th class="p-2 font-medium">Crop ET</th>
+            <th class="p-2 font-medium">Rain</th>
+            <th class="p-2 font-medium">{replay ? 'Irrigation' : 'Planned irrigation'}</th>
+            <th class="p-2 font-medium">AD</th>
+            {#if hasDry}<th class="p-2 font-medium">AD if no rain</th>{/if}
             {#if summary?.ensemble_size}
-              <th class="px-2 py-2 font-medium">Likely range</th>
-              <th class="px-2 py-2 font-medium">Chance {thresholdName} by then</th>
+              <th class="p-2 font-medium">Likely range</th>
+              <th class="p-2 font-medium">Chance {thresholdName} by then</th>
             {/if}
           </tr>
         </thead>

@@ -104,7 +104,7 @@
         event.preventDefault()
         if (!asking) requestClose()
       }}
-      class="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain
+      class="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] -translate-1/2 overflow-y-auto overscroll-contain
         rounded-lg border border-line bg-surface-raised p-6 shadow-xl {widest
         ? 'max-w-6xl'
         : wide

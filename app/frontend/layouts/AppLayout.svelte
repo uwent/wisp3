@@ -268,7 +268,7 @@
               <DropdownMenu.Content class={menuContent} sideOffset={6} align="end" preventScroll={false}>
                 {#if auth.groups.length > 1 && !wideNav.current && !example}
                   <DropdownMenu.Group aria-label="Operation">
-                    <DropdownMenu.GroupHeading class="px-3 pt-1 pb-1 text-xs text-ink-muted"
+                    <DropdownMenu.GroupHeading class="px-3 py-1 text-xs text-ink-muted"
                       >Operation</DropdownMenu.GroupHeading
                     >
                     {#each auth.groups as group (group.id)}
@@ -314,7 +314,7 @@
       {@render children()}
     </main>
 
-    <footer class="space-y-1 border-t border-line px-4 py-4 text-center text-xs text-ink-muted">
+    <footer class="space-y-1 border-t border-line p-4 text-center text-xs text-ink-muted">
       <p>Wisconsin Irrigation Scheduling Program</p>
       <p>
         Developed by the <a href="https://cals.wisc.edu/" class="underline hover:text-ink"

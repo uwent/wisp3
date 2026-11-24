@@ -442,7 +442,7 @@
   >
     <div
       bind:this={container}
-      class="h-full w-full"
+      class="size-full"
       role="application"
       aria-label="Map of the field's shape: draw it here, or import it from a file above"
     ></div>

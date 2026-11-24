@@ -78,16 +78,16 @@
             <th class="{head} left-0 z-30 px-3 py-2 text-left font-medium shadow-[inset_-1px_-1px_0_var(--color-line)]"
               >Date</th
             >
-            <th class="{head} px-2 py-2 font-medium">Reference ET</th>
-            <th class="{head} px-2 py-2 font-medium">Crop ET</th>
-            <th class="{head} px-2 py-2 font-medium">Rain</th>
-            <th class="{head} px-2 py-2 font-medium">Irrigation</th>
-            <th class="{head} px-2 py-2 font-medium">Soil moisture reading (%)</th>
-            <th class="{head} px-2 py-2 font-medium">{lai ? 'LAI' : 'Cover (%)'}</th>
-            <th class="{head} px-2 py-2 font-medium">AD</th>
-            <th class="{head} px-2 py-2 font-medium">Soil moisture (%)</th>
-            <th class="{head} px-2 py-2 font-medium">Drainage</th>
-            <th class="{head} px-2 py-2 text-left font-medium">Notes</th>
+            <th class="{head} p-2 font-medium">Reference ET</th>
+            <th class="{head} p-2 font-medium">Crop ET</th>
+            <th class="{head} p-2 font-medium">Rain</th>
+            <th class="{head} p-2 font-medium">Irrigation</th>
+            <th class="{head} p-2 font-medium">Soil moisture reading (%)</th>
+            <th class="{head} p-2 font-medium">{lai ? 'LAI' : 'Cover (%)'}</th>
+            <th class="{head} p-2 font-medium">AD</th>
+            <th class="{head} p-2 font-medium">Soil moisture (%)</th>
+            <th class="{head} p-2 font-medium">Drainage</th>
+            <th class="{head} p-2 text-left font-medium">Notes</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-line">

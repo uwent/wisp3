@@ -59,7 +59,7 @@
       >
         See an example farm
       </Link>
-      <Link href={about()} class="px-2 py-2 text-sm font-medium text-brand-600 hover:underline">How WISP works →</Link>
+      <Link href={about()} class="p-2 text-sm font-medium text-brand-600 hover:underline">How WISP works →</Link>
     </div>
   </div>
 

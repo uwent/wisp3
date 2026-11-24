@@ -46,7 +46,7 @@
       trapFocus={false}
       onOpenAutoFocus={(event) => event.preventDefault()}
       onCloseAutoFocus={(event) => event.preventDefault()}
-      class="z-50 w-72 max-w-[calc(100vw-2rem)] rounded-md border border-line bg-surface-raised p-3 text-xs leading-relaxed
+      class="z-50 w-72 max-w-[calc(100vw-2rem)] rounded-md border border-line bg-surface-raised p-3 text-xs/relaxed
         font-normal text-ink shadow-lg"
     >
       <p>{text}</p>

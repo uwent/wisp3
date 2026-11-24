@@ -16,7 +16,7 @@
     </div>
   {:else if legend.kind === 'depths'}
     <div>
-      <ul class="grid grid-cols-5 gap-x-1 gap-y-1 text-xs">
+      <ul class="grid grid-cols-5 gap-1 text-xs">
         {#each legend.items as item (item.inches)}
           <li class="flex flex-col items-center">
             <span class="h-2.5 w-full rounded-sm" style:background={item.color}></span>

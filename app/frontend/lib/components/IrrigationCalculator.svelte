@@ -184,7 +184,7 @@
   {/if}
 
   {#if method === 'hours'}
-    <div class="flex flex-wrap items-end gap-x-2 gap-y-2">
+    <div class="flex flex-wrap items-end gap-2">
       <div class="w-36">
         <NumberField
           id="{uid}-gpm"
@@ -215,7 +215,7 @@
       </label>
     {/if}
   {:else}
-    <div class="flex flex-wrap items-end gap-x-2 gap-y-2">
+    <div class="flex flex-wrap items-end gap-2">
       <div class="w-32">
         <NumberField
           id="{uid}-depth"

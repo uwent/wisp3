@@ -304,7 +304,7 @@
       </div>
     </div>
     {#if system.fields.length === 0}
-      <p class="px-3 py-3 text-sm text-ink-muted">No fields on this {KIND_NOUNS[system.kind]} yet.</p>
+      <p class="p-3 text-sm text-ink-muted">No fields on this {KIND_NOUNS[system.kind]} yet.</p>
     {/if}
     {#if used(system).length}
       <ul class="divide-y divide-line">
