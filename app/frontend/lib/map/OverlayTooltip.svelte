@@ -1,16 +1,24 @@
 <script lang="ts">
   import type { Units } from '@/lib/units'
 
+  import { flipsAt, labelAnchor } from './hover.svelte'
   import type { Probe, ProbeValue } from './mapOverlays.svelte'
 
-  // What the shown layers have under the pointer or a tap (MapOverlays.probe), next to it, kept
-  // inside the map
-  let { probe, units, width, height }: { probe: Probe; units: Units; width: number; height: number } = $props()
+  // What the shown layers have under the pointer or a tap (MapOverlays.probe), kept inside the map:
+  // just above where the hover label hangs (labelAnchor), flipped to the pointer's left with it, so
+  // the two don't cover each other. Without room above (near the map's top), it goes below, on the
+  // pointer's other side from the hover label where there's room.
+  let { probe, units, width }: { probe: Probe; units: Units; width: number } = $props()
 
-  const OFFSET = 14
-  const left = $derived(probe.x > width - 260 ? probe.x - OFFSET : probe.x + OFFSET)
-  const top = $derived(probe.y > height - 120 ? probe.y - OFFSET : probe.y + OFFSET)
-  const shift = $derived(`${probe.x > width - 260 ? '-100%' : '0'} ${probe.y > height - 120 ? '-100%' : '0'}`)
+  let tooltipHeight = $state(0)
+  const above = $derived(labelAnchor(probe.x, probe.y, false).y - 1 - tooltipHeight >= 0)
+  // The hover label's side, or below it the other side where there's room (it's at most 16rem wide)
+  const labelFlipped = $derived(flipsAt(probe.x, width))
+  const flip = $derived(above || (!labelFlipped && probe.x < 280) ? labelFlipped : !labelFlipped)
+  const anchor = $derived(labelAnchor(probe.x, probe.y, flip))
+  const left = $derived(anchor.x)
+  const top = $derived(above ? anchor.y - 1 : anchor.y + 1)
+  const shift = $derived(`${flip ? '-100%' : '0'} ${above ? '-100%' : '0'}`)
 
   const depth = (inches: number) => units.format('depth', inches)
   function describe(value: ProbeValue, none: string): { text: string; color?: string; muted?: boolean } {
@@ -31,6 +39,7 @@
   style:left="{left}px"
   style:top="{top}px"
   style:translate={shift}
+  bind:offsetHeight={tooltipHeight}
   role="status"
   aria-live="polite"
 >

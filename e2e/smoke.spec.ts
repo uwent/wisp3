@@ -315,6 +315,36 @@ test("the map's list is the operation as a tree, selected at any level", { tag: 
   expect(errors).toEqual([])
 })
 
+test("clicking inside an irrigation group's outline selects the group", async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/map')
+  await page.getByRole('button', { name: `Zoom the map to the irrigation group ${DEMO.firstFieldGroup}` }).click()
+  const region = page.getByRole('region', { name: `Group: ${DEMO.firstFieldGroup}` })
+  await expect(region).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(region).toBeHidden()
+
+  // Down the middle of the map from its top, to where the hover label names the group alone
+  // (inside its outline, off its systems, fields and markers), tried again while the map still moves
+  const map = page.getByRole('application', { name: /Map of the operation/ })
+  const label = page.locator('p').filter({ hasText: new RegExp(`^Group: ${literal(DEMO.firstFieldGroup)}$`) })
+  let spot: [number, number] | null = null
+  await expect(async () => {
+    const box = (await map.boundingBox())!
+    for (let y = box.y + 90; y < box.y + box.height * 0.75 && !spot; y += 6) {
+      const x = box.x + box.width / 2
+      await page.mouse.move(x, y)
+      // The label is worked out once a frame
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
+      if ((await label.isVisible()) && (await label.locator('xpath=../p').count()) === 1) spot = [x, y]
+    }
+    expect(spot).not.toBeNull()
+  }).toPass()
+  await page.mouse.click(...spot!)
+  await expect(region).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 test('roads and place names over the imagery switch off, and stay off', async ({ page }) => {
   await page.goto('/map')
   await page.getByRole('group', { name: 'Basemap' }).getByRole('button', { name: 'Satellite' }).click()
@@ -376,8 +406,10 @@ test('the Drought Monitor layer gives the category at the selected system', asyn
   await page.goto('/map')
   await page.getByRole('button', { name: 'Layers' }).click()
   const layers = page.getByRole('group', { name: 'Map layers' })
-  await layers.getByRole('checkbox', { name: /Drought Monitor/ }).check()
+  await layers.getByRole('radio', { name: /Drought Monitor/ }).check()
   await expect(layers.getByText('Map for Oct 13')).toBeVisible()
+  await page.getByRole('button', { name: 'Close map layers' }).click()
+  await expect(page.getByText('Overlay: Drought Monitor')).toBeVisible()
 
   await page
     .getByRole('complementary', { name: 'Fields' })
@@ -385,6 +417,11 @@ test('the Drought Monitor layer gives the category at the selected system', asyn
     .first()
     .click()
   await expect(page.getByRole('region', { name: /^System: / })).toContainText('D1 Moderate drought')
+
+  // The overlay's × beside the Layers button switches it off
+  await page.getByRole('button', { name: 'Hide the Drought Monitor overlay' }).click()
+  await expect(page.getByText('Overlay: Drought Monitor')).toBeHidden()
+  await expect(page.getByRole('region', { name: /^System: / })).not.toContainText('Moderate drought')
 })
 
 test("tapping the map gives the rain layer's value there", { tag: '@phone' }, async ({ page }) => {

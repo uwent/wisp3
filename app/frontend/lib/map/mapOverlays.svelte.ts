@@ -97,8 +97,10 @@ export class MapOverlays {
       })
     }
     map.on('click', (event) => {
-      // A click that selects a system or field isn't a question about the layers under it
-      if (systemHit(map, event.point)) return
+      // A click that selects a system or field isn't a question about the layers under it; one that
+      // selects a group (or a weather zone) covers too much of the map for that, so it still asks
+      const hit = systemHit(map, event.point)
+      if (hit && hit.kind !== 'group') return
       this.probeAt(event)
     })
     map.on('movestart', () => this.#clearProbe())

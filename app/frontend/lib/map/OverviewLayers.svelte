@@ -1,23 +1,25 @@
 <script lang="ts">
+  import { page } from '@inertiajs/svelte'
+
   import KindIcon from '@/lib/components/KindIcon.svelte'
+  import { formatDate } from '@/lib/dates'
   import { KIND_NAMES, type SystemKind } from '@/lib/geo'
   import type { Units } from '@/lib/units'
 
   import type { MapOverlays } from './mapOverlays.svelte'
   import OverlayLegend from './OverlayLegend.svelte'
-  import { DROUGHT_OVERLAY, type Overlay, type OverlayId, RAIN_OVERLAYS } from './overlays'
+  import { type Overlay, type OverlayId, OVERLAYS } from './overlays'
   import type { MapPrefs } from './prefs'
 
-  // The Map tab's own layers, in its Layers panel (MapLayersButton) after the base map: one rain
-  // layer at a time (radar, recent rain, forecast rain) and the Drought Monitor, each with its
-  // legend, time, opacity and source, the weather zones and the irrigation systems' shapes
+  // The Map tab's own layers, in its Layers panel (MapLayersButton) above the basemap's: one data
+  // overlay at a time (radar, recent rain, forecast rain or the Drought Monitor), the one shown with
+  // its legend, time, opacity and source; then the irrigation systems' shapes and the weather zones
   let { prefs = $bindable(), overlays, units }: { prefs: MapPrefs; overlays: MapOverlays; units: Units } = $props()
 
-  const rain = $derived(RAIN_OVERLAYS.find((overlay) => overlay.id === prefs.rain) ?? null)
-
-  function toggle(id: OverlayId, on: boolean) {
-    prefs.overlays = on ? [...prefs.overlays, id] : prefs.overlays.filter((shown) => shown !== id)
-  }
+  // The example farm is seen as of its day, but the overlays are today's
+  const example = $derived(page.props.example)
+  const exampleDay = $derived(example && formatDate(example.as_of, { year: true }))
+  const shown = $derived(OVERLAYS.find((overlay) => overlay.id === prefs.overlay) ?? null)
 
   const STATUS_TEXT = { loading: 'Loading…', ready: '', unavailable: 'Unavailable' }
 </script>
@@ -63,66 +65,56 @@
 {/snippet}
 
 <fieldset class="space-y-1">
-  <legend class="mb-1 text-xs font-medium tracking-wide text-ink-muted uppercase">Rain</legend>
+  <legend class="mb-1 text-xs font-medium tracking-wide text-ink-muted uppercase">Data overlays</legend>
+  <p class="mb-1.5 text-xs text-ink-muted">
+    Point at the map, or tap it, to see the overlay's value there. Overlays come straight from public services, not from
+    WISP, and can be slow or unavailable at times.{#if example}{` Note: You're viewing the example farm as of ${exampleDay}, but these overlays will show current conditions.`}{/if}
+  </p>
   <label class="flex items-center gap-2">
-    <input type="radio" name="map-rain" checked={prefs.rain === null} onchange={() => (prefs.rain = null)} />
+    <input type="radio" name="map-overlay" checked={prefs.overlay === null} onchange={() => (prefs.overlay = null)} />
     None
   </label>
-  {#each RAIN_OVERLAYS as overlay (overlay.id)}
+  {#each OVERLAYS as overlay (overlay.id)}
     <label class="flex items-center gap-2">
       <input
         type="radio"
-        name="map-rain"
-        checked={prefs.rain === overlay.id}
-        onchange={() => (prefs.rain = overlay.id)}
+        name="map-overlay"
+        checked={prefs.overlay === overlay.id}
+        onchange={() => (prefs.overlay = overlay.id)}
       />
       {overlay.name}
       {@render mark(overlay.id)}
     </label>
   {/each}
-  {#if rain}{@render details(rain)}{/if}
+  {#if shown}{@render details(shown)}{/if}
 </fieldset>
 
-{#each [DROUGHT_OVERLAY] as overlay (overlay.id)}
-  {@const on = prefs.overlays.includes(overlay.id)}
+<fieldset class="space-y-3">
+  <legend class="mb-1 text-xs font-medium tracking-wide text-ink-muted uppercase">Markers and shapes</legend>
   <div>
     <label class="flex items-center gap-2">
-      <input type="checkbox" checked={on} onchange={(event) => toggle(overlay.id, event.currentTarget.checked)} />
-      {overlay.name}
-      {@render mark(overlay.id)}
+      <input type="checkbox" bind:checked={prefs.systems} />
+      Irrigation systems
     </label>
-    {#if on}{@render details(overlay)}{/if}
+    <p class="mt-1 text-xs text-ink-muted">
+      Pivots and linears at their size, the others by their kind's mark. Fields with a shape are drawn in white, with
+      their plantings' status badges at the center.
+    </p>
+    <ul class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs" aria-label="Irrigation system kinds">
+      {#each Object.entries(KIND_NAMES) as [kind, name] (kind)}
+        <li class="flex items-center gap-1.5"><KindIcon kind={kind as SystemKind} />{name}</li>
+      {/each}
+    </ul>
   </div>
-{/each}
 
-<div>
-  <label class="flex items-center gap-2">
-    <input type="checkbox" bind:checked={prefs.zones} />
-    Weather zones
-  </label>
-  <p class="mt-1 text-xs text-ink-muted">
-    The weather grid cells your irrigation systems are in, about 9 km across, each with its own weather. Point at one to
-    see its last week and the week ahead, or select it for its forecast.
-  </p>
-</div>
-
-<div>
-  <label class="flex items-center gap-2">
-    <input type="checkbox" bind:checked={prefs.systems} />
-    Irrigation systems
-  </label>
-  <p class="mt-1 text-xs text-ink-muted">
-    Pivots and linears at their size, the others by their kind's mark. Fields with a shape are drawn in white, with
-    their plantings' status badges at the center.
-  </p>
-  <ul class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs" aria-label="Irrigation system kinds">
-    {#each Object.entries(KIND_NAMES) as [kind, name] (kind)}
-      <li class="flex items-center gap-1.5"><KindIcon kind={kind as SystemKind} />{name}</li>
-    {/each}
-  </ul>
-</div>
-
-<p class="text-xs text-ink-muted">
-  Point at the map, or tap it, to see the layers' values there. They come straight from public services, not from WISP,
-  and can be slow or unavailable at times.
-</p>
+  <div>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" bind:checked={prefs.zones} />
+      Weather zones
+    </label>
+    <p class="mt-1 text-xs text-ink-muted">
+      The weather grid cells your irrigation systems are in, about 9 km across, each with its own weather. Point at one
+      to see its last week and the week ahead, or select it for its forecast.
+    </p>
+  </div>
+</fieldset>

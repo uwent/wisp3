@@ -223,11 +223,15 @@ export function fieldBadges(systems: MapSystem[], today: string): FieldBadges[] 
   )
 }
 
-/** The irrigation groups among these systems, each outlined around its systems shown and their fields */
+/**
+ * The irrigation groups among these systems, each outlined around its systems shown and their
+ * fields, and the selected one marked to be drawn more strongly
+ */
 export function groupFeatures(
   farms: FarmGroup<MapSystem>[],
   systems: MapSystem[],
-): FeatureCollection<{ name: string }> {
+  selectedId: number | null = null,
+): FeatureCollection<{ name: string; selected: boolean }> {
   const shown = new Set(systems.map((system) => system.id))
   return {
     type: 'FeatureCollection',
@@ -239,7 +243,7 @@ export function groupFeatures(
           {
             type: 'Feature' as const,
             id: group.id,
-            properties: { name: group.name },
+            properties: { name: group.name, selected: group.id === selectedId },
             geometry: {
               type: 'Polygon' as const,
               coordinates: [

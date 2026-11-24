@@ -14,7 +14,7 @@
   import SystemPanel from '@/lib/map/SystemPanel.svelte'
   import ScopePanel from '@/lib/map/ScopePanel.svelte'
   import ZonePanel from '@/lib/map/ZonePanel.svelte'
-  import { droughtAt, droughtBounds, type OverlayId } from '@/lib/map/overlays'
+  import { droughtAt, droughtBounds, OVERLAYS, type OverlayId } from '@/lib/map/overlays'
   import { groupFeatures, type MapSystem } from '@/lib/map/systems'
   import { loadPrefs, savePrefs } from '@/lib/map/prefs'
   import { buildTree, type FarmGroup, treeSystems, type Selection, treeFields, updatingIds } from '@/lib/overview'
@@ -57,7 +57,6 @@
   let selection = $state<Selection | null>(null)
   let overview = $state<OverviewMap>()
   let mapWidth = $state(0)
-  let mapHeight = $state(0)
 
   // Optional public layers; the drought polygons are loaded around all the operation's systems
   const overlays = new MapOverlays(() =>
@@ -65,11 +64,12 @@
   )
   // The controller records each overlay's status as it goes, so it runs untracked here
   $effect(() => {
-    const shown = [...(prefs.rain ? [prefs.rain] : []), ...prefs.overlays] as OverlayId[]
+    const shown = (prefs.overlay ? [prefs.overlay] : []) as OverlayId[]
     const opacity = { ...prefs.opacity }
     untrack(() => overlays.sync(shown, opacity))
   })
   onDestroy(() => overlays.destroy())
+  const shownOverlay = $derived(OVERLAYS.find((overlay) => overlay.id === prefs.overlay) ?? null)
   let list = $state<HTMLElement>()
 
   // While a system's weather is on its way, reload the systems and cards until it lands
@@ -98,7 +98,7 @@
       ),
   )
   const mapSystems = $derived(shown.flatMap((farm) => farm.systems))
-  const mapGroups = $derived(groupFeatures(shown, mapSystems))
+  const mapGroups = $derived(groupFeatures(shown, mapSystems, selection?.level === 'group' ? selection.id : null))
   const farmOf = $derived(new Map(farms.flatMap((farm) => farm.systems.map((system) => [system.id, farm]))))
   const systemOfField = $derived(
     new Map(
@@ -156,7 +156,7 @@
   const anySystems = $derived(farms.some((farm) => farm.systems.length))
   // The Drought Monitor's category at the selected system, when that layer is on
   const panelNotes = $derived.by(() => {
-    if (!selectedSystem || !prefs.overlays.includes('drought') || !overlays.drought) return []
+    if (!selectedSystem || prefs.overlay !== 'drought' || !overlays.drought) return []
     const category = droughtAt(overlays.drought, [selectedSystem.longitude, selectedSystem.latitude])
     return [{ label: 'Drought Monitor', value: category?.label ?? 'None', swatch: category?.color }]
   })
@@ -220,11 +220,16 @@
     focusPanel()
   }
 
-  // From the map: a system, or a field (its outline or its badges) with its system; the list
-  // scrolls to its card
+  // From the map: a system, a field (its outline or its badges) with its system, or an irrigation
+  // group (inside its outline); the list scrolls to its card, and the map stays where it is
   function selectOnMap(systemId: number | null, fieldId: number | null = null) {
-    selection =
-      fieldId !== null ? { level: 'field', id: fieldId } : systemId !== null ? { level: 'system', id: systemId } : null
+    showOnMap(
+      fieldId !== null ? { level: 'field', id: fieldId } : systemId !== null ? { level: 'system', id: systemId } : null,
+    )
+  }
+
+  function showOnMap(next: Selection | null) {
+    selection = next
     if (!selection) return
     focusPanel()
     if (!prefs.listOpen) return
@@ -443,11 +448,7 @@
       </button>
     {/if}
 
-    <div
-      class="relative order-1 min-h-[50%] flex-1 md:order-2 md:min-h-0"
-      bind:clientWidth={mapWidth}
-      bind:clientHeight={mapHeight}
-    >
+    <div class="relative order-1 min-h-[50%] flex-1 md:order-2 md:min-h-0" bind:clientWidth={mapWidth}>
       <OverviewMap
         bind:this={overview}
         systems={mapSystems}
@@ -462,7 +463,8 @@
         showZones={prefs.zones}
         selectedZoneId={selectedZone?.id ?? null}
         onselectzone={selectZone}
-        layersCount={(prefs.rain ? 1 : 0) + prefs.overlays.length}
+        onselectgroup={(id) => showOnMap({ level: 'group', id })}
+        layersCount={prefs.overlay ? 1 : 0}
         basemap={prefs.basemap}
         view={prefs.view}
         unitSystem={auth.user?.unit_system}
@@ -476,6 +478,21 @@
         {#snippet layers()}
           <OverviewLayers bind:prefs {overlays} {units} />
         {/snippet}
+        {#snippet besideLayers()}
+          {#if shownOverlay}
+            <div
+              class="flex items-center gap-1 rounded-md border border-line bg-surface-raised py-1.5 pr-1 pl-2.5 text-xs shadow-sm"
+            >
+              <span><span class="text-ink-muted">Overlay:</span>{` ${shownOverlay.name}`}</span>
+              <button
+                type="button"
+                class="rounded-sm px-1 text-base/4 text-ink-muted hover:text-ink"
+                aria-label="Hide the {shownOverlay.name} overlay"
+                onclick={() => (prefs.overlay = null)}>×</button
+              >
+            </div>
+          {/if}
+        {/snippet}
         <button
           type="button"
           class="absolute top-1/2 left-0 hidden -translate-y-1/2 rounded-r-md border border-l-0 border-line bg-surface-raised
@@ -485,7 +502,7 @@
           onclick={() => (prefs.listOpen = !prefs.listOpen)}>{prefs.listOpen ? '‹' : '›'}</button
         >
         {#if overlays.probe}
-          <OverlayTooltip probe={overlays.probe} {units} width={mapWidth} height={mapHeight} />
+          <OverlayTooltip probe={overlays.probe} {units} width={mapWidth} />
         {/if}
         {#if overlays.notice}
           <div

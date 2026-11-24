@@ -335,7 +335,10 @@ function glyphImage(glyph: Glyph) {
 }
 
 /** What a click selects */
-export type SystemHit = { kind: 'field'; systemId: number; fieldId: number } | { kind: 'system'; systemId: number }
+export type SystemHit =
+  | { kind: 'field'; systemId: number; fieldId: number }
+  | { kind: 'system'; systemId: number }
+  | { kind: 'group'; groupId: number }
 
 /** The features of these layers at a point, among those shown (each layer draws only at its zooms) */
 function featuresAt(map: MapLibreMap, point: PointLike, layers: string[]) {
@@ -347,8 +350,9 @@ const SYSTEM_HIT_LAYERS = [GLYPH_LAYER, FAR_GLYPH_LAYER, SYSTEM_LAYER]
 
 /**
  * What a click at a point selects, asking each kind of layer in priority order (a field's outline,
- * then a system's glyph or shape) rather than taking the top-most rendered feature, which would be
- * a system's fill drawn over its fields even where it's transparent. Null for none.
+ * then a system's glyph or shape, then an irrigation group's outline around them) rather than
+ * taking the top-most rendered feature, which would be a system's fill drawn over its fields even
+ * where it's transparent. Null for none.
  */
 export function systemHit(map: MapLibreMap, point: PointLike): SystemHit | null {
   const [field] = featuresAt(map, point, [FIELD_LAYER])
@@ -356,7 +360,9 @@ export function systemHit(map: MapLibreMap, point: PointLike): SystemHit | null 
     return { kind: 'field', systemId: Number(field.properties.system_id), fieldId: Number(field.properties.id) }
   }
   const [system] = featuresAt(map, point, SYSTEM_HIT_LAYERS)
-  return system ? { kind: 'system', systemId: Number(system.properties.id) } : null
+  if (system) return { kind: 'system', systemId: Number(system.properties.id) }
+  const [group] = featuresAt(map, point, [GROUP_IDS.fill])
+  return group?.id != null ? { kind: 'group', groupId: Number(group.id) } : null
 }
 
 /**

@@ -4,9 +4,10 @@
   import type { Basemap } from './basemaps'
   import { roads, setRoads } from './roads.svelte'
 
-  // Every map's Layers button and panel, beside the Satellite | Map pill: roads and place names over
-  // the satellite imagery (while it's shown), then what the map adds (children: the soil types, the
-  // Map tab's rain and drought). Nothing to show (the street map, no layers of its own): no button.
+  // Every map's Layers button and panel, beside the Satellite | Map pill: what the map adds
+  // (children: the soil types, the Map tab's data overlays and shapes), then under Basemap the roads
+  // and place names over the satellite imagery (while it's shown). Nothing to show (the street map,
+  // no layers of its own): no button.
   // A panel that follows its button in the tab order; Escape or × closes it and goes back there.
   let {
     id,
@@ -76,21 +77,24 @@
             onclick={close}>×</button
           >
         </div>
-        {#if basemap === 'imagery'}
-          <label class="flex items-start gap-2">
-            <input
-              type="checkbox"
-              class="mt-1"
-              checked={roads.on}
-              onchange={(event) => setRoads(event.currentTarget.checked)}
-            />
-            <span>
-              Roads and place names
-              <span class="block text-xs text-ink-muted">Over the satellite imagery, from OpenStreetMap</span>
-            </span>
-          </label>
-        {/if}
         {@render children?.()}
+        {#if basemap === 'imagery'}
+          <fieldset>
+            <legend class="mb-1 text-xs font-medium tracking-wide text-ink-muted uppercase">Basemap</legend>
+            <label class="flex items-start gap-2">
+              <input
+                type="checkbox"
+                class="mt-1"
+                checked={roads.on}
+                onchange={(event) => setRoads(event.currentTarget.checked)}
+              />
+              <span>
+                Roads and place names
+                <span class="block text-xs text-ink-muted">Over the satellite imagery, from OpenStreetMap</span>
+              </span>
+            </label>
+          </fieldset>
+        {/if}
       </div>
     {/if}
   </div>

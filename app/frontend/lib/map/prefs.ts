@@ -14,10 +14,8 @@ export type MapPrefs = {
   basemap: Basemap
   sort: SortOrder
   listOpen: boolean
-  /** The rain overlay shown (one at a time), or null */
-  rain: string | null
-  /** The other overlays shown */
-  overlays: string[]
+  /** The data overlay shown (one at a time: rain or the Drought Monitor), or null */
+  overlay: string | null
   /** Overlay opacity by id, where the user changed it */
   opacity: Record<string, number>
   /** Draw the irrigation systems' shapes (off to see outlined fields alone) */
@@ -31,8 +29,7 @@ export const DEFAULT_PREFS: MapPrefs = {
   basemap: 'imagery',
   sort: 'urgent',
   listOpen: true,
-  rain: null,
-  overlays: [],
+  overlay: null,
   opacity: {},
   systems: true,
   zones: true,
@@ -44,16 +41,14 @@ const key = (groupId: number | undefined) => `wisp-map:${groupId ?? 'none'}`
 const defaults = (): MapPrefs => structuredClone(DEFAULT_PREFS)
 
 export function loadPrefs(groupId: number | undefined): MapPrefs {
-  const saved = readStored(key(groupId)) as Partial<Record<keyof MapPrefs, unknown>> | undefined
-  if (!saved || typeof saved !== 'object') return defaults()
+  const stored = readStored(key(groupId))
+  if (!stored || typeof stored !== 'object') return defaults()
+  // Saved before one overlay at a time: a rain layer and a list of others, the rain layer kept first
+  const { rain, overlays, ...saved } = stored as Partial<Record<keyof MapPrefs | 'rain' | 'overlays', unknown>>
   // Layers saved earlier that the map no longer has are dropped
   const known = (id: unknown) => OVERLAYS.some((overlay) => overlay.id === id)
-  return {
-    ...defaults(),
-    ...saved,
-    rain: known(saved.rain) ? saved.rain : null,
-    overlays: Array.isArray(saved.overlays) ? saved.overlays.filter(known) : [],
-  } as MapPrefs
+  const overlay = [saved.overlay, rain, ...(Array.isArray(overlays) ? overlays : [])].find(known) ?? null
+  return { ...defaults(), ...saved, overlay } as MapPrefs
 }
 
 export function savePrefs(groupId: number | undefined, prefs: MapPrefs) {

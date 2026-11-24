@@ -64,7 +64,8 @@
   // systems. Fields with an outline are filled in their status, and its marker shows only the
   // fields without one; each outlined field has a badge per planting at its center (FieldMarker) and
   // its name along its top. Clicking a system selects it, and clicking a field or its badges selects
-  // its system with that field; the page shows its details in the panel (children) and adds its own
+  // its system with that field, and clicking inside a group's outline elsewhere selects the group
+  // (onselectgroup); the page shows its details in the panel (children) and adds its own
   // layers to the Layers panel (layers). Beside the pointer, the hover label names what's under it, down the stack
   // (group, system, field, then a marker's badge). Under them, the weather zones of the operation's
   // systems are outlined (zones): with nothing else under the pointer, the label has the zone's
@@ -82,6 +83,7 @@
     showZones = true,
     selectedZoneId = null,
     onselectzone,
+    onselectgroup,
     basemap,
     view,
     unitSystem = 'imperial',
@@ -91,11 +93,12 @@
     onload,
     layers,
     layersCount = 0,
+    besideLayers,
     children,
   }: {
     systems: MapSystem[]
-    /** The irrigation groups' outlines (groupFeatures) */
-    groups: FeatureCollection<{ name: string }>
+    /** The irrigation groups' outlines (groupFeatures), the selected one drawn more strongly */
+    groups: FeatureCollection<{ name: string; selected: boolean }>
     /** For the plantings' days in the hover label */
     today: string
     selectedId: number | null
@@ -114,6 +117,7 @@
     /** The zone selected (its panel open), outlined more strongly */
     selectedZoneId?: number | null
     onselectzone?: (zoneId: number) => void
+    onselectgroup?: (groupId: number) => void
     basemap: Basemap
     /** Where to start; without one the map fits every system */
     view: { center: LngLat; zoom: number } | null
@@ -126,6 +130,8 @@
     /** The page's own layers, in the Layers panel after the base map, and how many are on */
     layers?: Snippet
     layersCount?: number
+    /** Beside the Layers button (the Map tab's overlay shown, to switch it off) */
+    besideLayers?: Snippet
     children?: Snippet
   } = $props()
 
@@ -176,7 +182,11 @@
         const weather = weatherLines(zone.weather, unitsFor(unitSystem))
         lines = weather.length ? weather : ['No weather for this zone yet']
       }
-      const selectable = !!zone || badges.length > 0 || lines.some((line) => !line.startsWith('Group:'))
+      const selectable =
+        !!zone ||
+        badges.length > 0 ||
+        lines.some((line) => !line.startsWith('Group:')) ||
+        (!!onselectgroup && lines.length > 0)
       m.getCanvas().style.cursor = selectable ? 'pointer' : ''
       return lines
     },
@@ -198,26 +208,35 @@
     // Weather zones, under everything else of ours (the public overlays go under them)
     addZoneLayers(m, zones, selectedZone(), showZones)
 
-    // Irrigation groups: a light shade inside a dashed line in the system color, named along it
+    // Irrigation groups: a light shade inside a dashed line in the system color, named along it; the
+    // selected group's shade and line stronger, as a selected field's are
     const palette = readPalette()
     m.addSource(GROUP_IDS.source, { type: 'geojson', data: groups })
     m.addLayer({
       id: GROUP_IDS.fill,
       type: 'fill',
       source: GROUP_IDS.source,
-      paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.08 },
+      paint: { 'fill-color': '#ffffff', 'fill-opacity': ['case', ['get', 'selected'], 0.18, 0.08] },
     })
     m.addLayer({
       id: GROUP_IDS.casing,
       type: 'line',
       source: GROUP_IDS.source,
-      paint: { 'line-color': palette.systemCasing, 'line-width': 4, 'line-opacity': 0.55 },
+      paint: {
+        'line-color': palette.systemCasing,
+        'line-width': ['case', ['get', 'selected'], 5, 4],
+        'line-opacity': ['case', ['get', 'selected'], 0.8, 0.55],
+      },
     })
     m.addLayer({
       id: GROUP_IDS.line,
       type: 'line',
       source: GROUP_IDS.source,
-      paint: { 'line-color': palette.system, 'line-width': 2, 'line-dasharray': [3, 2] },
+      paint: {
+        'line-color': palette.system,
+        'line-width': ['case', ['get', 'selected'], 3, 2],
+        'line-dasharray': [3, 2],
+      },
     })
     m.addLayer({
       id: GROUP_IDS.label,
@@ -365,8 +384,11 @@
     syncMarkers()
   })
   $effect(() => showLayers(map, SYSTEM_LAYERS, showSystems))
+  // Read before the map is ready, so the effect depends on the groups (a short-circuited ?.
+  // wouldn't read them, and the effect wouldn't rerun when they change)
   $effect(() => {
-    map?.getSource<GeoJSONSource>(GROUP_IDS.source)?.setData(groups)
+    const data = groups
+    map?.getSource<GeoJSONSource>(GROUP_IDS.source)?.setData(data)
   })
   $effect(() => setZones(map, zones, selectedZone()))
   $effect(() => showZoneLayers(map, showZones))
@@ -412,13 +434,15 @@
   function onClick(event: MapMouseEvent) {
     placeSearch?.close()
     if (!map) return
-    // A pin or a field selects its system with that field; else a system, or nothing
-    const hit = systemHit(map, event.point)
+    // A pin or a field selects its system with that field; else a system, a group, a zone, or nothing
+    let hit = systemHit(map, event.point)
+    if (hit?.kind === 'group' && !onselectgroup) hit = null
     if (!hit) {
       const zone = onselectzone && zoneUnder(map, [event.point.x, event.point.y])
       return zone ? onselectzone!(zone.id) : onselect(null)
     }
-    if (hit.kind === 'system') onselect(hit.systemId)
+    if (hit.kind === 'group') onselectgroup!(hit.groupId)
+    else if (hit.kind === 'system') onselect(hit.systemId)
     else onselect(hit.systemId, hit.fieldId)
   }
 
@@ -498,14 +522,15 @@
     aria-label="Map of the operation's systems. Select a system to see its fields."
   ></div>
 
-  <div class="pointer-events-none absolute top-2 left-2 flex w-[min(17rem,calc(100%-4rem))] flex-col gap-2">
-    <div class="pointer-events-auto flex flex-wrap items-start gap-2">
+  <div class="pointer-events-none absolute top-2 left-2 flex w-[calc(100%-4rem)] flex-col gap-2">
+    <div class="flex flex-wrap items-start gap-2 *:pointer-events-auto">
       <BasemapToggle value={basemap} onchange={(to) => basemapSwitch.change(to)} />
       <MapLayersButton id="map-layers" {basemap} count={layersCount}>
         {@render layers?.()}
       </MapLayersButton>
+      {@render besideLayers?.()}
     </div>
-    <div class="pointer-events-auto hidden sm:block">
+    <div class="pointer-events-auto hidden w-full max-w-68 sm:block">
       <PlaceSearch bind:this={placeSearch} {map} maxZoom={SYSTEM_ZOOM - 1} />
     </div>
   </div>

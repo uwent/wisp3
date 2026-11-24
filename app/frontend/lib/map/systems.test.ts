@@ -192,7 +192,7 @@ describe('groupFeatures', () => {
     const farms = [{ id: 1, name: 'Farm', irrigation_groups: [{ id: 7, name: 'East gauge' }], systems }]
     const { features } = groupFeatures(farms, systems)
     expect(features).toHaveLength(1)
-    expect(features[0].properties).toEqual({ name: 'East gauge' })
+    expect(features[0].properties).toEqual({ name: 'East gauge', selected: false })
     const outline = features[0].geometry.coordinates as LngLat[][]
     // The system's far edge and the drip block, but not the ungrouped system
     const north = (1300 / 3.28084 + GROUP_MARGIN_M / 2) / 111_000
@@ -206,6 +206,23 @@ describe('groupFeatures', () => {
     const farms = [{ id: 1, name: 'Farm', irrigation_groups: [{ id: 7, name: 'East gauge' }], systems }]
     const outline = groupFeatures(farms, systems).features[0].geometry.coordinates as LngLat[][]
     expect(pointInPolygon([-89.438, 44.102], outline)).toBe(true)
+  })
+
+  it('marks the selected group', () => {
+    const systems = [grouped(1, 44.1, 7), grouped(2, 44.3, 8)]
+    const farms = [
+      {
+        id: 1,
+        name: 'Farm',
+        irrigation_groups: [
+          { id: 7, name: 'East gauge' },
+          { id: 8, name: 'West gauge' },
+        ],
+        systems,
+      },
+    ]
+    const selected = groupFeatures(farms, systems, 8).features.map((feature) => feature.properties.selected)
+    expect(selected).toEqual([false, true])
   })
 
   it('leaves out a group with none of its systems shown', () => {

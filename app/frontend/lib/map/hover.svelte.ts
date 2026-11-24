@@ -15,6 +15,15 @@ const FLIP_PX = 340
 export const flipsAt = (x: number, width: number) => x > width - FLIP_PX
 
 /**
+ * Where labels beside the pointer meet, clear of the cursor's arrow: right of the pointer (its
+ * left when flipped) and below it. The hover label hangs just below it and the layers' values
+ * (OverlayTooltip) stand just above it, a 2px gap between them.
+ */
+export function labelAnchor(x: number, y: number, flip: boolean) {
+  return { x: flip ? x - 12 : x + 14, y: y + 16 }
+}
+
+/**
  * A map's hover label (HoverLabel.svelte): what's under the pointer, a line each, worked out
  * once a frame from the last pointer event, cleared on leaving or while dragging, and again as the
  * map moves under a still pointer or `refresh` is called (what a line says has changed). The label

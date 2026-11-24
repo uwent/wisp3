@@ -9,19 +9,23 @@ afterEach(() => {
 
 describe('map prefs', () => {
   it('remembers settings per operation', () => {
-    savePrefs(1, { ...DEFAULT_PREFS, basemap: 'streets', overlays: ['drought'], listOpen: false })
-    expect(loadPrefs(1)).toMatchObject({ basemap: 'streets', overlays: ['drought'], listOpen: false })
+    savePrefs(1, { ...DEFAULT_PREFS, basemap: 'streets', overlay: 'drought', listOpen: false })
+    expect(loadPrefs(1)).toMatchObject({ basemap: 'streets', overlay: 'drought', listOpen: false })
     expect(loadPrefs(2)).toEqual(DEFAULT_PREFS)
   })
 
   it('fills in settings saved before they existed, and drops layers the map no longer has', () => {
-    localStorage.setItem(
-      'wisp-map:1',
-      JSON.stringify({ basemap: 'streets', rain: 'gone', overlays: ['drought', 'gone'] }),
-    )
-    expect(loadPrefs(1)).toEqual({ ...DEFAULT_PREFS, basemap: 'streets', rain: null, overlays: ['drought'] })
-    localStorage.setItem('wisp-map:1', JSON.stringify({ rain: 'radar', overlays: 'drought' }))
-    expect(loadPrefs(1)).toMatchObject({ rain: 'radar', overlays: [] })
+    localStorage.setItem('wisp-map:1', JSON.stringify({ basemap: 'streets', overlay: 'gone' }))
+    expect(loadPrefs(1)).toEqual({ ...DEFAULT_PREFS, basemap: 'streets' })
+  })
+
+  it('keeps one overlay of those saved before one at a time, the rain layer first', () => {
+    localStorage.setItem('wisp-map:1', JSON.stringify({ rain: 'gone', overlays: ['gone', 'drought'] }))
+    expect(loadPrefs(1)).toEqual({ ...DEFAULT_PREFS, overlay: 'drought' })
+    localStorage.setItem('wisp-map:1', JSON.stringify({ rain: 'radar', overlays: ['drought'] }))
+    expect(loadPrefs(1)).toEqual({ ...DEFAULT_PREFS, overlay: 'radar' })
+    localStorage.setItem('wisp-map:1', JSON.stringify({ rain: null, overlays: 'drought' }))
+    expect(loadPrefs(1)).toEqual(DEFAULT_PREFS)
   })
 
   it('starts from the defaults when what was saved is unreadable', () => {
@@ -43,9 +47,8 @@ describe('map prefs', () => {
   })
 
   it('hands out a copy of the defaults, never the defaults themselves', () => {
-    loadPrefs(1).overlays.push('drought')
     localStorage.setItem('wisp-map:2', JSON.stringify({ basemap: 'streets' })) // saved before opacity existed
     loadPrefs(2).opacity.radar = 0.2
-    expect(DEFAULT_PREFS).toMatchObject({ overlays: [], opacity: {} })
+    expect(DEFAULT_PREFS).toMatchObject({ opacity: {} })
   })
 })
