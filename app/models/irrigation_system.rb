@@ -99,15 +99,16 @@ class IrrigationSystem < ApplicationRecord
   end
 
   # The irrigation on the fields this system watered (D15: stored per field), by date: {date =>
-  # {Field => FieldEntry}} for the days in dates with any, each field as fields_on places it
+  # {Field => entry}} for the days in dates with any, each field as fields_on places it. A field
+  # whose rainfed crop has irrigated plots shows their amount (Field.system_irrigation).
   def irrigation_on(dates)
     fields = Field.where(system_id: id).or(Field.where(id: plantings.select(:field_id))).includes(:plantings).order(:name)
       .index_by(&:id)
-    FieldEntry.where(field_id: fields.keys, date: dates).where.not(irrigation_in: nil).order(:date).group_by(&:date)
-      .filter_map do |date, entries|
-        here = entries.select { |entry| fields[entry.field_id].system_id_on(date) == id }
-          .sort_by { |entry| fields[entry.field_id].name }
-        [date, here.to_h { |entry| [fields[entry.field_id], entry] }] if here.any?
+    Field.system_irrigation(fields.values, dates).sort_by { |(field_id, date), _| [date, fields[field_id].name] }
+      .group_by { |(_, date), _| date }
+      .filter_map do |date, pairs|
+        here = pairs.filter_map { |(field_id, _), entry| [fields[field_id], entry] if fields[field_id].system_id_on(date) == id }
+        [date, here.to_h] if here.any?
       end.to_h
   end
 

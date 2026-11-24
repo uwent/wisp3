@@ -529,6 +529,26 @@ RSpec.describe "Field status and daily entry", type: :request do
       expect(plot.planting_entries.reload).to be_empty
     end
 
+    it "waters a rainfed crop's irrigated plots in its place, shows their amount, and clears them (D19)" do
+      dry = create(:field, system:, name: "Dry", area_acres: 10)
+      season = {season_start: Date.new(2026, 7, 1), emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30)}
+      create(:planting, field: dry, rainfed: true, **season)
+      corner = create(:planting, field: dry, partial: true, area_acres: 1, **season)
+      dryland_plot = create(:planting, field: dry, partial: true, area_acres: 1, rainfed: true, **season)
+
+      post system_irrigations_path(system), params: {irrigation: {date: "2026-07-10", fields: {dry.id => "0.8"}}}
+      expect(corner.planting_entries.sole).to have_attributes(date: Date.new(2026, 7, 10), irrigation_in: 0.8)
+      expect(dryland_plot.planting_entries).to be_empty
+      expect(dry.field_entries).to be_empty # the rainfed crop's own
+      expect(irrigation_on(Date.new(2026, 7, 10))).to eq("Dry" => 0.8)
+      get root_path
+      expect(inertia.props[:farms].first["systems"].first["recent_irrigation"]).to include("2026-07-10" => {dry.id.to_s => 0.8})
+
+      delete system_irrigation_path(system, "2026-07-10")
+      expect(corner.planting_entries.reload).to be_empty
+      expect(irrigation_on(Date.new(2026, 7, 10))).to be_nil
+    end
+
     it "writes only the fields on the system that day" do
       elsewhere = create(:field, system: create(:system, farm:))
       moved = create(:field, system:, name: "Moved")

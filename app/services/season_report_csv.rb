@@ -67,7 +67,7 @@ class SeasonReportCsv
     csv << ["Farm", "Irrigation system", "Kind", "Equipment", "Fields", "Area (acres)", "Days irrigated", "Irrigation (in)"]
     irrigated.group_by { |status| status.planting.system }.each do |system, system_statuses|
       by_field = system_statuses.group_by { |status| status.planting.field }
-        .transform_values { |field_statuses| counted(field_statuses).sum { |status| status.totals.irrigation } }
+        .transform_values { |field_statuses| field_total(field_statuses, &:irrigation) }
       areas = by_field.keys.map { |field| field_areas[field] }
       average = if areas.all?
         by_field.sum { |field, inches| field_areas[field] * inches } / areas.sum
@@ -128,20 +128,33 @@ class SeasonReportCsv
     @irrigated ||= statuses.reject { |status| status.rainfed? && status.totals.irrigation_days.zero? }
   end
 
-  # A season total for each field, adding up its plantings (a field can grow two crops in a year);
-  # nil for a field none of whose plantings has one
-  def by_field(over = statuses)
-    over.group_by { |status| status.planting.field }.values.map do |field_statuses|
-      values = counted(field_statuses).filter_map { |status| yield status.totals }
-      values.sum if values.any?
-    end
+  # A season total for each field (field_total); nil for a field none of whose plantings has one
+  def by_field(over = statuses, &value)
+    over.group_by { |status| status.planting.field }.values.map { |field_statuses| field_total(field_statuses, &value) }
   end
 
-  # The plantings a field's season totals add up: its whole-field ones when it has any, so a plot
-  # within one isn't counted again (D19), else its plots
-  def counted(field_statuses)
+  # A field's season total of a value of its plantings' totals: its whole-field plantings' added up
+  # (a field can grow two crops in a year), a plot within one left out (D19); for a field of plots
+  # only, their totals weighted by area over the most ground they covered at once, so plots side by
+  # side average and plots one after another add up. nil when none has the value.
+  def field_total(field_statuses)
     whole = field_statuses.reject { |status| status.planting.partial? }
-    whole.any? ? whole : field_statuses
+    if whole.any?
+      values = whole.filter_map { |status| yield status.totals }
+      return values.sum if values.any?
+      return nil
+    end
+    valued = field_statuses.filter_map do |status|
+      value = yield status.totals
+      [status.planting, value] unless value.nil?
+    end
+    return nil if valued.empty?
+    valued.sum { |plot, value| plot.area_acres * value } / most_at_once(valued.map(&:first))
+  end
+
+  # The most acres plots were in season together on any day (the total only rises when one starts)
+  def most_at_once(plots)
+    plots.map(&:season_start).map { |date| plots.select { |plot| plot.season_range.cover?(date) }.sum(&:area_acres) }.max
   end
 
   # Each field's area that year, as its whole-field plantings kept it (the

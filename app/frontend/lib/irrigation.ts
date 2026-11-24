@@ -15,9 +15,15 @@ export type FieldSeasons = {
   seasons: { from: string; to: string; here: boolean; rainfed?: boolean }[]
 }
 
-/** Whether the field's crop that day (Field#planting_on's) is rainfed: a system's amount doesn't fill it */
-export const rainfedOn = (field: FieldSeasons, date: string): boolean =>
-  field.seasons.find((s) => s.from <= date && date <= s.to)?.rainfed ?? false
+/**
+ * Whether everything growing on the field that day is rainfed, so a system's amount doesn't fill it
+ * (D17). A rainfed crop with irrigated plots isn't: the amount goes to those plots
+ * (Field#record_system_irrigation, D19).
+ */
+export const rainfedOn = (field: FieldSeasons, date: string): boolean => {
+  const growing = field.seasons.filter((s) => s.from <= date && date <= s.to)
+  return growing.length > 0 && growing.every((s) => s.rainfed)
+}
 
 export function fieldsOn<T extends FieldSeasons>(fields: T[], date: string): T[] {
   return fields.filter((field) => {

@@ -81,6 +81,26 @@ RSpec.describe SeasonReportCsv do
     expect(section("Irrigation by irrigation system").sole).to include("Irrigation (in)" => "0.7000")
   end
 
+  it "averages a field's plots side by side by area, and adds up plots one after another" do
+    west.plantings.sole.update!(partial: true, area_acres: 30)
+    west.plantings.sole.planting_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.6)
+    beside = create(:planting, field: west, partial: true, area_acres: 60, season_start: Date.new(2026, 7, 1),
+      emergence_date: Date.new(2026, 7, 1), end_date: Date.new(2026, 9, 30))
+    beside.planting_entries.create!(date: Date.new(2026, 7, 3), irrigation_in: 0.3)
+    # (30 × 0.6 + 60 × 0.3) / 90 acres
+    expect(rows).to include(["Irrigation: 0.40 to 1.00 in by field, 0.70 in on average"], ["Rainfall: 1.00 in on every field"])
+    # (30 acres × 1.0 + 90 × 0.4) / 120
+    expect(section("Irrigation by irrigation system").sole).to include("Irrigation (in)" => "0.5500")
+
+    beside.destroy!
+    west.plantings.sole.update!(end_date: Date.new(2026, 7, 5))
+    after = create(:planting, field: west, partial: true, area_acres: 30, season_start: Date.new(2026, 7, 6),
+      emergence_date: Date.new(2026, 7, 6), end_date: Date.new(2026, 9, 30))
+    after.planting_entries.create!(date: Date.new(2026, 7, 7), irrigation_in: 0.3)
+    expect(CSV.parse(described_class.new(group, 2026, about_url: "x", today:).to_csv.delete_prefix(CsvExport::BOM)))
+      .to include(["Irrigation: 0.90 to 1.00 in by field, 0.95 in on average"])
+  end
+
   it "leaves a field whose season hasn't started blank, not zero" do
     later = create(:field, system:, name: "Later", area_acres: 10)
     create(:planting, field: later, season_start: Date.new(2026, 8, 1), emergence_date: Date.new(2026, 8, 1),

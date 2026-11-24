@@ -1,6 +1,7 @@
 # An irrigation system's irrigation on its page: one date's amounts on the fields it watered that
 # day (IrrigationSystem#fields_on), saved as each field's own (D15: irrigation is stored per field and plot;
-# Field#record_entry also sets the field's plots that had its amount). The list is the fields'
+# Field#record_entry also sets the field's plots that had its amount), or under a rainfed crop, its
+# irrigated plots' (Field#record_system_irrigation). The list is the fields'
 # entries by date (SystemsController#show); the export is SystemIrrigationCsv.
 class SystemIrrigationsController < AuthenticatedController
   allow_example :index
@@ -26,7 +27,7 @@ class SystemIrrigationsController < AuthenticatedController
       clear(from) if from && from != date
       @system.fields_on(date).each do |field|
         next unless amounts.key?(field.id.to_s)
-        entry = field.record_entry(date, {irrigation_in: amounts[field.id.to_s].presence})
+        entry = field.record_system_irrigation(date, amounts[field.id.to_s].presence)
         entry.errors.to_hash(true).each { |attribute, messages| errors["fields.#{field.id}.#{attribute}"] = messages }
       end
       raise ActiveRecord::Rollback if errors.any?
@@ -52,6 +53,6 @@ class SystemIrrigationsController < AuthenticatedController
   end
 
   def clear(date)
-    @system.fields_on(date).each { |field| field.record_entry(date, {irrigation_in: nil}) }
+    @system.fields_on(date).each { |field| field.record_system_irrigation(date, nil) }
   end
 end

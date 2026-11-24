@@ -55,6 +55,15 @@ describe('rainfedOn', () => {
     expect(rainfedOn(field, '2026-08-01')).toBe(false)
     expect(rainfedOn(field, '2026-11-01')).toBe(false)
   })
+
+  it('is false while an irrigated plot grows within a rainfed crop, and true when every planting is rainfed', () => {
+    const crop = { from: '2026-04-01', to: '2026-10-10', here: true, rainfed: true }
+    const plot = { from: '2026-06-01', to: '2026-08-31', here: true, rainfed: false }
+    const field = { id: 1, name: 'East 9', here: true, seasons: [crop, plot] }
+    expect(rainfedOn(field, '2026-05-01')).toBe(true)
+    expect(rainfedOn(field, '2026-07-01')).toBe(false)
+    expect(rainfedOn({ ...field, seasons: [crop, { ...plot, rainfed: true }] }, '2026-07-01')).toBe(true)
+  })
 })
 
 describe('the calculator', () => {

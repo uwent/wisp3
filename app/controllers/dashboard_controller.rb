@@ -39,13 +39,14 @@ class DashboardController < AuthenticatedController
      log_fields: fields, recent_irrigation: recent}
   end
 
-  # The irrigation entered on every field over the days the dialog offers, in one query:
-  # {field_id => [[date, inches]]}
+  # The irrigation entered on every field over the days the dialog offers, as a system's page shows
+  # it (Field.system_irrigation): {field_id => [[date, inches]]}
   def recent_irrigation(overview)
     today = overview.today
-    FieldEntry.where(field_id: overview.systems.flat_map(&:fields).map(&:id), date: (today - LOG_BACK)..(today + LOG_AHEAD))
-      .where.not(irrigation_in: nil).pluck(:field_id, :date, :irrigation_in)
-      .group_by(&:first).transform_values { |rows| rows.map { |_, date, inches| [date, inches] } }
+    Field.system_irrigation(overview.systems.flat_map(&:fields), ((today - LOG_BACK)..(today + LOG_AHEAD)).to_a)
+      .sort_by { |(_, date), _| date }
+      .group_by { |(field_id, _), _| field_id }
+      .transform_values { |pairs| pairs.map { |(_, date), entry| [date, entry.irrigation_in] } }
   end
 
   # The week's rain in each weather zone of the operation's systems, north to south (RainAhead),

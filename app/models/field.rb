@@ -67,6 +67,50 @@ class Field < ApplicationRecord
     entry
   end
 
+  # The plots an irrigation system's amount goes to that day in place of the field: its irrigated
+  # plots, when its whole-field crop is rainfed (D17, D19), as daily entry fills them; none otherwise
+  def system_plots_on(date)
+    plantings = plantings_on(date)
+    return [] unless plantings.any? { |planting| !planting.partial? && planting.rainfed? }
+    plantings.select { |planting| planting.partial? && !planting.rainfed? }.sort_by(&:order_key)
+  end
+
+  # Records an irrigation system's amount on the field (its page and the dashboard's log): the
+  # field's entry (record_entry, its plots following), or each of system_plots_on's own. Returns an
+  # entry; check its errors.
+  def record_system_irrigation(date, inches)
+    plots = system_plots_on(date)
+    return record_entry(date, {irrigation_in: inches}) if plots.empty?
+    entries = plots.map { |plot| PlantingEntry.record(plot.planting_entries, date, irrigation_in: inches) }
+    entries.find { |entry| entry.errors.any? } || entries.first
+  end
+
+  # The irrigation systems' pages and the log show for fields (their plantings loaded) over dates,
+  # {[field_id, date] => entry}: the field's entry, or on a day system_plots_on has plots, the first
+  # of those with an amount (record_system_irrigation gives them all the same)
+  def self.system_irrigation(fields, dates)
+    entries = FieldEntry.where(field_id: fields.map(&:id), date: dates).where.not(irrigation_in: nil)
+      .index_by { |entry| [entry.field_id, entry.date] }
+    plots = fields.select { |field| field.plantings.any? { |planting| !planting.partial? && planting.rainfed? } }
+      .flat_map { |field| field.plantings.select { |planting| planting.partial? && !planting.rainfed? } }
+    return entries if plots.empty?
+
+    plot_entries = PlantingEntry.where(planting_id: plots.map(&:id), date: dates).where.not(irrigation_in: nil)
+      .index_by { |entry| [entry.planting_id, entry.date] }
+    by_id = fields.index_by(&:id)
+    plot_field = plots.to_h { |plot| [plot.id, plot.field_id] }
+    # The days that could change: those with a plot's amount or such a field's own
+    days = plot_entries.keys.map { |plot_id, date| [plot_field[plot_id], date] } +
+      entries.keys.select { |field_id, _| plot_field.value?(field_id) }
+    days.uniq.each do |field_id, date|
+      watered = by_id[field_id].system_plots_on(date)
+      next if watered.empty?
+      entry = watered.lazy.filter_map { |plot| plot_entries[[plot.id, date]] }.first
+      entry ? entries[[field_id, date]] = entry : entries.delete([field_id, date])
+    end
+    entries
+  end
+
   # The irrigation system the field was on that day: its planting's (a season keeps the system it
   # ran on), else, with nothing planted, the one it's on now
   def system_id_on(date) = planting_on(date)&.system_id || system_id
