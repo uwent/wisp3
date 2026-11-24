@@ -577,13 +577,14 @@
   <!-- The file shown, kept in this browser for a week: another can take its place, or it can go -->
   <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
     <span>
-      {`Shapes from ${fileName}`}{#if readTime !== null}<span class="text-ink-muted">{` (${readAt(readTime)})`}</span
-        >{/if}
+      {`Shapes from ${fileName}`}{#if readTime !== null}<span class="text-ink-muted">
+          {` (${readAt(readTime)})`}
+        </span>{/if}
     </span>
     {@render filePicker('Choose another file', 'secondary')}
-    <Button type="button" variant="ghost" class="px-3 py-1" disabled={!!busy} onclick={forgetShapes}
-      >Forget this file</Button
-    >
+    <Button type="button" variant="ghost" class="px-3 py-1" disabled={!!busy} onclick={forgetShapes}>
+      Forget this file
+    </Button>
   </div>
 {:else if !busy}
   <div class="flex flex-wrap items-center gap-3">
@@ -599,9 +600,9 @@
 {#if unusable.length}
   <details class="rounded-lg border border-line bg-surface-raised p-4 text-sm">
     <summary class="cursor-pointer">
-      <span class="text-status-irrigate-ink"
-        >{`${unusable.length.toLocaleString('en-US')} ${unusable.length === 1 ? "shape can't" : "shapes can't"} be used for a field`}</span
-      >{`: ${unusableSummary(unusable)}.`}
+      <span class="text-status-irrigate-ink">
+        {`${unusable.length.toLocaleString('en-US')} ${unusable.length === 1 ? "shape can't" : "shapes can't"} be used for a field`}
+      </span>{`: ${unusableSummary(unusable)}.`}
     </summary>
     <ul class="mt-2 space-y-0.5 text-ink-muted">
       {#each unusable.slice(0, UNUSABLE_LISTED) as shape, index (index)}
@@ -724,8 +725,10 @@
                     <button
                       type="button"
                       class="truncate font-medium hover:underline"
-                      onclick={() => (selected = index)}>{title}</button
+                      onclick={() => (selected = index)}
                     >
+                      {title}
+                    </button>
                     <span class="shrink-0 text-ink-muted">{formatArea(units, row.shape.acres)}</span>
                   </div>
                   <SegmentedChoice
@@ -806,8 +809,9 @@
                             type="button"
                             class="underline underline-offset-2 hover:text-ink"
                             onclick={() => chooseField(index, warning.update!.id)}
-                            >Update {warning.update.name} instead</button
                           >
+                            Update {warning.update.name} instead
+                          </button>
                         {/if}
                       </li>
                     {/each}
@@ -825,8 +829,10 @@
             <p class="text-sm text-ink-muted">
               {`To import ${others.length - sameCount === 1 ? 'the shape' : 'shapes'} with no irrigation system under ${others.length - sameCount === 1 ? 'it' : 'them'}, set up ${others.length - sameCount === 1 ? 'its system' : 'their systems'} first: `}<Link
                 href={systemRoutes.new()}
-                class="text-brand-600 underline">add an irrigation system</Link
-              >{fileKept
+                class="text-brand-600 underline"
+              >
+                add an irrigation system
+              </Link>{fileKept
                 ? `, and this file's shapes are on its map to place it on. Then come back here: the file is kept in this browser for a week.`
                 : ', then read this file here again.'}
             </p>
@@ -868,15 +874,19 @@
                         class="px-2 py-0 text-base/6"
                         aria-label="Add {row.name || 'Unnamed shape'}"
                         title="Add to the fields to import"
-                        onclick={() => add(row.index)}>+</Button
+                        onclick={() => add(row.index)}
                       >
+                        +
+                      </Button>
                     {:else if column.key === 'name'}
                       <button
                         type="button"
                         class="text-left font-medium wrap-anywhere hover:underline"
                         aria-current={row.index === selected ? 'true' : undefined}
-                        onclick={() => (selected = row.index)}>{row.name || 'Unnamed shape'}</button
-                      >{#if row.already}<span class="block text-xs text-ink-muted">{row.already}</span>{/if}
+                        onclick={() => (selected = row.index)}
+                      >
+                        {row.name || 'Unnamed shape'}
+                      </button>{#if row.already}<span class="block text-xs text-ink-muted">{row.already}</span>{/if}
                     {:else}
                       {column.text ? column.text(row) : (column.value(row) ?? '')}
                     {/if}
@@ -894,9 +904,9 @@
           </label>
           {#if errors.rows}<p class="text-sm text-status-irrigate-ink">{[errors.rows].flat()[0]}</p>{/if}
           <div class="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={processing || !included.length || unready.length > 0}
-              >Save {included.length === 1 ? 'the shape' : `${included.length} shapes`}</Button
-            >
+            <Button type="submit" disabled={processing || !included.length || unready.length > 0}>
+              Save {included.length === 1 ? 'the shape' : `${included.length} shapes`}
+            </Button>
             <span class="text-sm text-ink-muted">
               {counts.existing} to update, {counts.added} new
             </span>

@@ -92,8 +92,10 @@
       <span
         class="absolute top-0 truncate border-l border-line pl-1"
         style:left="{month.left}%"
-        style:width="{month.width}%">{month.label}</span
+        style:width="{month.width}%"
       >
+        {month.label}
+      </span>
     {/each}
   </div>
   <ul class="relative py-1" style:height="{layout.rows * 2 + 0.5}rem" aria-label={label}>
@@ -127,8 +129,10 @@
               style="left: {bar.left}%; width: {bar.width}%; top: {bar.row * 2 + 0.25}rem"
               title={describe(p)}
               onpointerdown={(event: PointerEvent) => pointAt(p.id, event)}
-              onkeydown={() => (pointer = null)}>{@render inside()}</DropdownMenu.Trigger
+              onkeydown={() => (pointer = null)}
             >
+              {@render inside()}
+            </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content
                 class={menuContent}
@@ -150,16 +154,20 @@
             class={classes}
             style="left: {bar.left}%; width: {bar.width}%; top: {bar.row * 2 + 0.25}rem"
             aria-current={current === p.id ? 'page' : undefined}
-            title={describe(p)}>{@render inside()}</Link
+            title={describe(p)}
           >
+            {@render inside()}
+          </Link>
         {:else}
           <button
             type="button"
             class={classes}
             style="left: {bar.left}%; width: {bar.width}%; top: {bar.row * 2 + 0.25}rem"
             title={describe(p)}
-            onclick={() => onselect?.(p)}>{@render inside('Edit ')}</button
+            onclick={() => onselect?.(p)}
           >
+            {@render inside('Edit ')}
+          </button>
         {/if}
       </li>
     {/each}

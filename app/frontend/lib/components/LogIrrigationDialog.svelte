@@ -166,8 +166,10 @@
                 ? 'border-brand-600 bg-brand-600 text-white dark:text-surface'
                 : 'border-line bg-surface-raised hover:bg-surface'}"
               aria-pressed={date === option.day}
-              onclick={() => setDate(option.day)}>{option.name}</button
+              onclick={() => setDate(option.day)}
             >
+              {option.name}
+            </button>
           {/each}
           <input
             type="date"
@@ -206,8 +208,10 @@
                 aria-label="Work out {system.name}'s irrigation"
                 aria-expanded={working}
                 aria-controls="{uid}-calculator"
-                onclick={toggleCalculator}><CalculatorIcon /></button
+                onclick={toggleCalculator}
               >
+                <CalculatorIcon />
+              </button>
             {/snippet}
           </NumberField>
         </div>
@@ -264,9 +268,9 @@
           {/each}
         </ul>
         {#if fields.length > 1}
-          <button type="button" class="text-sm text-brand-600 underline underline-offset-2" onclick={startEach}
-            >{each ? 'The same amount on every field' : 'A different amount on each field'}</button
-          >
+          <button type="button" class="text-sm text-brand-600 underline underline-offset-2" onclick={startEach}>
+            {each ? 'The same amount on every field' : 'A different amount on each field'}
+          </button>
         {/if}
       </fieldset>
 

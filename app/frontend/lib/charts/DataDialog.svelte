@@ -57,19 +57,20 @@
       {#if downloadHref}
         <a href={downloadHref} class={action} aria-label="Download CSV of {name}" download>Download CSV</a>
       {:else if download}
-        <button type="button" class={action} aria-label="Download CSV of {name}" onclick={download}>Download CSV</button
-        >
+        <button type="button" class={action} aria-label="Download CSV of {name}" onclick={download}>
+          Download CSV
+        </button>
       {/if}
-      <button type="button" class={action} aria-label="Copy to clipboard: {name}" onclick={copy}
-        >Copy to clipboard</button
-      >
-      <span class="text-xs text-ink-muted" role="status"
-        >{copied === 'yes'
+      <button type="button" class={action} aria-label="Copy to clipboard: {name}" onclick={copy}>
+        Copy to clipboard
+      </button>
+      <span class="text-xs text-ink-muted" role="status">
+        {copied === 'yes'
           ? 'Copied: paste it into a spreadsheet.'
           : copied === 'failed'
             ? "This browser didn't allow copying."
-            : ''}</span
-      >
+            : ''}
+      </span>
     </div>
     {#if rows}
       <!-- Focusable so keyboard users can scroll it (WCAG 2.1.1) -->

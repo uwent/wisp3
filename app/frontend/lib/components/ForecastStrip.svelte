@@ -30,22 +30,23 @@
         {#if sky}<WeatherIcon sky={sky.sky} class="size-6" />{/if}
         <span class="min-w-0 leading-tight">
           <span class="block whitespace-nowrap">
-            <span class="font-medium"
-              >{dayName(day.date, today, { short: true })}<span class="sr-only"
-                >{`, ${formatDate(day.date)}${sky ? `, ${sky.label}` : ''}`}</span
-              ></span
-            >{' '}<span class="font-semibold"><span class="sr-only">high </span>{degrees(day.tmax_f)}</span><span
+            <span class="font-medium">
+              {dayName(day.date, today, { short: true })}<span class="sr-only">
+                {`, ${formatDate(day.date)}${sky ? `, ${sky.label}` : ''}`}
+              </span>
+            </span>{' '}<span class="font-semibold"><span class="sr-only">high </span>{degrees(day.tmax_f)}</span><span
               class="text-ink-muted"
-              ><span class="sr-only">, low </span><span aria-hidden="true">/</span>{degrees(day.tmin_f)}</span
             >
+              <span class="sr-only">, low </span><span aria-hidden="true">/</span>{degrees(day.tmin_f)}
+            </span>
           </span>
           <span class="block whitespace-nowrap {wet ? '' : 'text-ink-muted'}">
             <span class="sr-only">Precipitation </span>{units.format(
               'depth',
               day.precip_in,
-            )}{#if day.precip_chance !== null}<span class="text-ink-muted"
-                >{` · ${day.precip_chance}%`}<span class="sr-only"> chance</span></span
-              >{/if}
+            )}{#if day.precip_chance !== null}<span class="text-ink-muted">
+                {` · ${day.precip_chance}%`}<span class="sr-only"> chance</span>
+              </span>{/if}
           </span>
         </span>
       </li>
@@ -75,9 +76,9 @@
           <span class="sr-only">Precipitation </span>{units.format(
             'depth',
             day.precip_in,
-          )}{#if day.precip_chance !== null}<span class="text-ink-muted"
-              >{` · ${day.precip_chance}%`}<span class="sr-only"> chance</span></span
-            >{/if}
+          )}{#if day.precip_chance !== null}<span class="text-ink-muted">
+              {` · ${day.precip_chance}%`}<span class="sr-only"> chance</span>
+            </span>{/if}
         </span>
         <span class="text-xs text-ink-muted">
           <abbr title="Reference evapotranspiration" class="no-underline">ET</abbr>

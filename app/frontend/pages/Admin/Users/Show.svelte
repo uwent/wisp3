@@ -106,9 +106,9 @@
   <section class="space-y-2">
     <div class="flex items-baseline justify-between gap-3">
       <h2 class="font-medium">Account</h2>
-      <Link href={adminUsers.digest(user.id)} class="text-sm text-brand-600 hover:underline"
-        >Preview today's daily email</Link
-      >
+      <Link href={adminUsers.digest(user.id)} class="text-sm text-brand-600 hover:underline">
+        Preview today's daily email
+      </Link>
     </div>
     <dl class="grid gap-x-6 rounded-lg border border-line bg-surface-raised p-4 text-sm sm:grid-cols-[max-content_1fr]">
       {#each attributes as [label, value] (label)}
@@ -133,8 +133,10 @@
               <span>
                 {#if member.id === user.id}{member.email}{:else}<Link
                     href={adminUsers.show(member.id)}
-                    class="text-brand-600 underline underline-offset-2">{member.email}</Link
-                  >{/if}
+                    class="text-brand-600 underline underline-offset-2"
+                  >
+                    {member.email}
+                  </Link>{/if}
                 {#if member.owner}<span class="text-ink-muted">(owner)</span>{/if}{i < group.members.length - 1
                   ? ','
                   : ''}
@@ -163,8 +165,10 @@
                             class="font-mono text-xs text-brand-600 hover:underline"
                             href="https://www.openstreetmap.org/?mlat={system.latitude}&mlon={system.longitude}#map=15/{system.latitude}/{system.longitude}"
                             target="_blank"
-                            rel="noopener noreferrer">{system.latitude.toFixed(4)}, {system.longitude.toFixed(4)}</a
+                            rel="noopener noreferrer"
                           >
+                            {system.latitude.toFixed(4)}, {system.longitude.toFixed(4)}
+                          </a>
                           <span class="text-xs text-ink-muted">(#{system.id})</span>
                         </div>
                         {#if system.fields.length === 0}

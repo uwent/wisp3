@@ -22,9 +22,9 @@
           {#if badge.status}
             <StatusBadge status={badge.status} size="icon" title={badge.lines.join(', ')} tooltip={false} />
           {:else}
-            <span class="inline-flex size-5 rounded-full border-2 border-white/80 bg-gray-400/70"
-              ><span class="sr-only">{badge.lines.join(', ')}</span></span
-            >
+            <span class="inline-flex size-5 rounded-full border-2 border-white/80 bg-gray-400/70">
+              <span class="sr-only">{badge.lines.join(', ')}</span>
+            </span>
           {/if}
         </span>
       {/each}

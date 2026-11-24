@@ -197,8 +197,10 @@
                 aria-current={current === section.id ? 'location' : undefined}
                 class="block py-1 pr-2 pl-3 transition-colors hover:text-ink {current === section.id
                   ? 'font-medium text-ink'
-                  : 'text-ink-muted'}">{section.title}</a
+                  : 'text-ink-muted'}"
               >
+                {section.title}
+              </a>
               {#if current === section.id && subsections[section.id]}
                 <ul transition:slide={{ duration: motion(200) }}>
                   {#each subsections[section.id] as sub (sub.id)}
@@ -209,8 +211,10 @@
                         aria-current={currentSub === sub.id ? 'location' : undefined}
                         class="block py-0.5 pr-2 pl-6 text-xs transition-colors hover:text-ink {currentSub === sub.id
                           ? 'text-ink'
-                          : 'text-ink-muted'}">{sub.title}</a
+                          : 'text-ink-muted'}"
                       >
+                        {sub.title}
+                      </a>
                     </li>
                   {/each}
                 </ul>
@@ -232,9 +236,9 @@
     <h3 id="water-balance">The water balance</h3>
     <p>
       WISP treats each planting's root zone as a single bucket. How big the bucket is depends on the soil and the crop:
-      it is the water held between <Term id="field_capacity">field capacity</Term> and the <Term id="wilting_point"
-        >wilting point</Term
-      >, over the depth of the root zone. The crop can use a share of that water without stress, set by its
+      it is the water held between <Term id="field_capacity">field capacity</Term> and the <Term id="wilting_point">
+        wilting point
+      </Term>, over the depth of the root zone. The crop can use a share of that water without stress, set by its
       <Term id="mad">MAD</Term> ({defaults.mad_pct}% unless you change it). WISP tracks how much of that share is left,
       the <Term id="ad">allowable depletion (AD)</Term>, from day to day:
     </p>
@@ -248,9 +252,9 @@
         evaporating from the soil between the plants, which is most just after rain or irrigation.
       </li>
       <li>
-        Water beyond field capacity drains below the roots and is counted as <Term id="deep_drainage"
-          >deep drainage</Term
-        >.
+        Water beyond field capacity drains below the roots and is counted as <Term id="deep_drainage">
+          deep drainage
+        </Term>.
       </li>
       <li>A soil moisture reading you enter resets the balance to what you measured.</li>
     </ul>
@@ -265,9 +269,9 @@
 
     <h3 id="how-weather">Weather</h3>
     <p>
-      Each irrigation system's weather comes from <a href="https://open-meteo.com/" target="_blank" rel="noopener"
-        >Open-Meteo</a
-      >, for an area about 9 km across around its location. It's updated at 5 am, 11 am and 5 pm Central and includes
+      Each irrigation system's weather comes from <a href="https://open-meteo.com/" target="_blank" rel="noopener">
+        Open-Meteo
+      </a>, for an area about 9 km across around its location. It's updated at 5 am, 11 am and 5 pm Central and includes
       rain, reference ET (FAO-56 Penman-Monteith), temperature, humidity, wind, and modeled soil moisture and soil
       temperature. Recent days are revised as better data arrives, then settled. Modeled rain can miss a local storm, so
       you can enter your own rain gauge readings in its place on any day. For a whole operation or a single field, you
@@ -288,8 +292,9 @@
     <table class="[&_td]:align-middle [&_td:first-child]:whitespace-nowrap">
       <tbody>
         <tr><td><StatusBadge status="full" /></td><td>Near field capacity: AD at 90% of its maximum or more.</td></tr>
-        <tr><td><StatusBadge status="ok" /></td><td>Above its target, or above half its maximum AD without one.</td></tr
-        >
+        <tr>
+          <td><StatusBadge status="ok" /></td><td>Above its target, or above half its maximum AD without one.</td>
+        </tr>
         <tr>
           <td><StatusBadge status="caution" /></td>
           <td>
@@ -497,9 +502,9 @@
         <strong>Soil moisture:</strong> a measured root zone moisture resets the balance, correcting any drift. Enter
         one about every {READING_EVERY} days, from sensors at about 25% and 75% of the root zone depth (see the
         <a href="#crops">crop table</a>). UW Extension's
-        <a href="/publications/a3600-02-methods-to-monitor-soil-moisture.pdf" target="_blank" rel="noopener"
-          >Methods to Monitor Soil Moisture</a
-        > (A3600-02, PDF) compares the kinds of sensor and where to put them.
+        <a href="/publications/a3600-02-methods-to-monitor-soil-moisture.pdf" target="_blank" rel="noopener">
+          Methods to Monitor Soil Moisture
+        </a> (A3600-02, PDF) compares the kinds of sensor and where to put them.
       </li>
       <li>
         <strong>Canopy:</strong> with percent cover, enter it about weekly from emergence until the canopy covers about
@@ -516,11 +521,11 @@
 
     <h2 id="soils">Soils</h2>
     <p>
-      A field's soil type sets how much water its root zone can hold: from <Term id="field_capacity"
-        >field capacity</Term
-      >, as wet as it stays once it has drained, down to the <Term id="wilting_point">wilting point</Term>, where the
-      crop can take no more. Both are shares of the soil's volume, and the difference between them, over the root zone
-      depth, is the water available to the crop. If you know better values for a field, from the
+      A field's soil type sets how much water its root zone can hold: from <Term id="field_capacity">
+        field capacity
+      </Term>, as wet as it stays once it has drained, down to the <Term id="wilting_point">wilting point</Term>, where
+      the crop can take no more. Both are shares of the soil's volume, and the difference between them, over the root
+      zone depth, is the water available to the crop. If you know better values for a field, from the
       <a href="https://websoilsurvey.nrcs.usda.gov/" target="_blank" rel="noopener">Web Soil Survey</a> or your own measurements,
       enter them for the field and they replace its soil type's.
     </p>
@@ -591,9 +596,9 @@
             <th class="px-3 py-2 font-medium">Crop</th>
             <th class="px-3 py-2 text-right font-medium">Root zone</th>
             <th class="px-3 py-2 text-right font-medium">Sensor depths</th>
-            <th class="px-3 py-2 text-right font-medium"
-              ><abbr title="Basal crop coefficient at full cover, mid season">Kcb</abbr></th
-            >
+            <th class="px-3 py-2 text-right font-medium">
+              <abbr title="Basal crop coefficient at full cover, mid season">Kcb</abbr>
+            </th>
             <th class="px-3 py-2 text-right font-medium">Kcb at harvest</th>
             <th class="px-3 py-2 font-medium">Canopy methods</th>
           </tr>
@@ -608,13 +613,13 @@
               </td>
               <td class="px-3 py-1.5 text-right tabular-nums">{plant.kcb_mid.toFixed(2)}</td>
               <td class="px-3 py-1.5 text-right tabular-nums">{plant.kcb_end.toFixed(2)}</td>
-              <td class="px-3 py-1.5"
-                >{plant.cover_curve
+              <td class="px-3 py-1.5">
+                {plant.cover_curve
                   ? 'Percent cover, with a curve'
                   : plant.generic_curve
                     ? `Percent cover, generic curve (${plant.generic_curve.toLowerCase()})`
-                    : 'Percent cover, readings only'}{plant.lai_curve ? '; LAI with a curve' : ''}</td
-              >
+                    : 'Percent cover, readings only'}{plant.lai_curve ? '; LAI with a curve' : ''}
+              </td>
             </tr>
           {/each}
         </tbody>
@@ -707,9 +712,9 @@
       sweet corn. For other crops the timing comes from the stage lengths in FAO-56. Potato's is then converted to
       growing degree days (above), with base and upper temperatures (2 and 26 °C) from AquaCrop's potato file. Each card
       says which source was used and how well it has been checked. The research notes, data screening and scripts are in
-      <a href="https://github.com/uwent/wisp3/tree/main/docs/canopy" target="_blank" rel="noopener"
-        >the WISP source code</a
-      >.
+      <a href="https://github.com/uwent/wisp3/tree/main/docs/canopy" target="_blank" rel="noopener">
+        the WISP source code
+      </a>.
     </p>
     <!-- Focusable so keyboard users can scroll it (WCAG 2.1.1) -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -803,9 +808,9 @@ t′: days since the decline starts</code
     </p>
     <p>
       The analysis, its data and scripts are in
-      <a href="https://github.com/uwent/wisp3/tree/main/docs/et-validation" target="_blank" rel="noopener"
-        >the WISP source code</a
-      >. Over the whole season, with the researchers' crop dates and canopy cover for four of the seasons, it showed
+      <a href="https://github.com/uwent/wisp3/tree/main/docs/et-validation" target="_blank" rel="noopener">
+        the WISP source code
+      </a>. Over the whole season, with the researchers' crop dates and canopy cover for four of the seasons, it showed
       that WISP's earlier method missed the water evaporating from wet soil while the canopy was small and after vine
       kill, and kept the crop's full water use into August. WISP now counts that evaporation and eases the crop's water
       use toward harvest, as described under <a href="#crops">Crops</a>: against the towers it's within 3% at full
@@ -908,12 +913,13 @@ t′: days since the decline starts</code
 
     <h2 id="history">History</h2>
     <p>
-      WISP began on paper. UW Extension publication A3600, <cite
-        >Irrigation Management in Wisconsin: The Wisconsin Irrigation Scheduling Program (WISP)</cite
-      >, by David Curwen (Horticulture) and Leonard Massie (Biological Systems Engineering), taught growers to schedule
-      irrigation like balancing a checkbook: rain and irrigation as deposits, the crop's water use as withdrawals, kept
-      day by day on an accounting form. Its table for adjusting ET to the crop's percent cover served WISP until WISP 3
-      moved to FAO-56's crop coefficients. Spreadsheets and desktop programs carried the method onto computers.
+      WISP began on paper. UW Extension publication A3600, <cite>
+        Irrigation Management in Wisconsin: The Wisconsin Irrigation Scheduling Program (WISP)
+      </cite>, by David Curwen (Horticulture) and Leonard Massie (Biological Systems Engineering), taught growers to
+      schedule irrigation like balancing a checkbook: rain and irrigation as deposits, the crop's water use as
+      withdrawals, kept day by day on an accounting form. Its table for adjusting ET to the crop's percent cover served
+      WISP until WISP 3 moved to FAO-56's crop coefficients. Spreadsheets and desktop programs carried the method onto
+      computers.
     </p>
     <p>
       In the 1990s, scientists in UW–Madison's Department of Soil Science and its Cooperative Institute for
@@ -923,12 +929,15 @@ t′: days since the decline starts</code
     <p>
       WISP moved to the web as WISP 2012, developed in the Departments of Soil Science and Biological Systems
       Engineering. John Panuska and Scott Sanford revised A3600 alongside it (now
-      <a href="/publications/a3600-01-irrigation-management-in-wisconsin.pdf" target="_blank" rel="noopener">A3600-01</a
-      >), with a companion on monitoring soil moisture (<a
+      <a href="/publications/a3600-01-irrigation-management-in-wisconsin.pdf" target="_blank" rel="noopener">
+        A3600-01
+      </a>), with a companion on monitoring soil moisture (<a
         href="/publications/a3600-02-methods-to-monitor-soil-moisture.pdf"
         target="_blank"
-        rel="noopener">A3600-02</a
-      >). Since 2021 WISP has been maintained in the Department of Entomology, and WISP 3 was rewritten there for the
+        rel="noopener"
+      >
+        A3600-02
+      </a>). Since 2021 WISP has been maintained in the Department of Entomology, and WISP 3 was rewritten there for the
       2027 season.
     </p>
 
@@ -943,23 +952,23 @@ t′: days since the decline starts</code
       <li>
         <strong><Term id="fao56">FAO-56</Term></strong>: Pereira, L. S., Allen, R. G., Paredes, P., López-Urrea, R.,
         Raes, D., Smith, M., Kilic, A. and Salman, M. (2025),
-        <a href="https://doi.org/10.4060/cd6621en" target="_blank" rel="noopener"
-          ><cite>Crop evapotranspiration: Guidelines for computing crop water requirements</cite></a
-        >, second edition, FAO Irrigation and Drainage Paper 56 Rev.1. The UN Food and Agriculture Organization's
+        <a href="https://doi.org/10.4060/cd6621en" target="_blank" rel="noopener">
+          <cite>Crop evapotranspiration: Guidelines for computing crop water requirements</cite>
+        </a>, second edition, FAO Irrigation and Drainage Paper 56 Rev.1. The UN Food and Agriculture Organization's
         standard guide to crop water use. WISP takes from it the hourly Penman-Monteith equation for
         <Term id="reference_et">reference ET</Term>, each crop's coefficients (Tables 6.1–6.4, 7.1 and 7.2), their
         adjustment for wind and humidity, and the soil evaporation model. It revises the first edition, Allen, R. G.,
         Pereira, L. S., Raes, D. and Smith, M. (1998),
-        <a href="https://www.fao.org/4/x0490e/x0490e00.htm" target="_blank" rel="noopener"
-          ><cite>Crop evapotranspiration</cite></a
-        >, which WISP 3 followed until November 2026.
+        <a href="https://www.fao.org/4/x0490e/x0490e00.htm" target="_blank" rel="noopener">
+          <cite>Crop evapotranspiration</cite>
+        </a>, which WISP 3 followed until November 2026.
       </li>
       <li>
         <strong><Term id="aquacrop">AquaCrop</Term></strong>: Steduto, P., Hsiao, T. C., Raes, D. and Fereres, E.
         (2009),
-        <a href="https://doi.org/10.2134/agronj2008.0139s" target="_blank" rel="noopener"
-          ><cite>AquaCrop, the FAO crop model to simulate yield response to water</cite></a
-        >, Agronomy Journal 101, and FAO's crop files for it (as distributed with
+        <a href="https://doi.org/10.2134/agronj2008.0139s" target="_blank" rel="noopener">
+          <cite>AquaCrop, the FAO crop model to simulate yield response to water</cite>
+        </a>, Agronomy Journal 101, and FAO's crop files for it (as distributed with
         <a href="https://doi.org/10.1016/j.agwat.2021.106976" target="_blank" rel="noopener">AquaCrop-OSPy</a>). FAO's
         crop growth model: WISP's canopy curves use its canopy cover equations, its crop files' growth rates where it
         has a crop, and its base and upper temperatures for potato's growing degree days.
@@ -967,23 +976,24 @@ t′: days since the decline starts</code
       <li>
         <strong>UW Extension A3600</strong>: the original WISP method, Curwen and Massie's
         <cite>Irrigation Management in Wisconsin</cite>, revised by Panuska and Sanford as
-        <a href="/publications/a3600-01-irrigation-management-in-wisconsin.pdf" target="_blank" rel="noopener"
-          >A3600-01</a
-        >
+        <a href="/publications/a3600-01-irrigation-management-in-wisconsin.pdf" target="_blank" rel="noopener">
+          A3600-01
+        </a>
         with
-        <a href="/publications/a3600-02-methods-to-monitor-soil-moisture.pdf" target="_blank" rel="noopener">A3600-02</a
-        >
+        <a href="/publications/a3600-02-methods-to-monitor-soil-moisture.pdf" target="_blank" rel="noopener">
+          A3600-02
+        </a>
         on monitoring soil moisture (see <a href="#history">History</a>).
       </li>
       <li>
         <strong>The Central Sands flux towers</strong>: Talib, A., Desai, A. R. and colleagues (2021, 2024), measuring
         water use over center-pivot potato from 2018 to 2023,
-        <a href="https://doi.org/10.1016/j.agrformet.2024.109967" target="_blank" rel="noopener"
-          >Agricultural and Forest Meteorology 350</a
-        >; the data are on <a href="https://ameriflux.lbl.gov/" target="_blank" rel="noopener">AmeriFlux</a> (CC BY
-        4.0). WISP 3's crop water use is checked against them (<a href="#et-validation"
-          >Field validation with eddy covariance towers</a
-        >).
+        <a href="https://doi.org/10.1016/j.agrformet.2024.109967" target="_blank" rel="noopener">
+          Agricultural and Forest Meteorology 350
+        </a>; the data are on <a href="https://ameriflux.lbl.gov/" target="_blank" rel="noopener">AmeriFlux</a> (CC BY
+        4.0). WISP 3's crop water use is checked against them (<a href="#et-validation">
+          Field validation with eddy covariance towers
+        </a>).
       </li>
       <li>
         <strong>WISP's own research notes</strong>: how each method was chosen and tested, with the data screening and
@@ -1033,13 +1043,13 @@ t′: days since the decline starts</code
     <p>
       The flux tower measurements are AmeriFlux data from Ankur Desai's group (UW–Madison Atmospheric and Oceanic
       Sciences), shared under CC BY 4.0: Talib et al. (2024),
-      <cite
-        >Improving parameterization of an evapotranspiration estimation model with eddy covariance measurements for a
-        regional irrigation scheduling program</cite
-      >,
-      <a href="https://doi.org/10.1016/j.agrformet.2024.109967" target="_blank" rel="noopener"
-        >Agricultural and Forest Meteorology 350</a
-      >.
+      <cite>
+        Improving parameterization of an evapotranspiration estimation model with eddy covariance measurements for a
+        regional irrigation scheduling program
+      </cite>,
+      <a href="https://doi.org/10.1016/j.agrformet.2024.109967" target="_blank" rel="noopener">
+        Agricultural and Forest Meteorology 350
+      </a>.
     </p>
     <p>
       Questions, comments and bug reports are welcome at

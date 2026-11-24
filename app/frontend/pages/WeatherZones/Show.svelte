@@ -96,8 +96,10 @@
         <span class="text-ink-muted">{zone.systems.length === 1 ? 'Irrigation system' : 'Irrigation systems'}:</span>
         {#each zone.systems as system, i (system.id)}{i ? ', ' : ''}<Link
             href={systemRoutes.show(system.id)}
-            class="text-brand-600 underline underline-offset-2">{systemName(system)}</Link
-          >{` (${system.farm})`}{/each}
+            class="text-brand-600 underline underline-offset-2"
+          >
+            {systemName(system)}
+          </Link>{` (${system.farm})`}{/each}
       </p>
     {/if}
     {#if zoneFields.length}
@@ -105,8 +107,10 @@
         <span class="text-ink-muted">{zoneFields.length === 1 ? 'Field' : 'Fields'}:</span>
         {#each zoneFields as field, i (field.id)}{i ? ', ' : ''}<Link
             href={fieldRoutes.show(field.id)}
-            class="text-brand-600 underline underline-offset-2">{field.name}</Link
-          >{` (${field.system})`}{/each}
+            class="text-brand-600 underline underline-offset-2"
+          >
+            {field.name}
+          </Link>{` (${field.system})`}{/each}
       </p>
     {/if}
   </div>
@@ -118,8 +122,9 @@
         value={zone.location}
         onchange={(e) => visit(e.currentTarget.value, year)}
       >
-        {#each zones as other (other.id)}<option value={other.location}>{other.coordinates}: {other.name}</option
-          >{/each}
+        {#each zones as other (other.id)}<option value={other.location}>
+            {other.coordinates}: {other.name}
+          </option>{/each}
       </select>
     {/if}
     <select

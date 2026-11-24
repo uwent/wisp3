@@ -174,11 +174,12 @@
             <li>
               <div class="flex items-baseline justify-between gap-3 text-sm">
                 <span title={FUNNEL[step.key]?.hint}>{FUNNEL[step.key]?.label ?? step.key}</span>
-                <span class="tabular-nums"
-                  ><b class="font-semibold">{number(step.count)}</b>
-                  {#if i > 0}<span class="ml-1 inline-block w-10 text-right text-ink-muted">{percent(shares[i])}</span
-                    >{/if}</span
-                >
+                <span class="tabular-nums">
+                  <b class="font-semibold">{number(step.count)}</b>
+                  {#if i > 0}<span class="ml-1 inline-block w-10 text-right text-ink-muted">
+                      {percent(shares[i])}
+                    </span>{/if}
+                </span>
               </div>
               <div class="mt-1 h-2 rounded-full bg-line/50" aria-hidden="true">
                 <div class="h-2 rounded-full bg-brand-600" style:width="{(step.count / funnelMax) * 100}%"></div>
@@ -213,9 +214,9 @@
               <div class="h-2 rounded-full bg-line/50" aria-hidden="true">
                 <div class="h-2 rounded-full bg-brand-600" style:width="{share * 100}%"></div>
               </div>
-              <span class="text-right tabular-nums"
-                >{number(row.count)} <span class="inline-block w-9 text-ink-muted">{percent(share)}</span></span
-              >
+              <span class="text-right tabular-nums">
+                {number(row.count)} <span class="inline-block w-9 text-ink-muted">{percent(share)}</span>
+              </span>
             </li>
           {/each}
         </ul>

@@ -226,8 +226,9 @@
 <svelte:head><title>Field shape: {field.name} · WISP</title></svelte:head>
 
 <div class="space-y-1">
-  <Link href={backHref} class="text-sm text-brand-600 hover:underline">← {from === 'setup' ? 'Setup' : field.name}</Link
-  >
+  <Link href={backHref} class="text-sm text-brand-600 hover:underline">
+    ← {from === 'setup' ? 'Setup' : field.name}
+  </Link>
   <h1 class="text-2xl font-semibold">Field shape: {field.name}</h1>
   <p class="text-sm text-ink-muted">
     Irrigation system: {systemName(system)}. The shape draws the field on the map and measures its area, and the soil
@@ -244,9 +245,9 @@
       <Button type="button" variant="secondary" onclick={() => (mode = 'edit')}>Edit corners</Button>
       <Button type="button" variant="secondary" onclick={startDraw}>Draw a new one</Button>
     {/if}
-    <Button type="button" variant="ghost" disabled={reading} onclick={importFromFile}
-      >{reading ? 'Reading…' : 'Import from a file'}</Button
-    >
+    <Button type="button" variant="ghost" disabled={reading} onclick={importFromFile}>
+      {reading ? 'Reading…' : 'Import from a file'}
+    </Button>
     {#if boundary}
       <Button type="button" variant="danger-ghost" onclick={removeOutline}>Remove the shape</Button>
     {/if}
@@ -288,8 +289,10 @@
         >
           To give several fields their shapes at once, use <Link
             href={newOutlineImport()}
-            class="text-brand-600 underline underline-offset-2">Import field shapes in Setup</Link
-          >.
+            class="text-brand-600 underline underline-offset-2"
+          >
+            Import field shapes in Setup
+          </Link>.
         </ShapePicker>
       {/key}
     {/if}

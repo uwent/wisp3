@@ -227,20 +227,26 @@
       <Link
         href={fields.show(field.id)}
         class="rounded-md px-2 py-1 font-medium text-brand-600 hover:bg-brand-50"
-        aria-label="View {field.name}">View</Link
+        aria-label="View {field.name}"
       >
+        View
+      </Link>
       <Button
         variant="ghost"
         class="px-2 py-1 text-xs"
         aria-label="Add a planting to {field.name}"
-        onclick={() => plantingDialog?.open(field)}>Add a planting</Button
+        onclick={() => plantingDialog?.open(field)}
       >
+        Add a planting
+      </Button>
       <Button
         variant="ghost"
         class="px-2 py-1 text-xs"
         aria-label="Edit {field.name}"
-        onclick={() => open({ kind: 'field', system, field })}>Edit</Button
+        onclick={() => open({ kind: 'field', system, field })}
       >
+        Edit
+      </Button>
     </div>
     <!-- The season's plantings on a timeline, each opening its form -->
     <div class="w-full">
@@ -283,24 +289,32 @@
         <Link
           href={systems.show(system.id)}
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
-          aria-label="View {system.name}">View</Link
+          aria-label="View {system.name}"
         >
+          View
+        </Link>
         <Button
           variant="ghost"
           class="px-3 py-1.5"
           aria-label="Add field to {system.name}"
-          onclick={() => open({ kind: 'field', system })}>Add field</Button
+          onclick={() => open({ kind: 'field', system })}
         >
+          Add field
+        </Button>
         <Link
           href={systems.edit(system.id)}
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
-          aria-label="Edit {system.name}">Edit</Link
+          aria-label="Edit {system.name}"
         >
+          Edit
+        </Link>
         <Link
           href={systems.new({ query: { copy_of: system.id } })}
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
-          aria-label="Duplicate {system.name}">Duplicate</Link
+          aria-label="Duplicate {system.name}"
         >
+          Duplicate
+        </Link>
       </div>
     </div>
     {#if system.fields.length === 0}
@@ -378,9 +392,9 @@
       {#each outlineIssues as issue, position (`${position}:${issue.message}`)}
         <li>
           {issue.message}.
-          <Link href={fieldOutline(issue.fieldId, { query: { from: 'setup' } })} class="underline underline-offset-2"
-            >Edit the shape</Link
-          >
+          <Link href={fieldOutline(issue.fieldId, { query: { from: 'setup' } })} class="underline underline-offset-2">
+            Edit the shape
+          </Link>
         </li>
       {/each}
     </ul>
@@ -416,22 +430,28 @@
         <Link
           href={systems.new({ query: { farm_id: farm.id } })}
           class="rounded-md px-3 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
-          aria-label="Add irrigation system to {farm.name}">Add irrigation system</Link
+          aria-label="Add irrigation system to {farm.name}"
         >
+          Add irrigation system
+        </Link>
         {#if unfiltered(farm).systems.length > 1}
           <Button
             variant="ghost"
             class="px-3 py-1.5"
             aria-label="Group systems on {farm.name}"
-            onclick={() => open({ kind: 'irrigationGroup', farm: unfiltered(farm) })}>Group systems</Button
+            onclick={() => open({ kind: 'irrigationGroup', farm: unfiltered(farm) })}
           >
+            Group systems
+          </Button>
         {/if}
         <Button
           variant="ghost"
           class="px-3 py-1.5"
           aria-label="Edit {farm.name}"
-          onclick={() => open({ kind: 'farm', farm })}>Edit</Button
+          onclick={() => open({ kind: 'farm', farm })}
         >
+          Edit
+        </Button>
       </div>
     </div>
 
@@ -465,8 +485,9 @@
                 class="px-3 py-1.5"
                 aria-label="Edit {irrigationGroup.name}"
                 onclick={() => open({ kind: 'irrigationGroup', farm: unfiltered(farm), group: irrigationGroup })}
-                >Edit</Button
               >
+                Edit
+              </Button>
             </div>
           </div>
           {#each child.systems as system (system.id)}
@@ -487,9 +508,9 @@
     {#if searching}
       Nothing matches "{query.trim()}".
     {:else}
-      No farms yet. <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2"
-        >Set up your first irrigation system</Link
-      >.
+      No farms yet. <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2">
+        Set up your first irrigation system
+      </Link>.
     {/if}
   </section>
 {/each}

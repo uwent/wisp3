@@ -52,8 +52,9 @@
               target="_blank"
               rel="noopener"
               class="relative mt-1 block text-xs text-brand-600 underline underline-offset-2"
-              >Evidence<span class="sr-only"> for the {correction.variable.toLowerCase()} correction</span></a
             >
+              Evidence<span class="sr-only"> for the {correction.variable.toLowerCase()} correction</span>
+            </a>
           </td>
           <td class="px-3 py-2 whitespace-nowrap">
             <code class="text-xs">{correction.label}</code>

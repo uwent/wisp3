@@ -204,10 +204,9 @@
     summary?.phase === 'active' && summary.date ? relativeDay(date, summary.date) : formatDate(date)
 </script>
 
-<svelte:head
-  ><title>{travelling ? `As of ${formatDate(as_of)} · ` : ''}{planting.plant_name} · {field.name} · WISP</title
-  ></svelte:head
->
+<svelte:head>
+  <title>{travelling ? `As of ${formatDate(as_of)} · ` : ''}{planting.plant_name} · {field.name} · WISP</title>
+</svelte:head>
 
 <FieldHeader {field} {system} {farm} {units} year={planting.year} current={planting.id}>
   {#snippet actions()}
@@ -255,15 +254,18 @@
                 ? 'Already viewing this date; pick another'
                 : 'View this field as it was on the date picked'}
               class="rounded-md border border-line bg-surface-raised px-3 py-1.5 enabled:hover:bg-surface disabled:opacity-50"
-              >View</button
             >
+              View
+            </button>
             {#if as_of}
               <Link
                 href={plantingRoute(planting.id)}
                 class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
                 aria-label="Return to today"
-                title="Return to today">Today</Link
+                title="Return to today"
               >
+                Today
+              </Link>
             {/if}
           </form>
         {/if}
@@ -307,8 +309,10 @@
       up to then. Nothing can be changed here, and in place of the forecast, the days after it show what happened next.
       <Link
         href={plantingRoute(planting.id)}
-        class="font-medium whitespace-nowrap text-brand-600 underline underline-offset-2">Return to today</Link
+        class="font-medium whitespace-nowrap text-brand-600 underline underline-offset-2"
       >
+        Return to today
+      </Link>
     </p>
     <p class="mt-1 text-xs text-ink-muted">
       WISP doesn't keep a history of edits, so a value entered or changed later for one of these days shows as it is
@@ -323,9 +327,9 @@
     >
       <p class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-2 text-sm">
         <span>Viewing {field.name} as of <strong>{formatDate(as_of, { year: true })}</strong></span>
-        <Link href={plantingRoute(planting.id)} class="font-medium text-brand-600 underline underline-offset-2"
-          >Return to today</Link
-        >
+        <Link href={plantingRoute(planting.id)} class="font-medium text-brand-600 underline underline-offset-2">
+          Return to today
+        </Link>
       </p>
     </div>
   {/if}
@@ -369,16 +373,16 @@
           Past {planting.season_days === null ? 'a typical' : 'its'}
           {planting.plant_name.toLowerCase()} season ({planting.effective_season_days} days from emergence). Harvested?
         </p>
-        <button type="button" class="font-medium text-brand-600 underline underline-offset-2" onclick={endSeason}
-          >End the season today</button
-        >
+        <button type="button" class="font-medium text-brand-600 underline underline-offset-2" onclick={endSeason}>
+          End the season today
+        </button>
       </div>
     {/if}
     {#if plot}
       <p class="text-sm">
-        Part of the field: {plot}{#if planting.own_soil}{' '}<span class="text-ink-muted"
-            >· its own soil ({formatNumber(summary.field_capacity_pct, 1)}% field capacity)</span
-          >{/if}
+        Part of the field: {plot}{#if planting.own_soil}{' '}<span class="text-ink-muted">
+            · its own soil ({formatNumber(summary.field_capacity_pct, 1)}% field capacity)
+          </span>{/if}
       </p>
       {#if exceeds_field_area}
         <p role="status" class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2 text-sm">
@@ -495,8 +499,10 @@
         {#if !readOnly}
           <Link
             href={rainSettingLink(summary.rain_group_id, summary.rain_farm_id)}
-            class="text-brand-600 underline underline-offset-2">Change this</Link
+            class="text-brand-600 underline underline-offset-2"
           >
+            Change this
+          </Link>
         {/if}
       </p>
     {/if}
@@ -512,8 +518,10 @@
         <a
           href="#season-summary"
           class="text-brand-600 underline underline-offset-2"
-          onclick={() => (summaryOpen = true)}>Compare day by day</a
+          onclick={() => (summaryOpen = true)}
         >
+          Compare day by day
+        </a>
       </p>
     {/if}
   </div>
@@ -532,8 +540,10 @@
         <p class="rounded-md border border-status-caution/60 bg-status-caution/10 px-3 py-2">
           <Link
             href={dailyEntries.show({ query: { date: guidance.irrigationCheck.date } })}
-            class="underline underline-offset-2">{guidance.irrigationCheck.todo}</Link
+            class="underline underline-offset-2"
           >
+            {guidance.irrigationCheck.todo}
+          </Link>
         </p>
       {/if}
       {#if guidance.warning}
@@ -592,8 +602,10 @@
             type="button"
             class="px-3 py-1.5 {chartMode === mode ? 'bg-brand-600 text-white dark:text-surface' : 'hover:bg-surface'}"
             aria-pressed={chartMode === mode}
-            onclick={() => (chartMode = mode)}>{name}</button
+            onclick={() => (chartMode = mode)}
           >
+            {name}
+          </button>
         {/each}
       </div>
     {/snippet}

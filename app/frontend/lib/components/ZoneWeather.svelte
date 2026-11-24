@@ -29,9 +29,9 @@
     <div class="space-y-2">
       {#if forecast.length}<ForecastStrip days={forecast} {units} compact />{/if}
       <p class="text-right">
-        <Link href={weatherZone(zone.location, { query })} class="text-sm text-brand-600 underline underline-offset-2"
-          >View detailed weather charts for this location →</Link
-        >
+        <Link href={weatherZone(zone.location, { query })} class="text-sm text-brand-600 underline underline-offset-2">
+          View detailed weather charts for this location →
+        </Link>
       </p>
     </div>
   </CollapsibleSection>

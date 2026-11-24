@@ -11,6 +11,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // One jsdom per worker instead of per file; each file still gets its own module graph
+    pool: 'vmThreads',
     include: ['app/frontend/**/*.test.ts'],
     setupFiles: ['app/frontend/test/setup.ts'],
   },

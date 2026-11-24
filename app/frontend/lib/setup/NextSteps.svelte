@@ -54,8 +54,9 @@
       <Link
         href={systemRoutes.new({ query: { farm_id: farm.id } })}
         class="inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface"
-        >Add an irrigation system</Link
       >
+        Add an irrigation system
+      </Link>
     {:else if system.fields.length === 0}
       <p class="text-sm">
         Add the fields {systemName(system)} waters. Type each one in, or import their shapes from a shapefile, KML or GeoJSON
@@ -66,8 +67,9 @@
         <Link
           href={newOutlineImport()}
           class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
-          >Import field shapes</Link
         >
+          Import field shapes
+        </Link>
       </div>
     {:else if unplanted.length}
       <p class="text-sm">
@@ -78,9 +80,13 @@
         {#each unplanted as field (field.id)}
           <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
             <span><span class="text-ink-muted">Field:</span> <span class="font-medium">{field.name}</span></span>
-            <Button variant="secondary" aria-label="Add a planting to {field.name}" onclick={() => onaddplanting(field)}
-              >Add a planting</Button
+            <Button
+              variant="secondary"
+              aria-label="Add a planting to {field.name}"
+              onclick={() => onaddplanting(field)}
             >
+              Add a planting
+            </Button>
           </li>
         {/each}
       </ul>

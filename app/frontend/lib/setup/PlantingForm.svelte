@@ -504,12 +504,12 @@
           {#if partial}
             <div class="space-y-3 rounded-md border border-line p-3">
               <div class="flex flex-wrap gap-4 text-sm">
-                <label class="flex items-center gap-2"
-                  ><input type="radio" name="planting-size-by" value="acres" bind:group={sizeBy} /> Area</label
-                >
-                <label class="flex items-center gap-2"
-                  ><input type="radio" name="planting-size-by" value="plot" bind:group={sizeBy} /> Length × width</label
-                >
+                <label class="flex items-center gap-2">
+                  <input type="radio" name="planting-size-by" value="acres" bind:group={sizeBy} /> Area
+                </label>
+                <label class="flex items-center gap-2">
+                  <input type="radio" name="planting-size-by" value="plot" bind:group={sizeBy} /> Length × width
+                </label>
               </div>
               {#if sizeBy === 'plot'}
                 <div class="grid gap-4 sm:grid-cols-3">
@@ -663,10 +663,10 @@
                           checked={alsoIds.includes(other.id)}
                           onchange={(event) => toggleAlso(other.id, event.currentTarget.checked)}
                         />
-                        <span
-                          >{other.name}
-                          <span class="text-ink-muted">{`(${formatArea(units, other.area_acres)})`}</span></span
-                        >
+                        <span>
+                          {other.name}
+                          <span class="text-ink-muted">{`(${formatArea(units, other.area_acres)})`}</span>
+                        </span>
                       </label>
                     {/each}
                   </div>
@@ -723,20 +723,20 @@
             <FieldLabel as="legend" label="Canopy method" labelId="planting-et-method" info="planting.et_method" />
             <label class="flex items-start gap-3 text-sm">
               <input type="radio" name="planting[et_method]" value="pct_cover" bind:group={etMethod} class="mt-0.5" />
-              <span
-                >Percent cover <span class="text-ink-muted"
-                  >(enter canopy cover in the daily grid about weekly until the canopy closes)</span
-                ></span
-              >
+              <span>
+                Percent cover <span class="text-ink-muted">
+                  (enter canopy cover in the daily grid about weekly until the canopy closes)
+                </span>
+              </span>
             </label>
             {#if plant.has_lai_curve}
               <label class="flex items-start gap-3 text-sm">
                 <input type="radio" name="planting[et_method]" value="lai" bind:group={etMethod} class="mt-0.5" />
                 <span>
                   Leaf area index
-                  <span class="text-ink-muted"
-                    >(follows the {plant.name.toLowerCase()} growth curve unless you enter readings)</span
-                  >
+                  <span class="text-ink-muted">
+                    (follows the {plant.name.toLowerCase()} growth curve unless you enter readings)
+                  </span>
                 </span>
               </label>
             {/if}
@@ -768,10 +768,10 @@
                     }}
                     class="mt-0.5"
                   />
-                  <span
-                    >{curve.name}{curve.key === plant.default_generic_curve ? ' (suggested)' : ''}
-                    <span class="block text-ink-muted">{curve.basis}</span></span
-                  >
+                  <span>
+                    {curve.name}{curve.key === plant.default_generic_curve ? ' (suggested)' : ''}
+                    <span class="block text-ink-muted">{curve.basis}</span>
+                  </span>
                 </label>
               {/each}
               <label class="flex items-start gap-3 text-sm">
@@ -817,14 +817,14 @@
                   bind:group={interpolation}
                   class="mt-0.5"
                 />
-                <span
-                  >Follow the {generic
+                <span>
+                  Follow the {generic
                     ? `${genericCurve?.name.toLowerCase()} curve`
                     : `${plant.name.toLowerCase()} curve`}
-                  <span class="text-ink-muted"
-                    >(fitted to your readings and passing through each one, including its late-season decline)</span
-                  ></span
-                >
+                  <span class="text-ink-muted">
+                    (fitted to your readings and passing through each one, including its late-season decline)
+                  </span>
+                </span>
               </label>
               <label class="flex items-start gap-3 text-sm">
                 <input
@@ -932,9 +932,9 @@
       <p class="text-sm text-status-irrigate-ink">{message}</p>
     {/each}
     <FormFooter {ondelete} deleteLabel="Delete this planting">
-      <Button type="submit" disabled={processing || !plant || tooBig || datesWrong}
-        >{planting ? 'Save planting' : 'Add planting'}</Button
-      >
+      <Button type="submit" disabled={processing || !plant || tooBig || datesWrong}>
+        {planting ? 'Save planting' : 'Add planting'}
+      </Button>
     </FormFooter>
   {/snippet}
 </Form>

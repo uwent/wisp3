@@ -14,5 +14,7 @@
 {#if fit.main}<button
     type="button"
     class="mt-0.5 block text-brand-600 underline underline-offset-2"
-    onclick={() => onuse(fit.main!.id)}>Use {fit.main.name}</button
-  >{/if}
+    onclick={() => onuse(fit.main!.id)}
+  >
+    Use {fit.main.name}
+  </button>{/if}

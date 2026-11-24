@@ -104,9 +104,9 @@
     <Form action={adminHealthChecks.create()} class="text-sm text-ink-muted">
       {#snippet children({ processing })}
         {check.checked_at ? `Last checked ${formatTimestamp(check.checked_at)} · ` : 'Not checked yet · '}
-        <button type="submit" class="text-brand-600 underline underline-offset-2" disabled={processing}
-          >{processing ? 'Checking…' : 'Re-run health check'}</button
-        >
+        <button type="submit" class="text-brand-600 underline underline-offset-2" disabled={processing}>
+          {processing ? 'Checking…' : 'Re-run health check'}
+        </button>
       {/snippet}
     </Form>
   </div>

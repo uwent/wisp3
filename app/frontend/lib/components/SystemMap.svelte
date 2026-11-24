@@ -618,8 +618,10 @@
     <p class="text-sm text-ink-muted">
       {`The ${fileShapes.shapes.length === 1 ? 'shape' : `${fileShapes.shapes.length.toLocaleString('en-US')} shapes`} from ${fileShapes.fileName} not yet imported ${fileShapes.shapes.length === 1 ? 'is' : 'are'} a layer on the map (Layers), gray and named, to place your irrigation systems on. Once their systems are set up, `}<Link
         href={newOutlineImport()}
-        class="text-brand-600 underline">import the shapes as fields</Link
-      >.
+        class="text-brand-600 underline"
+      >
+        import the shapes as fields
+      </Link>.
     </p>
   {/if}
   <!-- Any use of the map takes the hint off it -->
@@ -658,9 +660,9 @@
               <input type="checkbox" class="mt-1" bind:checked={fileShapesOn} />
               <span>
                 {`Shapes from ${fileShapes.fileName}`}
-                <span class="block text-xs text-ink-muted"
-                  >Your field shapes not yet imported, to place your irrigation systems on</span
-                >
+                <span class="block text-xs text-ink-muted">
+                  Your field shapes not yet imported, to place your irrigation systems on
+                </span>
               </span>
             </label>
           {/if}
@@ -684,9 +686,9 @@
           <Button type="button" variant="secondary" onclick={cancelEditing}>Cancel</Button>
         </div>
       {:else if !editing}
-        <Button type="button" variant="secondary" class="pointer-events-auto shadow-lg" onclick={startEditing}
-          >Edit on the map</Button
-        >
+        <Button type="button" variant="secondary" class="pointer-events-auto shadow-lg" onclick={startEditing}>
+          Edit on the map
+        </Button>
       {/if}
     </div>
 
@@ -731,18 +733,18 @@
     <MapLegend rows={legendRows} />
   </div>
   <div class="flex flex-wrap items-center gap-3 text-sm">
-    {#if center && !editing}<span class="text-ink-muted"
-        >Locked so a stray click can't move the {noun}: Edit on the map to move{point ? '' : ' or resize'} it.</span
-      >
-    {:else if center}<span class="text-ink-muted"
-        >{point
+    {#if center && !editing}<span class="text-ink-muted">
+        Locked so a stray click can't move the {noun}: Edit on the map to move{point ? '' : ' or resize'} it.
+      </span>
+    {:else if center}<span class="text-ink-muted">
+        {point
           ? `Drag the pin to move the ${noun}.`
           : linear
             ? 'Drag the pin to move the linear, the square corner handles to resize it, or the round handle to turn it.'
             : arc
               ? 'Drag the pin to move the pivot, the blue handle to set its radius, or the white handles to set the ends of its arc.'
-              : 'Drag the pin to move the pivot, or the round handle to set its radius.'}</span
-      >{/if}
+              : 'Drag the pin to move the pivot, or the round handle to set its radius.'}
+      </span>{/if}
   </div>
   <SoilTypesLegend layer={soilLayer} {soilTypes} zoomHint="place the {noun}, or zoom in, to see them." />
 </div>

@@ -167,8 +167,10 @@
                 <Link
                   href={fieldOutline(field.id, { query: { from: 'setup' } })}
                   class="text-brand-600 underline underline-offset-2"
-                  aria-describedby="field-shape">{field.boundary ? 'Edit shape' : 'Add a shape'}</Link
+                  aria-describedby="field-shape"
                 >
+                  {field.boundary ? 'Edit shape' : 'Add a shape'}
+                </Link>
               {:else}
                 <span class="text-xs text-ink-muted">Add one once the field is saved</span>
               {/if}

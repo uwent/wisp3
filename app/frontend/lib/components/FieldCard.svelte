@@ -68,9 +68,9 @@
   {#if summary?.phase === 'active'}
     <StatusBadge status={summary.status} size="sm" />
   {:else if summary?.phase === 'ended'}
-    <span class="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs whitespace-nowrap text-ink-muted"
-      >Season ended</span
-    >
+    <span class="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs whitespace-nowrap text-ink-muted">
+      Season ended
+    </span>
   {/if}
 {/snippet}
 
@@ -227,8 +227,9 @@
               <span class="block text-xs text-ink-muted">{cardWhen(summary, today)}</span>
               {#if look}<span
                   class="block text-xs {look.urgent ? 'font-medium text-status-irrigate-ink' : 'text-ink-muted'}"
-                  >{look.headline}</span
-                >{/if}
+                >
+                  {look.headline}
+                </span>{/if}
               <!-- Moisture and AD in season, the stats once ended; nothing while weather is on its way (the card's note says so) -->
               {#if !summary.weather_pending && summary.phase === 'ended'}
                 <span class="block text-xs text-ink-muted">{seasonLine(summary.totals, units, summary.rainfed)}</span>
@@ -239,9 +240,9 @@
             {@render badge(summary)}
           {/snippet}
           {#if linked}
-            <Link href={plantingRoute(summary.planting_id)} class="flex items-center gap-2 py-1.5 hover:bg-surface"
-              >{@render row()}</Link
-            >
+            <Link href={plantingRoute(summary.planting_id)} class="flex items-center gap-2 py-1.5 hover:bg-surface">
+              {@render row()}
+            </Link>
           {:else}
             <div class="flex items-center gap-2 py-1.5">{@render row()}</div>
           {/if}
@@ -265,8 +266,10 @@
           {#if linked}
             <Link
               href={plantingRoute(summary.planting_id)}
-              class="-mx-1 block space-y-2 rounded-md px-1 hover:bg-surface">{@render brief()}</Link
+              class="-mx-1 block space-y-2 rounded-md px-1 hover:bg-surface"
             >
+              {@render brief()}
+            </Link>
           {:else}
             <div class="space-y-2">{@render brief()}</div>
           {/if}
@@ -300,9 +303,9 @@
         <Link {href} class="text-brand-600 hover:underline" aria-label="View {card.name}">View</Link>
         {#if !isExample(page.props)}
           <span class="text-ink-muted" aria-hidden="true">·</span>
-          <Link href={editLink('field', card.id)} class="text-brand-600 hover:underline" aria-label="Edit {card.name}"
-            >Edit</Link
-          >
+          <Link href={editLink('field', card.id)} class="text-brand-600 hover:underline" aria-label="Edit {card.name}">
+            Edit
+          </Link>
         {/if}
       </div>
     {/if}

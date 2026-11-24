@@ -92,8 +92,10 @@
           href={plantingRoute(planting.id)}
           class="text-brand-600 underline underline-offset-2"
           onBefore={leave}
-          onSuccess={close}>View this planting</Link
+          onSuccess={close}
         >
+          View this planting
+        </Link>
       </p>
     {/if}
     {#key key}

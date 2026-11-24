@@ -228,9 +228,9 @@
             <input type="checkbox" class="mt-1" bind:checked={fieldsOn} />
             <span>
               Saved fields
-              <span class="block text-xs text-ink-muted"
-                >Your fields' shapes in WISP, dashed where a shape will update one</span
-              >
+              <span class="block text-xs text-ink-muted">
+                Your fields' shapes in WISP, dashed where a shape will update one
+              </span>
             </span>
           </label>
         {/if}

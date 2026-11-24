@@ -140,8 +140,9 @@
   <a
     href="#main"
     class="sr-only rounded-md bg-surface-raised px-3 py-2 text-sm font-medium text-brand-600 shadow-lg focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-60"
-    >Skip to main content</a
   >
+    Skip to main content
+  </a>
   {#if auth.impersonator && auth.user}
     <!-- Signed in as someone else for support: stays at the top as the page scrolls -->
     <div
@@ -161,8 +162,9 @@
               type="submit"
               disabled={processing}
               class="rounded-md border border-on-impersonation px-3 py-1 font-medium hover:bg-on-impersonation/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-impersonation disabled:opacity-70"
-              >Return to admin</button
             >
+              Return to admin
+            </button>
           {/snippet}
         </Form>
       </div>
@@ -183,8 +185,9 @@
               type="submit"
               disabled={processing}
               class="rounded-md border border-on-example px-3 py-1 font-medium hover:bg-on-example/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-example disabled:opacity-70"
-              >Leave the example</button
             >
+              Leave the example
+            </button>
           {/snippet}
         </Form>
       </div>
@@ -247,9 +250,12 @@
         {/if}
 
         {#if !auth.user}
-          <Link href={newUserSession()} class="rounded-md px-3 py-1.5 text-sm font-medium text-ink-muted hover:text-ink"
-            >Sign in</Link
+          <Link
+            href={newUserSession()}
+            class="rounded-md px-3 py-1.5 text-sm font-medium text-ink-muted hover:text-ink"
           >
+            Sign in
+          </Link>
           <Link
             href={newUserRegistration()}
             class="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 dark:text-surface"
@@ -268,9 +274,9 @@
               <DropdownMenu.Content class={menuContent} sideOffset={6} align="end" preventScroll={false}>
                 {#if auth.groups.length > 1 && !wideNav.current && !example}
                   <DropdownMenu.Group aria-label="Operation">
-                    <DropdownMenu.GroupHeading class="px-3 py-1 text-xs text-ink-muted"
-                      >Operation</DropdownMenu.GroupHeading
-                    >
+                    <DropdownMenu.GroupHeading class="px-3 py-1 text-xs text-ink-muted">
+                      Operation
+                    </DropdownMenu.GroupHeading>
                     {#each auth.groups as group (group.id)}
                       <DropdownMenu.Item class={menuItem} onSelect={() => switchGroup(group.id)}>
                         <span class="w-5">{group.id === auth.group?.id ? '✓' : ''}</span>{group.name}
@@ -317,9 +323,9 @@
     <footer class="space-y-1 border-t border-line p-4 text-center text-xs text-ink-muted">
       <p>Wisconsin Irrigation Scheduling Program</p>
       <p>
-        Developed by the <a href="https://cals.wisc.edu/" class="underline hover:text-ink"
-          >College of Agricultural and Life Sciences</a
-        > at the University of Wisconsin–Madison.
+        Developed by the <a href="https://cals.wisc.edu/" class="underline hover:text-ink">
+          College of Agricultural and Life Sciences
+        </a> at the University of Wisconsin–Madison.
       </p>
     </footer>
   {/if}

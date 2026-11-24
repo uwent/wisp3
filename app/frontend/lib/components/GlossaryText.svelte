@@ -15,7 +15,8 @@
 
 {#each marked as segments, p (p)}
   <p class={className}>
-    {#each segments as segment, i (i)}{#if segment.entry}<Term entry={segment.entry}>{segment.text}</Term
-        >{:else}{segment.text}{/if}{/each}
+    {#each segments as segment, i (i)}{#if segment.entry}<Term entry={segment.entry}>
+          {segment.text}
+        </Term>{:else}{segment.text}{/if}{/each}
   </p>
 {/each}

@@ -92,8 +92,9 @@
         <Link
           href={adminAnnouncements.edit(announcement.id)}
           class="rounded-md border border-line bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface"
-          >Edit</Link
         >
+          Edit
+        </Link>
         <Form action={adminAnnouncements.test(announcement.id)} options={{ preserveScroll: true }}>
           {#snippet children({ processing: testing })}
             <Button type="submit" variant="secondary" disabled={testing}>Send a test to me</Button>

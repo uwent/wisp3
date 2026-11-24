@@ -48,9 +48,9 @@
       />
     </label>
     <p class="text-xs">
-      Source: <a href={overlay.credit.url} target="_blank" rel="noopener" class="text-brand-600 hover:underline"
-        >{overlay.credit.name}</a
-      >
+      Source: <a href={overlay.credit.url} target="_blank" rel="noopener" class="text-brand-600 hover:underline">
+        {overlay.credit.name}
+      </a>
     </p>
   </div>
 {/snippet}
@@ -58,9 +58,9 @@
 {#snippet mark(id: OverlayId)}
   {@const status = overlays.status[id]}
   {#if status && STATUS_TEXT[status]}
-    <span class="ml-auto text-xs {status === 'unavailable' ? 'text-status-irrigate-ink' : 'text-ink-muted'}"
-      >{STATUS_TEXT[status]}</span
-    >
+    <span class="ml-auto text-xs {status === 'unavailable' ? 'text-status-irrigate-ink' : 'text-ink-muted'}">
+      {STATUS_TEXT[status]}
+    </span>
   {/if}
 {/snippet}
 

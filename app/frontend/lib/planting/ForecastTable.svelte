@@ -86,14 +86,16 @@
           {#each days as day, row (day.date)}
             {@const band = projectionByDate.get(day.date)}
             <tr class="text-right {day.ad <= (summary?.threshold ?? 0) ? 'bg-status-irrigate/5' : ''}">
-              <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap"
-                >{formatDate(day.date, { weekday: true })}</th
-              >
+              <th scope="row" class="px-3 py-1 text-left font-normal whitespace-nowrap">
+                {formatDate(day.date, { weekday: true })}
+              </th>
               <td class="px-2 py-1 text-ink-muted tabular-nums">{depth(day.adj_et)}</td>
               <td class="px-2 py-1 tabular-nums">
                 {#if day.rain_source === 'forecast' || day.rain_source === 'model' || day.rain_source === 'none'}<span
-                    class="text-ink-muted">{depth(day.rain)}</span
+                    class="text-ink-muted"
                   >
+                    {depth(day.rain)}
+                  </span>
                 {:else}<span class="font-medium">{depth(day.rain)}</span>{/if}
               </td>
               <td class="px-1 py-0.5">
@@ -112,23 +114,26 @@
                   {/if}
                 </EditableCell>
               </td>
-              <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate-ink' : ''}"
-                >{depth(day.ad)}</td
-              >
+              <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate-ink' : ''}">
+                {depth(day.ad)}
+              </td>
               {#if hasDry}
                 {@const dryAd = band?.dry_ad ?? null}
                 <td
                   class="px-2 py-1 text-ink-muted tabular-nums {dryAd !== null && dryAd <= 0
                     ? 'text-status-irrigate-ink'
-                    : ''}">{depth(dryAd)}</td
+                    : ''}"
                 >
+                  {depth(dryAd)}
+                </td>
               {/if}
               {#if summary?.ensemble_size}
                 <td class="px-2 py-1 whitespace-nowrap text-ink-muted tabular-nums">
                   {band?.p10 != null && band.p90 != null ? `${depth(band.p10)} to ${depth(band.p90)}` : ''}
                 </td>
-                <td class="px-2 py-1 tabular-nums">{band?.chance != null ? `${Math.round(band.chance * 100)}%` : ''}</td
-                >
+                <td class="px-2 py-1 tabular-nums">
+                  {band?.chance != null ? `${Math.round(band.chance * 100)}%` : ''}
+                </td>
               {/if}
             </tr>
           {/each}

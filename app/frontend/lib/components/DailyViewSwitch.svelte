@@ -20,7 +20,9 @@
       class="px-3 py-1.5 {view === option.key
         ? 'bg-brand-600 text-white dark:text-surface'
         : 'bg-surface-raised hover:bg-surface'}"
-      aria-current={view === option.key ? 'page' : undefined}>{option.name}</Link
+      aria-current={view === option.key ? 'page' : undefined}
     >
+      {option.name}
+    </Link>
   {/each}
 </div>

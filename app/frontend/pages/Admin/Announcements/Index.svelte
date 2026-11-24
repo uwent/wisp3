@@ -33,8 +33,9 @@
     <Link
       href={adminAnnouncements.new()}
       class="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium whitespace-nowrap text-white hover:bg-brand-700 dark:text-surface"
-      >New announcement</Link
     >
+      New announcement
+    </Link>
   </div>
 
   {#if announcements.length}
@@ -42,9 +43,9 @@
       {#each announcements as announcement (announcement.id)}
         <li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-3">
           <div class="min-w-0">
-            <Link href={adminAnnouncements.show(announcement.id)} class="font-medium text-brand-600 hover:underline"
-              >{announcement.subject}</Link
-            >
+            <Link href={adminAnnouncements.show(announcement.id)} class="font-medium text-brand-600 hover:underline">
+              {announcement.subject}
+            </Link>
             <p class="text-sm text-ink-muted">
               {announcement.audience_text}{announcement.recipients_count !== null
                 ? ` · ${count(announcement.recipients_count, 'person', 'people')}`
@@ -52,12 +53,12 @@
             </p>
           </div>
           <p class="text-sm whitespace-nowrap">
-            <span class={announcement.status === 'incomplete' ? 'font-medium text-status-caution-ink' : ''}
-              >{STATUS[announcement.status]}</span
-            >
-            <span class="text-ink-muted"
-              >{` · ${formatDate(announcement.sent_at ?? announcement.created_at, { year: true })}`}</span
-            >
+            <span class={announcement.status === 'incomplete' ? 'font-medium text-status-caution-ink' : ''}>
+              {STATUS[announcement.status]}
+            </span>
+            <span class="text-ink-muted">
+              {` · ${formatDate(announcement.sent_at ?? announcement.created_at, { year: true })}`}
+            </span>
           </p>
         </li>
       {/each}

@@ -121,8 +121,9 @@
 <FieldHeader {field} {system} {farm} {units} {year} current="field">
   {#snippet actions()}
     {#if !readOnly}
-      <Button variant="secondary" class="px-3 py-1.5" onclick={() => plantingDialog?.open(field)}>Add a planting</Button
-      >
+      <Button variant="secondary" class="px-3 py-1.5" onclick={() => plantingDialog?.open(field)}>
+        Add a planting
+      </Button>
     {/if}
   {/snippet}
 </FieldHeader>
@@ -158,9 +159,9 @@
               {#if summary.phase === 'active'}
                 <StatusBadge status={statusById[summary.planting_id]} size="sm" />
               {:else}
-                <span class="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted"
-                  >{summary.phase === 'ended' ? 'Season ended' : 'Upcoming'}</span
-                >
+                <span class="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted">
+                  {summary.phase === 'ended' ? 'Season ended' : 'Upcoming'}
+                </span>
               {/if}
             </div>
             <p class="text-xs text-ink-muted">
@@ -190,8 +191,10 @@
       {#if !readOnly}<button
           type="button"
           class="text-brand-600 underline underline-offset-2"
-          onclick={() => plantingDialog?.open(field)}>Add a planting</button
-        > to start its water balance.{/if}
+          onclick={() => plantingDialog?.open(field)}
+        >
+          Add a planting
+        </button> to start its water balance.{/if}
     </p>
   {/if}
 </section>
@@ -227,28 +230,32 @@
             <tr class="text-right">
               <th
                 class="sticky top-0 z-20 w-px bg-surface-raised px-3 py-2 text-left font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
-                >Date</th
               >
+                Date
+              </th>
               <th
                 class="sticky top-0 z-20 w-px bg-surface-raised p-2 font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
-                >Rain</th
               >
+                Rain
+              </th>
               <th
                 class="sticky top-0 z-20 w-px bg-surface-raised p-2 font-medium whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-line)]"
-                >Irrigation</th
               >
+                Irrigation
+              </th>
               <th
                 class="sticky top-0 z-20 bg-surface-raised p-2 text-left font-medium shadow-[inset_0_-1px_0_var(--color-line)]"
-                >Notes</th
               >
+                Notes
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-line">
             {#each days as day, row (day.date)}
               <tr class="text-right">
-                <th scope="row" class="w-px px-3 py-1 text-left font-normal whitespace-nowrap"
-                  >{formatDate(day.date, { weekday: true })}</th
-                >
+                <th scope="row" class="w-px px-3 py-1 text-left font-normal whitespace-nowrap">
+                  {formatDate(day.date, { weekday: true })}
+                </th>
                 <td class="w-px px-1 py-0.5 whitespace-nowrap">
                   <EditableCell
                     grid="field-days"
@@ -261,9 +268,9 @@
                   >
                     {#if day.rain_source === 'entered'}
                       <span class="font-medium">{depth(day.rain)}</span>
-                      {#if rainOverridden(day)}<span class="block text-xs text-ink-muted"
-                          >modeled {depth(day.rain_model)}</span
-                        >{/if}
+                      {#if rainOverridden(day)}<span class="block text-xs text-ink-muted">
+                          modeled {depth(day.rain_model)}
+                        </span>{/if}
                     {:else}
                       <span class="text-ink-muted">{depth(day.rain)}</span>
                     {/if}
@@ -309,9 +316,9 @@
       <p class="text-xs text-ink-muted">
         Rain in gray is modeled for the {noun}'s location; bold values are ones you entered. Irrigation can also be
         entered for all the {noun}'s fields at once on the
-        <Link href={systems.show(system.id)} class="text-brand-600 underline underline-offset-2"
-          >{noun}'s irrigation page</Link
-        > or the Daily entry page.
+        <Link href={systems.show(system.id)} class="text-brand-600 underline underline-offset-2">
+          {noun}'s irrigation page
+        </Link> or the Daily entry page.
       </p>
       {#if !system.use_model_precip}
         <p class="text-xs">
@@ -320,8 +327,10 @@
           {#if !readOnly}
             <Link
               href={rainSettingLink(system.irrigation_group?.id ?? null, farm.id)}
-              class="text-brand-600 underline underline-offset-2">Change this</Link
+              class="text-brand-600 underline underline-offset-2"
             >
+              Change this
+            </Link>
           {/if}
         </p>
       {/if}

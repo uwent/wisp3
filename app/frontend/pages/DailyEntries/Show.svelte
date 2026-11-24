@@ -258,13 +258,13 @@
       <!-- Rain is entered on the system's row; the field's own shows here when they differ -->
       <input type="hidden" name="fields[{field.id}][rain_in]" value={rain[field.id] ?? ''} />
       {#if rainVaries}
-        <span class="block py-2 text-xs text-ink-muted"
-          >{rain[field.id] != null
+        <span class="block py-2 text-xs text-ink-muted">
+          {rain[field.id] != null
             ? units.format('depth', rain[field.id], { unit: false })
             : field.rain_model != null
               ? `${units.format('depth', field.rain_model, { unit: false })} modeled`
-              : ''}</span
-        >
+              : ''}
+        </span>
       {/if}
     </td>
     <td class="w-24 px-1 py-1.5 sm:w-36 sm:px-2">
@@ -302,9 +302,9 @@
       {/if}
     </td>
     {#if anyCover}
-      <td class="w-20 px-1 py-1.5 sm:w-28 sm:px-2"
-        >{#if whole}{@render coverCell(whole, field.name, errs)}{/if}</td
-      >
+      <td class="w-20 px-1 py-1.5 sm:w-28 sm:px-2">
+        {#if whole}{@render coverCell(whole, field.name, errs)}{/if}
+      </td>
     {/if}
   </tr>
   {#each fieldPlots as plot (plot.id)}
@@ -424,8 +424,10 @@
               type="button"
               class="py-2 text-xs text-brand-600 hover:underline"
               aria-label="Same as {dayBefore} for {system.name}"
-              onclick={() => sameAsYesterday(system)}>Same as {dayBefore}</button
+              onclick={() => sameAsYesterday(system)}
             >
+              Same as {dayBefore}
+            </button>
           {/if}
         </div>
       {/if}
@@ -459,8 +461,9 @@
   <div class="flex flex-wrap items-center gap-3">
     <DailyViewSwitch view="day" {date} />
     <div class="flex items-center gap-1">
-      <Button variant="secondary" class="px-3" onclick={() => go(addDays(date, -1))} aria-label="Previous day">‹</Button
-      >
+      <Button variant="secondary" class="px-3" onclick={() => go(addDays(date, -1))} aria-label="Previous day">
+        ‹
+      </Button>
       <input
         type="date"
         value={date}
@@ -476,8 +479,10 @@
         class="px-3"
         onclick={() => go(addDays(date, 1))}
         disabled={date >= today}
-        aria-label="Next day">›</Button
+        aria-label="Next day"
       >
+        ›
+      </Button>
     </div>
   </div>
 </div>
@@ -488,8 +493,10 @@
   >
     You haven't added an irrigation system yet. <Link
       href={newQuickSetup()}
-      class="text-brand-600 underline underline-offset-2">Set up your first irrigation system</Link
-    > to start entering rain and irrigation.
+      class="text-brand-600 underline underline-offset-2"
+    >
+      Set up your first irrigation system
+    </Link> to start entering rain and irrigation.
   </section>
 {:else}
   {#key date}
@@ -528,9 +535,9 @@
           {#if farm.systems.length}
             <section class="space-y-2" aria-labelledby="farm-{farm.id}">
               <h3 id="farm-{farm.id}" class="font-medium text-ink-muted">
-                {farm.name}{#if !farm.use_model_precip}<span class="text-xs font-normal"
-                    >{' · only entered rain counts'}</span
-                  >{/if}
+                {farm.name}{#if !farm.use_model_precip}<span class="text-xs font-normal">
+                    {' · only entered rain counts'}
+                  </span>{/if}
               </h3>
               <div class="relative overflow-x-auto rounded-lg border border-line bg-surface-raised">
                 <table class="w-full text-sm sm:min-w-xl">
@@ -555,12 +562,9 @@
                             {@render toggle(`Irrigation systems in ${group.name}`, open, () => remember(key, open))}
                             <span>
                               <span class="font-medium">{group.name}</span>
-                              <span class="block text-xs font-normal text-ink-muted"
-                                >{`Irrigation group · ${count(group.systems.length, 'system')}`}{rainNote(
-                                  group,
-                                  farm,
-                                )}</span
-                              >
+                              <span class="block text-xs font-normal text-ink-muted">
+                                {`Irrigation group · ${count(group.systems.length, 'system')}`}{rainNote(group, farm)}
+                              </span>
                             </span>
                           </span>
                         </th>
@@ -624,9 +628,9 @@
         >
           <Button type="submit" disabled={processing}>Save {formatDate(date)}</Button>
           <p class="text-sm text-ink-muted">
-            {#if Object.keys(errs).length}<span class="text-status-irrigate-ink" role="alert"
-                >Nothing was saved. Please correct the highlighted entries and save again.</span
-              >
+            {#if Object.keys(errs).length}<span class="text-status-irrigate-ink" role="alert">
+                Nothing was saved. Please correct the highlighted entries and save again.
+              </span>
             {:else if isDirty || dirty}You have unsaved changes{:else}Leave rain blank to use the modeled rain. Enter 0
               if your gauge showed no rain.{/if}
           </p>

@@ -69,9 +69,9 @@
     >
       {#each places as place (place.label)}
         <li>
-          <button type="button" class="block w-full px-3 py-2 text-left hover:bg-brand-50" onclick={() => goTo(place)}
-            >{place.label}</button
-          >
+          <button type="button" class="block w-full px-3 py-2 text-left hover:bg-brand-50" onclick={() => goTo(place)}>
+            {place.label}
+          </button>
         </li>
       {/each}
     </ul>

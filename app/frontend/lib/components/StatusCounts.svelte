@@ -61,8 +61,10 @@
         : 'border-transparent hover:border-line'}"
       title="{tips[filter](count)}. {selected === filter ? 'Show all fields' : 'Show only these'}."
       aria-pressed={selected === filter}
-      onclick={() => toggle(filter)}>{@render item(filter, count)}</button
+      onclick={() => toggle(filter)}
     >
+      {@render item(filter, count)}
+    </button>
   {:else}
     <span class="relative flex items-center gap-1.5" title={tips[filter](count)}>{@render item(filter, count)}</span>
   {/if}
@@ -81,7 +83,9 @@
     <button
       type="button"
       class="min-h-9 px-2 text-brand-600 underline underline-offset-2 hover:decoration-2"
-      onclick={() => onselect(null)}>Show all</button
+      onclick={() => onselect(null)}
     >
+      Show all
+    </button>
   {/if}
 </div>

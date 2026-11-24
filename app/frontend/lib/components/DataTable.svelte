@@ -206,9 +206,9 @@
           </tr>
         {:else}
           <tr>
-            <td colspan={columns.length} class="px-3 py-6 text-center text-ink-muted"
-              >{query.trim() ? 'Nothing matches your search.' : empty}</td
-            >
+            <td colspan={columns.length} class="px-3 py-6 text-center text-ink-muted">
+              {query.trim() ? 'Nothing matches your search.' : empty}
+            </td>
           </tr>
         {/each}
       </tbody>

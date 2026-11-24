@@ -138,13 +138,13 @@
       {:else if column.key === 'active'}
         <span class="whitespace-nowrap">{formatDate(user.last_active_on, { year: true })}</span>
       {:else if column.key === 'signed_in'}
-        <span class="whitespace-nowrap" title={formatTimestamp(user.current_sign_in_at)}
-          >{formatDate(user.current_sign_in_at, { year: true })}</span
-        >
+        <span class="whitespace-nowrap" title={formatTimestamp(user.current_sign_in_at)}>
+          {formatDate(user.current_sign_in_at, { year: true })}
+        </span>
       {:else if column.key === 'created'}
-        <span class="whitespace-nowrap" title={formatTimestamp(user.created_at)}
-          >{formatDate(user.created_at, { year: true })}</span
-        >
+        <span class="whitespace-nowrap" title={formatTimestamp(user.created_at)}>
+          {formatDate(user.created_at, { year: true })}
+        </span>
       {:else if column.key === 'actions'}
         {#if !user.confirmed && !user.admin && user.id !== me}
           <Button variant="danger-ghost" class="px-2 py-1" onclick={() => confirmDelete(user)}>Delete</Button>

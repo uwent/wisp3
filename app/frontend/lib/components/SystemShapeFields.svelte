@@ -120,9 +120,9 @@
               {shape.kind === kind.value ? 'border-brand-500 bg-brand-50' : 'border-line'}"
           >
             <input type="radio" value={kind.value} bind:group={shape.kind} class="mt-0.5" />
-            <span
-              ><span class="block font-medium">{kind.label}</span> <span class="text-ink-muted">{kind.hint}</span></span
-            >
+            <span>
+              <span class="block font-medium">{kind.label}</span> <span class="text-ink-muted">{kind.hint}</span>
+            </span>
           </label>
         {/each}
       </div>
@@ -136,15 +136,17 @@
     </fieldset>
   {:else}
     <div class="flex items-center justify-between gap-3 rounded-md border border-line px-3 py-2 text-sm">
-      <span class="flex items-center gap-2 font-medium"
-        ><KindIcon kind={shape.kind} />{KINDS.find((kind) => kind.value === shape.kind)?.label}</span
-      >
+      <span class="flex items-center gap-2 font-medium">
+        <KindIcon kind={shape.kind} />{KINDS.find((kind) => kind.value === shape.kind)?.label}
+      </span>
       <button
         type="button"
         class="text-brand-600 hover:underline"
         aria-label="Change the kind of system"
-        onclick={changeKind}>Change</button
+        onclick={changeKind}
       >
+        Change
+      </button>
     </div>
   {/if}
   {#if error('kind')}<p class="text-sm text-status-irrigate-ink">{error('kind')}</p>{/if}
@@ -286,8 +288,9 @@
           class="text-sm text-brand-600 hover:underline"
           aria-pressed={systemMap.soil.on}
           onclick={() => systemMap?.soil.toggle()}
-          >{systemMap.soil.on ? 'Hide soil types on the map' : 'Show soil types on the map'}</button
         >
+          {systemMap.soil.on ? 'Hide soil types on the map' : 'Show soil types on the map'}
+        </button>
       {/if}
     </SectionHeading>
     {#if surveyNote}<p class="text-sm text-ink-muted">{surveyNote}</p>{/if}

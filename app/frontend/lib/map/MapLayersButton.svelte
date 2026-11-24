@@ -50,8 +50,10 @@
         stroke="currentColor"
         stroke-width="2"
         stroke-linejoin="round"
-        aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></svg
+        aria-hidden="true"
       >
+        <path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" />
+      </svg>
       Layers{#if count}<span class="rounded-full bg-brand-600 px-1.5 text-white dark:text-surface">{count}</span>{/if}
     </button>
     {#if open}
@@ -74,8 +76,10 @@
             type="button"
             class="rounded-sm px-1.5 text-lg leading-none text-ink-muted hover:text-ink"
             aria-label="Close map layers"
-            onclick={close}>×</button
+            onclick={close}
           >
+            ×
+          </button>
         </div>
         {@render children?.()}
         {#if basemap === 'imagery'}

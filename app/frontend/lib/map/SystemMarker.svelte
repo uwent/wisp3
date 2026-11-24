@@ -58,8 +58,10 @@
         class="block rounded-full bg-black/50 px-1.5 py-0.5 text-[0.65rem] text-white {selected
           ? 'ring-2 ring-white'
           : ''}"
-        data-hover={`System: ${name}\nNo fields`}>No fields</span
+        data-hover={`System: ${name}\nNo fields`}
       >
+        No fields
+      </span>
     {/if}
   </span>
   <!-- Zoomed out, the most urgent status with its icon, not color alone -->
@@ -76,6 +78,8 @@
   <span
     class="max-w-40 truncate text-xs font-semibold text-white [text-shadow:0_0_3px_#000,0_0_2px_#000]
       group-data-far/map:hidden group-data-mid/map:hidden"
-    data-hover="System: {name}">{system.name}</span
+    data-hover="System: {name}"
   >
+    {system.name}
+  </span>
 </button>

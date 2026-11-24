@@ -139,13 +139,15 @@
       Modeled by Open-Meteo for this weather zone, with the forecast shaded; WISP corrects its sunshine and humidity and
       works out reference ET from them (<a
         href="{about().url}#weather-corrections"
-        class="text-brand-600 underline underline-offset-2">weather corrections</a
-      >). Drag the bar above the charts, or scroll or pinch any chart, to choose the days they all show, and select the
-      (i) on a chart to learn what it shows. {@render children?.()}
+        class="text-brand-600 underline underline-offset-2"
+      >
+        weather corrections
+      </a>). Drag the bar above the charts, or scroll or pinch any chart, to choose the days they all show, and select
+      the (i) on a chart to learn what it shows. {@render children?.()}
       Each chart's "Summary and data" has its daily values to read, copy or download, and
-      <button type="button" class="text-brand-600 underline underline-offset-2" onclick={() => (allOpen = true)}
-        >all of this zone's weather</button
-      > is in one table.
+      <button type="button" class="text-brand-600 underline underline-offset-2" onclick={() => (allOpen = true)}>
+        all of this zone's weather
+      </button> is in one table.
     </p>
     <div
       bind:this={bar}

@@ -154,11 +154,11 @@
                   bind:group={audience}
                   class="mt-0.5"
                 />
-                <span
-                  ><span class="font-medium">{option.label}</span>
+                <span>
+                  <span class="font-medium">{option.label}</span>
                   <span class="text-ink-muted">{` · ${count(option.count, 'person', 'people')}`}</span>
-                  <span class="block text-ink-muted">{option.description}</span></span
-                >
+                  <span class="block text-ink-muted">{option.description}</span>
+                </span>
               </label>
             {/each}
             {#if chosen?.dated}
@@ -189,8 +189,10 @@
                 <button
                   type="button"
                   class="rounded-sm border border-line px-2 py-0.5 text-sm hover:bg-surface {tool.class ?? ''}"
-                  onclick={() => apply(tool.make)}>{tool.label}</button
+                  onclick={() => apply(tool.make)}
                 >
+                  {tool.label}
+                </button>
               {/each}
             </div>
             <textarea
@@ -226,8 +228,9 @@
                     class="rounded-sm border border-line px-2 py-0.5 font-mono text-xs hover:bg-surface"
                     aria-label="Insert {placeholder.description.toLowerCase()} placeholder"
                     onclick={() => apply((t, s, e) => insert(t, s, e, `{{${placeholder.key}}}`))}
-                    >{`{{${placeholder.key}}}`}</button
                   >
+                    {`{{${placeholder.key}}}`}
+                  </button>
                   <span class="text-ink-muted">{placeholder.description}</span>
                 </li>
               {/each}

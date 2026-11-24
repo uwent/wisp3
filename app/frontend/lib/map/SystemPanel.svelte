@@ -59,8 +59,10 @@
     type="button"
     class="min-w-0 truncate hover:text-ink hover:underline"
     aria-label="Show the {level === 'farm' ? 'farm' : 'irrigation group'} {item.name}"
-    onclick={() => onselect({ level, id: item.id })}>{noun}: {item.name}</button
+    onclick={() => onselect({ level, id: item.id })}
   >
+    {noun}: {item.name}
+  </button>
 {/snippet}
 
 <MapPanel titleId="system-panel-title" {onclose}>
@@ -77,14 +79,14 @@
       {systemName(system)}
     </h2>
     <div class="flex items-center gap-2 text-xs font-medium">
-      <Link href={systems.show(system.id)} class="text-brand-600 hover:underline" aria-label="View {system.name}"
-        >View</Link
-      >
+      <Link href={systems.show(system.id)} class="text-brand-600 hover:underline" aria-label="View {system.name}">
+        View
+      </Link>
       {#if !isExample(page.props)}
         <span class="text-ink-muted" aria-hidden="true">·</span>
-        <Link href={systems.edit(system.id)} class="text-brand-600 hover:underline" aria-label="Edit {system.name}"
-          >Edit</Link
-        >
+        <Link href={systems.edit(system.id)} class="text-brand-600 hover:underline" aria-label="Edit {system.name}">
+          Edit
+        </Link>
       {/if}
     </div>
   {/snippet}

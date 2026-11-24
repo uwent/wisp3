@@ -24,8 +24,10 @@
       role="tab"
       aria-selected={mode === value}
       class="rounded-sm px-3 py-1.5 font-medium {mode === value ? 'bg-brand-50 text-brand-700' : 'text-ink-muted'}"
-      onclick={() => (mode = value as typeof mode)}>{label}</button
+      onclick={() => (mode = value as typeof mode)}
     >
+      {label}
+    </button>
   {/each}
 </div>
 

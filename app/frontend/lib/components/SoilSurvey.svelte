@@ -98,8 +98,10 @@
             <button
               type="button"
               class="ml-1 text-brand-600 underline underline-offset-2"
-              onclick={() => onuse(suggested!)}>Use {suggested.name}</button
+              onclick={() => onuse(suggested!)}
             >
+              Use {suggested.name}
+            </button>
           {/if}
         {:else}
           no single soil type covers most {where}.
@@ -114,8 +116,10 @@
           href="https://websoilsurvey.nrcs.usda.gov/"
           target="_blank"
           rel="noopener"
-          class="text-brand-600 underline">USDA Web Soil Survey</a
-        >). Treat this as a starting point, and check it against what you know of the field.
+          class="text-brand-600 underline"
+        >
+          USDA Web Soil Survey
+        </a>). Treat this as a starting point, and check it against what you know of the field.
       </p>
     {/if}
   </div>

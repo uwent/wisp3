@@ -16,16 +16,17 @@
 </script>
 
 <!-- No whitespace between the tags: it would show as a space after the term, before punctuation -->
-<Popover.Root bind:open
-  ><Popover.Trigger
+<Popover.Root bind:open>
+  <Popover.Trigger
     aria-describedby={open ? `term-${uid}` : undefined}
     openOnHover
     openDelay={150}
     class="cursor-help rounded-sm underline decoration-ink-muted decoration-dotted underline-offset-3 hover:decoration-ink
       focus-visible:outline-2 focus-visible:outline-brand-600"
-    >{#if children}{@render children()}{:else}{entry.term}{/if}</Popover.Trigger
-  ><Popover.Portal
-    ><Popover.Content
+  >
+    {#if children}{@render children()}{:else}{entry.term}{/if}
+  </Popover.Trigger><Popover.Portal>
+    <Popover.Content
       id="term-{uid}"
       role="tooltip"
       side="bottom"
@@ -39,6 +40,6 @@
     >
       <p class="font-medium">{entry.term}</p>
       <p class="mt-1 text-ink-muted">{entry.definition}</p>
-    </Popover.Content></Popover.Portal
-  ></Popover.Root
->
+    </Popover.Content>
+  </Popover.Portal>
+</Popover.Root>

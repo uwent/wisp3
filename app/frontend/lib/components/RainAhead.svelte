@@ -54,26 +54,27 @@
       {#each zones as zone (zone.id)}
         <div class="space-y-1 sm:grid sm:grid-cols-[minmax(0,14rem)_1fr] sm:items-center sm:space-y-0 sm:gap-x-3">
           <div class="min-w-0 leading-tight">
-            <Link href={weatherZone(zone.location)} class="text-sm text-brand-600 underline underline-offset-2"
-              >{zone.coordinates}</Link
-            >
-            <span class="block truncate text-xs text-ink-muted" title={zone.systems.join(', ')}
-              >{zone.systems.join(', ')}</span
-            >
+            <Link href={weatherZone(zone.location)} class="text-sm text-brand-600 underline underline-offset-2">
+              {zone.coordinates}
+            </Link>
+            <span class="block truncate text-xs text-ink-muted" title={zone.systems.join(', ')}>
+              {zone.systems.join(', ')}
+            </span>
           </div>
           <ol class="grid grid-cols-7 gap-1" aria-label="Rain ahead at {zone.name}">
             {#each zone.days as day (day.date)}
               {@const odds = rainOdds(day)}
               <li class="rounded-md border px-0.5 py-1 text-center text-xs/snug {FILL[odds ?? 'none']}">
-                <span class="block font-medium"
-                  >{dayName(day.date, today, { short: true })}<span class="sr-only">{`, ${formatDate(day.date)}`}</span
-                  ></span
-                >
-                <span class="block tabular-nums {odds ? 'font-medium' : 'text-ink-muted'}"
-                  >{#if noRain(day)}No rain{:else}{#if day.precip_chance !== null}{day.precip_chance}%<span
-                        class="sr-only">{' chance'}</span
-                      >{' · '}{/if}<span class="sr-only">rain </span>{amount(day.precip_in)}{/if}</span
-                >
+                <span class="block font-medium">
+                  {dayName(day.date, today, { short: true })}<span class="sr-only">{`, ${formatDate(day.date)}`}</span>
+                </span>
+                <span class="block tabular-nums {odds ? 'font-medium' : 'text-ink-muted'}">
+                  {#if noRain(day)}No rain{:else}{#if day.precip_chance !== null}{day.precip_chance}%<span
+                        class="sr-only"
+                      >
+                        {' chance'}
+                      </span>{' · '}{/if}<span class="sr-only">rain </span>{amount(day.precip_in)}{/if}
+                </span>
                 {#if odds}<span class="sr-only">{`, ${ODDS_WORDS[odds].toLowerCase()}`}</span>{/if}
               </li>
             {/each}

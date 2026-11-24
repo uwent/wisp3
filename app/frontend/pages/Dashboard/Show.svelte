@@ -170,8 +170,10 @@
               ? 'bg-brand-600 text-white dark:text-surface'
               : 'bg-surface-raised hover:bg-surface'}"
             aria-pressed={view === key}
-            onclick={() => chooseView(key)}>{name}</button
+            onclick={() => chooseView(key)}
           >
+            {name}
+          </button>
         {/each}
       </div>
       <Link
@@ -195,8 +197,10 @@
       <Link
         href={systems.show(system.id)}
         class="underline decoration-ink-muted/50 underline-offset-4 hover:decoration-current"
-        data-search-text>{systemName(system)}</Link
+        data-search-text
       >
+        {systemName(system)}
+      </Link>
     </h3>
     <div class="flex shrink-0 items-center gap-2 text-sm">
       {#if !readOnly}
@@ -204,18 +208,20 @@
           type="button"
           class="text-brand-600 hover:underline"
           aria-label="Log irrigation on {system.name}"
-          onclick={() => logIrrigation(system.id)}>Log irrigation</button
+          onclick={() => logIrrigation(system.id)}
         >
+          Log irrigation
+        </button>
         <span class="text-ink-muted" aria-hidden="true">·</span>
       {/if}
-      <Link href={systems.show(system.id)} class="text-brand-600 hover:underline" aria-label="View {system.name}"
-        >View</Link
-      >
+      <Link href={systems.show(system.id)} class="text-brand-600 hover:underline" aria-label="View {system.name}">
+        View
+      </Link>
       {#if !readOnly}
         <span class="text-ink-muted" aria-hidden="true">·</span>
-        <Link href={systems.edit(system.id)} class="text-brand-600 hover:underline" aria-label="Edit {system.name}"
-          >Edit</Link
-        >
+        <Link href={systems.edit(system.id)} class="text-brand-600 hover:underline" aria-label="Edit {system.name}">
+          Edit
+        </Link>
       {/if}
     </div>
   </div>
@@ -229,16 +235,19 @@
         type="button"
         class="text-brand-600 underline underline-offset-2"
         aria-label="Log irrigation on {systemName(system)} for {card.name}"
-        onclick={() => logIrrigation(system.id, card.id)}>Log irrigation on {systemName(system)}</button
+        onclick={() => logIrrigation(system.id, card.id)}
       >
+        Log irrigation on {systemName(system)}
+      </button>
     </p>
   {/if}
 {/snippet}
 
 {#snippet noFields()}
   <p class="text-sm text-ink-muted">
-    No fields yet. <Link href={setup.show()} class="text-brand-600 underline underline-offset-2">Add them in setup</Link
-    >.
+    No fields yet. <Link href={setup.show()} class="text-brand-600 underline underline-offset-2">
+      Add them in setup
+    </Link>.
   </p>
 {/snippet}
 
@@ -321,9 +330,9 @@
         {/each}
         {#if farm.systems.length === 0}
           <p class="text-sm text-ink-muted">
-            No irrigation systems yet. <Link href={setup.show()} class="text-brand-600 underline underline-offset-2"
-              >Add one in setup</Link
-            >.
+            No irrigation systems yet. <Link href={setup.show()} class="text-brand-600 underline underline-offset-2">
+              Add one in setup
+            </Link>.
           </p>
         {/if}
       </section>

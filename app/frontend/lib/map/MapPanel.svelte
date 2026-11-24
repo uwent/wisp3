@@ -26,8 +26,10 @@
       type="button"
       class="-mr-1 rounded-md px-2 py-1 text-lg leading-none text-ink-muted hover:bg-surface hover:text-ink"
       aria-label="Close"
-      onclick={onclose}>×</button
+      onclick={onclose}
     >
+      ×
+    </button>
   </header>
   <div class="space-y-3 overflow-y-auto p-3">{@render children()}</div>
 </section>

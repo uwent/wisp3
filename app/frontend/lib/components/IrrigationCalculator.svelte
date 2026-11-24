@@ -144,9 +144,9 @@
     {#if inches === null}
       <span class="text-ink-muted">{`—— ${units.label('depth')}`}</span>
     {:else}
-      <strong class="font-semibold tabular-nums {tooMuch ? 'text-status-irrigate-ink' : 'text-ink'}"
-        >{units.format('depth', inches)}</strong
-      >
+      <strong class="font-semibold tabular-nums {tooMuch ? 'text-status-irrigate-ink' : 'text-ink'}">
+        {units.format('depth', inches)}
+      </strong>
     {/if}
   </span>
 {/snippet}

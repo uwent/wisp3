@@ -267,8 +267,10 @@
           class="px-2.5 py-1 {option.pressed ? 'bg-brand-600 text-white dark:text-surface' : 'hover:bg-surface'}"
           aria-pressed={option.pressed}
           title={option.title}
-          onclick={option.onclick}>{option.label}</button
+          onclick={option.onclick}
         >
+          {option.label}
+        </button>
       {/each}
     </div>
   </div>
@@ -488,8 +490,10 @@
                 type="button"
                 class="rounded-sm px-1 text-base/4 text-ink-muted hover:text-ink"
                 aria-label="Hide the {shownOverlay.name} overlay"
-                onclick={() => (prefs.overlay = null)}>×</button
+                onclick={() => (prefs.overlay = null)}
               >
+                ×
+              </button>
             </div>
           {/if}
         {/snippet}
@@ -499,8 +503,10 @@
             px-1 py-4 text-ink-muted shadow-sm hover:text-ink md:block"
           aria-label={prefs.listOpen ? 'Hide the field list' : 'Show the field list'}
           aria-expanded={prefs.listOpen}
-          onclick={() => (prefs.listOpen = !prefs.listOpen)}>{prefs.listOpen ? '‹' : '›'}</button
+          onclick={() => (prefs.listOpen = !prefs.listOpen)}
         >
+          {prefs.listOpen ? '‹' : '›'}
+        </button>
         {#if overlays.probe}
           <OverlayTooltip probe={overlays.probe} {units} width={mapWidth} />
         {/if}
@@ -516,8 +522,10 @@
               type="button"
               class="text-ink-muted hover:text-ink"
               aria-label="Dismiss"
-              onclick={() => overlays.dismiss()}>×</button
+              onclick={() => overlays.dismiss()}
             >
+              ×
+            </button>
           </div>
         {/if}
         {#if scopeNode || selectedSystem || selectedZone}

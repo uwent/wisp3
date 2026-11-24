@@ -56,9 +56,9 @@
   <label for={htmlFor ?? undefined} class="sr-only">{label}</label>
 {:else if as === 'legend'}
   <legend class="flex w-full items-center justify-between gap-2 {className}">
-    <span class="flex items-center gap-1.5"
-      >{@render dot()}<span id={labelId}>{label}</span>{@render optionalMark()}</span
-    >
+    <span class="flex items-center gap-1.5">
+      {@render dot()}<span id={labelId}>{label}</span>{@render optionalMark()}
+    </span>
     {#if tip}<InfoTip text={tip.text} term={tip.term} label="About {label}" />{/if}
   </legend>
 {:else}

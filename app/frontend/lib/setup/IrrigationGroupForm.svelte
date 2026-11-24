@@ -86,9 +86,9 @@
             checked={rainSetting === value}
             class="mt-0.5"
           />
-          <span
-            >{label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}</span
-          >
+          <span>
+            {label}{#if hint}<span class="block text-ink-muted">{hint}</span>{/if}
+          </span>
         </label>
       {/each}
       <p class="text-xs text-ink-muted">

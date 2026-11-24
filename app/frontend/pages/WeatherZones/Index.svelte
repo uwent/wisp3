@@ -53,9 +53,9 @@
       >
         <div class="space-y-1 lg:w-56 lg:shrink-0">
           <h2 id="zone-{zone.id}" class="font-medium">
-            <Link href={weatherZone(zone.location)} class="text-brand-600 underline underline-offset-2"
-              >{zone.coordinates}</Link
-            >
+            <Link href={weatherZone(zone.location)} class="text-brand-600 underline underline-offset-2">
+              {zone.coordinates}
+            </Link>
           </h2>
           <!-- Its systems and their fields, each a link to its page -->
           {#if zone.systems.length}
@@ -63,8 +63,10 @@
               <span class="text-ink-muted">Systems:</span>
               {#each zone.systems as system, i (system.id)}{i ? ', ' : ''}<Link
                   href={systems.show(system.id)}
-                  class="text-brand-600 underline underline-offset-2">{systemName(system)}</Link
-                >{/each}
+                  class="text-brand-600 underline underline-offset-2"
+                >
+                  {systemName(system)}
+                </Link>{/each}
             </p>
           {/if}
           {#if zone.fields.length}
@@ -72,8 +74,10 @@
               <span class="text-ink-muted">Fields:</span>
               {#each zone.fields as field, i (field.id)}{i ? ', ' : ''}<Link
                   href={fields.show(field.id)}
-                  class="text-brand-600 underline underline-offset-2">{field.name}</Link
-                >{/each}
+                  class="text-brand-600 underline underline-offset-2"
+                >
+                  {field.name}
+                </Link>{/each}
             </p>
           {/if}
           {#if weatherState === 'updating' && updating(zone)}
@@ -90,7 +94,9 @@
   <p class="text-sm text-ink-muted">
     Weather comes with your irrigation systems. <Link
       href={setup.show()}
-      class="text-brand-600 underline underline-offset-2">Add one in Setup</Link
-    > to see its weather here.
+      class="text-brand-600 underline underline-offset-2"
+    >
+      Add one in Setup
+    </Link> to see its weather here.
   </p>
 {/if}

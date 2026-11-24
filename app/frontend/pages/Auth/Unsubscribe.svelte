@@ -36,8 +36,9 @@
       This link may be from an older email. Sign in to WISP and turn {copy.name} off in your settings.
     </p>
   </div>
-  <Link href={settings.show()} class="block text-center font-medium text-brand-600 hover:underline">Go to settings</Link
-  >
+  <Link href={settings.show()} class="block text-center font-medium text-brand-600 hover:underline">
+    Go to settings
+  </Link>
 {:else if done}
   <div>
     <h1 class="text-xl font-semibold">You're unsubscribed</h1>
@@ -45,8 +46,9 @@
       WISP won't send you {copy.name}. You can turn {kind === 'digest' ? 'it' : 'them'} back on in your settings.
     </p>
   </div>
-  <Link href={settings.show()} class="block text-center font-medium text-brand-600 hover:underline">Go to settings</Link
-  >
+  <Link href={settings.show()} class="block text-center font-medium text-brand-600 hover:underline">
+    Go to settings
+  </Link>
 {:else}
   <div>
     <h1 class="text-xl font-semibold">{copy.ask}</h1>

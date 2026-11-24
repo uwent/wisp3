@@ -234,19 +234,23 @@
                           inchesAt100 = workedOut === null ? null : Number(workedOut.toFixed(3))
                           fromHours = false
                           edited = true
-                        }}>Use this depth</Button
+                        }}
                       >
-                      <Button variant="ghost" class="px-3 py-1 text-xs" onclick={() => (fromHours = false)}
-                        >Cancel</Button
-                      >
+                        Use this depth
+                      </Button>
+                      <Button variant="ghost" class="px-3 py-1 text-xs" onclick={() => (fromHours = false)}>
+                        Cancel
+                      </Button>
                     </div>
                   </div>
                 {:else}
                   <button
                     type="button"
                     class="text-xs text-brand-600 underline underline-offset-2"
-                    onclick={() => (fromHours = true)}>Work it out from the hours a {circle} takes</button
+                    onclick={() => (fromHours = true)}
                   >
+                    Work it out from the hours a {circle} takes
+                  </button>
                 {/if}
               </div>
             {/if}

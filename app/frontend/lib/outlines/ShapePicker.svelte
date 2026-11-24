@@ -166,8 +166,10 @@
       type="button"
       class="font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700"
       aria-current={row.index === shownIndex ? 'true' : undefined}
-      onclick={() => pick(row)}>{label(row)}</button
+      onclick={() => pick(row)}
     >
+      {label(row)}
+    </button>
   {:else}
     {label(row)}
   {/if}
@@ -191,8 +193,10 @@
       type="button"
       class="-mt-1 -mr-1 rounded-sm p-1 text-ink-muted hover:text-ink"
       aria-label="Close the field import"
-      onclick={onclose}>✕</button
+      onclick={onclose}
     >
+      ✕
+    </button>
   </div>
 
   {#if keys.length > 1}
@@ -222,8 +226,9 @@
     nowrap
   >
     {#snippet actions()}
-      <Button type="button" variant="ghost" class="px-2 py-1" onclick={() => (expanded = true)}>Expand the table</Button
-      >
+      <Button type="button" variant="ghost" class="px-2 py-1" onclick={() => (expanded = true)}>
+        Expand the table
+      </Button>
     {/snippet}
     {#snippet cell(row, column)}
       {#if column.key === 'name'}
@@ -278,9 +283,9 @@
           {#if !row.usable}
             <span class="text-status-irrigate-ink">{rowNotes(row).join('. ')}</span>
           {:else}
-            {#each rowNotes(row) as note, i (i)}{i ? '. ' : ''}<span class={i === 0 && row.match ? 'font-medium' : ''}
-                >{note}</span
-              >{/each}
+            {#each rowNotes(row) as note, i (i)}{i ? '. ' : ''}<span class={i === 0 && row.match ? 'font-medium' : ''}>
+                {note}
+              </span>{/each}
           {/if}
         {:else}
           {column.text ? column.text(row) : (column.value(row) ?? '')}

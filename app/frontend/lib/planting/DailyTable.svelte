@@ -75,9 +75,9 @@
              left as the rest scroll under it. -->
         <thead class="text-xs text-ink-muted">
           <tr class="text-right">
-            <th class="{head} left-0 z-30 px-3 py-2 text-left font-medium shadow-[inset_-1px_-1px_0_var(--color-line)]"
-              >Date</th
-            >
+            <th class="{head} left-0 z-30 px-3 py-2 text-left font-medium shadow-[inset_-1px_-1px_0_var(--color-line)]">
+              Date
+            </th>
             <th class="{head} p-2 font-medium">Reference ET</th>
             <th class="{head} p-2 font-medium">Crop ET</th>
             <th class="{head} p-2 font-medium">Rain</th>
@@ -98,11 +98,13 @@
                 class="sticky left-0 z-10 px-3 py-1 text-left font-normal whitespace-nowrap shadow-[inset_-1px_0_0_var(--color-line)] {day.ad <=
                 0
                   ? 'bg-[color-mix(in_oklab,var(--color-status-irrigate)_5%,var(--color-surface-raised))]'
-                  : 'bg-surface-raised'}">{formatDate(day.date, { weekday: true })}</th
+                  : 'bg-surface-raised'}"
               >
-              <td class="px-2 py-1 tabular-nums {day.et0_source === 'missing' ? 'text-ink-muted' : ''}"
-                >{depth(day.et0)}</td
-              >
+                {formatDate(day.date, { weekday: true })}
+              </th>
+              <td class="px-2 py-1 tabular-nums {day.et0_source === 'missing' ? 'text-ink-muted' : ''}">
+                {depth(day.et0)}
+              </td>
               <td class="px-2 py-1 tabular-nums" title={ET_SOURCE_LABELS[day.et_source]}>
                 {depth(day.adj_et)}{#if day.et_source === 'gap_fill'}<span class="text-ink-muted">*</span>{/if}
               </td>
@@ -120,9 +122,9 @@
                     <span class="text-ink-muted">{depth(day.rain)}</span>
                   {:else}
                     <span class="font-medium">{depth(day.rain)}</span>
-                    {#if rainOverridden(day)}<span class="block text-xs text-ink-muted"
-                        >modeled {depth(day.rain_model)}</span
-                      >{/if}
+                    {#if rainOverridden(day)}<span class="block text-xs text-ink-muted">
+                        modeled {depth(day.rain_model)}
+                      </span>{/if}
                   {/if}
                 </EditableCell>
               </td>
@@ -172,19 +174,19 @@
                   {readOnly}
                   onsave={(t) => saveCell(day, 'canopy', t)}
                 >
-                  {#if day.canopy_entered !== null}<span class="font-medium"
-                      >{formatNumber(day.canopy_entered, lai ? 2 : 0)}</span
-                    >
+                  {#if day.canopy_entered !== null}<span class="font-medium">
+                      {formatNumber(day.canopy_entered, lai ? 2 : 0)}
+                    </span>
                   {:else}<span class="text-ink-muted">{formatNumber(day.canopy, lai ? 2 : 0)}</span>{/if}
                 </EditableCell>
               </td>
-              <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate-ink' : ''}"
-                >{depth(day.ad)}</td
-              >
+              <td class="px-2 py-1 font-medium tabular-nums {day.ad <= 0 ? 'text-status-irrigate-ink' : ''}">
+                {depth(day.ad)}
+              </td>
               <td class="px-2 py-1 tabular-nums">{formatNumber(day.pct_moisture, 1)}</td>
-              <td class="px-2 py-1 text-ink-muted tabular-nums"
-                >{day.deep_drainage > 0 ? depth(day.deep_drainage) : ''}</td
-              >
+              <td class="px-2 py-1 text-ink-muted tabular-nums">
+                {day.deep_drainage > 0 ? depth(day.deep_drainage) : ''}
+              </td>
               <td class="px-1 py-0.5 text-left">
                 <EditableCell
                   grid="days"
@@ -208,9 +210,9 @@
       Rain in gray is modeled for the {noun}'s location; bold values are ones you entered.{#if plot}{' '}Under a plot's
         irrigation, the field's when it differs.{/if} Irrigation can also be entered for all the {noun}'s fields at once
       on the
-      <Link href={systems.show(systemId)} class="text-brand-600 underline underline-offset-2"
-        >{noun}'s irrigation page</Link
-      > or the Daily entry page. * Crop ET is estimated from the past week because that day's weather is missing.
+      <Link href={systems.show(systemId)} class="text-brand-600 underline underline-offset-2">
+        {noun}'s irrigation page
+      </Link> or the Daily entry page. * Crop ET is estimated from the past week because that day's weather is missing.
       {lai ? 'LAI' : 'Cover'} in gray is estimated: {planting?.effective_canopy_interpolation === 'curve'
         ? "the crop's typical curve, adjusted to your readings"
         : 'straight lines between your readings'}.

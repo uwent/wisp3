@@ -45,20 +45,22 @@
     {#if name}<span class="block truncate font-medium" data-search-text>{name}</span>{/if}
     {#if name && context}<span class="block truncate text-xs text-ink-muted" data-search-text>{context}</span>{/if}
     {#if summary}
-      <span class="block truncate text-xs {name ? 'text-ink-muted' : 'text-sm'}"
-        ><span data-search-text>{cropName(summary)}</span>{summary.rainfed ? ' · Rainfed' : ''}<span
-          class="text-ink-muted">{` · ${cardWhen(summary, today)}`}</span
-        ></span
-      >
+      <span class="block truncate text-xs {name ? 'text-ink-muted' : 'text-sm'}">
+        <span data-search-text>{cropName(summary)}</span>{summary.rainfed ? ' · Rainfed' : ''}<span
+          class="text-ink-muted"
+        >
+          {` · ${cardWhen(summary, today)}`}
+        </span>
+      </span>
     {/if}
     {#if !summary}
       <span class="block text-xs text-ink-muted">No crop this season</span>
     {:else if summary.weather_pending && weather === 'failed'}
       <span class="block text-xs text-status-caution-ink">Weather update failed. Refresh the page to try again.</span>
     {:else if summary.weather_pending}
-      <span class="flex items-center gap-1.5 text-xs text-ink-muted"
-        >{#if weather === 'updating'}<Spinner />{/if}Weather on its way</span
-      >
+      <span class="flex items-center gap-1.5 text-xs text-ink-muted">
+        {#if weather === 'updating'}<Spinner />{/if}Weather on its way
+      </span>
     {:else if summary.phase === 'upcoming'}
       <span class="block text-xs text-ink-muted">Season starts {formatDate(summary.season_start)}</span>
     {:else if look}
@@ -82,17 +84,19 @@
     {#if summary?.phase === 'active'}
       <StatusBadge status={summary.status} size="sm" />
     {:else if summary?.phase === 'ended'}
-      <span class="rounded-full border border-line px-2 py-0.5 text-xs whitespace-nowrap text-ink-muted"
-        >Season ended</span
-      >
+      <span class="rounded-full border border-line px-2 py-0.5 text-xs whitespace-nowrap text-ink-muted">
+        Season ended
+      </span>
     {/if}
     {#if due.length}
       <span
         class="relative text-xs whitespace-nowrap text-status-caution-ink"
         title={due.map((task) => task.todo).join('\n')}
-        >{due.length}<span class="sr-only">{due.length === 1 ? ' reading or check' : ' readings or checks'}</span
-        >{' due'}</span
       >
+        {due.length}<span class="sr-only">
+          {due.length === 1 ? ' reading or check' : ' readings or checks'}
+        </span>{' due'}
+      </span>
     {/if}
   </span>
 {/snippet}
@@ -115,7 +119,7 @@
     </ul>
   </div>
 {:else}
-  <Link href={single ? plantingRoute(single.planting_id) : fields.show(card.id)} class={row} data-field-row={card.id}
-    >{@render planting(single, card.name)}</Link
-  >
+  <Link href={single ? plantingRoute(single.planting_id) : fields.show(card.id)} class={row} data-field-row={card.id}>
+    {@render planting(single, card.name)}
+  </Link>
 {/if}

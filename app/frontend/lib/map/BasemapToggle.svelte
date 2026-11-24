@@ -15,7 +15,9 @@
       type="button"
       class="px-2.5 py-1.5 {value === key ? 'bg-brand-600 text-white dark:text-surface' : 'hover:bg-surface'}"
       aria-pressed={value === key}
-      onclick={() => value !== key && onchange(key)}>{name}</button
+      onclick={() => value !== key && onchange(key)}
     >
+      {name}
+    </button>
   {/each}
 </div>

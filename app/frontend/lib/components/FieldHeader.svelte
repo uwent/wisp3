@@ -64,9 +64,9 @@
         )}%, wilting point {formatNumber(
           field.effective_perm_wilting_pt * 100,
           1,
-        )}%){#if !isExample(page.props)}{' · '}<Link href={fieldOutline(field.id)} class="underline underline-offset-2"
-            >{field.boundary ? 'Edit field shape' : 'Draw/import field shape'}</Link
-          >{/if}
+        )}%){#if !isExample(page.props)}{' · '}<Link href={fieldOutline(field.id)} class="underline underline-offset-2">
+            {field.boundary ? 'Edit field shape' : 'Draw/import field shape'}
+          </Link>{/if}
       </p>
     </div>
     {#if actions}

@@ -21,9 +21,9 @@
       <span class="font-normal text-ink-muted">Weather zone:</span>
       {zone.coordinates}
     </h2>
-    <Link href={weatherZone(zone.location)} class="text-xs font-medium text-brand-600 hover:underline"
-      >View its weather</Link
-    >
+    <Link href={weatherZone(zone.location)} class="text-xs font-medium text-brand-600 hover:underline">
+      View its weather
+    </Link>
   {/snippet}
   <WeatherLines weather={zone.weather} {units} empty="No weather for this zone yet." />
   {#if zone.forecast.length}

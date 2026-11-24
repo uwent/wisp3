@@ -22,7 +22,9 @@
       class="rounded-full border px-3 py-1 text-sm font-medium {current
         ? 'border-brand-600 bg-brand-600 text-white dark:text-surface'
         : 'border-line text-ink-muted hover:border-brand-600 hover:text-ink'}"
-      aria-current={current ? 'page' : undefined}>{tab.label}</Link
+      aria-current={current ? 'page' : undefined}
     >
+      {tab.label}
+    </Link>
   {/each}
 </nav>

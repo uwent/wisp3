@@ -159,8 +159,10 @@
       Farm: {farm.name} · Fields:
       {#each system.fields as field, i (field.id)}{i ? ', ' : ''}<Link
           href={fieldRoutes.show(field.id)}
-          class="text-brand-600 underline underline-offset-2">{field.name}</Link
-        >{:else}no fields yet{/each}
+          class="text-brand-600 underline underline-offset-2"
+        >
+          {field.name}
+        </Link>{:else}no fields yet{/each}
       {#if !readOnly}
         · <Link href={systems.edit(system.id)} class="text-brand-600 underline underline-offset-2">Edit {noun}</Link>
       {/if}
@@ -222,9 +224,9 @@
             {#if existing}
               <p class="text-sm" role="status">
                 {formatDate(existing.date)} already has irrigation. Saving will replace it.
-                <button type="button" class="text-brand-600 underline" onclick={() => edit(existing)}
-                  >Edit that one instead</button
-                >
+                <button type="button" class="text-brand-600 underline" onclick={() => edit(existing)}>
+                  Edit that one instead
+                </button>
               </p>
             {/if}
           </div>
@@ -268,11 +270,11 @@
                   <tr class="align-top">
                     <td class="py-1 pr-4">
                       <!-- The box is named by its own (hidden) label, "Irrigation on North" -->
-                      <span class="block py-2" aria-hidden="true"
-                        >{field.name}{#if rainfedOn(field, date)}<span class="text-xs text-ink-muted"
-                            >{' · Rainfed'}</span
-                          >{/if}</span
-                      >
+                      <span class="block py-2" aria-hidden="true">
+                        {field.name}{#if rainfedOn(field, date)}<span class="text-xs text-ink-muted">
+                            {' · Rainfed'}
+                          </span>{/if}
+                      </span>
                     </td>
                     <td class="w-36 py-1">
                       <NumberField
@@ -285,9 +287,9 @@
                         error={errs[`fields.${field.id}.irrigation_in`]}
                       />
                     </td>
-                    <td class="py-1 pl-2 text-xs text-ink-muted"
-                      ><span class="block py-2">{units.label('depth')}</span></td
-                    >
+                    <td class="py-1 pl-2 text-xs text-ink-muted">
+                      <span class="block py-2">{units.label('depth')}</span>
+                    </td>
                   </tr>
                 {/each}
               </tbody>
@@ -337,9 +339,9 @@
             {#if !readOnly}
               <td class="px-4 py-2 text-right whitespace-nowrap">
                 <Button variant="ghost" class="px-2 py-1 text-xs" onclick={() => edit(irrigation)}>Edit</Button>
-                <Button variant="danger-ghost" class="px-2 py-1 text-xs" onclick={() => remove(irrigation)}
-                  >Delete</Button
-                >
+                <Button variant="danger-ghost" class="px-2 py-1 text-xs" onclick={() => remove(irrigation)}>
+                  Delete
+                </Button>
               </td>
             {/if}
           </tr>

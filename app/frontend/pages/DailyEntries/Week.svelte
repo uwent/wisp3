@@ -134,16 +134,18 @@
         href={dailyEntryWeeks.show({ query: { date: before.end } })}
         class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
         aria-label="Previous week, {before.label}"
-        ><span aria-hidden="true">‹</span><span class="hidden sm:inline">{` ${before.label}`}</span></Link
       >
+        <span aria-hidden="true">‹</span><span class="hidden sm:inline">{` ${before.label}`}</span>
+      </Link>
       <span class="px-2 font-medium">{week.label}</span>
       {#if canGoOn}
         <Link
           href={dailyEntryWeeks.show({ query: { date: after.end } })}
           class="rounded-md border border-line bg-surface-raised px-3 py-1.5 hover:bg-surface"
           aria-label="Next week, {after.label}"
-          ><span class="hidden sm:inline">{`${after.label} `}</span><span aria-hidden="true">›</span></Link
         >
+          <span class="hidden sm:inline">{`${after.label} `}</span><span aria-hidden="true">›</span>
+        </Link>
       {/if}
     </nav>
   </div>
@@ -155,9 +157,9 @@
   >
     {#if !has_systems}
       You haven't added an irrigation system yet.
-      <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2"
-        >Set up your first irrigation system</Link
-      > to start entering rain and irrigation.
+      <Link href={newQuickSetup()} class="text-brand-600 underline underline-offset-2">
+        Set up your first irrigation system
+      </Link> to start entering rain and irrigation.
     {:else}
       No field has a crop in season during {week.label}. The week shows fields with a crop growing; the Day view has
       every field.
@@ -223,16 +225,16 @@
                   {#each farm.rain_rows as row, r (row.key)}
                     <tr class="border-t border-line/60">
                       <th scope="row" class="{nameCell} font-normal">
-                        <span class="block font-medium"
-                          >{row.kind === 'system'
+                        <span class="block font-medium">
+                          {row.kind === 'system'
                             ? systemName({ name: row.name, kind_name: row.kind_name ?? '' })
-                            : row.name}</span
-                        >
-                        <span class="block text-xs text-ink-muted"
-                          >{row.kind === 'group'
+                            : row.name}
+                        </span>
+                        <span class="block text-xs text-ink-muted">
+                          {row.kind === 'group'
                             ? `Irrigation group · ${count(row.systems ?? 0, 'system')}`
-                            : 'Irrigation system'}</span
-                        >
+                            : 'Irrigation system'}
+                        </span>
                       </th>
                       <td></td>
                       {#each dates as day, c (day)}
@@ -271,11 +273,9 @@
                             use:validity={unreadable(key)}
                           />
                           {#if problem || replacing}
-                            <span id="{id}-note" class="sr-only"
-                              >{problem
-                                ? problem.message
-                                : `Replaces different amounts: ${fieldAmounts(cell, units)}`}</span
-                            >
+                            <span id="{id}-note" class="sr-only">
+                              {problem ? problem.message : `Replaces different amounts: ${fieldAmounts(cell, units)}`}
+                            </span>
                           {/if}
                         </td>
                       {/each}
@@ -331,11 +331,9 @@
                             use:validity={unreadable(key)}
                           />
                           {#if problem || replacing}
-                            <span id="{id}-note" class="sr-only"
-                              >{problem
-                                ? problem.message
-                                : `Replaces different amounts: ${fieldAmounts(cell, units)}`}</span
-                            >
+                            <span id="{id}-note" class="sr-only">
+                              {problem ? problem.message : `Replaces different amounts: ${fieldAmounts(cell, units)}`}
+                            </span>
                           {/if}
                         </td>
                       {/each}
@@ -354,9 +352,9 @@
               <ul class="list-disc pl-5">
                 {#each Object.entries(problems) as [key, problem] (key)}
                   <li>
-                    <a href="#cell-{key.replaceAll(':', '-')}" class="underline"
-                      >{problem.label}, {dayName(problem.date)}</a
-                    >{`: ${problem.message}`}
+                    <a href="#cell-{key.replaceAll(':', '-')}" class="underline">
+                      {problem.label}, {dayName(problem.date)}
+                    </a>{`: ${problem.message}`}
                   </li>
                 {/each}
               </ul>

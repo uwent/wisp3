@@ -230,8 +230,10 @@
             <button
               type="button"
               class="text-brand-600 underline underline-offset-2"
-              onclick={() => (systemChosenLater = false)}>Set one up now</button
+              onclick={() => (systemChosenLater = false)}
             >
+              Set one up now
+            </button>
           </p>
         {:else}
           {#if !farmId}
@@ -239,8 +241,10 @@
               If you don't have time right now, you can <button
                 type="button"
                 class="text-brand-600 underline underline-offset-2"
-                onclick={() => (systemChosenLater = true)}>set up an irrigation system later</button
-              >.
+                onclick={() => (systemChosenLater = true)}
+              >
+                set up an irrigation system later
+              </button>.
             </p>
           {/if}
           <TextField
@@ -290,16 +294,20 @@
               <button
                 type="button"
                 class="text-brand-600 underline underline-offset-2"
-                onclick={() => (fieldsLater = false)}>Add them now</button
+                onclick={() => (fieldsLater = false)}
               >
+                Add them now
+              </button>
             </p>
           {:else}
             <p class="text-sm">
               If you don't have time right now, you can <button
                 type="button"
                 class="text-brand-600 underline underline-offset-2"
-                onclick={() => (fieldsLater = true)}>set up fields later</button
-              >.
+                onclick={() => (fieldsLater = true)}
+              >
+                set up fields later
+              </button>.
             </p>
             {#if e['fields']}<p class="text-sm text-status-irrigate-ink">{e['fields']}</p>{/if}
             {#each rows as row, i (row.key)}
@@ -364,8 +372,10 @@
         <Button
           type="submit"
           disabled={processing || missing.length > 0}
-          aria-describedby={missing.length ? 'still-needed' : undefined}>{submitLabel}</Button
+          aria-describedby={missing.length ? 'still-needed' : undefined}
         >
+          {submitLabel}
+        </Button>
         {#if missing.length}
           <p id="still-needed" class="text-sm text-ink-muted" aria-live="polite">
             {`Still needed: ${listed(missing)}.`}

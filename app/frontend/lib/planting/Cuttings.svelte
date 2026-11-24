@@ -35,8 +35,10 @@
                   router.delete(plantingCutting({ plantingId: planting.id, id: cutting.id }).url, {
                     preserveScroll: true,
                   })
-              }}>Remove</button
+              }}
             >
+              Remove
+            </button>
           {/if}
         </li>
       {/each}

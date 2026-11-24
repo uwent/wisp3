@@ -67,8 +67,10 @@
       onclick={(event) => {
         event.stopPropagation()
         dismiss(message.kind)
-      }}>✕</button
+      }}
     >
+      ✕
+    </button>
     {#key generation}
       {#if timed}
         <!-- The duration is !important to beat application.css's reduced-motion rule,

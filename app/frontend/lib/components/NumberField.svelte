@@ -158,9 +158,9 @@
         {#if trailing}<div class="absolute inset-y-0 right-0 flex items-center pr-1">{@render trailing()}</div>{/if}
       </div>
     </div>
-    {#if suffix && !hideLabel}<span class="flex h-10.5 shrink-0 items-center text-sm text-ink-muted sm:h-9.5"
-        >{suffix}</span
-      >{/if}
+    {#if suffix && !hideLabel}<span class="flex h-10.5 shrink-0 items-center text-sm text-ink-muted sm:h-9.5">
+        {suffix}
+      </span>{/if}
     {@render after?.()}
   </div>
   {#if message}

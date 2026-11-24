@@ -83,8 +83,10 @@
     type="button"
     class="mt-auto self-end pt-1 text-xs text-brand-600 hover:underline"
     aria-haspopup="dialog"
-    onclick={() => (open = true)}>Summary and data</button
+    onclick={() => (open = true)}
   >
+    Summary and data
+  </button>
   <DataDialog
     bind:open
     title="{title}: summary and data"

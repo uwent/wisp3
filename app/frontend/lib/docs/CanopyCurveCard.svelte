@@ -89,7 +89,8 @@
     aria-haspopup="dialog"
     aria-label="{curve.name}: details and sources"
     onclick={() => (open = true)}
-    >Details and sources »
+  >
+    Details and sources »
   </button>
 </section>
 
@@ -118,8 +119,9 @@
       {#each curve.sources as source (source.url)}
         <li>
           {source.citation}
-          <a href={source.url} target="_blank" rel="noopener" class="break-all text-brand-600 underline">{source.url}</a
-          >
+          <a href={source.url} target="_blank" rel="noopener" class="break-all text-brand-600 underline">
+            {source.url}
+          </a>
         </li>
       {/each}
     </ul>

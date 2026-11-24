@@ -12,7 +12,7 @@ RSpec.describe Weather::OpenMeteo do
   end
 
   it "requests every location at once from the free host and parses each (recorded response)" do
-    request = stub_request(:get, "https://api\.open-meteo\.com/v1/forecast")
+    request = stub_request(:get, "https://api.open-meteo.com/v1/forecast")
       .with(query: hash_including(latitude: "44.112477,36.731106", longitude: "-89.589041,-119.76378",
         hourly: variables.join(","), models: "best_match", timezone: "auto", timeformat: "unixtime", start_date: "2026-10-01", end_date: "2026-10-02"))
       .to_return(body: fixture)

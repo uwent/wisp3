@@ -61,8 +61,10 @@
         type="button"
         class="block max-w-full truncate text-xs text-ink-muted hover:text-ink hover:underline"
         aria-label="Show the farm {farm.name}"
-        onclick={() => onselect({ level: 'farm', id: farm.id })}>Farm: {farm.name}</button
+        onclick={() => onselect({ level: 'farm', id: farm.id })}
       >
+        Farm: {farm.name}
+      </button>
     {/if}
     <h2 id="scope-panel-title" class="truncate font-medium">
       <span class="font-normal text-ink-muted">{noun}:</span>
@@ -70,9 +72,9 @@
     </h2>
     {#if !isExample(page.props)}
       <div class="flex gap-3 text-xs">
-        <Link href={editLink(level, node.id)} class="text-brand-600 hover:underline" aria-label="Edit {node.name}"
-          >Edit</Link
-        >
+        <Link href={editLink(level, node.id)} class="text-brand-600 hover:underline" aria-label="Edit {node.name}">
+          Edit
+        </Link>
       </div>
     {/if}
   {/snippet}
@@ -91,9 +93,9 @@
                 <span class="text-ink-muted">Group:</span>
                 <span class="font-medium">{child.name}</span>
               </span>
-              <span class="shrink-0 text-xs text-ink-muted"
-                >{child.systems.length === 1 ? '1 system' : `${child.systems.length} systems`}</span
-              >
+              <span class="shrink-0 text-xs text-ink-muted">
+                {child.systems.length === 1 ? '1 system' : `${child.systems.length} systems`}
+              </span>
             </button>
           {:else}
             {@render systemRow(child)}

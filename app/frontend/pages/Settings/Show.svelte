@@ -75,10 +75,10 @@
         {#each unit_systems as system (system)}
           <label class="flex items-center gap-3 text-sm">
             <input type="radio" name="user[unit_system]" value={system} checked={user.unit_system === system} />
-            <span
-              ><span class="font-medium">{unitLabels[system]?.name ?? system}</span>
-              <span class="text-ink-muted">({unitLabels[system]?.detail})</span></span
-            >
+            <span>
+              <span class="font-medium">{unitLabels[system]?.name ?? system}</span>
+              <span class="text-ink-muted">({unitLabels[system]?.detail})</span>
+            </span>
           </label>
         {/each}
       </fieldset>
@@ -93,13 +93,13 @@
             checked={announcements}
             class="mt-0.5 rounded-sm"
           />
-          <span
-            ><span class="font-medium">Announcements from WISP</span>
-            <span class="block text-ink-muted"
-              >News about the program, such as new features and training sessions. The daily email is set on the Alerts
-              page.</span
-            ></span
-          >
+          <span>
+            <span class="font-medium">Announcements from WISP</span>
+            <span class="block text-ink-muted">
+              News about the program, such as new features and training sessions. The daily email is set on the Alerts
+              page.
+            </span>
+          </span>
         </label>
       </fieldset>
       <Button type="submit" disabled={processing}>Save</Button>
