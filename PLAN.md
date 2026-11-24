@@ -71,8 +71,6 @@ After launch, roughly in order of value; check with the beta before building mos
   2. Check both against measured ET: Wisconsin eddy-covariance records over irrigated crops (Central Sands potato and corn; ask the Kucharik lab and AmeriFlux; **full cover done 2026-11-19 in `docs/et-validation/`, D14: potato's coefficient 1.09–1.12 closure-corrected, C21's 1.15 kept; the whole season in `06-season.md`: soil evaporation at low cover and after vine kill, and early August, are where WISP 3 departs**), and WISP 3's own soil moisture readings once seasons accumulate (the drawdown between two readings with no rain or irrigation between them is crop ET; needs growers' consent and the anonymised extract of Phase 6.7).
   3. Pick a method per crop, with its error against the measurements, and replace `CropEt::PCT_COVER_COEFFICIENTS` or keep it with a scale, recorded as a D# with the evidence; a changelog line on the About page.
 
-- **The irrigation calculator's acres for a rainfed crop's irrigated plots** (D19): the system page and the log dialog spread run hours over the field's acres, though the amount goes to its plots. Rare; send the watered acres if growers hit it.
-
 - **Deferred from earlier phases (2026-11-17 review of open items):**
   - The time travel archive replay (Phase 8 F), once the archive has a season.
   - All operations at once on the dashboard and map (G.8), if consultants ask.
