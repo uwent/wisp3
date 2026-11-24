@@ -25,6 +25,7 @@ class User < ApplicationRecord
   validates :digest_frequency, inclusion: {in: DIGEST_FREQUENCIES}
   validates :digest_scope, inclusion: {in: DIGEST_SCOPES}
   validates :first_name, :last_name, length: {maximum: 100}
+  normalizes_name :first_name, :last_name
   validate :email_domain_allowed, if: :will_save_change_to_email?
 
   after_create :create_personal_group

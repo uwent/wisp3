@@ -11,5 +11,6 @@ class Farm < ApplicationRecord
   # use_model_precip: the farm's rainfall setting (Q7), for its systems in no irrigation group or in
   # one following it (IrrigationSystem#use_model_precip?): a farm is a compact area, where rain runs alike
 
-  normalizes :notes, with: ->(text) { text.strip.presence }
+  normalizes_name :name
+  normalizes_text :notes
 end

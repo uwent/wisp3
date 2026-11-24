@@ -18,7 +18,8 @@ class Field < ApplicationRecord
   validate :wilting_point_below_capacity
   validate :boundary_readable
 
-  normalizes :notes, with: ->(text) { text.strip.presence }
+  normalizes_name :name
+  normalizes_text :notes
 
   # Plantings that haven't ended follow the field's soil, area and system;
   # ended ones keep what their season ran with, so a field can move at any time

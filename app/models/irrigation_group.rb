@@ -11,5 +11,5 @@ class IrrigationGroup < ApplicationRecord
   # use_model_precip: the group's rainfall setting (Q7), as it shares a rain gauge; NULL follows its
   # farm's (IrrigationSystem#use_model_precip?)
 
-  normalizes :name, with: ->(name) { name.strip }
+  normalizes_name :name
 end

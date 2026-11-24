@@ -17,7 +17,7 @@ module DailyEntry
     # What a grower enters (record); seeds may write a season ahead of today
     validate :nothing_measured_ahead, on: :entry
 
-    normalizes :notes, with: ->(notes) { notes.strip.presence }
+    normalizes_text :notes
   end
 
   class_methods do

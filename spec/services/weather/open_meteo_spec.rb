@@ -12,7 +12,7 @@ RSpec.describe Weather::OpenMeteo do
   end
 
   it "requests every location at once from the free host and parses each (recorded response)" do
-    request = stub_request(:get, "https://api.open-meteo.com/v1/forecast")
+    request = stub_request(:get, "https://api\.open-meteo\.com/v1/forecast")
       .with(query: hash_including(latitude: "44.112477,36.731106", longitude: "-89.589041,-119.76378",
         hourly: variables.join(","), models: "best_match", timezone: "auto", timeformat: "unixtime", start_date: "2026-10-01", end_date: "2026-10-02"))
       .to_return(body: fixture)
@@ -26,7 +26,7 @@ RSpec.describe Weather::OpenMeteo do
   end
 
   it "parses a single-location response (an object, not a list)" do
-    stub_request(:get, /api.open-meteo.com/).to_return(body: file_fixture("open_meteo/soil_one_location.json").read)
+    stub_request(:get, /api\.open-meteo\.com/).to_return(body: file_fixture("open_meteo/soil_one_location.json").read)
     result = client.hourly([locations.first], endpoint: :forecast, model: "ecmwf_ifs",
       variables: %w[soil_temperature_0_to_7cm soil_moisture_0_to_7cm], past_days: 1, forecast_days: 1)
     expect(result.size).to eq(1)

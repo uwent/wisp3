@@ -13,6 +13,7 @@ class Group < ApplicationRecord
   def plantings = Planting.joins(field: {system: :farm}).where(farms: {group_id: id})
 
   validates :name, presence: true, length: {maximum: 100}
+  normalizes_name :name
 
   # The public example farm: at most one group, with no members, shown read-only to
   # anyone (example mode, ExampleMode) as of its example_as_of; rebuilt by bin/rails demo:example

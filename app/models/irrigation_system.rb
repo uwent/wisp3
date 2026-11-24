@@ -69,7 +69,8 @@ class IrrigationSystem < ApplicationRecord
   validate :arc_complete
   validate :irrigation_group_on_farm
 
-  normalizes :equipment, :notes, with: ->(text) { text.strip.presence }
+  normalizes_name :name, :equipment
+  normalizes_text :notes
 
   before_validation :clear_other_shape
   # A system moved to another farm leaves its group (groups don't span farms)

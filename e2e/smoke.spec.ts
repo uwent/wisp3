@@ -1641,7 +1641,7 @@ test('a field shape away from its system can move the field to a new Location', 
   await expect(page.getByRole('group', { name: 'Shape tools' })).toBeEnabled()
 
   await page.getByLabel('Shape file').setInputFiles('spec/fixtures/files/outlines/google_earth.kml')
-  const escaped = system.replace(/[()]/g, '\\$&')
+  const escaped = system.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   await expect(
     page.getByText(
       new RegExp(`^This field is [\\d.]+ (mi|ft) away from its assigned irrigation system, ${escaped}\\. All fields`),

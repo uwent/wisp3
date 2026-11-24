@@ -54,7 +54,8 @@ class Planting < ApplicationRecord
   validate :within_field_area, if: :partial?
   validate :entries_kept_with_part, if: -> { persisted? && will_save_change_to_partial? && !partial? }
 
-  normalizes :variety, :notes, with: ->(text) { text.strip.presence }
+  normalizes_name :variety
+  normalizes_text :notes
   normalizes :canopy_interpolation, :canopy_curve_key, with: ->(value) { value.presence }
 
   # Only crops that are vine killed keep a vine kill date, so changing the crop leaves none behind
